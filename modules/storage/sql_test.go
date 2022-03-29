@@ -1875,9 +1875,9 @@ func TestAnalyticsDashboards(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
-	dashbaords, err := db.GetAnalyticsDashboards(ctx)
+	dashboards, err := db.GetAnalyticsDashboards(ctx)
 	assert.NoError(t, err)
-	for _, dashboard := range dashbaords {
+	for _, dashboard := range dashboards {
 		err := db.RemoveAnalyticsDashboardByID(ctx, dashboard.ID)
 		assert.NoError(t, err)
 	}
@@ -1885,7 +1885,15 @@ func TestAnalyticsDashboards(t *testing.T) {
 	categories, err := db.GetAnalyticsDashboardCategories(ctx)
 	assert.NoError(t, err)
 	for _, category := range categories {
-		err := db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
+		subCategories, err := db.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, category.ID)
+		assert.NoError(t, err)
+
+		for _, category := range subCategories {
+			err := db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
+			assert.NoError(t, err)
+		}
+
+		err = db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
 		assert.NoError(t, err)
 	}
 
@@ -1905,12 +1913,11 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 	t.Run("AddAnalyticsDashboardCategory", func(t *testing.T) {
 		category := looker.AnalyticsDashboardCategory{
-			Label:   "Test Category",
-			Premium: false,
-			Order:   10,
+			Label: "Test Category",
+			Order: 10,
 		}
 
-		err := db.AddAnalyticsDashboardCategory(ctx, category.Order, category.Label, category.Admin, category.Premium, -1)
+		err := db.AddAnalyticsDashboardCategory(ctx, category.Order, category.Label, -1)
 		assert.NoError(t, err)
 
 		dashboardCategories, err := db.GetAnalyticsDashboardCategories(ctx)
@@ -1918,15 +1925,13 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, 1, len(dashboardCategories))
 		assert.Equal(t, category.Label, dashboardCategories[0].Label)
-		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
 
 		category2 := looker.AnalyticsDashboardCategory{
-			Label:   "Another Test Category",
-			Premium: true,
-			Order:   5,
+			Label: "Another Test Category",
+			Order: 5,
 		}
 
-		err = db.AddAnalyticsDashboardCategory(ctx, category2.Order, category2.Label, category2.Admin, category2.Premium, -1)
+		err = db.AddAnalyticsDashboardCategory(ctx, category2.Order, category2.Label, -1)
 		assert.NoError(t, err)
 
 		dashboardCategories, err = db.GetAnalyticsDashboardCategories(ctx)
@@ -1934,21 +1939,17 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, 2, len(dashboardCategories))
 		assert.Equal(t, category.Label, dashboardCategories[0].Label)
-		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
 		assert.Equal(t, category2.Label, dashboardCategories[1].Label)
-		assert.Equal(t, category2.Premium, dashboardCategories[1].Premium)
 
 		dbCategory, err := db.GetAnalyticsDashboardCategoryByID(ctx, dashboardCategories[0].ID)
 		assert.NoError(t, err)
 		assert.Equal(t, dashboardCategories[0].ID, dbCategory.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dbCategory.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dbCategory.Premium)
 
 		dbCategory, err = db.GetAnalyticsDashboardCategoryByLabel(ctx, dashboardCategories[0].Label)
 		assert.NoError(t, err)
 		assert.Equal(t, dashboardCategories[0].ID, dbCategory.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dbCategory.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dbCategory.Premium)
 	})
 
 	t.Run("AddAnalyticsDashboard", func(t *testing.T) {
@@ -1961,7 +1962,7 @@ func TestAnalyticsDashboards(t *testing.T) {
 		dashboardCategories, err := db.GetAnalyticsDashboardCategories(ctx)
 		assert.NoError(t, err)
 
-		err = db.AddAnalyticsDashboard(ctx, dashboard.Order, dashboard.Name, false, false, dashboard.LookerID, customers[0].DatabaseID, dashboardCategories[0].ID)
+		err = db.AddAnalyticsDashboard(ctx, dashboard.Order, dashboard.Name, false, true, dashboard.LookerID, customers[0].DatabaseID, dashboardCategories[0].ID)
 		assert.NoError(t, err)
 
 		dashboards, err := db.GetAnalyticsDashboards(ctx)
@@ -1974,7 +1975,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
 		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
 
 		dashboard2 := looker.AnalyticsDashboard{
 			Name:     "Another Test Dashboard",
@@ -1995,7 +1995,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
 		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
 
 		assert.Equal(t, dashboard2.Name, dashboards[1].Name)
 		assert.Equal(t, dashboard2.Order, dashboards[1].Order)
@@ -2003,7 +2002,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dashboards[1].CustomerCode)
 		assert.Equal(t, dashboardCategories[1].ID, dashboards[1].Category.ID)
 		assert.Equal(t, dashboardCategories[1].Label, dashboards[1].Category.Label)
-		assert.Equal(t, dashboardCategories[1].Premium, dashboards[1].Category.Premium)
 
 		dashboards, err = db.GetFreeAnalyticsDashboards(ctx)
 		assert.NoError(t, err)
@@ -2022,7 +2020,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
 		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
 
 		dashboards, err = db.GetAnalyticsDashboardsByCategoryID(ctx, dashboardCategories[1].ID)
 		assert.NoError(t, err)
@@ -2033,7 +2030,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
 		assert.Equal(t, dashboardCategories[1].ID, dashboards[0].Category.ID)
 		assert.Equal(t, dashboardCategories[1].Label, dashboards[0].Category.Label)
-		assert.Equal(t, dashboardCategories[1].Premium, dashboards[0].Category.Premium)
 
 		dashboards, err = db.GetAnalyticsDashboardsByCategoryLabel(ctx, dashboardCategories[1].Label)
 		assert.NoError(t, err)
@@ -2051,7 +2047,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dbDashboard.CustomerCode)
 		assert.Equal(t, dashboardCategories[0].ID, dbDashboard.Category.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dbDashboard.Category.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dbDashboard.Category.Premium)
 
 		dbDashboard, err = db.GetAnalyticsDashboardByName(ctx, dashboard.Name)
 		assert.NoError(t, err)
@@ -2061,7 +2056,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Equal(t, customers[0].Code, dbDashboard.CustomerCode)
 		assert.Equal(t, dashboardCategories[0].ID, dbDashboard.Category.ID)
 		assert.Equal(t, dashboardCategories[0].Label, dbDashboard.Category.Label)
-		assert.Equal(t, dashboardCategories[0].Premium, dbDashboard.Category.Premium)
 	})
 
 	t.Run("RemoveAnalyticsDashboards", func(t *testing.T) {
@@ -2086,7 +2080,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.NotEqual(t, removedDashboard.LookerID, dashboards[0].LookerID)
 		assert.NotEqual(t, removedDashboard.Category.ID, dashboards[0].Category.ID)
 		assert.NotEqual(t, removedDashboard.Category.Label, dashboards[0].Category.Label)
-		assert.NotEqual(t, removedDashboard.Category.Premium, dashboards[0].Category.Premium)
 
 		err = db.AddAnalyticsDashboard(ctx, 0, removedDashboard.Name, false, false, removedDashboard.LookerID, removedDashboardCustomer.DatabaseID, removedDashboard.Category.ID)
 		assert.NoError(t, err)
@@ -2107,7 +2100,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.NotEqual(t, removedDashboard.LookerID, dashboards[0].LookerID)
 		assert.NotEqual(t, removedDashboard.Category.ID, dashboards[0].Category.ID)
 		assert.NotEqual(t, removedDashboard.Category.Label, dashboards[0].Category.Label)
-		assert.NotEqual(t, removedDashboard.Category.Premium, dashboards[0].Category.Premium)
 
 	})
 
@@ -2123,7 +2115,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, dashboards[0].Category.ID, categories[1].ID)
 		assert.Equal(t, dashboards[0].Category.Label, categories[1].Label)
-		assert.Equal(t, dashboards[0].Category.Premium, categories[1].Premium)
 
 		err = db.RemoveAnalyticsDashboardCategoryByID(ctx, dashboards[0].Category.ID)
 		assert.Error(t, err)
@@ -2139,9 +2130,8 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.NotEqual(t, categories[0].ID, removedCategory.ID)
 		assert.NotEqual(t, categories[0].Label, removedCategory.Label)
-		assert.NotEqual(t, categories[0].Premium, removedCategory.Premium)
 
-		err = db.AddAnalyticsDashboardCategory(ctx, 0, removedCategory.Label, removedCategory.Admin, removedCategory.Premium, -1)
+		err = db.AddAnalyticsDashboardCategory(ctx, 0, removedCategory.Label, -1)
 		assert.NoError(t, err)
 
 		categories, err = db.GetAnalyticsDashboardCategories(ctx)
@@ -2160,7 +2150,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.NotEqual(t, categories[0].ID, removedCategory.ID)
 		assert.NotEqual(t, categories[0].Label, removedCategory.Label)
-		assert.NotEqual(t, categories[0].Premium, removedCategory.Premium)
 	})
 
 	t.Run("UpdateAnalyticsDashboards", func(t *testing.T) {
@@ -2208,7 +2197,7 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, customers[1].Code, dashboard.CustomerCode)
 
-		err = db.AddAnalyticsDashboardCategory(ctx, 0, "My Test Category", false, false, -1)
+		err = db.AddAnalyticsDashboardCategory(ctx, 0, "My Test Category", -1)
 		assert.NoError(t, err)
 
 		categories, err := db.GetAnalyticsDashboardCategories(ctx)
@@ -2222,7 +2211,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, categories[1].ID, dashboard.Category.ID)
 		assert.Equal(t, categories[1].Label, dashboard.Category.Label)
-		assert.Equal(t, categories[1].Premium, dashboard.Category.Premium)
 
 		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Name", "")
 		assert.Error(t, err)
@@ -2285,26 +2273,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 
 		assert.Equal(t, oldOrder+10, category.Order)
 
-		isPremium := !updatedCategory.Premium
-
-		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", isPremium)
-		assert.NoError(t, err)
-
-		category, err = db.GetAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID)
-		assert.NoError(t, err)
-
-		assert.Equal(t, isPremium, category.Premium)
-
-		isAdmin := !updatedCategory.Admin
-
-		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Admin", isAdmin)
-		assert.NoError(t, err)
-
-		category, err = db.GetAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID)
-		assert.NoError(t, err)
-
-		assert.Equal(t, isAdmin, category.Admin)
-
 		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Label", "")
 		assert.Error(t, err)
 
@@ -2315,12 +2283,6 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Error(t, err)
 
 		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Order", nil)
-		assert.Error(t, err)
-
-		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", "Not a boolean")
-		assert.Error(t, err)
-
-		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", nil)
 		assert.Error(t, err)
 	})
 }
