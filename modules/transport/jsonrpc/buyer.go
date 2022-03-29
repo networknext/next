@@ -2746,26 +2746,28 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	// TODO: This functionality should be broken out into storage calls - FreeDashboardsByCustomerCode, PremiumDashboardsByCustomerCode, etc
 	// Loop through all dashboards and pull out the dashboards specific to the customer that they have permission to see (premium vs free)
 	for _, dashboard := range dashboards {
-		if dashboard.CustomerCode == customerCode && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
-			_, ok := reply.Dashboards[dashboard.Category.Label]
-			if !ok {
-				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
-				categories = append(categories, dashboard.Category)
+		if dashboard.CustomerCode == customerCode && !dashboard.Admin && (!dashboard.Premium || (buyer.Analytics && dashboard.Premium)) {
+			if dashboard.Category.ParentCategoryID < 0 {
+				_, ok := reply.Dashboards[dashboard.Category.Label]
+				if !ok {
+					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+					categories = append(categories, dashboard.Category)
+				}
+
+				dashCustomerCode := customerCode
+
+				// Hacky work around for local
+				if s.Env == "local" {
+					dashCustomerCode = "twenty-four-entertainment"
+				}
+
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					continue
+				}
+
+				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
 			}
-
-			dashCustomerCode := customerCode
-
-			// Hacky work around for local
-			if s.Env == "local" {
-				dashCustomerCode = "twenty-four-entertainment"
-			}
-
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-			if err != nil {
-				continue
-			}
-
-			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
 		}
 	}
 
