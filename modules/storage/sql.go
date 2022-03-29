@@ -4152,7 +4152,7 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, l
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sqlBuffer.Write([]byte("insert into analytics_dashboard_categories (order_priority, tab_label, parent_category_id, premium, admin_only) values ($1, $2, $3, $4, $5)"))
+	sqlBuffer.Write([]byte("insert into analytics_dashboard_categories (order_priority, tab_label, parent_category_id, premium, admin_only, seller_only) values ($1, $2, $3, $4, $5, $6)"))
 
 	parentID := sql.NullInt64{
 		Valid: false,
@@ -4167,7 +4167,7 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, l
 		ctx,
 		db,
 		sqlBuffer,
-		order, label, parentID, false, false,
+		order, label, parentID, false, false, false,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
