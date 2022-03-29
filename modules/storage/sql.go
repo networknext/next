@@ -4905,13 +4905,13 @@ func (db *SQL) AddAnalyticsDashboard(ctx context.Context, order int32, name stri
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboards (order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id) values ($1, $2, $3, $4, $5, $6, $7)"))
+	sql.Write([]byte("insert into analytics_dashboards (order_priority, dashboard_name, admin_only, premium, discovery, looker_dashboard_id, customer_id, category_id) values ($1, $2, $3, $4, $5, $6, $7, $8)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		order, name, adminOnly, premium, lookerID, customerID, categoryID,
+		order, name, adminOnly, premium, false, lookerID, customerID, categoryID,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
