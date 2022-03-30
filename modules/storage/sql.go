@@ -3958,7 +3958,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 
 	parentCategoryID := sql.NullInt64{}
 
-	sqlBuffer.Write([]byte("select id, order_priority, tab_label, premium, admin_only, parent_category_id ")) // TODO: Remove admin_only, and premium after dashboard transfer is complete
+	sqlBuffer.Write([]byte("select id, order_priority, tab_label, parent_category_id "))
 	sqlBuffer.Write([]byte("from analytics_dashboard_categories"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3976,8 +3976,6 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 			&category.ID,
 			&category.Order,
 			&category.Label,
-			&category.Premium, // TODO: Remove after dashboard transfer is complete
-			&category.Admin,   // TODO: Remove after dashboard transfer is complete
 			&parentCategoryID,
 		)
 		if err != nil {
@@ -4009,7 +4007,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, order_priority, tab_label, premium, admin_only, parent_category_id from analytics_dashboard_categories where id = $1"))
+	querySQL.Write([]byte("select id, order_priority, tab_label, parent_category_id from analytics_dashboard_categories where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4020,8 +4018,6 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 			&category.ID,
 			&category.Order,
 			&category.Label,
-			&category.Premium,
-			&category.Admin,
 			&parentCategoryID,
 		)
 		switch err {
@@ -4064,7 +4060,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, order_priority, tab_label, premium, admin_only, parent_category_id from analytics_dashboard_categories where tab_label = $1"))
+	querySQL.Write([]byte("select id, order_priority, tab_label, parent_category_id from analytics_dashboard_categories where tab_label = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4075,8 +4071,6 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 			&category.ID,
 			&category.Order,
 			&category.Label,
-			&category.Premium,
-			&category.Admin,
 			&parentCategoryID,
 		)
 		switch err {
@@ -4108,14 +4102,57 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 	}
 }
 
+func (db *SQL) GetAnalyticsDashboardSubCategoriesByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboardCategory, error) {
+	var sqlBuffer bytes.Buffer
+	subCategories := make([]looker.AnalyticsDashboardCategory, 0)
+	category := looker.AnalyticsDashboardCategory{}
+
+	parentCategoryID := sql.NullInt64{}
+
+	sqlBuffer.Write([]byte("select id, order_priority, tab_label, parent_category_id "))
+	sqlBuffer.Write([]byte("from analytics_dashboard_categories where parent_category_id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sqlBuffer, id)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboardCategory{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Order,
+			&category.Label,
+			&parentCategoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardCategories(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboardCategory{}, err
+		}
+
+		if parentCategoryID.Valid {
+			category.ParentCategoryID = parentCategoryID.Int64
+		}
+
+		subCategories = append(subCategories, category)
+	}
+
+	sort.Slice(subCategories, func(i int, j int) bool { return subCategories[i].Order > subCategories[j].Order })
+	return subCategories, nil
+}
+
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, isAdmin bool, isPremium bool, parentCategoryID int64) error {
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, parentCategoryID int64) error {
 	var sqlBuffer bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sqlBuffer.Write([]byte("insert into analytics_dashboard_categories (order_priority, tab_label, premium, admin_only, parent_category_id) values ($1, $2, $3, $4, $5)"))
+	sqlBuffer.Write([]byte("insert into analytics_dashboard_categories (order_priority, tab_label, parent_category_id, premium, admin_only, seller_only) values ($1, $2, $3, $4, $5, $6)"))
 
 	parentID := sql.NullInt64{
 		Valid: false,
@@ -4130,7 +4167,7 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, l
 		ctx,
 		db,
 		sqlBuffer,
-		order, label, isPremium, isAdmin, parentID,
+		order, label, parentID, false, false, false,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
@@ -4238,22 +4275,6 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 		updateSQL.Write([]byte("update analytics_dashboard_categories set tab_label=$1 where id=$2"))
 		args = append(args, label, id)
 
-	case "Premium":
-		premium, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("%v is not a valid bool value", value)
-		}
-		updateSQL.Write([]byte("update analytics_dashboard_categories set premium=$1 where id=$2"))
-		args = append(args, premium, id)
-
-	case "Admin":
-		admin, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("%v is not a valid bool value", value)
-		}
-		updateSQL.Write([]byte("update analytics_dashboard_categories set admin_only=$1 where id=$2"))
-		args = append(args, admin, id)
-
 	case "CategoryID":
 		categoryID, ok := value.(int64)
 		if !ok {
@@ -4294,7 +4315,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4312,6 +4333,8 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4321,17 +4344,17 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 			return []looker.AnalyticsDashboard{}, err
 		}
 
-		customer, err := db.CustomerByID(ctx, customerID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+		if dashboard.Admin {
+			customer, err := db.CustomerByID(ctx, customerID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+			category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		if category.Admin {
 			dashboard.CustomerCode = customer.Code
 			dashboard.Category = category
 
@@ -4350,7 +4373,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where customer_id = $1 order by id desc"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4368,6 +4391,8 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4404,7 +4429,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where category_id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4422,6 +4447,8 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4459,7 +4486,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4477,6 +4504,8 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4517,7 +4546,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4535,6 +4564,8 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4544,20 +4575,20 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 			return []looker.AnalyticsDashboard{}, err
 		}
 
-		customer, err := db.CustomerByID(ctx, customerID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+		if dashboard.Premium {
+			customer, err := db.CustomerByID(ctx, customerID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+			category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		dashboard.CustomerCode = customer.Code
-		dashboard.Category = category
+			dashboard.CustomerCode = customer.Code
+			dashboard.Category = category
 
-		if dashboard.Category.Premium {
 			dashboards = append(dashboards, dashboard)
 		}
 	}
@@ -4574,7 +4605,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where premium = false"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4592,6 +4623,8 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4601,20 +4634,20 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 			return []looker.AnalyticsDashboard{}, err
 		}
 
-		customer, err := db.CustomerByID(ctx, customerID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+		if !dashboard.Premium {
+			customer, err := db.CustomerByID(ctx, customerID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
-		if err != nil {
-			return []looker.AnalyticsDashboard{}, err
-		}
+			category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+			if err != nil {
+				return []looker.AnalyticsDashboard{}, err
+			}
 
-		dashboard.CustomerCode = customer.Code
-		dashboard.Category = category
+			dashboard.CustomerCode = customer.Code
+			dashboard.Category = category
 
-		if !dashboard.Category.Premium {
 			dashboards = append(dashboards, dashboard)
 		}
 	}
@@ -4688,7 +4721,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where looker_dashboard_id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4706,6 +4739,8 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4810,7 +4845,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 	dashboard := looker.AnalyticsDashboard{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
+	querySQL.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4821,6 +4856,8 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -4868,13 +4905,13 @@ func (db *SQL) AddAnalyticsDashboard(ctx context.Context, order int32, name stri
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboards (order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id) values ($1, $2, $3, $4, $5, $6, $7)"))
+	sql.Write([]byte("insert into analytics_dashboards (order_priority, dashboard_name, admin_only, premium, discovery, looker_dashboard_id, customer_id, category_id) values ($1, $2, $3, $4, $5, $6, $7, $8)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		order, name, adminOnly, premium, lookerID, customerID, categoryID,
+		order, name, adminOnly, premium, false, lookerID, customerID, categoryID,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
