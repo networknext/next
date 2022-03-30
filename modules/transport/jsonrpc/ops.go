@@ -2522,6 +2522,7 @@ type FetchAdminDashboardsReply struct {
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
+	ctx := r.Context()
 	reply.Dashboards = make(map[string][]AdminDashboard, 0)
 	reply.SubCategories = make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
@@ -2530,8 +2531,6 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		core.Error("FetchAdminDashboards(): %v", err.Error())
 		return &err
 	}
-
-	ctx := r.Context()
 
 	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
