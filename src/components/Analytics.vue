@@ -2,15 +2,30 @@
   <div class="card" style="margin-bottom: 250px;">
     <div class="card-header">
       <ul class="nav nav-tabs card-header-tabs">
-        <li class="nav-item" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex)">
+        <li class="nav-item" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex, false)">
           <a class="nav-link" :class="{ active: selectedTabIndex === tabIndex }">{{ tab }}</a>
         </li>
       </ul>
     </div>
-    <div class="card-body">
-      <div class="row" v-for="(dashboard, urlIndex) in tabDashboards" :key="urlIndex">
-        <Alert ref="failureAlert"/>
-        <LookerEmbed :dashURL="dashboard" dashID="analyticsDash" />
+    <div class="card-body" v-if="!subTabs[tabs[selectedTabIndex]]">
+      <div v-for="(dashboard, dashIndex) in tabDashboards" :key="dashIndex">
+        <div class="row">
+          <LookerEmbed :dashURL="dashboard" dashID="previewDash" />
+        </div>
+      </div>
+    </div>
+    <div class="card-body" v-if="subTabs[tabs[selectedTabIndex]]">
+      <div class="row border-bottom mb-3">
+        <ul class="sub-ul">
+          <li class="sub-li" :class="{ 'blue-accent': subTabIndex === selectedSubTabIndex }" v-for="(subTab, subTabIndex) in subTabs[tabs[selectedTabIndex]]" :key="subTabIndex" @click="selectTab(subTabIndex, true)">
+            <a class="sub-link">{{ subTab.label }}</a>
+          </li>
+        </ul>
+      </div>
+      <div v-for="(dashboard, dashIndex) in tabDashboards" :key="dashIndex">
+        <div class="row">
+          <LookerEmbed :dashURL="dashboard" dashID="previewDash" />
+        </div>
       </div>
     </div>
   </div>
@@ -37,17 +52,20 @@ export default class Analytics extends Vue {
 
   private unwatchFilter: any
   private dashboards: any
-  private domain: string
+  private selectedSubTabIndex: number
   private selectedTabIndex: number
-  private tabs: Array<string>
+  private tabs: Array<any>
   private tabDashboards: Array<any>
+  private subTabs: any
 
   constructor () {
     super()
-    this.domain = window.location.origin
+    this.dashboards = {}
+    this.selectedSubTabIndex = -1
     this.selectedTabIndex = -1
     this.tabs = []
     this.tabDashboards = []
+    this.subTabs = {}
   }
 
   private mounted () {
@@ -76,12 +94,14 @@ export default class Analytics extends Vue {
       customer_code: customerCode
     })
       .then((response: any) => {
+        console.log(response)
         this.dashboards = response.dashboards || []
         this.tabs = response.labels || []
 
         this.selectedTabIndex = 0
 
         this.tabDashboards = this.dashboards[this.tabs[this.selectedTabIndex]]
+        console.log(this.tabDashboards)
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -91,36 +111,46 @@ export default class Analytics extends Vue {
       })
   }
 
-  private selectTab (index: number) {
+  private selectTab (index: number, isSubTab: boolean) {
     if (index === this.selectedTabIndex) {
       return
     }
-    this.selectedTabIndex = index
+
+    if (isSubTab) {
+      this.selectedSubTabIndex = index
+    } else {
+      this.selectedTabIndex = index
+      this.selectedSubTabIndex = 0
+    }
 
     // TODO: This is a bit wasteful because we are making multiple URLs when we only need the one specific to the selected tab. Make a refresh endpoint that will just reload the tab
     this.$apiService.fetchAnalyticsDashboards({
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.dashboards = response.dashboards || []
+        console.log(response)
+        this.dashboards = response.dashboards || {}
         this.tabs = response.labels || []
+        this.subTabs = response.sub_categories || {}
 
         // If a tab is deleted in the admin tool before this tab switch, the selectedIndex could be greater than the number of new tabs
         if (this.selectedTabIndex > this.tabs.length) {
           this.selectedTabIndex = 0
         }
 
-        this.tabDashboards = this.dashboards[this.tabs[this.selectedTabIndex]]
+        const currentTab = this.tabs[this.selectedTabIndex]
+        const subTabs = this.subTabs[currentTab]
+
+        if (subTabs) {
+          const firstSubTab = subTabs[this.selectedSubTabIndex].label
+          this.tabDashboards = this.dashboards[firstSubTab]
+        } else {
+          this.tabDashboards = this.dashboards[currentTab]
+        }
       })
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
         console.log(error)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong fetching analytics dashboards')
-        console.log(error)
-        this.$refs.failureAlert.setMessage('Failed to fetch analytics dashboards. Please refresh the page')
-        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 }
@@ -128,6 +158,10 @@ export default class Analytics extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .nav-link {
+    cursor: pointer;
+  }
+
   .sub-ul {
     list-style-type: none;
     margin-left: 1rem;
@@ -159,6 +193,7 @@ export default class Analytics extends Vue {
     padding-bottom: 4px;
     text-decoration: none;
     cursor: pointer;
+    color: black;
   }
 
   .blue-accent {
