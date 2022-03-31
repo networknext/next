@@ -2758,6 +2758,18 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
 			if dashboard.Category.ParentCategoryID < 0 {
+				subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
+				if len(subCategories) > 0 {
+					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
+					continue
+				}
+
 				_, ok := reply.Dashboards[dashboard.Category.Label]
 				if !ok {
 					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
