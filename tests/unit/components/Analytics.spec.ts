@@ -69,6 +69,7 @@ describe('Analytics.vue', () => {
     analyticDashSpy.mockReset()
   })
 
+  /*
   it('mounts a single dashboard category and one dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
@@ -293,4 +294,5 @@ describe('Analytics.vue', () => {
 
     analyticDashSpy.mockReset()
   })
+  */
 })
