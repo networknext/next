@@ -2766,6 +2766,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 					continue
 				}
 
@@ -2774,7 +2775,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				// Find the parent category information
 				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
 				if err != nil {
-					core.Error("FetchAdminDashboards(): %v", err.Error())
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 					continue
 				}
 
