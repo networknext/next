@@ -2047,6 +2047,8 @@ func (s *OpsService) FetchAnalyticsDashboardCategory(r *http.Request, args *Fetc
 		return &err
 	}
 
+	reply.Category = category
+
 	// If the category is a parent category, look for sub categories (-1 determines a parent category)
 	if category.ParentCategoryID < 0 {
 		subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, category.ID)
@@ -2054,7 +2056,6 @@ func (s *OpsService) FetchAnalyticsDashboardCategory(r *http.Request, args *Fetc
 			core.Error("FetchAnalyticsDashboardCategory(): %v", err.Error())
 		}
 
-		reply.Category = category
 		reply.SubCategories = subCategories
 		return nil
 	}
@@ -2505,9 +2506,8 @@ func (s *OpsService) UpdateAnalyticsDashboard(r *http.Request, args *UpdateAnaly
 }
 
 type AdminDashboard struct {
-	URL   string `json:"url"`
-	Live  bool   `json:"live"`
-	Order int32  `json:"order"`
+	URL  string `json:"url"`
+	Live bool   `json:"live"`
 }
 
 type FetchAdminDashboardsArgs struct {
@@ -2515,21 +2515,22 @@ type FetchAdminDashboardsArgs struct {
 }
 
 type FetchAdminDashboardsReply struct {
-	Dashboards map[string][]AdminDashboard `json:"dashboards"`
-	Labels     []string                    `json:"labels"`
+	Dashboards    map[string][]AdminDashboard                    `json:"dashboards"`
+	Labels        []string                                       `json:"labels"`
+	SubCategories map[string][]looker.AnalyticsDashboardCategory `json:"sub_categories"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
+	ctx := r.Context()
 	reply.Dashboards = make(map[string][]AdminDashboard, 0)
+	reply.SubCategories = make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAdminDashboards(): %v", err.Error())
 		return &err
 	}
-
-	ctx := r.Context()
 
 	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
@@ -2559,6 +2560,13 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	for _, dashboard := range dashboards {
 		if dashboard.CustomerCode == customerCode {
+			dashCustomerCode := customerCode
+
+			if s.Env == "local" {
+				dashCustomerCode = "twenty-four-entertainment"
+			}
+
+			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
 			if dashboard.Category.ParentCategoryID < 0 {
 				_, ok := reply.Dashboards[dashboard.Category.Label]
 				if !ok {
@@ -2566,11 +2574,37 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 					categories = append(categories, dashboard.Category)
 				}
 
-				dashCustomerCode := customerCode
-
-				if s.Env == "local" {
-					dashCustomerCode = "twenty-four-entertainment"
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					continue
 				}
+
+				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
+					URL:  url,
+					Live: !dashboard.Admin,
+				})
+			} else {
+				// Find the parent category information
+				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
+				if err != nil {
+					core.Error("FetchAdminDashboards(): %v", err.Error())
+					continue
+				}
+
+				// Setup the usual system for the parent category
+				_, ok := reply.Dashboards[dashboard.Category.Label]
+				if !ok {
+					reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
+				}
+
+				// Prep the sub category map
+				_, ok = reply.SubCategories[parentCategory.Label]
+				if !ok {
+					reply.SubCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
+					categories = append(categories, parentCategory)
+				}
+
+				reply.SubCategories[parentCategory.Label] = append(reply.SubCategories[parentCategory.Label], dashboard.Category)
 
 				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 				if err != nil {
@@ -2593,6 +2627,16 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	for _, category := range categories {
 		reply.Labels = append(reply.Labels, category.Label)
+
+		subCategories, ok := reply.SubCategories[category.Label]
+		// If this category has sub categories, sort them and then add them back to the map
+		if ok {
+			sort.Slice(subCategories, func(i int, j int) bool {
+				return subCategories[i].Order > subCategories[j].Order
+			})
+
+			reply.SubCategories[category.Label] = subCategories
+		}
 	}
 
 	return nil
