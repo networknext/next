@@ -37,6 +37,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import LookerEmbed from '@/components/LookerEmbed.vue'
 import { AlertType } from './types/AlertTypes'
+import { subtract } from 'lodash'
 
 @Component({
   components: {
@@ -94,14 +95,22 @@ export default class Analytics extends Vue {
       customer_code: customerCode
     })
       .then((response: any) => {
-        console.log(response)
         this.dashboards = response.dashboards || []
         this.tabs = response.labels || []
+        this.subTabs = response.sub_categories || {}
 
         this.selectedTabIndex = 0
+        this.selectedSubTabIndex = 0
 
-        this.tabDashboards = this.dashboards[this.tabs[this.selectedTabIndex]]
-        console.log(this.tabDashboards)
+        const currentTab = this.tabs[this.selectedTabIndex]
+        const subTabs = this.subTabs[currentTab]
+
+        if (subTabs) {
+          const firstSubTab = subTabs[this.selectedSubTabIndex].label
+          this.tabDashboards = this.dashboards[firstSubTab]
+        } else {
+          this.tabDashboards = this.dashboards[currentTab]
+        }
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -128,7 +137,6 @@ export default class Analytics extends Vue {
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        console.log(response)
         this.dashboards = response.dashboards || {}
         this.tabs = response.labels || []
         this.subTabs = response.sub_categories || {}
