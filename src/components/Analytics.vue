@@ -4,7 +4,7 @@
       Analytic Dashboards (Beta)
     </h5>
     <p class="card-text">
-      Currated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.
+      Curated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.
     </p>
     <div class="card" v-if="tabs.length > 0">
       <div class="card-body">
