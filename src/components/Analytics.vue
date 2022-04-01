@@ -1,5 +1,5 @@
 <template>
-  <div class="card" style="margin-bottom: 250px;">
+  <div class="card" style="margin-bottom: 250px;" v-if="tabs.length > 0">
     <div class="card-header">
       <ul class="nav nav-tabs card-header-tabs">
         <li class="nav-item" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex, false)">
