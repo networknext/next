@@ -37,7 +37,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import LookerEmbed from '@/components/LookerEmbed.vue'
 import { AlertType } from './types/AlertTypes'
-import { subtract } from 'lodash'
 
 @Component({
   components: {
