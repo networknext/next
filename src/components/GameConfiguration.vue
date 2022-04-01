@@ -63,6 +63,18 @@ import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
  * TODO: Pretty sure the card-body can be taken out into a wrapper component - same with route shader and user management...
  */
 
+// TODO: Change this so they aren't hard coded
+const EXPLORER_ROLE = {
+  description: 'Gives users access to all data analytics dashboards under the "Explore" tab',
+  id: 'rol_e2pDDiGG4Kj4QWJx',
+  name: 'Explorer'
+}
+const OWNER_ROLE = {
+  description: 'Gives users full access to the customer account and its settings',
+  id: 'rol_P2I3mQz7fzl6M6m2',
+  name: 'Owner'
+}
+
 @Component({
   components: {
     Alert,
@@ -147,6 +159,9 @@ export default class GameConfiguration extends Vue {
           }
         }, 5000)
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+        return this.$apiService.updateUserRoles({ user_id: this.$store.getters.userProfile.auth0ID, roles: [OWNER_ROLE, EXPLORER_ROLE] })
+      })
+      .then(() => {
         return this.$authService.refreshToken()
       })
       .catch((error: Error) => {
