@@ -2675,13 +2675,15 @@ type FetchAnalyticsDashboardsArgs struct {
 }
 
 type FetchAnalyticsDashboardsReply struct {
-	Dashboards map[string][]string `json:"dashboards"`
-	Labels     []string            `json:"labels"`
+	Dashboards    map[string][]string                            `json:"dashboards"`
+	Labels        []string                                       `json:"labels"`
+	SubCategories map[string][]looker.AnalyticsDashboardCategory `json:"sub_categories"`
 }
 
 func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
 	ctx := r.Context()
 	reply.Dashboards = make(map[string][]string, 0)
+	reply.SubCategories = make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
 	// Must be explorer to see dashboards
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.ExplorerRole) {
@@ -2747,19 +2749,62 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	// Loop through all dashboards and pull out the dashboards specific to the customer that they have permission to see (premium vs free)
 	for _, dashboard := range dashboards {
 		if dashboard.CustomerCode == customerCode && !dashboard.Admin && (!dashboard.Premium || (buyer.Analytics && dashboard.Premium)) {
+			dashCustomerCode := customerCode
+
+			// Hacky work around for local
+			if s.Env == "local" {
+				dashCustomerCode = "twenty-four-entertainment"
+			}
+
+			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
 			if dashboard.Category.ParentCategoryID < 0 {
+				subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
+				if len(subCategories) > 0 {
+					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
+					continue
+				}
+
 				_, ok := reply.Dashboards[dashboard.Category.Label]
 				if !ok {
 					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
 					categories = append(categories, dashboard.Category)
 				}
 
-				dashCustomerCode := customerCode
-
-				// Hacky work around for local
-				if s.Env == "local" {
-					dashCustomerCode = "twenty-four-entertainment"
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
 				}
+
+				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+			} else {
+				// Find the parent category information
+				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				// Setup the usual system for the parent category
+				_, ok := reply.Dashboards[dashboard.Category.Label]
+				if !ok {
+					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+				}
+
+				// Prep the sub category map
+				_, ok = reply.SubCategories[parentCategory.Label]
+				if !ok {
+					reply.SubCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
+					categories = append(categories, parentCategory)
+				}
+
+				reply.SubCategories[parentCategory.Label] = append(reply.SubCategories[parentCategory.Label], dashboard.Category)
 
 				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 				if err != nil {
@@ -2779,6 +2824,16 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 	for _, category := range categories {
 		reply.Labels = append(reply.Labels, category.Label)
+
+		subCategories, ok := reply.SubCategories[category.Label]
+		// If this category has sub categories, sort them and then add them back to the map
+		if ok {
+			sort.Slice(subCategories, func(i int, j int) bool {
+				return subCategories[i].Order > subCategories[j].Order
+			})
+
+			reply.SubCategories[category.Label] = subCategories
+		}
 	}
 
 	return nil

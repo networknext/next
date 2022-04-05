@@ -200,7 +200,6 @@ type AnalyticsDashboard struct {
 	LookerID     int64                      `json:"looker_id"`
 	CustomerCode string                     `json:"customer_code"`
 	Category     AnalyticsDashboardCategory `json:"category"`
-	SubCategory  AnalyticsDashboardCategory `json:"sub_category"`
 }
 
 type LookerURLOptions struct {
