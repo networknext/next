@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/looker-open-source/sdk-codegen/go/rtl"
+	v3 "github.com/looker-open-source/sdk-codegen/go/sdk/v3"
 	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 )
 
@@ -28,7 +29,7 @@ const (
 	LOOKER_SAVES_ROW_LIMIT  = "10"
 	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
 	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
-	LOOKER_EMBEDED_USER_URI = "%s/api/3.1/users/credential/embed/%s"
+	LOOKER_EMBEDED_USER_URI = "%s/api/3.1/users"
 	LOOKER_PROD_MODEL       = "network_next_prod"
 	LOOKER_SAVES_VIEW       = "daily_big_saves"
 )
@@ -114,40 +115,33 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 
 // Custom Queries ======================================================================================
 
-type LookerUser struct{}
+func (l *LookerClient) RemoveLookerUserByAuth0ID(auth0ID string) error {
+	authSession := rtl.NewAuthSession(l.APISettings)
 
-func (l *LookerClient) FindEmbedUser(auth0ID string) error {
-	token, err := l.FetchAuthToken()
+	sdk := v3.NewLookerSDK(authSession)
+
+	users, err := sdk.AllUsers(v3.RequestAllUsers{}, nil)
 	if err != nil {
 		return err
 	}
 
-	// foundUsers := make([]v4.User, 0)
+	foundUserID := int64(-1)
+	for _, user := range users {
+		embedCreds := *user.CredentialsEmbed
 
-	fmt.Println(fmt.Sprintf(LOOKER_EMBEDED_USER_URI, l.APISettings.BaseUrl, url.QueryEscape(auth0ID)))
-
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_EMBEDED_USER_URI, l.APISettings.BaseUrl, url.QueryEscape(auth0ID)), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	client := &http.Client{Timeout: time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+		if len(embedCreds) > 0 {
+			if *embedCreds[0].ExternalUserId == auth0ID && user.Email == nil {
+				foundUserID = *user.Id
+			}
+		}
 	}
 
-	defer resp.Body.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return err
+	if foundUserID >= 0 {
+		_, err := sdk.DeleteUser(foundUserID, nil)
+		if err != nil {
+			return err
+		}
 	}
-
-	fmt.Println(buf.String())
 
 	return nil
 }

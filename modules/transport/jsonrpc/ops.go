@@ -2681,18 +2681,3 @@ func (s *OpsService) RefreshLookerDashboardCache() error {
 	s.LookerDashboardCache = dashboards
 	return nil
 }
-
-type TestEmbedLookerUserLookupArgs struct {
-	Auth0ID string `json:"auth0_id"`
-}
-
-type TestEmbedLookerUserLookupReply struct{}
-
-func (s *OpsService) TestEmbedLookerUserLookup(r *http.Request, args *TestEmbedLookerUserLookupArgs, reply *TestEmbedLookerUserLookupReply) error {
-	err := s.LookerClient.FindEmbedUser(args.Auth0ID)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
