@@ -498,6 +498,29 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	/*
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+				core.Error("could not clean up explorer roles: %v", err)
+			}
+
+			ticker := time.NewTicker(time.Minute)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+						core.Error("could not clean up explorer roles: %v", err)
+					}
+				}
+			}
+		}()
+	*/
+
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
 	var statusMutex sync.RWMutex
