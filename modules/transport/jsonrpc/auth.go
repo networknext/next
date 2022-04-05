@@ -8,11 +8,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 	"gopkg.in/auth0.v4/management"
@@ -33,7 +35,7 @@ type AuthService struct {
 	UserManager          storage.UserManager
 	SlackClient          notifications.SlackClient
 	Storage              storage.Storer
-	LookerSecret         string
+	LookerClient         *looker.LookerClient
 }
 
 type AccountsArgs struct {
@@ -1547,4 +1549,68 @@ func (s *AuthService) RoleCacheToArray(removeAdmin bool) []*management.Role {
 	}
 
 	return allRoles
+}
+
+func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
+	allUserAccounts, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		core.Error("CleanUpExplorerRoles(): %v: Failed to fetch user list", err.Error())
+		return err
+	}
+
+	currentTime := time.Now().UTC()
+
+	removedUsers := make([]string, 0)
+	for _, a := range allUserAccounts {
+		// If the account hasn't logged in in 30 days or more
+		if currentTime.Sub(a.GetLastLogin()) >= (time.Hour * 24 * 30) {
+			customerCode, ok := a.AppMetadata["company_code"].(string)
+			if !ok || customerCode == "" {
+				continue
+			}
+
+			buyerAccount, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to look up buyer account", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			// If the buyer is live, ignore them
+			if buyerAccount.Live {
+				continue
+			}
+
+			// Get all of the roles assigned to the user
+			userRoles, err := s.UserManager.Roles(*a.ID)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to get user roles", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			for _, role := range userRoles.Roles {
+				explorerRole := s.RoleCache["Explorer"]
+				if role.GetName() == explorerRole.GetName() {
+					err = s.UserManager.RemoveRoles(*a.ID, explorerRole)
+					if err != nil {
+						core.Error("CleanUpExplorerRoles(): %v: Failed to remove explorer role", err.Error())
+						return err
+					}
+
+					removedUsers = append(removedUsers, a.GetID())
+				}
+			}
+		}
+	}
+
+	// Loop through removed user IDs and delete them from our Looker account
+	for _, userID := range removedUsers {
+		err := s.LookerClient.RemoveLookerUserByAuth0ID(userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
