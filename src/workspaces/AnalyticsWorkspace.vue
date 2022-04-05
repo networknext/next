@@ -12,9 +12,12 @@
               border-bottom
             "
     >
-      <h1 class="h2">
-        Analytics
-      </h1>
+      <div>
+        <h1 class="h2">
+          Analytics (Beta)
+        </h1>
+        <div>Curated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.</div>
+      </div>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
@@ -23,9 +26,7 @@
         <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
       </div>
     </div>
-    <div class="card" style="margin-bottom: 250px;">
-      <Analytics />
-    </div>
+    <Analytics />
   </div>
 </template>
 
