@@ -499,7 +499,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	if env == "dev" {
+	if env == "prod" {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
