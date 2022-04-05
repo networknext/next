@@ -1543,13 +1543,16 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			CompanyCode: companyCode,
-			ID:          buyerID,
-			Live:        false,
-			Analytics:   false,
-			Billing:     false,
-			Trial:       true,
-			PublicKey:   byteKey[8:],
+			CompanyCode:         companyCode,
+			ID:                  buyerID,
+			Live:                false,
+			Analytics:           false,
+			Billing:             false,
+			Trial:               true,
+			PublicKey:           byteKey[8:],
+			LookerSeats:         1,
+			ExoticLocationFee:   300,
+			StandardLocationFee: 300,
 		})
 
 		if err != nil {
