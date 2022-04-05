@@ -180,6 +180,10 @@ describe('GameConfiguration.vue', () => {
       return Promise.resolve()
     })
 
+    const roleUpdateSpy = jest.spyOn(localVue.prototype.$apiService, 'updateUserRoles').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
     const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
@@ -255,6 +259,7 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were NOT hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(0)
     expect(spyPubKeyEntered).toBeCalledTimes(0)
+    expect(roleUpdateSpy).toBeCalledTimes(0)
 
     await gameConfigButton.trigger('submit')
 
@@ -266,10 +271,14 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(refreshToken).toBeCalledTimes(1)
 
     // Wait for UI to react
     await localVue.nextTick()
+    await localVue.nextTick()
+
+    expect(roleUpdateSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
+
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -279,6 +288,7 @@ describe('GameConfiguration.vue', () => {
 
     updateGameConfigurationSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    roleUpdateSpy.mockReset()
     refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
@@ -299,6 +309,10 @@ describe('GameConfiguration.vue', () => {
     })
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const roleUpdateSpy = jest.spyOn(localVue.prototype.$apiService, 'updateUserRoles').mockImplementation(() => {
       return Promise.resolve()
     })
 
@@ -358,10 +372,13 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(refreshToken).toBeCalledTimes(1)
 
     // Wait for UI to react
     await localVue.nextTick()
+    await localVue.nextTick()
+
+    expect(roleUpdateSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -371,6 +388,7 @@ describe('GameConfiguration.vue', () => {
 
     updateGameConfigurationSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    roleUpdateSpy.mockReset()
     refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
