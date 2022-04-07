@@ -139,6 +139,22 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then(() => {
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+
+        // Give a Looker seat to the Owner of the account
+        return this.$apiService.updateUserRoles({
+          user_id: this.$store.getters.userProfile.auth0ID,
+          roles: [
+            {
+              name: 'Explorer'
+            },
+            {
+              name: 'Owner'
+            }
+          ]
+        })
+      })
+      .then(() => {
         this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -146,7 +162,7 @@ export default class GameConfiguration extends Vue {
             this.$refs.responseAlert.resetAlert()
           }
         }, 5000)
-        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+
         return this.$authService.refreshToken()
       })
       .catch((error: Error) => {
