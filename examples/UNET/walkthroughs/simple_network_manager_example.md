@@ -56,6 +56,8 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
 }
 ```
 
+This is where you receive packets sent via Network Next instead of polling `NetworkEventType.DataEvent` from `NetworkTransport.Receive`.
+
 Now, in the manager's `OnStartServer()` callback, create an empty configuration for intializing the SDK:
 ```csharp
 // Create an empty configuration
