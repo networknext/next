@@ -499,7 +499,13 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	if env == "prod" {
+	runExplorerRoleCleanUp, err := envvar.GetBool("EXPLORER_ROLE_CLEAN_UP", false)
+	if err != nil {
+		core.Error("failed to parse EXPLORER_ROLE_CLEAN_UP: %v", err)
+		return 1
+	}
+
+	if runExplorerRoleCleanUp {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
