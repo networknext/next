@@ -8,7 +8,7 @@ using AOT;
 namespace NetworkNext {
 
     // Network Next delegate functions
-    
+
     #region Delegates definition
 
     /**
@@ -30,7 +30,7 @@ namespace NetworkNext {
       *         <para>
       *             Intended to let you set an event of your own creation when a packet is ready to receive,
       *             making it possible to use Network Next with applications built around traditional select or wait
-      *             for multiple event style blocking socket loops. Call <see cref="NextClientUpdate"/> to pump received packets 
+      *             for multiple event style blocking socket loops. Call <see cref="NextClientUpdate"/> to pump received packets
       *             to the <see cref="NextClientPacketReceivedCallback"/> when you wake up on your main thread from your event.
       *         </para>
       *     </remarks>
@@ -157,14 +157,14 @@ namespace NetworkNext {
     *           Every exported function in next.h is accessible, and utility functions
     *           are provided to easily convert <see cref="IntPtr"/>s and struct fields.
     *       </para>
-    *   </remarks> 
+    *   </remarks>
     * </summary>
     */
     public static class Next
     {
         #if UNITY_IOS
             const string dll = "__Internal";
-        #else 
+        #else
             const string dll = "next-unity";
         #endif // #if UNITY_IOS
 
@@ -228,7 +228,7 @@ namespace NetworkNext {
         public const int NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE = 1000000;
 
         public const int NEXT_CLIENT_STATE_CLOSED = 0;
-        public const int NEXT_CLIENT_STATE_OPEN = 1;                               
+        public const int NEXT_CLIENT_STATE_OPEN = 1;
         public const int NEXT_CLIENT_STATE_ERROR = 2;
 
         public const int NEXT_SERVER_STATE_DIRECT_ONLY = 0;
@@ -240,7 +240,7 @@ namespace NetworkNext {
         #endregion // #region Constants definition
 
         // ----------------------------------------------------------
-        
+
         // Network Next Wrapper Utility functions
 
         #region Utility functions
@@ -277,7 +277,7 @@ namespace NetworkNext {
         * </summary>
         * <param name="nextAddressPointer">the pointer to the <see cref="NextAddress"/> struct</param>
         * <returns>a <see cref="NextAddress"/> struct from the pointer</returns>
-        */ 
+        */
         public static NextAddress GetNextAddressFromPointer(IntPtr nextAddressPointer)
         {
             return (NextAddress)Marshal.PtrToStructure(nextAddressPointer, typeof(NextAddress));
@@ -289,7 +289,7 @@ namespace NetworkNext {
         * </summary>
         * <param name="clientStatsPointer">the pointer to the <see cref="ClientStats"/> struct</param>
         * <returns>a <see cref="ClientStats"/> struct from the pointer</returns>
-        */ 
+        */
         public static ClientStats GetNextClientStatsFromPointer(IntPtr clientStatsPointer)
         {
             ClientStatsInternal internalStats = (ClientStatsInternal)Marshal.PtrToStructure(clientStatsPointer, typeof(ClientStatsInternal));
@@ -330,7 +330,7 @@ namespace NetworkNext {
         // ----------------------------------------------------------
 
         // Network Next Config
-        
+
         #region NextConfig definition
 
         /**
@@ -465,7 +465,7 @@ namespace NetworkNext {
             config.SocketReceiveBufferSize = internalConfig.SocketReceiveBufferSize;
             config.DisableNetworkNext = internalConfig.DisableNetworkNext == NEXT_BOOL.NEXT_TRUE;
         }
-        
+
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_init", CharSet = CharSet.Ansi, ExactSpelling = true)]
         private static extern int next_init(IntPtr ctxPtr, ref NextConfigInternal config);
 
@@ -507,7 +507,7 @@ namespace NetworkNext {
         *   }
         *
         *   // Free the context once we are no longer using it
-        *   Marshal.FreeHGlobal(ctxPtr);  
+        *   Marshal.FreeHGlobal(ctxPtr);
         * </code>
         * </example>
         * <example>
@@ -523,7 +523,7 @@ namespace NetworkNext {
         *   if (Next.NextInit(IntPtr.Zero, ref config) != Next.NEXT_OK)
         *   {
         *       Debug.LogError("error: could not initialize network next");
-        *   }   
+        *   }
         * </code>
         * </example>
         */
@@ -533,7 +533,7 @@ namespace NetworkNext {
             if (config.SocketSendBufferSize <= 0)
             {
                 config.SocketSendBufferSize = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
-            } 
+            }
 
             if (config.SocketReceiveBufferSize <= 0)
             {
@@ -824,7 +824,7 @@ namespace NetworkNext {
         * <param name="function">the custom log function</param>
         * <example>
         * <code>
-        *   // Determines the log type from the level 
+        *   // Determines the log type from the level
         *   static string LogLevelString(int level)
         *   {
         *       if (level == Next.NEXT_LOG_LEVEL_ERROR) {
@@ -839,16 +839,16 @@ namespace NetworkNext {
         *           return "???";
         *       }
         *   }
-        *   
+        *
         *   enum Color { red, green, blue, black, white, yellow, orange };
-        *   
+        *
         *   // Define custom logging function to output to Unity console
         *   [MonoPInvokeCallback(typeof(NextLogFunction))]
         *   static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
         *   {
         *       // Unmarshal the log message into a string
         *       string argsStr = Marshal.PtrToStringAnsi(argsPtr);
-        *   
+        *
         *       // Choose a colour for the log depending on the log level
         *       Color c;
         *       if (level == Next.NEXT_LOG_LEVEL_ERROR) {
@@ -862,25 +862,25 @@ namespace NetworkNext {
         *       } else {
         *           c = Color.white;
         *       }
-        *   
+        *
         *       if (level != Next.NEXT_LOG_LEVEL_NONE)
         *       {
         *           // Log to Unity console
-        *           Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
+        *           Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>",
         *               c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
         *           );
         *       }
         *   }
-        *   
+        *
         *   void Start()
         *   {
         *       Next.NextLogFunction(UnityLogger);
-        *   
+        *
         *       Next.NextConfig config = new Next.NextConfig();
         *       Next.NextInit(IntPtr.Zero, ref config);
-        *   
+        *
         *       Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, "Hi, Mum!");
-        *   
+        *
         *       Next.NextTerm();
         *   }
         * </code>
@@ -908,13 +908,13 @@ namespace NetworkNext {
         *           // Stops the editor cleanly
         *           Debug.LogError(String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
         *           Assert.IsFalse(condition, String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
-        *   
+        *
         *           UnityEditor.EditorApplication.isPlaying = false;
         *       #else
         *           Application.Quit();
-        *       #endif // #if UNITY_EDITOR 
+        *       #endif // #if UNITY_EDITOR
         *   }
-        *   
+        *
         *   void Start()
         *   {
         *       // Assign our custom assert function
@@ -942,37 +942,37 @@ namespace NetworkNext {
         *   // Define custom malloc function
         *   [MonoPInvokeCallback(typeof(NextMallocFunction))]
         *   static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
-        *   {    
+        *   {
         *       // Obtain the malloc function from the custom allocator class stored in context
         *       Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
-        *   
+        *
         *       Next.NextAssert(!ctx.Equals(default(Context)));
-        *   
+        *
         *       GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-        *       Allocator allocator = (Allocator)allocatorGCH.Target; 
-        *   
+        *       Allocator allocator = (Allocator)allocatorGCH.Target;
+        *
         *       Next.NextAssert(allocator != null);
-        *   
+        *
         *       return allocator.Alloc((int)bytes);
         *   }
-        *   
+        *
         *   // Define custom free function
         *   [MonoPInvokeCallback(typeof(NextFreeFunction))]
         *   static void FreeFunction(IntPtr ctxPtr, IntPtr p)
         *   {
         *       // Obtain the free function from the custom allocator class stored in context
         *       Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
-        *   
+        *
         *       Next.NextAssert(!ctx.Equals(default(Context)));
-        *   
+        *
         *       GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-        *       Allocator allocator = (Allocator)allocatorGCH.Target; 
-        *   
+        *       Allocator allocator = (Allocator)allocatorGCH.Target;
+        *
         *       Next.NextAssert(allocator != null);
-        *   
-        *       allocator.Free(p);  
+        *
+        *       allocator.Free(p);
         *   }
-        *   
+        *
         *   void Start() {
         *       Next.NextAllocator(MallocFunction, FreeFunction);
         *   }
@@ -1011,7 +1011,7 @@ namespace NetworkNext {
         }
 
         #endregion // #region Global functions
-    
+
         // ----------------------------------------------------------
 
         // Network Next address
@@ -1024,7 +1024,7 @@ namespace NetworkNext {
         *   This is a struct that can represent any IPv4 or IPv6 address and port.
         *   <remarks>
         *       <para>
-        *           It’s used when sending and receiving packets. For example, in the server packet received callback, 
+        *           It’s used when sending and receiving packets. For example, in the server packet received callback,
         *           the address of the client is passed to you via this structure.
         *           The IPv4 and IPv6 addresses share memory to save space.
         *           Use the <see cref="GetNextAddressIPV4"/> and <see cref="GetNextAddressIPV6"/> utility functions to get the IP.
@@ -1072,7 +1072,7 @@ namespace NetworkNext {
             [FieldOffset(12)]
             public ushort IPV6_6;
             [FieldOffset(14)]
-            public ushort IPV6_7;       
+            public ushort IPV6_7;
             [FieldOffset(16)]
             public ushort Port;
             [FieldOffset(18)]
@@ -1329,12 +1329,12 @@ namespace NetworkNext {
         *   {
         *       Debug.Log(String.Format("client received packet from server ({0} bytes)", packetBytes));
         *   }
-        *   
+        *
         *   void Start()
         *   {
         *       Next.NextConfig config = new Next.NextConfig();
         *       Next.NextInit(IntPtr.Zero, config);
-        *   
+        *
         *       // Create a client
         *       IntPtr client = Next.NextClientCreate(IntPtr.Zero, "0.0.0.0:0", ClientPacketReceived, null);
         *       if (client.Equals(IntPtr.Zero))
@@ -1394,7 +1394,7 @@ namespace NetworkNext {
         *       Debug.LogError("error: failed to create client");
         *       return;
         *   }
-        *   
+        *
         *   ushort clientPort = Next.NextClientPort(client);
         *   Debug.Log(String.Format("the client was bound to port {0}", clientPort));
         * </code>
@@ -1404,7 +1404,7 @@ namespace NetworkNext {
         {
             return next_client_port(client);
         }
-        
+
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_open_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
         private static extern void next_client_open_session(IntPtr client, [MarshalAs(UnmanagedType.LPStr)] string serverAddress);
 
@@ -1465,7 +1465,7 @@ namespace NetworkNext {
             NEXT_BOOL open = next_client_is_session_open(client);
             return open == NEXT_BOOL.NEXT_TRUE;
         }
-        
+
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_state", CharSet = CharSet.Ansi, ExactSpelling = true)]
         private static extern int next_client_state(IntPtr client);
 
@@ -1474,9 +1474,9 @@ namespace NetworkNext {
         *   Gets the state the client is in.
         *   <remarks>
         *       <para>
-        *           The client is initially in closed state. 
-        *           After <see cref="NextClientOpenSession"/> the client is immediately in 
-        *           an open state on success, or error state if something went wrong while 
+        *           The client is initially in closed state.
+        *           After <see cref="NextClientOpenSession"/> the client is immediately in
+        *           an open state on success, or error state if something went wrong while
         *           opening the session, for example, an invalid server address was passed in.
         *       </para>
         *   </remarks>
@@ -1516,19 +1516,19 @@ namespace NetworkNext {
         *       case Next.NEXT_CLIENT_STATE_CLOSED:
         *           stateStr = "closed";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CLIENT_STATE_OPEN:
         *           stateStr = "open";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CLIENT_STATE_ERROR:
         *           stateStr = "error";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   Debug.Log(String.Format("client state = {0} ({1})", stateStr, state));
         * </code>
         * </example>
@@ -1586,12 +1586,12 @@ namespace NetworkNext {
         *   void Update()
         *   {
         *       Next.NextClientUpdate(client);
-        *       
+        *
         *       // Create the packet
         *       int packetBytes;
         *       byte[] packetData = generatePacket(out packetBytes);
-        *       
-        *       Next.NextClientSendPacket(client, packetData, packetBytes); 
+        *
+        *       Next.NextClientSendPacket(client, packetData, packetBytes);
         *   }
         * </code>
         * </example>
@@ -1624,12 +1624,12 @@ namespace NetworkNext {
         *   void Update()
         *   {
         *       Next.NextClientUpdate(client);
-        *       
+        *
         *       // Create the packet
         *       int packetBytes;
         *       byte[] packetData = generatePacket(out packetBytes);
-        *       
-        *       Next.NextClientSendPacketDirect(client, packetData, packetBytes); 
+        *
+        *       Next.NextClientSendPacketDirect(client, packetData, packetBytes);
         *   }
         * </code>
         * </example>
@@ -1647,9 +1647,9 @@ namespace NetworkNext {
         *   Report the session as problematic.
         *   <remarks>
         *       <para>
-        *           This feature was added to support our customers who let players 
+        *           This feature was added to support our customers who let players
         *           flag bad play sessions in their game UI. Call this function when
-        *           your players complain, and it’s sent to our backend so we can 
+        *           your players complain, and it’s sent to our backend so we can
         *           help you track down why!
         *       </para>
         *   </remarks>
@@ -1677,7 +1677,7 @@ namespace NetworkNext {
         *           A session ID uniquely identifies each session on Network Next.
         *           Session IDs are distinct from user IDs. User IDs are unique on
         *           a per-user basis, while session IDs are unique for each call to <see cref="NextClientOpenSession"/>.
-        *           A session ID is assigned when the server upgrades the session 
+        *           A session ID is assigned when the server upgrades the session
         *           via <see cref="NextServerUpgradeSession"/>. Until that point the session ID is 0.
         *       </para>
         *   </remarks>
@@ -1709,52 +1709,52 @@ namespace NetworkNext {
         *   Here is how to query it, and print out various interesting values.
         * <code>
         *   StringBuilder sb = new StringBuilder("================================================================\n");
-        *   
+        *
         *   Next.ClientStats stats = Next.NextClientStats(client);
         *   string platform = "unknown";
-        *   
+        *
         *   switch (stats.PlatformID)
         *   {
         *       case Next.NEXT_PLATFORM_WINDOWS:
         *           platform = "windows";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_MAC:
         *           platform = "mac";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_LINUX:
         *           platform = "linux";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_SWITCH:
         *           platform = "nintendo switch";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_PS4:
         *           platform = "ps4";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_PS5:
         *           platform = "ps5";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_IOS:
         *           platform = "ios";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_XBOX_ONE:
         *           platform = "xbox one";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_XBOX_SERIES_X:
         *           platform = "xbox series x";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   string stateStr = "???";
         *   int state = Next.NextClientState(client);
         *   switch (state)
@@ -1762,45 +1762,45 @@ namespace NetworkNext {
         *       case Next.NEXT_CLIENT_STATE_CLOSED:
         *           stateStr = "closed";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CLIENT_STATE_OPEN:
         *           stateStr = "open";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CLIENT_STATE_ERROR:
         *           stateStr = "error";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   sb.AppendFormat("state = {0} ({1})\n", stateStr, state);
         *   sb.AppendFormat("session id = {0}\n", Next.NextClientSessionID(client));
         *   sb.AppendFormat("platform id = {0} ({1})\n", platform, (int)stats.PlatformID);
-        *   
+        *
         *   string connection = "unknown";
-        *   
+        *
         *   switch (stats.ConnectionType)
         *   {
         *       case Next.NEXT_CONNECTION_TYPE_WIRED:
         *           connection = "wired";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CONNECTION_TYPE_WIFI:
         *           connection = "wifi";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CONNECTION_TYPE_CELLULAR:
         *           connection = "cellular";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   sb.AppendFormat("connection type = {0} ({1})\n", connection, stats.ConnectionType);
-        *   
+        *
         *   if (!stats.FallbackToDirect)
         *   {
         *       sb.AppendFormat("upgraded = {0}\n", stats.Upgraded.ToString());
@@ -1808,17 +1808,17 @@ namespace NetworkNext {
         *       sb.AppendFormat("multipath = {0}\n", stats.Multipath.ToString());
         *       sb.AppendFormat("reported = {0}\n", stats.Reported.ToString());
         *   }
-        *   
+        *
         *   sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
-        *   
+        *
         *   sb.AppendFormat("high frequency pings = {0}\n", stats.HighFrequencyPings.ToString());
-        *   
+        *
         *   sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
         *   sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
         *   sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
         *   sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
         *   sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
-        *   
+        *
         *   if (stats.Next)
         *   {
         *       sb.AppendFormat("next rtt = {0}ms\n", stats.NextRTT.ToString("F"));
@@ -1827,7 +1827,7 @@ namespace NetworkNext {
         *       sb.AppendFormat("next bandwidth up = {0}kbps\n", stats.NextKbpsUp.ToString("F1"));
         *       sb.AppendFormat("next bandwidth down = {0}kbps\n", stats.NextKbpsDown.ToString("F1"));
         *   }
-        *   
+        *
         *   if (stats.Upgraded && !stats.FallbackToDirect)
         *   {
         *       sb.AppendFormat("packets sent client to server = {0}\n", stats.PacketsSentClientToServer);
@@ -1839,15 +1839,15 @@ namespace NetworkNext {
         *       sb.AppendFormat("jitter client to server = {0}\n", stats.JitterClientToServer.ToString("F"));
         *       sb.AppendFormat("jitter server to client = {0}\n", stats.JitterServerToClient.ToString("F"));
         *   }
-        *   
+        *
         *   sb.AppendFormat("================================================================\n");
-        *   
+        *
         *   Debug.Log(sb.ToString());
         * </code>
         * </example>
         */
         public static ClientStats NextClientStats(IntPtr client)
-        {   
+        {
             IntPtr clientStatsPtr = next_client_stats(client);
             return GetNextClientStatsFromPointer(clientStatsPtr);
         }
@@ -1863,15 +1863,15 @@ namespace NetworkNext {
         * <returns>a <see cref="NextAddress"/> struct with the server's address.</returns>
         */
         public static NextAddress NextClientServerAddress(IntPtr client)
-        {   
+        {
             IntPtr serverAddrPtr = next_client_server_address(client);
             return GetNextAddressFromPointer(serverAddrPtr);
         }
 
-        #endregion #region NextClient functions
+        #endregion // #region NextClient functions
 
         // ----------------------------------------------------------
-        
+
         // Network Next server stats
 
         #region ServerStats definition
@@ -1951,7 +1951,7 @@ namespace NetworkNext {
             public float JitterServerToClient;
             public int NumTags;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = NEXT_MAX_TAGS)]
-            public ulong[] Tags; 
+            public ulong[] Tags;
         }
 
         /**
@@ -1992,7 +1992,7 @@ namespace NetworkNext {
             public float JitterServerToClient;
             public int NumTags;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = NEXT_MAX_TAGS)]
-            public ulong[] Tags; 
+            public ulong[] Tags;
         }
 
         #endregion // #region ServerStats definition
@@ -2028,14 +2028,14 @@ namespace NetworkNext {
         *   static void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
         *   {
         *       Next.NextAddress clientAddr = Next.GetNextAddressFromPointer(fromPtr);
-        *       Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client {0} ({0} bytes)", Next.NextAddressToString(ref clientAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH), packetBytes));     
+        *       Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client {0} ({0} bytes)", Next.NextAddressToString(ref clientAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH), packetBytes));
         *   }
-        *   
+        *
         *   void Start()
         *   {
         *       Next.NextConfig config = new Next.NextConfig();
         *       Next.NextInit(IntPtr.Zero, config);
-        *   
+        *
         *       // Create a server
         *       IntPtr server = Next.NextServerCreate(IntPtr.Zero, "127.0.0.1", "0.0.0.0:50000", "local", ServerPacketReceived, null);
         *       if (server.Equals(IntPtr.Zero))
@@ -2089,7 +2089,7 @@ namespace NetworkNext {
         *       Debug.LogError("error: failed to create server");
         *       return;
         *   }
-        *   
+        *
         *   ushort serverPort = Next.NextServerPort(server);
         *   Debug.Log(String.Format("the server was bound to port {0}", serverPort));
         * </code>
@@ -2118,7 +2118,7 @@ namespace NetworkNext {
         *       Debug.LogError("error: failed to create server");
         *       return;
         *   }
-        *   
+        *
         *   Next.NextAddress serverAddr = Next.NextServerAddress(server);
         *   Debug.Log(String.Format("the server address is {0}", Next.NextAddressToString(ref serverAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH)));
         * </code>
@@ -2140,7 +2140,7 @@ namespace NetworkNext {
         *           The server is initially in the direct only state.
         *           If a valid customer private key is setup, the server will first try to
         *           resolve the backend hostname, which is "prod.spacecats.net" by default.
-        *           Once the backend hostname is resolved, the server initializes with the 
+        *           Once the backend hostname is resolved, the server initializes with the
         *           backend. When everything works, the server lands in the initialized state
         *           and is ready to accelerate players. If anything fails, the server falls back
         *           to the direct only state, and only serves up direct routes over the public internet.
@@ -2189,15 +2189,15 @@ namespace NetworkNext {
         *       case Next.NEXT_SERVER_STATE_DIRECT_ONLY:
         *           stateStr = "direct only";
         *           break;
-        *   
+        *
         *       case Next.NEXT_SERVER_STATE_RESOLVING_HOSTNAME:
         *           stateStr = "resolving hostname";
         *           break;
-        *   
+        *
         *       case Next.NEXT_SERVER_STATE_INITIALIZING:
         *           stateStr = "initializing";
         *           break;
-        *       
+        *
         *       case Next.NEXT_SERVER_STATE_INITIALIZED:
         *           stateStr = "intialized";
         *           break;
@@ -2205,7 +2205,7 @@ namespace NetworkNext {
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   Debug.Log(String.Format("server state = {0} ({1})", stateStr, state));
         * </code>
         * </example>
@@ -2264,7 +2264,7 @@ namespace NetworkNext {
         *       Next.NextAddress clientAddr = Next.GetNextAddressFromPointer(fromPtr);
         *       Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client {0} ({0} bytes)", Next.NextAddressToString(ref clientAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH), packetBytes));
         *       // ... verify the player is real ...
-        *       
+        *
         *       // Upgrade the session
         *           ulong sessionID = Next.NextServerUpgradeSession(serverPtr, fromPtr, userID);
         *           Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, Strint.Format("server upgraded session {0}", sessionID));
@@ -2386,7 +2386,7 @@ namespace NetworkNext {
         *       Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
         *
         *       // Reflect the packet data back to the client
-        *       Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);     
+        *       Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
         *   }
         * </code>
         * </example
@@ -2428,7 +2428,7 @@ namespace NetworkNext {
         *       Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
         *
         *       // Reflect the packet data back to the client over the direct route
-        *       Next.NextServerSendPacketDirect(serverPtr, fromPtr, packetData, packetBytes);       
+        *       Next.NextServerSendPacketDirect(serverPtr, fromPtr, packetData, packetBytes);
         *   }
         * </code>
         * </example
@@ -2453,11 +2453,11 @@ namespace NetworkNext {
         *   Here is how to query it, and print out various interesting values.
         * <code>
         *   StringBuilder sb = new StringBuilder();
-        *   
+        *
         *   // Create IntPtr for the address
         *   IntPtr addrPtr = Marshal.AllocHGlobal(Marshal.SizeOf(address));
         *   Marshal.StructureToPtr(address, addrPtr, false);
-        *   
+        *
         *   // Get the stats for this address
         *   Next.ServerStats stats;
         *   if (!Next.NextServerStats(serverPtr, addrPtr, out stats))
@@ -2465,95 +2465,95 @@ namespace NetworkNext {
         *       Next.NextPrintf(Next.NEXT_LOG_LEVEL_DEBUG, "server does not contain a session for the provided address");
         *       return;
         *   }
-        *   
+        *
         *   // Release memory for the address pointer
         *   Marshal.FreeHGlobal(addrPtr);
-        *   
+        *
         *   sb.Append("================================================================\n");
         *   sb.AppendFormat("address = {0}\n", Next.NextAddressToString(ref address));
-        *   
+        *
         *   string platform = "unknown";
         *   switch (stats.PlatformID)
         *   {
         *       case Next.NEXT_PLATFORM_WINDOWS:
         *           platform = "windows";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_MAC:
         *           platform = "mac";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_LINUX:
         *           platform = "linux";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_SWITCH:
         *           platform = "nintendo switch";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_PS4:
         *           platform = "ps4";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_PS5:
         *           platform = "ps5";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_IOS:
         *           platform = "ios";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_XBOX_ONE:
         *           platform = "xbox one";
         *           break;
-        *   
+        *
         *       case Next.NEXT_PLATFORM_XBOX_SERIES_X:
         *           platform = "xbox series x";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   sb.AppendFormat("session id = {0}\n", stats.SessionID.ToString());
         *   sb.AppendFormat("platform id = {0} ({1})\n", platform, stats.PlatformID);
-        *   
+        *
         *   string connection = "unknown";
         *   switch (stats.ConnectionType)
         *   {
         *       case Next.NEXT_CONNECTION_TYPE_WIRED:
         *           connection = "wired";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CONNECTION_TYPE_WIFI:
         *           connection = "wifi";
         *           break;
-        *   
+        *
         *       case Next.NEXT_CONNECTION_TYPE_CELLULAR:
         *           connection = "cellular";
         *           break;
-        *   
+        *
         *       default:
         *           break;
         *   }
-        *   
+        *
         *   sb.AppendFormat("connection type = {0} ({1})\n", connection, stats.ConnectionType);
-        *   
+        *
         *   if (!stats.FallbackToDirect)
         *   {
         *       sb.AppendFormat("committed = {0}\n", stats.Committed.ToString());
         *       sb.AppendFormat("multipath = {0}\n", stats.Multipath.ToString());
         *       sb.AppendFormat("reported = {0}\n", stats.Reported.ToString());
         *   }
-        *   
+        *
         *   sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
-        *   
+        *
         *   sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
         *   sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
         *   sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
         *   sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
         *   sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
-        *   
+        *
         *   if (stats.Next)
         *   {
         *       sb.AppendFormat("next rtt = {0}ms\n", stats.NextRTT.ToString("F"));
@@ -2562,7 +2562,7 @@ namespace NetworkNext {
         *       sb.AppendFormat("next bandwidth up = {0}kbps\n", stats.NextKbpsUp.ToString("F1"));
         *       sb.AppendFormat("next bandwidth down = {0}kbps\n", stats.NextKbpsDown.ToString("F1"));
         *   }
-        *   
+        *
         *   if (!stats.FallbackToDirect)
         *   {
         *       sb.AppendFormat("packets sent client to server = {0}\n", stats.PacketsSentClientToServer);
@@ -2574,7 +2574,7 @@ namespace NetworkNext {
         *       sb.AppendFormat("jitter client to server = {0}\n", stats.JitterClientToServer.ToString("F"));
         *       sb.AppendFormat("jitter server to client = {0}\n", stats.JitterServerToClient.ToString("F"));
         *   }
-        *   
+        *
         *   if (stats.NumTags > 0)
         *   {
         *       sb.Append("tags = [");
@@ -2591,9 +2591,9 @@ namespace NetworkNext {
         *       }
         *       sb.Append("]\n");
         *   }
-        *   
+        *
         *   sb.Append("================================================================\n");
-        *   
+        *
         *   Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, sb.ToString());
         * </code>
         * </example
@@ -2639,7 +2639,7 @@ namespace NetworkNext {
             stats.NumTags = internalStats.NumTags;
             stats.Tags = internalStats.Tags;
 
-            return true;            
+            return true;
         }
 
         [DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetect_finished", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2697,7 +2697,7 @@ namespace NetworkNext {
         *   Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
         *   <remarks>
         *       <para>
-        *           You can define up to 64 event flags for your game, 
+        *           You can define up to 64 event flags for your game,
         *           one event per bit in the <paramref name="serverEvents"/> bitfield.
         *           Use this function to input in-game events that may be relevant to analytics.
         *       </para>
@@ -2717,7 +2717,7 @@ namespace NetworkNext {
         *       WonMatch = (1<<4),
         *       LostMatch = (1<<5),
         *   }
-        *   
+        *
         *   Next.NextServerEvent(server, clientAddrPtr, (ulong)(GameEvents.KnockedOut) | (ulong)(GameEvents.LostMatch));
         * </code>
         * </example>
@@ -2736,11 +2736,11 @@ namespace NetworkNext {
         *   <remarks>
         *       <para>
         *           Match ID can be any unique match ID you have.
-        *           Match values can include any information that 
+        *           Match values can include any information that
         *           you want to feed into analytics. For example:
         *           win/loss ratio, skill, kill/death ratio, skill,
         *           time spent in matchmaker, load time in seconds.
-        *           Call this function once per-session at the beginning 
+        *           Call this function once per-session at the beginning
         *           of each match on the server.
         *       </para>
         *   </remarks>
@@ -2890,7 +2890,7 @@ namespace NetworkNext {
         *
         *   // Lock the mutex
         *   Next.NextMutexAcquire(ref mutex);
-        *   
+        *
         *   // ... do something thread safe ...
         * </code>
         * </example>
@@ -2915,9 +2915,9 @@ namespace NetworkNext {
         *
         *   // Lock the mutex
         *   Next.NextMutexAcquire(ref mutex);
-        *   
+        *
         *   // ... do something thread safe ...
-        *   
+        *
         *   // Unlock the mutex
         *   Next.NextMutexRelease(ref mutex);
         *
