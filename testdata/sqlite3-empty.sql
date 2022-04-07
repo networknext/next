@@ -174,7 +174,7 @@ create table metadata (
 create table analytics_dashboard_categories (
   id integer primary key autoincrement,
   order_priority integer not null default 0,
-  tab_label varchar not null unique,
+  tab_label varchar not null,
   premium boolean not null,
   admin_only boolean not null,
   seller_only boolean not null,
