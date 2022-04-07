@@ -2678,15 +2678,14 @@ type FetchAnalyticsDashboardsArgs struct {
 }
 
 type FetchAnalyticsDashboardsReply struct {
-	Dashboards    map[string][]string                            `json:"dashboards"`
-	Labels        []string                                       `json:"labels"`
-	SubCategories map[string][]looker.AnalyticsDashboardCategory `json:"sub_categories"`
+	Dashboards map[string][]string `json:"dashboards"`
+	MainTabs   []string            `json:"tabs"`
+	SubTabs    map[string][]string `json:"sub_tabs"`
 }
 
 func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
 	ctx := r.Context()
 	reply.Dashboards = make(map[string][]string, 0)
-	reply.SubCategories = make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
 	// Must be explorer to see dashboards
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.ExplorerRole) {
@@ -2747,6 +2746,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	}
 
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	subCategories := make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
 	// TODO: This functionality should be broken out into storage calls - FreeDashboardsByCustomerCode, PremiumDashboardsByCustomerCode, etc
 	// Loop through all dashboards and pull out the dashboards specific to the customer that they have permission to see (premium vs free)
@@ -2761,14 +2761,14 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
 			if dashboard.Category.ParentCategoryID < 0 {
-				subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
+				parentSubCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
 				if err != nil {
 					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 					continue
 				}
 
 				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
-				if len(subCategories) > 0 {
+				if len(parentSubCategories) > 0 {
 					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
 					continue
 				}
@@ -2794,48 +2794,53 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 					continue
 				}
 
-				// Setup the usual system for the parent category
-				_, ok := reply.Dashboards[dashboard.Category.Label]
-				if !ok {
-					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
-				}
+				categoryLabel := fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
 
-				// Prep the sub category map
-				_, ok = reply.SubCategories[parentCategory.Label]
-				if !ok {
-					reply.SubCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
+				if _, ok := subCategories[parentCategory.Label]; !ok {
+					subCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
 					categories = append(categories, parentCategory)
 				}
 
-				reply.SubCategories[parentCategory.Label] = append(reply.SubCategories[parentCategory.Label], dashboard.Category)
+				subCategories[parentCategory.Label] = append(subCategories[parentCategory.Label], dashboard.Category)
+
+				// Setup the usual system for the parent category
+				if _, ok := reply.Dashboards[categoryLabel]; !ok {
+					reply.Dashboards[categoryLabel] = make([]string, 0)
+				}
 
 				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 				if err != nil {
 					continue
 				}
 
-				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+				reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], url)
 			}
 		}
 	}
 
-	reply.Labels = make([]string, 0)
+	reply.MainTabs = make([]string, 0)
+	reply.SubTabs = make(map[string][]string)
 
 	sort.Slice(categories, func(i int, j int) bool {
 		return categories[i].Order > categories[j].Order
 	})
 
 	for _, category := range categories {
-		reply.Labels = append(reply.Labels, category.Label)
+		reply.MainTabs = append(reply.MainTabs, category.Label)
 
-		subCategories, ok := reply.SubCategories[category.Label]
 		// If this category has sub categories, sort them and then add them back to the map
-		if ok {
-			sort.Slice(subCategories, func(i int, j int) bool {
-				return subCategories[i].Order > subCategories[j].Order
+		if subTabs, ok := subCategories[category.Label]; ok {
+			sort.Slice(subTabs, func(i int, j int) bool {
+				return subTabs[i].Order > subTabs[j].Order
 			})
 
-			reply.SubCategories[category.Label] = subCategories
+			if _, ok := reply.SubTabs[category.Label]; !ok {
+				reply.SubTabs[category.Label] = make([]string, 0)
+			}
+
+			for _, subTab := range subTabs {
+				reply.SubTabs[category.Label] = append(reply.SubTabs[category.Label], subTab.Label)
+			}
 		}
 	}
 
