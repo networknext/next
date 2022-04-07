@@ -99,7 +99,7 @@ public class SimpleServer : MonoBehaviour
     }
 
     // OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
-    // These actions should be done in Destroy() rather than when the application quits
+    // These actions can be done in OnDestroy() rather than when the application quits
     void OnApplicationQuit()
     {
         // Flush the server

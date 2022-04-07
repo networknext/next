@@ -13,7 +13,6 @@ public class UpgradedServer : MonoBehaviour
 	const string serverBackendHostname = "prod.spacecats.net";
 	const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"; // Replace with the private key from your account
 
-
 	enum Color { red, green, blue, black, white, yellow, orange };
 
 	// Global variables
@@ -61,7 +60,7 @@ public class UpgradedServer : MonoBehaviour
 
 		Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
 		Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client ({0} bytes)", packetBytes));
-	
+
 		if (!Next.NextServerSessionUpgraded(serverPtr, fromPtr))
 		{
 			string userIDString = "12345";
@@ -113,7 +112,7 @@ public class UpgradedServer : MonoBehaviour
 	}
 
 	// OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
-	// These actions should be done in Destroy() rather than when the application quits
+	// These actions can be done in OnDestroy() rather than when the application quits
 	void OnApplicationQuit()
 	{
 		// Flush the server

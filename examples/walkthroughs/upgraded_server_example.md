@@ -115,7 +115,7 @@ Make sure the server gets updated every frame (best done in Unity's `Update()` l
 Next.NextServerUpdate(server);
 ```
 
-When you have finished using your server, flush and destroy it (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your server, flush and destroy it (Unity's `OnDestroy()` function is a good place to do this):
 ```csharp
 Next.NextServerFlush(server);
 Next.NextServerDestroy(server);
