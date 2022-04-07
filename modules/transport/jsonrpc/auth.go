@@ -8,18 +8,20 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 	"gopkg.in/auth0.v4/management"
 )
 
 const (
-	MAX_USER_LOOKUP_PAGES = 100
+	MAX_USER_LOOKUP_PAGES = 10
 )
 
 type AuthService struct {
@@ -33,7 +35,7 @@ type AuthService struct {
 	UserManager          storage.UserManager
 	SlackClient          notifications.SlackClient
 	Storage              storage.Storer
-	LookerSecret         string
+	LookerClient         *looker.LookerClient
 }
 
 type AccountsArgs struct {
@@ -74,6 +76,7 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	ctx := r.Context()
+	reply.UserAccounts = make([]account, 0)
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
@@ -83,14 +86,23 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return &err
 	}
 
-	reply.UserAccounts = make([]account, 0)
-
 	requestCustomerCode := middleware.RequestUserCustomerCode(ctx)
 	if requestCustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AllAccounts(): %v", err.Error())
 		return &err
 	}
+
+	customer, err := s.Storage.Customer(ctx, requestCustomerCode)
+	if err != nil {
+		core.Error("AllAccounts(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// We don't care about the error here due to buyer and seller accounts not being guaranteed
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, requestCustomerCode)
 
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
@@ -99,6 +111,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return &err
 	}
 
+	// Find all users associated with the customer account
 	for _, a := range totalUsers {
 		customerCode, ok := a.AppMetadata["company_code"].(string)
 		if !ok || requestCustomerCode != customerCode {
@@ -108,15 +121,6 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		if err != nil {
 			core.Error("AllAccounts(): %v: Failed to get user roles", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-			return &err
-		}
-
-		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
-		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), customerCode)
-		customer, err := s.Storage.Customer(r.Context(), customerCode)
-		if err != nil {
-			core.Error("AllAccounts(): %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 
@@ -611,7 +615,8 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 
 	for name, role := range s.RoleCache {
-		if name == "Admin" || (!isAdmin && name == "Explorer" && buyer.LookerSeats <= seatsTaken) {
+		// Skip the admin role, it was taken care of earlier, and skip Explorer if all seats have been used
+		if name == "Admin" || (!isAdmin && name == "Explorer" && seatsTaken >= buyer.LookerSeats) {
 			continue
 		}
 		reply.Roles = append(reply.Roles, role)
@@ -650,7 +655,6 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	var err error
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateUserRoles(): %v", err.Error())
@@ -664,9 +668,11 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return &err
 	}
 
+	ctx := r.Context()
+
 	allRoles := s.RoleCacheToArray(true)
 
-	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
+	err := s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
 		core.Error("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -678,6 +684,48 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return nil
 	}
 
+	allowedLookerSeats := 0
+
+	requestCustomerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
+	if ok {
+		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
+		if err == nil {
+			allowedLookerSeats = int(buyer.LookerSeats)
+		}
+	}
+
+	seatsTaken := 0
+	if allowedLookerSeats > 0 {
+		// If valid buyer account, grab all users to determine Looker usage
+		totalUsers, err := s.FetchAllAccountsFromAuth0()
+		if err != nil {
+			core.Error("UpdateUserRoles(): %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		for _, a := range totalUsers {
+			userCustomerCode, ok := a.AppMetadata["company_code"].(string)
+			if !ok || requestCustomerCode != userCustomerCode {
+				continue
+			}
+			userRoles, err := s.UserManager.Roles(*a.ID)
+			if err != nil {
+				core.Error("UpdateUserRoles(): %v: Failed to get user roles", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			for _, role := range userRoles.Roles {
+				if role.GetName() == s.RoleCache["Explorer"].GetName() {
+					seatsTaken = seatsTaken + 1
+				}
+			}
+		}
+	}
+
+	allowedRoles := make([]*management.Role, 0)
+
 	// Make sure someone who isn't admin isn't assigning admin
 	for _, role := range args.Roles {
 		if role.GetName() == s.RoleCache["Admin"].GetName() && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
@@ -685,16 +733,27 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 			core.Error("UpdateUserRoles(): %v", err.Error())
 			return &err
 		}
+
+		if role.GetName() == s.RoleCache["Explorer"].GetName() && seatsTaken >= allowedLookerSeats {
+			continue
+		}
+
+		allowedRoles = append(allowedRoles, s.RoleCache[role.GetName()])
 	}
 
-	err = s.UserManager.AssignRoles(args.UserID, args.Roles...)
+	if len(allowedRoles) == 0 {
+		reply.Roles = allowedRoles
+		return nil
+	}
+
+	err = s.UserManager.AssignRoles(args.UserID, allowedRoles...)
 	if err != nil {
 		core.Error("UpdateUserRoles(): %v: Failed to assign user roles", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
-	reply.Roles = args.Roles
+	reply.Roles = allowedRoles
 
 	sort.Slice(reply.Roles, func(i, j int) bool {
 		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
@@ -1490,4 +1549,68 @@ func (s *AuthService) RoleCacheToArray(removeAdmin bool) []*management.Role {
 	}
 
 	return allRoles
+}
+
+func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
+	allUserAccounts, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		core.Error("CleanUpExplorerRoles(): %v: Failed to fetch user list", err.Error())
+		return err
+	}
+
+	currentTime := time.Now().UTC()
+
+	removedUsers := make([]string, 0)
+	for _, a := range allUserAccounts {
+		// If the account hasn't logged in in 30 days or more
+		if currentTime.Sub(a.GetLastLogin()) >= (time.Hour * 24 * 30) {
+			customerCode, ok := a.AppMetadata["company_code"].(string)
+			if !ok || customerCode == "" {
+				continue
+			}
+
+			buyerAccount, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to look up buyer account", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			// If the buyer is live, ignore them
+			if buyerAccount.Live {
+				continue
+			}
+
+			// Get all of the roles assigned to the user
+			userRoles, err := s.UserManager.Roles(*a.ID)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to get user roles", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			for _, role := range userRoles.Roles {
+				explorerRole := s.RoleCache["Explorer"]
+				if role.GetName() == explorerRole.GetName() {
+					err = s.UserManager.RemoveRoles(*a.ID, explorerRole)
+					if err != nil {
+						core.Error("CleanUpExplorerRoles(): %v: Failed to remove explorer role", err.Error())
+						return err
+					}
+
+					removedUsers = append(removedUsers, a.GetID())
+				}
+			}
+		}
+	}
+
+	// Loop through removed user IDs and delete them from our Looker account
+	for _, userID := range removedUsers {
+		err := s.LookerClient.RemoveLookerUserByAuth0ID(userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

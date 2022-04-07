@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/looker-open-source/sdk-codegen/go/rtl"
+	v3 "github.com/looker-open-source/sdk-codegen/go/sdk/v3"
 	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 )
 
@@ -28,6 +29,7 @@ const (
 	LOOKER_SAVES_ROW_LIMIT  = "10"
 	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
 	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
+	LOOKER_EMBEDED_USER_URI = "%s/api/3.1/users"
 	LOOKER_PROD_MODEL       = "network_next_prod"
 	LOOKER_SAVES_VIEW       = "daily_big_saves"
 )
@@ -111,6 +113,39 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 	return authResponse.AccessToken, nil
 }
 
+// Custom Queries ======================================================================================
+
+func (l *LookerClient) RemoveLookerUserByAuth0ID(auth0ID string) error {
+	authSession := rtl.NewAuthSession(l.APISettings)
+
+	sdk := v3.NewLookerSDK(authSession)
+
+	users, err := sdk.AllUsers(v3.RequestAllUsers{}, nil)
+	if err != nil {
+		return err
+	}
+
+	foundUserID := int64(-1)
+	for _, user := range users {
+		embedCreds := *user.CredentialsEmbed
+
+		if len(embedCreds) > 0 {
+			if *embedCreds[0].ExternalUserId == auth0ID && user.Email == nil {
+				foundUserID = *user.Id
+			}
+		}
+	}
+
+	if foundUserID >= 0 {
+		_, err := sdk.DeleteUser(foundUserID, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type LookerSave struct {
 	SessionID               int64   `json:"daily_big_saves.session_id"`
 	SaveScore               float64 `json:"daily_big_saves.save_score"`
@@ -183,6 +218,8 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 
 	return saves, nil
 }
+
+// Looker Dashboards ======================================================================================
 
 type AnalyticsDashboardCategory struct {
 	ID               int64  `json:"id"`
@@ -390,11 +427,6 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 	urlOptions.UserAttributes["customer_code"] = customerCode
 
 	return BuildLookerURL(urlOptions), nil
-}
-
-func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode string, showPremium bool) error {
-	// TODO: Implement with storer
-	return nil
 }
 
 func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
