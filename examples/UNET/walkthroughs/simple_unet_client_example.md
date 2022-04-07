@@ -102,5 +102,5 @@ clientTransport.NextClientDestroy();
 Finally, before your application terminates, please shut down the transport (Unity's `OnApplicationQuit()` is an appropriate place to do this):
 ```csharp
 // Shutdown the transport and the Network Next SDK
-clientTransport.Shutdown();
+clientTransport?.Shutdown();
 ```
