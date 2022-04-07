@@ -120,7 +120,7 @@ export default class Analytics extends Vue {
   }
 
   private selectTab (index: number, isSubTab: boolean) {
-    if (index === this.selectedTabIndex) {
+    if (isSubTab ? index === this.selectedSubTabIndex : index === this.selectedTabIndex) {
       return
     }
 
