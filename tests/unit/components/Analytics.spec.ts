@@ -14,11 +14,11 @@ interface SubCategoryMap {
   [subTab: string]: any
 }
 
-function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, labels: Array<string>, subCategories: SubCategoryMap, customerCode: string): jest.SpyInstance<any, unknown[]> {
+function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, tabs: Array<string>, subTabs: SubCategoryMap, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsDashboards').mockImplementation((args: any) => {
     expect(args.customer_code).toBe(customerCode)
 
-    return success ? Promise.resolve({ dashboards: dashboards, labels: labels, sub_categories: subCategories }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
+    return success ? Promise.resolve({ dashboards: dashboards, tabs: tabs, sub_tabs: subTabs }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
   })
 }
 
@@ -321,21 +321,17 @@ describe('Analytics.vue', () => {
   it('mounts a single category with two sub categories and one dashboard per category', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      Latency: [
+      'Retention/Latency': [
         '127.0.0.1',
       ],
-      Region: [
+      'Retention/Region': [
         '127.0.0.2'
       ]
     }, ['Retention'],
     {
       Retention: [
-        {
-          label: 'Latency'
-        },
-        {
-          label: 'Region'
-        }
+        'Latency',
+        'Region'
       ]
     }, '')
 
@@ -376,21 +372,17 @@ describe('Analytics.vue', () => {
   it('checks switching between sub tabs', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      Latency: [
+      'Retention/Latency': [
         '127.0.0.1',
       ],
-      Region: [
+      'Retention/Region': [
         '127.0.0.2'
       ]
     }, ['Retention'],
     {
       Retention: [
-        {
-          label: 'Latency'
-        },
-        {
-          label: 'Region'
-        }
+        'Latency',
+        'Region'
       ]
     }, '')
 
@@ -462,21 +454,17 @@ describe('Analytics.vue', () => {
       General: [
         '127.0.0.3'
       ],
-      Latency: [
+      'Retention/Latency': [
         '127.0.0.1',
       ],
-      Region: [
+      'Retention/Region': [
         '127.0.0.2'
       ]
     }, ['Retention', 'General'],
     {
       Retention: [
-        {
-          label: 'Latency'
-        },
-        {
-          label: 'Region'
-        }
+        'Latency',
+        'Region'
       ]
     }, '')
 

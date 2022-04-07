@@ -18,7 +18,7 @@
       <div class="row border-bottom mb-3">
         <ul class="sub-ul">
           <li class="sub-li" :class="{ 'blue-accent': subTabIndex === selectedSubTabIndex }" v-for="(subTab, subTabIndex) in subTabs[tabs[selectedTabIndex]]" :key="subTabIndex" @click="selectTab(subTabIndex, true)">
-            <a class="sub-link">{{ subTab.label }}</a>
+            <a class="sub-link">{{ subTab }}</a>
           </li>
         </ul>
       </div>
@@ -94,9 +94,9 @@ export default class Analytics extends Vue {
       customer_code: customerCode
     })
       .then((response: any) => {
-        this.dashboards = response.dashboards || []
-        this.tabs = response.labels || []
-        this.subTabs = response.sub_categories || {}
+        this.dashboards = response.dashboards || {}
+        this.tabs = response.tabs || []
+        this.subTabs = response.sub_tabs || {}
 
         this.selectedTabIndex = 0
         this.selectedSubTabIndex = 0
@@ -105,8 +105,8 @@ export default class Analytics extends Vue {
         const subTabs = this.subTabs[currentTab]
 
         if (subTabs) {
-          const firstSubTab = subTabs[this.selectedSubTabIndex].label
-          this.tabDashboards = this.dashboards[firstSubTab]
+          const firstSubTab = subTabs[this.selectedSubTabIndex]
+          this.tabDashboards = this.dashboards[`${currentTab}/${firstSubTab}`]
         } else {
           this.tabDashboards = this.dashboards[currentTab]
         }
@@ -137,8 +137,8 @@ export default class Analytics extends Vue {
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || {}
-        this.tabs = response.labels || []
-        this.subTabs = response.sub_categories || {}
+        this.tabs = response.tabs || []
+        this.subTabs = response.sub_tabs || {}
 
         // If a tab is deleted in the admin tool before this tab switch, the selectedIndex could be greater than the number of new tabs
         if (this.selectedTabIndex > this.tabs.length) {
@@ -149,8 +149,8 @@ export default class Analytics extends Vue {
         const subTabs = this.subTabs[currentTab]
 
         if (subTabs) {
-          const firstSubTab = subTabs[this.selectedSubTabIndex].label
-          this.tabDashboards = this.dashboards[firstSubTab]
+          const firstSubTab = subTabs[this.selectedSubTabIndex]
+          this.tabDashboards = this.dashboards[`${currentTab}/${firstSubTab}`]
         } else {
           this.tabDashboards = this.dashboards[currentTab]
         }
