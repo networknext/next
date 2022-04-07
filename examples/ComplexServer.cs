@@ -76,7 +76,7 @@ namespace Server {
 			numAllocations++;
 
 			Next.NextMutexRelease(ref mutex);
-			
+
 			return entryPtr;
 		}
 
@@ -138,7 +138,7 @@ namespace Server {
 		{
 			// Cleanup
 			Next.NextMutexDestroy(ref mutex);
-			
+
 			foreach (IntPtr dataPtr in clientMap)
 			{
 				if (dataPtr != IntPtr.Zero && dataPtr != null)
@@ -300,7 +300,7 @@ namespace Server {
 		public int GetNumClients()
 		{
 			int clients;
-			
+
 			Next.NextMutexAcquire(ref mutex);
 			clients = numClients;
 			Next.NextMutexRelease(ref mutex);
@@ -326,7 +326,7 @@ namespace Server {
 
 			Next.NextMutexRelease(ref mutex);
 
-			return addresses.ToArray();		
+			return addresses.ToArray();
 		}
 	}
 
@@ -397,7 +397,7 @@ namespace Server {
 			if (level != Next.NEXT_LOG_LEVEL_NONE)
 			{
 				// Log to Unity console
-				Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
+				Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>",
 					c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
 				);
 			}
@@ -415,19 +415,19 @@ namespace Server {
 				UnityEditor.EditorApplication.isPlaying = false;
 			#else
 				Application.Quit();
-			#endif // #if UNITY_EDITOR 
+			#endif // #if UNITY_EDITOR
 		}
 
 		// Define custom malloc function
 		[MonoPInvokeCallback(typeof(NextMallocFunction))]
 		static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
-		{    
+		{
 			Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
 
 			Next.NextAssert(!ctx.Equals(default(Context)));
 
 			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-			Allocator allocator = (Allocator)allocatorGCH.Target; 
+			Allocator allocator = (Allocator)allocatorGCH.Target;
 
 			Next.NextAssert(allocator != null);
 
@@ -443,11 +443,11 @@ namespace Server {
 			Next.NextAssert(!ctx.Equals(default(Context)));
 
 			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-			Allocator allocator = (Allocator)allocatorGCH.Target; 
+			Allocator allocator = (Allocator)allocatorGCH.Target;
 
 			Next.NextAssert(allocator != null);
 
-			allocator.Free(p);	
+			allocator.Free(p);
 		}
 
 		// Define packet receive callback function
@@ -458,9 +458,9 @@ namespace Server {
 			ServerContext ctx = (ServerContext)Marshal.PtrToStructure(ctxPtr, typeof(ServerContext));
 
 			Next.NextAssert(!ctx.Equals(default(ServerContext)));
-			
+
 			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-			Allocator allocator = (Allocator)allocatorGCH.Target; 
+			Allocator allocator = (Allocator)allocatorGCH.Target;
 
 			Next.NextAssert(allocator != null);
 			Next.NextAssert(ctx.ServerData == 0x12345678);
@@ -472,7 +472,7 @@ namespace Server {
 			Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
 
 			Next.NextAddress fromAddress = Next.GetNextAddressFromPointer(fromPtr);
-			
+
 			GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
 			ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
 
@@ -501,7 +501,7 @@ namespace Server {
 						string[] tags = new string[]{"pro", "streamer"};
 						int numTags = 2;
 						Next.NextServerTagSessionMultiple(serverPtr, fromPtr, tags, numTags);
-					}	    			
+					}
 				}
 			}
 		}
@@ -510,7 +510,7 @@ namespace Server {
 
 		// Utility functions
 
-		// Determines the log type from the level 
+		// Determines the log type from the level
 		static string LogLevelString(int level)
 		{
 			if (level == Next.NEXT_LOG_LEVEL_ERROR) {
@@ -662,7 +662,7 @@ namespace Server {
 					sb.AppendFormat("jitter client to server = {0}\n", stats.JitterClientToServer.ToString("F"));
 					sb.AppendFormat("jitter server to client = {0}\n", stats.JitterServerToClient.ToString("F"));
 				}
-				
+
 				if (stats.NumTags > 0)
 				{
 					sb.Append("tags = [");
@@ -718,7 +718,7 @@ namespace Server {
 			Context globalCtx = new Context();
 			Allocator globalCtxAllocator = new Allocator();
 			GCHandle globalCtxAllocatorGCH = GCHandle.Alloc(globalCtxAllocator);
-			globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);  
+			globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);
 
 			// Marshal the global context into a pointer
 			globalCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(globalCtx));
@@ -738,7 +738,7 @@ namespace Server {
 			Allocator serverCtxAllocator = new Allocator();
 			GCHandle serverCtxAllocatorGCH = GCHandle.Alloc(serverCtxAllocator);
 			serverCtx.AllocatorGCH = GCHandle.ToIntPtr(serverCtxAllocatorGCH);
-			
+
 			serverCtx.ServerData = 0x12345678;
 
 			ClientDataMap serverCtxClientDataMap = new ClientDataMap();
@@ -775,10 +775,10 @@ namespace Server {
 			ServerContext ctx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
 
 			Next.NextAssert(!ctx.Equals(default(ServerContext)));
-			
+
 			GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
 			ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
-			
+
 			clientDataMap.UpdateClientTimeouts(Next.NextTime());
 
 			accumulator += deltaTime;
@@ -793,7 +793,7 @@ namespace Server {
 		}
 
 		// OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
-		// These actions should be done in Destroy() rather than when the application quits
+		// These actions can be done in OnDestroy() rather than when the application quits
 		void OnApplicationQuit()
 		{
 			// Flush the server

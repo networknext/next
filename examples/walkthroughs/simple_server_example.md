@@ -19,7 +19,7 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
 }
 ```
 
-Next, in the server's `Start()` function, allow for all logging statements and assign the custom logging function:
+Next, in the server's `Start()` function, assign the custom logging function:
 ```csharp
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);
@@ -82,7 +82,7 @@ In Unity's `Update()` loop, make sure the server gets updated every frame:
 Next.NextServerUpdate(server);
 ```
 
-When you have finished using your server, flush and destroy it (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your server, flush and destroy it (Unity's `OnDestroy()` function is a good place to do this):
 ```csharp
 Next.NextServerFlush(server);
 Next.NextServerDestroy(server);

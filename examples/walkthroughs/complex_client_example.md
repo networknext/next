@@ -88,7 +88,7 @@ public class Allocator
         numAllocations++;
 
         Next.NextMutexRelease(ref mutex);
-        
+
         return entryPtr;
     }
 
@@ -126,7 +126,7 @@ There are three types of allocations done by the Network Next SDK:
 2. Per-client allocations
 3. Per-server allocations
 
-Each of these situations corresponds to what is called a "context" in the Network Next SDK. 
+Each of these situations corresponds to what is called a "context" in the Network Next SDK.
 
 A context is simply a custom struct that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool used for each client and server instance. That's what we're going to do in this example.
 
@@ -149,7 +149,7 @@ public struct ClientContext
     public IntPtr LastPacketReceiveTimeGCH;
 }
 ```
-As you can see, the client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game. 
+As you can see, the client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game.
 
 Here we just put a dummy `uint` in the client context and check its value to verify it's being passed through correctly. For example, in the received packet callback, we have access to the client context and check the dummy value is what we expect:
 ```csharp
@@ -161,13 +161,13 @@ static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr
     ClientContext ctx = (ClientContext)Marshal.PtrToStructure(ctxPtr, typeof(ClientContext));
 
     Next.NextAssert(!ctx.Equals(default(ClientContext)));
-    
+
     GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-    Allocator allocator = (Allocator)allocatorGCH.Target; 
+    Allocator allocator = (Allocator)allocatorGCH.Target;
 
     Next.NextAssert(allocator != null);
     Next.NextAssert(ctx.ClientData == 0x12345);
-    
+
     // Unmarshal the packet data into byte[]
     byte[] packetData = new byte[packetBytes];
     Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
@@ -189,7 +189,7 @@ Notice how the `Allocator` and `LastPacketReceiveTime` fields have a `GCH` postf
 Moving past allocations for the moment, we set up a callback for our own custom logging function, but compared to the previous examples, we add colours and more informative messages:
 
 ```csharp
-// Determines the log type from the level 
+// Determines the log type from the level
 static string LogLevelString(int level)
 {
     if (level == Next.NEXT_LOG_LEVEL_ERROR) {
@@ -231,7 +231,7 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
     if (level != Next.NEXT_LOG_LEVEL_NONE)
     {
         // Log to Unity console
-        Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
+        Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>",
             c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
         );
     }
@@ -266,7 +266,7 @@ static void AssertFunction(bool condition, string function, string file, int lin
         UnityEditor.EditorApplication.isPlaying = false;
     #else
         Application.Quit();
-    #endif // #if UNITY_EDITOR 
+    #endif // #if UNITY_EDITOR
 }
 ```
 Here we print out the assert message and force the editor to stop. Again, typically you would override this to point to your own assert handler in your game. The code above gracefully stops play mode when an assertion fails, or quits the game when not using the editor. Setting your own assert handler is wise, since relying on the default assert handler will cause the editor to crash most of the time.
@@ -307,7 +307,7 @@ static bool VerifyPacket(byte[] packetData, int packetBytes) {
 ```
 The functions above generate packets of random length from 1 to the maximum size packet that can be sent across Network Next – NEXT_MTU (1300 bytes). These packets have contents that can be inferred by the size of the packet, making it possible for us to test a packet and with high probability, ensure that the packet has not been incorrectly truncated or padded, and that it contains the exact bytes sent.
 
-Now we are ready to set a custom log level, set our custom log function, allocators and assert handler. 
+Now we are ready to set a custom log level, set our custom log function, allocators and assert handler.
 
 Before initializing Network Next, do this:
 ```csharp
@@ -330,7 +330,7 @@ Next, create a global context and pass it in to `Next.NextInit()` to be used for
 Context globalCtx = new Context();
 Allocator globalCtxAllocator = new Allocator();
 GCHandle globalCtxAllocatorGCH = GCHandle.Alloc(globalCtxAllocator);
-globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);  
+globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);
 
 // Marshal the global context into a pointer
 globalCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(globalCtx));
@@ -391,7 +391,7 @@ Since we are binding the client to port 0, the system will choose the actual por
 // Log the client port
 ushort clientPort = Next.NextClientPort(client);
 Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, "client port is ", clientPort.ToString());
-```        
+```
 
 Finally, the client has been extended to print out all the useful stats you can retrieve from a Network Next client, once every ten seconds:
 ```csharp
@@ -418,7 +418,7 @@ void Update()
         PrintClientStats(client);
         accumulator = 0.0;
     }
-    
+
     // ...
 }
 
@@ -529,7 +529,7 @@ static void PrintClientStats(IntPtr client)
     }
 
     sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
-    
+
     sb.AppendFormat("high frequency pings = {0}\n", stats.HighFrequencyPings.ToString());
 
     sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
@@ -569,7 +569,7 @@ When you have finished your session with the server, close it:
 Next.NextClientCloseSession(client);
 ```
 
-When you have finished using your client, destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your client, destroy it and free the memory allocated for all contexts (Unity's `OnDestroy()` function is a good place to do this):
 ```csharp
 // Destroy the client
 Next.NextClientDestroy(client);

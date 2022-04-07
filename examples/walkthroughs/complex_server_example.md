@@ -58,7 +58,7 @@ public class ClientDataMap
     {
         // Cleanup
         Next.NextMutexDestroy(ref mutex);
-        
+
         foreach (IntPtr dataPtr in clientMap)
         {
             if (dataPtr != IntPtr.Zero && dataPtr != null)
@@ -220,7 +220,7 @@ public class ClientDataMap
     public int GetNumClients()
     {
         int clients;
-        
+
         Next.NextMutexAcquire(ref mutex);
         clients = numClients;
         Next.NextMutexRelease(ref mutex);
@@ -246,7 +246,7 @@ public class ClientDataMap
 
         Next.NextMutexRelease(ref mutex);
 
-        return addresses.ToArray();        
+        return addresses.ToArray();
     }
 }
 ```
@@ -289,13 +289,13 @@ The overridden malloc and free functions are now called with the server context 
 // Define custom malloc function
 [MonoPInvokeCallback(typeof(NextMallocFunction))]
 static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
-{    
+{
     Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
 
     Next.NextAssert(!ctx.Equals(default(Context)));
 
     GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-    Allocator allocator = (Allocator)allocatorGCH.Target; 
+    Allocator allocator = (Allocator)allocatorGCH.Target;
 
     Next.NextAssert(allocator != null);
 
@@ -311,11 +311,11 @@ static void FreeFunction(IntPtr ctxPtr, IntPtr p)
     Next.NextAssert(!ctx.Equals(default(Context)));
 
     GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-    Allocator allocator = (Allocator)allocatorGCH.Target; 
+    Allocator allocator = (Allocator)allocatorGCH.Target;
 
     Next.NextAssert(allocator != null);
 
-    allocator.Free(p);    
+    allocator.Free(p);
 }
 ```
 
@@ -329,9 +329,9 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
     ServerContext ctx = (ServerContext)Marshal.PtrToStructure(ctxPtr, typeof(ServerContext));
 
     Next.NextAssert(!ctx.Equals(default(ServerContext)));
-    
+
     GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-    Allocator allocator = (Allocator)allocatorGCH.Target; 
+    Allocator allocator = (Allocator)allocatorGCH.Target;
 
     Next.NextAssert(allocator != null);
     Next.NextAssert(ctx.ServerData == 0x12345678);
@@ -343,7 +343,7 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
     Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
 
     Next.NextAddress fromAddress = Next.GetNextAddressFromPointer(fromPtr);
-    
+
     GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
     ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
 
@@ -372,13 +372,13 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
                 string[] tags = new string[]{"pro", "streamer"};
                 int numTags = 2;
                 Next.NextServerTagSessionMultiple(serverPtr, fromPtr, tags, numTags);
-            }                    
+            }
         }
     }
 }
-```        
+```
 
-When you have finished using your server, flush and destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your server, flush and destroy it and free the memory allocated for all contexts (Unity's `OnDestroy()` function is a good place to do this):
 ```csharp
 // Flush the server
 Next.NextServerFlush(server);
