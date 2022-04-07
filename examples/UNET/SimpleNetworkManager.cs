@@ -114,14 +114,13 @@ public class SimpleNetworkManager : NetworkManager
             // Create the packet received callback
             NextServerPacketReceivedCallback recvCallBack = new NextServerPacketReceivedCallback(ServerPacketReceived);
 
-            // Create the NextServerTransport, which sets up the Network Next server on its own socket independent of UNET
-            NextServerTransport nextTransport = new NextServerTransport(IntPtr.Zero, ref config, serverIP, serverPort, bindIP, bindPort, serverDatacenter, recvCallBack, null);
+            // Create the NextServerTransport, which sets up the Network Next server on its own socket independent of UNET,
+            // and save it as an instance var for use in other callbacks
+            serverTransport = new NextServerTransport(IntPtr.Zero, ref config, serverIP, serverPort, bindIP, bindPort, serverDatacenter, recvCallBack, null);
 
             // Set the NextServerTransport as the active transport
-            // and save it as a global var for use in other callbacks
-            activeTransport = nextTransport;
-            serverTransport = nextTransport;
-            nextTransport.Init();
+            activeTransport = serverTransport;
+            serverTransport.Init();
 
             // Set the server as ready
             serverReady = true;
