@@ -1,27 +1,23 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 using AOT;
 using NetworkNext;
 
-public class UNETClient : NetworkBehaviour
+public class SimpleUNETClient : NetworkBehaviour
 {
     // Constants
-    const string bindAddress = "0.0.0.0:0";
+    const string bindIP = "0.0.0.0";
+    const int bindPort = 0;
     const string serverIP = "127.0.0.1";
     const int serverPort = 50000;
     const int unetPort = 7777;
     const int hostID = 0;
-    const int channelID = 0;
-    const string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="; // Replace with the public key from your account
 
     enum Color { red, green, blue, black, white, yellow, orange };
 
     // Global variables
-    IntPtr client;
     NextClientTransport clientTransport;
     int connectionID;
 
@@ -92,29 +88,22 @@ public class UNETClient : NetworkBehaviour
             // Assign our custom logging function
             Next.NextLogFunction(UnityLogger);
 
-            if (client == null || client == IntPtr.Zero)
-            {
-                // Get empty config
-                Next.NextConfig config = new Next.NextConfig();
+            // Create a configuration
+            Next.NextConfig config = new Next.NextConfig();
 
-                // Create the packet received callback
-                NextClientPacketReceivedCallback recvCallBack = new NextClientPacketReceivedCallback(ClientPacketReceived);
+            // Create the packet received callback
+            NextClientPacketReceivedCallback recvCallBack = new NextClientPacketReceivedCallback(ClientPacketReceived);
 
-                string serverAddress = String.Format("{0}:{1}", serverIP, serverPort);
-                clientTransport = new NextClientTransport(IntPtr.Zero, ref config, bindAddress, serverAddress, recvCallBack, null);
-                clientTransport.Init();
-                client = clientTransport.client;
-                Debug.Log("finished setting up client");
+            // Create the NextClientTransport, which sets up the Network Next client on its own socket independent of UNET
+            clientTransport = new NextClientTransport(IntPtr.Zero, ref config, bindIP, bindPort, serverIP, serverPort, recvCallBack, null);
+            clientTransport.Init();
 
-                byte error;
-                connectionID = clientTransport.Connect(hostID, serverIP, unetPort, 0, out error);
-                clientTransport.NextClientOpenSession();
+            // Connect to the server via UNET
+            byte error;
+            connectionID = clientTransport.Connect(hostID, serverIP, unetPort, 0, out error);
 
-                // Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, "Client connected: ", clientTransport.IsClientConnected());
-
-                // Next.NextClientOpenSession(client, serverAddress);
-                // Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, "client state is ", Next.NextClientState(client));
-            }
+            // Connect to the server via Network Next
+            clientTransport.NextClientOpenSession();
         }
     }
 
@@ -129,23 +118,29 @@ public class UNETClient : NetworkBehaviour
             int packetBytes;
             byte[] packetData = GeneratePacket(out packetBytes);
 
-            // Send the packet to the server potentially over Network Next
+            // Send the packet to the server over Network Next
             clientTransport.NextClientSendPacket(packetData, packetBytes);
         }
     }
 
-    void Destroy()
+    // OnDestroy is called when a Scene or game ends
+    void OnDestroy()
     {
         if (isLocalPlayer)
         {
+            // Disconnect from the server and close the session
             byte error;
             clientTransport.Disconnect(hostID, connectionID, out error);
+
+            // Destroy the client
+            clientTransport.NextClientDestroy();
         }
-        clientTransport.NextClientDestroy();
     }
 
+    // OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
     void OnApplicationQuit()
     {
-        clientTransport.Shutdown();
+        // Shutdown the transport and the Network Next SDK
+        clientTransport?.Shutdown();
     }
 }
