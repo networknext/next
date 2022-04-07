@@ -19,7 +19,7 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
 }
 ```
 
-Next, in the server's `Start()` function, allow for all logging statements and assign the custom logging function:
+Next, in the server's `Start()` function, assign the custom logging function:
 ```csharp
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);

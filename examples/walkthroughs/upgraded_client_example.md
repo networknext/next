@@ -55,7 +55,7 @@ if (Next.NextInit(IntPtr.Zero, ref config) != Next.NEXT_OK)
 }
 ```
 
-This activates the customer public key so it's used by the client. 
+This activates the customer public key so it's used by the client.
 
 Network Next needs a customer public key to monitor and accelerate players. Without a customer public key, Network Next just sends player traffic across the public internet.
 
@@ -112,7 +112,7 @@ When you have finished your session with the server, close it:
 Next.NextClientCloseSession(client);
 ```
 
-When you have finished using your client, destroy it (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your client, destroy it (Unity's `OnDestroy()` function is a good place to do this):
 ```csharp
 Next.NextClientDestroy(client);
 ```
