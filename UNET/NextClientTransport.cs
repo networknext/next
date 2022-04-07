@@ -14,12 +14,12 @@ public class NextClientTransport : INetworkTransport
     public NextClientPacketReceivedCallback clientPacketReceivedCallback;
     public NextWakeupCallback clientWakeupCallback;
 
-    public NextClientTransport(IntPtr ctxPtr, ref Next.NextConfig config, string bindAddr, string serverAddr, NextClientPacketReceivedCallback packetRecvCallback, NextWakeupCallback wakeupCallback = null)
+    public NextClientTransport(IntPtr ctxPtr, ref Next.NextConfig config, string bindIP, int bindPort, string serverIP, int serverPort, NextClientPacketReceivedCallback packetRecvCallback, NextWakeupCallback wakeupCallback = null)
     {
         clientCtxPtr = ctxPtr;
         nextConfig = config;
-        serverAddress = serverAddr;
-        clientBindAddress = bindAddr;
+        serverAddress = String.Format("{0}:{1}", serverIP, serverPort);
+        clientBindAddress = String.Format("{0}:{1}", bindIP, bindPort);
         clientPacketReceivedCallback = packetRecvCallback;
         clientWakeupCallback = wakeupCallback;
 
@@ -296,6 +296,7 @@ public class NextClientTransport : INetworkTransport
     public void Shutdown()
     {
         NetworkTransport.Shutdown();
+        NextClientCloseSession();
         NextClientDestroy();
         Next.NextTerm();
     }
