@@ -6,7 +6,7 @@
 
 This repository contains the Unity Native Plugin for Network Next.
 
-The plugin uses version SDK 4.20.0.
+The plugin uses SDK 4.20.0.
 
 It's tested and works with Unity Engine 2020.3.14f1.
 
