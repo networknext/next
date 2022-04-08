@@ -139,7 +139,8 @@ export default class DownloadsWorkspace extends Vue {
         params: {
           placement: 'left'
         }
-      },
+      }
+      /* TODO: Add this back in when the white paper is ready
       {
         target: '[data-tour="dataReports"]',
         header: {
@@ -150,6 +151,7 @@ export default class DownloadsWorkspace extends Vue {
           placement: 'left'
         }
       }
+      */
     ]
 
     this.downloadsTourOptions = {
