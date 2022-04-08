@@ -638,7 +638,9 @@ namespace Server {
 
 				sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
 
-				sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
+				sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
+				sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
+				sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
 				sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
 				sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
 
