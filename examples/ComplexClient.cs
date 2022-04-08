@@ -75,7 +75,7 @@ namespace Client {
             numAllocations++;
 
             Next.NextMutexRelease(ref mutex);
-            
+
             return entryPtr;
         }
 
@@ -155,7 +155,7 @@ namespace Client {
         // ----------------------------------------------------------
 
         // Global variables
-        
+
         IntPtr client;
         IntPtr globalCtxPtr;
         IntPtr clientCtxPtr;
@@ -191,7 +191,7 @@ namespace Client {
             if (level != Next.NEXT_LOG_LEVEL_NONE)
             {
                 // Log to Unity console
-                Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
+                Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>",
                     c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
                 );
             }
@@ -209,19 +209,19 @@ namespace Client {
                 UnityEditor.EditorApplication.isPlaying = false;
             #else
                 Application.Quit();
-            #endif // #if UNITY_EDITOR 
+            #endif // #if UNITY_EDITOR
         }
 
         // Define custom malloc function
         [MonoPInvokeCallback(typeof(NextMallocFunction))]
         static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
-        {    
+        {
             Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
 
             Next.NextAssert(!ctx.Equals(default(Context)));
 
             GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-            Allocator allocator = (Allocator)allocatorGCH.Target; 
+            Allocator allocator = (Allocator)allocatorGCH.Target;
 
             Next.NextAssert(allocator != null);
 
@@ -237,11 +237,11 @@ namespace Client {
             Next.NextAssert(!ctx.Equals(default(Context)));
 
             GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-            Allocator allocator = (Allocator)allocatorGCH.Target; 
+            Allocator allocator = (Allocator)allocatorGCH.Target;
 
             Next.NextAssert(allocator != null);
 
-            allocator.Free(p);  
+            allocator.Free(p);
         }
 
         // Define packet receive callback function
@@ -252,13 +252,13 @@ namespace Client {
             ClientContext ctx = (ClientContext)Marshal.PtrToStructure(ctxPtr, typeof(ClientContext));
 
             Next.NextAssert(!ctx.Equals(default(ClientContext)));
-            
+
             GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-            Allocator allocator = (Allocator)allocatorGCH.Target; 
+            Allocator allocator = (Allocator)allocatorGCH.Target;
 
             Next.NextAssert(allocator != null);
             Next.NextAssert(ctx.ClientData == 0x12345);
-            
+
             // Unmarshal the packet data into byte[]
             byte[] packetData = new byte[packetBytes];
             Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
@@ -307,7 +307,7 @@ namespace Client {
             return true;
         }
 
-        // Determines the log type from the level 
+        // Determines the log type from the level
         static string LogLevelString(int level)
         {
             if (level == Next.NEXT_LOG_LEVEL_ERROR) {
@@ -434,10 +434,12 @@ namespace Client {
             }
 
             sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
-            
+
             sb.AppendFormat("high frequency pings = {0}\n", stats.HighFrequencyPings.ToString());
 
-            sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
+            sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
+            sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
+            sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
             sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
             sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
 
@@ -513,7 +515,7 @@ namespace Client {
             Context globalCtx = new Context();
             Allocator globalCtxAllocator = new Allocator();
             GCHandle globalCtxAllocatorGCH = GCHandle.Alloc(globalCtxAllocator);
-            globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);  
+            globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);
 
             // Marshal the global context into a pointer
             globalCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(globalCtx));
@@ -540,7 +542,7 @@ namespace Client {
             Allocator clientCtxAllocator = new Allocator();
             GCHandle clientCtxAllocatorGCH = GCHandle.Alloc(clientCtxAllocator);
             clientCtx.AllocatorGCH = GCHandle.ToIntPtr(clientCtxAllocatorGCH);
-            
+
             clientCtx.ClientData = 0x12345;
 
             LastPacketReceiveTime clientCtxLastPacketReceiveTime = new LastPacketReceiveTime(Next.NextTime());

@@ -304,7 +304,7 @@ namespace NetworkNext {
             stats.FallbackToDirect = internalStats.FallbackToDirect == NEXT_BOOL.NEXT_TRUE;
             stats.HighFrequencyPings = internalStats.HighFrequencyPings == NEXT_BOOL.NEXT_TRUE;
             stats.DirectMinRTT = internalStats.DirectMinRTT;
-            stats.DirectMinRTT = internalStats.DirectMaxRTT;
+            stats.DirectMaxRTT = internalStats.DirectMaxRTT;
             stats.DirectPrimeRTT = internalStats.DirectPrimeRTT;
             stats.DirectJitter = internalStats.DirectJitter;
             stats.DirectPacketLoss = internalStats.DirectPacketLoss;
@@ -2619,7 +2619,7 @@ namespace NetworkNext {
             stats.Reported = internalStats.Reported == NEXT_BOOL.NEXT_TRUE;
             stats.FallbackToDirect = internalStats.FallbackToDirect == NEXT_BOOL.NEXT_TRUE;
             stats.DirectMinRTT = internalStats.DirectMinRTT;
-            stats.DirectMinRTT = internalStats.DirectMaxRTT;
+            stats.DirectMaxRTT = internalStats.DirectMaxRTT;
             stats.DirectPrimeRTT = internalStats.DirectPrimeRTT;
             stats.DirectJitter = internalStats.DirectJitter;
             stats.DirectPacketLoss = internalStats.DirectPacketLoss;

@@ -131,7 +131,7 @@ public class UpgradedClient : MonoBehaviour
     {
         // Close the session
         Next.NextClientCloseSession(client);
-        
+
         // Destroy the client
         Next.NextClientDestroy(client);
 
