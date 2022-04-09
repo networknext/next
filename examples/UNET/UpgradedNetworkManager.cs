@@ -8,14 +8,14 @@ using NetworkNext;
 public class UpgradedNetworkManager : NetworkManager
 {
     // Constants
-	const string bindIP = "0.0.0.0";
+    const string bindIP = "0.0.0.0";
     const int bindPort = 50000;
-	const string serverIP = "127.0.0.1";
+    const string serverIP = "127.0.0.1";
     const int serverPort = 50000;
     const int unetPort = 7777;
-	const string serverDatacenter = "local";
-	const string serverBackendHostname = "prod.spacecats.net";
-	const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"; // Replace with the private key from your account
+    const string serverDatacenter = "local";
+    const string serverBackendHostname = "prod.spacecats.net";
+    const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"; // Replace with the private key from your account
 
     enum Color { red, green, blue, black, white, yellow, orange };
 
