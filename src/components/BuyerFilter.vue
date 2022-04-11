@@ -36,16 +36,24 @@ export default class BuyerFilter extends Vue {
   }
 
   private mounted () {
-    this.unwatchBuyerList = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.allBuyers
-      },
-      () => {
-        this.setupFilters()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      this.unwatchBuyerList = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.allBuyers
+        },
+        () => {
+          this.setupFilters()
+        }
+      )
+    }
 
     this.setupFilters()
+  }
+
+  private beforeDestroy () {
+    if (this.$store.getters.isAdmin) {
+      this.unwatchBuyerList()
+    }
   }
 
   private setupFilters () {
