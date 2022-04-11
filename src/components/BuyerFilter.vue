@@ -1,5 +1,5 @@
 <template>
-  <div class="row">
+  <div class="row" id="buyer-filter">
     <div class="col">
       <select class="form-control" @change="updateFilter($event.target.value)">
         <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">

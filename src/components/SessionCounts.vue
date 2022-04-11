@@ -22,7 +22,7 @@
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <BuyerFilter id="buyer-filter" v-if="$store.getters.isBuyer || $store.getters.isAdmin" />
+      <BuyerFilter v-if="$store.getters.isBuyer || $store.getters.isAdmin" />
     </div>
   </div>
 </template>
