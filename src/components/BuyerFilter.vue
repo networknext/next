@@ -8,8 +8,7 @@
       </select>
     </div>
     <div class="col" v-if="$store.getters.isAdmin">
-      <button class="btn btn-secondary" v-if="!$store.getters.isDemo" @click.prevent="toggleDemo(true)">Start Demo</button>
-      <button class="btn btn-secondary" v-if="$store.getters.isDemo" @click.prevent="toggleDemo(false)">Exit Demo</button>
+      <button class="btn btn-secondary" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</button>
     </div>
   </div>
 </template>
