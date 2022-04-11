@@ -51,6 +51,8 @@ export default class Analytics extends Vue {
   }
 
   private unwatchFilter: any
+  private currentTab: string
+  private currentSubTab: string
   private dashboards: any
   private selectedSubTabIndex: number
   private selectedTabIndex: number
@@ -60,6 +62,8 @@ export default class Analytics extends Vue {
 
   constructor () {
     super()
+    this.currentTab = ''
+    this.currentSubTab = ''
     this.dashboards = {}
     this.selectedSubTabIndex = -1
     this.selectedTabIndex = -1
@@ -69,15 +73,17 @@ export default class Analytics extends Vue {
   }
 
   private mounted () {
-    // This is only necessary for admins - when the filter changes, grab the new analytics URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchAnalyticsDashboards()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      // This is only necessary for admins - when the filter changes, grab the new analytics URL
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchAnalyticsDashboards()
+        }
+      )
+    }
 
     this.fetchAnalyticsDashboards()
   }
@@ -98,17 +104,35 @@ export default class Analytics extends Vue {
         this.tabs = response.tabs || []
         this.subTabs = response.sub_tabs || {}
 
-        this.selectedTabIndex = 0
-        this.selectedSubTabIndex = 0
+        if (this.currentTab === '') {
+          this.selectedTabIndex = 0
+          this.selectedSubTabIndex = 0
+        } else {
+          const tabIndex = this.tabs.indexOf(this.currentTab)
+          this.selectedTabIndex = tabIndex > 0 ? tabIndex : 0
+        }
 
-        const currentTab = this.tabs[this.selectedTabIndex]
-        const subTabs = this.subTabs[currentTab]
+        this.currentTab = this.tabs[this.selectedTabIndex]
+
+        const subTabs = this.subTabs[this.currentTab]
 
         if (subTabs) {
           const firstSubTab = subTabs[this.selectedSubTabIndex]
-          this.tabDashboards = this.dashboards[`${currentTab}/${firstSubTab}`]
+          if (this.currentSubTab === '') {
+            this.tabDashboards = this.dashboards[`${this.currentTab}/${firstSubTab}`]
+          } else {
+            const subTabDashboards: Array<any> = this.dashboards[this.currentSubTab]
+            if (!subTabDashboards) {
+              this.currentSubTab = `${this.currentTab}/${firstSubTab}`
+            }
+
+            this.tabDashboards = this.dashboards[this.currentSubTab]
+
+            const tabIndex = subTabs.indexOf(this.currentSubTab)
+            this.selectedSubTabIndex = tabIndex > 0 ? tabIndex : 0
+          }
         } else {
-          this.tabDashboards = this.dashboards[currentTab]
+          this.tabDashboards = this.dashboards[this.currentTab]
         }
       })
       .catch((error: Error) => {
@@ -145,14 +169,15 @@ export default class Analytics extends Vue {
           this.selectedTabIndex = 0
         }
 
-        const currentTab = this.tabs[this.selectedTabIndex]
-        const subTabs = this.subTabs[currentTab]
+        this.currentTab = this.tabs[this.selectedTabIndex]
+        const subTabs = this.subTabs[this.currentTab]
 
         if (subTabs) {
           const firstSubTab = subTabs[this.selectedSubTabIndex]
-          this.tabDashboards = this.dashboards[`${currentTab}/${firstSubTab}`]
+          this.currentSubTab = `${this.currentTab}/${firstSubTab}`
+          this.tabDashboards = this.dashboards[this.currentSubTab]
         } else {
-          this.tabDashboards = this.dashboards[currentTab]
+          this.tabDashboards = this.dashboards[this.currentTab]
         }
       })
       .catch((error: Error) => {
