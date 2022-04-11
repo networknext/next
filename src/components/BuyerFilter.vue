@@ -1,10 +1,16 @@
 <template>
-  <div id="buyer-filter" class="px-2">
-    <select class="form-control" @change="updateFilter($event.target.value)">
-      <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
-        {{ option.name }}
-      </option>
-    </select>
+  <div class="row">
+    <div class="col">
+      <select class="form-control" @change="updateFilter($event.target.value)">
+        <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
+          {{ option.name }}
+        </option>
+      </select>
+    </div>
+    <div class="col" v-if="$store.getters.isAdmin">
+      <button class="btn btn-secondary" v-if="!$store.getters.isDemo" @click.prevent="toggleDemo(true)">Start Demo</button>
+      <button class="btn btn-secondary" v-if="$store.getters.isDemo" @click.prevent="toggleDemo(false)">Exit Demo</button>
+    </div>
   </div>
 </template>
 
@@ -23,6 +29,7 @@ export default class BuyerFilter extends Vue {
   @Prop({ default: true }) readonly liveOnly!: boolean
 
   private filterOptions: Array<any>
+  private unwatchBuyerList: any
 
   constructor () {
     super()
@@ -30,6 +37,21 @@ export default class BuyerFilter extends Vue {
   }
 
   private mounted () {
+    this.unwatchBuyerList = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.allBuyers
+      },
+      () => {
+        this.setupFilters()
+      }
+    )
+
+    this.setupFilters()
+  }
+
+  private setupFilters () {
+    this.filterOptions = []
+
     if (this.includeAll) {
       this.filterOptions.push({
         name: 'All',
@@ -78,6 +100,20 @@ export default class BuyerFilter extends Vue {
     }
 
     this.$store.dispatch('updateCurrentFilter', newFilter)
+  }
+
+  private async toggleDemo (isDemo: boolean) {
+    if (!isDemo) {
+      await this.$apiService.fetchAllBuyers()
+        .then((response: any) => {
+          const allBuyers = response.buyers || []
+          this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        })
+
+      Vue.$cookies.remove('isDemo')
+    }
+
+    this.$store.dispatch('toggleIsDemo', isDemo)
   }
 }
 
