@@ -8,6 +8,8 @@ This repository contains the UE4 plugin for Network Next.
 
 It's tested working with Unreal Engine 4.25.
 
+This repo includes PC, Mac and Linux support. Console support is available by request.
+
 # Usage
 
 1. Copy the entire **NetworkNext** folder into your **Plugins** directory.
