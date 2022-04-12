@@ -5,6 +5,7 @@ import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { Auth0DecodedHash } from 'auth0-js'
 import { cloneDeep } from 'lodash'
 import Vue from 'vue'
+import store from '..'
 
 /**
  * Basic Vuex module specific to authorization/authentication
@@ -75,13 +76,13 @@ const actions = {
     }
     return Promise.all(promises)
       .then((responses: any) => {
-        let allBuyers = []
+        let allBuyers: Array<any> = []
         const userProfile = cloneDeep(state.userProfile)
         if (getters.registeredToCompany) {
-          allBuyers = responses[2].buyers
-          userProfile.pubKey = responses[1].game_config.public_key
+          allBuyers = responses[2].buyers || []
+          userProfile.pubKey = responses[1].game_config.public_key || ''
         } else {
-          allBuyers = responses[1].buyers
+          allBuyers = responses[1].buyers || []
         }
 
         const userInformation = responses[0].account
@@ -119,6 +120,13 @@ const actions = {
           dateRange: DateFilterType.CURRENT_MONTH
         }
         dispatch('updateCurrentFilter', defaultFilter)
+
+        if (store.getters.isAdmin) {
+          const isDemo = Vue.$cookies.get('isDemo')
+          if (isDemo) {
+            store.dispatch('toggleIsDemo', true)
+          }
+        }
 
         const query = window.location.search
         if (query.includes(EMAIL_VERIFICATION_URL)) {
