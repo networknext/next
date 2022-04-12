@@ -39,8 +39,11 @@ declare module '*.vue' {
     sendResetPasswordEmail (args: any): Promise<any>;
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
-    sendUE4DownloadNotifications (args: any): Promise<any>;
-    send2022WhitePaperDownloadNotifications (args: any): Promise<any>;
+    sendUE4DownloadNotification (args: any): Promise<any>;
+    sendUE4SourceViewNotification (args: any): Promise<any>;
+    sendUnityDownloadNotification (args: any): Promise<any>;
+    sendUnitySourceViewNotification (args: any): Promise<any>;
+    send2022WhitePaperDownloadNotification (args: any): Promise<any>;
     sendENetDownloadNotification (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;

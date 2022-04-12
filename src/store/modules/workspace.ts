@@ -46,12 +46,13 @@ export default {
       commit('TOGGLE_IS_TOUR', isTour)
     },
     toggleIsDemo ({ commit, getters }: any, isDemo: boolean) {
+      // If we are in demo mode, swap out the buyer name for their ID
       if (isDemo) {
         const allBuyers: Array<any> = getters.allBuyers || []
         const newBuyerList: Array<any> = []
         allBuyers.forEach((buyer: any, index: number) => {
           const newBuyerEntry = cloneDeep(buyer)
-          newBuyerEntry.company_name = `Customer ${index}`
+          newBuyerEntry.company_name = buyer.id
           newBuyerList.push(newBuyerEntry)
         })
 
