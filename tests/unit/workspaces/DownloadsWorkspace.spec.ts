@@ -145,11 +145,11 @@ describe('DownloadsWorkspace.vue', () => {
     expect(buttons.at(0).text()).toBe('SDK v4.20')
     expect(buttons.at(1).text()).toBe('Github Source')
     expect(buttons.at(2).text()).toBe('Documentation')
-    expect(buttons.at(3).text()).toBe('ENet Support')
+    expect(buttons.at(3).text()).toBe('Plugin Download')
     expect(buttons.at(4).text()).toBe('Github Source')
     expect(buttons.at(5).text()).toBe('Plugin Download')
     expect(buttons.at(6).text()).toBe('Github Source')
-    expect(buttons.at(7).text()).toBe('Plugin Download')
+    expect(buttons.at(7).text()).toBe('ENet Support')
     expect(buttons.at(8).text()).toBe('Github Source')
     // expect(buttons.at(4).text()).toBe('Download')
   })
@@ -179,41 +179,41 @@ describe('DownloadsWorkspace.vue', () => {
     expect(windowSpy).toBeCalled()
     expect(spyDownloadDocs).toBeCalled()
 
-    expectedURL = ENET_DOWNLOAD_URL
-
-    buttons.at(3).trigger('click')
-    expect(windowSpy).toBeCalled()
-    expect(spyENetDownload).toBeCalled()
-
-    expectedURL = ENET_SOURCE_URL
-
-    buttons.at(4).trigger('click')
-    expect(windowSpy).toBeCalled()
-    expect(spyENetDownload).toBeCalled()
-
     expectedURL = UE4_PLUGIN_DOWNLOAD_URL
 
-    buttons.at(5).trigger('click')
+    buttons.at(3).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyDownloadUE4).toBeCalled()
 
     expectedURL = UE4_PLUGIN_SOURCE_URL
 
-    buttons.at(6).trigger('click')
+    buttons.at(4).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyViewUE4).toBeCalled()
 
     expectedURL = UNITY_PLUGIN_DOWNLOAD_URL
 
-    buttons.at(7).trigger('click')
+    buttons.at(5).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyDownloadUnity).toBeCalled()
 
     expectedURL = UNITY_PLUGIN_SOURCE_URL
 
-    buttons.at(8).trigger('click')
+    buttons.at(6).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyViewUnity).toBeCalled()
+
+    expectedURL = ENET_DOWNLOAD_URL
+
+    buttons.at(7).trigger('click')
+    expect(windowSpy).toBeCalled()
+    expect(spyENetDownload).toBeCalled()
+
+    expectedURL = ENET_SOURCE_URL
+
+    buttons.at(8).trigger('click')
+    expect(windowSpy).toBeCalled()
+    expect(spyENetDownload).toBeCalled()
 
     /*
 

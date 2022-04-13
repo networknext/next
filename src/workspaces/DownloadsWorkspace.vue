@@ -84,49 +84,6 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
             <a
-              id="enet-button"
-              @click="downloadEnet()"
-              class="btn btn-primary m-1 btn-width white-link"
-            >
-              <div class="row">
-                <div class="col">
-                  ENet Support
-                </div>
-                <div class="col-auto">
-                  <font-awesome-icon icon="download"
-                                      class="fa-w-16 fa-fw"
-                  />
-                </div>
-              </div>
-            </a>
-            <a
-              id="unity-source-button"
-              @click="viewENetSource()"
-              class="btn btn-primary m-1 btn-width white-link"
-            >
-              <div class="row">
-                <div class="col">
-                  Github Source
-                </div>
-                <div class="col-auto">
-                  <font-awesome-icon icon="code"
-                                    class="fa-w-16 fa-fw"
-                  />
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-        <h5>
-          ENet Support
-        </h5>
-        <div style="font-size: 90%;">Download the official Network Next ENet implementation. Source and usage examples are available through Github.</div>
-      </div>
-      <hr />
-      <div class="card-body">
-        <div class="btn-group-vertical btn-group-sm float-right">
-          <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
-            <a
               id="unity-plugin-button"
               @click="downloadUE4Plugin()"
               class="btn btn-primary m-1 btn-width white-link"
@@ -207,6 +164,49 @@
           Unity Support
         </h5>
         <div style="font-size: 90%;">Download the official Network Next Unity Plugin. Source, examples and a traditional / UNET implementation are available through Github.</div>
+      </div>
+      <hr />
+      <div class="card-body">
+        <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
+            <a
+              id="enet-button"
+              @click="downloadEnet()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  ENet Support
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="download"
+                                      class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+            <a
+              id="unity-source-button"
+              @click="viewENetSource()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Github Source
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="code"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <h5>
+          ENet Support
+        </h5>
+        <div style="font-size: 90%;">Download the official Network Next ENet implementation. Source and usage examples are available through Github.</div>
       </div>
       <hr v-if="false" />
       <div class="card-body" v-if="false">
