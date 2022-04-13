@@ -200,20 +200,40 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
   }
 
+  public sendSDKSourceViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedSDKSourceNotification', args)
+  }
+
   public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
   }
 
-  public sendUE4DownloadNotifications (args: any): Promise<any> {
-    return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
+  public sendUE4DownloadNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedUE4PluginNotification', args)
   }
 
-  public send2022WhitePaperDownloadNotifications (args: any): Promise<any> {
-    return this.call('AuthService.CustomerDownloaded2022WhitePaperNotifications', args)
+  public sendUE4SourceViewNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedUE4SourceNotification', args)
+  }
+
+  public send2022WhitePaperDownloadNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloaded2022WhitePaperNotification', args)
   }
 
   public sendENetDownloadNotification (args: any): Promise<any> {
-    return this.call('AuthService.CustomerDownloadedENetDownloadNotifications', args)
+    return this.call('AuthService.CustomerDownloadedENetDownloadNotification', args)
+  }
+
+  public sendENetSourceViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedENetSourceNotification', args)
+  }
+
+  public sendUnityDownloadNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedUnityPluginNotification', args)
+  }
+
+  public sendUnitySourceViewNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedUnitySourceNotification', args)
   }
 
   public startAnalyticsTrial (): Promise<any> {
