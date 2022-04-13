@@ -38,6 +38,7 @@ declare module '*.vue' {
     sendDocsViewSlackNotification (args: any): Promise<any>;
     sendResetPasswordEmail (args: any): Promise<any>;
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
+    sendSDKSourceViewSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotification (args: any): Promise<any>;
     sendUE4SourceViewNotification (args: any): Promise<any>;
@@ -45,6 +46,7 @@ declare module '*.vue' {
     sendUnitySourceViewNotification (args: any): Promise<any>;
     send2022WhitePaperDownloadNotification (args: any): Promise<any>;
     sendENetDownloadNotification (args: any): Promise<any>;
+    sendENetSourceViewSlackNotification (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
   }

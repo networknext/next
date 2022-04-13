@@ -200,6 +200,10 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
   }
 
+  public sendSDKSourceViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedSDKSourceNotification', args)
+  }
+
   public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
   }
@@ -218,6 +222,10 @@ export class JSONRPCService {
 
   public sendENetDownloadNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerDownloadedENetDownloadNotification', args)
+  }
+
+  public sendENetSourceViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedENetSourceNotification', args)
   }
 
   public sendUnityDownloadNotification (args: any): Promise<any> {
