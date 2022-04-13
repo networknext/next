@@ -84,7 +84,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
             <a
-              id="unity-plugin-button"
+              id="ue4-plugin-button"
               @click="downloadUE4Plugin()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -100,7 +100,7 @@
               </div>
             </a>
             <a
-              id="unity-source-button"
+              id="ue4-source-button"
               @click="viewUE4Source()"
               class="btn btn-primary m-1 btn-width white-link"
             >
