@@ -1188,6 +1188,40 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 	return nil
 }
 
+func (s *AuthService) CustomerViewedSDKSourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the SDK source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the SDK source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :technologist:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
 func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
 	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -1421,6 +1455,40 @@ func (s *AuthService) CustomerDownloadedENetDownloadNotification(r *http.Request
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
 		core.Error("CustomerDownloadedENetDownloadNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerViewedENetSourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the ENet source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the ENet source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :information_source:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
 		return &err
 	}
 	return nil
