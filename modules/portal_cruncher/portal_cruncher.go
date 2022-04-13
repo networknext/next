@@ -238,7 +238,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 		select {
 		case <-ctx.Done():
 			errChan <- ctx.Err()
-
+			return
 		case messageInfo := <-cruncher.subscriber.ReceiveMessage():
 			cruncher.metrics.ReceivedMessageCount.Add(1)
 
