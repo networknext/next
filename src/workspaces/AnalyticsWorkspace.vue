@@ -23,7 +23,7 @@
       </div>
       <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 400px;">
         <div class="mr-auto"></div>
-        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="true"/>
       </div>
     </div>
     <Analytics />
