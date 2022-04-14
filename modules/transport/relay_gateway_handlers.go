@@ -156,9 +156,9 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		var responseData []byte
 		response := RelayUpdateResponse{}
 
-		// TODO: figure out a better way of incrementing version number if the relay version >= 2.0.10
+		// TODO: use minor comparison to increment version number based on relay version (i.e. 2.1.0 > 2.0.9)
 		response.Version = 0
-		if relayUpdateRequest.RelayVersion == "2.0.10" {
+		if relayUpdateRequest.RelayVersion == "2.1.0" {
 			response.Version = VersionNumberUpdateResponse
 		}
 
