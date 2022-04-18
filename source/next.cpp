@@ -148,6 +148,8 @@
 #define NEXT_UPGRADE_REQUEST_PACKET                                     4
 #define NEXT_UPGRADE_RESPONSE_PACKET                                    5
 #define NEXT_UPGRADE_CONFIRM_PACKET                                     6
+#define NEXT_OLD_RELAY_PING_PACKET                                      7
+#define NEXT_OLD_RELAY_PONG_PACKET                                      8
 #define NEXT_ROUTE_REQUEST_PACKET                                       9
 #define NEXT_ROUTE_RESPONSE_PACKET                                     10
 #define NEXT_CLIENT_TO_SERVER_PACKET                                   11
