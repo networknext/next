@@ -1545,7 +1545,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			CompanyCode:         companyCode,
 			ID:                  buyerID,
-			Live:                false,
+			Live:                true,
 			Analytics:           false,
 			Billing:             false,
 			Trial:               true,
@@ -1562,8 +1562,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
+		if buyer, err = s.Storage.Buyer(ctx, buyerID); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
+			core.Error("%v", err)
+			return err
+		}
+
+		if err := s.Storage.AddRouteShader(ctx, core.NewRouteShader(), buyerID); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new buyer's route shader")
 			core.Error("%v", err)
 			return err
 		}
@@ -2554,121 +2560,10 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		return &err
 	}
 
-	ctx := r.Context()
-
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
 
-	user := ctx.Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchNotifications(): %v", err.Error())
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchNotifications(): %v: Failed to parse user ID", err.Error())
-		return &err
-	}
-
-	customerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-		core.Error("FetchNotifications(): %v", err.Error())
-		return &err
-	}
-
-	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
-	if err != nil {
-		err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
-		core.Error("%v", err)
-		return err
-	}
-
-	if buyer.Trial && !buyer.Analytics && middleware.VerifyAnyRole(r, middleware.AdminRole) {
-		nonce, err := GenerateRandomString(16)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-			core.Error("FetchNotifications(): %v: Failed to generate nonce", err.Error())
-			return &err
-		}
-
-		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerClient.Secret, nonce, requestID))
-	}
-
-	return nil
-}
-
-type StartAnalyticsTrialArgs struct{}
-type StartAnalyticsTrialReply struct{}
-
-func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalyticsTrialArgs, reply *StartAnalyticsTrialReply) error {
-	if !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.AdminRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("StartAnalyticsTrial(): %v", err.Error())
-		return &err
-	}
-
-	ctx := r.Context()
-
-	user := ctx.Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("StartAnalyticsTrial(): %v", err.Error())
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	email, ok := claims["email"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("StartAnalyticsTrial(): %v: Failed to parse user ID", err.Error())
-		return &err
-	}
-
-	companyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-		core.Error("StartAnalyticsTrial(): %v", err.Error())
-		return &err
-	}
-
-	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
-	if err != nil {
-		err = fmt.Errorf("StartAnalyticsTrial() failed getting buyer with code: %v", err)
-		core.Error("%v", err)
-		return err
-	}
-
-	company, err := s.Storage.Customer(ctx, companyCode)
-	if err != nil {
-		err = fmt.Errorf("StartAnalyticsTrial() failed getting customer with code: %v", err)
-		core.Error("%v", err)
-		return err
-	}
-
-	// Buyer has a trial still and isn't currently signed up for analytics, remove trial and flip analytics
-	if buyer.Trial && !buyer.Analytics {
-		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Trial", false); err != nil {
-			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Trial bit: %v", err)
-			core.Error("%v", err)
-			return err
-		}
-		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Analytics", true); err != nil {
-			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Analytics bit: %v", err)
-			core.Error("%v", err)
-			return err
-		}
-
-		if err := s.SlackClient.SendInfo(fmt.Sprintf("%s signed from %s up for an analytics trial! :money_mouth_face:", email, company.Name)); err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-			core.Error("StartAnalyticsTrial(): %v: Email is required", err.Error())
-			return &err
-		}
-	}
+	// TODO: Add more notifications in the future
 
 	return nil
 }
