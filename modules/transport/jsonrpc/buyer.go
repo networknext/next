@@ -1568,7 +1568,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
-		if err := s.Storage.AddRouteShader(ctx, core.NewRouteShader(), buyerID); err != nil {
+		rs := core.NewRouteShader()
+		rs.AnalysisOnly = true
+
+		if err := s.Storage.AddRouteShader(ctx, rs, buyerID); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to add new buyer's route shader")
 			core.Error("%v", err)
 			return err
