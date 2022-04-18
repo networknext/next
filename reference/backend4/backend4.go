@@ -87,6 +87,7 @@ const NEXT_RELAY_INIT_RESPONSE_VERSION = 0
 const NEXT_RELAY_UPDATE_REQUEST_VERSION = 5
 const NEXT_RELAY_UPDATE_RESPONSE_VERSION = 0
 const NEXT_MAX_RELAY_ADDRESS_LENGTH = 256
+const NEXT_MAX_RELAY_VERSION_STRING_LENGTH = 32
 const NEXT_RELAY_TOKEN_BYTES = 32
 const NEXT_MAX_RELAYS = 1024
 
@@ -766,6 +767,21 @@ func HashNetworkNextPacket(packetData []byte) {
 
 // -----------------------------------------------------------
 
+func ReadBool(data []byte, index *int, value *bool) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+
+	if data[*index] > 0 {
+		*value = true
+	} else {
+		*value = false
+	}
+
+	*index += 1
+	return true
+}
+
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
 		return false
@@ -939,6 +955,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	var sessionCount uint64
+	if !ReadUint64(body, &index, &sessionCount) {
+		return
+	}
+
+	var shutdown bool
+	if !ReadBool(body, &index, &shutdown) {
+		return
+	}
+
+	var relayVersion string
+	if !ReadString(body, &index, &relayVersion, NEXT_MAX_RELAY_VERSION_STRING_LENGTH) {
+		return
+	}
+
 	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
 	relayEntry.id = GetRelayId(relay_address)
@@ -978,6 +1009,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		WriteUint64(responseData, &index, relaysToPing[i].id)
 		WriteString(responseData, &index, relaysToPing[i].address, NEXT_MAX_RELAY_ADDRESS_LENGTH)
 	}
+
+	WriteString(responseData, &index, relayVersion, NEXT_MAX_RELAY_VERSION_STRING_LENGTH)
 
 	responseLength := index
 
