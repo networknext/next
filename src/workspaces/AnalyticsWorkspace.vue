@@ -21,8 +21,7 @@
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 400px;">
-        <div class="mr-auto"></div>
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 justify-content-end" style="max-width: 400px;">
         <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
       </div>
     </div>

@@ -7,9 +7,6 @@
         </option>
       </select>
     </div>
-    <div class="col" v-if="$store.getters.isAdmin">
-      <button class="btn btn-secondary" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</button>
-    </div>
   </div>
 </template>
 
@@ -107,20 +104,6 @@ export default class BuyerFilter extends Vue {
     }
 
     this.$store.dispatch('updateCurrentFilter', newFilter)
-  }
-
-  private async toggleDemo (isDemo: boolean) {
-    if (!isDemo) {
-      await this.$apiService.fetchAllBuyers()
-        .then((response: any) => {
-          const allBuyers = response.buyers || []
-          this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        })
-
-      Vue.$cookies.remove('isDemo')
-    }
-
-    this.$store.dispatch('toggleIsDemo', isDemo)
   }
 }
 
