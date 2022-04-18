@@ -1164,13 +1164,15 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
 	}
 
+	WriteString(responseData, &index, relayVersion, uint32(32))
+
 	WriteBytes(responseData, &index, magicUpcoming[:], 8)
 
 	WriteBytes(responseData, &index, magicCurrent[:], 8)
 
 	WriteBytes(responseData, &index, magicPrevious[:], 8)
 
-	WriteUint32(responseData, &index, 0);
+	WriteUint32(responseData, &index, 0)
 
 	responseLength := index
 
