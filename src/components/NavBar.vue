@@ -110,6 +110,11 @@
           >Analytics</router-link>
         </li>
       </ul>
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item text-nowrap">
+          <a style="cursor: pointer; color: white;" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</a>
+        </li>
+      </ul>
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
           <font-awesome-icon
@@ -327,6 +332,20 @@ export default class NavBar extends Vue {
 
   private openNotificationsModal () {
     this.$root.$emit('showNotificationsModal')
+  }
+
+  private async toggleDemo (isDemo: boolean) {
+    if (!isDemo) {
+      await this.$apiService.fetchAllBuyers()
+        .then((response: any) => {
+          const allBuyers = response.buyers || []
+          this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+        })
+
+      Vue.$cookies.remove('isDemo')
+    }
+
+    this.$store.dispatch('toggleIsDemo', isDemo)
   }
 }
 </script>
