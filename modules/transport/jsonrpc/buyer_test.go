@@ -1471,7 +1471,8 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local-local", newBuyer.CompanyCode)
-		assert.False(t, newBuyer.Live)
+		assert.True(t, newBuyer.Live)
+		assert.True(t, newBuyer.RouteShader.AnalysisOnly)
 		assert.Equal(t, "12939405032490452521", fmt.Sprintf("%d", newBuyer.ID))
 		assert.Equal(t, "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==", reply.GameConfiguration.PublicKey)
 	})
