@@ -47,7 +47,6 @@ type RelayFleetService struct {
 	ServerBackendMIG   string
 	Storage            storage.Storer
 	Env                string
-	MondayApiKey       string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -572,7 +571,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	reply.ServiceNameList = ServiceStatusList
-	reply.MondayApiKey = rfs.MondayApiKey
 
 	return nil
 }

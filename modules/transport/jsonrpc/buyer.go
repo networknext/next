@@ -1543,13 +1543,16 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			CompanyCode: companyCode,
-			ID:          buyerID,
-			Live:        false,
-			Analytics:   false,
-			Billing:     false,
-			Trial:       true,
-			PublicKey:   byteKey[8:],
+			CompanyCode:         companyCode,
+			ID:                  buyerID,
+			Live:                false,
+			Analytics:           false,
+			Billing:             false,
+			Trial:               true,
+			PublicKey:           byteKey[8:],
+			LookerSeats:         1,
+			ExoticLocationFee:   300,
+			StandardLocationFee: 300,
 		})
 
 		if err != nil {
@@ -2676,6 +2679,8 @@ type FetchAnalyticsDashboardsArgs struct {
 
 type FetchAnalyticsDashboardsReply struct {
 	Dashboards map[string][]string `json:"dashboards"`
+	MainTabs   []string            `json:"tabs"`
+	SubTabs    map[string][]string `json:"sub_tabs"`
 }
 
 func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
@@ -2694,7 +2699,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2702,7 +2707,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		core.Error("FetchAnalyticsDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -2740,28 +2745,102 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 		return &err
 	}
 
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	subCategories := make(map[string][]looker.AnalyticsDashboardCategory, 0)
+
 	// TODO: This functionality should be broken out into storage calls - FreeDashboardsByCustomerCode, PremiumDashboardsByCustomerCode, etc
 	// Loop through all dashboards and pull out the dashboards specific to the customer that they have permission to see (premium vs free)
 	for _, dashboard := range dashboards {
-		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
-			_, ok := reply.Dashboards[dashboard.Category.Label]
-			if !ok {
-				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
-			}
-
+		if dashboard.CustomerCode == customerCode && !dashboard.Admin && (!dashboard.Premium || (buyer.Analytics && dashboard.Premium)) {
 			dashCustomerCode := customerCode
 
 			// Hacky work around for local
-			if isAdmin && (s.Env == "local") {
-				dashCustomerCode = "esl"
+			if s.Env == "local" {
+				dashCustomerCode = "twenty-four-entertainment"
 			}
 
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-			if err != nil {
-				continue
+			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
+			if dashboard.Category.ParentCategoryID < 0 {
+				parentSubCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
+				if len(parentSubCategories) > 0 {
+					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
+					continue
+				}
+
+				_, ok := reply.Dashboards[dashboard.Category.Label]
+				if !ok {
+					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+					categories = append(categories, dashboard.Category)
+				}
+
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+			} else {
+				// Find the parent category information
+				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+					continue
+				}
+
+				categoryLabel := fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
+
+				if _, ok := subCategories[parentCategory.Label]; !ok {
+					subCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
+					categories = append(categories, parentCategory)
+				}
+
+				subCategories[parentCategory.Label] = append(subCategories[parentCategory.Label], dashboard.Category)
+
+				// Setup the usual system for the parent category
+				if _, ok := reply.Dashboards[categoryLabel]; !ok {
+					reply.Dashboards[categoryLabel] = make([]string, 0)
+				}
+
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					continue
+				}
+
+				reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], url)
+			}
+		}
+	}
+
+	reply.MainTabs = make([]string, 0)
+	reply.SubTabs = make(map[string][]string)
+
+	sort.Slice(categories, func(i int, j int) bool {
+		return categories[i].Order > categories[j].Order
+	})
+
+	for _, category := range categories {
+		reply.MainTabs = append(reply.MainTabs, category.Label)
+
+		// If this category has sub categories, sort them and then add them back to the map
+		if subTabs, ok := subCategories[category.Label]; ok {
+			sort.Slice(subTabs, func(i int, j int) bool {
+				return subTabs[i].Order > subTabs[j].Order
+			})
+
+			if _, ok := reply.SubTabs[category.Label]; !ok {
+				reply.SubTabs[category.Label] = make([]string, 0)
 			}
 
-			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+			for _, subTab := range subTabs {
+				reply.SubTabs[category.Label] = append(reply.SubTabs[category.Label], subTab.Label)
+			}
 		}
 	}
 
@@ -2819,7 +2898,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 
 		// Hacky work around for local
 		if s.Env == "local" {
-			customerCode = "esl"
+			customerCode = "twenty-four-entertainment"
 		}
 	}
 
@@ -2832,97 +2911,6 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 	}
 
 	reply.URL = usageDashURL
-	return nil
-}
-
-type FetchDiscoveryDashboardsArgs struct {
-	CustomerCode string `json:"customer_code"`
-}
-
-type FetchDiscoveryDashboardsReply struct {
-	URLs []string `json:"urls"`
-}
-
-func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDiscoveryDashboardsArgs, reply *FetchDiscoveryDashboardsReply) error {
-	ctx := r.Context()
-	reply.URLs = make([]string, 0)
-
-	// Must have Explorer role to hit this endpoint
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.ExplorerRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-		return &err
-	}
-
-	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
-
-	user := ctx.Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
-		return &err
-	}
-
-	customerCode := ""
-	if !isAdmin {
-		ok := false
-		customerCode, ok = ctx.Value(middleware.Keys.CustomerKey).(string)
-		if !ok || customerCode == "" {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-
-		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
-		if err != nil {
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			return &err
-		}
-
-		if !buyer.Analytics {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-	} else {
-		// Admin's will be able to see any company's discovery dashboards
-		customerCode = args.CustomerCode
-	}
-
-	dashboards, err := s.Storage.GetDiscoveryAnalyticsDashboards(ctx)
-	if err != nil {
-		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	// TODO: This should be broken out into individual storage calls - DiscoveryDashboardsByCustomerCode, etc
-	for _, dashboard := range dashboards {
-		if dashboard.CustomerCode == customerCode {
-			dashCustomerCode := customerCode
-
-			// Hacky work around for local
-			if isAdmin && (s.Env == "local") {
-				dashCustomerCode = "esl"
-			}
-
-			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-			if err != nil {
-				core.Error("FetchDiscoveryDashboards(): Failed to generate Looker URL %v", err.Error())
-				continue
-			}
-			reply.URLs = append(reply.URLs, lookerURL)
-		}
-	}
 	return nil
 }
 
@@ -2996,45 +2984,21 @@ type FetchCurrentSavesReply struct {
 }
 
 func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSavesArgs, reply *FetchCurrentSavesReply) error {
-	ctx := r.Context()
 	reply.Saves = make([]SavedSession, 0)
 
+	ctx := r.Context()
+	customerCode := args.CustomerCode
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
-	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.ExplorerRole) {
+
+	requestCustomer, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
+	if ((customerCode != requestCustomer) || (!ok && customerCode != "")) && !isAdmin {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchCurrentSaves(): %v", err.Error())
 		return &err
 	}
 
-	customerCode := ""
-	if !isAdmin {
-		ok := false
-		customerCode, ok = ctx.Value(middleware.Keys.CustomerKey).(string)
-		if !ok || customerCode == "" {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-
-		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
-		if err != nil {
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			return &err
-		}
-
-		if !buyer.Analytics {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-	} else {
-		// Admin's will be able to see any company's discovery dashboards
-		customerCode = args.CustomerCode
-
-		if s.Env == "local" {
-			customerCode = "esl"
-		}
+	if (s.Env == "local" || s.Env == "dev") && isAdmin {
+		customerCode = "twenty-four-entertainment"
 	}
 
 	saves, err := s.LookerClient.RunSavesQuery(customerCode)
@@ -3085,7 +3049,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		customerCode = args.CustomerCode
 
 		if s.Env == "local" {
-			customerCode = "esl"
+			customerCode = "twenty-four-entertainment"
 		}
 	} else {
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
@@ -3118,8 +3082,8 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		ExternalUserId:  fmt.Sprintf("\"%s\"", "Embed User"),
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                                                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,

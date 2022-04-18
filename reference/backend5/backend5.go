@@ -1126,6 +1126,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	WriteBytes(responseData, &index, magicPrevious[:], 8)
 
+	WriteUint32(responseData, &index, 0)
+
 	responseLength := index
 
 	responseData = responseData[:responseLength]

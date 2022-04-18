@@ -6042,6 +6042,26 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_read_bytes( &q, upcoming_magic, 8 );
         relay_read_bytes( &q, current_magic, 8 );
         relay_read_bytes( &q, previous_magic, 8 );
+
+        uint32_t num_internal_ips = relay_read_uint32( &q );
+
+        for ( uint32_t i = 0; i < num_internal_ips; ++i )
+        {
+            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_t internal_ip_address;
+            relay_read_string( &q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH );
+            if ( relay_address_parse( &internal_ip_address, address_string ) != RELAY_OK )
+            {
+                error = true;
+                break;
+            }
+        }
+
+        if ( error )
+        {
+            // relay_printf( "\nerror: error while reading set of relay internal ips in update response\n\n" );
+            return RELAY_ERROR;
+        }
     }
 
     relay_platform_mutex_acquire( relay->mutex );

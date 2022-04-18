@@ -2188,6 +2188,7 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 	return true
 }
 
+// TODO: Get this working for IPv6
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 
 	// this works only for IPv4
@@ -2196,28 +2197,28 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16)
 	return addressData, addressPort
 
 	/*
-	   next_assert( address );
-	   if ( address->type == NEXT_ADDRESS_IPV4 )
-	   {
-	       address_data[0] = address->data.ipv4[0];
-	       address_data[1] = address->data.ipv4[1];
-	       address_data[2] = address->data.ipv4[2];
-	       address_data[3] = address->data.ipv4[3];
-	       *address_bytes = 4;
-	   }
-	   else if ( address->type == NEXT_ADDRESS_IPV6 )
-	   {
-	       for ( int i = 0; i < 8; ++i )
-	       {
-	           address_data[i*2]   = address->data.ipv6[i] >> 8;
-	           address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
-	       }
-	       *address_bytes = 16;
-	   }
-	   else
-	   {
-	       *address_bytes = 0;
-	   }
-	   *address_port = address->port;
+		next_assert( address );
+		if ( address->type == NEXT_ADDRESS_IPV4 )
+		{
+		   address_data[0] = address->data.ipv4[0];
+		   address_data[1] = address->data.ipv4[1];
+		   address_data[2] = address->data.ipv4[2];
+		   address_data[3] = address->data.ipv4[3];
+		   *address_bytes = 4;
+		}
+		else if ( address->type == NEXT_ADDRESS_IPV6 )
+		{
+		   for ( int i = 0; i < 8; ++i )
+		   {
+		       address_data[i*2]   = address->data.ipv6[i] >> 8;
+		       address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+		   }
+		   *address_bytes = 16;
+		}
+		else
+		{
+		   *address_bytes = 0;
+		}
+		*address_port = address->port;
 	*/
 }

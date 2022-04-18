@@ -291,21 +291,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create auth service
-	authservice := &jsonrpc.AuthService{
-		AuthenticationClient: authenticationClient,
-		HubSpotClient:        hubspotClient,
-		MailChimpManager: notifications.MailChimpHandler{
-			HTTPHandler: *http.DefaultClient,
-			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
-		},
-		JobManager:  jobManager,
-		RoleManager: roleManager,
-		UserManager: userManager,
-		SlackClient: slackClient,
-		Storage:     db,
-	}
-
 	configService := jsonrpc.ConfigService{
 		Storage: db,
 	}
@@ -341,6 +326,7 @@ func mainReturnWithCode() int {
 	}
 
 	opsService := jsonrpc.OpsService{
+		Env:                  env,
 		Release:              tag,
 		BuildTime:            buildtime,
 		Storage:              db,
@@ -364,6 +350,22 @@ func mainReturnWithCode() int {
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
 		LookerClient:           lookerClient,
+	}
+
+	// Create auth service
+	authservice := &jsonrpc.AuthService{
+		AuthenticationClient: authenticationClient,
+		HubSpotClient:        hubspotClient,
+		MailChimpManager: notifications.MailChimpHandler{
+			HTTPHandler: *http.DefaultClient,
+			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+		},
+		JobManager:   jobManager,
+		RoleManager:  roleManager,
+		UserManager:  userManager,
+		SlackClient:  slackClient,
+		Storage:      db,
+		LookerClient: lookerClient,
 	}
 
 	// Setup error channel with wait group to exit from goroutines
@@ -496,6 +498,35 @@ func mainReturnWithCode() int {
 			}
 		}
 	}()
+
+	runExplorerRoleCleanUp, err := envvar.GetBool("EXPLORER_ROLE_CLEAN_UP", false)
+	if err != nil {
+		core.Error("failed to parse EXPLORER_ROLE_CLEAN_UP: %v", err)
+		return 1
+	}
+
+	if runExplorerRoleCleanUp {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+				core.Error("could not clean up explorer roles: %v", err)
+			}
+
+			ticker := time.NewTicker(time.Hour * 24)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+						core.Error("could not clean up explorer roles: %v", err)
+					}
+				}
+			}
+		}()
+	}
 
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
@@ -668,12 +699,6 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		mondayApiKey := envvar.Get("MONDAY_API_KEY", "")
-		if mondayApiKey == "" {
-			core.Error("MONDAY_API_KEY not set")
-			// Don't return here because Monday is not used locally
-		}
-
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			AnalyticsMIG:       analyticsMIG,
 			AnalyticsPusherURI: analyticsPusherURI,
@@ -688,7 +713,6 @@ func mainReturnWithCode() int {
 			ServerBackendMIG:   serverBackendMIG,
 			Storage:            db,
 			Env:                env,
-			MondayApiKey:       mondayApiKey,
 		}, "")
 
 		s.RegisterService(&jsonrpc.LiveServerService{}, "")
