@@ -19717,8 +19717,10 @@ void next_test()
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_passthrough_packets );
-        RUN_TEST( test_wake_up );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+#if (NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_XBOX_SERIES_X) || (NEXT_PLATFORM != NEXT_PLATFORM_GDK)
+        RUN_TEST( test_wake_up );
+#endif // #if (NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_XBOX_SERIES_X) || (NEXT_PLATFORM != NEXT_PLATFORM_GDK)
     }
 }
 
