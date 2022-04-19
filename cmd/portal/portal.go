@@ -1,14 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/exec"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -30,6 +35,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -528,6 +534,39 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	// Get absolute path of database.bin
+	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
+
+	overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*10)
+	if err != nil {
+		core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
+		return 1
+	}
+
+	if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+		core.Error("failed to generate overlay.bin: %v", err)
+		return 1
+	}
+
+	// Setup goroutine to build/upload the latest overlay file
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(overlaySyncInterval)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+					core.Error("failed to generate overlay.bin: %v", err)
+				}
+			}
+		}
+	}()
+
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
 	var statusMutex sync.RWMutex
@@ -791,4 +830,93 @@ func mainReturnWithCode() int {
 		ctxCancelFunc()
 		return 1
 	}
+}
+
+func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, overlayFilePath string) error {
+	bucketName := "gs://"
+	switch env {
+	case "dev":
+		bucketName += jsonrpc.DevDatabaseBinGCPBucketName
+	case "staging":
+		bucketName += jsonrpc.StagingDatabaseBinGCPBucketName
+	case "prod":
+		bucketName += jsonrpc.ProdDatabaseBinGCPBucketName
+	case "local":
+		bucketName += jsonrpc.LocalDatabaseBinGCPBucketName
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/overlay.bin"
+
+	// Get information about the last overlay.bin upload
+	gsutilStatCommand := exec.Command("gsutil", "stat", bucketName)
+
+	response, err := gsutilStatCommand.CombinedOutput()
+	stringResponse := string(response)
+
+	retentionExpirationString := ""
+
+	// Loop through the response looking for retention policy
+	tokens := strings.Split(stringResponse, "\n")
+	for _, token := range tokens {
+		isRetention := strings.Contains(token, "Retention Expiration:")
+		if isRetention {
+			// Separate the description with the actually timestamp of the retention expiration
+			reg := regexp.MustCompile("[^(Retention Expiration:\\s+)].*")
+			retentionExpirationString = reg.FindStringSubmatch(token)[0]
+		}
+	}
+
+	// Convert the retention expiration timestamp string to time.Time
+	timestamp, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", retentionExpirationString)
+	if err != nil {
+		return err
+	}
+
+	// Check if now is past the expiration timestamp
+	if time.Now().UTC().Sub(timestamp.UTC()) < time.Minute {
+		return fmt.Errorf("generateOverlayBinFile(): Failed to upload overlay.bin. Blocked by retention policy")
+	}
+
+	newOverlay := routing.CreateEmptyOverlayBinWrapper()
+	buyers := db.Buyers(ctx)
+
+	for _, buyer := range buyers {
+		_, ok := newOverlay.BuyerMap[buyer.ID]
+		if !ok {
+			newOverlay.BuyerMap[buyer.ID] = buyer
+		}
+	}
+
+	newOverlay.CreationTime = time.Now().UTC()
+
+	// Save new overlay to disk
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(newOverlay)
+
+	tempFile, err := ioutil.TempFile("", overlayFilePath)
+	if err != nil {
+		err := fmt.Errorf("error writing overlay.bin to temporary file: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.Write(buffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("error writing overlay.bin to filesystem: %v", err)
+		core.Error("%v", err)
+	}
+
+	// Upload to GCP for relay pusher to send over to relay backends
+	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+
+	err = gsutilCpCommand.Run()
+	if err != nil {
+		err := fmt.Errorf("error copying overlay.bin to %s: %v", bucketName, err)
+		core.Error("%v", err)
+	}
+
+	return nil
 }
