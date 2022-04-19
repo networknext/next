@@ -22,7 +22,7 @@
         <Alert ref="verifyAlert"></Alert>
       </div>
       <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 justify-content-end" style="max-width: 400px;">
-        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="true"/>
       </div>
     </div>
     <Analytics />
