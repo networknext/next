@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -832,6 +833,51 @@ func mainReturnWithCode() int {
 }
 
 func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, overlayFilePath string) error {
+	bucketName := "gs://"
+	switch env {
+	case "dev":
+		bucketName += jsonrpc.DevDatabaseBinGCPBucketName
+	case "staging":
+		bucketName += jsonrpc.StagingDatabaseBinGCPBucketName
+	case "prod":
+		bucketName += jsonrpc.ProdDatabaseBinGCPBucketName
+	case "local":
+		bucketName += jsonrpc.LocalDatabaseBinGCPBucketName
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/overlay.bin"
+
+	// Get information about the last overlay.bin upload
+	gsutilStatCommand := exec.Command("gsutil", "stat", bucketName)
+
+	response, err := gsutilStatCommand.CombinedOutput()
+	stringResponse := string(response)
+
+	retentionExpirationString := ""
+
+	// Loop through the response looking for retention policy
+	tokens := strings.Split(stringResponse, "\n")
+	for _, token := range tokens {
+		isRetention := strings.Contains(token, "Retention Expiration:")
+		if isRetention {
+			// Separate the description with the actually timestamp of the retention expiration
+			reg := regexp.MustCompile("[^(Retention Expiration:\\s+)].*")
+			retentionExpirationString = reg.FindStringSubmatch(token)[0]
+		}
+	}
+
+	// Convert the retention expiration timestamp string to time.Time
+	timestamp, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", retentionExpirationString)
+	if err != nil {
+		return err
+	}
+
+	// Check if now is past the expiration timestamp
+	if time.Now().UTC().Sub(timestamp.UTC()) < time.Minute {
+		return fmt.Errorf("generateOverlayBinFile(): Failed to upload overlay.bin. Blocked by retention policy")
+	}
+
 	newOverlay := routing.CreateEmptyOverlayBinWrapper()
 	buyers := db.Buyers(ctx)
 
@@ -864,21 +910,6 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	}
 
 	// Upload to GCP for relay pusher to send over to relay backends
-
-	bucketName := "gs://"
-	switch env {
-	case "dev":
-		bucketName += jsonrpc.DevDatabaseBinGCPBucketName
-	case "staging":
-		bucketName += jsonrpc.StagingDatabaseBinGCPBucketName
-	case "prod":
-		bucketName += jsonrpc.ProdDatabaseBinGCPBucketName
-	case "local":
-		bucketName += jsonrpc.LocalDatabaseBinGCPBucketName
-	}
-
-	// enforce target file name, copy in /tmp has random numbers appended
-	bucketName += "/overlay.bin"
 	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
 
 	err = gsutilCpCommand.Run()
