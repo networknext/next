@@ -898,7 +898,6 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	tempFile, err := ioutil.TempFile("", overlayFilePath)
 	if err != nil {
 		err := fmt.Errorf("error writing overlay.bin to temporary file: %v", err)
-		core.Error("%v", err)
 		return err
 	}
 	defer os.Remove(tempFile.Name())
@@ -906,7 +905,6 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	_, err = tempFile.Write(buffer.Bytes())
 	if err != nil {
 		err := fmt.Errorf("error writing overlay.bin to filesystem: %v", err)
-		core.Error("%v", err)
 		return err
 	}
 
@@ -916,7 +914,6 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	err = gsutilCpCommand.Run()
 	if err != nil {
 		err := fmt.Errorf("error copying overlay.bin to %s: %v", bucketName, err)
-		core.Error("%v", err)
 		return err
 	}
 

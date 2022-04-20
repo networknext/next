@@ -277,7 +277,7 @@ func mainReturnWithCode() int {
 			core.Error("%s does not exist: %v", overlayAbsPath, err)
 		}
 
-		databaseSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
 		if err != nil {
 			core.Error("failed to parse BIN_SYNC_INTERVAL: %v", err)
 			return 1
@@ -288,7 +288,7 @@ func mainReturnWithCode() int {
 		go func() {
 			defer wg.Done()
 
-			ticker := time.NewTicker(databaseSyncInterval)
+			ticker := time.NewTicker(binSyncInterval)
 
 			core.Debug("started watchman on %s", databaseDirectoryPath)
 			for {
