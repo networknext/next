@@ -534,7 +534,7 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Get absolute path of database.bin
+	// Get absolute path of overlay.bin
 	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
 
 	overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*10)
@@ -907,6 +907,7 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	if err != nil {
 		err := fmt.Errorf("error writing overlay.bin to filesystem: %v", err)
 		core.Error("%v", err)
+		return err
 	}
 
 	// Upload to GCP for relay pusher to send over to relay backends
@@ -916,6 +917,7 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	if err != nil {
 		err := fmt.Errorf("error copying overlay.bin to %s: %v", bucketName, err)
 		core.Error("%v", err)
+		return err
 	}
 
 	return nil

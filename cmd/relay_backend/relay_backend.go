@@ -92,14 +92,13 @@ func init() {
 	overlayFilePath := envvar.Get("OVERLAY_PATH", "./overlay.bin")
 	overlayFile, err := os.Open(overlayFilePath)
 	if err != nil {
-		// fmt.Printf("could not load relay binary: %s\n", filePath)
+		fmt.Printf("could not load overlay binary: %s\n", overlayFilePath)
 		return
 	}
 	defer overlayFile.Close()
 
 	if err = backend.DecodeOverlayWrapper(overlayFile, overlay_internal); err != nil {
 		core.Error("failed to read overlay: %v", err)
-		os.Exit(1)
 	}
 }
 
@@ -276,7 +275,6 @@ func mainReturnWithCode() int {
 		// Check if file exists
 		if _, err := os.Stat(overlayAbsPath); err != nil {
 			core.Error("%s does not exist: %v", overlayAbsPath, err)
-			return 1
 		}
 
 		databaseSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
@@ -332,45 +330,40 @@ func mainReturnWithCode() int {
 						continue
 					}
 
+					overlayNew := routing.CreateEmptyOverlayBinWrapper()
+
 					// File has changed
 					overlayFile, err := os.Open(overlayAbsPath)
 					if err != nil {
 						core.Error("could not load overlay binary at %s: %v", overlayAbsPath, err)
-						continue
-					}
+					} else {
+						if err = backend.DecodeOverlayWrapper(overlayFile, overlayNew); err == io.EOF {
+							// Sometimes we receive an EOF error since the file is still being replaced
+							// so early out here and proceed on the next notification
+							core.Debug("DecodeOverlayWrapper() EOF error, will wait for next notification")
+						} else if err != nil {
+							core.Error("DecodeOverlayWrapper() error: %v", err)
+						}
 
-					overlayNew := routing.CreateEmptyOverlayBinWrapper()
-
-					if err = backend.DecodeOverlayWrapper(overlayFile, overlayNew); err == io.EOF {
-						// Sometimes we receive an EOF error since the file is still being replaced
-						// so early out here and proceed on the next notification
+						// Close the file since it is no longer needed
 						overlayFile.Close()
-						core.Debug("DecodeOverlayWrapper() EOF error, will wait for next notification")
-						continue
-					} else if err != nil {
-						overlayFile.Close()
-						core.Error("DecodeOverlayWrapper() error: %v", err)
-						continue
 					}
-
-					// Close the file since it is no longer needed
-					overlayFile.Close()
 
 					// Only update the internal overlay cache if it is new and not empty
 					if !overlayNew.IsEmpty() && overlayNew.CreationTime != overlay_internal.CreationTime {
 						overlayMutex.Lock()
 						overlay_internal = overlayNew
 						overlayMutex.Unlock()
-					}
 
-					for _, buyer := range overlay_internal.BuyerMap {
-						binBuyer, ok := databaseNew.BuyerMap[buyer.ID]
-						// If the buyer does not exist in database.bin or does and is still under trial, use the overlay
-						if !ok || (ok && binBuyer.Trial) {
-							databaseNew.BuyerMap[buyer.ID] = buyer
+						for _, buyer := range overlay_internal.BuyerMap {
+							binBuyer, ok := databaseNew.BuyerMap[buyer.ID]
+							// If the buyer does not exist in database.bin or does and is still under trial, use the overlay
+							if !ok || (ok && binBuyer.Trial) {
+								databaseNew.BuyerMap[buyer.ID] = buyer
+							}
+
+							// TODO: Support other buyer driven settings changes here
 						}
-
-						// TODO: Support other buyer driven settings changes here
 					}
 
 					// Get the new relay array
