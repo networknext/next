@@ -71,7 +71,7 @@ func init() {
 	databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
 	databaseFile, err := os.Open(databaseFilePath)
 	if err != nil {
-		// fmt.Printf("could not load relay binary: %s\n", filePath)
+		fmt.Printf("could not load database binary: %s\n", databaseFilePath)
 		return
 	}
 	defer databaseFile.Close()
@@ -371,7 +371,7 @@ func mainReturnWithCode() int {
 					// Proceed to fill up the new relay hash
 					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew)
 
-					// Pointer swap the relay bin wrapper
+					// Pointer swap the database bin wrapper
 					databaseMutex.Lock()
 					database_internal = databaseNew
 					binCreator = database_internal.Creator
