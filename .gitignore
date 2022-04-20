@@ -19,6 +19,7 @@ relay.env
 cost.bin
 optimize.bin
 database.bin*
+overlay.bin*
 servers*.json
 parsed*.json
 parsed*.csv

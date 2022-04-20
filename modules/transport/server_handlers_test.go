@@ -410,7 +410,7 @@ func TestServerInitHandlerFunc_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	env.AddBuyer("local", false)
+	env.AddBuyer("local", false, false)
 
 	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
@@ -448,7 +448,7 @@ func TestServerInitHandlerFunc_BuyerNotLive(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", false)
+	buyerID, _, privateKey := env.AddBuyer("local", false, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -478,7 +478,7 @@ func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -508,7 +508,7 @@ func TestServerInitHandlerFunc_SDKTooOld(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -538,7 +538,7 @@ func TestServerInitHandlerFunc_Success_DatacenterNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -568,7 +568,7 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
@@ -596,7 +596,7 @@ func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithoutName(t *t
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -634,7 +634,7 @@ func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithName(t *test
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
@@ -674,7 +674,7 @@ func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	env.AddBuyer("local", false)
+	env.AddBuyer("local", false, false)
 
 	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
@@ -709,7 +709,7 @@ func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", false)
+	buyerID, _, privateKey := env.AddBuyer("local", false, false)
 
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
@@ -736,7 +736,7 @@ func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
@@ -763,7 +763,7 @@ func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
@@ -790,7 +790,7 @@ func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
@@ -817,7 +817,7 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
@@ -842,7 +842,7 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterNotFound(t *testing.T) 
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
@@ -877,7 +877,7 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
@@ -933,7 +933,7 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	env.AddBuyer("local", false)
+	env.AddBuyer("local", false, false)
 
 	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
@@ -962,7 +962,7 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotLive(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, _ := env.AddBuyer("local", false)
+	buyerID, _, _ := env.AddBuyer("local", false, false)
 
 	state := transport.SessionHandlerState{}
 
@@ -984,7 +984,7 @@ func TestSessionUpdateHandlerFunc_Pre_SigCheckFail(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	state := transport.SessionHandlerState{}
 
@@ -1009,7 +1009,7 @@ func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	state := transport.SessionHandlerState{}
 
@@ -1035,7 +1035,7 @@ func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	state := transport.SessionHandlerState{}
 
@@ -1063,7 +1063,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	state := transport.SessionHandlerState{}
 
@@ -1093,11 +1093,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound_AnalysisOnly(t *testing
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
-
-	rs := core.NewRouteShader()
-	rs.AnalysisOnly = true
-	env.UpdateRouteShader(buyerID, rs)
+	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 
 	state := transport.SessionHandlerState{}
 
@@ -1129,7 +1125,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	state := transport.SessionHandlerState{}
@@ -1160,12 +1156,8 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled_AnalysisOnly(t *testi
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
-
-	rs := core.NewRouteShader()
-	rs.AnalysisOnly = true
-	env.UpdateRouteShader(buyerID, rs)
 
 	state := transport.SessionHandlerState{}
 
@@ -1197,7 +1189,7 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
 
@@ -1229,13 +1221,9 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter_AnalysisOnly(t *testi
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
 	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
-
-	rs := core.NewRouteShader()
-	rs.AnalysisOnly = true
-	env.UpdateRouteShader(buyerID, rs)
 
 	state := transport.SessionHandlerState{}
 
@@ -1266,7 +1254,7 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
@@ -1304,7 +1292,7 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
@@ -1336,14 +1324,10 @@ func TestSessionUpdateHandlerFunc_Pre_Success_AnalysisOnly(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
 	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
-
-	rs := core.NewRouteShader()
-	rs.AnalysisOnly = true
-	env.UpdateRouteShader(buyerID, rs)
 
 	state := transport.SessionHandlerState{}
 
@@ -2309,7 +2293,7 @@ func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	env.AddBuyer("local", false)
+	env.AddBuyer("local", false, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
@@ -2366,7 +2350,7 @@ func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
@@ -2415,7 +2399,7 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("losangeles")
 	env.AddRelay("los.angeles.1", "10.0.0.2", datacenter.ID)
 	env.AddRelay("los.angeles.2", "10.0.0.3", datacenter.ID)
@@ -2476,7 +2460,7 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
 	datacenterLA := env.AddDatacenter("losangeles")
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
 	datacenterChicago := env.AddDatacenter("chicago")
@@ -2576,7 +2560,7 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
 	datacenterLA := env.AddDatacenter("losangeles")
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
 	datacenterChicago := env.AddDatacenter("chicago")
@@ -2823,7 +2807,7 @@ func TestMatchDataHandlerFunc_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	env.AddBuyer("local", false)
+	env.AddBuyer("local", false, false)
 
 	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
@@ -2871,7 +2855,7 @@ func TestMatchDataHandlerFunc_BuyerNotLive(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", false)
+	buyerID, _, privateKey := env.AddBuyer("local", false, false)
 
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 	assert.NoError(t, err)
@@ -2912,7 +2896,7 @@ func TestMatchDataHandlerFunc_SigCheckFail(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 	assert.NoError(t, err)
@@ -2953,7 +2937,7 @@ func TestMatchDataHandlerFunc_Success(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
-	buyerID, _, privateKey := env.AddBuyer("local", true)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
 	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
 	assert.NoError(t, err)
