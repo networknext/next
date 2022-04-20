@@ -8,6 +8,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -34,10 +35,11 @@ type MagicInstanceMetadata struct {
 }
 
 type MagicService struct {
-	instanceMetadataTimeout      time.Duration
-	instanceID                   string
-	initAt                       time.Time
-	redisPool                    *redis.Pool
+	instanceMetadataTimeout time.Duration
+	instanceID              string
+	initAt                  time.Time
+	redisPool               *redis.Pool
+	magicMetrics            *metrics.MagicMetrics
 }
 
 func NewMagicService(instanceMetadataTimeout time.Duration,
@@ -47,19 +49,21 @@ func NewMagicService(instanceMetadataTimeout time.Duration,
 	redisPassword string,
 	maxIdleConnections int,
 	maxActiveConnections int,
+	magicMetrics *metrics.MagicMetrics,
 ) (*MagicService, error) {
 
 	// Setup redis pool
 	pool := storage.NewRedisPool(redisHostname, redisPassword, maxIdleConnections, maxActiveConnections)
 	if err := storage.ValidateRedisPool(pool); err != nil {
-		return &MagicService{}, fmt.Errorf("failed to validate redis pool: %w", err)
+		return nil, fmt.Errorf("failed to validate redis pool: %w", err)
 	}
 
 	ms := &MagicService{
-		instanceMetadataTimeout:      instanceMetadataTimeout,
-		instanceID:                   instanceID,
-		initAt:                       initAt,
-		redisPool:                    pool,
+		instanceMetadataTimeout: instanceMetadataTimeout,
+		instanceID:              instanceID,
+		initAt:                  initAt,
+		redisPool:               pool,
+		magicMetrics:            magicMetrics,
 	}
 
 	return ms, nil
@@ -82,6 +86,7 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 		// No keys in redis including this instance's, return false out of safety
 		return false, nil
 	} else if err != nil {
+		ms.magicMetrics.ErrorMetrics.ReadFromRedisFailure.Add(1)
 		return false, fmt.Errorf("IsOldestInstance(): failed to get magic instance metadatas: %w", err)
 	}
 
@@ -92,12 +97,14 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 			// Key does not exist
 			continue
 		} else if err != nil {
+			ms.magicMetrics.ErrorMetrics.ReadFromRedisFailure.Add(1)
 			return false, fmt.Errorf("IsOldestInstance(): failed to retrieve key %s from redis: %w", key, err)
 		}
 
 		// Unmarshal the metadata binary
 		var metadata *MagicInstanceMetadata
 		if err = json.Unmarshal(metadataBin, metadata); err != nil {
+			ms.magicMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return false, fmt.Errorf("IsOldestInstance(): failed to unmarshal magic metadata for key %s: %w", key, err)
 		}
 
@@ -139,6 +146,8 @@ func (ms *MagicService) InsertInstanceMetadata() error {
 
 	metadataBin, err := json.Marshal(metadata)
 	if err != nil {
+		ms.magicMetrics.ErrorMetrics.MarshalFailure.Add(1)
+		ms.magicMetrics.ErrorMetrics.InsertInstanceMetadataFailure.Add(1)
 		return fmt.Errorf("InsertInstanceMetadata(): failed to marshal magic metadata: %w", err)
 	}
 
@@ -150,9 +159,11 @@ func (ms *MagicService) InsertInstanceMetadata() error {
 
 	reply, err := conn.Do("SET", key, metadataBin, "PX", ms.instanceMetadataTimeout.Milliseconds())
 	if reply != "OK" {
+		ms.magicMetrics.ErrorMetrics.InsertInstanceMetadataFailure.Add(1)
 		return fmt.Errorf("InsertInstanceMetadata(): reply is not OK, instead got %s: %w", reply, err)
 	}
 
+	ms.magicMetrics.InsertInstanceMetadataSuccess.Add(1)
 	return nil
 }
 
@@ -176,21 +187,26 @@ func (ms *MagicService) UpdateMagicValues() error {
 
 	existingCurrentMagic, err := ms.GetMagicValue(MagicCurrentKey)
 	if err != nil {
+		ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 		return err
 	}
 
 	// If the existing upcoming and current values are empty, insert new values for everything
 	if existingUpcomingMagic == (MagicValue{}) && existingCurrentMagic == (MagicValue{}) {
 		if err = ms.SetMagicValue(MagicUpcomingKey, ms.GenerateMagicValue()); err != nil {
+			ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 			return err
 		}
 		if err = ms.SetMagicValue(MagicCurrentKey, ms.GenerateMagicValue()); err != nil {
+			ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 			return err
 		}
 		if err = ms.SetMagicValue(MagicPreviousKey, ms.GenerateMagicValue()); err != nil {
+			ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 			return err
 		}
 
+		ms.magicMetrics.UpdateMagicValuesSuccess.Add(1)
 		return nil
 	}
 
@@ -211,15 +227,19 @@ func (ms *MagicService) UpdateMagicValues() error {
 	newUpcomingMagic := ms.GenerateMagicValue()
 
 	if err = ms.SetMagicValue(MagicPreviousKey, newPreviousMagic); err != nil {
+		ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 		return err
 	}
 	if err = ms.SetMagicValue(MagicCurrentKey, newCurrentMagic); err != nil {
+		ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 		return err
 	}
 	if err = ms.SetMagicValue(MagicUpcomingKey, newUpcomingMagic); err != nil {
+		ms.magicMetrics.ErrorMetrics.UpdateMagicValuesFailure.Add(1)
 		return err
 	}
 
+	ms.magicMetrics.UpdateMagicValuesSuccess.Add(1)
 	return nil
 }
 
@@ -234,18 +254,22 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 
 	magicBin, err := redis.Bytes(conn.Do("GET", magicKey))
 	if err != nil && err != redis.ErrNil {
+		ms.magicMetrics.ErrorMetrics.GetMagicValueFailure.Add(1)
 		return MagicValue{}, fmt.Errorf("GetMagicValue(): failed to retrieve key %s from redis: %w", magicKey, err)
 	} else if err == redis.ErrNil {
 		// No magic value was present for the key
+		ms.magicMetrics.GetMagicValueSuccess.Add(1)
 		return MagicValue{}, nil
 
 	}
 
 	// Unmarshal the existing magic
 	if err = json.Unmarshal(magicBin, existingMagic); err != nil {
+		ms.magicMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
 		return MagicValue{}, fmt.Errorf("GetMagicValue(): failed to unmarshal existing magic for key %s: %w", magicKey, err)
 	}
 
+	ms.magicMetrics.GetMagicValueSuccess.Add(1)
 	return *existingMagic, nil
 }
 
@@ -255,6 +279,7 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 func (ms *MagicService) SetMagicValue(magicKey string, value MagicValue) error {
 	magicBin, err := json.Marshal(value)
 	if err != nil {
+		ms.magicMetrics.ErrorMetrics.MarshalFailure.Add(1)
 		return fmt.Errorf("SetMagicValue(): failed to marshal magic value %+v: %w", value, err)
 	}
 
@@ -264,9 +289,11 @@ func (ms *MagicService) SetMagicValue(magicKey string, value MagicValue) error {
 	// Insert metadata into redis
 	reply, err := conn.Do("SET", magicKey, magicBin)
 	if reply != "OK" {
+		ms.magicMetrics.ErrorMetrics.SetMagicValueFailure.Add(1)
 		return fmt.Errorf("SetMagicValue(): reply is not OK, instead got %s: %w", reply, err)
 	}
 
+	ms.magicMetrics.SetMagicValueSuccess.Add(1)
 	return nil
 }
 
