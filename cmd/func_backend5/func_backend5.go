@@ -186,6 +186,45 @@ func TimeoutThread() {
 	}
 }
 
+var (
+	magicMutex    sync.RWMutex
+	magicUpcoming [8]byte
+	magicCurrent  [8]byte
+	magicPrevious [8]byte
+)
+
+func GetMagic() ([8]byte, [8]byte, [8]byte) {
+	magicMutex.RLock()
+	upcoming := magicUpcoming
+	current := magicCurrent
+	previous := magicPrevious
+	magicMutex.RUnlock()
+	return upcoming, current, previous
+}
+
+func GenerateMagic(magic []byte) {
+	newMagic := make([]byte, 8)
+	core.RandomBytes(newMagic)
+	for i := range newMagic {
+		magic[i] = newMagic[i]
+	}
+}
+
+func UpdateMagic() {
+	ticker := time.NewTicker(time.Second * 60)
+
+	for {
+		select {
+		case <-ticker.C:
+			magicMutex.Lock()
+			magicPrevious = magicCurrent
+			magicCurrent = magicUpcoming
+			GenerateMagic(magicUpcoming[:])
+			magicMutex.Unlock()
+		}
+	}
+}
+
 func (backend *Backend) GetNearRelays() []routing.RelayData {
 	backend.mutex.Lock()
 	allRelayData := backend.relayMap.GetAllRelayData()
@@ -198,40 +237,95 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 }
 
 func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var initRequest transport.ServerInitRequestPacket
-	if err := transport.UnmarshalPacket(&initRequest, incoming.Data); err != nil {
+	var initRequest transport.ServerInitRequestPacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&initRequest, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server init request packet: %v\n", err)
 		return
 	}
 
-	initResponse := &transport.ServerInitResponsePacket{
+	initResponse := &transport.ServerInitResponsePacketSDK5{
 		RequestID: initRequest.RequestID,
 		Response:  transport.InitResponseOK,
 	}
+	initResponse.UpcomingMagic, initResponse.CurrentMagic, initResponse.PreviousMagic = GetMagic()
 
-	initResponseData, err := transport.MarshalPacket(initResponse)
+	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	toAddress := &incoming.From
+
+	initResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerInitResponseSDK5, initResponse, fromAddress, toAddress, crypto.BackendPrivateKey[:])
 	if err != nil {
 		fmt.Printf("error: failed to marshal server init response: %v\n", err)
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
-	responseData := append(packetHeader, initResponseData...)
-	if _, err := w.Write(responseData); err != nil {
+	if !core.BasicPacketFilter(initResponseData[:], len(initResponseData)) {
+		panic("basic packet filter failed on server init response?")
+	}
+
+	{
+		var magic [8]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+
+		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
+		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
+
+		if !core.AdvancedPacketFilter(initResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(initResponseData)) {
+			panic("advanced packet filter failed on server init response\n")
+		}
+	}
+
+	if _, err := w.Write(initResponseData); err != nil {
 		fmt.Printf("error: failed to write server init response: %v\n", err)
 		return
 	}
 }
 
 func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var serverUpdate transport.ServerUpdatePacket
-	if err := transport.UnmarshalPacket(&serverUpdate, incoming.Data); err != nil {
+	var serverUpdate transport.ServerUpdatePacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&serverUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
+		return
+	}
+
+	updateResponse := &transport.ServerResponsePacketSDK5{
+		RequestID: serverUpdate.RequestID,
+	}
+	updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic = GetMagic()
+
+	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	toAddress := &incoming.From
+
+	updateResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerResponseSDK5, updateResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
+	if err != nil {
+		fmt.Printf("error: failed to marshal server response: %v\n", err)
+		return
+	}
+
+	if !core.BasicPacketFilter(updateResponseData[:], len(updateResponseData)) {
+		panic("basic packet filter failed on server response?")
+	}
+
+	{
+		var magic [8]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+
+		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
+		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
+
+		if !core.AdvancedPacketFilter(updateResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(updateResponseData)) {
+			panic("advanced packet filter failed on server response\n")
+		}
+	}
+
+	if _, err := w.Write(updateResponseData); err != nil {
+		fmt.Printf("error: failed to write server response: %v\n", err)
 		return
 	}
 }
 
-func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeState core.RouteState) {
+func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
 	numExcluded := 0
 	for i := 0; i < int(routeState.NumNearRelays); i++ {
 		if routeState.NearRelayRTT[i] == 255 {
@@ -242,8 +336,8 @@ func excludeNearRelays(sessionResponse *transport.SessionResponsePacket, routeSt
 }
 
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var sessionUpdate transport.SessionUpdatePacket
-	if err := transport.UnmarshalPacket(&sessionUpdate, incoming.Data); err != nil {
+	var sessionUpdate transport.SessionUpdatePacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&sessionUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read session update packet: %v\n", err)
 		return
 	}
@@ -343,16 +437,16 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	newSession := sessionUpdate.SliceNumber == 0
 
-	var sessionData transport.SessionData
+	var sessionData transport.SessionDataSDK5
 	if newSession {
-		sessionData.Version = transport.SessionDataVersion
+		sessionData.Version = transport.SessionDataVersionSDK5
 		sessionData.SessionID = sessionUpdate.SessionID
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 		sessionData.RouteState.UserID = sessionUpdate.UserHash
 		sessionData.Location = routing.LocationNullIsland
 	} else {
-		if err := transport.UnmarshalSessionData(&sessionData, sessionUpdate.SessionData[:]); err != nil {
+		if err := transport.UnmarshalSessionDataSDK5(&sessionData, sessionUpdate.SessionData[:]); err != nil {
 			fmt.Printf("could not read session data in session update packet: %v\n", err)
 			return
 		}
@@ -363,7 +457,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	nearRelays := backend.GetNearRelays()
 
-	var sessionResponse *transport.SessionResponsePacket
+	var sessionResponse *transport.SessionResponsePacketSDK5
 
 	takeNetworkNext := len(nearRelays) > 0
 
@@ -435,7 +529,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if !takeNetworkNext {
 
 		// direct route
-		sessionResponse = &transport.SessionResponsePacket{
+		sessionResponse = &transport.SessionResponsePacketSDK5{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -506,7 +600,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			routeType = routing.RouteTypeNew
 		}
 
-		sessionResponse = &transport.SessionResponsePacket{
+		sessionResponse = &transport.SessionResponsePacketSDK5{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -530,7 +624,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	excludeNearRelays(sessionResponse, sessionData.RouteState)
 
-	sessionDataBuffer, err := transport.MarshalSessionData(&sessionData)
+	sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session data: %v\n", err)
 		return
@@ -543,21 +637,42 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
 	copy(sessionResponse.SessionData[:], sessionDataBuffer)
 
-	sessionResponseData, err := transport.MarshalPacket(sessionResponse)
+	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	toAddress := &incoming.From
+
+	sessionResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeSessionResponseSDK5, sessionResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session response: %v\n", err)
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
-	responseData := append(packetHeader, sessionResponseData...)
-	if _, err := w.Write(responseData); err != nil {
+	if !core.BasicPacketFilter(sessionResponseData[:], len(sessionResponseData)) {
+		panic("basic packet filter failed on session response?")
+	}
+
+	{
+		var magic [8]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+
+		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
+		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
+
+		if !core.AdvancedPacketFilter(sessionResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(sessionResponseData)) {
+			panic("advanced packet filter failed on session response\n")
+		}
+	}
+
+	if _, err := w.Write(sessionResponseData); err != nil {
 		fmt.Printf("error: failed to write session response: %v\n", err)
 		return
 	}
 }
 
 func main() {
+	sendAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+
+	receiveAddress := sendAddress
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -635,6 +750,12 @@ func main() {
 
 	go TimeoutThread()
 
+	GenerateMagic(magicUpcoming[:])
+	GenerateMagic(magicCurrent[:])
+	GenerateMagic(magicPrevious[:])
+
+	go UpdateMagic()
+
 	go WebServer()
 
 	fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
@@ -680,36 +801,48 @@ func main() {
 
 			data = data[:size]
 
-			// Check the packet hash is legit and remove the hash from the beginning of the packet
-			// to continue processing the packet as normal
-			if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-				fmt.Println("received non network next packet")
+			if !core.BasicPacketFilter(data[:], len(data)) {
+				fmt.Printf("basic packet filter failed\n")
 				continue
 			}
 
+			{
+				to := receiveAddress
+
+				var magic [8]byte
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
+				toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+				if !core.AdvancedPacketFilter(data, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
+					fmt.Printf("advanced packet filter failed\n")
+					continue
+				}
+			}
+
 			packetType := data[0]
-			data = data[crypto.PacketHashSize+1 : size]
+			data = data[16 : len(data)-2]
+			size -= 18
 
 			var buffer bytes.Buffer
 			packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 			switch packetType {
-			case transport.PacketTypeServerInitRequest:
+			case transport.PacketTypeServerInitRequestSDK5:
 				ServerInitHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeServerUpdate:
+			case transport.PacketTypeServerUpdateSDK5:
 				ServerUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeSessionUpdate:
+			case transport.PacketTypeSessionUpdateSDK5:
 				SessionUpdateHandlerFunc(&buffer, &packet)
 			default:
-				fmt.Printf("unknown packet type %d\n", packet.Data[0])
+				fmt.Printf("unknown packet type %d\n", packetType)
 			}
 
 			if buffer.Len() > 0 {
 				response := buffer.Bytes()
-
-				// Sign and hash the response
-				response = crypto.SignPacket(crypto.BackendPrivateKey, response)
-				crypto.HashPacket(crypto.PacketHashKey, response)
 
 				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 					fmt.Printf("failed to write UDP response: %v\n", err)
@@ -723,11 +856,35 @@ func main() {
 
 const InitRequestMagic = uint32(0x9083708f)
 const InitRequestVersion = 0
-const UpdateRequestVersion = 3
-const UpdateResponseVersion = 0
+const UpdateRequestVersion = 5
+const UpdateResponseVersion = 1
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 5
+
+func ReadBool(data []byte, index *int, value *bool) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+
+	if data[*index] > 0 {
+		*value = true
+	} else {
+		*value = false
+	}
+
+	*index += 1
+	return true
+}
+
+func ReadUint8(data []byte, index *int, value *uint8) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+	*value = data[*index]
+	*index += 1
+	return true
+}
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
@@ -903,6 +1060,54 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
 	}
 
+	var sessionCount uint64
+	if !ReadUint64(body, &index, &sessionCount) {
+		fmt.Printf("could not read session count\n")
+		return
+	}
+
+	var shutdown bool
+	if !ReadBool(body, &index, &shutdown) {
+		fmt.Printf("could not read shutdown\n")
+		return
+	}
+
+	var relayVersion string
+	if !ReadString(body, &index, &relayVersion, uint32(32)) {
+		fmt.Printf("could not read relay version\n")
+		return
+	}
+
+	var cpu uint8
+	if !ReadUint8(body, &index, &cpu) {
+		fmt.Printf("could not read cpu\n")
+		return
+	}
+
+	var envelopeUpKbps uint64
+	if !ReadUint64(body, &index, &envelopeUpKbps) {
+		fmt.Printf("could not read envelope up kbps\n")
+		return
+	}
+
+	var envelopeDownKbps uint64
+	if !ReadUint64(body, &index, &envelopeDownKbps) {
+		fmt.Printf("could not read envelope down kbps\n")
+		return
+	}
+
+	var bandwidthSentKbps uint64
+	if !ReadUint64(body, &index, &bandwidthSentKbps) {
+		fmt.Printf("could not read bandwidth sent kbps\n")
+		return
+	}
+
+	var bandwidthRecvKbps uint64
+	if !ReadUint64(body, &index, &bandwidthRecvKbps) {
+		fmt.Printf("could not read bandwidth recv kbps\n")
+		return
+	}
+
 	backend.mutex.Lock()
 	backend.statsDatabase.ProcessStats(statsUpdate)
 	backend.mutex.Unlock()
@@ -924,15 +1129,25 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	relayData := routing.RelayData{
-		ID:             crypto.HashID(relay_address),
-		Addr:           *udpAddr,
-		PublicKey:      crypto.RelayPublicKey[:],
-		LastUpdateTime: time.Now(),
+		ID:                crypto.HashID(relay_address),
+		Addr:              *udpAddr,
+		PublicKey:         crypto.RelayPublicKey[:],
+		SessionCount:      int(sessionCount),
+		ShuttingDown:      shutdown,
+		LastUpdateTime:    time.Now(),
+		Version:           relayVersion,
+		CPU:               cpu,
+		EnvelopeUpMbps:    float32(float64(envelopeUpKbps) / 1000.0),
+		EnvelopeDownMbps:  float32(float64(envelopeDownKbps) / 1000.0),
+		BandwidthSentMbps: float32(float64(bandwidthSentKbps) / 1000.0),
+		BandwidthRecvMbps: float32(float64(bandwidthRecvKbps) / 1000.0),
 	}
 
 	backend.relayMap.UpdateRelayData(relayData)
 
 	backend.mutex.Unlock()
+
+	magicUpcoming, magicCurrent, magicPrevious := GetMagic()
 
 	responseData := make([]byte, 10*1024)
 
@@ -948,6 +1163,16 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		WriteUint64(responseData, &index, relaysToPing[i].ID)
 		WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
 	}
+
+	WriteString(responseData, &index, relayVersion, uint32(32))
+
+	WriteBytes(responseData, &index, magicUpcoming[:], 8)
+
+	WriteBytes(responseData, &index, magicCurrent[:], 8)
+
+	WriteBytes(responseData, &index, magicPrevious[:], 8)
+
+	WriteUint32(responseData, &index, 0)
 
 	responseLength := index
 
