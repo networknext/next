@@ -345,6 +345,8 @@ func mainReturnWithCode() int {
 							core.Error("DecodeOverlayWrapper() error: %v", err)
 						}
 
+						core.Debug("Decoding finished successfully")
+
 						// Close the file since it is no longer needed
 						overlayFile.Close()
 					}
