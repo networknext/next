@@ -537,35 +537,36 @@ func mainReturnWithCode() int {
 	// Get absolute path of overlay.bin
 	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
 
-	overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*10)
-	if err != nil {
-		core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
-		return 1
-	}
+	if overlayFilePath != "" {
+		overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*10)
+		if err != nil {
+			core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
+			return 1
+		}
 
-	if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
-		core.Error("failed to generate overlay.bin: %v", err)
-		return 1
-	}
+		if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+			core.Error("failed to generate overlay.bin: %v", err)
+		}
 
-	// Setup goroutine to build/upload the latest overlay file
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+		// Setup goroutine to build/upload the latest overlay file
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 
-		ticker := time.NewTicker(overlaySyncInterval)
+			ticker := time.NewTicker(overlaySyncInterval)
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
-					core.Error("failed to generate overlay.bin: %v", err)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+						core.Error("failed to generate overlay.bin: %v", err)
+					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
@@ -852,6 +853,10 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	gsutilStatCommand := exec.Command("gsutil", "stat", bucketName)
 
 	response, err := gsutilStatCommand.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
 	stringResponse := string(response)
 
 	retentionExpirationString := ""
@@ -867,10 +872,13 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 		}
 	}
 
-	// Convert the retention expiration timestamp string to time.Time
-	timestamp, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", retentionExpirationString)
-	if err != nil {
-		return err
+	timestamp := time.Now().UTC().Add(time.Hour * -1)
+	if retentionExpirationString != "" {
+		// Convert the retention expiration timestamp string to time.Time
+		timestamp, err = time.Parse("Mon, 02 Jan 2006 15:04:05 MST", retentionExpirationString)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Check if now is past the expiration timestamp
