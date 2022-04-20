@@ -45,16 +45,20 @@ var (
 	sha           string
 	tag           string
 
-	binCreator      string
-	binCreationTime string
-	env             string
+	binCreator          string
+	binCreationTime     string
+	overlayCreator      string
+	overlayCreationTime string
+	env                 string
 
 	database_internal *routing.DatabaseBinWrapper = routing.CreateEmptyDatabaseBinWrapper()
+	overlay_internal  *routing.OverlayBinWrapper  = routing.CreateEmptyOverlayBinWrapper()
 
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
 	databaseMutex   sync.RWMutex
+	overlayMutex    sync.RWMutex
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
 
@@ -64,15 +68,15 @@ var (
 func init() {
 	relayHash_internal = make(map[uint64]routing.Relay)
 
-	filePath := envvar.Get("BIN_PATH", "./database.bin")
-	file, err := os.Open(filePath)
+	databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
+	databaseFile, err := os.Open(databaseFilePath)
 	if err != nil {
 		// fmt.Printf("could not load relay binary: %s\n", filePath)
 		return
 	}
-	defer file.Close()
+	defer databaseFile.Close()
 
-	if err = backend.DecodeBinWrapper(file, database_internal); err != nil {
+	if err = backend.DecodeBinWrapper(databaseFile, database_internal); err != nil {
 		core.Error("failed to read database: %v", err)
 		os.Exit(1)
 	}
@@ -84,6 +88,18 @@ func init() {
 
 	binCreator = database_internal.Creator
 	binCreationTime = database_internal.CreationTime
+
+	overlayFilePath := envvar.Get("OVERLAY_PATH", "./overlay.bin")
+	overlayFile, err := os.Open(overlayFilePath)
+	if err != nil {
+		fmt.Printf("could not load overlay binary: %s\n", overlayFilePath)
+		return
+	}
+	defer overlayFile.Close()
+
+	if err = backend.DecodeOverlayWrapper(overlayFile, overlay_internal); err != nil {
+		core.Error("failed to read overlay: %v", err)
+	}
 }
 
 func main() {
@@ -232,23 +248,36 @@ func mainReturnWithCode() int {
 	{
 		// Get absolute path of database.bin
 		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
-		absPath, err := filepath.Abs(databaseFilePath)
+		databaseAbsPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			core.Error("error getting absolute path %s: %v", databaseFilePath, err)
+			core.Error("error getting database absolute path %s: %v", databaseFilePath, err)
 			return 1
 		}
 
 		// Check if file exists
-		if _, err := os.Stat(absPath); err != nil {
-			core.Error("%s does not exist: %v", absPath, err)
+		if _, err := os.Stat(databaseAbsPath); err != nil {
+			core.Error("%s does not exist: %v", databaseAbsPath, err)
 			return 1
 		}
 
 		// Get the directory of the database.bin
 		// Used to watch over file creation and modification
-		directoryPath := filepath.Dir(absPath)
+		databaseDirectoryPath := filepath.Dir(databaseAbsPath)
 
-		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		// Get absolute path of database.bin
+		overlayFilePath := envvar.Get("OVERLAY_PATH", "./overlay.bin")
+		overlayAbsPath, err := filepath.Abs(overlayFilePath)
+		if err != nil {
+			core.Error("error getting overlay absolute path %s: %v", overlayFilePath, err)
+			return 1
+		}
+
+		// Check if file exists
+		if _, err := os.Stat(overlayAbsPath); err != nil {
+			core.Error("%s does not exist: %v", overlayAbsPath, err)
+		}
+
+		databaseSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
 		if err != nil {
 			core.Error("failed to parse BIN_SYNC_INTERVAL: %v", err)
 			return 1
@@ -259,18 +288,18 @@ func mainReturnWithCode() int {
 		go func() {
 			defer wg.Done()
 
-			ticker := time.NewTicker(binSyncInterval)
+			ticker := time.NewTicker(databaseSyncInterval)
 
-			core.Debug("started watchman on %s", directoryPath)
+			core.Debug("started watchman on %s", databaseDirectoryPath)
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
 					// File has changed
-					file, err := os.Open(absPath)
+					databaseFile, err := os.Open(databaseAbsPath)
 					if err != nil {
-						core.Error("could not load database binary at %s: %v", absPath, err)
+						core.Error("could not load database binary at %s: %v", databaseAbsPath, err)
 						continue
 					}
 
@@ -279,26 +308,62 @@ func mainReturnWithCode() int {
 
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(databaseFile, databaseNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
-						file.Close()
+						databaseFile.Close()
 						core.Debug("DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
-						file.Close()
+						databaseFile.Close()
 						core.Error("DecodeBinWrapper() error: %v", err)
 						continue
 					}
 
 					// Close the file since it is no longer needed
-					file.Close()
+					databaseFile.Close()
 
 					if databaseNew.IsEmpty() {
 						// Don't want to use an empty bin wrapper
 						// so early out here and use existing array and hash
 						core.Error("new database file is empty, keeping previous values")
 						continue
+					}
+
+					overlayNew := routing.CreateEmptyOverlayBinWrapper()
+
+					// File has changed
+					overlayFile, err := os.Open(overlayAbsPath)
+					if err != nil {
+						core.Error("could not load overlay binary at %s: %v", overlayAbsPath, err)
+					} else {
+						if err = backend.DecodeOverlayWrapper(overlayFile, overlayNew); err == io.EOF {
+							// Sometimes we receive an EOF error since the file is still being replaced
+							// so early out here and proceed on the next notification
+							core.Debug("DecodeOverlayWrapper() EOF error, will wait for next notification")
+						} else if err != nil {
+							core.Error("DecodeOverlayWrapper() error: %v", err)
+						}
+
+						// Close the file since it is no longer needed
+						overlayFile.Close()
+					}
+
+					// Only update the internal overlay cache if it is new and not empty
+					if !overlayNew.IsEmpty() && overlayNew.CreationTime != overlay_internal.CreationTime {
+						overlayMutex.Lock()
+						overlay_internal = overlayNew
+						overlayMutex.Unlock()
+
+						for _, buyer := range overlay_internal.BuyerMap {
+							binBuyer, ok := databaseNew.BuyerMap[buyer.ID]
+							// If the buyer does not exist in database.bin or does and is still under trial, use the overlay
+							if !ok || (ok && binBuyer.Trial) {
+								databaseNew.BuyerMap[buyer.ID] = buyer
+							}
+
+							// TODO: Support other buyer driven settings changes here
+						}
 					}
 
 					// Get the new relay array
