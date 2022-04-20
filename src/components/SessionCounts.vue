@@ -15,6 +15,7 @@
     </h1>
     <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="max-width: 50%">
       <Alert ref="sessionCountAlert">
+        <br />
         <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
         </a>
