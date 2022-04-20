@@ -112,7 +112,7 @@
       </ul>
       <ul class="navbar-nav mr-auto">
         <li class="nav-item text-nowrap">
-          <a style="cursor: pointer; color: white;" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</a>
+          <a style="cursor: pointer; color: white;" v-if="$store.getters.isAdmin" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</a>
         </li>
       </ul>
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
