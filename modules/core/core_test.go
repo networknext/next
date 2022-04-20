@@ -2640,6 +2640,7 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 func TestEarlyOutDirect(t *testing.T) {
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeState := RouteState{}
 	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
 
@@ -2662,30 +2663,33 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.DisableNetworkNext = true
 	routeState = RouteState{}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
-	routeShader.AnalysisOnly = true
 	routeState = RouteState{}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
 	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 0
@@ -2695,6 +2699,7 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.False(t, routeState.B)
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 1
@@ -2704,11 +2709,13 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.True(t, routeState.B)
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
 	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
 
 	routeShader = NewRouteShader()
+	routeShader.AnalysisOnly = false
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
 	routeState.UserID = 1000
@@ -3640,6 +3647,7 @@ func NewTestData(env *TestEnvironment) *TestData {
 	test.routeMatrix = Optimize(test.numRelays, numSegments, test.costMatrix, costThreshold, test.relayDatacenters)
 
 	test.routeShader = NewRouteShader()
+	test.routeShader.AnalysisOnly = false
 
 	test.multipathVetoUsers = map[uint64]bool{}
 
@@ -6854,6 +6862,7 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 
@@ -7025,6 +7034,7 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 
@@ -7133,6 +7143,7 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 
@@ -7207,6 +7218,7 @@ func TestReframeRelays_ReducePacketLoss_Sporadic(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 
@@ -7289,6 +7301,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 
@@ -7403,6 +7416,7 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 	// start with a clean slate
 
 	routeShader := NewRouteShader()
+	routeShader.AnalysisOnly = false
 
 	routeState := RouteState{}
 

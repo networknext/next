@@ -2024,7 +2024,7 @@ func TestJSAddRouteShader(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, rs.DisableNetworkNext, !reply.RouteShader.DisableNetworkNext)
-		assert.Equal(t, rs.AnalysisOnly, !reply.RouteShader.AnalysisOnly)
+		assert.Equal(t, rs.AnalysisOnly, reply.RouteShader.AnalysisOnly)
 		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
 		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
 		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
