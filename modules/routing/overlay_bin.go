@@ -1,13 +1,11 @@
 package routing
 
-import "time"
-
 const (
 	MaxOverlayBinWrapperSize = 100000000
 )
 
 type OverlayBinWrapper struct {
-	CreationTime time.Time
+	CreationTime string
 	BuyerMap     map[uint64]Buyer
 }
 

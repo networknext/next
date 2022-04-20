@@ -896,7 +896,7 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 		}
 	}
 
-	newOverlay.CreationTime = time.Now().UTC()
+	newOverlay.CreationTime = time.Now().UTC().String()
 
 	// Save new overlay to disk
 	var buffer bytes.Buffer
