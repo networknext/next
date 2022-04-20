@@ -121,6 +121,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	overlayBinFileName := envvar.Get("OVERLAY_FILE_NAME", "")
+	if overlayBinFileName == "" {
+		core.Error("OVERLAY_FILE_NAME not set")
+		return 1
+	}
+
+	overlayBinFileOutputLocation := envvar.Get("OVERLAY_OUTPUT_LOCATION", "")
+	if overlayBinFileOutputLocation == "" {
+		core.Error("OVERLAY_OUTPUT_LOCATION not set")
+		return 1
+	}
+
 	remoteDBLocations := make([]string, 0)
 
 	relayBackendNames := envvar.GetList("RELAY_BACKEND_INSTANCE_NAMES", []string{})
@@ -619,6 +631,13 @@ func mainReturnWithCode() int {
 					databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
 				}
 
+				// Do the overlay.bin first. Relay backends pull in these changes only when database.bin changes
+				if err := gcpStorage.CopyFromBucketToRemote(ctx, overlayBinFileName, databaseInstanceNames, overlayBinFileOutputLocation); err != nil {
+					core.Error("failed to copy overlay bin file to overlay locations: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure.Add(1)
+					// Don't continue here, need to record update duration
+				}
+
 				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
 					core.Error("failed to copy database bin file to database locations: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Add(1)
@@ -627,8 +646,7 @@ func mainReturnWithCode() int {
 
 				updateTime := time.Since(start)
 				duration := float64(updateTime.Milliseconds())
-
-				relayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration.Set(duration)
+				relayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration.Set(duration)
 
 			case <-ctx.Done():
 				return
@@ -686,7 +704,7 @@ func mainReturnWithCode() int {
 				newStatusData.DatabaseSCPWriteFailure = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Value())
 
 				// Durations
-				newStatusData.DBBinaryTotalUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration.Value()
+				newStatusData.BinaryTotalUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration.Value()
 				newStatusData.MaxmindDBCityUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Value()
 				newStatusData.MaxmindDBISPUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Value()
 
