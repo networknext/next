@@ -13,7 +13,7 @@
         data-test="nnSessions"
       >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
-    <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="width: 50%">
+    <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="max-width: 50%">
       <Alert ref="sessionCountAlert">
         <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
