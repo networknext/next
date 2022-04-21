@@ -100,5 +100,13 @@ blocks:
           commands:
             - make build-match-data-artifacts-staging
             - make publish-match-data-artifacts-staging
+        - name: Magic Backend
+          commands:
+            - make build-magic-backend-artifacts-staging
+            - make publish-magic-backend-artifacts-staging
+        - name: Magic Frontend
+          commands:
+            - make build-magic-frontend-artifacts-staging
+            - make publish-magic-frontend-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging
