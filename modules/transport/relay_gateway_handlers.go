@@ -156,12 +156,6 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		var responseData []byte
 		response := RelayUpdateResponse{}
 
-		// TODO: use minor comparison to increment version number based on relay version (i.e. 2.1.0 > 2.0.9)
-		response.Version = 0
-		if relayUpdateRequest.RelayVersion == "2.1.0" {
-			response.Version = VersionNumberUpdateResponse
-		}
-
 		for i := range relaysToPing {
 			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
 				ID:      relaysToPing[i].ID,
@@ -170,18 +164,6 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		}
 		response.Timestamp = time.Now().Unix()
 		response.TargetVersion = relay.Version
-
-		if response.Version >= 1 {
-			// TODO: temp until magic service is ready
-
-			response.UpcomingMagic = make([]byte, 8)
-			response.CurrentMagic = make([]byte, 8)
-			response.PreviousMagic = make([]byte, 8)
-
-			core.RandomBytes(response.UpcomingMagic)
-			core.RandomBytes(response.CurrentMagic)
-			core.RandomBytes(response.PreviousMagic)
-		}
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {
