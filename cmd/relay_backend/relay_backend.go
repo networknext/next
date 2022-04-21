@@ -357,9 +357,9 @@ func mainReturnWithCode() int {
 					}
 
 					for _, buyer := range overlay_internal.BuyerMap {
-						binBuyer, ok := databaseNew.BuyerMap[buyer.ID]
-						// If the buyer does not exist in database.bin or does and is still under trial, use the overlay
-						if !ok || (ok && binBuyer.Trial) {
+						_, ok := databaseNew.BuyerMap[buyer.ID]
+						// If the buyer does not exist in database.bin use the overlay to get trial route shader
+						if !ok {
 							databaseNew.BuyerMap[buyer.ID] = buyer
 						}
 
