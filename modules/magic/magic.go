@@ -266,7 +266,6 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 		// No magic value was present for the key
 		ms.magicMetrics.GetMagicValueSuccess.Add(1)
 		return MagicValue{}, nil
-
 	}
 
 	// Unmarshal the existing magic
