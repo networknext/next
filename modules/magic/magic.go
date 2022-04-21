@@ -81,16 +81,18 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 	conn := ms.redisPool.Get()
 	defer conn.Close()
 
-	keys, err := redis.Strings(conn.Do("KEYS", MagicServiceMetadataKey+"*"))
-	if err == redis.ErrNil {
-		// No keys in redis including this instance's, return false out of safety
-		return false, nil
-	} else if err != nil {
+	keys, err := redis.Strings(conn.Do("KEYS", MagicServiceMetadataKey+"-*"))
+	if err != nil && err != redis.ErrNil {
 		ms.magicMetrics.ErrorMetrics.ReadFromRedisFailure.Add(1)
 		return false, fmt.Errorf("IsOldestInstance(): failed to get magic instance metadatas: %w", err)
 	}
 
-	metadataArr := make([]*MagicInstanceMetadata, len(keys))
+	if len(keys) == 0 {
+		// No keys in redis including this instance's, return false out of safety
+		return false, nil
+	}
+
+	metadataArr := make([]MagicInstanceMetadata, len(keys))
 	for i, key := range keys {
 		metadataBin, err := redis.Bytes(conn.Do("GET", key))
 		if err == redis.ErrNil {
@@ -102,8 +104,8 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 		}
 
 		// Unmarshal the metadata binary
-		var metadata *MagicInstanceMetadata
-		if err = json.Unmarshal(metadataBin, metadata); err != nil {
+		var metadata MagicInstanceMetadata
+		if err = json.Unmarshal(metadataBin, &metadata); err != nil {
 			ms.magicMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
 			return false, fmt.Errorf("IsOldestInstance(): failed to unmarshal magic metadata for key %s: %w", key, err)
 		}
@@ -134,16 +136,20 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 }
 
 /*
-	Inserts this magic instance's metadata into redis.
+	Creates this magic instance's metadata for insertion into redis.
 */
-func (ms *MagicService) InsertInstanceMetadata() error {
-	// Create the instance metadata
-	metadata := MagicInstanceMetadata{
+func (ms *MagicService) CreateInstanceMetadata() MagicInstanceMetadata {
+	return MagicInstanceMetadata{
 		InstanceID: ms.instanceID,
 		InitAt:     ms.initAt,
 		UpdatedAt:  time.Now().UTC(),
 	}
+}
 
+/*
+	Inserts this magic instance's metadata into redis.
+*/
+func (ms *MagicService) InsertInstanceMetadata(metadata MagicInstanceMetadata) error {
 	metadataBin, err := json.Marshal(metadata)
 	if err != nil {
 		ms.magicMetrics.ErrorMetrics.MarshalFailure.Add(1)
@@ -250,7 +256,7 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 	conn := ms.redisPool.Get()
 	defer conn.Close()
 
-	var existingMagic *MagicValue
+	var existingMagic MagicValue
 
 	magicBin, err := redis.Bytes(conn.Do("GET", magicKey))
 	if err != nil && err != redis.ErrNil {
@@ -264,13 +270,13 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 	}
 
 	// Unmarshal the existing magic
-	if err = json.Unmarshal(magicBin, existingMagic); err != nil {
+	if err = json.Unmarshal(magicBin, &existingMagic); err != nil {
 		ms.magicMetrics.ErrorMetrics.UnmarshalFailure.Add(1)
 		return MagicValue{}, fmt.Errorf("GetMagicValue(): failed to unmarshal existing magic for key %s: %w", magicKey, err)
 	}
 
 	ms.magicMetrics.GetMagicValueSuccess.Add(1)
-	return *existingMagic, nil
+	return existingMagic, nil
 }
 
 /*
