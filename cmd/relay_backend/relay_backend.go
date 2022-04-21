@@ -25,7 +25,6 @@ import (
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/compute/metadata"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/gorilla/mux"
 
@@ -215,7 +214,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	instanceID, err := getInstanceID(env)
+	instanceID, err := backend.GetInstanceID(env)
 	if err != nil {
 		core.Error("failed to get relay backend instance ID: %v", err)
 		return 1
@@ -1200,12 +1199,4 @@ func getBackendAddress(backendAddresses []string, env string) (bool, string, err
 	}
 
 	return false, "", nil
-}
-
-func getInstanceID(env string) (string, error) {
-	if env != "local" {
-		return metadata.InstanceID()
-	}
-
-	return "local", nil
 }
