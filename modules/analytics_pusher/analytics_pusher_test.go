@@ -256,9 +256,9 @@ func TestStartPingStatsPublisher(t *testing.T) {
 				break
 			}
 
-			if pusherMetrics.PingStatsMetrics.EntriesReceived.Value() == 0 &&
-				pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value() == 0 &&
-				pusherMetrics.PingStatsMetrics.EntriesFlushed.Value() == 0 &&
+			if pusherMetrics.PingStatsMetrics.EntriesReceived.Value() > 0 &&
+				pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value() > 0 &&
+				pusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value() == 0 &&
 				len(errChan) == 0 {
 				break
 			}
@@ -271,7 +271,7 @@ func TestStartPingStatsPublisher(t *testing.T) {
 
 		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesReceived.Value(), float64(0))
 		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value(), float64(0))
-		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesFlushed.Value(), float64(0))
+		assert.Zero(t, pusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value())
 		assert.Equal(t, 0, len(errChan))
 	})
 }
