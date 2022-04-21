@@ -351,6 +351,14 @@ dev-relay: build-reference-relay  ## runs a local relay
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
+.PHONY: dev-magic-backend
+dev-magic-backend: build-magic-backend ## runs a local magic backend
+	@PORT=41007 ./dist/magic_backend
+
+.PHONY: dev-magic-frontend
+dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
+	@PORT=41008 ./dist/magic_frontend
+
 ##############################################
 
 .PHONY: build-server4
@@ -663,6 +671,18 @@ build-analytics-pusher:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
+.PHONY: build-magic-backend
+build-magic-backend:
+	@printf "Building magic backend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
+	@printf "done\n"
+
+.PHONY: build-magic-frontend
+build-magic-frontend:
+	@printf "Building magic frontend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_frontend ./cmd/magic_frontend/magic_frontend.go
+	@printf "done\n"
+
 .PHONY: build-match-data
 build-match-data:
 	@printf "Building match data... "
@@ -748,6 +768,14 @@ build-analytics-pusher-artifacts-dev: build-analytics-pusher
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
+.PHONY: build-magic-backend-artifacts-dev
+build-magic-backend-artifacts-dev: build-magic-backend
+	./deploy/build-artifacts.sh -e dev -s magic_backend
+
+.PHONY: build-magic-frontend-artifacts-dev
+build-magic-frontend-artifacts-dev: build-magic-frontend
+	./deploy/build-artifacts.sh -e dev -s magic_frontend
+
 .PHONY: build-match-data-artifacts-dev
 build-match-data-artifacts-dev: build-match-data
 	./deploy/build-artifacts.sh -e dev -s match_data
@@ -787,6 +815,14 @@ build-analytics-pusher-artifacts-staging: build-analytics-pusher
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
+
+.PHONY: build-magic-backend-artifacts-staging
+build-magic-backend-artifacts-staging: build-magic-backend
+	./deploy/build-artifacts.sh -e staging -s magic_backend
+
+.PHONY: build-magic-frontend-artifacts-staging
+build-magic-frontend-artifacts-staging: build-magic-frontend
+	./deploy/build-artifacts.sh -e staging -s magic_frontend
 
 .PHONY: build-match-data-artifacts-staging
 build-match-data-artifacts-staging: build-match-data
@@ -828,6 +864,14 @@ build-analytics-pusher-artifacts-prod: build-analytics-pusher
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
+.PHONY: build-magic-backend-artifacts-prod
+build-magic-backend-artifacts-prod: build-magic-backend
+	./deploy/build-artifacts.sh -e prod -s magic_backend
+
+.PHONY: build-magic-frontend-artifacts-prod
+build-magic-frontend-artifacts-prod: build-magic-frontend
+	./deploy/build-artifacts.sh -e prod -s magic_frontend
+
 .PHONY: build-match-data-artifacts-prod
 build-match-data-artifacts-prod: build-match-data
 	./deploy/build-artifacts.sh -e prod -s match_data
@@ -863,6 +907,14 @@ publish-analytics-pusher-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
+.PHONY: publish-magic-backend-artifacts-dev
+publish-magic-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_backend
+
+.PHONY: publish-magic-frontend-artifacts-dev
+publish-magic-frontend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_frontend
 
 .PHONY: publish-match-data-artifacts-dev
 publish-match-data-artifacts-dev:
@@ -903,6 +955,14 @@ publish-analytics-pusher-artifacts-staging:
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
+.PHONY: publish-magic-backend-artifacts-staging
+publish-magic-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_backend
+
+.PHONY: publish-magic-frontend-artifacts-staging
+publish-magic-frontend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_frontend
 
 .PHONY: publish-match-data-artifacts-staging
 publish-match-data-artifacts-staging:
@@ -963,6 +1023,14 @@ publish-analytics-pusher-artifacts-prod:
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
+
+.PHONY: publish-magic-backend-artifacts-prod
+publish-magic-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_backend
+
+.PHONY: publish-magic-frontend-artifacts-prod
+publish-magic-frontend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_frontend
 
 .PHONY: publish-match-data-artifacts-prod
 publish-match-data-artifacts-prod:
@@ -1484,7 +1552,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
