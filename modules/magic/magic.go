@@ -220,6 +220,7 @@ func (ms *MagicService) UpdateMagicValues() error {
 
 	// Early out if either the upcoming or current magic value has been updated in the last MagicUpdateFailsafeTimeout seconds
 	if currentTime.Sub(existingUpcomingMagic.UpdatedAt) < MagicUpdateFailsafeTimeout || currentTime.Sub(existingCurrentMagic.UpdatedAt) < MagicUpdateFailsafeTimeout {
+		core.Debug("magic values were updated in the last %.2f seconds, skipping update", MagicUpdateFailsafeTimeout.Seconds())
 		return nil
 	}
 
