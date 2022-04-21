@@ -351,6 +351,10 @@ dev-relay: build-reference-relay  ## runs a local relay
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
+.PHONY: dev-magic-backend
+dev-magic-backend: build-magic-backend ## runs a local magic backend
+	@PORT=41007 ./dist/magic_backend
+
 ##############################################
 
 .PHONY: build-server4
@@ -661,6 +665,12 @@ build-billing:
 build-analytics-pusher:
 	@printf "Building analytics pusher... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
+	@printf "done\n"
+
+.PHONY: build-magic-backend
+build-magic-backend:
+	@printf "Building magic backend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
 	@printf "done\n"
 
 .PHONY: build-match-data
