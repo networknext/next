@@ -345,6 +345,8 @@ func mainReturnWithCode() int {
 							core.Error("DecodeOverlayWrapper() error: %v", err)
 						}
 
+						core.Debug("Decoding finished successfully")
+
 						// Close the file since it is no longer needed
 						overlayFile.Close()
 					}
@@ -355,15 +357,21 @@ func mainReturnWithCode() int {
 						overlay_internal = overlayNew
 						overlayMutex.Unlock()
 
+						core.Debug("Pointer swap finished")
+
 						for _, buyer := range overlay_internal.BuyerMap {
 							binBuyer, ok := databaseNew.BuyerMap[buyer.ID]
 							// If the buyer does not exist in database.bin or does and is still under trial, use the overlay
 							if !ok || (ok && binBuyer.Trial) {
+								core.Debug("Swapping out buyer entry: %016x", buyer.ID)
 								databaseNew.BuyerMap[buyer.ID] = buyer
 							}
 
 							// TODO: Support other buyer driven settings changes here
 						}
+					} else {
+						core.Debug("Overlay is empty or it isn't new, not replacing anything within database.bin...")
+						core.Debug("%v - %v", !overlayNew.IsEmpty(), overlayNew.CreationTime != overlay_internal.CreationTime)
 					}
 
 					// Get the new relay array
