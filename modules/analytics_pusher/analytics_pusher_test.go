@@ -206,7 +206,21 @@ func TestStartPingStatsPublisher(t *testing.T) {
 		wg.Add(1)
 		go ap.StartPingStatsPublisher(ctx, wg, errChan)
 
-		time.Sleep(time.Millisecond * 200)
+		checks := 4
+		for {
+			time.Sleep(time.Millisecond * 200)
+
+			if checks <= 0 {
+				break
+			}
+
+			if pusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value() > 0 && len(errChan) == 0 {
+				break
+			}
+
+			checks--
+		}
+
 		cancelFunc()
 		wg.Wait()
 
@@ -234,7 +248,24 @@ func TestStartPingStatsPublisher(t *testing.T) {
 		wg.Add(1)
 		go ap.StartPingStatsPublisher(ctx, wg, errChan)
 
-		time.Sleep(time.Millisecond * 200)
+		checks := 4
+		for {
+			time.Sleep(time.Millisecond * 200)
+
+			if checks <= 0 {
+				break
+			}
+
+			if pusherMetrics.PingStatsMetrics.EntriesReceived.Value() == 0 &&
+				pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value() == 0 &&
+				pusherMetrics.PingStatsMetrics.EntriesFlushed.Value() == 0 &&
+				len(errChan) == 0 {
+				break
+			}
+
+			checks--
+		}
+
 		cancelFunc()
 		wg.Wait()
 
