@@ -117,8 +117,8 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 	for _, metadata := range metadataArr {
 
 		if currentTime.Sub(metadata.UpdatedAt) > TimeVariance {
-			// Instance has not updated its metdata in the last TimeVariance seconds
-			return false, nil
+			// Instance has not updated its metadata in the last TimeVariance seconds, ignore
+			continue
 		}
 
 		if ms.initAt.After(metadata.InitAt) {
