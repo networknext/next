@@ -94,13 +94,11 @@ func TestInsertInstanceMetadata_RedisWriteFailure(t *testing.T) {
 }
 
 func TestInsertInstanceMetadata_Success(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestInsertInstanceMetadata_Success", "", "")
 	assert.NoError(t, err)
 
 	ms, err := magic.NewMagicService(time.Second, "", time.Now().UTC(), redisPool.Addr(), "", 5, 5, msMetrics)
@@ -180,11 +178,9 @@ func TestIsOldestInstance_OtherInstance_TimeVarianceCheck(t *testing.T) {
 	assert.NotNil(t, ms)
 
 	otherMetadata := getTestMagicInstanceMetadata(initTime)
-	otherMetadata.UpdatedAt = initTime
+	otherMetadata.UpdatedAt = initTime.Add(-10*time.Second)
 	err = ms.InsertInstanceMetadata(otherMetadata)
 	assert.NoError(t, err)
-
-	redisPool.FastForward(10 * time.Second)
 
 	metadata := ms.CreateInstanceMetadata()
 	err = ms.InsertInstanceMetadata(metadata)
@@ -268,13 +264,11 @@ func TestSetMagicValue_RedisWriteFailure(t *testing.T) {
 }
 
 func TestSetMagicValue_Success(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestSetMagicValue_Success", "", "")
 	assert.NoError(t, err)
 
 	initTime := time.Now().UTC()
@@ -308,13 +302,11 @@ func TestGetMagicValue_RedisReadFailure(t *testing.T) {
 }
 
 func TestGetMagicValue_NoMagicValues(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestGetMagicValue_NoMagicValues", "", "")
 	assert.NoError(t, err)
 
 	ms, err := magic.NewMagicService(time.Second, "", time.Now(), redisPool.Addr(), "", 5, 5, msMetrics)
@@ -328,13 +320,11 @@ func TestGetMagicValue_NoMagicValues(t *testing.T) {
 }
 
 func TestGetMagicValue_Success(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "magic", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestGetMagicValue_Success", "", "")
 	assert.NoError(t, err)
 
 	initTime := time.Now().UTC()
@@ -377,13 +367,11 @@ func TestGenerateMagicValue(t *testing.T) {
 }
 
 func TestUpdateMagicValues_RedisEmpty(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestUpdateMagicValues_RedisEmpty", "", "")
 	assert.NoError(t, err)
 
 	ms, err := magic.NewMagicService(time.Second, "", time.Now(), redisPool.Addr(), "", 5, 5, msMetrics)
@@ -408,13 +396,11 @@ func TestUpdateMagicValues_RedisEmpty(t *testing.T) {
 }
 
 func TestUpdateMagicValues_FailsafeTimeoutCheck(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestUpdateMagicValues_FailsafeTimeoutCheck", "", "")
 	assert.NoError(t, err)
 
 	ms, err := magic.NewMagicService(time.Second, "", time.Now(), redisPool.Addr(), "", 5, 5, msMetrics)
@@ -438,13 +424,11 @@ func TestUpdateMagicValues_FailsafeTimeoutCheck(t *testing.T) {
 }
 
 func TestUpdateMagicValues_Success(t *testing.T) {
-	t.Parallel()
-
 	redisPool, err := miniredis.Run()
 	assert.NoError(t, err)
 	defer redisPool.Close()
 
-	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "", "", "")
+	msMetrics, err := metrics.NewMagicBackendMetrics(context.Background(), &metrics.LocalHandler{}, "TestUpdateMagicValues_Success", "", "")
 	assert.NoError(t, err)
 
 	ms, err := magic.NewMagicService(time.Second, "", time.Now(), redisPool.Addr(), "", 5, 5, msMetrics)
