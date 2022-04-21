@@ -355,6 +355,10 @@ dev-relays: build-reference-relay  ## runs 10 local relays
 dev-magic-backend: build-magic-backend ## runs a local magic backend
 	@PORT=41007 ./dist/magic_backend
 
+.PHONY: dev-magic-frontend
+dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
+	@PORT=41008 ./dist/magic_frontend
+
 ##############################################
 
 .PHONY: build-server4
@@ -671,6 +675,12 @@ build-analytics-pusher:
 build-magic-backend:
 	@printf "Building magic backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
+	@printf "done\n"
+
+.PHONY: build-magic-frontend
+build-magic-frontend:
+	@printf "Building magic frontend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_frontend ./cmd/magic_frontend/magic_frontend.go
 	@printf "done\n"
 
 .PHONY: build-match-data
