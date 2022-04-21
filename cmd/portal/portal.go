@@ -538,7 +538,7 @@ func mainReturnWithCode() int {
 	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
 
 	if overlayFilePath != "" {
-		overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*10)
+		overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*5)
 		if err != nil {
 			core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
 			return 1
