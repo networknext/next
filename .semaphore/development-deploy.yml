@@ -92,6 +92,14 @@ blocks:
           commands:
             - make build-match-data-artifacts-dev
             - make publish-match-data-artifacts-dev
+        - name: Magic Backend
+          commands:
+            - make build-magic-backend-artifacts-dev
+            - make publish-magic-backend-artifacts-dev
+        - name: Magic Frontend
+          commands:
+            - make build-magic-frontend-artifacts-dev
+            - make publish-magic-frontend-artifacts-dev
 
       secrets:
         - name: google-cloud-platform

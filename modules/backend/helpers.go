@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
@@ -35,6 +36,14 @@ func GetEnv() (string, error) {
 
 func GetGCPProjectID() string {
 	return envvar.Get("GOOGLE_PROJECT_ID", "")
+}
+
+func GetInstanceID(env string) (string, error) {
+	if env != "local" {
+		return metadata.InstanceID()
+	}
+
+	return "local", nil
 }
 
 // GetLogger returns a logger for the backend service to use.
