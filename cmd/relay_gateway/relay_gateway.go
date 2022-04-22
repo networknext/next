@@ -82,6 +82,10 @@ func init() {
 	// Store the creator and creation time from the database
 	binCreator = database.Creator
 	binCreationTime = database.CreationTime
+
+	magicUpcoming_internal = make([]byte, 8)
+	magicCurrent_internal = make([]byte, 8)
+	magicPrevious_internal = make([]byte, 8)
 }
 
 func main() {
@@ -237,6 +241,7 @@ func mainReturnWithCode() int {
 			}
 
 			magicTicker := time.NewTicker(cfg.MagicPollFrequency)
+			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicFrontendIP)
 			for {
 				select {
 				case <-ctx.Done():
@@ -244,7 +249,7 @@ func mainReturnWithCode() int {
 				case <-magicTicker.C:
 					var magicReader io.ReadCloser
 
-					if r, err := httpClient.Get(cfg.MagicFrontendIP); err == nil {
+					if r, err := httpClient.Get(magicURI); err == nil {
 						magicReader = r.Body
 					}
 
