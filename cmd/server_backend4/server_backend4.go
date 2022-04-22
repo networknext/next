@@ -37,6 +37,7 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
+	md "github.com/networknext/backend/modules/match_data"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -401,7 +402,7 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Setup feature config for billing and vanity metrics
+	// Setup feature config for billing
 	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
@@ -409,12 +410,6 @@ func mainReturnWithCode() int {
 			Enum:        config.FEATURE_BILLING2,
 			Value:       true,
 			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
-		},
-		{
-			Name:        "FEATURE_VANITY_METRIC",
-			Enum:        config.FEATURE_VANITY_METRIC,
-			Value:       false,
-			Description: "Vanity metrics for fast aggregate statistic lookup",
 		},
 	})
 	featureConfig = envVarConfig
@@ -424,6 +419,11 @@ func mainReturnWithCode() int {
 	// Create local biller
 	var biller2 billing.Biller = &billing.LocalBiller{
 		Metrics: backendMetrics.BillingMetrics,
+	}
+
+	// Create local matcher
+	var matcher md.Matcher = &md.LocalMatcher{
+		Metrics: backendMetrics.MatchDataMetrics,
 	}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -440,7 +440,7 @@ func mainReturnWithCode() int {
 			core.Debug("detected pubsub emulator")
 		}
 
-		// Google Pubsub
+		// Google Pubsub for billing
 		{
 			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 			if err != nil {
@@ -480,6 +480,46 @@ func mainReturnWithCode() int {
 
 				biller2 = pubsub
 			}
+		}
+
+		// Google Pubsub for match data
+		{
+			clientCount, err := envvar.GetInt("MATCH_DATA_CLIENT_COUNT", 1)
+			if err != nil {
+				core.Error("invalid MATCH_DATA_CLIENT_COUNT: %v", err)
+				return 1
+			}
+
+			countThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
+			if err != nil {
+				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_COUNT: %v", err)
+				return 1
+			}
+
+			byteThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
+			if err != nil {
+				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES: %v", err)
+				return 1
+			}
+
+			// todo: why don't we remove our batching, and just use theirs instead? less code = less problems...
+
+			// We do our own batching so don't stack the library's batching on top of ours
+			// Specifically, don't stack the message count thresholds
+			settings := googlepubsub.DefaultPublishSettings
+			settings.CountThreshold = 1
+			settings.ByteThreshold = byteThreshold
+			settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+			matchDataTopicID := envvar.Get("MATCH_DATA_TOPIC_NAME", "match_data")
+
+			pubsub, err := md.NewGooglePubSubMatcher(pubsubCtx, backendMetrics.MatchDataMetrics, gcpProjectID, matchDataTopicID, clientCount, countThreshold, byteThreshold, &settings)
+			if err != nil {
+				core.Error("could not create pubsub matcher: %v", err)
+				return 1
+			}
+
+			matcher = pubsub
 		}
 	}
 
@@ -523,42 +563,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Determine if should use vanity metrics
-	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
-
-	// Start vanity metrics publisher
-	vanityPublishers := make([]pubsub.Publisher, 0)
-	{
-		vanityMetricHosts := envvar.GetList("FEATURE_VANITY_METRIC_HOSTS", []string{"tcp://127.0.0.1:6666"})
-
-		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
-		if err != nil {
-			core.Error("invalid FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE: %v", err)
-			return 1
-		}
-
-		for _, host := range vanityMetricHosts {
-			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
-			if err != nil {
-				core.Error("could not create vanity metric publisher: %v", err)
-				return 1
-			}
-
-			vanityPublishers = append(vanityPublishers, vanityPublisher)
-		}
-	}
-
-	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
-	if err != nil {
-		core.Error("invalid FEATURE_VANITY_METRIC_POST_MAX_RETRIES: %v", err)
-		return 1
-	}
-
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller2, featureBilling2, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend
@@ -751,6 +760,14 @@ func mainReturnWithCode() int {
 				newStatusData.SessionUpdateWriteResponseFailure = int(backendMetrics.SessionUpdateMetrics.WriteResponseFailure.Value())
 				newStatusData.SessionUpdateStaleRouteMatrix = int(backendMetrics.SessionUpdateMetrics.StaleRouteMatrix.Value())
 
+				// Match Data Handler Metrics
+				newStatusData.MatchDataHandlerInvocations = int(backendMetrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
+				newStatusData.MatchDataHandlerReadPacketFailure = int(backendMetrics.MatchDataHandlerMetrics.ReadPacketFailure.Value())
+				newStatusData.MatchDataHandlerBuyerNotFound = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
+				newStatusData.MatchDataHandlerBuyerNotActive = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
+				newStatusData.MatchDataHandlerSignatureCheckFailed = int(backendMetrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
+				newStatusData.MatchDataHandlerWriteResponseFailure = int(backendMetrics.MatchDataHandlerMetrics.WriteResponseFailure.Value())
+
 				// Post Session Metrics
 				newStatusData.PostSessionBillingEntries2Sent = int(backendMetrics.PostSessionMetrics.BillingEntries2Sent.Value())
 				newStatusData.PostSessionBillingEntries2Finished = int(backendMetrics.PostSessionMetrics.BillingEntries2Finished.Value())
@@ -758,19 +775,24 @@ func mainReturnWithCode() int {
 				newStatusData.PostSessionPortalEntriesSent = int(backendMetrics.PostSessionMetrics.PortalEntriesSent.Value())
 				newStatusData.PostSessionPortalEntriesFinished = int(backendMetrics.PostSessionMetrics.PortalEntriesFinished.Value())
 				newStatusData.PostSessionPortalBufferFull = int(backendMetrics.PostSessionMetrics.PortalBufferFull.Value())
-				newStatusData.PostSessionVanityMetricsSent = int(backendMetrics.PostSessionMetrics.VanityMetricsSent.Value())
-				newStatusData.PostSessionVanityMetricsFinished = int(backendMetrics.PostSessionMetrics.VanityMetricsFinished.Value())
-				newStatusData.PostSessionVanityBufferFull = int(backendMetrics.PostSessionMetrics.VanityBufferFull.Value())
+				newStatusData.PostSessionMatchDataEntriesSent = int(backendMetrics.PostSessionMetrics.MatchDataEntriesSent.Value())
+				newStatusData.PostSessionMatchDataEntriesFinished = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFinished.Value())
+				newStatusData.PostSessionMatchDataEntriesBufferFull = int(backendMetrics.PostSessionMetrics.MatchDataEntriesBufferFull.Value())
 				newStatusData.PostSessionBilling2Failure = int(backendMetrics.PostSessionMetrics.Billing2Failure.Value())
 				newStatusData.PostSessionPortalFailure = int(backendMetrics.PostSessionMetrics.PortalFailure.Value())
-				newStatusData.PostSessionVanityMarshalFailure = int(backendMetrics.PostSessionMetrics.VanityMarshalFailure.Value())
-				newStatusData.PostSessionVanityTransmitFailure = int(backendMetrics.PostSessionMetrics.VanityTransmitFailure.Value())
+				newStatusData.PostSessionMatchDataEntriesFailure = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFailure.Value())
 
 				// Billing Metrics
 				newStatusData.BillingEntries2Submitted = int(backendMetrics.BillingMetrics.Entries2Submitted.Value())
 				newStatusData.BillingEntries2Queued = int(backendMetrics.BillingMetrics.Entries2Queued.Value())
 				newStatusData.BillingEntries2Flushed = int(backendMetrics.BillingMetrics.Entries2Flushed.Value())
 				newStatusData.Billing2PublishFailure = int(backendMetrics.BillingMetrics.ErrorMetrics.Billing2PublishFailure.Value())
+
+				// Match Data Metrics
+				newStatusData.MatchDataEntriesSubmitted = int(backendMetrics.MatchDataMetrics.EntriesSubmitted.Value())
+				newStatusData.MatchDataEntriesQueued = int(backendMetrics.MatchDataMetrics.EntriesQueued.Value())
+				newStatusData.MatchDataEntriesFlushed = int(backendMetrics.MatchDataMetrics.EntriesFlushed.Value())
+				newStatusData.MatchDataEntriesPublishFailure = int(backendMetrics.MatchDataMetrics.ErrorMetrics.MatchDataPublishFailure.Value())
 
 				// Route Matrix Metrics
 				newStatusData.RouteMatrixNumRoutes = int(backendMetrics.RouteMatrixNumRoutes.Value())
@@ -931,6 +953,7 @@ func mainReturnWithCode() int {
 	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	matchDataHandler := transport.MatchDataHandlerFunc(getDatabase, postSessionHandler, backendMetrics.MatchDataHandlerMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -985,6 +1008,8 @@ func mainReturnWithCode() int {
 					serverUpdateHandler(&buffer, &packet)
 				case transport.PacketTypeSessionUpdate:
 					sessionUpdateHandler(&buffer, &packet)
+				case transport.PacketTypeMatchDataRequest:
+					matchDataHandler(&buffer, &packet)
 				}
 
 				if buffer.Len() > 0 {
