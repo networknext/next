@@ -439,6 +439,7 @@ func mainReturnWithCode() int {
 		RequestChan:  updateChan,
 		Metrics:      gatewayMetrics,
 		GetRelayData: GetRelayData,
+		GetMagicData: GetMagicData,
 	}
 
 	port := envvar.Get("PORT", "30000")
