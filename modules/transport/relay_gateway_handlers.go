@@ -161,8 +161,11 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		var responseData []byte
 		response := RelayUpdateResponse{}
 
-		relayVersion := routing.RelayVersion{}
-		relayVersion.Parse(relayUpdateRequest.RelayVersion)
+		relayVersion, err := routing.ParseRelayVersion(relayUpdateRequest.RelayVersion)
+		if err != nil {
+			core.Error("failed to parse relay version: %v", err)
+			relayVersion = routing.RelayVersion{}
+		}
 
 		response.Version = 0
 		if relayVersion.AtLeast(routing.RelayVersion{2, 1, 0}) {
