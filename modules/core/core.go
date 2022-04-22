@@ -1501,7 +1501,7 @@ type RouteShader struct {
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:        false,
-		AnalysisOnly:              false,
+		AnalysisOnly:              true,
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,

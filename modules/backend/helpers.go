@@ -381,6 +381,13 @@ func ParseAddress(input string) *net.UDPAddr {
 	return address
 }
 
+// Decodes a Overlay Bin Wrapper from GOB
+func DecodeOverlayWrapper(file *os.File, overlayWrapper *routing.OverlayBinWrapper) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(overlayWrapper)
+	return err
+}
+
 // Decodes a Database Bin Wrapper from GOB
 func DecodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) error {
 	decoder := gob.NewDecoder(file)

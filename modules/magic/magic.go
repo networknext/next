@@ -19,7 +19,7 @@ const (
 	MagicCurrentKey  = "magic_current"
 	MagicPreviousKey = "magic_previous"
 
-	MagicUpdateFailsafeTimeout = 60 * time.Second
+	MagicUpdateFailsafeTimeout = 55 * time.Second
 	TimeVariance               = 5 * time.Second
 )
 
@@ -117,8 +117,8 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 	for _, metadata := range metadataArr {
 
 		if currentTime.Sub(metadata.UpdatedAt) > TimeVariance {
-			// Instance has not updated its metdata in the last TimeVariance seconds
-			return false, nil
+			// Instance has not updated its metadata in the last TimeVariance seconds, ignore
+			continue
 		}
 
 		if ms.initAt.After(metadata.InitAt) {
@@ -179,7 +179,7 @@ func (ms *MagicService) InsertInstanceMetadata(metadata MagicInstanceMetadata) e
 	a new "upcoming" value.
 
 	Failsafe is in place not to touch the magic value if any
-	of the magic values were updated in the last 60 seconds.
+	of the magic values were updated very recently.
 
 	If the upcoming and previous magic values are missing,
 	this function will repopulate all magic values.
