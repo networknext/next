@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
@@ -65,10 +66,23 @@ func getGatewayRelayUpdateHandlerConfig(t *testing.T, relays []routing.Relay) tr
 		return relays, relayHash
 	}
 
+	upcomingMagic := make([]byte, 8)
+	currentMagic := make([]byte, 8)
+	previousMagic := make([]byte, 8)
+
+	core.RandomBytes(upcomingMagic[:])
+	core.RandomBytes(currentMagic[:])
+	core.RandomBytes(previousMagic[:])
+
+	getMagicData := func() ([]byte, []byte, []byte) {
+		return upcomingMagic[:], currentMagic[:], previousMagic[:]
+	}
+
 	return transport.GatewayRelayUpdateHandlerConfig{
 		RequestChan:  requestChan,
 		Metrics:      gatewayMetrics,
 		GetRelayData: getRelayData,
+		GetMagicData: getMagicData,
 	}
 }
 
@@ -101,7 +115,7 @@ func TestGatewayRelayUpdate_UnmarshalFailure(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -130,7 +144,7 @@ func TestGatewayRelayUpdate_ExceedMaxRelays(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 		PingStats:    make([]routing.RelayStatsPing, transport.MaxRelays+1),
@@ -160,7 +174,7 @@ func TestGatewayRelayUpdate_RelayNotFound(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -179,12 +193,20 @@ func TestGatewayRelayUpdate_RelayNotFound(t *testing.T) {
 func TestGatewayRelayUpdate_Success(t *testing.T) {
 	t.Parallel()
 
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+	intAddr1, err := net.ResolveUDPAddr("udp", "10.128.0.1:40000")
+	assert.NoError(t, err)
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:40001")
+	assert.NoError(t, err)
+	intAddr2, err := net.ResolveUDPAddr("udp", "10.128.0.1:40001")
 	assert.NoError(t, err)
 
 	relay1 := routing.Relay{
-		ID:   crypto.HashID("127.0.0.1:40000"),
-		Addr: *addr,
+		ID:           crypto.HashID("127.0.0.1:40000"),
+		Addr:         *addr1,
+		InternalAddr: *intAddr1,
 		Datacenter: routing.Datacenter{
 			ID:   1,
 			Name: "some name",
@@ -195,10 +217,27 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 			Name: "seller name",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
-	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
+	relay2 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.1:40001"),
+		Addr:         *addr2,
+		InternalAddr: *intAddr2,
+		Datacenter: routing.Datacenter{
+			ID:   2,
+			Name: "some name 2",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID",
+			Name: "seller name",
+		},
+		State:   routing.RelayStateEnabled,
+		Version: "2.1.0",
+	}
+
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
@@ -227,6 +266,19 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 	response := &transport.RelayUpdateResponse{}
 	err = response.UnmarshalBinary(body)
 	assert.NoError(t, err)
+
+	assert.Greater(t, int(response.Version), 0)
+	assert.Equal(t, 1, len(response.RelaysToPing))
+	assert.Equal(t, routing.RelayPingData{ID: relay2.ID, Address: relay2.InternalAddr.String()}, response.RelaysToPing[0])
+	assert.Equal(t, relay1.Version, response.TargetVersion)
+
+	expectedUpcomingMagic, expectedCurrentMagic, expectedPreviousMagic := config.GetMagicData()
+	assert.Equal(t, expectedUpcomingMagic, response.UpcomingMagic)
+	assert.Equal(t, expectedCurrentMagic, response.CurrentMagic)
+	assert.Equal(t, expectedPreviousMagic, response.PreviousMagic)
+
+	assert.Equal(t, 1, len(response.InternalAddrs))
+	assert.Equal(t, relay2.InternalAddr.String(), response.InternalAddrs[0])
 }
 
 func TestGatewayRelayUpdate_PingInternalAddr_NotSameSeller(t *testing.T) {
@@ -251,7 +303,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NotSameSeller(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -273,7 +325,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NotSameSeller(t *testing.T) {
 			Name: "seller name 2",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
@@ -333,7 +385,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NoInternalIP(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -352,7 +404,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NoInternalIP(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
@@ -412,7 +464,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -434,7 +486,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	addr3, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
@@ -456,7 +508,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 2",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2, relay3})

@@ -12,7 +12,7 @@ import (
 
 const (
 	VersionNumberUpdateRequest  = 5
-	VersionNumberUpdateResponse = 0
+	VersionNumberUpdateResponse = 1
 	MaxVersionStringLength      = 32
 )
 
@@ -361,15 +361,20 @@ func (r *RelayUpdateRequest) sizeV5() int {
 }
 
 type RelayUpdateResponse struct {
+	Version       uint32
 	Timestamp     int64
 	RelaysToPing  []routing.RelayPingData
 	TargetVersion string
+	UpcomingMagic []byte
+	CurrentMagic  []byte
+	PreviousMagic []byte
+	InternalAddrs []string
 }
 
 func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	index := 0
 	responseData := make([]byte, r.size())
-	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
+	encoding.WriteUint32(responseData, &index, r.Version)
 	encoding.WriteUint64(responseData, &index, uint64(r.Timestamp))
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
 	for i := range r.RelaysToPing {
@@ -377,17 +382,28 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 		encoding.WriteString(responseData, &index, r.RelaysToPing[i].Address, routing.MaxRelayAddressLength)
 	}
 	encoding.WriteString(responseData, &index, r.TargetVersion, MaxVersionStringLength)
+
+	if r.Version >= 1 {
+		encoding.WriteBytes(responseData, &index, r.UpcomingMagic, 8)
+		encoding.WriteBytes(responseData, &index, r.CurrentMagic, 8)
+		encoding.WriteBytes(responseData, &index, r.PreviousMagic, 8)
+
+		encoding.WriteUint32(responseData, &index, uint32(len(r.InternalAddrs)))
+		for i := range r.InternalAddrs {
+			encoding.WriteString(responseData, &index, r.InternalAddrs[i], routing.MaxRelayAddressLength)
+		}
+	}
+
 	return responseData[:index], nil
 }
 
 func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 	index := 0
 
-	var version uint32
-	if !encoding.ReadUint32(buff, &index, &version) {
+	if !encoding.ReadUint32(buff, &index, &r.Version) {
 		return errors.New("could not read version")
 	}
-	if version > VersionNumberUpdateResponse {
+	if r.Version > VersionNumberUpdateResponse {
 		return errors.New("invalid version number")
 	}
 
@@ -420,6 +436,32 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 		return errors.New("could not read target version")
 	}
 
+	if r.Version >= 1 {
+		if !encoding.ReadBytes(buff, &index, &r.UpcomingMagic, 8) {
+			return errors.New("could not read upcoming magic")
+		}
+
+		if !encoding.ReadBytes(buff, &index, &r.CurrentMagic, 8) {
+			return errors.New("could not read current magic")
+		}
+
+		if !encoding.ReadBytes(buff, &index, &r.PreviousMagic, 8) {
+			return errors.New("could not read previous magic")
+		}
+
+		var numInternalAddrs uint32
+		if !encoding.ReadUint32(buff, &index, &numInternalAddrs) {
+			return errors.New("could not read num internal addrs")
+		}
+
+		r.InternalAddrs = make([]string, int32(numInternalAddrs))
+		for i := 0; i < int(numInternalAddrs); i++ {
+			if !encoding.ReadString(buff, &index, &r.InternalAddrs[i], routing.MaxRelayAddressLength) {
+				return errors.New("could not read relay internal address")
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -428,5 +470,8 @@ func (r RelayUpdateResponse) size() int {
 		8 + // Timestamp
 		4 + // Num relays to ping
 		len(r.RelaysToPing)*(8+routing.MaxRelayAddressLength) + // Relays to ping
-		MaxVersionStringLength) // Target Version
+		MaxVersionStringLength + // Target Version
+		8 + // Upcoming magic
+		8 + // Current magic
+		8) // Previous magic
 }
