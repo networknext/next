@@ -36,47 +36,65 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "General", false, false, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, 100, "Summary", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Regional", false, true, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, 90, "Acceleration Results", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Platform", false, true, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, 80, "AB Test Results", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Discovery", false, true, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, 70, "Country Analysis", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "System", true, false, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, 60, "Retention Analysis", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		generalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "General")
+		summaryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Summary")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
 
-		regionalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Regional")
+		accelerationCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Acceleration Results")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
 
-		platformCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Platform")
+		testResultsCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "AB Test Results")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
 
-		discoveryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Discovery")
+		countryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Country Analysis")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
 
-		systemCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "System")
+		retentionCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Retention Analysis")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, 50, "Latency", retentionCategory.ID); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, 40, "Region", retentionCategory.ID); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		latencySubCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Latency")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		regionSubCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Region")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
@@ -91,13 +109,6 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
-		nextCustomer, err := db.Customer(ctx, "next")
-		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "Relay Stats", 11, false, nextCustomer.DatabaseID, systemCategory.ID); err != nil {
-				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
-			}
-		}
-
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Happy Path",
 			Code:                   "happypath",
@@ -108,7 +119,7 @@ func SeedSQLStorage(
 
 		happyPathCustomer, err := db.Customer(ctx, "happypath")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, happyPathCustomer.DatabaseID, generalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 10, "Summary", false, true, 14, happyPathCustomer.DatabaseID, summaryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}
@@ -116,26 +127,29 @@ func SeedSQLStorage(
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Ghost Army",
 			Code:                   "ghost-army",
-			AutomaticSignInDomains: "",
+			AutomaticSignInDomains: "ghost-army.com,google.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
 		ghostCustomer, err := db.Customer(ctx, "ghost-army")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, ghostCustomer.DatabaseID, generalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 10, "Summary", false, true, 47, ghostCustomer.DatabaseID, summaryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, ghostCustomer.DatabaseID, regionalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 11, "Acceleration Results", false, false, 36, ghostCustomer.DatabaseID, accelerationCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, ghostCustomer.DatabaseID, platformCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 30, "AB Test Results", false, false, 37, ghostCustomer.DatabaseID, testResultsCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Country Analysis", false, false, 42, ghostCustomer.DatabaseID, countryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Retention by Latency", false, false, 62, ghostCustomer.DatabaseID, latencySubCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Retention by Region", false, false, 63, ghostCustomer.DatabaseID, regionSubCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}
@@ -150,19 +164,22 @@ func SeedSQLStorage(
 
 		localCustomer, err := db.Customer(ctx, "local")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, localCustomer.DatabaseID, generalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 10, "Summary", false, true, 47, localCustomer.DatabaseID, summaryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, localCustomer.DatabaseID, regionalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 11, "Acceleration Results", true, false, 36, localCustomer.DatabaseID, accelerationCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, localCustomer.DatabaseID, platformCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 30, "AB Test Results", false, false, 37, localCustomer.DatabaseID, testResultsCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Country Analysis", true, false, 42, localCustomer.DatabaseID, countryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Retention by Latency", true, false, 62, localCustomer.DatabaseID, latencySubCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, 42, "Retention by Region", true, false, 63, localCustomer.DatabaseID, regionSubCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}
@@ -195,7 +212,7 @@ func SeedSQLStorage(
 			Analytics:   true,
 			Billing:     true,
 			Debug:       true,
-			Trial:       true,
+			Trial:       false,
 			LookerSeats: 1,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
@@ -216,7 +233,7 @@ func SeedSQLStorage(
 			Analytics:   false,
 			Billing:     false,
 			Debug:       false,
-			Trial:       true,
+			Trial:       false,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
 			LookerSeats: 0,

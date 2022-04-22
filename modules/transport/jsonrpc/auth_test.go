@@ -1196,6 +1196,26 @@ func TestUpdateUserRoles(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
+	err := storer.AddCustomer(req.Context(), routing.Customer{
+		Code: "test",
+		Name: "Test Customer",
+	})
+	assert.NoError(t, err)
+
+	testCustomer, err := storer.CustomerWithName(req.Context(), "Test Customer")
+	assert.NoError(t, err)
+
+	err = storer.AddBuyer(req.Context(), routing.Buyer{
+		CustomerID:  testCustomer.DatabaseID,
+		HexID:       "abcdef12345678",
+		CompanyCode: "test",
+		LookerSeats: 0,
+	})
+	assert.NoError(t, err)
+
+	testBuyer, err := storer.BuyerWithCompanyCode(req.Context(), "test")
+	assert.NoError(t, err)
+
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{}, &reply)
@@ -1247,7 +1267,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - !admin assigning !admin", func(t *testing.T) {
+	t.Run("failure - !admin assigning !admin - no looker seats", func(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
@@ -1258,10 +1278,24 @@ func TestUpdateUserRoles(t *testing.T) {
 		}}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, svc.RoleCache["Explorer"].GetID(), reply.Roles[0].GetID())
-		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.Roles[0].GetName())
-		assert.Equal(t, svc.RoleCache["Explorer"].GetDescription(), reply.Roles[0].GetDescription())
+		assert.Equal(t, 0, len(reply.Roles))
+	})
+
+	t.Run("success - !admin assigning !admin", func(t *testing.T) {
+		err := storer.UpdateBuyer(req.Context(), testBuyer.ID, "LookerSeats", int64(10))
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RolesReply
+		err = svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
+			{
+				ID:          svc.RoleCache["Explorer"].ID,
+				Name:        svc.RoleCache["Explorer"].Name,
+				Description: svc.RoleCache["Explorer"].Description,
+			},
+		}}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 0, len(reply.Roles))
 	})
 
 	t.Run("success - admin assigning admin", func(t *testing.T) {

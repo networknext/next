@@ -9,9 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (env *TestEnvironment) AddBuyer(companyCode string, live bool) (uint64, []byte, []byte) {
+func (env *TestEnvironment) AddBuyer(companyCode string, live bool, analysisOnly bool) (uint64, []byte, []byte) {
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = analysisOnly
+
 	buyer := routing.Buyer{
-		RouteShader:    core.NewRouteShader(),
+		RouteShader:    rs,
 		InternalConfig: core.NewInternalConfig(),
 	}
 

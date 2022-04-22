@@ -8,39 +8,39 @@ type PostSessionMetrics struct {
 	BillingEntries2Finished Counter
 	Billing2BufferLength    Gauge
 	Billing2BufferFull      Counter
-	PortalEntriesSent       Counter
-	PortalEntriesFinished   Counter
-	PortalBufferLength      Gauge
-	PortalBufferFull        Counter
-	VanityMetricsSent       Counter
-	VanityMetricsFinished   Counter
-	VanityBufferLength      Gauge
-	VanityBufferFull        Counter
 
-	Billing2Failure       Counter
-	PortalFailure         Counter
-	VanityMarshalFailure  Counter
-	VanityTransmitFailure Counter
+	PortalEntriesSent     Counter
+	PortalEntriesFinished Counter
+	PortalBufferLength    Gauge
+	PortalBufferFull      Counter
+
+	MatchDataEntriesSent         Counter
+	MatchDataEntriesFinished     Counter
+	MatchDataEntriesBufferLength Gauge
+	MatchDataEntriesBufferFull   Counter
+
+	Billing2Failure         Counter
+	PortalFailure           Counter
+	MatchDataEntriesFailure Counter
 }
 
 // EmptyPostSessionMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyPostSessionMetrics = PostSessionMetrics{
-	BillingEntries2Sent:     &EmptyCounter{},
-	BillingEntries2Finished: &EmptyCounter{},
-	Billing2BufferLength:    &EmptyGauge{},
-	Billing2BufferFull:      &EmptyCounter{},
-	PortalEntriesSent:       &EmptyCounter{},
-	PortalEntriesFinished:   &EmptyCounter{},
-	PortalBufferLength:      &EmptyGauge{},
-	PortalBufferFull:        &EmptyCounter{},
-	VanityMetricsSent:       &EmptyCounter{},
-	VanityMetricsFinished:   &EmptyCounter{},
-	VanityBufferLength:      &EmptyGauge{},
-	VanityBufferFull:        &EmptyCounter{},
-	Billing2Failure:         &EmptyCounter{},
-	PortalFailure:           &EmptyCounter{},
-	VanityMarshalFailure:    &EmptyCounter{},
-	VanityTransmitFailure:   &EmptyCounter{},
+	BillingEntries2Sent:          &EmptyCounter{},
+	BillingEntries2Finished:      &EmptyCounter{},
+	Billing2BufferLength:         &EmptyGauge{},
+	Billing2BufferFull:           &EmptyCounter{},
+	PortalEntriesSent:            &EmptyCounter{},
+	PortalEntriesFinished:        &EmptyCounter{},
+	PortalBufferLength:           &EmptyGauge{},
+	PortalBufferFull:             &EmptyCounter{},
+	MatchDataEntriesSent:         &EmptyCounter{},
+	MatchDataEntriesFinished:     &EmptyCounter{},
+	MatchDataEntriesBufferLength: &EmptyGauge{},
+	MatchDataEntriesBufferFull:   &EmptyCounter{},
+	Billing2Failure:              &EmptyCounter{},
+	PortalFailure:                &EmptyCounter{},
+	MatchDataEntriesFailure:      &EmptyCounter{},
 }
 
 // NewPostSessionMetrics creates the metrics the post session processor will use.
@@ -158,67 +158,56 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		return nil, err
 	}
 
-	m.VanityMetricsSent, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Sent",
+	m.MatchDataEntriesSent, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Match Data Entries Sent",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_sent",
+		ID:          "post_session_update.match_data_entries_sent",
 		Unit:        "entries",
-		Description: "The number of billing entries sent to the post session vanity metrics channel.",
+		Description: "The number of match data entries sent to the post session match data channel.",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.VanityMetricsFinished, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Finished",
+	m.MatchDataEntriesFinished, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Match Data Entries Finished",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_finished",
+		ID:          "post_session_update.match_data_entries_finished",
 		Unit:        "metrics",
-		Description: "The number of vanity metric structs finished pushing onto ZeroMQ.",
+		Description: "The number of match data entries finished sending to Google Pub/Sub.",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.VanityBufferLength, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Length",
+	m.MatchDataEntriesBufferLength, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Post Session Update Match Data Entries Length",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_length",
+		ID:          "post_session_update.match_data_entries_length",
 		Unit:        "entries",
-		Description: "The number of billing entries for vanity metrics in queue waiting to be sent.",
+		Description: "The number of match data entries in queue waiting to be sent.",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.VanityBufferFull, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Buffer Full",
+	m.MatchDataEntriesBufferFull, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Match Data Entries Buffer Full",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_buffer_full",
+		ID:          "post_session_update.match_data_entries_buffer_full",
 		Unit:        "entries",
-		Description: "The number of billing entries dropped because the vanity queue was full.",
+		Description: "The number of match data entries dropped because the match data queue was full.",
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	m.VanityMarshalFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Marshal Failure",
+	m.MatchDataEntriesFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Post Session Update Match Data Entries Failure",
 		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_marshal_failure",
+		ID:          "post_session_update.match_data_entries_failure",
 		Unit:        "errors",
-		Description: "The number of entries for vanity metrics that failed to be marshaled.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityTransmitFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Transmit Failure",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_transmit_failure",
-		Unit:        "errors",
-		Description: "The number of marshaled vanity metrics that failed to be pushed onto ZeroMQ.",
+		Description: "The number of match data entries that failed to be sent to Google Pub/Sub.",
 	})
 	if err != nil {
 		return nil, err

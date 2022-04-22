@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	gcplogging "cloud.google.com/go/logging"
 	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
@@ -35,6 +36,14 @@ func GetEnv() (string, error) {
 
 func GetGCPProjectID() string {
 	return envvar.Get("GOOGLE_PROJECT_ID", "")
+}
+
+func GetInstanceID(env string) (string, error) {
+	if env != "local" {
+		return metadata.InstanceID()
+	}
+
+	return "local", nil
 }
 
 // GetLogger returns a logger for the backend service to use.
@@ -370,6 +379,13 @@ func ParseAddress(input string) *net.UDPAddr {
 	address.IP = net.ParseIP(ip_string)
 	address.Port, _ = strconv.Atoi(port_string)
 	return address
+}
+
+// Decodes a Overlay Bin Wrapper from GOB
+func DecodeOverlayWrapper(file *os.File, overlayWrapper *routing.OverlayBinWrapper) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(overlayWrapper)
+	return err
 }
 
 // Decodes a Database Bin Wrapper from GOB

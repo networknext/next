@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-dev
             - make publish-analytics-artifacts-dev
-        - name: API
-          commands:
-            - make build-api-artifacts-dev
-            - make publish-api-artifacts-dev
-        - name: Vanity
-          commands:
-            - make build-vanity-artifacts-dev
-            - make publish-vanity-artifacts-dev
         - name: Portal
           commands:
             - make build-portal-artifacts-dev
@@ -96,6 +88,18 @@ blocks:
           commands:
             - make build-pingdom-artifacts-dev
             - make publish-pingdom-artifacts-dev
+        - name: Match Data
+          commands:
+            - make build-match-data-artifacts-dev
+            - make publish-match-data-artifacts-dev
+        - name: Magic Backend
+          commands:
+            - make build-magic-backend-artifacts-dev
+            - make publish-magic-backend-artifacts-dev
+        - name: Magic Frontend
+          commands:
+            - make build-magic-frontend-artifacts-dev
+            - make publish-magic-frontend-artifacts-dev
 
       secrets:
         - name: google-cloud-platform

@@ -1,14 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/exec"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -30,6 +35,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -291,21 +297,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create auth service
-	authservice := &jsonrpc.AuthService{
-		AuthenticationClient: authenticationClient,
-		HubSpotClient:        hubspotClient,
-		MailChimpManager: notifications.MailChimpHandler{
-			HTTPHandler: *http.DefaultClient,
-			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
-		},
-		JobManager:  jobManager,
-		RoleManager: roleManager,
-		UserManager: userManager,
-		SlackClient: slackClient,
-		Storage:     db,
-	}
-
 	configService := jsonrpc.ConfigService{
 		Storage: db,
 	}
@@ -341,6 +332,7 @@ func mainReturnWithCode() int {
 	}
 
 	opsService := jsonrpc.OpsService{
+		Env:                  env,
 		Release:              tag,
 		BuildTime:            buildtime,
 		Storage:              db,
@@ -364,6 +356,22 @@ func mainReturnWithCode() int {
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
 		LookerClient:           lookerClient,
+	}
+
+	// Create auth service
+	authservice := &jsonrpc.AuthService{
+		AuthenticationClient: authenticationClient,
+		HubSpotClient:        hubspotClient,
+		MailChimpManager: notifications.MailChimpHandler{
+			HTTPHandler: *http.DefaultClient,
+			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+		},
+		JobManager:   jobManager,
+		RoleManager:  roleManager,
+		UserManager:  userManager,
+		SlackClient:  slackClient,
+		Storage:      db,
+		LookerClient: lookerClient,
 	}
 
 	// Setup error channel with wait group to exit from goroutines
@@ -497,6 +505,69 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	runExplorerRoleCleanUp, err := envvar.GetBool("EXPLORER_ROLE_CLEAN_UP", false)
+	if err != nil {
+		core.Error("failed to parse EXPLORER_ROLE_CLEAN_UP: %v", err)
+		return 1
+	}
+
+	if runExplorerRoleCleanUp {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+				core.Error("could not clean up explorer roles: %v", err)
+			}
+
+			ticker := time.NewTicker(time.Hour * 24)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := authservice.CleanUpExplorerRoles(ctx); err != nil {
+						core.Error("could not clean up explorer roles: %v", err)
+					}
+				}
+			}
+		}()
+	}
+
+	// Get absolute path of overlay.bin
+	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
+
+	if overlayFilePath != "" {
+		overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*5)
+		if err != nil {
+			core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
+			return 1
+		}
+
+		if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+			core.Error("failed to generate overlay.bin: %v", err)
+		}
+
+		// Setup goroutine to build/upload the latest overlay file
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			ticker := time.NewTicker(overlaySyncInterval)
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
+						core.Error("failed to generate overlay.bin: %v", err)
+					}
+				}
+			}
+		}()
+	}
+
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
 	var statusMutex sync.RWMutex
@@ -614,12 +685,6 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		apiURI := envvar.Get("API_URI", "")
-		if apiURI == "" {
-			core.Error("API_URI not set")
-			return 1
-		}
-
 		billingMIG := envvar.Get("BILLING_MIG", "")
 		if billingMIG == "" {
 			core.Error("BILLING_MIG not set")
@@ -674,22 +739,9 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		vanityURI := envvar.Get("VANITY_URI", "")
-		if vanityURI == "" {
-			core.Error("VANITY_URI not set")
-			return 1
-		}
-
-		mondayApiKey := envvar.Get("MONDAY_API_KEY", "")
-		if mondayApiKey == "" {
-			core.Error("MONDAY_API_KEY not set")
-			return 1
-		}
-
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			AnalyticsMIG:       analyticsMIG,
 			AnalyticsPusherURI: analyticsPusherURI,
-			ApiURI:             apiURI,
 			BillingMIG:         billingMIG,
 			PingdomURI:         pingdomURI,
 			PortalBackendMIG:   portalBackendMIG,
@@ -699,10 +751,8 @@ func mainReturnWithCode() int {
 			RelayGatewayURI:    relayGatewayURI,
 			RelayPusherURI:     relayPusherURI,
 			ServerBackendMIG:   serverBackendMIG,
-			VanityURI:          vanityURI,
 			Storage:            db,
 			Env:                env,
-			MondayApiKey:       mondayApiKey,
 		}, "")
 
 		s.RegisterService(&jsonrpc.LiveServerService{}, "")
@@ -781,4 +831,99 @@ func mainReturnWithCode() int {
 		ctxCancelFunc()
 		return 1
 	}
+}
+
+func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, overlayFilePath string) error {
+	bucketName := "gs://"
+	switch env {
+	case "dev":
+		bucketName += jsonrpc.DevDatabaseBinGCPBucketName
+	case "staging":
+		bucketName += jsonrpc.StagingDatabaseBinGCPBucketName
+	case "prod":
+		bucketName += jsonrpc.ProdDatabaseBinGCPBucketName
+	case "local":
+		bucketName += jsonrpc.LocalDatabaseBinGCPBucketName
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/overlay.bin"
+
+	// Get information about the last overlay.bin upload
+	gsutilStatCommand := exec.Command("gsutil", "stat", bucketName)
+
+	response, err := gsutilStatCommand.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	stringResponse := string(response)
+
+	retentionExpirationString := ""
+
+	// Loop through the response looking for retention policy
+	tokens := strings.Split(stringResponse, "\n")
+	for _, token := range tokens {
+		isRetention := strings.Contains(token, "Retention Expiration:")
+		if isRetention {
+			// Separate the description with the actually timestamp of the retention expiration
+			reg := regexp.MustCompile("[^(Retention Expiration:\\s+)].*")
+			retentionExpirationString = reg.FindStringSubmatch(token)[0]
+		}
+	}
+
+	timestamp := time.Now().UTC().Add(time.Hour * -1)
+	if retentionExpirationString != "" {
+		// Convert the retention expiration timestamp string to time.Time
+		timestamp, err = time.Parse("Mon, 02 Jan 2006 15:04:05 MST", retentionExpirationString)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Check if now is past the expiration timestamp
+	if time.Now().UTC().Sub(timestamp.UTC()) < time.Minute {
+		return fmt.Errorf("generateOverlayBinFile(): Failed to upload overlay.bin. Blocked by retention policy")
+	}
+
+	newOverlay := routing.CreateEmptyOverlayBinWrapper()
+	buyers := db.Buyers(ctx)
+
+	for _, buyer := range buyers {
+		_, ok := newOverlay.BuyerMap[buyer.ID]
+		if !ok {
+			newOverlay.BuyerMap[buyer.ID] = buyer
+		}
+	}
+
+	newOverlay.CreationTime = time.Now().UTC().String()
+
+	// Save new overlay to disk
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(newOverlay)
+
+	tempFile, err := ioutil.TempFile("", overlayFilePath)
+	if err != nil {
+		err := fmt.Errorf("error writing overlay.bin to temporary file: %v", err)
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.Write(buffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("error writing overlay.bin to filesystem: %v", err)
+		return err
+	}
+
+	// Upload to GCP for relay pusher to send over to relay backends
+	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+
+	err = gsutilCpCommand.Run()
+	if err != nil {
+		err := fmt.Errorf("error copying overlay.bin to %s: %v", bucketName, err)
+		return err
+	}
+
+	return nil
 }
