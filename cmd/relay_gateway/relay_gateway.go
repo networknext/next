@@ -250,7 +250,7 @@ func mainReturnWithCode() int {
 
 					if magicReader == nil {
 						core.Error("failed to get magic values: %v", err)
-						// TODO: metric
+						gatewayMetrics.ErrorMetrics.MagicReaderNil.Add(1)
 						continue
 					}
 
@@ -258,24 +258,24 @@ func mainReturnWithCode() int {
 					magicReader.Close()
 					if err != nil {
 						core.Error("failed to read magic data: %v", err)
-						// TODO: metric
+						gatewayMetrics.ErrorMetrics.MagicReadFailure.Add(1)
 						continue
 					}
 
 					if len(buffer) == 0 {
 						core.Error("magic data buffer is empty")
-						// TODO: metric
+						gatewayMetrics.ErrorMetrics.MagicBufferEmpty.Add(1)
 						continue
 					}
 
 					if len(buffer) != 24 {
 						core.Error("expected combined magic to be 24 bytes, got %d", len(buffer))
-						// TODO: metric
+						gatewayMetrics.ErrorMetrics.MagicUnexpectedLengthError.Add(1)
 						continue
 					}
 
 					if bytes.Equal(cachedCombinedMagic, buffer) {
-						// No update to magic
+						// Magic values are the same
 						continue
 					}
 
@@ -288,7 +288,7 @@ func mainReturnWithCode() int {
 					cachedCombinedMagic = buffer
 
 					core.Debug("refreshed magic values")
-					// TODO: metric
+					gatewayMetrics.RefreshedMagicValues.Add(1)
 				}
 			}
 		}()
@@ -403,6 +403,7 @@ func mainReturnWithCode() int {
 				newStatusData.UpdateRequestsReceived = int(gatewayMetrics.UpdatesReceived.Value())
 				newStatusData.UpdateRequestsQueued = int(gatewayMetrics.UpdatesQueued.Value())
 				newStatusData.UpdateRequestsFlushed = int(gatewayMetrics.UpdatesFlushed.Value())
+				newStatusData.RefreshedMagicValues = int(gatewayMetrics.RefreshedMagicValues.Value())
 
 				// Errors
 				newStatusData.UpdateRequestReadPacketFailure = int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value())
@@ -413,6 +414,10 @@ func mainReturnWithCode() int {
 				newStatusData.UpdateResponseMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value())
 				newStatusData.BatchUpdateRequestMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value())
 				newStatusData.BatchUpdateRequestBackendSendFailure = int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value())
+				newStatusData.MagicReaderNil = int(gatewayMetrics.ErrorMetrics.MagicReaderNil.Value())
+				newStatusData.MagicReadFailure = int(gatewayMetrics.ErrorMetrics.MagicReadFailure.Value())
+				newStatusData.MagicBufferEmpty = int(gatewayMetrics.ErrorMetrics.MagicBufferEmpty.Value())
+				newStatusData.MagicUnexpectedLengthError = int(gatewayMetrics.ErrorMetrics.MagicUnexpectedLengthError.Value())
 
 				statusMutex.Lock()
 				statusData = newStatusData
