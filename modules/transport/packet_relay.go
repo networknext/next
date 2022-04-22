@@ -368,6 +368,7 @@ type RelayUpdateResponse struct {
 	UpcomingMagic []byte
 	CurrentMagic  []byte
 	PreviousMagic []byte
+	InternalAddrs []string
 }
 
 func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
@@ -386,6 +387,11 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 		encoding.WriteBytes(responseData, &index, r.UpcomingMagic, 8)
 		encoding.WriteBytes(responseData, &index, r.CurrentMagic, 8)
 		encoding.WriteBytes(responseData, &index, r.PreviousMagic, 8)
+
+		encoding.WriteUint32(responseData, &index, uint32(len(r.InternalAddrs)))
+		for i := range r.InternalAddrs {
+			encoding.WriteString(responseData, &index, r.InternalAddrs[i], routing.MaxRelayAddressLength)
+		}
 	}
 
 	return responseData[:index], nil
@@ -441,6 +447,18 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 
 		if !encoding.ReadBytes(buff, &index, &r.PreviousMagic, 8) {
 			return errors.New("could not read previous magic")
+		}
+
+		var numInternalAddrs uint32
+		if !encoding.ReadUint32(buff, &index, &numInternalAddrs) {
+			return errors.New("could not read num internal addrs")
+		}
+
+		r.InternalAddrs = make([]string, int32(numInternalAddrs))
+		for i := 0; i < int(numInternalAddrs); i++ {
+			if !encoding.ReadString(buff, &index, &r.InternalAddrs[i], routing.MaxRelayAddressLength) {
+				return errors.New("could not read relay internal address")
+			}
 		}
 	}
 

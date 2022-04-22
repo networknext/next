@@ -6,11 +6,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"expvar"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -46,6 +48,12 @@ var (
 
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
+
+	magicUpcoming_internal []byte
+	magicCurrent_internal  []byte
+	magicPrevious_internal []byte
+
+	magicMutex sync.RWMutex
 )
 
 func init() {
@@ -214,6 +222,73 @@ func mainReturnWithCode() int {
 					relayHashMutex.Lock()
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
+				}
+			}
+		}()
+	}
+
+	// Setup magic goroutine
+	{
+		go func() {
+			var cachedCombinedMagic []byte
+
+			httpClient := &http.Client{
+				Timeout: cfg.HTTPTimeout,
+			}
+
+			magicTicker := time.NewTicker(cfg.MagicPollFrequency)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-magicTicker.C:
+					var magicReader io.ReadCloser
+
+					if r, err := httpClient.Get(cfg.MagicFrontendIP); err == nil {
+						magicReader = r.Body
+					}
+
+					if magicReader == nil {
+						core.Error("failed to get magic values: %v", err)
+						// TODO: metric
+						continue
+					}
+
+					buffer, err := ioutil.ReadAll(magicReader)
+					magicReader.Close()
+					if err != nil {
+						core.Error("failed to read magic data: %v", err)
+						// TODO: metric
+						continue
+					}
+
+					if len(buffer) == 0 {
+						core.Error("magic data buffer is empty")
+						// TODO: metric
+						continue
+					}
+
+					if len(buffer) != 24 {
+						core.Error("expected combined magic to be 24 bytes, got %d", len(buffer))
+						// TODO: metric
+						continue
+					}
+
+					if bytes.Equal(cachedCombinedMagic, buffer) {
+						// No update to magic
+						continue
+					}
+
+					magicMutex.Lock()
+					magicUpcoming_internal = buffer[0:8]
+					magicCurrent_internal = buffer[8:16]
+					magicPrevious_internal = buffer[16:24]
+					magicMutex.Unlock()
+
+					cachedCombinedMagic = buffer
+
+					core.Debug("refreshed magic values")
+					// TODO: metric
 				}
 			}
 		}()
@@ -428,6 +503,16 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
+func GetMagicData() ([]byte, []byte, []byte) {
+	magicMutex.RLock()
+	magicUpcoming := magicUpcoming_internal
+	magicCurrent := magicCurrent_internal
+	magicPrevious := magicPrevious_internal
+	magicMutex.RUnlock()
+
+	return magicUpcoming, magicCurrent, magicPrevious
+}
+
 // Get the config for how this relay gateway should operate
 func newConfig() (*gateway.GatewayConfig, error) {
 	cfg := new(gateway.GatewayConfig)
@@ -443,6 +528,17 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		return nil, err
 	}
 	cfg.BinSyncInterval = binSyncInterval
+
+	magicPollFrequency, err := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MagicPollFrequency = magicPollFrequency
+
+	cfg.MagicFrontendIP = envvar.Get("MAGIC_FRONTEND_IP", "127.0.0.1:41008")
+	if cfg.MagicFrontendIP == "" {
+		return nil, fmt.Errorf("MAGIC_FRONTEND_IP not set")
+	}
 
 	// Decide if we are using HTTP to batch-write to relay backends
 	useHTTP, err := envvar.GetBool("GATEWAY_USE_HTTP", true)

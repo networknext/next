@@ -25,10 +25,6 @@ const (
 
 type RelayState uint32
 
-type RelayBinWrapper struct {
-	Relays []Relay
-}
-
 func (state RelayState) String() string {
 	switch state {
 	case RelayStateEnabled:
@@ -215,30 +211,34 @@ func (a RelayVersion) Compare(b RelayVersion) int {
 	return RelayVersionOlder
 }
 
+func (a RelayVersion) AtLeast(b RelayVersion) bool {
+	return a.Compare(b) != RelayVersionOlder
+}
+
 func (v RelayVersion) Parse(version string) error {
 	components := strings.Split(version, ".")
 	if len(components) != 3 {
 		return fmt.Errorf("version string does not follow major.minor.patch format: %s", version)
 	}
 
-	major, err := strconv.ParseInt(components[0], 10, 32)
+	major, err := strconv.ParseInt(components[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("could not parse major component %s as an int32", components[0])
+		return fmt.Errorf("could not parse major component %s as an int", components[0])
 	}
 
-	minor, err := strconv.ParseInt(components[1], 10, 32)
+	minor, err := strconv.ParseInt(components[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("could not parse minor component %s as an int32", components[1])
+		return fmt.Errorf("could not parse minor component %s as an int", components[1])
 	}
 
-	patch, err := strconv.ParseInt(components[2], 10, 32)
+	patch, err := strconv.ParseInt(components[2], 10, 64)
 	if err != nil {
-		return fmt.Errorf("could not parse patch component %s as an int32", components[2])
+		return fmt.Errorf("could not parse patch component %s as an int", components[2])
 	}
 
-	v.Major = major
-	v.Minor = minor
-	v.Patch = patch
+	v.Major = int32(major)
+	v.Minor = int32(minor)
+	v.Patch = int32(patch)
 
 	return nil
 }
