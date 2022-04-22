@@ -373,7 +373,7 @@ type RelayUpdateResponse struct {
 
 func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	index := 0
-	responseData := make([]byte, r.size())
+	responseData := make([]byte, r.Size())
 	encoding.WriteUint32(responseData, &index, r.Version)
 	encoding.WriteUint64(responseData, &index, uint64(r.Timestamp))
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
@@ -465,7 +465,22 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 	return nil
 }
 
-func (r RelayUpdateResponse) size() int {
+func (r RelayUpdateResponse) Size() int {
+	if r.Version >= 1 {
+		return r.sizeV1()
+	}
+	return r.sizeV0()
+}
+
+func (r RelayUpdateResponse) sizeV0() int {
+	return (4 + // Version
+		8 + // Timestamp
+		4 + // Num relays to ping
+		len(r.RelaysToPing)*(8+routing.MaxRelayAddressLength) + // Relays to ping
+		MaxVersionStringLength) // Target Version
+}
+
+func (r RelayUpdateResponse) sizeV1() int {
 	return (4 + // Version
 		8 + // Timestamp
 		4 + // Num relays to ping
@@ -473,5 +488,7 @@ func (r RelayUpdateResponse) size() int {
 		MaxVersionStringLength + // Target Version
 		8 + // Upcoming magic
 		8 + // Current magic
-		8) // Previous magic
+		8 + // Previous magic
+		4 + // Num internal addresses
+		len(r.InternalAddrs)*routing.MaxRelayAddressLength) // Internal addresses
 }
