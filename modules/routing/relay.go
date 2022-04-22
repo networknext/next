@@ -186,6 +186,11 @@ const (
 )
 
 func ParseRelayVersion(version string) (RelayVersion, error) {
+	if version == "reference" {
+		// Handle reference relay version
+		return RelayVersion{2, 1, 0}, nil
+	}
+
 	components := strings.Split(version, ".")
 	if len(components) != 3 {
 		return RelayVersion{}, fmt.Errorf("version string does not follow major.minor.patch format: %s", version)
