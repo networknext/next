@@ -17,6 +17,7 @@ type MagicStatus struct {
 	// Success Metrics
 	InsertInstanceMetadataSuccess int `json:"insert_instance_metdata_success"`
 	UpdateMagicValuesSuccess      int `json:"update_magic_values_success"`
+	RefreshedMagicValuesSuccess   int `json:"refreshed_magic_values_success"`
 	GetMagicValueSuccess          int `json:"get_magic_values_success"`
 	SetMagicValueSuccess          int `json:"set_magic_values_success"`
 
@@ -34,6 +35,7 @@ type MagicMetrics struct {
 	MagicServiceMetrics           *ServiceMetrics
 	InsertInstanceMetadataSuccess Counter
 	UpdateMagicValuesSuccess      Counter
+	RefreshedMagicValuesSuccess   Counter
 	GetMagicValueSuccess          Counter
 	SetMagicValueSuccess          Counter
 	ErrorMetrics                  MagicErrorMetrics
@@ -43,6 +45,7 @@ var EmptyMagicMetrics = &MagicMetrics{
 	MagicServiceMetrics:           &EmptyServiceMetrics,
 	InsertInstanceMetadataSuccess: &EmptyCounter{},
 	UpdateMagicValuesSuccess:      &EmptyCounter{},
+	RefreshedMagicValuesSuccess:   &EmptyCounter{},
 	GetMagicValueSuccess:          &EmptyCounter{},
 	SetMagicValueSuccess:          &EmptyCounter{},
 	ErrorMetrics:                  EmptyMagicErrorMetrics,
@@ -99,6 +102,8 @@ func NewMagicBackendMetrics(ctx context.Context, metricsHandler Handler, service
 	if err != nil {
 		return nil, err
 	}
+
+	m.RefreshedMagicValuesSuccess = &EmptyCounter{}
 
 	m.GetMagicValueSuccess, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Get Magic Value Success",
@@ -214,6 +219,17 @@ func NewMagicFrontendMetrics(ctx context.Context, metricsHandler Handler, servic
 
 	m.InsertInstanceMetadataSuccess = &EmptyCounter{}
 	m.UpdateMagicValuesSuccess = &EmptyCounter{}
+
+	m.RefreshedMagicValuesSuccess, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Refreshed Magic Values Success",
+		ServiceName: serviceName,
+		ID:          handlerID + ".refreshed_magic_values_success",
+		Unit:        "count",
+		Description: "The number of times this instance successfully refreshed its magic values with new magic.",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	m.GetMagicValueSuccess, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Get Magic Value Success",
