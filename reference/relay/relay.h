@@ -16,6 +16,7 @@
 #define RELAY_ADDRESS_IPV6                                         2
 
 #define RELAY_MAX_ADDRESS_STRING_LENGTH                          256
+#define RELAY_MAX_VERSION_STRING_LENGTH                           32
 
 #define RELAY_PLATFORM_WINDOWS                                     1
 #define RELAY_PLATFORM_MAC                                         2
@@ -37,9 +38,9 @@
     #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
       #define RELAY_BIG_ENDIAN 1
     #else
-      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN. 
+      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
     #endif // __BYTE_ORDER__
-  
+
   // Detect with GLIBC's endian.h
   #elif defined(__GLIBC__)
     #include <endian.h>
@@ -48,15 +49,15 @@
     #elif (__BYTE_ORDER == __BIG_ENDIAN)
       #define RELAY_BIG_ENDIAN 1
     #else
-      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN. 
+      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
     #endif // __BYTE_ORDER
-  
+
   // Detect with _LITTLE_ENDIAN and _BIG_ENDIAN macro
   #elif defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)
     #define RELAY_LITTLE_ENDIAN 1
   #elif defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
     #define RELAY_BIG_ENDIAN 1
-  
+
   // Detect with architecture macros
   #elif    defined(__sparc)     || defined(__sparc__)                           \
         || defined(_POWER)      || defined(__powerpc__)                         \
@@ -72,7 +73,7 @@
   #elif defined(_MSC_VER) && defined(_M_ARM)
     #define RELAY_LITTLE_ENDIAN 1
   #else
-    #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN. 
+    #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
   #endif
 
 #endif
@@ -86,7 +87,7 @@
 #endif
 
 struct relay_address_t
-{   
+{
     union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
     uint16_t port;
     uint8_t type;
