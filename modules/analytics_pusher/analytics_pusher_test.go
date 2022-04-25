@@ -206,7 +206,21 @@ func TestStartPingStatsPublisher(t *testing.T) {
 		wg.Add(1)
 		go ap.StartPingStatsPublisher(ctx, wg, errChan)
 
-		time.Sleep(time.Millisecond * 200)
+		checks := 4
+		for {
+			time.Sleep(time.Millisecond * 200)
+
+			if checks <= 0 {
+				break
+			}
+
+			if pusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value() > 0 && len(errChan) == 0 {
+				break
+			}
+
+			checks--
+		}
+
 		cancelFunc()
 		wg.Wait()
 
@@ -234,13 +248,30 @@ func TestStartPingStatsPublisher(t *testing.T) {
 		wg.Add(1)
 		go ap.StartPingStatsPublisher(ctx, wg, errChan)
 
-		time.Sleep(time.Millisecond * 200)
+		checks := 4
+		for {
+			time.Sleep(time.Millisecond * 200)
+
+			if checks <= 0 {
+				break
+			}
+
+			if pusherMetrics.PingStatsMetrics.EntriesReceived.Value() > 0 &&
+				pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value() > 0 &&
+				pusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value() == 0 &&
+				len(errChan) == 0 {
+				break
+			}
+
+			checks--
+		}
+
 		cancelFunc()
 		wg.Wait()
 
 		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesReceived.Value(), float64(0))
 		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value(), float64(0))
-		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesFlushed.Value(), float64(0))
+		assert.Zero(t, pusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value())
 		assert.Equal(t, 0, len(errChan))
 	})
 }
