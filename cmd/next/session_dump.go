@@ -832,6 +832,8 @@ func dumpSession2(env Environment, sessionID uint64) {
 		}
 
 		newRows[index].NextRelaysStrings = relayList
+
+		newRows[index].DirectMinRTT = row.DirectRTT
 	}
 
 	bqBilling2DataEntryCSV := [][]string{{}}
@@ -1384,6 +1386,8 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	sessionID,
 	sliceNumber,
 	directRTT,
+	directMaxRTT,
+	directPrimeRTT,
 	directJitter,
 	directPacketLoss,
 	realPacketLoss,

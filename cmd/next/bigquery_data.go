@@ -96,6 +96,7 @@ type BigQueryBilling2Entry struct {
 	Timestamp        time.Time
 	SessionID        int64
 	SliceNumber      int64
+	DirectRTT        int64 // This is needed for reading only
 	DirectMinRTT     int64
 	DirectMaxRTT     bigquery.NullInt64
 	DirectPrimeRTT   bigquery.NullInt64
