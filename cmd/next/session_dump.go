@@ -832,8 +832,6 @@ func dumpSession2(env Environment, sessionID uint64) {
 		}
 
 		newRows[index].NextRelaysStrings = relayList
-
-		newRows[index].DirectMinRTT = row.DirectRTT
 	}
 
 	bqBilling2DataEntryCSV := [][]string{{}}
@@ -842,7 +840,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"Timestamp",
 		"SessionID",
 		"SliceNumber",
-		"DirectMinRTT",
+		"DirectRTT",
 		"DirectMaxRTT",
 		"DirectPrimeRTT",
 		"DirectJitter",
@@ -923,7 +921,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		// SliceNumber
 		sliceNumber := fmt.Sprintf("%d", billingEntry.SliceNumber)
 		// DirectMinRTT
-		directMinRTT := fmt.Sprintf("%d", billingEntry.DirectMinRTT)
+		directRTT := fmt.Sprintf("%d", billingEntry.DirectRTT)
 		// DirectMaxRTT
 		directMaxRTT := ""
 		if billingEntry.DirectMaxRTT.Valid {
@@ -1282,7 +1280,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 			timestamp,
 			sessionID,
 			sliceNumber,
-			directMinRTT,
+			directRTT,
 			directMaxRTT,
 			directPrimeRTT,
 			directJitter,
