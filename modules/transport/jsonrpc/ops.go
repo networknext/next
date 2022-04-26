@@ -57,7 +57,7 @@ type BuyersReply struct {
 type buyer struct {
 	CompanyName         string `json:"company_name,omitempty"`
 	CompanyCode         string `json:"company_code,omitempty"`
-	ShortName           string `json:"short_name,omitempty"`
+	Alias               string `json:"alias,omitempty"`
 	ID                  uint64 `json:"id,omitempty"`
 	HexID               string `json:"hexID,omitempty"`
 	Live                bool   `json:"live"`
@@ -91,7 +91,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			HexID:               b.HexID,
 			CompanyName:         c.Name,
 			CompanyCode:         b.CompanyCode,
-			ShortName:           b.ShortName,
+			Alias:               b.Alias,
 			Live:                b.Live,
 			Debug:               b.Debug,
 			Analytics:           b.Analytics,
@@ -112,7 +112,8 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 }
 
 type JSAddBuyerArgs struct {
-	ShortName           string `json:"shortName"`
+	CompanyCode         string `json:"company_code"`
+	Alias               string `json:"alias"`
 	Live                bool   `json:"live"`
 	Debug               bool   `json:"debug"`
 	Analytics           bool   `json:"analytics"`
@@ -167,8 +168,8 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 
 	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
-		CompanyCode:         args.ShortName,
-		ShortName:           args.ShortName,
+		CompanyCode:         args.CompanyCode,
+		Alias:               args.Alias,
 		ID:                  binary.LittleEndian.Uint64(publicKey[:8]),
 		Live:                args.Live,
 		Debug:               args.Debug,

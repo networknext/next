@@ -204,7 +204,7 @@ func SeedSQLStorage(
 		// fmt.Println("Adding buyers")
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:          customerID,
-			ShortName:   "local",
+			Alias:       "local alias",
 			CompanyCode: localCust.Code,
 			Live:        true,
 			PublicKey:   customerPublicKey,
@@ -227,7 +227,7 @@ func SeedSQLStorage(
 
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:          internalBuyerIDGhost,
-			ShortName:   "ghost-army",
+			Alias:       "ghost army alias",
 			CompanyCode: ghostCust.Code,
 			Live:        true,
 			Analytics:   false,

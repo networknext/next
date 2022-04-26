@@ -2514,9 +2514,9 @@ func TestUpdateBuyer(t *testing.T) {
 		}
 	})
 
-	t.Run("success short name", func(t *testing.T) {
+	t.Run("success alias", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply
-		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "ShortName", Value: "short-name"}, &reply)
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "Alias", Value: "buyer alias"}, &reply)
 		assert.NoError(t, err)
 	})
 

@@ -1831,7 +1831,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			core.Error("%v", err)
 			return err
 		}
-	case "ShortName", "PublicKey":
+	case "Alias", "PublicKey":
 		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
