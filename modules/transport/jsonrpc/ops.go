@@ -211,6 +211,139 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	return s.Storage.RemoveBuyer(ctx, buyerID)
 }
 
+type FetchBuyerInformationArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
+
+type FetchBuyerInformationReply struct {
+	ID                  string           `json:"id"`
+	Alias               string           `json:"alias"`
+	Advanced            bool             `json:"advanced"`
+	Live                bool             `json:"live"`
+	Debug               bool             `json:"debug"`
+	Analytics           bool             `json:"analytics"`
+	Billing             bool             `json:"billing"`
+	Trial               bool             `json:"trial"`
+	ExoticLocationFee   float32          `json:"exotic_location_fee"`
+	StandardLocationFee float32          `json:"standard_location_fee"`
+	PublicKey           string           `json:"public_key"`
+	LookerSeats         int32            `json:"looker_seats"`
+	RouteShader         JSRouteShader    `json:"route_shader"`
+	InternalConfig      JSInternalConfig `json:"internal_config"`
+}
+
+func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInformationArgs, reply *FetchBuyerInformationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchBuyerInformation(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err == nil {
+		reply.ID = buyer.HexID
+		reply.Alias = buyer.Alias
+		// reply.Advanced = buyer.Advanced
+		reply.Live = buyer.Live
+		reply.Debug = buyer.Debug
+		reply.Analytics = buyer.Analytics
+		reply.Billing = buyer.Billing
+		reply.Trial = buyer.Trial
+		reply.ExoticLocationFee = float32(buyer.ExoticLocationFee)
+		reply.StandardLocationFee = float32(buyer.StandardLocationFee)
+		reply.PublicKey = buyer.EncodedPublicKey()
+		reply.LookerSeats = int32(buyer.LookerSeats)
+
+		reply.RouteShader = RouteShaderToJSON(buyer.RouteShader)
+		reply.InternalConfig = InternalConfigToJSON(buyer.InternalConfig)
+	}
+
+	return nil
+}
+
+type JSRouteShader struct {
+	DisableNetworkNext        bool            `json:"disable_network_next"`
+	AnalysisOnly              bool            `json:"analysis_only"`
+	SelectionPercent          int64           `json:"selection_percentage"`
+	ABTest                    bool            `json:"ab_test"`
+	ProMode                   bool            `json:"pro_mode"`
+	ReduceLatency             bool            `json:"reduce_latency"`
+	ReduceJitter              bool            `json:"reduce_jitter"`
+	ReducePacketLoss          bool            `json:"reduce_packet_loss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int64           `json:"acceptable_latency"`
+	LatencyThreshold          int64           `json:"latency_threshold"`
+	AcceptablePacketLoss      float64         `json:"acceptable_packet_loss"`
+	BandwidthEnvelopeUpKbps   int64           `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps int64           `json:"bandwidth_envelope_down_kbps"`
+	BannedUsers               map[string]bool `json:"banned_users"`
+	PacketLossSustained       float64         `json:"packet_loss_sustained"`
+}
+
+func RouteShaderToJSON(routeShader core.RouteShader) JSRouteShader {
+	return JSRouteShader{
+		DisableNetworkNext:        routeShader.DisableNetworkNext,
+		AnalysisOnly:              routeShader.AnalysisOnly,
+		SelectionPercent:          int64(routeShader.SelectionPercent),
+		ABTest:                    routeShader.ABTest,
+		ProMode:                   routeShader.ProMode,
+		ReduceLatency:             routeShader.ReduceLatency,
+		ReduceJitter:              routeShader.ReduceJitter,
+		ReducePacketLoss:          routeShader.ReducePacketLoss,
+		Multipath:                 routeShader.Multipath,
+		AcceptableLatency:         int64(routeShader.AcceptableLatency),
+		LatencyThreshold:          int64(routeShader.LatencyThreshold),
+		AcceptablePacketLoss:      float64(routeShader.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(routeShader.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(routeShader.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(routeShader.PacketLossSustained),
+	}
+}
+
+type JSInternalConfig struct {
+	RouteSelectThreshold           int64 `json:"route_select_threshold"`
+	RouteSwitchThreshold           int64 `json:"route_switch_threshold"`
+	MaxLatencyTradeOff             int64 `json:"max_latency_trade_off"`
+	RTTVeto_Default                int64 `json:"rtt_veto_default"`
+	RTTVeto_Multipath              int64 `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rtt_veto_packet_loss"`
+	MultipathOverloadThreshold     int64 `json:"multipath_overload_threshold"`
+	TryBeforeYouBuy                bool  `json:"try_before_you_buy"`
+	ForceNext                      bool  `json:"force_next"`
+	LargeCustomer                  bool  `json:"large_customer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int64 `json:"max_rtt"`
+	HighFrequencyPings             bool  `json:"high_frequency_pings"`
+	RouteDiversity                 int64 `json:"route_diversity"`
+	MultipathThreshold             int64 `json:"multipath_threshold"`
+	EnableVanityMetrics            bool  `json:"enable_vanity_metrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reduce_packet_loss_min_slice_number"`
+}
+
+func InternalConfigToJSON(internalConfig core.InternalConfig) JSInternalConfig {
+	return JSInternalConfig{
+		RouteSelectThreshold:           int64(internalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(internalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(internalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(internalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(internalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(internalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(internalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                internalConfig.TryBeforeYouBuy,
+		ForceNext:                      internalConfig.ForceNext,
+		LargeCustomer:                  internalConfig.LargeCustomer,
+		Uncommitted:                    internalConfig.Uncommitted,
+		MaxRTT:                         int64(internalConfig.MaxRTT),
+		HighFrequencyPings:             internalConfig.HighFrequencyPings,
+		RouteDiversity:                 int64(internalConfig.RouteDiversity),
+		MultipathThreshold:             int64(internalConfig.MultipathThreshold),
+		EnableVanityMetrics:            internalConfig.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(internalConfig.ReducePacketLossMinSliceNumber),
+	}
+}
+
 type SellersArgs struct{}
 
 type SellersReply struct {

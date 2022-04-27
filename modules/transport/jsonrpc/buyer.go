@@ -2025,26 +2025,6 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 // ===============================================================================================================
 // Internal Config Related Functions
 
-type JSInternalConfig struct {
-	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
-	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
-	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
-	RTTVeto_Default                int64 `json:"rttVeto_Default"`
-	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
-	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
-	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
-	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
-	ForceNext                      bool  `json:"forceNext"`
-	LargeCustomer                  bool  `json:"largeCustomer"`
-	Uncommitted                    bool  `json:"uncommitted"`
-	MaxRTT                         int64 `json:"maxRTT"`
-	HighFrequencyPings             bool  `json:"highFrequencyPings"`
-	RouteDiversity                 int64 `json:"routeDiversity"`
-	MultipathThreshold             int64 `json:"multipathThreshold"`
-	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
-	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
-}
-
 type InternalConfigArg struct {
 	BuyerID string `json:"buyerID"`
 }
@@ -2238,24 +2218,6 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 // ===============================================================================================================
 // Route Shader Related Functions
 
-type JSRouteShader struct {
-	DisableNetworkNext        bool            `json:"disableNetworkNext"`
-	AnalysisOnly              bool            `json:"analysis_only"`
-	SelectionPercent          int64           `json:"selectionPercent"`
-	ABTest                    bool            `json:"abTest"`
-	ProMode                   bool            `json:"proMode"`
-	ReduceLatency             bool            `json:"reduceLatency"`
-	ReduceJitter              bool            `json:"reduceJitter"`
-	ReducePacketLoss          bool            `json:"reducePacketLoss"`
-	Multipath                 bool            `json:"multipath"`
-	AcceptableLatency         int64           `json:"acceptableLatency"`
-	LatencyThreshold          int64           `json:"latencyThreshold"`
-	AcceptablePacketLoss      float64         `json:"acceptablePacketLoss"`
-	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
-	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
-	BannedUsers               map[string]bool `json:"bannedUsers"`
-	PacketLossSustained       float64         `json:"packetLossSustained"`
-}
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
 }

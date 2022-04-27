@@ -522,14 +522,20 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
-	querySQL.Write([]byte("from buyers where short_name = $1"))
+	customer, err := db.Customer(ctx, companyCode)
+	if err != nil {
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "customer code", resourceRef: companyCode}
+	}
+
+	querySQL.Write([]byte("select id, sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	querySQL.Write([]byte("from buyers where customer_id = $1"))
 
 	for retryCount < MAX_RETRIES {
-		row = db.Client.QueryRowContext(ctx, querySQL.String(), companyCode)
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), customer.DatabaseID)
 		err = row.Scan(
 			&buyer.DatabaseID,
 			&buyer.SdkID,
+			&buyer.Alias,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
 			&buyer.Analytics,
@@ -554,7 +560,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		core.Error("Buyer() connection with the database timed out!")
 		return routing.Buyer{}, err
 	case sql.ErrNoRows:
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: companyCode}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer customer code", resourceRef: companyCode}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
 		ic, err := db.InternalConfig(ctx, buyer.ID)
@@ -649,11 +655,17 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			rs = core.NewRouteShader()
 		}
 
+		customer, err := db.CustomerByID(ctx, buyer.CustomerID)
+		if err != nil {
+			core.Error("Buyers(): failed to look up customer with ID: %d", buyer.CustomerID)
+			continue
+		}
+
 		b := routing.Buyer{
 			ID:                  buyer.ID,
 			HexID:               fmt.Sprintf("%016x", buyer.ID),
 			Alias:               buyer.Alias,
-			CompanyCode:         buyer.CompanyCode,
+			CompanyCode:         customer.Code,
 			Live:                buyer.IsLiveCustomer,
 			Debug:               buyer.Debug,
 			Analytics:           buyer.Analytics,
