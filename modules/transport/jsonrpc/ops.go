@@ -51,24 +51,24 @@ func (s *OpsService) CurrentRelease(r *http.Request, args *CurrentReleaseArgs, r
 type BuyersArgs struct{}
 
 type BuyersReply struct {
-	Buyers []buyer
+	Buyers []buyer `json:"buyers"`
 }
 
 type buyer struct {
-	CompanyName         string `json:"company_name,omitempty"`
-	CompanyCode         string `json:"company_code,omitempty"`
-	Alias               string `json:"alias,omitempty"`
-	ID                  uint64 `json:"id,omitempty"`
-	HexID               string `json:"hexID,omitempty"`
+	CompanyName         string `json:"company_name"`
+	CompanyCode         string `json:"company_code"`
+	Alias               string `json:"alias"`
+	ID                  uint64 `json:"id"`
+	HexID               string `json:"hex_id"`
 	Live                bool   `json:"live"`
 	Debug               bool   `json:"debug"`
 	Analytics           bool   `json:"analytics"`
 	AnalysisOnly        bool   `json:"analysis_only"`
 	Billing             bool   `json:"billing"`
 	Trial               bool   `json:"trial"`
-	ExoticLocationFee   string `json:"exotic_location_fee,omitempty"`
-	StandardLocationFee string `json:"standard_location_fee,omitempty"`
-	LookerSeats         int64  `json:"looker_seats,omitempty"`
+	ExoticLocationFee   string `json:"exotic_location_fee"`
+	StandardLocationFee string `json:"standard_location_fee"`
+	LookerSeats         int64  `json:"looker_seats"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -110,6 +110,8 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 
 	return nil
 }
+
+// Remove this functions and use addNewBuyerAccount VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 
 type JSAddBuyerArgs struct {
 	CompanyCode         string `json:"company_code"`
@@ -183,6 +185,193 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
+}
+
+// Remove this functions and use addNewBuyerAccount ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+type AddNewBuyerAccountArgs struct {
+	ParentCustomerCode  string  `json:"customer_code"`
+	PublicKey           string  `json:"public_key"`
+	ExoticLocationFee   float32 `json:"exotic_location_fee"`
+	StandardLocationFee float32 `json:"standard_location_fee"`
+	LookerSeats         int32   `json:"looker_seats"`
+	Live                bool    `json:"live"`
+	Debug               bool    `json:"debug"`
+	Trial               bool    `json:"trial"`
+	Billing             bool    `json:"billing"`
+	Analytics           bool    `json:"analytics"`
+	Advanced            bool    `json:"advanced"`
+}
+
+type AddNewBuyerAccountReply struct{}
+
+func (s *OpsService) AddNewBuyerAccount(r *http.Request, args *AddNewBuyerAccountArgs, reply *AddNewBuyerAccountReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddNewBuyerAccount(): %v", err.Error())
+		return &err
+	}
+
+	if args.ParentCustomerCode == "" {
+		err := fmt.Errorf("AddNewBuyerAccount(): Parent customer code is required")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Check if a buyer is assigned to this customer already
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.ParentCustomerCode)
+	if buyer.CompanyCode != "" || buyer.ID != 0 {
+		err := fmt.Errorf("AddNewBuyerAccount() Customer account is already assigned to a buyer")
+		core.Error("%v", err)
+		return err
+	}
+
+	if args.PublicKey == "" {
+		err := fmt.Errorf("AddNewBuyerAccount() A public key is required")
+		core.Error("%v", err)
+		return err
+	}
+
+	byteKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		err = fmt.Errorf("AddNewBuyerAccount() Failed to decode public key string")
+		core.Error("%v", err)
+		return err
+	}
+
+	buyerID := binary.LittleEndian.Uint64(byteKey[0:8])
+
+	// Create new buyer
+	err = s.Storage.AddBuyer(ctx, routing.Buyer{
+		CompanyCode: args.ParentCustomerCode,
+		ID:          buyerID,
+		Live:        args.Live,
+		Analytics:   args.Analytics,
+		Billing:     args.Billing,
+		Trial:       args.Trial,
+		Debug:       args.Debug,
+		// Advanced: args.Advanced,
+		PublicKey:           byteKey[8:],
+		LookerSeats:         int64(args.LookerSeats),
+		ExoticLocationFee:   float64(args.ExoticLocationFee),
+		StandardLocationFee: float64(args.StandardLocationFee),
+	})
+	if err != nil {
+		err = fmt.Errorf("AddNewBuyerAccount() Failed to add new buyer account: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	return nil
+}
+
+type UpdateBuyerAccountArgs struct {
+	Alias               string  `json:"alias"`
+	CustomerCode        string  `json:"customer_code"`
+	ExoticLocationFee   float32 `json:"exotic_location_fee"`
+	StandardLocationFee float32 `json:"standard_location_fee"`
+	LookerSeats         int32   `json:"looker_seats"`
+	Live                bool    `json:"live"`
+	Debug               bool    `json:"debug"`
+	Trial               bool    `json:"trial"`
+	Billing             bool    `json:"billing"`
+	Analytics           bool    `json:"analytics"`
+	Advanced            bool    `json:"advanced"`
+}
+
+type UpdateBuyerAccountReply struct{}
+
+func (s *OpsService) UpdateBuyerAccount(r *http.Request, args *UpdateBuyerAccountArgs, reply *UpdateBuyerAccountReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.ExoticLocationFee != float64(args.ExoticLocationFee) && (args.ExoticLocationFee >= 0 && args.ExoticLocationFee < 100000) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "ExoticLocationFee", float64(args.ExoticLocationFee)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.StandardLocationFee != float64(args.StandardLocationFee) && (args.StandardLocationFee >= 0 && args.StandardLocationFee < 100000) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "StandardLocationFee", float64(args.StandardLocationFee)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.LookerSeats != int64(args.LookerSeats) && (args.LookerSeats >= 0 && args.LookerSeats < 100) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "LookerSeats", int64(args.LookerSeats)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Live != args.Live {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Live", args.Live); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Debug != args.Debug {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Debug", args.Debug); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Analytics != args.Analytics {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Analytics", args.Analytics); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Billing != args.Billing {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Billing", args.Billing); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Trial != args.Trial {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Trial", args.Trial); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Alias != args.Alias && args.Alias != "" {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Alias", args.Alias); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
 }
 
 type RemoveBuyerArgs struct {
