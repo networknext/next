@@ -1936,19 +1936,19 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 							addRouteShader(env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
 								AnalysisOnly:              rs.AnalysisOnly,
-								SelectionPercent:          int64(rs.SelectionPercent),
+								SelectionPercent:          int32(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
 								ReduceLatency:             rs.ReduceLatency,
 								ReduceJitter:              rs.ReduceJitter,
 								ReducePacketLoss:          rs.ReducePacketLoss,
 								Multipath:                 rs.Multipath,
-								AcceptableLatency:         int64(rs.AcceptableLatency),
-								LatencyThreshold:          int64(rs.LatencyThreshold),
-								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
-								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
-								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-								PacketLossSustained:       float64(100),
+								AcceptableLatency:         rs.AcceptableLatency,
+								LatencyThreshold:          rs.LatencyThreshold,
+								AcceptablePacketLoss:      rs.AcceptablePacketLoss,
+								BandwidthEnvelopeUpKbps:   rs.BandwidthEnvelopeUpKbps,
+								BandwidthEnvelopeDownKbps: rs.BandwidthEnvelopeDownKbps,
+								PacketLossSustained:       100,
 							})
 
 							return nil

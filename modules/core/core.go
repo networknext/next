@@ -1480,22 +1480,22 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 }
 
 type RouteShader struct {
-	DisableNetworkNext        bool
-	AnalysisOnly              bool
-	SelectionPercent          int
-	ABTest                    bool
-	ProMode                   bool
-	ReduceLatency             bool
-	ReduceJitter              bool
-	ReducePacketLoss          bool
-	Multipath                 bool
-	AcceptableLatency         int32
-	LatencyThreshold          int32
-	AcceptablePacketLoss      float32
-	BandwidthEnvelopeUpKbps   int32
-	BandwidthEnvelopeDownKbps int32
-	BannedUsers               map[uint64]bool
-	PacketLossSustained       float32
+	DisableNetworkNext        bool            `json:"disable_network_next"`
+	AnalysisOnly              bool            `json:"analysis_only"`
+	SelectionPercent          int             `json:"selection_percentage"`
+	ABTest                    bool            `json:"ab_test"`
+	ProMode                   bool            `json:"pro_mode"`
+	ReduceLatency             bool            `json:"reduce_latency"`
+	ReduceJitter              bool            `json:"reduce_jitter"`
+	ReducePacketLoss          bool            `json:"reduce_packet_loss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int32           `json:"acceptable_latency"`
+	LatencyThreshold          int32           `json:"latency_threshold"`
+	AcceptablePacketLoss      float32         `json:"acceptable_packet_loss"`
+	BandwidthEnvelopeUpKbps   int32           `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps int32           `json:"bandwidth_envelope_down_kbps"`
+	BannedUsers               map[uint64]bool `json:"banned_users"`
+	PacketLossSustained       float32         `json:"packet_loss_sustained"`
 }
 
 func NewRouteShader() RouteShader {
@@ -1563,23 +1563,23 @@ type RouteState struct {
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold           int32
-	RouteSwitchThreshold           int32
-	MaxLatencyTradeOff             int32
-	RTTVeto_Default                int32
-	RTTVeto_Multipath              int32
-	RTTVeto_PacketLoss             int32
-	MultipathOverloadThreshold     int32
-	TryBeforeYouBuy                bool
-	ForceNext                      bool
-	LargeCustomer                  bool
-	Uncommitted                    bool
-	MaxRTT                         int32
-	HighFrequencyPings             bool
-	RouteDiversity                 int32
-	MultipathThreshold             int32
-	EnableVanityMetrics            bool
-	ReducePacketLossMinSliceNumber int32
+	RouteSelectThreshold           int32 `json:"route_select_threshold"`
+	RouteSwitchThreshold           int32 `json:"route_switch_threshold"`
+	MaxLatencyTradeOff             int32 `json:"max_latency_trade_off"`
+	RTTVeto_Default                int32 `json:"rtt_veto_default"`
+	RTTVeto_Multipath              int32 `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss             int32 `json:"rtt_veto_packet_loss"`
+	MultipathOverloadThreshold     int32 `json:"multipath_overload_threshold"`
+	TryBeforeYouBuy                bool  `json:"try_before_you_buy"`
+	ForceNext                      bool  `json:"force_next"`
+	LargeCustomer                  bool  `json:"large_customer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int32 `json:"max_rtt"`
+	HighFrequencyPings             bool  `json:"high_frequency_pings"`
+	RouteDiversity                 int32 `json:"route_diversity"`
+	MultipathThreshold             int32 `json:"multipath_threshold"`
+	EnableVanityMetrics            bool  `json:"enable_vanity_metrics"`
+	ReducePacketLossMinSliceNumber int32 `json:"reduce_packet_loss_min_slice_number"`
 }
 
 func NewInternalConfig() InternalConfig {

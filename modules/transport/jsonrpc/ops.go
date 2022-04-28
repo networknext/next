@@ -452,85 +452,291 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 	return nil
 }
 
-type JSRouteShader struct {
-	DisableNetworkNext        bool            `json:"disable_network_next"`
-	AnalysisOnly              bool            `json:"analysis_only"`
-	SelectionPercent          int64           `json:"selection_percentage"`
-	ABTest                    bool            `json:"ab_test"`
-	ProMode                   bool            `json:"pro_mode"`
-	ReduceLatency             bool            `json:"reduce_latency"`
-	ReduceJitter              bool            `json:"reduce_jitter"`
-	ReducePacketLoss          bool            `json:"reduce_packet_loss"`
-	Multipath                 bool            `json:"multipath"`
-	AcceptableLatency         int64           `json:"acceptable_latency"`
-	LatencyThreshold          int64           `json:"latency_threshold"`
-	AcceptablePacketLoss      float64         `json:"acceptable_packet_loss"`
-	BandwidthEnvelopeUpKbps   int64           `json:"bandwidth_envelope_up_kbps"`
-	BandwidthEnvelopeDownKbps int64           `json:"bandwidth_envelope_down_kbps"`
-	BannedUsers               map[string]bool `json:"banned_users"`
-	PacketLossSustained       float64         `json:"packet_loss_sustained"`
+type UpdateBuyerRouteShaderArgs struct {
+	CustomerCode string           `json:"customer_code"`
+	RouteShader  core.RouteShader `json:"route_shader"`
 }
 
-func RouteShaderToJSON(routeShader core.RouteShader) JSRouteShader {
-	return JSRouteShader{
-		DisableNetworkNext:        routeShader.DisableNetworkNext,
-		AnalysisOnly:              routeShader.AnalysisOnly,
-		SelectionPercent:          int64(routeShader.SelectionPercent),
-		ABTest:                    routeShader.ABTest,
-		ProMode:                   routeShader.ProMode,
-		ReduceLatency:             routeShader.ReduceLatency,
-		ReduceJitter:              routeShader.ReduceJitter,
-		ReducePacketLoss:          routeShader.ReducePacketLoss,
-		Multipath:                 routeShader.Multipath,
-		AcceptableLatency:         int64(routeShader.AcceptableLatency),
-		LatencyThreshold:          int64(routeShader.LatencyThreshold),
-		AcceptablePacketLoss:      float64(routeShader.AcceptablePacketLoss),
-		BandwidthEnvelopeUpKbps:   int64(routeShader.BandwidthEnvelopeUpKbps),
-		BandwidthEnvelopeDownKbps: int64(routeShader.BandwidthEnvelopeDownKbps),
-		PacketLossSustained:       float64(routeShader.PacketLossSustained),
+type UpdateBuyerRouteShaderReply struct{}
+
+func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRouteShaderArgs, reply *UpdateBuyerRouteShaderReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		return &err
 	}
-}
 
-type JSInternalConfig struct {
-	RouteSelectThreshold           int64 `json:"route_select_threshold"`
-	RouteSwitchThreshold           int64 `json:"route_switch_threshold"`
-	MaxLatencyTradeOff             int64 `json:"max_latency_trade_off"`
-	RTTVeto_Default                int64 `json:"rtt_veto_default"`
-	RTTVeto_Multipath              int64 `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss             int64 `json:"rtt_veto_packet_loss"`
-	MultipathOverloadThreshold     int64 `json:"multipath_overload_threshold"`
-	TryBeforeYouBuy                bool  `json:"try_before_you_buy"`
-	ForceNext                      bool  `json:"force_next"`
-	LargeCustomer                  bool  `json:"large_customer"`
-	Uncommitted                    bool  `json:"uncommitted"`
-	MaxRTT                         int64 `json:"max_rtt"`
-	HighFrequencyPings             bool  `json:"high_frequency_pings"`
-	RouteDiversity                 int64 `json:"route_diversity"`
-	MultipathThreshold             int64 `json:"multipath_threshold"`
-	EnableVanityMetrics            bool  `json:"enable_vanity_metrics"`
-	ReducePacketLossMinSliceNumber int64 `json:"reduce_packet_loss_min_slice_number"`
-}
-
-func InternalConfigToJSON(internalConfig core.InternalConfig) JSInternalConfig {
-	return JSInternalConfig{
-		RouteSelectThreshold:           int64(internalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold:           int64(internalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:             int64(internalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:                int64(internalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:              int64(internalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:             int64(internalConfig.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold:     int64(internalConfig.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                internalConfig.TryBeforeYouBuy,
-		ForceNext:                      internalConfig.ForceNext,
-		LargeCustomer:                  internalConfig.LargeCustomer,
-		Uncommitted:                    internalConfig.Uncommitted,
-		MaxRTT:                         int64(internalConfig.MaxRTT),
-		HighFrequencyPings:             internalConfig.HighFrequencyPings,
-		RouteDiversity:                 int64(internalConfig.RouteDiversity),
-		MultipathThreshold:             int64(internalConfig.MultipathThreshold),
-		EnableVanityMetrics:            internalConfig.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int64(internalConfig.ReducePacketLossMinSliceNumber),
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
 	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.RouteShader.ABTest != args.RouteShader.ABTest {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ABTest", args.RouteShader.ABTest); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.DisableNetworkNext != args.RouteShader.DisableNetworkNext {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "DisableNetworkNext", args.RouteShader.DisableNetworkNext); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AnalysisOnly != args.RouteShader.AnalysisOnly {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AnalysisOnly", args.RouteShader.AnalysisOnly); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.Multipath != args.RouteShader.Multipath {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "Multipath", args.RouteShader.Multipath); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ProMode != args.RouteShader.ProMode {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ProMode", args.RouteShader.ProMode); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReduceLatency != args.RouteShader.ReduceLatency {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceLatency", args.RouteShader.ReduceLatency); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReducePacketLoss != args.RouteShader.ReducePacketLoss {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReducePacketLoss", args.RouteShader.ReducePacketLoss); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReduceJitter != args.RouteShader.ReduceJitter {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceJitter", args.RouteShader.ReduceJitter); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AcceptableLatency != args.RouteShader.AcceptableLatency && (args.RouteShader.AcceptableLatency >= 0 && args.RouteShader.AcceptableLatency < 1024) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AcceptableLatency", args.RouteShader.AcceptableLatency); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AcceptablePacketLoss != args.RouteShader.AcceptablePacketLoss && (args.RouteShader.AcceptablePacketLoss >= 0 && args.RouteShader.AcceptablePacketLoss <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AcceptablePacketLoss", args.RouteShader.AcceptablePacketLoss); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.BandwidthEnvelopeUpKbps != args.RouteShader.BandwidthEnvelopeUpKbps && (args.RouteShader.BandwidthEnvelopeUpKbps >= 0 && args.RouteShader.BandwidthEnvelopeUpKbps < 10000) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "BandwidthEnvelopeUpKbps", args.RouteShader.BandwidthEnvelopeUpKbps); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.BandwidthEnvelopeDownKbps != args.RouteShader.BandwidthEnvelopeDownKbps && (args.RouteShader.BandwidthEnvelopeDownKbps >= 0 && args.RouteShader.BandwidthEnvelopeDownKbps < 10000) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "BandwidthEnvelopeDownKbps", args.RouteShader.BandwidthEnvelopeDownKbps); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.LatencyThreshold != args.RouteShader.LatencyThreshold && (args.RouteShader.LatencyThreshold >= 0 && args.RouteShader.LatencyThreshold < 1024) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "LatencyThreshold", args.RouteShader.LatencyThreshold); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.PacketLossSustained != args.RouteShader.PacketLossSustained && (args.RouteShader.PacketLossSustained >= 0 && args.RouteShader.PacketLossSustained <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "PacketLossSustained", args.RouteShader.PacketLossSustained); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.SelectionPercent != args.RouteShader.SelectionPercent && (args.RouteShader.SelectionPercent >= 0 && args.RouteShader.SelectionPercent <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "SelectionPercent", args.RouteShader.SelectionPercent); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type UpdateBuyerInternalConfigArgs struct {
+	CustomerCode   string              `json:"customer_code"`
+	InternalConfig core.InternalConfig `json:"internal_config"`
+}
+
+type UpdateBuyerInternalConfigReply struct{}
+
+func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuyerInternalConfigArgs, reply *UpdateBuyerInternalConfigReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.InternalConfig.EnableVanityMetrics != args.InternalConfig.EnableVanityMetrics {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "EnableVanityMetrics", args.InternalConfig.EnableVanityMetrics); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.ForceNext != args.InternalConfig.ForceNext {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ForceNext", args.InternalConfig.ForceNext); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.LargeCustomer != args.InternalConfig.LargeCustomer {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "LargeCustomer", args.InternalConfig.LargeCustomer); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.HighFrequencyPings != args.InternalConfig.HighFrequencyPings {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "HighFrequencyPings", args.InternalConfig.HighFrequencyPings); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.Uncommitted != args.InternalConfig.Uncommitted {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "Uncommitted", args.InternalConfig.Uncommitted); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.TryBeforeYouBuy != args.InternalConfig.TryBeforeYouBuy {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "TryBeforeYouBuy", args.InternalConfig.TryBeforeYouBuy); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MaxLatencyTradeOff != args.InternalConfig.MaxLatencyTradeOff && (args.InternalConfig.MaxLatencyTradeOff >= 0 && args.InternalConfig.MaxLatencyTradeOff < 1024) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxLatencyTradeOff", args.InternalConfig.MaxLatencyTradeOff); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MaxRTT != args.InternalConfig.MaxRTT && (args.InternalConfig.MaxRTT >= 0 && args.InternalConfig.MaxRTT < 1024) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxRTT", args.InternalConfig.MaxRTT); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.ReducePacketLossMinSliceNumber != args.InternalConfig.ReducePacketLossMinSliceNumber && (args.InternalConfig.ReducePacketLossMinSliceNumber >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ReducePacketLossMinSliceNumber", args.InternalConfig.ReducePacketLossMinSliceNumber); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteDiversity != args.InternalConfig.RouteDiversity && (args.InternalConfig.RouteDiversity >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteDiversity", args.InternalConfig.RouteDiversity); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteSelectThreshold != args.InternalConfig.RouteSelectThreshold && (args.InternalConfig.RouteSelectThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSelectThreshold", args.InternalConfig.RouteSelectThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteSwitchThreshold != args.InternalConfig.RouteSwitchThreshold && (args.InternalConfig.RouteSwitchThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSwitchThreshold", args.InternalConfig.RouteSwitchThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MultipathOverloadThreshold != args.InternalConfig.MultipathOverloadThreshold && (args.InternalConfig.MultipathOverloadThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MultipathOverloadThreshold", args.InternalConfig.MultipathOverloadThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_Default != args.InternalConfig.RTTVeto_Default {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Default", args.InternalConfig.RTTVeto_Default); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_Multipath != args.InternalConfig.RTTVeto_Multipath {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Multipath", args.InternalConfig.RTTVeto_Multipath); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_PacketLoss != args.InternalConfig.RTTVeto_PacketLoss {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_PacketLoss", args.InternalConfig.RTTVeto_PacketLoss); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
 }
 
 type SellersArgs struct{}
