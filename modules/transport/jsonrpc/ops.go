@@ -400,25 +400,32 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	return s.Storage.RemoveBuyer(ctx, buyerID)
 }
 
+type buyerDatacenterMap struct {
+	Alias string `json:"alias"`
+	Name  string `json:"name"`
+	HexID string `json:"hex_id"`
+}
+
 type FetchBuyerInformationArgs struct {
 	CustomerCode string `json:"customer_code"`
 }
 
 type FetchBuyerInformationReply struct {
-	ID                  string           `json:"id"`
-	Alias               string           `json:"alias"`
-	Advanced            bool             `json:"advanced"`
-	Live                bool             `json:"live"`
-	Debug               bool             `json:"debug"`
-	Analytics           bool             `json:"analytics"`
-	Billing             bool             `json:"billing"`
-	Trial               bool             `json:"trial"`
-	ExoticLocationFee   float32          `json:"exotic_location_fee"`
-	StandardLocationFee float32          `json:"standard_location_fee"`
-	PublicKey           string           `json:"public_key"`
-	LookerSeats         int32            `json:"looker_seats"`
-	RouteShader         JSRouteShader    `json:"route_shader"`
-	InternalConfig      JSInternalConfig `json:"internal_config"`
+	ID                  string               `json:"id"`
+	Alias               string               `json:"alias"`
+	Advanced            bool                 `json:"advanced"`
+	Live                bool                 `json:"live"`
+	Debug               bool                 `json:"debug"`
+	Analytics           bool                 `json:"analytics"`
+	Billing             bool                 `json:"billing"`
+	Trial               bool                 `json:"trial"`
+	ExoticLocationFee   float32              `json:"exotic_location_fee"`
+	StandardLocationFee float32              `json:"standard_location_fee"`
+	PublicKey           string               `json:"public_key"`
+	LookerSeats         int32                `json:"looker_seats"`
+	RouteShader         JSRouteShader        `json:"route_shader"`
+	InternalConfig      JSInternalConfig     `json:"internal_config"`
+	MappedDatacenters   []buyerDatacenterMap `json:"mapped_datacenters"`
 }
 
 func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInformationArgs, reply *FetchBuyerInformationReply) error {
@@ -447,6 +454,22 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 
 		reply.RouteShader = RouteShaderToJSON(buyer.RouteShader)
 		reply.InternalConfig = InternalConfigToJSON(buyer.InternalConfig)
+
+		reply.MappedDatacenters = make([]buyerDatacenterMap, 0)
+
+		buyerMaps := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+		datacenters := s.Storage.Datacenters(ctx)
+
+		for _, datacenter := range datacenters {
+			_, ok := buyerMaps[datacenter.ID]
+			if ok {
+				reply.MappedDatacenters = append(reply.MappedDatacenters, buyerDatacenterMap{
+					Alias: datacenter.AliasName,
+					Name:  datacenter.Name,
+					HexID: fmt.Sprintf("%016x", datacenter.ID),
+				})
+			}
+		}
 	}
 
 	return nil
@@ -1818,6 +1841,108 @@ func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *Data
 	return nil
 
 }
+
+/*
+ 	TODO: These functions will eventually be renamed but is being used instead of the existing functions to avoid breaking datacenters page in admin tool
+	 and to avoid continuing the pattern of two separate endpoints (next and admin tool)
+*/
+
+type mappableDatacenter struct {
+	Alias string `json:"alias"`
+	Name  string `json:"name"`
+	HexID string `json:"hex_id"`
+}
+
+type DatacenterListArgs struct{}
+
+type DatacenterListReply struct {
+	Datacenters []mappableDatacenter `json:"datacenters"`
+}
+
+func (s *OpsService) DatacenterList(r *http.Request, args *DatacenterListArgs, reply *DatacenterListReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("DatacenterList(): %v", err.Error())
+		return &err
+	}
+
+	allDatacenters := s.Storage.Datacenters(r.Context())
+
+	reply.Datacenters = make([]mappableDatacenter, len(allDatacenters))
+
+	for i, datacenter := range allDatacenters {
+		reply.Datacenters[i] = mappableDatacenter{
+			Alias: datacenter.AliasName,
+			Name:  datacenter.Name,
+			HexID: fmt.Sprintf("%016x", datacenter.ID),
+		}
+	}
+
+	return nil
+}
+
+type BuyerDatacenterMapArgs struct {
+	BuyerHexID      string `json:"buyer_hex_id"`
+	DatacenterHexID string `json:"datacenter_hex_id"`
+}
+
+type BuyerDatacenterMapReply struct{}
+
+func (s *OpsService) AddBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyerDatacenterMap(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Buyer ID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Datacenter ID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.AddDatacenterMap(ctx, dcMap)
+}
+
+func (s *OpsService) RemoveBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyerDatacenterMap(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Buyer ID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Datacenter ID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.RemoveDatacenterMap(ctx, dcMap)
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------------
 
 type DatacentersArgs struct {
 	Name string `json:"name"`
