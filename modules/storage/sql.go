@@ -94,7 +94,7 @@ type sqlBuyer struct {
 	StandardLocationFee float64
 	Name                string
 	PublicKey           []byte
-	ShortName           string
+	Alias               string
 	CompanyCode         string // should not be needed
 	DatabaseID          int64  // sql PK
 	CustomerID          int64  // sql PK
@@ -437,14 +437,14 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	querySQL.Write([]byte("select id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), sqlBuyerID)
 		err = row.Scan(
 			&buyer.DatabaseID,
-			&buyer.ShortName,
+			&buyer.Alias,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
 			&buyer.Analytics,
@@ -482,11 +482,16 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			rs = core.NewRouteShader()
 		}
 
+		customer, err := db.CustomerByID(ctx, buyer.CustomerID)
+		if err != nil {
+			return routing.Buyer{}, &DoesNotExistError{resourceType: "customer", resourceRef: buyer.CustomerID}
+		}
+
 		b := routing.Buyer{
 			ID:                  ephemeralBuyerID,
 			HexID:               fmt.Sprintf("%016x", buyer.ID),
-			ShortName:           buyer.ShortName,
-			CompanyCode:         buyer.ShortName,
+			Alias:               buyer.Alias,
+			CompanyCode:         customer.Code,
 			Live:                buyer.IsLiveCustomer,
 			Debug:               buyer.Debug,
 			Analytics:           buyer.Analytics,
@@ -517,14 +522,20 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
-	querySQL.Write([]byte("from buyers where short_name = $1"))
+	customer, err := db.Customer(ctx, companyCode)
+	if err != nil {
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "customer code", resourceRef: companyCode}
+	}
+
+	querySQL.Write([]byte("select id, sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	querySQL.Write([]byte("from buyers where customer_id = $1"))
 
 	for retryCount < MAX_RETRIES {
-		row = db.Client.QueryRowContext(ctx, querySQL.String(), companyCode)
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), customer.DatabaseID)
 		err = row.Scan(
 			&buyer.DatabaseID,
 			&buyer.SdkID,
+			&buyer.Alias,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
 			&buyer.Analytics,
@@ -549,7 +560,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		core.Error("Buyer() connection with the database timed out!")
 		return routing.Buyer{}, err
 	case sql.ErrNoRows:
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: companyCode}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer customer code", resourceRef: companyCode}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
 		ic, err := db.InternalConfig(ctx, buyer.ID)
@@ -565,7 +576,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		b := routing.Buyer{
 			ID:                  buyer.ID,
 			HexID:               fmt.Sprintf("%016x", buyer.ID),
-			ShortName:           companyCode,
+			Alias:               buyer.Alias,
 			CompanyCode:         companyCode,
 			Live:                buyer.IsLiveCustomer,
 			Debug:               buyer.Debug,
@@ -596,7 +607,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	sql.Write([]byte("select sdk_generated_id, id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -613,7 +624,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 		err = rows.Scan(
 			&buyer.SdkID,
 			&buyer.DatabaseID,
-			&buyer.ShortName,
+			&buyer.Alias,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
 			&buyer.Analytics,
@@ -644,11 +655,17 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			rs = core.NewRouteShader()
 		}
 
+		customer, err := db.CustomerByID(ctx, buyer.CustomerID)
+		if err != nil {
+			core.Error("Buyers(): failed to look up customer with ID: %d", buyer.CustomerID)
+			continue
+		}
+
 		b := routing.Buyer{
 			ID:                  buyer.ID,
 			HexID:               fmt.Sprintf("%016x", buyer.ID),
-			ShortName:           buyer.ShortName,
-			CompanyCode:         buyer.ShortName,
+			Alias:               buyer.Alias,
+			CompanyCode:         customer.Code,
 			Live:                buyer.IsLiveCustomer,
 			Debug:               buyer.Debug,
 			Analytics:           buyer.Analytics,
@@ -686,8 +703,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	buyer := sqlBuyer{
 		ID:                  b.ID,
-		CompanyCode:         b.CompanyCode,
-		ShortName:           b.CompanyCode,
+		Alias:               b.Alias,
 		IsLiveCustomer:      b.Live,
 		Debug:               b.Debug,
 		Analytics:           b.Analytics,
@@ -702,7 +718,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
+	sql.Write([]byte("sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"))
 
 	result, err := ExecRetry(
@@ -710,7 +726,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		db,
 		sql,
 		int64(buyer.ID),
-		buyer.ShortName,
+		buyer.Alias,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
 		buyer.Analytics,
@@ -3647,14 +3663,14 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set looker_seats=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, lookerSeats, int64(ephemeralBuyerID))
-	case "ShortName":
-		shortName, ok := value.(string)
+	case "Alias":
+		alias, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update buyers set short_name=$1 where id="))
+		updateSQL.Write([]byte("update buyers set alias=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, shortName, int64(ephemeralBuyerID))
+		args = append(args, alias, int64(ephemeralBuyerID))
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {

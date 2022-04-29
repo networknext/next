@@ -22,9 +22,9 @@ func TestBuyers(t *testing.T) {
 
 	storer := storage.InMemory{}
 
-	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
 	assert.NoError(t, err)
-	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", ShortName: "local.local.2"})
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", Alias: "local.local.2"})
 	assert.NoError(t, err)
 
 	svc := jsonrpc.OpsService{
@@ -63,9 +63,9 @@ func TestBuyers(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
-		assert.Equal(t, reply.Buyers[0].ShortName, "local.1")
+		assert.Equal(t, reply.Buyers[0].Alias, "local.1")
 		assert.Equal(t, reply.Buyers[1].ID, uint64(2))
-		assert.Equal(t, reply.Buyers[1].ShortName, "local.local.2")
+		assert.Equal(t, reply.Buyers[1].Alias, "local.local.2")
 	})
 }
 
@@ -95,7 +95,8 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad public key", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
+			Alias:               "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=",
@@ -106,7 +107,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad exotic location fee", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "a",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -117,7 +118,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad standard location fee", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "a",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -128,7 +129,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad looker seats", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			LookerSeats:         "a",
@@ -140,7 +141,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("add buyer for non-existant customer", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -154,7 +155,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			LookerSeats:         "100",
@@ -164,7 +165,7 @@ func TestJSAddBuyer(t *testing.T) {
 
 		buyers := storer.Buyers(context.Background())
 		assert.Equal(t, 1, len(buyers))
-		assert.Equal(t, "local", buyers[0].ShortName)
+		assert.Equal(t, "local", buyers[0].CompanyCode)
 	})
 }
 
@@ -203,7 +204,7 @@ func TestRemoveBuyer(t *testing.T) {
 		assert.Contains(t, err.Error(), "buyer with reference 0 not found")
 	})
 
-	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
 	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
@@ -1569,13 +1570,13 @@ func TestListDatacenterMaps(t *testing.T) {
 	}
 
 	buyer1 := routing.Buyer{
-		ID:        0,
-		ShortName: "Local1",
+		ID:    0,
+		Alias: "Local1",
 	}
 
 	buyer2 := routing.Buyer{
-		ID:        1,
-		ShortName: "Local2",
+		ID:    1,
+		Alias: "Local2",
 	}
 
 	err = storer.AddCustomer(context.Background(), customer1)

@@ -51,24 +51,24 @@ func (s *OpsService) CurrentRelease(r *http.Request, args *CurrentReleaseArgs, r
 type BuyersArgs struct{}
 
 type BuyersReply struct {
-	Buyers []buyer
+	Buyers []buyer `json:"buyers"`
 }
 
 type buyer struct {
-	CompanyName         string `json:"company_name,omitempty"`
-	CompanyCode         string `json:"company_code,omitempty"`
-	ShortName           string `json:"short_name,omitempty"`
-	ID                  uint64 `json:"id,omitempty"`
-	HexID               string `json:"hexID,omitempty"`
+	CompanyName         string `json:"company_name"`
+	CompanyCode         string `json:"company_code"`
+	Alias               string `json:"alias"`
+	ID                  uint64 `json:"id"`
+	HexID               string `json:"hex_id"`
 	Live                bool   `json:"live"`
 	Debug               bool   `json:"debug"`
 	Analytics           bool   `json:"analytics"`
 	AnalysisOnly        bool   `json:"analysis_only"`
 	Billing             bool   `json:"billing"`
 	Trial               bool   `json:"trial"`
-	ExoticLocationFee   string `json:"exotic_location_fee,omitempty"`
-	StandardLocationFee string `json:"standard_location_fee,omitempty"`
-	LookerSeats         int64  `json:"looker_seats,omitempty"`
+	ExoticLocationFee   string `json:"exotic_location_fee"`
+	StandardLocationFee string `json:"standard_location_fee"`
+	LookerSeats         int64  `json:"looker_seats"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -91,7 +91,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			HexID:               b.HexID,
 			CompanyName:         c.Name,
 			CompanyCode:         b.CompanyCode,
-			ShortName:           b.ShortName,
+			Alias:               b.Alias,
 			Live:                b.Live,
 			Debug:               b.Debug,
 			Analytics:           b.Analytics,
@@ -111,8 +111,11 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	return nil
 }
 
+// Remove this functions and use addNewBuyerAccount VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+
 type JSAddBuyerArgs struct {
-	ShortName           string `json:"shortName"`
+	CompanyCode         string `json:"company_code"`
+	Alias               string `json:"alias"`
 	Live                bool   `json:"live"`
 	Debug               bool   `json:"debug"`
 	Analytics           bool   `json:"analytics"`
@@ -167,8 +170,8 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 
 	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
-		CompanyCode:         args.ShortName,
-		ShortName:           args.ShortName,
+		CompanyCode:         args.CompanyCode,
+		Alias:               args.Alias,
 		ID:                  binary.LittleEndian.Uint64(publicKey[:8]),
 		Live:                args.Live,
 		Debug:               args.Debug,
@@ -182,6 +185,193 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
+}
+
+// Remove this functions and use addNewBuyerAccount ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+type AddNewBuyerAccountArgs struct {
+	ParentCustomerCode  string  `json:"customer_code"`
+	PublicKey           string  `json:"public_key"`
+	ExoticLocationFee   float32 `json:"exotic_location_fee"`
+	StandardLocationFee float32 `json:"standard_location_fee"`
+	LookerSeats         int32   `json:"looker_seats"`
+	Live                bool    `json:"live"`
+	Debug               bool    `json:"debug"`
+	Trial               bool    `json:"trial"`
+	Billing             bool    `json:"billing"`
+	Analytics           bool    `json:"analytics"`
+	Advanced            bool    `json:"advanced"`
+}
+
+type AddNewBuyerAccountReply struct{}
+
+func (s *OpsService) AddNewBuyerAccount(r *http.Request, args *AddNewBuyerAccountArgs, reply *AddNewBuyerAccountReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddNewBuyerAccount(): %v", err.Error())
+		return &err
+	}
+
+	if args.ParentCustomerCode == "" {
+		err := fmt.Errorf("AddNewBuyerAccount(): Parent customer code is required")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Check if a buyer is assigned to this customer already
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.ParentCustomerCode)
+	if buyer.CompanyCode != "" || buyer.ID != 0 {
+		err := fmt.Errorf("AddNewBuyerAccount() Customer account is already assigned to a buyer")
+		core.Error("%v", err)
+		return err
+	}
+
+	if args.PublicKey == "" {
+		err := fmt.Errorf("AddNewBuyerAccount() A public key is required")
+		core.Error("%v", err)
+		return err
+	}
+
+	byteKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		err = fmt.Errorf("AddNewBuyerAccount() Failed to decode public key string")
+		core.Error("%v", err)
+		return err
+	}
+
+	buyerID := binary.LittleEndian.Uint64(byteKey[0:8])
+
+	// Create new buyer
+	err = s.Storage.AddBuyer(ctx, routing.Buyer{
+		CompanyCode: args.ParentCustomerCode,
+		ID:          buyerID,
+		Live:        args.Live,
+		Analytics:   args.Analytics,
+		Billing:     args.Billing,
+		Trial:       args.Trial,
+		Debug:       args.Debug,
+		// Advanced: args.Advanced,
+		PublicKey:           byteKey[8:],
+		LookerSeats:         int64(args.LookerSeats),
+		ExoticLocationFee:   float64(args.ExoticLocationFee),
+		StandardLocationFee: float64(args.StandardLocationFee),
+	})
+	if err != nil {
+		err = fmt.Errorf("AddNewBuyerAccount() Failed to add new buyer account: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	return nil
+}
+
+type UpdateBuyerAccountArgs struct {
+	Alias               string  `json:"alias"`
+	CustomerCode        string  `json:"customer_code"`
+	ExoticLocationFee   float32 `json:"exotic_location_fee"`
+	StandardLocationFee float32 `json:"standard_location_fee"`
+	LookerSeats         int32   `json:"looker_seats"`
+	Live                bool    `json:"live"`
+	Debug               bool    `json:"debug"`
+	Trial               bool    `json:"trial"`
+	Billing             bool    `json:"billing"`
+	Analytics           bool    `json:"analytics"`
+	Advanced            bool    `json:"advanced"`
+}
+
+type UpdateBuyerAccountReply struct{}
+
+func (s *OpsService) UpdateBuyerAccount(r *http.Request, args *UpdateBuyerAccountArgs, reply *UpdateBuyerAccountReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.ExoticLocationFee != float64(args.ExoticLocationFee) && (args.ExoticLocationFee >= 0 && args.ExoticLocationFee < 100000) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "ExoticLocationFee", float64(args.ExoticLocationFee)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.StandardLocationFee != float64(args.StandardLocationFee) && (args.StandardLocationFee >= 0 && args.StandardLocationFee < 100000) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "StandardLocationFee", float64(args.StandardLocationFee)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.LookerSeats != int64(args.LookerSeats) && (args.LookerSeats >= 0 && args.LookerSeats < 100) {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "LookerSeats", int64(args.LookerSeats)); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Live != args.Live {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Live", args.Live); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Debug != args.Debug {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Debug", args.Debug); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Analytics != args.Analytics {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Analytics", args.Analytics); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Billing != args.Billing {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Billing", args.Billing); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Trial != args.Trial {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Trial", args.Trial); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Alias != args.Alias && args.Alias != "" {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Alias", args.Alias); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
 }
 
 type RemoveBuyerArgs struct {
@@ -208,6 +398,368 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	}
 
 	return s.Storage.RemoveBuyer(ctx, buyerID)
+}
+
+type buyerDatacenterMap struct {
+	Alias string `json:"alias"`
+	Name  string `json:"name"`
+	HexID string `json:"hex_id"`
+}
+
+type FetchBuyerInformationArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
+
+type FetchBuyerInformationReply struct {
+	ID                  string               `json:"id"`
+	Alias               string               `json:"alias"`
+	Advanced            bool                 `json:"advanced"`
+	Live                bool                 `json:"live"`
+	Debug               bool                 `json:"debug"`
+	Analytics           bool                 `json:"analytics"`
+	Billing             bool                 `json:"billing"`
+	Trial               bool                 `json:"trial"`
+	ExoticLocationFee   float32              `json:"exotic_location_fee"`
+	StandardLocationFee float32              `json:"standard_location_fee"`
+	PublicKey           string               `json:"public_key"`
+	LookerSeats         int32                `json:"looker_seats"`
+	RouteShader         JSRouteShader        `json:"route_shader"`
+	InternalConfig      JSInternalConfig     `json:"internal_config"`
+	MappedDatacenters   []buyerDatacenterMap `json:"mapped_datacenters"`
+}
+
+func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInformationArgs, reply *FetchBuyerInformationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchBuyerInformation(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err == nil {
+		reply.ID = buyer.HexID
+		reply.Alias = buyer.Alias
+		// reply.Advanced = buyer.Advanced
+		reply.Live = buyer.Live
+		reply.Debug = buyer.Debug
+		reply.Analytics = buyer.Analytics
+		reply.Billing = buyer.Billing
+		reply.Trial = buyer.Trial
+		reply.ExoticLocationFee = float32(buyer.ExoticLocationFee)
+		reply.StandardLocationFee = float32(buyer.StandardLocationFee)
+		reply.PublicKey = buyer.EncodedPublicKey()
+		reply.LookerSeats = int32(buyer.LookerSeats)
+
+		reply.RouteShader = RouteShaderToJSON(buyer.RouteShader)
+		reply.InternalConfig = InternalConfigToJSON(buyer.InternalConfig)
+
+		reply.MappedDatacenters = make([]buyerDatacenterMap, 0)
+
+		buyerMaps := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+		datacenters := s.Storage.Datacenters(ctx)
+
+		for _, datacenter := range datacenters {
+			_, ok := buyerMaps[datacenter.ID]
+			if ok {
+				reply.MappedDatacenters = append(reply.MappedDatacenters, buyerDatacenterMap{
+					Alias: datacenter.AliasName,
+					Name:  datacenter.Name,
+					HexID: fmt.Sprintf("%016x", datacenter.ID),
+				})
+			}
+		}
+	}
+
+	return nil
+}
+
+type UpdateBuyerRouteShaderArgs struct {
+	CustomerCode string           `json:"customer_code"`
+	RouteShader  core.RouteShader `json:"route_shader"`
+}
+
+type UpdateBuyerRouteShaderReply struct{}
+
+func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRouteShaderArgs, reply *UpdateBuyerRouteShaderReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.RouteShader.ABTest != args.RouteShader.ABTest {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ABTest", args.RouteShader.ABTest); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.DisableNetworkNext != args.RouteShader.DisableNetworkNext {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "DisableNetworkNext", args.RouteShader.DisableNetworkNext); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AnalysisOnly != args.RouteShader.AnalysisOnly {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AnalysisOnly", args.RouteShader.AnalysisOnly); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.Multipath != args.RouteShader.Multipath {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "Multipath", args.RouteShader.Multipath); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ProMode != args.RouteShader.ProMode {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ProMode", args.RouteShader.ProMode); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReduceLatency != args.RouteShader.ReduceLatency {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceLatency", args.RouteShader.ReduceLatency); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReducePacketLoss != args.RouteShader.ReducePacketLoss {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReducePacketLoss", args.RouteShader.ReducePacketLoss); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.ReduceJitter != args.RouteShader.ReduceJitter {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceJitter", args.RouteShader.ReduceJitter); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AcceptableLatency != args.RouteShader.AcceptableLatency && (args.RouteShader.AcceptableLatency >= 0 && args.RouteShader.AcceptableLatency < 1024) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AcceptableLatency", args.RouteShader.AcceptableLatency); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.AcceptablePacketLoss != args.RouteShader.AcceptablePacketLoss && (args.RouteShader.AcceptablePacketLoss >= 0 && args.RouteShader.AcceptablePacketLoss <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AcceptablePacketLoss", args.RouteShader.AcceptablePacketLoss); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.BandwidthEnvelopeUpKbps != args.RouteShader.BandwidthEnvelopeUpKbps && (args.RouteShader.BandwidthEnvelopeUpKbps >= 0 && args.RouteShader.BandwidthEnvelopeUpKbps < 10000) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "BandwidthEnvelopeUpKbps", args.RouteShader.BandwidthEnvelopeUpKbps); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.BandwidthEnvelopeDownKbps != args.RouteShader.BandwidthEnvelopeDownKbps && (args.RouteShader.BandwidthEnvelopeDownKbps >= 0 && args.RouteShader.BandwidthEnvelopeDownKbps < 10000) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "BandwidthEnvelopeDownKbps", args.RouteShader.BandwidthEnvelopeDownKbps); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.LatencyThreshold != args.RouteShader.LatencyThreshold && (args.RouteShader.LatencyThreshold >= 0 && args.RouteShader.LatencyThreshold < 1024) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "LatencyThreshold", args.RouteShader.LatencyThreshold); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.PacketLossSustained != args.RouteShader.PacketLossSustained && (args.RouteShader.PacketLossSustained >= 0 && args.RouteShader.PacketLossSustained <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "PacketLossSustained", args.RouteShader.PacketLossSustained); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.RouteShader.SelectionPercent != args.RouteShader.SelectionPercent && (args.RouteShader.SelectionPercent >= 0 && args.RouteShader.SelectionPercent <= 100) {
+		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "SelectionPercent", args.RouteShader.SelectionPercent); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type UpdateBuyerInternalConfigArgs struct {
+	CustomerCode   string              `json:"customer_code"`
+	InternalConfig core.InternalConfig `json:"internal_config"`
+}
+
+type UpdateBuyerInternalConfigReply struct{}
+
+func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuyerInternalConfigArgs, reply *UpdateBuyerInternalConfigReply) error {
+	ctx := r.Context()
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// TODO: Update functions should be using database ID here
+
+	wasError := false
+	if buyer.InternalConfig.EnableVanityMetrics != args.InternalConfig.EnableVanityMetrics {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "EnableVanityMetrics", args.InternalConfig.EnableVanityMetrics); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.ForceNext != args.InternalConfig.ForceNext {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ForceNext", args.InternalConfig.ForceNext); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.LargeCustomer != args.InternalConfig.LargeCustomer {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "LargeCustomer", args.InternalConfig.LargeCustomer); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.HighFrequencyPings != args.InternalConfig.HighFrequencyPings {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "HighFrequencyPings", args.InternalConfig.HighFrequencyPings); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.Uncommitted != args.InternalConfig.Uncommitted {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "Uncommitted", args.InternalConfig.Uncommitted); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.TryBeforeYouBuy != args.InternalConfig.TryBeforeYouBuy {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "TryBeforeYouBuy", args.InternalConfig.TryBeforeYouBuy); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MaxLatencyTradeOff != args.InternalConfig.MaxLatencyTradeOff && (args.InternalConfig.MaxLatencyTradeOff >= 0 && args.InternalConfig.MaxLatencyTradeOff < 1024) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxLatencyTradeOff", args.InternalConfig.MaxLatencyTradeOff); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MaxRTT != args.InternalConfig.MaxRTT && (args.InternalConfig.MaxRTT >= 0 && args.InternalConfig.MaxRTT < 1024) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxRTT", args.InternalConfig.MaxRTT); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.ReducePacketLossMinSliceNumber != args.InternalConfig.ReducePacketLossMinSliceNumber && (args.InternalConfig.ReducePacketLossMinSliceNumber >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ReducePacketLossMinSliceNumber", args.InternalConfig.ReducePacketLossMinSliceNumber); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteDiversity != args.InternalConfig.RouteDiversity && (args.InternalConfig.RouteDiversity >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteDiversity", args.InternalConfig.RouteDiversity); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteSelectThreshold != args.InternalConfig.RouteSelectThreshold && (args.InternalConfig.RouteSelectThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSelectThreshold", args.InternalConfig.RouteSelectThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RouteSwitchThreshold != args.InternalConfig.RouteSwitchThreshold && (args.InternalConfig.RouteSwitchThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSwitchThreshold", args.InternalConfig.RouteSwitchThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.MultipathOverloadThreshold != args.InternalConfig.MultipathOverloadThreshold && (args.InternalConfig.MultipathOverloadThreshold >= 0) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MultipathOverloadThreshold", args.InternalConfig.MultipathOverloadThreshold); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_Default != args.InternalConfig.RTTVeto_Default {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Default", args.InternalConfig.RTTVeto_Default); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_Multipath != args.InternalConfig.RTTVeto_Multipath {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Multipath", args.InternalConfig.RTTVeto_Multipath); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.InternalConfig.RTTVeto_PacketLoss != args.InternalConfig.RTTVeto_PacketLoss {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_PacketLoss", args.InternalConfig.RTTVeto_PacketLoss); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
 }
 
 type SellersArgs struct{}
@@ -1289,6 +1841,108 @@ func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *Data
 	return nil
 
 }
+
+/*
+ 	TODO: These functions will eventually be renamed but is being used instead of the existing functions to avoid breaking datacenters page in admin tool
+	 and to avoid continuing the pattern of two separate endpoints (next and admin tool)
+*/
+
+type mappableDatacenter struct {
+	Alias string `json:"alias"`
+	Name  string `json:"name"`
+	HexID string `json:"hex_id"`
+}
+
+type DatacenterListArgs struct{}
+
+type DatacenterListReply struct {
+	Datacenters []mappableDatacenter `json:"datacenters"`
+}
+
+func (s *OpsService) DatacenterList(r *http.Request, args *DatacenterListArgs, reply *DatacenterListReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("DatacenterList(): %v", err.Error())
+		return &err
+	}
+
+	allDatacenters := s.Storage.Datacenters(r.Context())
+
+	reply.Datacenters = make([]mappableDatacenter, len(allDatacenters))
+
+	for i, datacenter := range allDatacenters {
+		reply.Datacenters[i] = mappableDatacenter{
+			Alias: datacenter.AliasName,
+			Name:  datacenter.Name,
+			HexID: fmt.Sprintf("%016x", datacenter.ID),
+		}
+	}
+
+	return nil
+}
+
+type BuyerDatacenterMapArgs struct {
+	BuyerHexID      string `json:"buyer_hex_id"`
+	DatacenterHexID string `json:"datacenter_hex_id"`
+}
+
+type BuyerDatacenterMapReply struct{}
+
+func (s *OpsService) AddBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyerDatacenterMap(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Buyer ID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Datacenter ID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.AddDatacenterMap(ctx, dcMap)
+}
+
+func (s *OpsService) RemoveBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyerDatacenterMap(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Buyer ID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse Datacenter ID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.RemoveDatacenterMap(ctx, dcMap)
+}
+
+// --------------------------------------------------------------------------------------------------------------------------------------------
 
 type DatacentersArgs struct {
 	Name string `json:"name"`

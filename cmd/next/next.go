@@ -481,6 +481,7 @@ type routeShader struct {
 }
 
 type buyer struct {
+	Alias        string
 	CustomerCode string
 	Live         bool
 	Debug        bool
@@ -1654,13 +1655,14 @@ func main() {
 					}
 
 					buyerArgs := localjsonrpc.JSAddBuyerArgs{
-						ShortName: b.CustomerCode,
-						Live:      b.Live,
-						Debug:     b.Debug,
-						Analytics: b.Analytics,
-						Billing:   b.Billing,
-						Trial:     b.Trial,
-						PublicKey: b.PublicKey,
+						Alias:       b.Alias,
+						CompanyCode: b.CustomerCode,
+						Live:        b.Live,
+						Debug:       b.Debug,
+						Analytics:   b.Analytics,
+						Billing:     b.Billing,
+						Trial:       b.Trial,
+						PublicKey:   b.PublicKey,
 					}
 
 					var reply localjsonrpc.JSAddBuyerReply
@@ -1934,19 +1936,19 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 							addRouteShader(env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
 								AnalysisOnly:              rs.AnalysisOnly,
-								SelectionPercent:          int64(rs.SelectionPercent),
+								SelectionPercent:          int32(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
 								ReduceLatency:             rs.ReduceLatency,
 								ReduceJitter:              rs.ReduceJitter,
 								ReducePacketLoss:          rs.ReducePacketLoss,
 								Multipath:                 rs.Multipath,
-								AcceptableLatency:         int64(rs.AcceptableLatency),
-								LatencyThreshold:          int64(rs.LatencyThreshold),
-								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
-								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
-								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-								PacketLossSustained:       float64(100),
+								AcceptableLatency:         rs.AcceptableLatency,
+								LatencyThreshold:          rs.LatencyThreshold,
+								AcceptablePacketLoss:      rs.AcceptablePacketLoss,
+								BandwidthEnvelopeUpKbps:   rs.BandwidthEnvelopeUpKbps,
+								BandwidthEnvelopeDownKbps: rs.BandwidthEnvelopeDownKbps,
+								PacketLossSustained:       100,
 							})
 
 							return nil
