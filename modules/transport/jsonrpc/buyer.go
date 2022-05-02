@@ -1617,6 +1617,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// Buyer not found
 	if buyer.ID == 0 {
 
+		customer, err := s.Storage.Customer(ctx, companyCode)
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to look up new buyer parent customer")
+			core.Error("%v", err)
+			return err
+		}
+
+		if customer.BuyerTOSSignedTimestamp == "" {
+			err = fmt.Errorf("UpdateGameConfiguration() customer must first sign TOS")
+			core.Error("%v", err)
+			return err
+		}
+
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			CompanyCode:         companyCode,
