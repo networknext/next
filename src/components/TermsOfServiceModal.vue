@@ -4,7 +4,13 @@
       <div class="modal-wrapper">
         <div class="card modal-container">
           <div class="card-body ml-2 mr-2" style="overflow-y: scroll;">
-            <!-- TODO: Add logo here -->
+            <div class="row pt-2 pb-2">
+              <div class="col"></div>
+              <div class="col">
+                <img class="logo-fit" src="../assets/TOS_logo.png" />
+              </div>
+              <div class="col"></div>
+            </div>
             <div class="pt-3 paragraph-header" style="text-align: center;">
               Terms of Service
             </div>
