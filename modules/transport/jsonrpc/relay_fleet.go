@@ -379,7 +379,6 @@ type AdminFrontPageArgs struct {
 var ServiceStatusList = []string{
 	"Analytics",
 	"AnalyticsPusher",
-	"Api",
 	"Billing",
 	"Pingdom",
 	"PortalBackend",
@@ -494,11 +493,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			case "AnalyticsPusher":
 				var status metrics.AnalyticsPusherStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "Api":
-				var status metrics.APIStatus
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)

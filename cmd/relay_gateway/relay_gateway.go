@@ -6,11 +6,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"expvar"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -46,6 +48,12 @@ var (
 
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
+
+	magicUpcoming_internal []byte
+	magicCurrent_internal  []byte
+	magicPrevious_internal []byte
+
+	magicMutex sync.RWMutex
 )
 
 func init() {
@@ -74,6 +82,10 @@ func init() {
 	// Store the creator and creation time from the database
 	binCreator = database.Creator
 	binCreationTime = database.CreationTime
+
+	magicUpcoming_internal = make([]byte, 8)
+	magicCurrent_internal = make([]byte, 8)
+	magicPrevious_internal = make([]byte, 8)
 }
 
 func main() {
@@ -219,6 +231,74 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	// Setup magic goroutine
+	{
+		go func() {
+			var cachedCombinedMagic []byte
+
+			httpClient := &http.Client{
+				Timeout: cfg.HTTPTimeout,
+			}
+
+			magicTicker := time.NewTicker(cfg.MagicPollFrequency)
+			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicFrontendIP)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-magicTicker.C:
+					var magicReader io.ReadCloser
+
+					if r, err := httpClient.Get(magicURI); err == nil {
+						magicReader = r.Body
+					}
+
+					if magicReader == nil {
+						core.Error("failed to get magic values: %v", err)
+						gatewayMetrics.ErrorMetrics.MagicReaderNil.Add(1)
+						continue
+					}
+
+					buffer, err := ioutil.ReadAll(magicReader)
+					magicReader.Close()
+					if err != nil {
+						core.Error("failed to read magic data: %v", err)
+						gatewayMetrics.ErrorMetrics.MagicReadFailure.Add(1)
+						continue
+					}
+
+					if len(buffer) == 0 {
+						core.Error("magic data buffer is empty")
+						gatewayMetrics.ErrorMetrics.MagicBufferEmpty.Add(1)
+						continue
+					}
+
+					if len(buffer) != 24 {
+						core.Error("expected combined magic to be 24 bytes, got %d", len(buffer))
+						gatewayMetrics.ErrorMetrics.MagicUnexpectedLengthError.Add(1)
+						continue
+					}
+
+					if bytes.Equal(cachedCombinedMagic, buffer) {
+						// Magic values are the same
+						continue
+					}
+
+					magicMutex.Lock()
+					magicUpcoming_internal = buffer[0:8]
+					magicCurrent_internal = buffer[8:16]
+					magicPrevious_internal = buffer[16:24]
+					magicMutex.Unlock()
+
+					cachedCombinedMagic = buffer
+
+					core.Debug("refreshed magic values")
+					gatewayMetrics.RefreshedMagicValues.Add(1)
+				}
+			}
+		}()
+	}
+
 	// Create an error channel for goroutines
 	errChan := make(chan error, 1)
 
@@ -328,6 +408,7 @@ func mainReturnWithCode() int {
 				newStatusData.UpdateRequestsReceived = int(gatewayMetrics.UpdatesReceived.Value())
 				newStatusData.UpdateRequestsQueued = int(gatewayMetrics.UpdatesQueued.Value())
 				newStatusData.UpdateRequestsFlushed = int(gatewayMetrics.UpdatesFlushed.Value())
+				newStatusData.RefreshedMagicValues = int(gatewayMetrics.RefreshedMagicValues.Value())
 
 				// Errors
 				newStatusData.UpdateRequestReadPacketFailure = int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value())
@@ -338,6 +419,10 @@ func mainReturnWithCode() int {
 				newStatusData.UpdateResponseMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value())
 				newStatusData.BatchUpdateRequestMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value())
 				newStatusData.BatchUpdateRequestBackendSendFailure = int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value())
+				newStatusData.MagicReaderNil = int(gatewayMetrics.ErrorMetrics.MagicReaderNil.Value())
+				newStatusData.MagicReadFailure = int(gatewayMetrics.ErrorMetrics.MagicReadFailure.Value())
+				newStatusData.MagicBufferEmpty = int(gatewayMetrics.ErrorMetrics.MagicBufferEmpty.Value())
+				newStatusData.MagicUnexpectedLengthError = int(gatewayMetrics.ErrorMetrics.MagicUnexpectedLengthError.Value())
 
 				statusMutex.Lock()
 				statusData = newStatusData
@@ -364,6 +449,7 @@ func mainReturnWithCode() int {
 		RequestChan:  updateChan,
 		Metrics:      gatewayMetrics,
 		GetRelayData: GetRelayData,
+		GetMagicData: GetMagicData,
 	}
 
 	port := envvar.Get("PORT", "30000")
@@ -428,6 +514,16 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
+func GetMagicData() ([]byte, []byte, []byte) {
+	magicMutex.RLock()
+	magicUpcoming := magicUpcoming_internal
+	magicCurrent := magicCurrent_internal
+	magicPrevious := magicPrevious_internal
+	magicMutex.RUnlock()
+
+	return magicUpcoming, magicCurrent, magicPrevious
+}
+
 // Get the config for how this relay gateway should operate
 func newConfig() (*gateway.GatewayConfig, error) {
 	cfg := new(gateway.GatewayConfig)
@@ -443,6 +539,17 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		return nil, err
 	}
 	cfg.BinSyncInterval = binSyncInterval
+
+	magicPollFrequency, err := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
+	if err != nil {
+		return nil, err
+	}
+	cfg.MagicPollFrequency = magicPollFrequency
+
+	cfg.MagicFrontendIP = envvar.Get("MAGIC_FRONTEND_IP", "127.0.0.1:41008")
+	if cfg.MagicFrontendIP == "" {
+		return nil, fmt.Errorf("MAGIC_FRONTEND_IP not set")
+	}
 
 	// Decide if we are using HTTP to batch-write to relay backends
 	useHTTP, err := envvar.GetBool("GATEWAY_USE_HTTP", true)

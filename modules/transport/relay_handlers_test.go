@@ -76,7 +76,7 @@ func TestRelayUpdateHandlerFunc_UnbatchFailure(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -106,7 +106,7 @@ func TestRelayUpdateHandlerFunc_UnmarshalFailure(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -144,7 +144,7 @@ func TestRelayUpdateHandlerFunc_RelayNotFound(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.1.0",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -190,7 +190,7 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 		State:       routing.RelayStateEnabled,
 		MaxSessions: uint32(10),
 
-		Version: "2.0.9",
+		Version: "2.1.0",
 	}
 
 	config := getRelayUpdateHandlerConfig(t, []routing.Relay{relay1})

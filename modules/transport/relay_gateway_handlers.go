@@ -22,7 +22,7 @@ const (
 	It does not perform any crypto checks and responds with an OK to get the relay
 	to start making relay updates, where the primary work is done.
 
-	NOTE: Relay init is deprecated. Remove this function once all relays have been upgraded to 2.0.x.
+	NOTE: Relay init is deprecated. Remove this function once all relays have been upgraded to 2.x.x.
 */
 func GatewayRelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -47,6 +47,7 @@ type GatewayRelayUpdateHandlerConfig struct {
 	RequestChan  chan []byte
 	Metrics      *metrics.RelayGatewayMetrics
 	GetRelayData func() ([]routing.Relay, map[uint64]routing.Relay)
+	GetMagicData func() ([]byte, []byte, []byte)
 }
 
 /*
@@ -135,6 +136,8 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		relaysToPing := make([]routing.RelayPingData, 0)
 		sellerName := relay.Seller.Name
 
+		var internalAddrs []string
+
 		for i := range relayArray {
 			if relayArray[i].ID == id {
 				continue
@@ -144,6 +147,8 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
 				// If the relay is under the same seller, prefer the internal address
 				address = relayArray[i].InternalAddr.String()
+				// Store the internal address to send to SDK5 supported relays
+				internalAddrs = append(internalAddrs, address)
 			} else {
 				// Use the relay's external address
 				address = relayArray[i].Addr.String()
@@ -156,6 +161,18 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		var responseData []byte
 		response := RelayUpdateResponse{}
 
+		relayVersion, err := routing.ParseRelayVersion(relayUpdateRequest.RelayVersion)
+		if err != nil {
+			core.Error("failed to parse relay version: %v", err)
+			relayVersion = routing.RelayVersion{}
+		}
+
+		response.Version = 0
+		if relayVersion.AtLeast(routing.RelayVersion{2, 1, 0}) {
+			// Relay version 2.1.0 started using update response version 1
+			response.Version = VersionNumberUpdateResponse
+		}
+
 		for i := range relaysToPing {
 			response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
 				ID:      relaysToPing[i].ID,
@@ -164,6 +181,12 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		}
 		response.Timestamp = time.Now().Unix()
 		response.TargetVersion = relay.Version
+
+		if response.Version >= 1 {
+			response.UpcomingMagic, response.CurrentMagic, response.PreviousMagic = params.GetMagicData()
+
+			response.InternalAddrs = internalAddrs
+		}
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {
