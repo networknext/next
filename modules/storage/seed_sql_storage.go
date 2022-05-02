@@ -436,7 +436,7 @@ func SeedSQLStorage(
 				NICSpeedMbps:                  1000,
 				MaxBandwidthMbps:              0,
 				Notes:                         "I am relay local." + fmt.Sprintf("%d", i) + " - hear me roar!",
-				Version:                       "2.0.9",
+				Version:                       "2.1.0",
 				DestFirst:                     false,
 				InternalAddressClientRoutable: false,
 			}); err != nil {
@@ -491,7 +491,7 @@ func SeedSQLStorage(
 				NICSpeedMbps:                  1000,
 				MaxBandwidthMbps:              0,
 				Notes:                         "I am relay ghost-army.local.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
-				Version:                       "2.0.9",
+				Version:                       "2.1.0",
 				DestFirst:                     false,
 				InternalAddressClientRoutable: false,
 			}); err != nil {
