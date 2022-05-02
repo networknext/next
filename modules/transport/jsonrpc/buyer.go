@@ -1454,6 +1454,82 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 // ===============================================================================================================
 // Buyer Related Functions
 
+type SignedTOSArgs struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
+
+type SignedTOSReply struct{}
+
+func (s *BuyersService) SignedBuyerTOS(r *http.Request, args *SignedTOSArgs, reply *SignedTOSReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+		err := fmt.Errorf("SignedTOS(): %v", ErrInsufficientPrivileges)
+		core.Error("%v", err)
+		return err
+	}
+
+	ctx := r.Context()
+
+	customerCode := middleware.RequestUserCustomerCode(ctx)
+	if customerCode == "" {
+		err := fmt.Errorf("SignedTOS(): failed to parse customer code")
+		core.Error("%v", err)
+		return err
+	}
+
+	if args.FirstName == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "FirstName"
+		core.Error("SignedTOS(): %v: FirstName is required", err.Error())
+		return &err
+	}
+
+	if args.LastName == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "LastName"
+		core.Error("SignedTOS(): %v: LastName is required", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("SignedTOS(): %v: Email is required", err.Error())
+		return &err
+	}
+
+	err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerFirstName", args.FirstName)
+	if err != nil {
+		core.Error("SignedTOS(): failed to update signer first name: %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerLastName", args.LastName)
+	if err != nil {
+		core.Error("SignedTOS(): failed to update signer last name: %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerEmail", args.Email)
+	if err != nil {
+		core.Error("SignedTOS(): failed to update signer email: %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerTimestamp", time.Now().UTC().String())
+	if err != nil {
+		core.Error("SignedTOS(): failed to update signed timestamp %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
 type GameConfigurationArgs struct {
 	NewPublicKey string `json:"new_public_key"`
 }
