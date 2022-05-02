@@ -49,6 +49,7 @@ declare module '*.vue' {
     sendENetSourceViewSlackNotification (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
+    buyerTOSSigned (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {
