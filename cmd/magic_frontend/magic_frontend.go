@@ -188,6 +188,7 @@ func mainReturnWithCode() int {
 				cachedCurrentMagic = newCurrentMagic.MagicBytes
 				cachedPreviousMagic = newPreviousMagic.MagicBytes
 
+				mfMetrics.RefreshedMagicValuesSuccess.Add(1)
 				core.Debug("received new magic values")
 			}
 		}
@@ -222,6 +223,7 @@ func mainReturnWithCode() int {
 
 				// Success Metrics
 				newStatusData.GetMagicValueSuccess = int(mfMetrics.GetMagicValueSuccess.Value())
+				newStatusData.RefreshedMagicValuesSuccess = int(mfMetrics.RefreshedMagicValuesSuccess.Value())
 
 				// Error Metrics
 				newStatusData.GetMagicValueFailure = int(mfMetrics.ErrorMetrics.GetMagicValueFailure.Value())

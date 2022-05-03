@@ -18,6 +18,7 @@ type RelayGatewayStatus struct {
 	UpdateRequestsReceived int `json:"update_requests_received"`
 	UpdateRequestsQueued   int `json:"update_requests_queued"`
 	UpdateRequestsFlushed  int `json:"update_requests_flushed"`
+	RefreshedMagicValues   int `json:"refreshed_magic_values"`
 
 	// Errors
 	UpdateRequestReadPacketFailure         int `json:"update_request_read_packet_failure"`
@@ -28,6 +29,10 @@ type RelayGatewayStatus struct {
 	UpdateResponseMarshalBinaryFailure     int `json:"update_response_marshal_binary_failure"`
 	BatchUpdateRequestMarshalBinaryFailure int `json:"batch_update_request_marshal_binary_failure"`
 	BatchUpdateRequestBackendSendFailure   int `json:"batch_update_request_backend_send_failure"`
+	MagicReaderNil                         int `json:"magic_reader_nil"`
+	MagicReadFailure                       int `json:"magic_read_failure"`
+	MagicBufferEmpty                       int `json:"magic_buffer_empty"`
+	MagicUnexpectedLengthError             int `json:"magic_unexpected_length_error"`
 }
 
 type RelayGatewayMetrics struct {
@@ -36,6 +41,7 @@ type RelayGatewayMetrics struct {
 	UpdatesReceived       Counter
 	UpdatesQueued         Gauge
 	UpdatesFlushed        Counter
+	RefreshedMagicValues  Counter
 	ErrorMetrics          RelayGatewayErrorMetrics
 }
 
@@ -45,6 +51,7 @@ var EmptyRelayGatewayMetrics = RelayGatewayMetrics{
 	UpdatesReceived:       &EmptyCounter{},
 	UpdatesQueued:         &EmptyGauge{},
 	UpdatesFlushed:        &EmptyCounter{},
+	RefreshedMagicValues:  &EmptyCounter{},
 	ErrorMetrics:          EmptyRelayGatewayErrorMetrics,
 }
 
@@ -58,6 +65,10 @@ type RelayGatewayErrorMetrics struct {
 	MarshalBinaryResponseFailure Counter
 	MarshalBinaryFailure         Counter
 	BackendSendFailure           Counter
+	MagicReaderNil               Counter
+	MagicReadFailure             Counter
+	MagicBufferEmpty             Counter
+	MagicUnexpectedLengthError   Counter
 }
 
 var EmptyRelayGatewayErrorMetrics = RelayGatewayErrorMetrics{
@@ -70,6 +81,10 @@ var EmptyRelayGatewayErrorMetrics = RelayGatewayErrorMetrics{
 	MarshalBinaryResponseFailure: &EmptyCounter{},
 	MarshalBinaryFailure:         &EmptyCounter{},
 	BackendSendFailure:           &EmptyCounter{},
+	MagicReaderNil:               &EmptyCounter{},
+	MagicReadFailure:             &EmptyCounter{},
+	MagicBufferEmpty:             &EmptyCounter{},
+	MagicUnexpectedLengthError:   &EmptyCounter{},
 }
 
 func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*RelayGatewayMetrics, error) {
@@ -114,6 +129,17 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 		ID:          handlerID + "updates_flushed",
 		Unit:        "updates",
 		Description: "The total number of unique relay update requests that were sent to the relay backends via HTTP (not necessarily successful)",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RefreshedMagicValues, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Refreshed Magic Values Count",
+		ServiceName: serviceName,
+		ID:          handlerID + "refreshed_magic_values",
+		Unit:        "updates",
+		Description: "The number of times the magic values were refreshed with new values",
 	})
 	if err != nil {
 		return nil, err
@@ -213,6 +239,50 @@ func NewRelayGatewayMetrics(ctx context.Context, metricsHandler Handler, service
 		ID:          handlerID + ".error.backend_send_failure",
 		Unit:        "errors",
 		Description: "The total number of relay update request batches that failed to be sent to the relay backends",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.MagicReaderNil, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Magic Reader Nil Errors",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.magic_reader_nil",
+		Unit:        "errors",
+		Description: "The total number of times the magic reader was nil after making an HTTP GET to the magic frontend LB",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.MagicReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Magic Read Failures",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.magic_read_failure",
+		Unit:        "errors",
+		Description: "The total number of times the magic values failed to be read",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.MagicBufferEmpty, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Magic Buffer Empty Errors",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.magic_buffer_empty",
+		Unit:        "errors",
+		Description: "The total number of times the magic reader buffer was empty",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ErrorMetrics.MagicUnexpectedLengthError, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Total Magic Unexpected Length Errors",
+		ServiceName: serviceName,
+		ID:          handlerID + ".error.magic_unexpected_length_error",
+		Unit:        "errors",
+		Description: "The total number of times the magic values were not 24 bytes",
 	})
 	if err != nil {
 		return nil, err

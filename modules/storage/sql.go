@@ -154,8 +154,9 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, automatic_signin_domain,"))
-	querySQL.Write([]byte("customer_name, customer_code from customers where customer_code = $1"))
+	querySQL.Write([]byte("select id, automatic_signin_domain, customer_name, customer_code, buyer_tos_signer_email, "))
+	querySQL.Write([]byte("buyer_tos_signer_first_name, buyer_tos_signer_last_name, buyer_tos_signed_timestamp "))
+	querySQL.Write([]byte("from customers where customer_code = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -167,6 +168,10 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 			&customer.AutomaticSignInDomains,
 			&customer.Name,
 			&customer.CustomerCode,
+			&customer.BuyerTOSSignerEmail,
+			&customer.BuyerTOSSignerFirstName,
+			&customer.BuyerTOSSignerLastName,
+			&customer.BuyerTOSSignedTimestamp,
 		)
 		switch err {
 		case context.Canceled:
@@ -185,10 +190,14 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
 	case nil:
 		c := routing.Customer{
-			Code:                   customer.CustomerCode,
-			Name:                   customer.Name,
-			AutomaticSignInDomains: customer.AutomaticSignInDomains,
-			DatabaseID:             customer.ID,
+			Code:                    customer.CustomerCode,
+			Name:                    customer.Name,
+			AutomaticSignInDomains:  customer.AutomaticSignInDomains,
+			DatabaseID:              customer.ID,
+			BuyerTOSSignerFirstName: customer.BuyerTOSSignerFirstName,
+			BuyerTOSSignerLastName:  customer.BuyerTOSSignerLastName,
+			BuyerTOSSignerEmail:     customer.BuyerTOSSignerEmail,
+			BuyerTOSSignedTimestamp: customer.BuyerTOSSignedTimestamp,
 		}
 		return c, nil
 	default:
@@ -204,8 +213,9 @@ func (db *SQL) CustomerByID(ctx context.Context, id int64) (routing.Customer, er
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, automatic_signin_domain,"))
-	querySQL.Write([]byte("customer_name, customer_code from customers where id = $1"))
+	querySQL.Write([]byte("select id, automatic_signin_domain, customer_name, customer_code, buyer_tos_signer_email, "))
+	querySQL.Write([]byte("buyer_tos_signer_first_name, buyer_tos_signer_last_name, buyer_tos_signed_timestamp "))
+	querySQL.Write([]byte("from customers where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -217,6 +227,10 @@ func (db *SQL) CustomerByID(ctx context.Context, id int64) (routing.Customer, er
 			&customer.AutomaticSignInDomains,
 			&customer.Name,
 			&customer.CustomerCode,
+			&customer.BuyerTOSSignerEmail,
+			&customer.BuyerTOSSignerFirstName,
+			&customer.BuyerTOSSignerLastName,
+			&customer.BuyerTOSSignedTimestamp,
 		)
 		switch err {
 		case context.Canceled:
@@ -297,39 +311,42 @@ func (db *SQL) Customers(ctx context.Context) []routing.Customer {
 }
 
 type sqlCustomer struct {
-	ID                     int64
-	Name                   string
-	AutomaticSignInDomains string
-	Debug                  bool
-	CustomerCode           string
-	DatabaseID             int64
-	BuyerID                sql.NullInt64 // loaded during syncCustomers()
-	SellerID               sql.NullInt64 // loaded during syncCustomers()
+	ID                      int64
+	Name                    string
+	AutomaticSignInDomains  string
+	BuyerTOSSignerFirstName string
+	BuyerTOSSignerLastName  string
+	BuyerTOSSignerEmail     string
+	BuyerTOSSignedTimestamp string
+	Debug                   bool
+	CustomerCode            string
+	DatabaseID              int64
+	BuyerID                 sql.NullInt64 // loaded during syncCustomers()
+	SellerID                sql.NullInt64 // loaded during syncCustomers()
 }
 
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	var sql bytes.Buffer
 
-	customer := sqlCustomer{
-		CustomerCode:           c.Code,
-		Name:                   c.Name,
-		AutomaticSignInDomains: c.AutomaticSignInDomains,
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
 	sql.Write([]byte("insert into customers ("))
-	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
-	sql.Write([]byte(") values ($1, $2, $3)"))
+	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code, buyer_tos_signer_email, "))
+	sql.Write([]byte("buyer_tos_signer_first_name, buyer_tos_signer_last_name, buyer_tos_signed_timestamp"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		customer.AutomaticSignInDomains,
-		customer.Name,
-		customer.CustomerCode,
+		c.AutomaticSignInDomains,
+		c.Name,
+		c.Code,
+		"",
+		"",
+		"",
+		"",
 	)
 	if err != nil {
 		core.Error("AddCustomer() error adding customer: %v", err)
@@ -381,14 +398,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 	return nil
 }
 
-// SetCustomer modifies a subset of fields in a customer record
-// in the database. Modifield fields:
-//		Name
-//		AutomaticSigninDomains
-//		Active
-//		Debug
-// TODO: remove - need to modify AuthService.UpdateAutoSignupDomains to
-//       use UpdateCustomer() and then drop this method
+// TODO: Remove this
 func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 	var sql bytes.Buffer
 
@@ -3723,7 +3733,6 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerCode string, field st
 		}
 		updateSQL.Write([]byte("update customers set automatic_signin_domain=$1 where id=$2"))
 		args = append(args, domains, customer.DatabaseID)
-		customer.AutomaticSignInDomains = domains
 	case "Name":
 		name, ok := value.(string)
 		if !ok {
@@ -3731,11 +3740,37 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerCode string, field st
 		}
 		updateSQL.Write([]byte("update customers set customer_name=$1 where id=$2"))
 		args = append(args, name, customer.DatabaseID)
-		customer.Name = name
+	case "TOSSignerFirstName":
+		firstName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set buyer_tos_signer_first_name=$1 where id=$2"))
+		args = append(args, firstName, customer.DatabaseID)
+	case "TOSSignerLastName":
+		lastName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set buyer_tos_signer_last_name=$1 where id=$2"))
+		args = append(args, lastName, customer.DatabaseID)
+	case "TOSSignerEmail":
+		email, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set buyer_tos_signer_email=$1 where id=$2"))
+		args = append(args, email, customer.DatabaseID)
+	case "TOSSignerTimestamp":
+		timestamp, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update customers set buyer_tos_signed_timestamp=$1 where id=$2"))
+		args = append(args, timestamp, customer.DatabaseID)
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
-
 	}
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
