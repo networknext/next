@@ -251,6 +251,10 @@ export class JSONRPCService {
   public processNewSignup (args: any): Promise<any> {
     return this.call('AuthService.ProcessNewSignup', args)
   }
+
+  public buyerTOSSigned (args: any): Promise<any> {
+    return this.call('BuyersService.SignedBuyerTOS', args)
+  }
 }
 
 export const JSONRPCPlugin = {

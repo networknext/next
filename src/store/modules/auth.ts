@@ -98,6 +98,7 @@ const actions = {
         userProfile.hasAnalytics = userInformation.analytics || false
         userProfile.hasBilling = userInformation.billing || false
         userProfile.hasTrial = userInformation.trial || true
+        userProfile.signedTOS = userInformation.signed_tos || false
         userProfile.domains = responses[0].domains || []
 
         dispatch('updateUserProfile', userProfile)

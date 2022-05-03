@@ -11,6 +11,7 @@ export interface UserProfile {
   email: string;
   idToken: string;
   roles: Array<string>;
+  signedTOS: boolean;
   hasAnalytics: boolean;
   hasBilling: boolean;
   hasTrial: boolean;
@@ -38,6 +39,7 @@ export function newDefaultProfile (): UserProfile {
     newsletterConsent: false,
     pubKey: '',
     roles: [],
+    signedTOS: false,
     routeShader: null,
     seller: false,
     verified: false
