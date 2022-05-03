@@ -1927,7 +1927,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			core.Error("%v", err)
 			return err
 		}
-	case "ShortName", "PublicKey":
+	case "Alias", "PublicKey":
 		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
@@ -2352,12 +2352,13 @@ type JSRouteShader struct {
 	BannedUsers               map[string]bool `json:"bannedUsers"`
 	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
+
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
 }
 
 type RouteShaderReply struct {
-	RouteShader JSRouteShader
+	RouteShader core.RouteShader
 }
 
 func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
@@ -2378,25 +2379,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		return err
 	}
 
-	jsonRS := JSRouteShader{
-		DisableNetworkNext:        rs.DisableNetworkNext,
-		AnalysisOnly:              rs.AnalysisOnly,
-		SelectionPercent:          int64(rs.SelectionPercent),
-		ABTest:                    rs.ABTest,
-		ProMode:                   rs.ProMode,
-		ReduceLatency:             rs.ReduceLatency,
-		ReduceJitter:              rs.ReduceJitter,
-		ReducePacketLoss:          rs.ReducePacketLoss,
-		Multipath:                 rs.Multipath,
-		AcceptableLatency:         int64(rs.AcceptableLatency),
-		LatencyThreshold:          int64(rs.LatencyThreshold),
-		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
-		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
-		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-		PacketLossSustained:       float64(rs.PacketLossSustained),
-	}
-
-	reply.RouteShader = jsonRS
+	reply.RouteShader = rs
 	return nil
 }
 
