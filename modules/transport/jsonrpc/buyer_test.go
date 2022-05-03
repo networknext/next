@@ -2016,7 +2016,6 @@ func TestJSAddRouteShader(t *testing.T) {
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-		BannedUsers:               make(map[string]bool),
 		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
@@ -2525,9 +2524,9 @@ func TestUpdateBuyer(t *testing.T) {
 		}
 	})
 
-	t.Run("success short name", func(t *testing.T) {
+	t.Run("success alias", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply
-		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "ShortName", Value: "short-name"}, &reply)
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "Alias", Value: "buyer alias"}, &reply)
 		assert.NoError(t, err)
 	})
 

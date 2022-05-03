@@ -2015,7 +2015,7 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 
 	ctx := context.Background()
 
-	stringFields := []string{"ShortName", "PublicKey"}
+	stringFields := []string{"Alias", "PublicKey"}
 
 	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
@@ -2167,7 +2167,7 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 		err := inMemory.AddBuyer(ctx, expected)
 		assert.NoError(t, err)
 
-		err = inMemory.UpdateBuyer(ctx, expected.ID, "ShortName", "a")
+		err = inMemory.UpdateBuyer(ctx, expected.ID, "Alias", "a")
 		assert.NoError(t, err)
 	})
 
