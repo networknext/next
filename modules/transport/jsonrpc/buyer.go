@@ -2239,21 +2239,22 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 // Route Shader Related Functions
 
 type JSRouteShader struct {
-	DisableNetworkNext        bool    `json:"disableNetworkNext"`
-	AnalysisOnly              bool    `json:"analysis_only"`
-	SelectionPercent          int64   `json:"selectionPercent"`
-	ABTest                    bool    `json:"abTest"`
-	ProMode                   bool    `json:"proMode"`
-	ReduceLatency             bool    `json:"reduceLatency"`
-	ReduceJitter              bool    `json:"reduceJitter"`
-	ReducePacketLoss          bool    `json:"reducePacketLoss"`
-	Multipath                 bool    `json:"multipath"`
-	AcceptableLatency         int64   `json:"acceptableLatency"`
-	LatencyThreshold          int64   `json:"latencyThreshold"`
-	AcceptablePacketLoss      float64 `json:"acceptablePacketLoss"`
-	BandwidthEnvelopeUpKbps   int64   `json:"bandwidthEnvelopeUpKbps"`
-	BandwidthEnvelopeDownKbps int64   `json:"bandwidthEnvelopeDownKbps"`
-	PacketLossSustained       float64 `json:"packetLossSustained"`
+	DisableNetworkNext        bool            `json:"disableNetworkNext"`
+	AnalysisOnly              bool            `json:"analysis_only"`
+	SelectionPercent          int64           `json:"selectionPercent"`
+	ABTest                    bool            `json:"abTest"`
+	ProMode                   bool            `json:"proMode"`
+	ReduceLatency             bool            `json:"reduceLatency"`
+	ReduceJitter              bool            `json:"reduceJitter"`
+	ReducePacketLoss          bool            `json:"reducePacketLoss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int64           `json:"acceptableLatency"`
+	LatencyThreshold          int64           `json:"latencyThreshold"`
+	AcceptablePacketLoss      float64         `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[string]bool `json:"bannedUsers"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
 
 type RouteShaderArg struct {
