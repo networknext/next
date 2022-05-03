@@ -68,6 +68,7 @@ type account struct {
 	LastName    string             `json:"last_name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	SignedTOS   bool               `json:"signed_tos"`
 	Analytics   bool               `json:"analytics"`
 	Billing     bool               `json:"billing"`
 	Trial       bool               `json:"trial"`
@@ -124,7 +125,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return &err
 		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
 
 	return nil
@@ -154,6 +155,8 @@ func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	ctx := r.Context()
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	if args.UserID == "" {
@@ -163,7 +166,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return &err
 	}
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UserAccount(): %v", err.Error())
@@ -195,15 +198,15 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 	var company routing.Customer
 	if companyCode != "" {
-		company, err = s.Storage.Customer(r.Context(), companyCode)
+		company, err = s.Storage.Customer(ctx, companyCode)
 		if err != nil {
 			core.Error("UserAccount(): %v: Could not find customer account for customer code: %v", err.Error(), companyCode)
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 	}
-	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
-	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), companyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, companyCode)
 
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
@@ -216,7 +219,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin, company.BuyerTOSSignedTimestamp != "")
 
 	return nil
 }
@@ -227,6 +230,8 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		core.Error("DeleteUserAccount(): %v", err.Error())
 		return &err
 	}
+
+	ctx := r.Context()
 
 	if args.UserID == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
@@ -247,7 +252,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	}
 
 	// Non admin trying to delete user from another company
-	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	requestCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if (!ok || requestCompanyCode != userCompanyCode) && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("DeleteUserAccount(): %v", err.Error())
@@ -280,6 +285,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	var adminString string = "Admin"
 	var accounts []account
 
+	ctx := r.Context()
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
@@ -298,7 +305,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	}
 
 	// Gather request user information
-	userCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	userCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok || userCompanyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AddUserAccount(): %v", err.Error())
@@ -309,8 +316,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	emails := args.Emails
 	falseValue := false
 
-	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), userCompanyCode)
-	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), userCompanyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, userCompanyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, userCompanyCode)
 
 	registered := make(map[string]*management.User)
 
@@ -398,13 +405,13 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			}
 		}
 
-		company, err := s.Storage.Customer(r.Context(), userCompanyCode)
+		customer, err := s.Storage.Customer(ctx, userCompanyCode)
 		if err != nil {
 			core.Error("AddUserAccount(): %v", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -435,7 +442,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool, isAdmin bool) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool, isAdmin bool, signedTOS bool) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -464,6 +471,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		LastName:    u.GetFamilyName(),
 		Email:       u.GetEmail(),
 		Roles:       roles,
+		SignedTOS:   signedTOS,
 		Analytics:   buyer.Analytics,
 		Billing:     buyer.Billing,
 		Trial:       buyer.Trial,
@@ -497,6 +505,8 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		core.Error("UserDatabase(): %v", err.Error())
 		return &err
 	}
+
+	ctx := r.Context()
 
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
@@ -537,7 +547,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 			CreationTime: account.CreatedAt.String(),
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
 
 		if buyer.ID != 0 {
 			entry.BuyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -568,18 +578,20 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
+	ctx := r.Context()
+
 	if isAdmin {
 		reply.Roles = append(reply.Roles, s.RoleCache["Admin"])
 	}
 
-	requestCustomerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	requestCustomerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AllRoles(): %v", err.Error())
 		return &err
 	}
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), requestCustomerCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
 	if err != nil {
 		// Buyer account doesn't exist - this could be due to the customer not entering a public key yet so return Owner role only
 		reply.Roles = append(reply.Roles, s.RoleCache["Owner"])
@@ -790,7 +802,9 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	ctx := r.Context()
+
+	assignedCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if ok && assignedCompanyCode != "" {
 		err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
 		core.Error("SetupCompanyAccount(): %v: User is already assigned to a company. Please reach out to support for further assistance.", err.Error())
@@ -798,7 +812,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	}
 
 	// grab request user information
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	requestUser := ctx.Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("SetupCompanyAccount(): %v", err.Error())
@@ -813,7 +827,6 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	ctx := r.Context()
 	roles := []*management.Role{}
 
 	// Check if customer account exists already
@@ -900,7 +913,9 @@ func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountD
 		return &err
 	}
 
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	ctx := r.Context()
+
+	requestUser := ctx.Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UpdateAccountDetails(): %v", err.Error())
@@ -1041,8 +1056,7 @@ type UpdateDomainsArgs struct {
 	Domains []string `json:"domains"`
 }
 
-type UpdateDomainsReply struct {
-}
+type UpdateDomainsReply struct{}
 
 func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
@@ -1050,32 +1064,21 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
 		return &err
 	}
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error())
-		return &err
-	}
+
+	ctx := r.Context()
+
+	customerCode := middleware.RequestUserCustomerCode(ctx)
 	if customerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error())
 		return &err
 	}
-	ctx := context.Background()
 
-	company, err := s.Storage.Customer(r.Context(), customerCode)
+	domains := strings.Join(args.Domains, ", ")
+	err := s.Storage.UpdateCustomer(ctx, customerCode, "AutomaticSigninDomains", domains)
 	if err != nil {
-		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	company.AutomaticSignInDomains = strings.Join(args.Domains, ", ")
-
-	err = s.Storage.SetCustomer(ctx, company)
-	if err != nil {
-		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		core.Error("UpdateAutoSignupDomains(): %v: Failed to update customer auto signup domains", err.Error())
 		return &err
 	}
 

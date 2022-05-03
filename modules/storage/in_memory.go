@@ -1462,6 +1462,39 @@ func (m *InMemory) UpdateCustomer(ctx context.Context, customerID string, field 
 		}
 
 		customer.Name = name
+
+	case "TOSSignerFirstName":
+		firstName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerFirstName = firstName
+
+	case "TOSSignerLastName":
+		lastName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerLastName = lastName
+
+	case "TOSSignerEmail":
+		email, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerEmail = email
+
+	case "TOSSignerTimestamp":
+		timestamp, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignedTimestamp = timestamp
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
 	}
