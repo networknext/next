@@ -1340,13 +1340,13 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 		}
 
 		buyer.LookerSeats = lookerSeats
-	case "ShortName":
-		shortName, ok := value.(string)
+	case "Alias":
+		alias, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("ShortName: %v is not a valid string type (%T)", value, value)
+			return fmt.Errorf("Alias: %v is not a valid string type (%T)", value, value)
 		}
 
-		buyer.ShortName = shortName
+		buyer.Alias = alias
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
