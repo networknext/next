@@ -1993,19 +1993,19 @@ func TestJSAddRouteShader(t *testing.T) {
 	jsRS := jsonrpc.JSRouteShader{
 		DisableNetworkNext:        true,
 		AnalysisOnly:              true,
-		SelectionPercent:          int32(rs.SelectionPercent),
+		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
 		ProMode:                   rs.ProMode,
 		ReduceLatency:             rs.ReduceLatency,
 		ReduceJitter:              rs.ReduceJitter,
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		Multipath:                 rs.Multipath,
-		AcceptableLatency:         int32(rs.AcceptableLatency),
-		LatencyThreshold:          int32(rs.LatencyThreshold),
-		AcceptablePacketLoss:      float32(rs.AcceptablePacketLoss),
-		BandwidthEnvelopeUpKbps:   int32(rs.BandwidthEnvelopeUpKbps),
-		BandwidthEnvelopeDownKbps: int32(rs.BandwidthEnvelopeDownKbps),
-		PacketLossSustained:       float32(rs.PacketLossSustained),
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})

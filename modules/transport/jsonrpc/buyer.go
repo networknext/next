@@ -2241,19 +2241,19 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 type JSRouteShader struct {
 	DisableNetworkNext        bool    `json:"disableNetworkNext"`
 	AnalysisOnly              bool    `json:"analysis_only"`
-	SelectionPercent          int32   `json:"selectionPercent"`
+	SelectionPercent          int64   `json:"selectionPercent"`
 	ABTest                    bool    `json:"abTest"`
 	ProMode                   bool    `json:"proMode"`
 	ReduceLatency             bool    `json:"reduceLatency"`
 	ReduceJitter              bool    `json:"reduceJitter"`
 	ReducePacketLoss          bool    `json:"reducePacketLoss"`
 	Multipath                 bool    `json:"multipath"`
-	AcceptableLatency         int32   `json:"acceptableLatency"`
-	LatencyThreshold          int32   `json:"latencyThreshold"`
-	AcceptablePacketLoss      float32 `json:"acceptablePacketLoss"`
-	BandwidthEnvelopeUpKbps   int32   `json:"bandwidthEnvelopeUpKbps"`
-	BandwidthEnvelopeDownKbps int32   `json:"bandwidthEnvelopeDownKbps"`
-	PacketLossSustained       float32 `json:"packetLossSustained"`
+	AcceptableLatency         int64   `json:"acceptableLatency"`
+	LatencyThreshold          int64   `json:"latencyThreshold"`
+	AcceptablePacketLoss      float64 `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int64   `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int64   `json:"bandwidthEnvelopeDownKbps"`
+	PacketLossSustained       float64 `json:"packetLossSustained"`
 }
 
 type RouteShaderArg struct {
