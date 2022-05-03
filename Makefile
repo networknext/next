@@ -98,8 +98,12 @@ ifndef SERVER_BACKEND_PRIVATE_KEY
 export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
 endif
 
-ifndef SERVER_BACKEND_LOAD_BALANCER_IP
-export SERVER_BACKEND_LOAD_BALANCER_IP = 127.0.0.1:40000
+ifndef SERVER_BACKEND_IP
+export SERVER_BACKEND_IP = 127.0.0.1:40000
+endif
+
+ifndef MAGIC_URI
+export MAGIC_URI = http://127.0.0.1:41008/magic
 endif
 
 ## Relay routing keys are used to ENCRYPT and SIGN route tokens sent to a relay
@@ -346,6 +350,10 @@ dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
+
+.PHONY: dev-server-backend5
+dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend5
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -661,6 +669,12 @@ build-portal:
 build-server-backend4:
 	@printf "Building server backend 4... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@printf "done\n"
+
+.PHONY: build-server-backend5
+build-server-backend5:
+	@printf "Building server backend 5... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
 .PHONY: build-billing

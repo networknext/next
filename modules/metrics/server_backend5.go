@@ -36,6 +36,7 @@ type ServerBackend5Status struct {
 	ServerUpdateSDKTooOld             int `json:"server_update_sdk_too_old"`
 	ServerUpdateDatacenterMapNotFound int `json:"server_update_datacneter_map_not_found"`
 	ServerUpdateDatacenterNotFound    int `json:"server_update_datacenter_not_found"`
+	ServerUpdateWriteResponseFailure  int `json:"server_update_write_response_failure"`
 
 	// Session Update Metrics
 	SessionUpdateInvocations                                int `json:"session_update_invocations"`
@@ -174,6 +175,7 @@ type ServerUpdate5Metrics struct {
 	DatacenterMapNotFound  Counter
 	DatacenterNotFound     Counter
 	ServerUpdatePacketSize Gauge
+	WriteResponseFailure   Counter
 }
 
 // EmptyServerUpdate5Metrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -187,6 +189,7 @@ var EmptyServerUpdate5Metrics = ServerUpdate5Metrics{
 	DatacenterMapNotFound:  &EmptyCounter{},
 	DatacenterNotFound:     &EmptyCounter{},
 	ServerUpdatePacketSize: &EmptyGauge{},
+	WriteResponseFailure:   &EmptyCounter{},
 }
 
 // SessionUpdate5Metrics defines the set of metrics for the session update handler in the server backend.
@@ -898,6 +901,17 @@ func newServerUpdate5Metrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".server_update_packet_size",
 		Unit:        "bytes",
 		Description: "The size of a server update packet",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.WriteResponseFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Write Response Failure",
+		ServiceName: serviceName,
+		ID:          handlerID + ".write_response_failure",
+		Unit:        "errors",
+		Description: "The number of times we failed to write a response to a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err

@@ -145,14 +145,14 @@ func mainReturnWithCode() int {
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
-	if !envvar.Exists("SERVER_BACKEND_LOAD_BALANCER_IP") {
-		core.Error("SERVER_BACKEND_LOAD_BALANCER_IP not set")
+	if !envvar.Exists("SERVER_BACKEND_IP") {
+		core.Error("SERVER_BACKEND_IP not set")
 		return 1
 	}
 
-	backendLoadBalancerIP, err := envvar.GetAddress("SERVER_BACKEND_LOAD_BALANCER_IP", nil)
+	backendLoadBalancerIP, err := envvar.GetAddress("SERVER_BACKEND_IP", nil)
 	if err != nil {
-		core.Error("invalid SERVER_BACKEND_LOAD_BALANCER_IP: %v", err)
+		core.Error("invalid SERVER_BACKEND_IP: %v", err)
 		return 1
 	}
 
@@ -415,13 +415,13 @@ func mainReturnWithCode() int {
 
 	// function to get magic values under mutex
 
-	magicUpcoming := make([]byte, 8)
-	magicCurrent := make([]byte, 8)
-	magicPrevious := make([]byte, 8)
+	var magicUpcoming [8]byte
+	var magicCurrent [8]byte
+	var magicPrevious [8]byte
 
 	var magicMutex sync.RWMutex
 
-	getMagicData := func() ([]byte, []byte, []byte) {
+	getMagicValues := func() ([8]byte, [8]byte, [8]byte) {
 		magicMutex.RLock()
 		upcoming := magicUpcoming
 		current := magicCurrent
@@ -500,9 +500,9 @@ func mainReturnWithCode() int {
 					}
 
 					magicMutex.Lock()
-					magicUpcoming = buffer[0:8]
-					magicCurrent = buffer[8:16]
-					magicPrevious = buffer[16:24]
+					copy(magicUpcoming[:], buffer[0:8])
+					copy(magicCurrent[:], buffer[8:16])
+					copy(magicPrevious[:], buffer[16:24])
 					magicMutex.Unlock()
 
 					cachedCombinedMagic = buffer
@@ -1069,10 +1069,10 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
-	matchDataHandler := transport.MatchDataHandlerFunc(getDatabase, postSessionHandler, backendMetrics.MatchDataHandlerMetrics)
+	serverInitHandler := transport.ServerInitHandlerSDK5Func(getDatabase, getMagicValues, serverTracker, backendLoadBalancerIP, privateKey, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerSDK5Func(getDatabase, getMagicValues, postSessionHandler, serverTracker, backendLoadBalancerIP, privateKey, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerSDK5Func(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, getMagicValues, backendLoadBalancerIP, privateKey, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	matchDataHandler := transport.MatchDataHandlerSDK5Func(getDatabase, getMagicValues, postSessionHandler, backendLoadBalancerIP, privateKey, backendMetrics.MatchDataHandlerMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -1115,17 +1115,17 @@ func mainReturnWithCode() int {
 				{
 					to := backendLoadBalancerIP
 
-					upcoming, current, previous := getMagicData()
+					upcoming, current, previous := getMagicValues()
 
 					var fromAddressBuffer [32]byte
 					var toAddressBuffer [32]byte
 
-					fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
+					fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
 					toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
-					if !core.AdvancedPacketFilter(data, current, fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
-						if !core.AdvancedPacketFilter(data, upcoming, fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
-							if !core.AdvancedPacketFilter(data, previous, fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+					if !core.AdvancedPacketFilter(data, current[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+						if !core.AdvancedPacketFilter(data, upcoming[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+							if !core.AdvancedPacketFilter(data, previous[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
 								continue
 							}
 						}
@@ -1133,7 +1133,7 @@ func mainReturnWithCode() int {
 				}
 
 				packetType := data[0]
-				data = data[16 : len(packetData)-2]
+				data = data[16 : len(data)-2]
 				size -= 18
 
 				var buffer bytes.Buffer
@@ -1146,8 +1146,8 @@ func mainReturnWithCode() int {
 					serverUpdateHandler(&buffer, &packet)
 				case transport.PacketTypeSessionUpdateSDK5:
 					sessionUpdateHandler(&buffer, &packet)
-					// case transport.PacketTypeMatchDataRequestSDK5:
-					//     matchDataHandler(&buffer, &packet)
+				case transport.PacketTypeMatchDataRequestSDK5:
+					matchDataHandler(&buffer, &packet)
 				}
 
 				if buffer.Len() > 0 {

@@ -20,6 +20,8 @@ const (
 	PacketTypeServerResponseSDK5     = 53
 	PacketTypeSessionUpdateSDK5      = 54
 	PacketTypeSessionResponseSDK5    = 55
+	PacketTypeMatchDataRequestSDK5   = 56
+	PacketTypeMatchDataResponseSDK5  = 57
 )
 
 func UnmarshalPacketSDK5(packet Packet, data []byte) error {
@@ -29,7 +31,7 @@ func UnmarshalPacketSDK5(packet Packet, data []byte) error {
 	return nil
 }
 
-func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
+func MarshalPacketSDK5(packetType int, packetObject Packet, magic []byte, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 	packet := make([]byte, DefaultMaxPacketSize)
 	packet[0] = byte(packetType)
 
@@ -51,8 +53,6 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, t
 
 	packet = crypto.SignPacketSDK5(privateKey[:], packet, serializeBytes)
 
-	var magic [8]byte
-
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
@@ -61,7 +61,7 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, t
 
 	packetLength := len(packet)
 
-	core.GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic, fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
 	core.GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
@@ -341,6 +341,7 @@ type SessionResponsePacketSDK5 struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	DontPingNearRelays bool
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [core.MaxNearRelays]bool
 	HighFrequencyPings bool
@@ -398,6 +399,8 @@ func (packet *SessionResponsePacketSDK5) Serialize(stream encoding.Stream) error
 	if packet.HasDebug {
 		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
 	}
+
+	stream.SerializeBool(&packet.DontPingNearRelays)
 
 	stream.SerializeBool(&packet.ExcludeNearRelays)
 	if packet.ExcludeNearRelays {
