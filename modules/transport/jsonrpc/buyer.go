@@ -2026,23 +2026,23 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 // Internal Config Related Functions
 
 type JSInternalConfig struct {
-	RouteSelectThreshold           int64 `json:"route_select_threshold"`
-	RouteSwitchThreshold           int64 `json:"route_switch_threshold"`
-	MaxLatencyTradeOff             int64 `json:"max_latency_trade_off"`
-	RTTVeto_Default                int64 `json:"rtt_veto_default"`
-	RTTVeto_Multipath              int64 `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss             int64 `json:"rtt_veto_packet_loss"`
-	MultipathOverloadThreshold     int64 `json:"multipath_overload_threshold"`
-	TryBeforeYouBuy                bool  `json:"try_before_you_buy"`
-	ForceNext                      bool  `json:"force_next"`
-	LargeCustomer                  bool  `json:"large_customer"`
+	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default                int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
+	ForceNext                      bool  `json:"forceNext"`
+	LargeCustomer                  bool  `json:"largeCustomer"`
 	Uncommitted                    bool  `json:"uncommitted"`
-	MaxRTT                         int64 `json:"max_rtt"`
-	HighFrequencyPings             bool  `json:"high_frequency_pings"`
-	RouteDiversity                 int64 `json:"route_diversity"`
-	MultipathThreshold             int64 `json:"multipath_threshold"`
-	EnableVanityMetrics            bool  `json:"enable_vanity_metrics"`
-	ReducePacketLossMinSliceNumber int64 `json:"reduce_packet_loss_min_slice_number"`
+	MaxRTT                         int64 `json:"maxRTT"`
+	HighFrequencyPings             bool  `json:"highFrequencyPings"`
+	RouteDiversity                 int64 `json:"routeDiversity"`
+	MultipathThreshold             int64 `json:"multipathThreshold"`
+	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
 func InternalConfigToJSON(internalConfig core.InternalConfig) JSInternalConfig {
