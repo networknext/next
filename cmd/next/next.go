@@ -481,6 +481,7 @@ type routeShader struct {
 }
 
 type buyer struct {
+	Alias        string
 	CustomerCode string
 	Live         bool
 	Debug        bool
@@ -1654,13 +1655,14 @@ func main() {
 					}
 
 					buyerArgs := localjsonrpc.JSAddBuyerArgs{
-						ShortName: b.CustomerCode,
-						Live:      b.Live,
-						Debug:     b.Debug,
-						Analytics: b.Analytics,
-						Billing:   b.Billing,
-						Trial:     b.Trial,
-						PublicKey: b.PublicKey,
+						Alias:       b.Alias,
+						CompanyCode: b.CustomerCode,
+						Live:        b.Live,
+						Debug:       b.Debug,
+						Analytics:   b.Analytics,
+						Billing:     b.Billing,
+						Trial:       b.Trial,
+						PublicKey:   b.PublicKey,
 					}
 
 					var reply localjsonrpc.JSAddBuyerReply
