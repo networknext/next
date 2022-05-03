@@ -2425,3 +2425,61 @@ func TestUpdateDatacenter(t *testing.T) {
 		}
 	})
 }
+
+func TestAddNewBuyerAccount(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no parent customer code", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{}, &reply)
+		assert.NotEqual(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+		assert.Error(t, err)
+	})
+
+	t.Run("buyer already exists", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no public key", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad public key", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local", PublicKey: "1234723984702893402983740928743029874"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local", PublicKey: "K2xL/8EIpc32Eq3ASsv8jL56+ZCF/o8kA/aeNmeOSFSLkdm3v36OJg=="}, &reply)
+		assert.NoError(t, err)
+	})
+}
