@@ -2005,6 +2005,7 @@ func TestJSAddRouteShader(t *testing.T) {
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		BannedUsers:               make(map[string]bool),
 		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
