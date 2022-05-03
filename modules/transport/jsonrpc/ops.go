@@ -316,7 +316,7 @@ func (s *OpsService) UpdateBuyerAccount(r *http.Request, args *UpdateBuyerAccoun
 		}
 	}
 
-	if buyer.LookerSeats != int64(args.LookerSeats) && (args.LookerSeats >= 0 && args.LookerSeats < 100) {
+	if buyer.LookerSeats != int64(args.LookerSeats) && (args.LookerSeats >= 0 && args.LookerSeats < 1000) {
 		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "LookerSeats", int64(args.LookerSeats)); err != nil {
 			core.Error("UpdateBuyerAccount(): %v", err.Error())
 			wasError = true
@@ -435,6 +435,13 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		return &err
 	}
 
+	if args.CustomerCode == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
+		core.Error("FetchBuyerInformation(): %v", err.Error())
+		return &err
+	}
+
 	ctx := r.Context()
 
 	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
@@ -460,6 +467,8 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		buyerMaps := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		datacenters := s.Storage.Datacenters(ctx)
 
+		fmt.Println(buyerMaps)
+
 		for _, datacenter := range datacenters {
 			_, ok := buyerMaps[datacenter.ID]
 			if ok {
@@ -470,6 +479,10 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 				})
 			}
 		}
+	} else {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		core.Error("FetchBuyerInformation(): %v", err.Error())
+		return &err
 	}
 
 	return nil
