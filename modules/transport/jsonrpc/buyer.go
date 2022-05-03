@@ -2262,7 +2262,7 @@ type RouteShaderArg struct {
 }
 
 type RouteShaderReply struct {
-	RouteShader core.RouteShader
+	RouteShader JSRouteShader
 }
 
 func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
@@ -2283,7 +2283,25 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		return err
 	}
 
-	reply.RouteShader = rs
+	jsonRS := JSRouteShader{
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		AnalysisOnly:              rs.AnalysisOnly,
+		SelectionPercent:          int64(rs.SelectionPercent),
+		ABTest:                    rs.ABTest,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReduceJitter:              rs.ReduceJitter,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		Multipath:                 rs.Multipath,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
+	}
+
+	reply.RouteShader = jsonRS
 	return nil
 }
 
