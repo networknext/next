@@ -28,7 +28,13 @@ create table customers (
   id integer primary key autoincrement,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
-  customer_code varchar unique not null unique
+  customer_code varchar unique not null unique,
+  show_analytics boolean not null default false,
+  show_billing boolean not null default false,
+  buyer_tos_signer_email varchar not null,
+  buyer_tos_signer_first_name varchar not null,
+  buyer_tos_signer_last_name varchar not null,
+  buyer_tos_signed_timestamp varchar not null
 );
 
 create table buyers (
