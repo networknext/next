@@ -608,7 +608,7 @@ func mainReturnWithCode() int {
 		}
 
 		if err := multipathVetoHandler.Sync(); err != nil {
-			core.Error("faild to sync multipath veto handler: %v", err)
+			core.Error("failed to sync multipath veto handler: %v", err)
 			return 1
 		}
 
@@ -620,7 +620,7 @@ func mainReturnWithCode() int {
 					select {
 					case <-ticker.C:
 						if err := multipathVetoHandler.Sync(); err != nil {
-							core.Error("faild to sync multipath veto handler: %v", err)
+							core.Error("failed to sync multipath veto handler: %v", err)
 						}
 					case <-ctx.Done():
 						return
