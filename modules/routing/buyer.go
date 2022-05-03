@@ -11,7 +11,7 @@ import (
 
 type Buyer struct {
 	CompanyCode         string // TODO: chopping block - defined by the parent customer
-	ShortName           string // TBD: same as above
+	Alias               string
 	ID                  uint64
 	HexID               string // needed by external (non-go) clients
 	Live                bool
@@ -34,7 +34,7 @@ func (b *Buyer) String() string {
 	buyer := "\nrouting.Buyer:\n"
 	buyer += "\tID (hex)              : " + fmt.Sprintf("%16x", b.ID) + "\n"
 	buyer += "\tID                    : " + fmt.Sprintf("%d", b.ID) + "\n"
-	buyer += "\tShortName             : '" + b.ShortName + "'\n"
+	buyer += "\tAlias                 : '" + b.Alias + "'\n"
 	buyer += "\tCompanyCode           : '" + b.CompanyCode + "'\n"
 	buyer += "\tLive                  : " + strconv.FormatBool(b.Live) + "\n"
 	buyer += "\tDebug                 : " + strconv.FormatBool(b.Debug) + "\n"
