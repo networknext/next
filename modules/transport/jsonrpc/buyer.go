@@ -1527,6 +1527,14 @@ func (s *BuyersService) SignedBuyerTOS(r *http.Request, args *SignedTOSArgs, rep
 		return &err
 	}
 
+	message := fmt.Sprintf("%s %s (%s) signed the TOS! :placard:", args.FirstName, args.LastName, args.Email)
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("SignedTOS(): %v: Email is required", err.Error())
+		return &err
+	}
+
 	return nil
 }
 
