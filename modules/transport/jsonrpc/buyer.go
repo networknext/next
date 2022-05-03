@@ -2045,28 +2045,6 @@ type JSInternalConfig struct {
 	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
-func InternalConfigToJSON(internalConfig core.InternalConfig) JSInternalConfig {
-	return JSInternalConfig{
-		RouteSelectThreshold:           int64(internalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold:           int64(internalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:             int64(internalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:                int64(internalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:              int64(internalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:             int64(internalConfig.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold:     int64(internalConfig.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                internalConfig.TryBeforeYouBuy,
-		ForceNext:                      internalConfig.ForceNext,
-		LargeCustomer:                  internalConfig.LargeCustomer,
-		Uncommitted:                    internalConfig.Uncommitted,
-		MaxRTT:                         int64(internalConfig.MaxRTT),
-		HighFrequencyPings:             internalConfig.HighFrequencyPings,
-		RouteDiversity:                 int64(internalConfig.RouteDiversity),
-		MultipathThreshold:             int64(internalConfig.MultipathThreshold),
-		EnableVanityMetrics:            internalConfig.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int64(internalConfig.ReducePacketLossMinSliceNumber),
-	}
-}
-
 type InternalConfigArg struct {
 	BuyerID string `json:"buyerID"`
 }
@@ -2261,41 +2239,21 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 // Route Shader Related Functions
 
 type JSRouteShader struct {
-	DisableNetworkNext        bool    `json:"disable_network_next"`
+	DisableNetworkNext        bool    `json:"disableNetworkNext"`
 	AnalysisOnly              bool    `json:"analysis_only"`
-	SelectionPercent          int32   `json:"selection_percentage"`
-	ABTest                    bool    `json:"ab_test"`
-	ProMode                   bool    `json:"pro_mode"`
-	ReduceLatency             bool    `json:"reduce_latency"`
-	ReduceJitter              bool    `json:"reduce_jitter"`
-	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
+	SelectionPercent          int32   `json:"selectionPercent"`
+	ABTest                    bool    `json:"abTest"`
+	ProMode                   bool    `json:"proMode"`
+	ReduceLatency             bool    `json:"reduceLatency"`
+	ReduceJitter              bool    `json:"reduceJitter"`
+	ReducePacketLoss          bool    `json:"reducePacketLoss"`
 	Multipath                 bool    `json:"multipath"`
-	AcceptableLatency         int32   `json:"acceptable_latency"`
-	LatencyThreshold          int32   `json:"latency_threshold"`
-	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
-	BandwidthEnvelopeUpKbps   int32   `json:"bandwidth_envelope_up_kbps"`
-	BandwidthEnvelopeDownKbps int32   `json:"bandwidth_envelope_down_kbps"`
-	PacketLossSustained       float32 `json:"packet_loss_sustained"`
-}
-
-func RouteShaderToJSON(routeShader core.RouteShader) JSRouteShader {
-	return JSRouteShader{
-		DisableNetworkNext:        routeShader.DisableNetworkNext,
-		AnalysisOnly:              routeShader.AnalysisOnly,
-		SelectionPercent:          int32(routeShader.SelectionPercent),
-		ABTest:                    routeShader.ABTest,
-		ProMode:                   routeShader.ProMode,
-		ReduceLatency:             routeShader.ReduceLatency,
-		ReduceJitter:              routeShader.ReduceJitter,
-		ReducePacketLoss:          routeShader.ReducePacketLoss,
-		Multipath:                 routeShader.Multipath,
-		AcceptableLatency:         routeShader.AcceptableLatency,
-		LatencyThreshold:          routeShader.LatencyThreshold,
-		AcceptablePacketLoss:      routeShader.AcceptablePacketLoss,
-		BandwidthEnvelopeUpKbps:   routeShader.BandwidthEnvelopeUpKbps,
-		BandwidthEnvelopeDownKbps: routeShader.BandwidthEnvelopeDownKbps,
-		PacketLossSustained:       routeShader.PacketLossSustained,
-	}
+	AcceptableLatency         int32   `json:"acceptableLatency"`
+	LatencyThreshold          int32   `json:"latencyThreshold"`
+	AcceptablePacketLoss      float32 `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int32   `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int32   `json:"bandwidthEnvelopeDownKbps"`
+	PacketLossSustained       float32 `json:"packetLossSustained"`
 }
 
 type RouteShaderArg struct {

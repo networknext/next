@@ -423,8 +423,8 @@ type FetchBuyerInformationReply struct {
 	StandardLocationFee float32              `json:"standard_location_fee"`
 	PublicKey           string               `json:"public_key"`
 	LookerSeats         int32                `json:"looker_seats"`
-	RouteShader         JSRouteShader        `json:"route_shader"`
-	InternalConfig      JSInternalConfig     `json:"internal_config"`
+	RouteShader         core.RouteShader     `json:"route_shader"`
+	InternalConfig      core.InternalConfig  `json:"internal_config"`
 	MappedDatacenters   []buyerDatacenterMap `json:"mapped_datacenters"`
 }
 
@@ -452,8 +452,8 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		reply.PublicKey = buyer.EncodedPublicKey()
 		reply.LookerSeats = int32(buyer.LookerSeats)
 
-		reply.RouteShader = RouteShaderToJSON(buyer.RouteShader)
-		reply.InternalConfig = InternalConfigToJSON(buyer.InternalConfig)
+		reply.RouteShader = buyer.RouteShader
+		reply.InternalConfig = buyer.InternalConfig
 
 		reply.MappedDatacenters = make([]buyerDatacenterMap, 0)
 
