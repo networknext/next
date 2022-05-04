@@ -467,8 +467,6 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		buyerMaps := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		datacenters := s.Storage.Datacenters(ctx)
 
-		fmt.Println(buyerMaps)
-
 		for _, datacenter := range datacenters {
 			_, ok := buyerMaps[datacenter.ID]
 			if ok {
