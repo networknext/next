@@ -3278,3 +3278,205 @@ func TestUpdateBuyerInternalConfig(t *testing.T) {
 		assert.NotEqual(t, oldInternalConfig.ReducePacketLossMinSliceNumber, newInternalConfig.ReducePacketLossMinSliceNumber)
 	})
 }
+
+func TestDatacenterList(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	ctx := context.Background()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(ctx, routing.Datacenter{
+		ID:   2,
+		Name: "test.datacenter.2",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.DatacenterListReply
+		err := svc.DatacenterList(req, &jsonrpc.DatacenterListArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.DatacenterListReply
+		err := svc.DatacenterList(req, &jsonrpc.DatacenterListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.Datacenters))
+	})
+}
+
+func TestAddBuyerDatacenterMap(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: db,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "local",
+		Name: "Local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddBuyer(ctx, routing.Buyer{
+		ID:          1,
+		CompanyCode: "local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad buyer ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad datacenter ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{BuyerHexID: fmt.Sprintf("%016x", 1)}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps := db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 1, len(dcMaps))
+	})
+}
+
+func TestRemoveBuyerDatacenterMap(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: db,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "local",
+		Name: "Local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddBuyer(ctx, routing.Buyer{
+		ID:          1,
+		CompanyCode: "local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad buyer ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad datacenter ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{BuyerHexID: fmt.Sprintf("%016x", 1)}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps := db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 1, len(dcMaps))
+
+		err = svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps = db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 0, len(dcMaps))
+	})
+}
