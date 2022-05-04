@@ -3,12 +3,16 @@ package jsonrpc_test
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -22,9 +26,9 @@ func TestBuyers(t *testing.T) {
 
 	storer := storage.InMemory{}
 
-	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
 	assert.NoError(t, err)
-	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", ShortName: "local.local.2"})
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", Alias: "local.local.2"})
 	assert.NoError(t, err)
 
 	svc := jsonrpc.OpsService{
@@ -63,9 +67,9 @@ func TestBuyers(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
-		assert.Equal(t, reply.Buyers[0].ShortName, "local.1")
+		assert.Equal(t, reply.Buyers[0].Alias, "local.1")
 		assert.Equal(t, reply.Buyers[1].ID, uint64(2))
-		assert.Equal(t, reply.Buyers[1].ShortName, "local.local.2")
+		assert.Equal(t, reply.Buyers[1].Alias, "local.local.2")
 	})
 }
 
@@ -95,7 +99,8 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad public key", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
+			Alias:               "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=",
@@ -106,7 +111,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad exotic location fee", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "a",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -117,7 +122,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad standard location fee", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "a",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -128,7 +133,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("bad looker seats", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			LookerSeats:         "a",
@@ -140,7 +145,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("add buyer for non-existant customer", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
@@ -154,7 +159,7 @@ func TestJSAddBuyer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
-			ShortName:           "local",
+			CompanyCode:         "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
 			LookerSeats:         "100",
@@ -164,7 +169,7 @@ func TestJSAddBuyer(t *testing.T) {
 
 		buyers := storer.Buyers(context.Background())
 		assert.Equal(t, 1, len(buyers))
-		assert.Equal(t, "local", buyers[0].ShortName)
+		assert.Equal(t, "local", buyers[0].CompanyCode)
 	})
 }
 
@@ -203,7 +208,7 @@ func TestRemoveBuyer(t *testing.T) {
 		assert.Contains(t, err.Error(), "buyer with reference 0 not found")
 	})
 
-	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
 	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
@@ -1569,13 +1574,13 @@ func TestListDatacenterMaps(t *testing.T) {
 	}
 
 	buyer1 := routing.Buyer{
-		ID:        0,
-		ShortName: "Local1",
+		ID:    0,
+		Alias: "Local1",
 	}
 
 	buyer2 := routing.Buyer{
-		ID:        1,
-		ShortName: "Local2",
+		ID:    1,
+		Alias: "Local2",
 	}
 
 	err = storer.AddCustomer(context.Background(), customer1)
@@ -2422,5 +2427,1056 @@ func TestUpdateDatacenter(t *testing.T) {
 			err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: fmt.Sprintf("%016x", crypto.HashID("datacenter name")), Field: field, Value: float64(23.32)}, &reply)
 			assert.NoError(t, err)
 		}
+	})
+}
+
+func TestAddNewBuyerAccount(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", Alias: "local.1"})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no parent customer code", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{}, &reply)
+		assert.NotEqual(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+		assert.Error(t, err)
+	})
+
+	t.Run("buyer already exists", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no public key", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad public key", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local", PublicKey: "1234723984702893402983740928743029874"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddNewBuyerAccountReply
+		err := svc.AddNewBuyerAccount(req, &jsonrpc.AddNewBuyerAccountArgs{ParentCustomerCode: "local-local", PublicKey: "K2xL/8EIpc32Eq3ASsv8jL56+ZCF/o8kA/aeNmeOSFSLkdm3v36OJg=="}, &reply)
+		assert.NoError(t, err)
+
+		buyers := storer.Buyers(req.Context())
+
+		assert.Equal(t, 2, len(buyers))
+	})
+}
+
+func TestUpdateBuyerAccount(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
+	assert.NoError(t, err)
+
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local"})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerAccountReply
+		err := svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("unknown buyer", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerAccountReply
+		err := svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "unknown-customer-code"}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_STORAGE_FAILURE)].Message, err.Error())
+	})
+
+	t.Run("success - single updates", func(t *testing.T) {
+		ctx := req.Context()
+
+		updatedBuyer := jsonrpc.UpdateBuyerAccountArgs{
+			Alias:               "local alias",
+			CustomerCode:        "local",
+			ExoticLocationFee:   300,
+			StandardLocationFee: 200,
+			LookerSeats:         100,
+			Live:                true,
+			Debug:               true,
+			Trial:               true,
+			Billing:             true,
+			Analytics:           true,
+			// Advanced:            true,
+		}
+
+		oldBuyer, err := storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		var reply jsonrpc.UpdateBuyerAccountReply
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", ExoticLocationFee: updatedBuyer.ExoticLocationFee}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err := storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, float64(updatedBuyer.ExoticLocationFee), newbuyer.ExoticLocationFee)
+		assert.NotEqual(t, oldBuyer.ExoticLocationFee, newbuyer.ExoticLocationFee)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", StandardLocationFee: updatedBuyer.StandardLocationFee}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, float64(updatedBuyer.StandardLocationFee), newbuyer.StandardLocationFee)
+		assert.NotEqual(t, oldBuyer.StandardLocationFee, newbuyer.StandardLocationFee)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", LookerSeats: updatedBuyer.LookerSeats}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(updatedBuyer.LookerSeats), newbuyer.LookerSeats)
+		assert.NotEqual(t, oldBuyer.LookerSeats, newbuyer.LookerSeats)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Live: updatedBuyer.Live}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Live, newbuyer.Live)
+		assert.NotEqual(t, oldBuyer.Live, newbuyer.Live)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Debug: updatedBuyer.Debug}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Debug, newbuyer.Debug)
+		assert.NotEqual(t, oldBuyer.Debug, newbuyer.Debug)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Trial: updatedBuyer.Trial}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Trial, newbuyer.Trial)
+		assert.NotEqual(t, oldBuyer.Trial, newbuyer.Trial)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Billing: updatedBuyer.Billing}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Billing, newbuyer.Billing)
+		assert.NotEqual(t, oldBuyer.Billing, newbuyer.Billing)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Analytics: updatedBuyer.Analytics}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Analytics, newbuyer.Analytics)
+		assert.NotEqual(t, oldBuyer.Analytics, newbuyer.Analytics)
+
+		err = svc.UpdateBuyerAccount(req, &jsonrpc.UpdateBuyerAccountArgs{CustomerCode: "local", Alias: updatedBuyer.Alias}, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err = storer.BuyerWithCompanyCode(ctx, "local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Alias, newbuyer.Alias)
+		assert.NotEqual(t, oldBuyer.Alias, newbuyer.Alias)
+	})
+
+	t.Run("success - single updates", func(t *testing.T) {
+		ctx := req.Context()
+
+		updatedBuyer := jsonrpc.UpdateBuyerAccountArgs{
+			Alias:               "local alias 2",
+			CustomerCode:        "local-local",
+			ExoticLocationFee:   300,
+			StandardLocationFee: 200,
+			LookerSeats:         100,
+			Live:                true,
+			Debug:               true,
+			Trial:               true,
+			Billing:             true,
+			Analytics:           true,
+			// Advanced:            true,
+		}
+
+		oldBuyer, err := storer.BuyerWithCompanyCode(ctx, "local-local")
+		assert.NoError(t, err)
+
+		var reply jsonrpc.UpdateBuyerAccountReply
+		err = svc.UpdateBuyerAccount(req, &updatedBuyer, &reply)
+		assert.NoError(t, err)
+
+		newbuyer, err := storer.BuyerWithCompanyCode(ctx, "local-local")
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedBuyer.Alias, newbuyer.Alias)
+		assert.NotEqual(t, oldBuyer.Alias, newbuyer.Alias)
+
+		assert.Equal(t, float64(updatedBuyer.ExoticLocationFee), newbuyer.ExoticLocationFee)
+		assert.NotEqual(t, oldBuyer.ExoticLocationFee, newbuyer.ExoticLocationFee)
+
+		assert.Equal(t, float64(updatedBuyer.StandardLocationFee), newbuyer.StandardLocationFee)
+		assert.NotEqual(t, oldBuyer.StandardLocationFee, newbuyer.StandardLocationFee)
+
+		assert.Equal(t, int64(updatedBuyer.LookerSeats), newbuyer.LookerSeats)
+		assert.NotEqual(t, oldBuyer.LookerSeats, newbuyer.LookerSeats)
+
+		assert.Equal(t, updatedBuyer.Live, newbuyer.Live)
+		assert.NotEqual(t, oldBuyer.Live, newbuyer.Live)
+
+		assert.Equal(t, updatedBuyer.Debug, newbuyer.Debug)
+		assert.NotEqual(t, oldBuyer.Debug, newbuyer.Debug)
+
+		assert.Equal(t, updatedBuyer.Trial, newbuyer.Trial)
+		assert.NotEqual(t, oldBuyer.Trial, newbuyer.Trial)
+
+		assert.Equal(t, updatedBuyer.Billing, newbuyer.Billing)
+		assert.NotEqual(t, oldBuyer.Billing, newbuyer.Billing)
+
+		assert.Equal(t, updatedBuyer.Analytics, newbuyer.Analytics)
+		assert.NotEqual(t, oldBuyer.Analytics, newbuyer.Analytics)
+	})
+}
+
+func TestFetchBuyerInformation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: db,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	byteKey, err := base64.StdEncoding.DecodeString("K2xL/8EIpc32Eq3ASsv8jL56+ZCF/o8kA/aeNmeOSFSLkdm3v36OJg==")
+	assert.NoError(t, err)
+
+	buyerID := binary.LittleEndian.Uint64(byteKey[0:8])
+
+	expectedRouteShader := core.NewRouteShader()
+	expectedInternalConfig := core.NewInternalConfig()
+
+	expectedBuyer := routing.Buyer{
+		ID:                  buyerID,
+		CompanyCode:         "local",
+		Alias:               "local alias",
+		ExoticLocationFee:   500,
+		StandardLocationFee: 400,
+		LookerSeats:         100,
+		Live:                true,
+		Billing:             false,
+		Analytics:           true,
+		Debug:               false,
+		Trial:               false,
+		PublicKey:           byteKey[8:],
+		HexID:               fmt.Sprintf("%016x", buyerID),
+	}
+
+	err = db.AddBuyer(ctx, expectedBuyer)
+	assert.NoError(t, err)
+
+	err = db.AddRouteShader(ctx, expectedRouteShader, expectedBuyer.ID)
+	assert.NoError(t, err)
+
+	err = db.AddInternalConfig(ctx, expectedInternalConfig, expectedBuyer.ID)
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test dc 1",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   2,
+		Name: "test dc 2",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenterMap(ctx, routing.DatacenterMap{
+		BuyerID:      expectedBuyer.ID,
+		DatacenterID: 1,
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenterMap(ctx, routing.DatacenterMap{
+		BuyerID:      expectedBuyer.ID,
+		DatacenterID: 2,
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.FetchBuyerInformationReply
+		err := svc.FetchBuyerInformation(req, &jsonrpc.FetchBuyerInformationArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no customer code", func(t *testing.T) {
+		var reply jsonrpc.FetchBuyerInformationReply
+		err := svc.FetchBuyerInformation(req, &jsonrpc.FetchBuyerInformationArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_MISSING_FIELD)].Message, err.Error())
+	})
+
+	t.Run("unknown buyer", func(t *testing.T) {
+		var reply jsonrpc.FetchBuyerInformationReply
+		err := svc.FetchBuyerInformation(req, &jsonrpc.FetchBuyerInformationArgs{CustomerCode: "unknown-customer-code"}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_STORAGE_FAILURE)].Message, err.Error())
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.FetchBuyerInformationReply
+		err := svc.FetchBuyerInformation(req, &jsonrpc.FetchBuyerInformationArgs{CustomerCode: expectedBuyer.CompanyCode}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedBuyer.HexID, reply.ID)
+		assert.Equal(t, expectedBuyer.Alias, reply.Alias)
+		assert.Equal(t, expectedBuyer.Live, reply.Live)
+		assert.Equal(t, expectedBuyer.Debug, reply.Debug)
+		assert.Equal(t, expectedBuyer.Analytics, reply.Analytics)
+		assert.Equal(t, expectedBuyer.Billing, reply.Billing)
+		assert.Equal(t, expectedBuyer.ExoticLocationFee, float64(reply.ExoticLocationFee))
+		assert.Equal(t, expectedBuyer.StandardLocationFee, float64(reply.StandardLocationFee))
+		assert.Equal(t, expectedBuyer.LookerSeats, int64(reply.LookerSeats))
+		assert.Equal(t, expectedBuyer.EncodedPublicKey(), reply.PublicKey)
+
+		assert.Equal(t, expectedRouteShader, reply.RouteShader)
+		assert.Equal(t, expectedInternalConfig, reply.InternalConfig)
+
+		assert.Equal(t, 2, len(reply.MappedDatacenters))
+	})
+}
+
+func TestUpdateBuyerRouteShader(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	ctx := context.Background()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local"})
+	assert.NoError(t, err)
+
+	expectedRouteShader := core.NewRouteShader()
+
+	err = storer.AddRouteShader(ctx, expectedRouteShader, 1)
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err := svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no customer code", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err := svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_MISSING_FIELD)].Message, err.Error())
+	})
+
+	t.Run("unknown buyer", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err := svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "unknown-customer-code"}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_STORAGE_FAILURE)].Message, err.Error())
+	})
+
+	t.Run("success", func(t *testing.T) {
+		ctx := req.Context()
+
+		defaultRouteShader := core.NewRouteShader()
+
+		updatedRouteShader := jsonrpc.UpdateBuyerRouteShaderArgs{
+			RouteShader: defaultRouteShader,
+		}
+
+		updatedRouteShader.RouteShader.DisableNetworkNext = !defaultRouteShader.DisableNetworkNext
+
+		oldRouteShader, err := storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err := storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.DisableNetworkNext, newRouteShader.DisableNetworkNext)
+		assert.NotEqual(t, oldRouteShader.DisableNetworkNext, newRouteShader.DisableNetworkNext)
+
+		updatedRouteShader.RouteShader.AnalysisOnly = !defaultRouteShader.AnalysisOnly
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.AnalysisOnly, newRouteShader.AnalysisOnly)
+		assert.NotEqual(t, oldRouteShader.AnalysisOnly, newRouteShader.AnalysisOnly)
+
+		updatedRouteShader.RouteShader.ABTest = !defaultRouteShader.ABTest
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.ABTest, newRouteShader.ABTest)
+		assert.NotEqual(t, oldRouteShader.ABTest, newRouteShader.ABTest)
+
+		updatedRouteShader.RouteShader.ProMode = !defaultRouteShader.ProMode
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.ProMode, newRouteShader.ProMode)
+		assert.NotEqual(t, oldRouteShader.ProMode, newRouteShader.ProMode)
+
+		updatedRouteShader.RouteShader.ReduceLatency = !defaultRouteShader.ReduceLatency
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.ReduceLatency, newRouteShader.ReduceLatency)
+		assert.NotEqual(t, oldRouteShader.ReduceLatency, newRouteShader.ReduceLatency)
+
+		updatedRouteShader.RouteShader.ReduceJitter = !defaultRouteShader.ReduceJitter
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.ReduceJitter, newRouteShader.ReduceJitter)
+		assert.NotEqual(t, oldRouteShader.ReduceJitter, newRouteShader.ReduceJitter)
+
+		updatedRouteShader.RouteShader.ReducePacketLoss = !defaultRouteShader.ReducePacketLoss
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.ReducePacketLoss, newRouteShader.ReducePacketLoss)
+		assert.NotEqual(t, oldRouteShader.ReducePacketLoss, newRouteShader.ReducePacketLoss)
+
+		updatedRouteShader.RouteShader.Multipath = !defaultRouteShader.Multipath
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.Multipath, newRouteShader.Multipath)
+		assert.NotEqual(t, oldRouteShader.Multipath, newRouteShader.Multipath)
+
+		updatedRouteShader.RouteShader.SelectionPercent = 50
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.SelectionPercent, newRouteShader.SelectionPercent)
+		assert.NotEqual(t, oldRouteShader.SelectionPercent, newRouteShader.SelectionPercent)
+
+		updatedRouteShader.RouteShader.AcceptableLatency = 1000
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.AcceptableLatency, newRouteShader.AcceptableLatency)
+		assert.NotEqual(t, oldRouteShader.AcceptableLatency, newRouteShader.AcceptableLatency)
+
+		updatedRouteShader.RouteShader.LatencyThreshold = 5
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.LatencyThreshold, newRouteShader.LatencyThreshold)
+		assert.NotEqual(t, oldRouteShader.LatencyThreshold, newRouteShader.LatencyThreshold)
+
+		updatedRouteShader.RouteShader.AcceptablePacketLoss = 5
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.AcceptablePacketLoss, newRouteShader.AcceptablePacketLoss)
+		assert.NotEqual(t, oldRouteShader.AcceptablePacketLoss, newRouteShader.AcceptablePacketLoss)
+
+		updatedRouteShader.RouteShader.BandwidthEnvelopeUpKbps = 50
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.BandwidthEnvelopeUpKbps, newRouteShader.BandwidthEnvelopeUpKbps)
+		assert.NotEqual(t, oldRouteShader.BandwidthEnvelopeUpKbps, newRouteShader.BandwidthEnvelopeUpKbps)
+
+		updatedRouteShader.RouteShader.BandwidthEnvelopeDownKbps = 50
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.BandwidthEnvelopeDownKbps, newRouteShader.BandwidthEnvelopeDownKbps)
+		assert.NotEqual(t, oldRouteShader.BandwidthEnvelopeDownKbps, newRouteShader.BandwidthEnvelopeDownKbps)
+
+		updatedRouteShader.RouteShader.PacketLossSustained = 15
+
+		err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
+		assert.NoError(t, err)
+
+		newRouteShader, err = storer.RouteShader(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedRouteShader.RouteShader.PacketLossSustained, newRouteShader.PacketLossSustained)
+		assert.NotEqual(t, oldRouteShader.PacketLossSustained, newRouteShader.PacketLossSustained)
+	})
+}
+
+func TestUpdateBuyerInternalConfig(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	ctx := context.Background()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local"})
+	assert.NoError(t, err)
+
+	expectedInternalConfig := core.NewInternalConfig()
+
+	err = storer.AddInternalConfig(ctx, expectedInternalConfig, 1)
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerInternalConfigReply
+		err := svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no customer code", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err := svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_MISSING_FIELD)].Message, err.Error())
+	})
+
+	t.Run("unknown buyer", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerRouteShaderReply
+		err := svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "unknown-customer-code"}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_STORAGE_FAILURE)].Message, err.Error())
+	})
+
+	t.Run("success", func(t *testing.T) {
+		ctx := req.Context()
+
+		defaultInternalConfig := core.NewInternalConfig()
+
+		updatedInternalConfig := jsonrpc.UpdateBuyerInternalConfigArgs{
+			InternalConfig: defaultInternalConfig,
+		}
+
+		updatedInternalConfig.InternalConfig.TryBeforeYouBuy = !defaultInternalConfig.TryBeforeYouBuy
+
+		oldInternalConfig, err := storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.UpdateBuyerInternalConfigReply
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err := storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.TryBeforeYouBuy, newInternalConfig.TryBeforeYouBuy)
+		assert.NotEqual(t, oldInternalConfig.TryBeforeYouBuy, newInternalConfig.TryBeforeYouBuy)
+
+		updatedInternalConfig.InternalConfig.ForceNext = !defaultInternalConfig.ForceNext
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.ForceNext, newInternalConfig.ForceNext)
+		assert.NotEqual(t, oldInternalConfig.ForceNext, newInternalConfig.ForceNext)
+
+		updatedInternalConfig.InternalConfig.EnableVanityMetrics = !defaultInternalConfig.EnableVanityMetrics
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.EnableVanityMetrics, newInternalConfig.EnableVanityMetrics)
+		assert.NotEqual(t, oldInternalConfig.EnableVanityMetrics, newInternalConfig.EnableVanityMetrics)
+
+		updatedInternalConfig.InternalConfig.LargeCustomer = !defaultInternalConfig.LargeCustomer
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.LargeCustomer, newInternalConfig.LargeCustomer)
+		assert.NotEqual(t, oldInternalConfig.LargeCustomer, newInternalConfig.LargeCustomer)
+
+		updatedInternalConfig.InternalConfig.Uncommitted = !defaultInternalConfig.Uncommitted
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.Uncommitted, newInternalConfig.Uncommitted)
+		assert.NotEqual(t, oldInternalConfig.Uncommitted, newInternalConfig.Uncommitted)
+
+		updatedInternalConfig.InternalConfig.HighFrequencyPings = !defaultInternalConfig.HighFrequencyPings
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.HighFrequencyPings, newInternalConfig.HighFrequencyPings)
+		assert.NotEqual(t, oldInternalConfig.HighFrequencyPings, newInternalConfig.HighFrequencyPings)
+
+		updatedInternalConfig.InternalConfig.RouteSelectThreshold = 300
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RouteSelectThreshold, newInternalConfig.RouteSelectThreshold)
+		assert.NotEqual(t, oldInternalConfig.RouteSelectThreshold, newInternalConfig.RouteSelectThreshold)
+
+		updatedInternalConfig.InternalConfig.RouteSwitchThreshold = 20
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RouteSwitchThreshold, newInternalConfig.RouteSwitchThreshold)
+		assert.NotEqual(t, oldInternalConfig.RouteSwitchThreshold, newInternalConfig.RouteSwitchThreshold)
+
+		updatedInternalConfig.InternalConfig.MaxLatencyTradeOff = 200
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.MaxLatencyTradeOff, newInternalConfig.MaxLatencyTradeOff)
+		assert.NotEqual(t, oldInternalConfig.MaxLatencyTradeOff, newInternalConfig.MaxLatencyTradeOff)
+
+		updatedInternalConfig.InternalConfig.RTTVeto_Default = 250
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RTTVeto_Default, newInternalConfig.RTTVeto_Default)
+		assert.NotEqual(t, oldInternalConfig.RTTVeto_Default, newInternalConfig.RTTVeto_Default)
+
+		updatedInternalConfig.InternalConfig.RTTVeto_Multipath = 40
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RTTVeto_Multipath, newInternalConfig.RTTVeto_Multipath)
+		assert.NotEqual(t, oldInternalConfig.RTTVeto_Multipath, newInternalConfig.RTTVeto_Multipath)
+
+		updatedInternalConfig.InternalConfig.RTTVeto_PacketLoss = 35
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RTTVeto_PacketLoss, newInternalConfig.RTTVeto_PacketLoss)
+		assert.NotEqual(t, oldInternalConfig.RTTVeto_PacketLoss, newInternalConfig.RTTVeto_PacketLoss)
+
+		updatedInternalConfig.InternalConfig.MultipathOverloadThreshold = 90
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.MultipathOverloadThreshold, newInternalConfig.MultipathOverloadThreshold)
+		assert.NotEqual(t, oldInternalConfig.MultipathOverloadThreshold, newInternalConfig.MultipathOverloadThreshold)
+
+		updatedInternalConfig.InternalConfig.MaxRTT = 85
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.MaxRTT, newInternalConfig.MaxRTT)
+		assert.NotEqual(t, oldInternalConfig.MaxRTT, newInternalConfig.MaxRTT)
+
+		updatedInternalConfig.InternalConfig.RouteDiversity = 95
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.RouteDiversity, newInternalConfig.RouteDiversity)
+		assert.NotEqual(t, oldInternalConfig.RouteDiversity, newInternalConfig.RouteDiversity)
+
+		updatedInternalConfig.InternalConfig.MultipathThreshold = 75
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.MultipathThreshold, newInternalConfig.MultipathThreshold)
+		assert.NotEqual(t, oldInternalConfig.MultipathThreshold, newInternalConfig.MultipathThreshold)
+
+		updatedInternalConfig.InternalConfig.ReducePacketLossMinSliceNumber = 10
+
+		err = svc.UpdateBuyerInternalConfig(req, &jsonrpc.UpdateBuyerInternalConfigArgs{CustomerCode: "local", InternalConfig: updatedInternalConfig.InternalConfig}, &reply)
+		assert.NoError(t, err)
+
+		newInternalConfig, err = storer.InternalConfig(ctx, 1)
+		assert.NoError(t, err)
+
+		assert.Equal(t, updatedInternalConfig.InternalConfig.ReducePacketLossMinSliceNumber, newInternalConfig.ReducePacketLossMinSliceNumber)
+		assert.NotEqual(t, oldInternalConfig.ReducePacketLossMinSliceNumber, newInternalConfig.ReducePacketLossMinSliceNumber)
+	})
+}
+
+func TestDatacenterList(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	ctx := context.Background()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err := storer.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(ctx, routing.Datacenter{
+		ID:   2,
+		Name: "test.datacenter.2",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.DatacenterListReply
+		err := svc.DatacenterList(req, &jsonrpc.DatacenterListArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.DatacenterListReply
+		err := svc.DatacenterList(req, &jsonrpc.DatacenterListArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(reply.Datacenters))
+	})
+}
+
+func TestAddBuyerDatacenterMap(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: db,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "local",
+		Name: "Local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddBuyer(ctx, routing.Buyer{
+		ID:          1,
+		CompanyCode: "local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad buyer ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad datacenter ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{BuyerHexID: fmt.Sprintf("%016x", 1)}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps := db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 1, len(dcMaps))
+	})
+}
+
+func TestRemoveBuyerDatacenterMap(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: db,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "local",
+		Name: "Local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddBuyer(ctx, routing.Buyer{
+		ID:          1,
+		CompanyCode: "local",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddDatacenter(ctx, routing.Datacenter{
+		ID:   1,
+		Name: "test.datacenter.1",
+	})
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad buyer ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad datacenter ID", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{BuyerHexID: fmt.Sprintf("%016x", 1)}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BuyerDatacenterMapReply
+		err := svc.AddBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps := db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 1, len(dcMaps))
+
+		err = svc.RemoveBuyerDatacenterMap(req, &jsonrpc.BuyerDatacenterMapArgs{
+			BuyerHexID:      fmt.Sprintf("%016x", 1),
+			DatacenterHexID: fmt.Sprintf("%016x", 1),
+		}, &reply)
+		assert.NoError(t, err)
+
+		dcMaps = db.GetDatacenterMapsForBuyer(ctx, 1)
+
+		assert.Equal(t, 0, len(dcMaps))
 	})
 }
