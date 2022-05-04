@@ -674,9 +674,9 @@ func getBuyerInfo(env Environment, buyerRegex string) {
 		handleJSONRPCError(env, err)
 	}
 
-	buyerInfo := "Buyer " + reply.Buyer.ShortName + " info:\n"
+	buyerInfo := "Buyer " + reply.Buyer.CompanyCode + " info:\n"
 	buyerInfo += "  CompanyCode           : " + reply.Buyer.CompanyCode + "\n"
-	buyerInfo += "  ShortName             : " + reply.Buyer.ShortName + "\n"
+	buyerInfo += "  Alias                 : " + reply.Buyer.Alias + "\n"
 	buyerInfo += "  Live                  : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
 	buyerInfo += "  Debug                 : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
 	buyerInfo += "  Analytics             : " + fmt.Sprintf("%t", reply.Buyer.Analytics) + "\n"
