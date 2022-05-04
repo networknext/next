@@ -42,7 +42,7 @@ create table buyers (
   exotic_location_fee bigint not null default 300,
   standard_location_fee bigint not null default 300,
   public_key bytea not null,
-  alias varchar unique,
+  alias varchar not null,
   customer_id integer not null,
   looker_seats integer not null default 0,
   constraint fk_customer_id foreign key (customer_id) references customers(id)

@@ -71,7 +71,7 @@ create table buyers (
   exotic_location_fee bigint not null default 300,
   standard_location_fee bigint not null default 300,
   public_key bytea not null,
-  short_name varchar not null,
+  alias varchar not null,
   customer_id integer not null,
   looker_seats integer not null default 0,
   primary key (id),
