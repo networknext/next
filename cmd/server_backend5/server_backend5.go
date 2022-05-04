@@ -1115,7 +1115,9 @@ func mainReturnWithCode() int {
 				{
 					to := backendLoadBalancerIP
 
-					upcoming, current, previous := getMagicValues()
+					// TODO: eventually server <-> server backend communications will use non-empty magic for
+					// packet types besides server init
+					var emptyMagic [8]byte
 
 					var fromAddressBuffer [32]byte
 					var toAddressBuffer [32]byte
@@ -1123,18 +1125,18 @@ func mainReturnWithCode() int {
 					fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
 					toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
-					if !core.AdvancedPacketFilter(data, current[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
-						if !core.AdvancedPacketFilter(data, upcoming[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
-							if !core.AdvancedPacketFilter(data, previous[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
-								continue
-							}
-						}
+					if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+						continue
 					}
 				}
 
+				/*
+					We do not strip the packet type, chonkle, and pittle from the packet data
+					before handing off to the handlers since those are required for sodium to
+					properly verify the signature check.
+				*/
+
 				packetType := data[0]
-				data = data[16 : len(data)-2]
-				size -= 18
 
 				var buffer bytes.Buffer
 				packet := transport.UDPPacket{From: *fromAddr, Data: data}
