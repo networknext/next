@@ -50,10 +50,12 @@ export default {
       if (isDemo) {
         const allBuyers: Array<any> = getters.allBuyers || []
         const newBuyerList: Array<any> = []
-        allBuyers.forEach((buyer: any, index: number) => {
+        allBuyers.forEach((buyer: any) => {
           const newBuyerEntry = cloneDeep(buyer)
-          newBuyerEntry.company_name = buyer.id
-          newBuyerList.push(newBuyerEntry)
+          newBuyerEntry.company_name = buyer.alias
+          if (newBuyerEntry.company_name !== '') {
+            newBuyerList.push(newBuyerEntry)
+          }
         })
 
         commit('UPDATE_ALL_BUYERS', newBuyerList)
