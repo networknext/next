@@ -286,7 +286,7 @@ func ServerUpdateHandlerSDK5Func(
 		if !crypto.VerifyPacketSDK5(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
-			// return // TODO: get back to why signature check is failing
+			return
 		}
 
 		if !packet.Version.AtLeast(SDKVersion{5, 0, 0}) && !buyer.Debug {

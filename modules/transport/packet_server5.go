@@ -486,20 +486,34 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&sessionData.Initial)
 
-	locationSize := uint32(sessionData.Location.Size())
-	stream.SerializeUint32(&locationSize)
-	if stream.IsReading() {
-		locationBytes := make([]byte, locationSize)
-		stream.SerializeBytes(locationBytes)
-		if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
-			return err
-		}
-	} else {
-		locationBytes, err := sessionData.Location.MarshalBinary()
+	var err error
+	var locSize uint64
+	var loc []byte
+
+	if stream.IsWriting() {
+		loc, err = routing.WriteLocation(&sessionData.Location)
 		if err != nil {
 			return err
 		}
-		stream.SerializeBytes(locationBytes)
+
+		locSize = sessionData.Location.Size()
+	}
+
+	stream.SerializeUint64(&locSize)
+	if locSize > 0 {
+		if stream.IsReading() {
+			loc = make([]byte, routing.MaxLocationSize)
+		}
+
+		loc = loc[:locSize]
+		stream.SerializeBytes(loc)
+
+		if stream.IsReading() {
+			err = routing.ReadLocation(&sessionData.Location, loc)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	stream.SerializeBool(&sessionData.RouteChanged)
