@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	// "math/rand"
-	// "net"
+	"math/rand"
+	"net"
 	"testing"
 	"time"
 
@@ -1197,1518 +1197,1430 @@ func TestSessionUpdateHandlerSDK5Func_ExistingSession_Success(t *testing.T) {
 	assert.Equal(t, uint32(2), state.Output.SliceNumber)
 }
 
-/*
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_NoFallback(t *testing.T) {
+	t.Parallel()
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoFallback(t *testing.T) {
-    t.Parallel()
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+		Packet: transport.SessionUpdatePacketSDK5{
+			FallbackToDirect: false,
+		},
+		Output: transport.SessionDataSDK5{
+			FellBackToDirect: false,
+		},
+	}
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
-            FallbackToDirect: false,
-        },
-        Output: transport.SessionData{
-            FellBackToDirect: false,
-        },
-    }
-
-    assert.False(t, transport.SessionHandleFallbackToDirect(&state))
+	assert.False(t, transport.SessionHandleFallbackToDirectSDK5(&state))
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadRouteToken(t *testing.T) {
+// TODO: implement these unit tests when SDK5 supports fallback to direct flags
+/*
+
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_BadRouteToken(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 0),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectBadRouteToken.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoNextRouteToContinue(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_NoNextRouteToContinue(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 1),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectNoNextRouteToContinue.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_PreviousUpdateStillPending(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_PreviousUpdateStillPending(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 2),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectPreviousUpdateStillPending.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadContinueToken(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_BadContinueToken(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 3),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectBadContinueToken.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteExpired(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_RouteExpired(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 4),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectRouteExpired.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteRequestTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_RouteRequestTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 5),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectRouteRequestTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ContinueRequestTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_ContinueRequestTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 6),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectContinueRequestTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ClientTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_ClientTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 7),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectClientTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_UpgradeResponseTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_UpgradeResponseTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 8),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectUpgradeResponseTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteUpdateTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_RouteUpdateTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 9),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectRouteUpdateTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_DirectPongTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_DirectPongTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 10),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectDirectPongTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NextPongTimedOut(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_NextPongTimedOut(t *testing.T) {
     t.Parallel()
 
     metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+    metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
     assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
+    state := transport.SessionHandlerStateSDK5{
         Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
+        Packet: transport.SessionUpdatePacketSDK5{
             FallbackToDirect: true,
             Flags:            (1 << 11),
         },
-        Output: transport.SessionData{
+        Output: transport.SessionDataSDK5{
             FellBackToDirect: false,
         },
     }
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+    assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
     assert.Equal(t, float64(1), state.Metrics.FallbackToDirectNextPongTimedOut.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_Unknown(t *testing.T) {
-    t.Parallel()
+*/
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+func TestSessionUpdateHandlerSDK5Func_SessionHandleFallbackToDirect_Unknown(t *testing.T) {
+	t.Parallel()
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-        Packet: transport.SessionUpdatePacket{
-            FallbackToDirect: true,
-            Flags:            (1 << 12),
-        },
-        Output: transport.SessionData{
-            FellBackToDirect: false,
-        },
-    }
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    assert.True(t, transport.SessionHandleFallbackToDirect(&state))
-    assert.Equal(t, float64(1), state.Metrics.FallbackToDirectUnknownReason.Value())
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+		Packet: transport.SessionUpdatePacketSDK5{
+			FallbackToDirect: true,
+		},
+		Output: transport.SessionDataSDK5{
+			FellBackToDirect: false,
+		},
+	}
+
+	assert.True(t, transport.SessionHandleFallbackToDirectSDK5(&state))
+	assert.Equal(t, float64(1), state.Metrics.FallbackToDirectUnknownReason.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_AnalysisOnly(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionUpdateNearRelayStats_AnalysisOnly(t *testing.T) {
+	t.Parallel()
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-    }
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+	}
 
-    state.Datacenter = routing.Datacenter{
-        ID:        crypto.HashID("datacenter.name"),
-        Name:      "datacenter.name",
-        AliasName: "datacenter.name",
-    }
+	state.Datacenter = routing.Datacenter{
+		ID:        crypto.HashID("datacenter.name"),
+		Name:      "datacenter.name",
+		AliasName: "datacenter.name",
+	}
 
-    state.RouteMatrix = &routing.RouteMatrix{
-        RelayDatacenterIDs: []uint64{
-            12345,
-            123423,
-            12351321,
-        },
-    }
+	state.RouteMatrix = &routing.RouteMatrix{
+		RelayDatacenterIDs: []uint64{
+			12345,
+			123423,
+			12351321,
+		},
+	}
 
-    state.Buyer = routing.Buyer{
-        RouteShader: core.RouteShader{
-            AnalysisOnly: true,
-        },
-    }
+	state.Buyer = routing.Buyer{
+		RouteShader: core.RouteShader{
+			AnalysisOnly: true,
+		},
+	}
 
-    assert.False(t, transport.SessionUpdateNearRelayStats(&state))
-    assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
-    assert.Zero(t, len(state.Packet.NearRelayIDs))
+	assert.False(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+	assert.Zero(t, state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Zero(t, len(state.Packet.NearRelayIDs))
 }
 
-func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacenter(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionUpdateNearRelayStats_NoRelaysInDatacenter(t *testing.T) {
+	t.Parallel()
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-    }
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+	}
 
-    state.Datacenter = routing.Datacenter{
-        ID:        crypto.HashID("datacenter.name"),
-        Name:      "datacenter.name",
-        AliasName: "datacenter.name",
-    }
+	state.Datacenter = routing.Datacenter{
+		ID:        crypto.HashID("datacenter.name"),
+		Name:      "datacenter.name",
+		AliasName: "datacenter.name",
+	}
 
-    state.RouteMatrix = &routing.RouteMatrix{
-        RelayDatacenterIDs: []uint64{
-            12345,
-            123423,
-            12351321,
-        },
-    }
+	state.RouteMatrix = &routing.RouteMatrix{
+		RelayDatacenterIDs: []uint64{
+			12345,
+			123423,
+			12351321,
+		},
+	}
 
-    assert.False(t, transport.SessionUpdateNearRelayStats(&state))
-    assert.Equal(t, float64(1), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.False(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+	assert.Equal(t, float64(1), state.Metrics.NoRelaysInDatacenter.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionUpdateNearRelayStats_HoldNearRelays(t *testing.T) {
+	t.Parallel()
 
-    t.Run("Large Customer Transition false -> true before slice 4", func(t *testing.T) {
-        updatePacket := transport.SessionUpdatePacket{
-            SliceNumber: uint32(2),
-        }
+	t.Run("Large Customer Transition false -> true before slice 4", func(t *testing.T) {
+		updatePacket := transport.SessionUpdatePacketSDK5{
+			SliceNumber: uint32(2),
+		}
 
-        metricsHandler := metrics.LocalHandler{}
-        metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-        assert.NoError(t, err)
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
 
-        buyer := routing.Buyer{
-            InternalConfig: core.InternalConfig{
-                LargeCustomer: false,
-            },
-        }
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: false,
+			},
+		}
 
-        dc := routing.Datacenter{
-            ID:        crypto.HashID("datacenter.name"),
-            Name:      "datacenter.name",
-            AliasName: "datacenter.name",
-        }
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
 
-        routeMatrix := &routing.RouteMatrix{
-            RelayIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-            RelayDatacenterIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-        }
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
 
-        state := transport.SessionHandlerState{
-            Packet:      updatePacket,
-            Metrics:     metrics.SessionUpdateMetrics,
-            RouteMatrix: routeMatrix,
-            Datacenter:  dc,
-            Buyer:       buyer,
-        }
+		state := transport.SessionHandlerStateSDK5{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
 
-        assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Response.DontPingNearRelays)
 
-        state.Packet.SliceNumber++
-        state.Buyer.InternalConfig.LargeCustomer = true
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = true
 
-        assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.False(t, state.Output.HoldNearRelays)
-    })
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Response.DontPingNearRelays)
+	})
 
-    t.Run("Large Customer Transition true -> false before slice 4", func(t *testing.T) {
-        updatePacket := transport.SessionUpdatePacket{
-            SliceNumber: uint32(2),
-        }
+	t.Run("Large Customer Transition true -> false before slice 4", func(t *testing.T) {
+		updatePacket := transport.SessionUpdatePacketSDK5{
+			SliceNumber: uint32(2),
+		}
 
-        metricsHandler := metrics.LocalHandler{}
-        metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-        assert.NoError(t, err)
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
 
-        buyer := routing.Buyer{
-            InternalConfig: core.InternalConfig{
-                LargeCustomer: true,
-            },
-        }
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: true,
+			},
+		}
 
-        dc := routing.Datacenter{
-            ID:        crypto.HashID("datacenter.name"),
-            Name:      "datacenter.name",
-            AliasName: "datacenter.name",
-        }
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
 
-        routeMatrix := &routing.RouteMatrix{
-            RelayIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-            RelayDatacenterIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-        }
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
 
-        state := transport.SessionHandlerState{
-            Packet:      updatePacket,
-            Metrics:     metrics.SessionUpdateMetrics,
-            RouteMatrix: routeMatrix,
-            Datacenter:  dc,
-            Buyer:       buyer,
-        }
+		state := transport.SessionHandlerStateSDK5{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
 
-        assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.False(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Response.DontPingNearRelays)
 
-        state.Packet.SliceNumber++
-        state.Buyer.InternalConfig.LargeCustomer = false
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = false
 
-        assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.False(t, state.Output.HoldNearRelays)
-    })
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Response.DontPingNearRelays)
+	})
 
-    t.Run("Large Customer Transition false -> true on or after slice 4", func(t *testing.T) {
-        rand.Seed(time.Now().Unix())
+	t.Run("Large Customer Transition false -> true on or after slice 4", func(t *testing.T) {
+		rand.Seed(time.Now().Unix())
 
-        updatePacket := transport.SessionUpdatePacket{
-            SliceNumber: uint32(4),
-            NearRelayIDs: []uint64{
-                rand.Uint64(),
-                rand.Uint64(),
-                rand.Uint64(),
-            },
-            NearRelayRTT: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayJitter: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayPacketLoss: []int32{
-                rand.Int31n(100),
-                rand.Int31n(100),
-                rand.Int31n(100),
-            },
-        }
+		updatePacket := transport.SessionUpdatePacketSDK5{
+			SliceNumber: uint32(4),
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
 
-        metricsHandler := metrics.LocalHandler{}
-        metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-        assert.NoError(t, err)
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
 
-        buyer := routing.Buyer{
-            InternalConfig: core.InternalConfig{
-                LargeCustomer: false,
-            },
-        }
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: false,
+			},
+		}
 
-        dc := routing.Datacenter{
-            ID:        crypto.HashID("datacenter.name"),
-            Name:      "datacenter.name",
-            AliasName: "datacenter.name",
-        }
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
 
-        routeMatrix := &routing.RouteMatrix{
-            RelayIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-            RelayDatacenterIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-        }
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
 
-        state := transport.SessionHandlerState{
-            Packet:      updatePacket,
-            Metrics:     metrics.SessionUpdateMetrics,
-            RouteMatrix: routeMatrix,
-            Datacenter:  dc,
-            Buyer:       buyer,
-        }
+		state := transport.SessionHandlerStateSDK5{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
 
-        assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+		assert.False(t, state.Response.DontPingNearRelays)
 
-        state.Packet.SliceNumber++
-        state.Buyer.InternalConfig.LargeCustomer = true
-        state.Input = state.Output
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = true
+		state.Input = state.Output
 
-        assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Response.DontPingNearRelays)
 
-        updatePacket = transport.SessionUpdatePacket{
-            SliceNumber: state.Packet.SliceNumber + 1,
-            NearRelayIDs: []uint64{
-                rand.Uint64(),
-                rand.Uint64(),
-                rand.Uint64(),
-            },
-            NearRelayRTT: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayJitter: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayPacketLoss: []int32{
-                rand.Int31n(100),
-                rand.Int31n(100),
-                rand.Int31n(100),
-            },
-        }
+		updatePacket = transport.SessionUpdatePacketSDK5{
+			SliceNumber: state.Packet.SliceNumber + 1,
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
 
-        state.Packet = updatePacket
-        state.Input = state.Output
+		state.Packet = updatePacket
+		state.Input = state.Output
 
-        assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.True(t, state.Output.HoldNearRelays)
-        assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
-        for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
-            assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
-            assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
-        }
-    })
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Response.DontPingNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
+	})
 
-    t.Run("Large Customer Transition true -> false on or after slice 4", func(t *testing.T) {
-        rand.Seed(time.Now().Unix())
+	t.Run("Large Customer Transition true -> false on or after slice 4", func(t *testing.T) {
+		rand.Seed(time.Now().Unix())
 
-        updatePacket := transport.SessionUpdatePacket{
-            SliceNumber: uint32(4),
-            NearRelayIDs: []uint64{
-                rand.Uint64(),
-                rand.Uint64(),
-                rand.Uint64(),
-            },
-            NearRelayRTT: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayJitter: []int32{
-                rand.Int31n(255),
-                rand.Int31n(255),
-                rand.Int31n(255),
-            },
-            NearRelayPacketLoss: []int32{
-                rand.Int31n(100),
-                rand.Int31n(100),
-                rand.Int31n(100),
-            },
-        }
+		updatePacket := transport.SessionUpdatePacketSDK5{
+			SliceNumber: uint32(4),
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
 
-        metricsHandler := metrics.LocalHandler{}
-        metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-        assert.NoError(t, err)
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
 
-        buyer := routing.Buyer{
-            InternalConfig: core.InternalConfig{
-                LargeCustomer: true,
-            },
-        }
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: true,
+			},
+		}
 
-        dc := routing.Datacenter{
-            ID:        crypto.HashID("datacenter.name"),
-            Name:      "datacenter.name",
-            AliasName: "datacenter.name",
-        }
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
 
-        routeMatrix := &routing.RouteMatrix{
-            RelayIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-            RelayDatacenterIDs: []uint64{
-                crypto.HashID("datacenter.name"),
-                uint64(1234),
-                uint64(12345),
-                uint64(123456),
-            },
-        }
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
 
-        state := transport.SessionHandlerState{
-            Packet:      updatePacket,
-            Metrics:     metrics.SessionUpdateMetrics,
-            RouteMatrix: routeMatrix,
-            Datacenter:  dc,
-            Buyer:       buyer,
-        }
+		state := transport.SessionHandlerStateSDK5{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
 
-        assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Response.DontPingNearRelays)
 
-        state.Packet.SliceNumber++
-        state.Buyer.InternalConfig.LargeCustomer = false
-        state.Input = state.Output
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = false
+		state.Input = state.Output
 
-        assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.True(t, state.Output.HoldNearRelays)
-        assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
-        for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
-            assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
-            assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
-        }
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Response.DontPingNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
 
-        state.Packet.SliceNumber++
-        state.Input = state.Output
+		state.Packet.SliceNumber++
+		state.Input = state.Output
 
-        assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-        assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-        assert.True(t, state.Output.HoldNearRelays)
-        assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
-        for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
-            assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
-            assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
-        }
-    })
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.True(t, state.Response.DontPingNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
+	})
 }
 
-func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_RelayNoLongerExists(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionUpdateNearRelayStats_RelayNoLongerExists(t *testing.T) {
+	t.Parallel()
 
-    updatePacket := transport.SessionUpdatePacket{
-        SliceNumber:  uint32(2),
-        NearRelayIDs: []uint64{1234, 12345, 123456},
-    }
+	updatePacket := transport.SessionUpdatePacketSDK5{
+		SliceNumber:  uint32(2),
+		NearRelayIDs: []uint64{1234, 12345, 123456},
+	}
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    buyer := routing.Buyer{
-        InternalConfig: core.InternalConfig{
-            LargeCustomer: false,
-        },
-    }
+	buyer := routing.Buyer{
+		InternalConfig: core.InternalConfig{
+			LargeCustomer: false,
+		},
+	}
 
-    dc := routing.Datacenter{
-        ID:        crypto.HashID("datacenter.name"),
-        Name:      "datacenter.name",
-        AliasName: "datacenter.name",
-    }
+	dc := routing.Datacenter{
+		ID:        crypto.HashID("datacenter.name"),
+		Name:      "datacenter.name",
+		AliasName: "datacenter.name",
+	}
 
-    relayIDsToIndices := make(map[uint64]int32)
-    relayIDsToIndices[1234] = 0
-    relayIDsToIndices[12345] = 1
+	relayIDsToIndices := make(map[uint64]int32)
+	relayIDsToIndices[1234] = 0
+	relayIDsToIndices[12345] = 1
 
-    routeMatrix := &routing.RouteMatrix{
-        RelayIDsToIndices: relayIDsToIndices,
-        RelayIDs: []uint64{
-            crypto.HashID("datacenter.name"),
-            uint64(1234),
-            uint64(12345),
-            uint64(123456),
-        },
-        RelayDatacenterIDs: []uint64{
-            crypto.HashID("datacenter.name"),
-            uint64(1234),
-            uint64(12345),
-            uint64(123456),
-        },
-    }
+	routeMatrix := &routing.RouteMatrix{
+		RelayIDsToIndices: relayIDsToIndices,
+		RelayIDs: []uint64{
+			crypto.HashID("datacenter.name"),
+			uint64(1234),
+			uint64(12345),
+			uint64(123456),
+		},
+		RelayDatacenterIDs: []uint64{
+			crypto.HashID("datacenter.name"),
+			uint64(1234),
+			uint64(12345),
+			uint64(123456),
+		},
+	}
 
-    state := transport.SessionHandlerState{
-        Packet:      updatePacket,
-        Metrics:     metrics.SessionUpdateMetrics,
-        RouteMatrix: routeMatrix,
-        Datacenter:  dc,
-        Buyer:       buyer,
-    }
+	state := transport.SessionHandlerStateSDK5{
+		Packet:      updatePacket,
+		Metrics:     metrics.SessionUpdateMetrics,
+		RouteMatrix: routeMatrix,
+		Datacenter:  dc,
+		Buyer:       buyer,
+	}
 
-    assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
-    assert.True(t, transport.SessionUpdateNearRelayStats(&state))
-    assert.False(t, state.Output.HoldNearRelays)
-    assert.Equal(t, int32(0), state.NearRelayIndices[0])
-    assert.Equal(t, int32(1), state.NearRelayIndices[1])
-    assert.Equal(t, int32(-1), state.NearRelayIndices[2])
+	assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+	assert.True(t, transport.SessionUpdateNearRelayStatsSDK5(&state))
+	assert.False(t, state.Output.HoldNearRelays)
+	assert.False(t, state.Response.DontPingNearRelays)
+	assert.Equal(t, int32(0), state.NearRelayIndices[0])
+	assert.Equal(t, int32(1), state.NearRelayIndices[1])
+	assert.Equal(t, int32(-1), state.NearRelayIndices[2])
 }
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextWithoutRouteRelays(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-        Input: transport.SessionData{
-            RouteState: core.RouteState{
-                Next: true,
-            },
-            RouteNumRelays: 0,
-        },
-    }
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+		Input: transport.SessionDataSDK5{
+			RouteState: core.RouteState{
+				Next: true,
+			},
+			RouteNumRelays: 0,
+		},
+	}
 
-    transport.SessionMakeRouteDecision(&state)
+	transport.SessionMakeRouteDecisionSDK5(&state)
 
-    assert.False(t, state.Output.RouteState.Next)
-    assert.True(t, state.Output.RouteState.Veto)
-    assert.Equal(t, float64(1), state.Metrics.NextWithoutRouteRelays.Value())
+	assert.False(t, state.Output.RouteState.Next)
+	assert.True(t, state.Output.RouteState.Veto)
+	assert.Equal(t, float64(1), state.Metrics.NextWithoutRouteRelays.Value())
 }
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_SDKAbortedSession(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
-    metricsHandler := metrics.LocalHandler{}
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-    assert.NoError(t, err)
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
 
-    state := transport.SessionHandlerState{
-        Metrics: metrics.SessionUpdateMetrics,
-        Input: transport.SessionData{
-            RouteState: core.RouteState{
-                Next: true,
-            },
-            RouteNumRelays: 5,
-        },
-        Packet: transport.SessionUpdatePacket{
-            Next: false,
-        },
-    }
+	state := transport.SessionHandlerStateSDK5{
+		Metrics: metrics.SessionUpdateMetrics,
+		Input: transport.SessionDataSDK5{
+			RouteState: core.RouteState{
+				Next: true,
+			},
+			RouteNumRelays: 5,
+		},
+		Packet: transport.SessionUpdatePacketSDK5{
+			Next: false,
+		},
+	}
 
-    transport.SessionMakeRouteDecision(&state)
+	transport.SessionMakeRouteDecisionSDK5(&state)
 
-    assert.False(t, state.Output.RouteState.Next)
-    assert.True(t, state.Output.RouteState.Veto)
-    assert.Equal(t, float64(1), state.Metrics.SDKAborted.Value())
+	assert.False(t, state.Output.RouteState.Next)
+	assert.True(t, state.Output.RouteState.Veto)
+	assert.Equal(t, float64(1), state.Metrics.SDKAborted.Value())
 }
 
 type testLocator struct{}
 
 func (locator *testLocator) LocateIP(ip net.IP) (routing.Location, error) {
-    return routing.Location{
-        Latitude:  10,
-        Longitude: 10,
-    }, nil
+	return routing.Location{
+		Latitude:  10,
+		Longitude: 10,
+	}, nil
 }
 
-func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_BuyerNotFound_NoResponse(t *testing.T) {
+	t.Parallel()
 
-    env := test.NewTestEnvironment(t)
-    env.AddBuyer("local", false, false)
-    datacenter := env.AddDatacenter("datacenter.name")
+	env := test.NewTestEnvironment(t)
+	env.AddBuyer("local", false, false)
+	datacenter := env.AddDatacenter("datacenter.name")
 
-    unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
-    assert.NoError(t, err)
+	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
 
-    unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
+	unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
 
-    unknownPublicKey = unknownPublicKey[8:]
-    unknownPrivateKey = unknownPrivateKey[8:]
+	unknownPublicKey = unknownPublicKey[8:]
+	unknownPrivateKey = unknownPrivateKey[8:]
 
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    getIPLocatorFunc := func() *routing.MaxmindDB {
-        return getSuccessLocator(t)
-    }
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
+	}
 
-    getRouteMatrixFunc := func() *routing.RouteMatrix {
-        return env.GetRouteMatrix()
-    }
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
-    routerPrivateKey := [crypto.KeySize]byte{}
-    copy(routerPrivateKey[:], unknownPrivateKey)
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], unknownPrivateKey)
 
-    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
-    assert.NoError(t, err)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
 
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    sessionUpdateConfig := test.SessionUpdatePacketConfig{
-        Version:      transport.SDKVersionLatest,
-        BuyerID:      unknownBuyerID,
-        DatacenterID: datacenter.ID,
-        SessionID:    123456789,
-        SliceNumber:  0,
-        Next:         false,
-        PublicKey:    unknownPublicKey,
-        PrivateKey:   unknownPrivateKey,
-    }
+	sessionUpdateConfig := test.SessionUpdatePacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        unknownBuyerID,
+		DatacenterID:   datacenter.ID,
+		SessionID:      123456789,
+		SliceNumber:    0,
+		Next:           false,
+		PublicKey:      unknownPublicKey,
+		PrivateKey:     unknownPrivateKey,
+		ServerAddress:  "127.0.0.1:32202",
+		BackendAddress: "127.0.0.1:40000",
+	}
 
-    requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+	requestData := env.GenerateSessionUpdatePacketSDK5(sessionUpdateConfig)
 
-    handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
+	handler := transport.SessionUpdateHandlerSDK5Func(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, env.GetMagicValues, core.ParseAddress(sessionUpdateConfig.BackendAddress), crypto.BackendPrivateKey, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
 
-    // Buyer not found - no response
-    assert.Equal(t, 0, len(responseBuffer.Bytes()))
+	// Buyer not found - no response
+	assert.Zero(t, len(responseBuffer.Bytes()))
 }
 
-func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SigCheckFailed_NoResponse(t *testing.T) {
+	t.Parallel()
 
-    env := test.NewTestEnvironment(t)
-    buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
-    datacenter := env.AddDatacenter("datacenter.name")
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
+	datacenter := env.AddDatacenter("datacenter.name")
 
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    getIPLocatorFunc := func() *routing.MaxmindDB {
-        return getSuccessLocator(t)
-    }
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
+	}
 
-    getRouteMatrixFunc := func() *routing.RouteMatrix {
-        return env.GetRouteMatrix()
-    }
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
-    routerPrivateKey := [crypto.KeySize]byte{}
-    copy(routerPrivateKey[:], privateKey)
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
 
-    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
-    assert.NoError(t, err)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
 
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    sessionUpdateConfig := test.SessionUpdatePacketConfig{
-        Version:      transport.SDKVersionLatest,
-        BuyerID:      buyerID,
-        DatacenterID: datacenter.ID,
-        SessionID:    123456789,
-        SliceNumber:  0,
-        Next:         false,
-        PublicKey:    publicKey,
-        PrivateKey:   privateKey[2:],
-    }
+	sessionUpdateConfig := test.SessionUpdatePacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        buyerID,
+		DatacenterID:   datacenter.ID,
+		SessionID:      123456789,
+		SliceNumber:    0,
+		Next:           false,
+		PublicKey:      publicKey,
+		PrivateKey:     privateKey[2:],
+		ServerAddress:  "127.0.0.1:32202",
+		BackendAddress: "127.0.0.1:40000",
+	}
 
-    requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+	requestData := env.GenerateSessionUpdatePacketSDK5(sessionUpdateConfig)
 
-    handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
+	handler := transport.SessionUpdateHandlerSDK5Func(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, env.GetMagicValues, core.ParseAddress(sessionUpdateConfig.BackendAddress), crypto.BackendPrivateKey, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *core.ParseAddress(sessionUpdateConfig.ServerAddress),
+		Data: requestData,
+	})
 
-    // SigCheck Failed - no response
-    assert.Equal(t, 0, len(responseBuffer.Bytes()))
+	// SigCheck failed - no response
+	assert.Zero(t, len(responseBuffer.Bytes()))
 }
 
-func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_DirectResponse(t *testing.T) {
+	t.Parallel()
 
-    env := test.NewTestEnvironment(t)
-    buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
-    datacenter := env.AddDatacenter("losangeles")
-    env.AddRelay("los.angeles.1", "10.0.0.2", datacenter.ID)
-    env.AddRelay("los.angeles.2", "10.0.0.3", datacenter.ID)
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
+	datacenter := env.AddDatacenter("losangeles")
+	env.AddRelay("los.angeles.1", "10.0.0.2", datacenter.ID)
+	env.AddRelay("los.angeles.2", "10.0.0.3", datacenter.ID)
 
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    getIPLocatorFunc := func() *routing.MaxmindDB {
-        return getSuccessLocator(t)
-    }
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
+	}
 
-    getRouteMatrixFunc := func() *routing.RouteMatrix {
-        return env.GetRouteMatrix()
-    }
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
-    routerPrivateKey := [crypto.KeySize]byte{}
-    copy(routerPrivateKey[:], privateKey)
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
 
-    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
-    assert.NoError(t, err)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
 
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    sessionUpdateConfig := test.SessionUpdatePacketConfig{
-        Version:      transport.SDKVersionLatest,
-        BuyerID:      buyerID,
-        DatacenterID: datacenter.ID,
-        SessionID:    123456789,
-        SliceNumber:  0,
-        Next:         false,
-        PublicKey:    publicKey,
-        PrivateKey:   privateKey,
-    }
+	sessionUpdateConfig := test.SessionUpdatePacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        buyerID,
+		DatacenterID:   datacenter.ID,
+		SessionID:      123456789,
+		SliceNumber:    0,
+		Next:           false,
+		PublicKey:      publicKey,
+		PrivateKey:     privateKey,
+		ServerAddress:  "127.0.0.1:32202",
+		BackendAddress: "127.0.0.1:40000",
+	}
 
-    requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+	requestData := env.GenerateSessionUpdatePacketSDK5(sessionUpdateConfig)
 
-    handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
+	handler := transport.SessionUpdateHandlerSDK5Func(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, env.GetMagicValues, core.ParseAddress(sessionUpdateConfig.BackendAddress), crypto.BackendPrivateKey, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *core.ParseAddress(sessionUpdateConfig.ServerAddress),
+		Data: requestData,
+	})
 
-    var responsePacket transport.SessionResponsePacket
-    responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
+	var responsePacket transport.SessionResponsePacketSDK5
+	responsePacket.Version = transport.SDKVersion{5, 0, 0} // Make sure we unmarshal the response the same way we marshaled the request
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
 
-    assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
+	assert.Equal(t, int32(routing.RouteTypeDirect), responsePacket.RouteType)
 
-    var sessionData transport.SessionData
-    err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-    assert.NoError(t, err)
+	var sessionData transport.SessionDataSDK5
+	err = transport.UnmarshalSessionDataSDK5(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
 
-    assert.False(t, sessionData.RouteState.Next)
+	assert.False(t, sessionData.RouteState.Next)
 }
 
-func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionMakeRouteDecision_NextResponse(t *testing.T) {
+	t.Parallel()
 
-    env := test.NewTestEnvironment(t)
-    buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
-    datacenterLA := env.AddDatacenter("losangeles")
-    env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
-    datacenterChicago := env.AddDatacenter("chicago")
-    env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
-    env.SetCost("losangeles.1", "chicago.1", 10)
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
+	datacenterLA := env.AddDatacenter("losangeles")
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
+	datacenterChicago := env.AddDatacenter("chicago")
+	env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
+	env.SetCost("losangeles.1", "chicago.1", 10)
 
-    env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
-        BuyerID:      buyerID,
-        DatacenterID: datacenterLA.ID,
-    }
+	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterLA.ID,
+	}
 
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    getIPLocatorFunc := func() *routing.MaxmindDB {
-        return getSuccessLocator(t)
-    }
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
+	}
 
-    getRouteMatrixFunc := func() *routing.RouteMatrix {
-        return env.GetRouteMatrix()
-    }
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
-    routerPrivateKey := [crypto.KeySize]byte{}
-    copy(routerPrivateKey[:], privateKey)
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
 
-    relayIDs := env.GetRelayIds()
+	relayIDs := env.GetRelayIds()
 
-    for i, id := range relayIDs {
-        env.DatabaseWrapper.RelayMap[id] = routing.Relay{
-            Addr:      env.GetRelayAddresses()[i],
-            PublicKey: publicKey,
-        }
-    }
+	for i, id := range relayIDs {
+		env.DatabaseWrapper.RelayMap[id] = routing.Relay{
+			Addr:      env.GetRelayAddresses()[i],
+			PublicKey: publicKey,
+		}
+	}
 
-    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
-    assert.NoError(t, err)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
 
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    sessionDataConfig := test.SessionDataConfig{
-        Version:     transport.SessionDataVersion,
-        Initial:     false,
-        SessionID:   123456789,
-        SliceNumber: 3,
-    }
+	sessionDataConfig := test.SessionDataConfigSDK5{
+		Version:     transport.SessionDataVersionSDK5,
+		Initial:     false,
+		SessionID:   123456789,
+		SliceNumber: 3,
+	}
 
-    sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacket(sessionDataConfig)
+	sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacketSDK5(sessionDataConfig)
 
-    sessionUpdateConfig := test.SessionUpdatePacketConfig{
-        Version:          transport.SDKVersionLatest,
-        BuyerID:          buyerID,
-        DatacenterID:     datacenterLA.ID,
-        SessionID:        sessionDataConfig.SessionID,
-        SliceNumber:      sessionDataConfig.SliceNumber,
-        PublicKey:        publicKey,
-        PrivateKey:       privateKey,
-        SessionData:      sessionDataPacket,
-        SessionDataBytes: int32(sessionDataSize),
-        NearRelayRTT:     10,
-        NearRelayJitter:  10,
-        NearRelayPL:      1,
-        NextRTT:          10,
-        NextJitter:       10,
-        NextPacketLoss:   1,
-        DirectRTT:        1000,
-        DirectJitter:     1000,
-        DirectPacketLoss: 100,
-        ClientAddress:    "10.0.0.9",
-        ServerAddress:    "10.0.0.10",
-        UserHash:         100,
-    }
+	sessionUpdateConfig := test.SessionUpdatePacketConfigSDK5{
+		Version:          transport.SDKVersion{5, 0, 0},
+		BuyerID:          buyerID,
+		DatacenterID:     datacenterLA.ID,
+		SessionID:        sessionDataConfig.SessionID,
+		SliceNumber:      sessionDataConfig.SliceNumber,
+		PublicKey:        publicKey,
+		PrivateKey:       privateKey,
+		SessionData:      sessionDataPacket,
+		SessionDataBytes: int32(sessionDataSize),
+		NearRelayRTT:     10,
+		NearRelayJitter:  10,
+		NearRelayPL:      1,
+		NextRTT:          10,
+		NextJitter:       10,
+		NextPacketLoss:   1,
+		DirectMinRTT:     1000,
+		DirectMaxRTT:     1000,
+		DirectPrimeRTT:   1000,
+		DirectJitter:     1000,
+		DirectPacketLoss: 100,
+		ClientAddress:    "10.0.0.9",
+		ServerAddress:    "10.0.0.10",
+		BackendAddress:   "127.0.0.1:40000",
+		UserHash:         100,
+	}
 
-    requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+	requestData := env.GenerateSessionUpdatePacketSDK5(sessionUpdateConfig)
 
-    handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
+	handler := transport.SessionUpdateHandlerSDK5Func(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, env.GetMagicValues, core.ParseAddress(sessionUpdateConfig.BackendAddress), crypto.BackendPrivateKey, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *core.ParseAddress(sessionUpdateConfig.ServerAddress),
+		Data: requestData,
+	})
 
-    var responsePacket transport.SessionResponsePacket
-    responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
+	var responsePacket transport.SessionResponsePacketSDK5
+	responsePacket.Version = transport.SDKVersion{5, 0, 0} // Make sure we unmarshal the response the same way we marshaled the request
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
 
-    assert.Equal(t, int32(routing.RouteTypeNew), responsePacket.RouteType)
+	assert.Equal(t, int32(routing.RouteTypeNew), responsePacket.RouteType)
 
-    var sessionData transport.SessionData
-    err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-    assert.NoError(t, err)
+	var sessionData transport.SessionDataSDK5
+	err = transport.UnmarshalSessionDataSDK5(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
 
-    assert.True(t, sessionData.RouteState.Next)
-    assert.True(t, sessionData.Initial)
+	assert.True(t, sessionData.RouteState.Next)
+	assert.True(t, sessionData.Initial)
 }
 
-func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *testing.T) {
-    t.Parallel()
+func TestSessionUpdateHandlerSDK5Func_SessionMakeRouteDecision_ContinueResponse(t *testing.T) {
+	t.Parallel()
 
-    env := test.NewTestEnvironment(t)
-    buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
-    datacenterLA := env.AddDatacenter("losangeles")
-    env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
-    datacenterChicago := env.AddDatacenter("chicago")
-    env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
-    env.SetCost("losangeles.1", "chicago.1", 10)
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true, false)
+	datacenterLA := env.AddDatacenter("losangeles")
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
+	datacenterChicago := env.AddDatacenter("chicago")
+	env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
+	env.SetCost("losangeles.1", "chicago.1", 10)
 
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
+	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterLA.ID,
+	}
 
-    getIPLocatorFunc := func() *routing.MaxmindDB {
-        return getSuccessLocator(t)
-    }
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    getRouteMatrixFunc := func() *routing.RouteMatrix {
-        return env.GetRouteMatrix()
-    }
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
+	}
 
-    routerPrivateKey := [crypto.KeySize]byte{}
-    copy(routerPrivateKey[:], privateKey)
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
-    relayIDs := env.GetRelayIds()
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
 
-    for i, id := range relayIDs {
-        env.DatabaseWrapper.RelayMap[id] = routing.Relay{
-            Addr:      env.GetRelayAddresses()[i],
-            PublicKey: publicKey,
-        }
-    }
+	relayIDs := env.GetRelayIds()
 
-    env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
-        BuyerID:      buyerID,
-        DatacenterID: datacenterLA.ID,
-    }
+	for i, id := range relayIDs {
+		env.DatabaseWrapper.RelayMap[id] = routing.Relay{
+			Addr:      env.GetRelayAddresses()[i],
+			PublicKey: publicKey,
+		}
+	}
 
-    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
-    assert.NoError(t, err)
+	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterLA.ID,
+	}
 
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
 
-    sessionDataConfig := test.SessionDataConfig{
-        Version:        transport.SessionDataVersion,
-        Initial:        true,
-        SessionID:      123456789,
-        SliceNumber:    5,
-        RouteNumRelays: 2,
-        RouteRelayIDs:  [5]uint64{relayIDs[0], relayIDs[1], 0, 0, 0},
-        RouteState: core.RouteState{
-            UserID:          100,
-            Next:            true,
-            NumNearRelays:   2,
-            NearRelayRTT:    [32]int32{10, 10},
-            NearRelayJitter: [32]int32{10, 10},
-        },
-    }
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacket(sessionDataConfig)
+	sessionDataConfig := test.SessionDataConfigSDK5{
+		Version:        transport.SessionDataVersionSDK5,
+		Initial:        true,
+		SessionID:      123456789,
+		SliceNumber:    5,
+		RouteNumRelays: 2,
+		RouteRelayIDs:  [5]uint64{relayIDs[0], relayIDs[1], 0, 0, 0},
+		RouteState: core.RouteState{
+			UserID:          100,
+			Next:            true,
+			NumNearRelays:   2,
+			NearRelayRTT:    [32]int32{10, 10},
+			NearRelayJitter: [32]int32{10, 10},
+		},
+	}
 
-    sessionUpdateConfig := test.SessionUpdatePacketConfig{
-        Version:          transport.SDKVersionLatest,
-        BuyerID:          buyerID,
-        DatacenterID:     datacenterLA.ID,
-        SessionID:        sessionDataConfig.SessionID,
-        SliceNumber:      sessionDataConfig.SliceNumber,
-        PublicKey:        publicKey,
-        PrivateKey:       privateKey,
-        SessionData:      sessionDataPacket,
-        SessionDataBytes: int32(sessionDataSize),
-        Next:             true,
-        Committed:        true,
-        NearRelayRTT:     10,
-        NearRelayJitter:  10,
-        NearRelayPL:      1,
-        NextRTT:          11,
-        NextJitter:       11,
-        NextPacketLoss:   1,
-        DirectRTT:        1000,
-        DirectJitter:     1000,
-        DirectPacketLoss: 100,
-        ClientAddress:    "10.0.0.9",
-        ServerAddress:    "10.0.0.10",
-        UserHash:         100,
-    }
+	sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacketSDK5(sessionDataConfig)
 
-    requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+	sessionUpdateConfig := test.SessionUpdatePacketConfigSDK5{
+		Version:          transport.SDKVersion{5, 0, 0},
+		BuyerID:          buyerID,
+		DatacenterID:     datacenterLA.ID,
+		SessionID:        sessionDataConfig.SessionID,
+		SliceNumber:      sessionDataConfig.SliceNumber,
+		PublicKey:        publicKey,
+		PrivateKey:       privateKey,
+		SessionData:      sessionDataPacket,
+		SessionDataBytes: int32(sessionDataSize),
+		Next:             true,
+		Committed:        true,
+		NearRelayRTT:     10,
+		NearRelayJitter:  10,
+		NearRelayPL:      1,
+		NextRTT:          11,
+		NextJitter:       11,
+		NextPacketLoss:   1,
+		DirectMinRTT:     1000,
+		DirectMaxRTT:     1000,
+		DirectPrimeRTT:   1000,
+		DirectJitter:     1000,
+		DirectPacketLoss: 100,
+		ClientAddress:    "10.0.0.9",
+		ServerAddress:    "10.0.0.10",
+		BackendAddress:   "127.0.0.1:40000",
+		UserHash:         100,
+	}
 
-    handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
+	requestData := env.GenerateSessionUpdatePacketSDK5(sessionUpdateConfig)
 
-    var responsePacket transport.SessionResponsePacket
-    responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
+	handler := transport.SessionUpdateHandlerSDK5Func(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, env.GetMagicValues, core.ParseAddress(sessionUpdateConfig.BackendAddress), crypto.BackendPrivateKey, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *core.ParseAddress(sessionUpdateConfig.ServerAddress),
+		Data: requestData,
+	})
 
-    assert.Equal(t, int32(routing.RouteTypeContinue), responsePacket.RouteType)
+	var responsePacket transport.SessionResponsePacketSDK5
+	responsePacket.Version = transport.SDKVersion{5, 0, 0} // Make sure we unmarshal the response the same way we marshaled the request
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
 
-    var sessionData transport.SessionData
-    err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
-    assert.NoError(t, err)
+	assert.Equal(t, int32(routing.RouteTypeContinue), responsePacket.RouteType)
 
-    assert.True(t, sessionData.RouteState.Next)
-    assert.False(t, sessionData.Initial)
+	var sessionData transport.SessionDataSDK5
+	err = transport.UnmarshalSessionDataSDK5(&sessionData, responsePacket.SessionData[:])
+	assert.NoError(t, err)
+
+	assert.True(t, sessionData.RouteState.Next)
+	assert.False(t, sessionData.Initial)
 }
 
-func TestCalculateTotalPriceNibblins_SellerPrice(t *testing.T) {
-    t.Parallel()
+// Match data handler tests
 
-    routeNumRelays := 2
+func TestMatchDataHandlerSDK5Func_BuyerNotFound(t *testing.T) {
+	t.Parallel()
 
-    seller := routing.Seller{
-        ID:                       "test-seller",
-        Name:                     "test-seller",
-        CompanyCode:              "test-seller",
-        ShortName:                "test-seller",
-        Secret:                   false,
-        EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
-        DatabaseID:               0,
-        CustomerID:               0,
-    }
+	env := test.NewTestEnvironment(t)
+	env.AddBuyer("local", false, false)
 
-    var relaySellers [core.MaxRelaysPerRoute]routing.Seller
-    var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
 
-    assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
-    for i := 0; i < routeNumRelays; i++ {
-        relaySellers[i] = seller
-        relayEgressPriceOverride[i] = routing.Nibblin(0)
-    }
+	unknownPrivateKey = unknownPrivateKey[8:]
 
-    envelopeBytesDown := uint64(1)
-    envelopeBytesUp := uint64(1)
+	unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
 
-    totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
 
-    assert.Equal(t, routing.Nibblin(40002), totalPrice)
+	backendAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+
+	matchDataConfig := test.MatchDataPacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        unknownBuyerID,
+		ServerAddress:  *serverAddr,
+		BackendAddress: *backendAddr,
+		DatacenterID:   rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		SessionID:      crypto.GenerateSessionID(),
+		MatchID:        rand.Uint64(),
+		PrivateKey:     unknownPrivateKey,
+	}
+
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateMatchDataRequestPacketSDK5(matchDataConfig)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerSDK5Func(env.GetDatabaseWrapper, env.GetMagicValues, postSessionHandler, backendAddr, crypto.BackendPrivateKey, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *serverAddr,
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacketSDK5
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseUnknownBuyer), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
 }
 
-func TestCalculateTotalPriceNibblins_EgressPriceOverride(t *testing.T) {
-    t.Parallel()
+func TestMatchDataHandlerSDK5Func_BuyerNotLive(t *testing.T) {
+	t.Parallel()
 
-    routeNumRelays := 2
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", false, false)
 
-    seller := routing.Seller{
-        ID:                       "test-seller",
-        Name:                     "test-seller",
-        CompanyCode:              "test-seller",
-        ShortName:                "test-seller",
-        Secret:                   false,
-        EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
-        DatabaseID:               0,
-        CustomerID:               0,
-    }
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
 
-    var relaySellers [core.MaxRelaysPerRoute]routing.Seller
-    var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	backendAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
 
-    assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
-    for i := 0; i < routeNumRelays; i++ {
-        relaySellers[i] = seller
-        relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
-    }
+	matchDataConfig := test.MatchDataPacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        buyerID,
+		ServerAddress:  *serverAddr,
+		BackendAddress: *backendAddr,
+		DatacenterID:   rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		SessionID:      crypto.GenerateSessionID(),
+		MatchID:        rand.Uint64(),
+		PrivateKey:     privateKey,
+	}
 
-    envelopeBytesDown := uint64(1)
-    envelopeBytesUp := uint64(1)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+	requestData := env.GenerateMatchDataRequestPacketSDK5(matchDataConfig)
 
-    assert.Equal(t, routing.Nibblin(80002), totalPrice)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerSDK5Func(env.GetDatabaseWrapper, env.GetMagicValues, postSessionHandler, backendAddr, crypto.BackendPrivateKey, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *serverAddr,
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacketSDK5
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseBuyerNotActive), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
 }
 
-func TestCalculateRouteRelaysPrice_SellerPrice(t *testing.T) {
-    t.Parallel()
+func TestMatchDataHandlerSDK5Func_SigCheckFail(t *testing.T) {
+	t.Parallel()
 
-    routeNumRelays := 2
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
-    seller := routing.Seller{
-        ID:                       "test-seller",
-        Name:                     "test-seller",
-        CompanyCode:              "test-seller",
-        ShortName:                "test-seller",
-        Secret:                   false,
-        EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
-        DatabaseID:               0,
-        CustomerID:               0,
-    }
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
 
-    var relaySellers [core.MaxRelaysPerRoute]routing.Seller
-    var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	backendAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
 
-    assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
-    for i := 0; i < routeNumRelays; i++ {
-        relaySellers[i] = seller
-        relayEgressPriceOverride[i] = routing.Nibblin(0)
-    }
+	matchDataConfig := test.MatchDataPacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        buyerID,
+		ServerAddress:  *serverAddr,
+		BackendAddress: *backendAddr,
+		DatacenterID:   rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		SessionID:      crypto.GenerateSessionID(),
+		MatchID:        rand.Uint64(),
+		PrivateKey:     privateKey[2:],
+	}
 
-    envelopeBytesDown := uint64(1)
-    envelopeBytesUp := uint64(1)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+	requestData := env.GenerateMatchDataRequestPacketSDK5(matchDataConfig)
 
-    expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(20000), routing.Nibblin(20000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
+	handler := transport.MatchDataHandlerSDK5Func(env.GetDatabaseWrapper, env.GetMagicValues, postSessionHandler, backendAddr, crypto.BackendPrivateKey, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *serverAddr,
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacketSDK5
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseSignatureCheckFailed), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
 }
 
-func TestCalculateRouteRelaysPrice_EgressPriceOverride(t *testing.T) {
-    t.Parallel()
+func TestMatchDataHandlerSDK5Func_Success(t *testing.T) {
+	t.Parallel()
 
-    routeNumRelays := 2
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 
-    seller := routing.Seller{
-        ID:                       "test-seller",
-        Name:                     "test-seller",
-        CompanyCode:              "test-seller",
-        ShortName:                "test-seller",
-        Secret:                   false,
-        EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
-        DatabaseID:               0,
-        CustomerID:               0,
-    }
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
 
-    var relaySellers [core.MaxRelaysPerRoute]routing.Seller
-    var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	backendAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
 
-    assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
-    for i := 0; i < routeNumRelays; i++ {
-        relaySellers[i] = seller
-        relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
-    }
+	matchDataConfig := test.MatchDataPacketConfigSDK5{
+		Version:        transport.SDKVersion{5, 0, 0},
+		BuyerID:        buyerID,
+		ServerAddress:  *serverAddr,
+		BackendAddress: *backendAddr,
+		DatacenterID:   rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		SessionID:      crypto.GenerateSessionID(),
+		MatchID:        rand.Uint64(),
+		PrivateKey:     privateKey,
+	}
 
-    envelopeBytesDown := uint64(1)
-    envelopeBytesUp := uint64(1)
+	metrics, err := metrics.NewServerBackend5Metrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
-    routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+	requestData := env.GenerateMatchDataRequestPacketSDK5(matchDataConfig)
 
-    expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(40000), routing.Nibblin(40000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
-    assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
+	handler := transport.MatchDataHandlerSDK5Func(env.GetDatabaseWrapper, env.GetMagicValues, postSessionHandler, backendAddr, crypto.BackendPrivateKey, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		From: *serverAddr,
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacketSDK5
+	err = transport.UnmarshalPacketSDK5(&responsePacket, core.GetPacketDataSDK5(responseBuffer.Bytes()))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
 }
-
-func TestMatchDataHandlerFunc_BuyerNotFound(t *testing.T) {
-    t.Parallel()
-
-    env := test.NewTestEnvironment(t)
-    env.AddBuyer("local", false, false)
-
-    unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
-    assert.NoError(t, err)
-
-    unknownPrivateKey = unknownPrivateKey[8:]
-
-    unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
-
-    serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-    assert.NoError(t, err)
-
-    matchDataConfig := test.MatchDataPacketConfig{
-        Version:       transport.SDKVersionLatest,
-        BuyerID:       unknownBuyerID,
-        ServerAddress: *serverAddr,
-        DatacenterID:  rand.Uint64(),
-        UserHash:      rand.Uint64(),
-        SessionID:     crypto.GenerateSessionID(),
-        MatchID:       rand.Uint64(),
-        PrivateKey:    unknownPrivateKey,
-    }
-
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
-
-    requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
-
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
-
-    handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
-
-    var responsePacket transport.MatchDataResponsePacket
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
-
-    assert.Equal(t, uint32(transport.MatchDataResponseUnknownBuyer), responsePacket.Response)
-    assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
-}
-
-func TestMatchDataHandlerFunc_BuyerNotLive(t *testing.T) {
-    t.Parallel()
-
-    env := test.NewTestEnvironment(t)
-    buyerID, _, privateKey := env.AddBuyer("local", false, false)
-
-    serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-    assert.NoError(t, err)
-
-    matchDataConfig := test.MatchDataPacketConfig{
-        Version:       transport.SDKVersionLatest,
-        BuyerID:       buyerID,
-        ServerAddress: *serverAddr,
-        DatacenterID:  rand.Uint64(),
-        UserHash:      rand.Uint64(),
-        SessionID:     crypto.GenerateSessionID(),
-        MatchID:       rand.Uint64(),
-        PrivateKey:    privateKey,
-    }
-
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
-
-    requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
-
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
-
-    handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
-
-    var responsePacket transport.MatchDataResponsePacket
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
-
-    assert.Equal(t, uint32(transport.MatchDataResponseBuyerNotActive), responsePacket.Response)
-    assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
-}
-
-func TestMatchDataHandlerFunc_SigCheckFail(t *testing.T) {
-    t.Parallel()
-
-    env := test.NewTestEnvironment(t)
-    buyerID, _, privateKey := env.AddBuyer("local", true, false)
-
-    serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-    assert.NoError(t, err)
-
-    matchDataConfig := test.MatchDataPacketConfig{
-        Version:       transport.SDKVersionLatest,
-        BuyerID:       buyerID,
-        ServerAddress: *serverAddr,
-        DatacenterID:  rand.Uint64(),
-        UserHash:      rand.Uint64(),
-        SessionID:     crypto.GenerateSessionID(),
-        MatchID:       rand.Uint64(),
-        PrivateKey:    privateKey[2:],
-    }
-
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
-
-    requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
-
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
-
-    handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
-
-    var responsePacket transport.MatchDataResponsePacket
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
-
-    assert.Equal(t, uint32(transport.MatchDataResponseSignatureCheckFailed), responsePacket.Response)
-    assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
-}
-
-func TestMatchDataHandlerFunc_Success(t *testing.T) {
-    t.Parallel()
-
-    env := test.NewTestEnvironment(t)
-    buyerID, _, privateKey := env.AddBuyer("local", true, false)
-
-    serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
-    assert.NoError(t, err)
-
-    var matchValues [transport.MaxMatchValues]float64
-    for i := 0; i < transport.MaxMatchValues; i++ {
-        matchValues[i] = rand.ExpFloat64()
-    }
-
-    matchDataConfig := test.MatchDataPacketConfig{
-        Version:        transport.SDKVersionLatest,
-        BuyerID:        buyerID,
-        ServerAddress:  *serverAddr,
-        DatacenterID:   rand.Uint64(),
-        UserHash:       rand.Uint64(),
-        SessionID:      crypto.GenerateSessionID(),
-        MatchID:        rand.Uint64(),
-        NumMatchValues: transport.MaxMatchValues,
-        MatchValues:    matchValues,
-        PrivateKey:     privateKey,
-    }
-
-    metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
-    assert.NoError(t, err)
-    responseBuffer := bytes.NewBuffer(nil)
-
-    requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
-
-    postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
-
-    handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
-    handler(responseBuffer, &transport.UDPPacket{
-        Data: requestData,
-    })
-
-    var responsePacket transport.MatchDataResponsePacket
-    err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
-    assert.NoError(t, err)
-
-    assert.Equal(t, uint32(transport.MatchDataResponseOK), responsePacket.Response)
-    assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
-    assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
-    assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
-    assert.Zero(t, metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
-}
-*/

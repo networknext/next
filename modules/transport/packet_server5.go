@@ -615,3 +615,57 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
+
+type MatchDataRequestPacketSDK5 struct {
+	Version        SDKVersion
+	BuyerID        uint64
+	ServerAddress  net.UDPAddr
+	DatacenterID   uint64
+	UserHash       uint64
+	SessionID      uint64
+	RetryNumber    uint32
+	MatchID        uint64
+	NumMatchValues int32
+	MatchValues    [MaxMatchValues]float64
+}
+
+func (packet *MatchDataRequestPacketSDK5) Serialize(stream encoding.Stream) error {
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.BuyerID)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeUint32(&packet.RetryNumber)
+	stream.SerializeUint64(&packet.MatchID)
+
+	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
+
+	stream.SerializeBool(&hasMatchValues)
+
+	if hasMatchValues {
+		stream.SerializeInteger(&packet.NumMatchValues, 0, MaxMatchValues)
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			stream.SerializeFloat64(&packet.MatchValues[i])
+		}
+	}
+
+	return stream.Error()
+}
+
+type MatchDataResponsePacketSDK5 struct {
+	SessionID uint64
+	Response  uint32
+}
+
+func (packet *MatchDataResponsePacketSDK5) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeBits(&packet.Response, 8)
+	return stream.Error()
+}
