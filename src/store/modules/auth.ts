@@ -5,7 +5,6 @@ import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { Auth0DecodedHash } from 'auth0-js'
 import { cloneDeep } from 'lodash'
 import Vue from 'vue'
-import store from '..'
 
 /**
  * Basic Vuex module specific to authorization/authentication
@@ -122,10 +121,10 @@ const actions = {
         }
         dispatch('updateCurrentFilter', defaultFilter)
 
-        if (store.getters.isAdmin) {
+        if (getters.isAdmin) {
           const isDemo = Vue.$cookies.get('isDemo')
           if (isDemo) {
-            store.dispatch('toggleIsDemo', true)
+            dispatch('toggleIsDemo', true)
           }
         }
 
