@@ -98,6 +98,14 @@ ifndef SERVER_BACKEND_PRIVATE_KEY
 export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
 endif
 
+ifndef SERVER_BACKEND_IP
+export SERVER_BACKEND_IP = 127.0.0.1:40000
+endif
+
+ifndef MAGIC_URI
+export MAGIC_URI = http://127.0.0.1:41008/magic
+endif
+
 ## Relay routing keys are used to ENCRYPT and SIGN route tokens sent to a relay
 ifndef RELAY_ROUTER_PUBLIC_KEY
 export RELAY_ROUTER_PUBLIC_KEY = SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
@@ -342,6 +350,10 @@ dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
+
+.PHONY: dev-server-backend5
+dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend5
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -659,6 +671,12 @@ build-server-backend4:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
+.PHONY: build-server-backend5
+build-server-backend5:
+	@printf "Building server backend 5... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
+	@printf "done\n"
+
 .PHONY: build-billing
 build-billing:
 	@printf "Building billing... "
@@ -804,6 +822,10 @@ build-portal-cruncher-artifacts-dev: build-portal-cruncher
 build-server-backend4-artifacts-dev: build-server-backend4
 	./deploy/build-artifacts.sh -e dev -s server_backend4
 
+.PHONY: build-server-backend5-artifacts-dev
+build-server-backend5-artifacts-dev: build-server-backend5
+	./deploy/build-artifacts.sh -e dev -s server_backend5
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -847,6 +869,10 @@ build-portal-cruncher-artifacts-staging: build-portal-cruncher
 .PHONY: build-server-backend4-artifacts-staging
 build-server-backend4-artifacts-staging: build-server-backend4
 	./deploy/build-artifacts.sh -e staging -s server_backend4
+
+.PHONY: build-server-backend5-artifacts-staging
+build-server-backend5-artifacts-staging: build-server-backend5
+	./deploy/build-artifacts.sh -e staging -s server_backend5
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
@@ -896,6 +922,10 @@ build-portal-cruncher-artifacts-prod: build-portal-cruncher
 build-server-backend4-artifacts-prod: build-server-backend4
 	./deploy/build-artifacts.sh -e prod -s server_backend4
 
+.PHONY: build-server-backend5-artifacts-prod
+build-server-backend5-artifacts-prod: build-server-backend5
+	./deploy/build-artifacts.sh -e prod -s server_backend5
+
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
@@ -944,6 +974,10 @@ publish-portal-cruncher-artifacts-dev:
 publish-server-backend4-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
 
+.PHONY: publish-server-backend5-artifacts-dev
+publish-server-backend5-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
+
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
@@ -987,6 +1021,10 @@ publish-portal-cruncher-artifacts-staging:
 .PHONY: publish-server-backend4-artifacts-staging
 publish-server-backend4-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
+
+.PHONY: publish-server-backend5-artifacts-staging
+publish-server-backend5-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend5
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -1052,9 +1090,13 @@ publish-portal-artifacts-prod:
 publish-portal-cruncher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
-.PHONY: publish-server-backend4-artifacts-prod4
+.PHONY: publish-server-backend4-artifacts-prod
 publish-server-backend4-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
+
+.PHONY: publish-server-backend5-artifacts-prod
+publish-server-backend5-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend5
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -1552,7 +1594,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

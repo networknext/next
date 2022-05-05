@@ -2222,3 +2222,10 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16)
 		*address_port = address->port;
 	*/
 }
+
+// Strips the packet type, chonkle, and pittle from the given packet.
+// Assumes that given packet has the following structure:
+// packetType (1) + chonkle (15) + packetData (X) + pittle (2)
+func GetPacketDataSDK5(data []byte) []byte {
+	return data[16 : len(data)-2]
+}
