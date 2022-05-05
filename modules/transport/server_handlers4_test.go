@@ -2803,6 +2803,8 @@ func TestCalculateRouteRelaysPrice_EgressPriceOverride(t *testing.T) {
 	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
 }
 
+// Match data handler tests
+
 func TestMatchDataHandlerFunc_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
