@@ -607,27 +607,6 @@ func TestServerUpdateHandlerSDK5Func_ServerTracker_DatacenterFound(t *testing.T)
 
 // Session update handler
 
-func getErrorLocator() *routing.MaxmindDB {
-	return &routing.MaxmindDB{}
-}
-
-func getSuccessLocator(t *testing.T) *routing.MaxmindDB {
-	// Set IsStaging to true to use sessionID instead of IP Address
-	// when we are not testing IP2Location
-	mmdb := &routing.MaxmindDB{
-		CityFile:  "../../testdata/GeoIP2-City-Test.mmdb",
-		IspFile:   "../../testdata/GeoIP2-ISP-Test.mmdb",
-		IsStaging: true,
-	}
-
-	err := mmdb.OpenCity(context.Background(), mmdb.CityFile)
-	assert.NoError(t, err)
-	err = mmdb.OpenISP(context.Background(), mmdb.IspFile)
-	assert.NoError(t, err)
-
-	return mmdb
-}
-
 func TestSessionUpdateHandlerSDK5Func_Pre_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -1970,7 +1949,7 @@ func TestSessionUpdateHandlerSDK5Func_SessionUpdateNearRelayStats_RelayNoLongerE
 	assert.Equal(t, int32(-1), state.NearRelayIndices[2])
 }
 
-func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextWithoutRouteRelays(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionMakeRouteDecision_NextWithoutRouteRelays(t *testing.T) {
 	t.Parallel()
 
 	metricsHandler := metrics.LocalHandler{}
@@ -1994,7 +1973,7 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextWithoutRouteRelay
 	assert.Equal(t, float64(1), state.Metrics.NextWithoutRouteRelays.Value())
 }
 
-func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_SDKAbortedSession(t *testing.T) {
+func TestSessionUpdateHandlerSDK5Func_SessionMakeRouteDecision_SDKAbortedSession(t *testing.T) {
 	t.Parallel()
 
 	metricsHandler := metrics.LocalHandler{}
@@ -2019,15 +1998,6 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_SDKAbortedSession(t *
 	assert.False(t, state.Output.RouteState.Next)
 	assert.True(t, state.Output.RouteState.Veto)
 	assert.Equal(t, float64(1), state.Metrics.SDKAborted.Value())
-}
-
-type testLocator struct{}
-
-func (locator *testLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{
-		Latitude:  10,
-		Longitude: 10,
-	}, nil
 }
 
 func TestSessionUpdateHandlerSDK5Func_BuyerNotFound_NoResponse(t *testing.T) {
