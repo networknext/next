@@ -238,7 +238,7 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 
 func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var initRequest transport.ServerInitRequestPacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&initRequest, incoming.Data); err != nil {
+	if err := transport.UnmarshalPacketSDK5(&initRequest, core.GetPacketDataSDK5(incoming.Data)); err != nil {
 		fmt.Printf("error: failed to read server init request packet: %v\n", err)
 		return
 	}
@@ -252,7 +252,8 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	initResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerInitResponseSDK5, initResponse, fromAddress, toAddress, crypto.BackendPrivateKey[:])
+	var emptyMagic [8]byte
+	initResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerInitResponseSDK5, initResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey[:])
 	if err != nil {
 		fmt.Printf("error: failed to marshal server init response: %v\n", err)
 		return
@@ -263,14 +264,13 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	{
-		var magic [8]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
 
 		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
 		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
 
-		if !core.AdvancedPacketFilter(initResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(initResponseData)) {
+		if !core.AdvancedPacketFilter(initResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(initResponseData)) {
 			panic("advanced packet filter failed on server init response\n")
 		}
 	}
@@ -283,7 +283,7 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var serverUpdate transport.ServerUpdatePacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&serverUpdate, incoming.Data); err != nil {
+	if err := transport.UnmarshalPacketSDK5(&serverUpdate, core.GetPacketDataSDK5(incoming.Data)); err != nil {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
 	}
@@ -296,7 +296,8 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	updateResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerResponseSDK5, updateResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
+	var emptyMagic [8]byte
+	updateResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerResponseSDK5, updateResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
 	if err != nil {
 		fmt.Printf("error: failed to marshal server response: %v\n", err)
 		return
@@ -307,14 +308,13 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	{
-		var magic [8]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
 
 		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
 		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
 
-		if !core.AdvancedPacketFilter(updateResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(updateResponseData)) {
+		if !core.AdvancedPacketFilter(updateResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(updateResponseData)) {
 			panic("advanced packet filter failed on server response\n")
 		}
 	}
@@ -337,7 +337,7 @@ func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, rou
 
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	var sessionUpdate transport.SessionUpdatePacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&sessionUpdate, incoming.Data); err != nil {
+	if err := transport.UnmarshalPacketSDK5(&sessionUpdate, core.GetPacketDataSDK5(incoming.Data)); err != nil {
 		fmt.Printf("error: failed to read session update packet: %v\n", err)
 		return
 	}
@@ -640,7 +640,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	sessionResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeSessionResponseSDK5, sessionResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
+	var emptyMagic [8]byte
+	sessionResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeSessionResponseSDK5, sessionResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session response: %v\n", err)
 		return
@@ -651,14 +652,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	{
-		var magic [8]byte
+		var emptyMagic [8]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
 
 		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
 		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
 
-		if !core.AdvancedPacketFilter(sessionResponseData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(sessionResponseData)) {
+		if !core.AdvancedPacketFilter(sessionResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(sessionResponseData)) {
 			panic("advanced packet filter failed on session response\n")
 		}
 	}
@@ -809,7 +810,7 @@ func main() {
 			{
 				to := receiveAddress
 
-				var magic [8]byte
+				var emptyMagic [8]byte
 
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
@@ -817,15 +818,13 @@ func main() {
 				fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
 				toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
-				if !core.AdvancedPacketFilter(data, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
+				if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
 					fmt.Printf("advanced packet filter failed\n")
 					continue
 				}
 			}
 
 			packetType := data[0]
-			data = data[16 : len(data)-2]
-			size -= 18
 
 			var buffer bytes.Buffer
 			packet := transport.UDPPacket{From: *fromAddr, Data: data}

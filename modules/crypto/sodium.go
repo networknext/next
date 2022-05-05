@@ -84,3 +84,19 @@ func sodiumSignPacketSDK5(packetData []byte, serializeBytes int, privateKey []by
 
 	return signedPacketData
 }
+
+// This function does NOT assume that packetData has the packet type, chonkle, and pittle removed
+// to allow sodium to correctly perform the signature check
+func sodiumVerifyPacketSDK5(packetData []byte, publicKey []byte) bool {
+	if len(packetData) < C.crypto_sign_BYTES || len(publicKey) != C.crypto_sign_PUBLICKEYBYTES {
+		return false
+	}
+
+	messageLength := -16 + len(packetData) - C.crypto_sign_BYTES - 2
+
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(messageLength))
+	return C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-C.crypto_sign_BYTES-2]), (*C.uchar)(&publicKey[0])) == 0
+}
