@@ -123,7 +123,7 @@ func TestInsertSQL(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:          internalID,
-			ShortName:   outerCustomer.Code,
+			Alias:       outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
 			Debug:       true,
@@ -142,7 +142,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
 		assert.Equal(t, publicKey, outerBuyer.PublicKey)
 		// assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
-		assert.Equal(t, buyer.ShortName, outerBuyer.ShortName)
+		assert.Equal(t, buyer.Alias, outerBuyer.Alias)
 		assert.Equal(t, buyer.CompanyCode, outerBuyer.CompanyCode)
 	})
 
@@ -565,7 +565,6 @@ func TestDeleteSQL(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:          internalID,
-			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
 			Debug:       true,
@@ -837,7 +836,6 @@ func TestUpdateSQL(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:          internalID,
-			ShortName:   customerWithID.Code,
 			CompanyCode: customerWithID.Code,
 			Live:        true,
 			Debug:       true,
@@ -926,7 +924,7 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Debug", false)
 		assert.NoError(t, err)
 
-		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Alias", "newname")
 		assert.NoError(t, err)
 
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "LookerSeats", int64(100))
@@ -952,7 +950,7 @@ func TestUpdateSQL(t *testing.T) {
 
 		assert.Equal(t, false, checkBuyer.Live)
 		assert.Equal(t, false, checkBuyer.Debug)
-		assert.Equal(t, "newname", checkBuyer.ShortName)
+		assert.Equal(t, "newname", checkBuyer.Alias)
 		assert.Equal(t, int64(100), checkBuyer.LookerSeats)
 		assert.Equal(t, float64(100), checkBuyer.ExoticLocationFee)
 		assert.Equal(t, float64(100), checkBuyer.StandardLocationFee)
@@ -1349,7 +1347,6 @@ func TestInternalConfig(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:          internalID,
-			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
 			Debug:       true,
@@ -1594,7 +1591,6 @@ func TestRouteShaders(t *testing.T) {
 
 		buyer := routing.Buyer{
 			ID:          internalID,
-			ShortName:   outerCustomer.Code,
 			CompanyCode: outerCustomer.Code,
 			Live:        true,
 			Debug:       true,
