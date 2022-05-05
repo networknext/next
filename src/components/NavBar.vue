@@ -234,8 +234,8 @@ export default class NavBar extends Vue {
     this.getAccessTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Get access tour finished', {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          this.$gtag.event('Get access tour finished', {
             event_category: 'Tours'
           })
         }
@@ -261,8 +261,8 @@ export default class NavBar extends Vue {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
 
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Download link tour finished', {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          this.$gtag.event('Download link tour finished', {
             event_category: 'Tours'
           })
         }
@@ -334,15 +334,17 @@ export default class NavBar extends Vue {
     this.$root.$emit('showNotificationsModal')
   }
 
-  private async toggleDemo (isDemo: boolean) {
+  private toggleDemo (isDemo: boolean) {
     if (!isDemo) {
-      await this.$apiService.fetchAllBuyers()
+      this.$apiService.fetchAllBuyers()
         .then((response: any) => {
           const allBuyers = response.buyers || []
           this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
-        })
 
-      Vue.$cookies.remove('isDemo')
+          this.$cookies.remove('isDemo')
+        })
+    } else {
+      this.$cookies.set('isDemo', true)
     }
 
     this.$store.dispatch('toggleIsDemo', isDemo)
