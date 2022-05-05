@@ -108,7 +108,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+	backendMetrics, err := metrics.NewServerBackend5Metrics(ctx, metricsHandler)
 	if err != nil {
 		core.Error("could not create backend metrics: %v", err)
 		return 1
@@ -144,6 +144,17 @@ func mainReturnWithCode() int {
 
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
+
+	if !envvar.Exists("SERVER_BACKEND_IP") {
+		core.Error("SERVER_BACKEND_IP not set")
+		return 1
+	}
+
+	backendLoadBalancerIP, err := envvar.GetAddress("SERVER_BACKEND_IP", nil)
+	if err != nil {
+		core.Error("invalid SERVER_BACKEND_IP: %v", err)
+		return 1
+	}
 
 	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
 	if maxmindCityFile == "" {
@@ -397,6 +408,107 @@ func mainReturnWithCode() int {
 					routeMatrixMutex.Unlock()
 				case <-ctx.Done():
 					return
+				}
+			}
+		}()
+	}
+
+	// function to get magic values under mutex
+
+	var magicUpcoming [8]byte
+	var magicCurrent [8]byte
+	var magicPrevious [8]byte
+
+	var magicMutex sync.RWMutex
+
+	getMagicValues := func() ([8]byte, [8]byte, [8]byte) {
+		magicMutex.RLock()
+		upcoming := magicUpcoming
+		current := magicCurrent
+		previous := magicPrevious
+		magicMutex.RUnlock()
+		return upcoming, current, previous
+	}
+
+	// Sync magic values
+	{
+		magicURI := envvar.Get("MAGIC_URI", "")
+		if magicURI == "" {
+			core.Error("MAGIC_URI not set")
+			return 1
+		}
+		magicPollFrequency, err := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
+		if err != nil {
+			core.Error("invalid MAGIC_POLL_FREQUENCY: %v", err)
+			return 1
+		}
+
+		readTimeout, err := envvar.GetDuration("MAGIC_READ_DURATION", 5*time.Second)
+		if err != nil {
+			core.Error("invaild ROUTE_MATRIX_READ_DURATION: %v", err)
+			return 1
+		}
+
+		go func() {
+			httpClient := &http.Client{
+				Timeout: readTimeout,
+			}
+
+			var cachedCombinedMagic []byte
+
+			magicTicker := time.NewTicker(magicPollFrequency)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-magicTicker.C:
+					var magicReader io.ReadCloser
+
+					if r, err := httpClient.Get(magicURI); err == nil {
+						magicReader = r.Body
+					}
+
+					if magicReader == nil {
+						core.Error("failed to get magic values: %v", err)
+						backendMetrics.ErrorMetrics.MagicReaderNil.Add(1)
+						continue
+					}
+
+					buffer, err := ioutil.ReadAll(magicReader)
+					magicReader.Close()
+					if err != nil {
+						core.Error("failed to read magic data: %v", err)
+						backendMetrics.ErrorMetrics.MagicReadFailure.Add(1)
+						continue
+					}
+
+					if len(buffer) == 0 {
+						core.Error("magic data buffer is empty")
+						backendMetrics.ErrorMetrics.MagicBufferEmpty.Add(1)
+						continue
+					}
+
+					if len(buffer) != 24 {
+						core.Error("expected combined magic to be 24 bytes, got %d", len(buffer))
+						backendMetrics.ErrorMetrics.MagicUnexpectedLengthError.Add(1)
+						continue
+					}
+
+					if bytes.Equal(cachedCombinedMagic, buffer) {
+						// Magic values are the same
+						continue
+					}
+
+					magicMutex.Lock()
+					copy(magicUpcoming[:], buffer[0:8])
+					copy(magicCurrent[:], buffer[8:16])
+					copy(magicPrevious[:], buffer[16:24])
+					magicMutex.Unlock()
+
+					cachedCombinedMagic = buffer
+
+					core.Debug("refreshed magic values")
+					backendMetrics.RefreshedMagicValues.Add(1)
 				}
 			}
 		}()
@@ -669,7 +781,7 @@ func mainReturnWithCode() int {
 
 	// Setup the status handler info
 
-	statusData := &metrics.ServerBackendStatus{}
+	statusData := &metrics.ServerBackend5Status{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -684,7 +796,7 @@ func mainReturnWithCode() int {
 				backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				newStatusData := &metrics.ServerBackendStatus{}
+				newStatusData := &metrics.ServerBackend5Status{}
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
@@ -798,6 +910,9 @@ func mainReturnWithCode() int {
 				newStatusData.RouteMatrixNumRoutes = int(backendMetrics.RouteMatrixNumRoutes.Value())
 				newStatusData.RouteMatrixBytes = int(backendMetrics.RouteMatrixBytes.Value())
 
+				// Magic Metrics
+				newStatusData.RefreshedMagicValues = int(backendMetrics.RefreshedMagicValues.Value())
+
 				// Error Metrics
 				newStatusData.RouteMatrixReaderNil = int(backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
 				newStatusData.RouteMatrixReadFailure = int(backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Value())
@@ -806,6 +921,10 @@ func mainReturnWithCode() int {
 				newStatusData.BinWrapperEmpty = int(backendMetrics.ErrorMetrics.BinWrapperEmpty.Value())
 				newStatusData.BinWrapperFailure = int(backendMetrics.ErrorMetrics.BinWrapperFailure.Value())
 				newStatusData.StaleRouteMatrix = int(backendMetrics.ErrorMetrics.StaleRouteMatrix.Value())
+				newStatusData.MagicReaderNil = int(backendMetrics.ErrorMetrics.MagicReaderNil.Value())
+				newStatusData.MagicReadFailure = int(backendMetrics.ErrorMetrics.MagicReadFailure.Value())
+				newStatusData.MagicBufferEmpty = int(backendMetrics.ErrorMetrics.MagicBufferEmpty.Value())
+				newStatusData.MagicUnexpectedLengthError = int(backendMetrics.ErrorMetrics.MagicUnexpectedLengthError.Value())
 
 				statusMutex.Lock()
 				statusData = newStatusData
@@ -950,10 +1069,10 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
-	matchDataHandler := transport.MatchDataHandlerFunc(getDatabase, postSessionHandler, backendMetrics.MatchDataHandlerMetrics)
+	serverInitHandler := transport.ServerInitHandlerSDK5Func(getDatabase, getMagicValues, serverTracker, backendLoadBalancerIP, privateKey, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerSDK5Func(getDatabase, getMagicValues, postSessionHandler, serverTracker, backendLoadBalancerIP, privateKey, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerSDK5Func(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, getMagicValues, backendLoadBalancerIP, privateKey, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	matchDataHandler := transport.MatchDataHandlerSDK5Func(getDatabase, getMagicValues, postSessionHandler, backendLoadBalancerIP, privateKey, backendMetrics.MatchDataHandlerMetrics)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -989,35 +1108,52 @@ func mainReturnWithCode() int {
 
 				data = data[:size]
 
-				// Check the packet hash is legit and remove the hash from the beginning of the packet
-				// to continue processing the packet as normal
-				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+				if !core.BasicPacketFilter(data, size) {
 					continue
 				}
 
+				{
+					to := backendLoadBalancerIP
+
+					// TODO: eventually server <-> server backend communications will use non-empty magic for
+					// packet types besides server init
+					var emptyMagic [8]byte
+
+					var fromAddressBuffer [32]byte
+					var toAddressBuffer [32]byte
+
+					fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
+					toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+					if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+						continue
+					}
+				}
+
+				/*
+					We do not strip the packet type, chonkle, and pittle from the packet data
+					before handing off to the handlers since those are required for sodium to
+					properly verify the signature check.
+				*/
+
 				packetType := data[0]
-				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
 				packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 				switch packetType {
-				case transport.PacketTypeServerInitRequest:
+				case transport.PacketTypeServerInitRequestSDK5:
 					serverInitHandler(&buffer, &packet)
-				case transport.PacketTypeServerUpdate:
+				case transport.PacketTypeServerUpdateSDK5:
 					serverUpdateHandler(&buffer, &packet)
-				case transport.PacketTypeSessionUpdate:
+				case transport.PacketTypeSessionUpdateSDK5:
 					sessionUpdateHandler(&buffer, &packet)
-				case transport.PacketTypeMatchDataRequest:
+				case transport.PacketTypeMatchDataRequestSDK5:
 					matchDataHandler(&buffer, &packet)
 				}
 
 				if buffer.Len() > 0 {
 					response := buffer.Bytes()
-
-					// Sign and hash the response
-					response = crypto.SignPacket(privateKey, response)
-					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						core.Error("failed to write udp response packet: %v", err)
