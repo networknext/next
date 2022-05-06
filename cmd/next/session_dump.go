@@ -840,7 +840,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"Timestamp",
 		"SessionID",
 		"SliceNumber",
-		"DirectMinRTT",
+		"DirectRTT",
 		"DirectMaxRTT",
 		"DirectPrimeRTT",
 		"DirectJitter",
@@ -921,7 +921,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		// SliceNumber
 		sliceNumber := fmt.Sprintf("%d", billingEntry.SliceNumber)
 		// DirectMinRTT
-		directMinRTT := fmt.Sprintf("%d", billingEntry.DirectMinRTT)
+		directRTT := fmt.Sprintf("%d", billingEntry.DirectRTT)
 		// DirectMaxRTT
 		directMaxRTT := ""
 		if billingEntry.DirectMaxRTT.Valid {
@@ -1280,7 +1280,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 			timestamp,
 			sessionID,
 			sliceNumber,
-			directMinRTT,
+			directRTT,
 			directMaxRTT,
 			directPrimeRTT,
 			directJitter,
@@ -1384,6 +1384,8 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	sessionID,
 	sliceNumber,
 	directRTT,
+	directMaxRTT,
+	directPrimeRTT,
 	directJitter,
 	directPacketLoss,
 	realPacketLoss,

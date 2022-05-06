@@ -1,8 +1,10 @@
 package test
 
 import (
+	"net"
 	"testing"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 )
@@ -28,4 +30,16 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 
 func (env *TestEnvironment) GetDatabaseWrapper() *routing.DatabaseBinWrapper {
 	return env.DatabaseWrapper
+}
+
+func (env *TestEnvironment) GetMagicValues() ([8]byte, [8]byte, [8]byte) {
+	var upcoming [8]byte
+	var current [8]byte
+	var previous [8]byte
+
+	return upcoming, current, previous
+}
+
+func (env *TestEnvironment) GetBackendLoadBalancerIP() *net.UDPAddr {
+	return core.ParseAddress("127.0.0.1:40000")
 }
