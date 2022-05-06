@@ -55,7 +55,9 @@ func getCustomerInfo(env Environment, id string) {
 
 	customerInfo := "Customer " + reply.Customer.Name + " info:\n"
 	customerInfo += "  Code         : " + reply.Customer.Code + "\n"
-	customerInfo += "  Name         : " + reply.Customer.Name + "\n\n"
+	customerInfo += "  Name         : " + reply.Customer.Name + "\n"
+	customerInfo += "  TOS Signer   : " + reply.Customer.BuyerTOSSignerEmail + "\n"
+	customerInfo += "  TOS Time     : " + reply.Customer.BuyerTOSSignedTimestamp + "\n\n"
 	customerInfo += "  Automatic Sign-In Domains:\n"
 	if reply.Customer.AutomaticSignInDomains == "" {
 		customerInfo += "\tnone"
