@@ -1478,20 +1478,7 @@ func (s *BuyersService) SignedBuyerTOS(r *http.Request, args *SignedTOSArgs, rep
 		return err
 	}
 
-	if args.FirstName == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "FirstName"
-		core.Error("SignedTOS(): %v: FirstName is required", err.Error())
-		return &err
-	}
-
-	if args.LastName == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "LastName"
-		core.Error("SignedTOS(): %v: LastName is required", err.Error())
-		return &err
-	}
-
+	// Email is required
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
@@ -1499,29 +1486,31 @@ func (s *BuyersService) SignedBuyerTOS(r *http.Request, args *SignedTOSArgs, rep
 		return &err
 	}
 
-	err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerFirstName", args.FirstName)
-	if err != nil {
-		core.Error("SignedTOS(): failed to update signer first name: %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
+	// Some legacy users may not have a first or last name added to their account so these have to be optional
+	if args.FirstName != "" {
+		err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerFirstName", args.FirstName)
+		if err != nil {
+			core.Error("SignedTOS(): failed to update signer first name: %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
 	}
 
-	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerLastName", args.LastName)
-	if err != nil {
-		core.Error("SignedTOS(): failed to update signer last name: %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
+	if args.LastName != "" {
+		if err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerLastName", args.LastName); err != nil {
+			core.Error("SignedTOS(): failed to update signer last name: %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
 	}
 
-	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerEmail", args.Email)
-	if err != nil {
+	if err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerEmail", args.Email); err != nil {
 		core.Error("SignedTOS(): failed to update signer email: %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
-	err = s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerTimestamp", time.Now().UTC().String())
-	if err != nil {
+	if err := s.Storage.UpdateCustomer(ctx, customerCode, "TOSSignerTimestamp", time.Now().UTC().String()); err != nil {
 		core.Error("SignedTOS(): failed to update signed timestamp %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
