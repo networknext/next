@@ -306,47 +306,41 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 		return LookerSession{}, err
 	}
 
-	fmt.Println(len(querySessionMeta))
-
-	fmt.Printf("\n%+v\n\n", querySessionMeta[0])
-	fmt.Printf("%+v\n\n", querySessionMeta[1])
-
-	/*
-		for _, meta := range querySessionMeta {
-			nearRelayID, err := meta.NearRelayIDs.Int64()
-			if err != nil {
-				continue
-			}
-
-			nearRelayRTT, err := meta.NearRelayRTTs.Float64()
-			if err != nil {
-				continue
-			}
-
-			nearRelayJitter, err := meta.NearRelayJitters.Float64()
-			if err != nil {
-				continue
-			}
-
-			nearRelayPacketLoss, err := meta.NearRelayPacketLosses.Float64()
-			if err != nil {
-				continue
-			}
-
-			nearRelays = append(nearRelays, LookerNearRelay{
-				ID:     nearRelayID,
-				RTT:    nearRelayRTT,
-				Jitter: nearRelayJitter,
-				PL:     nearRelayPacketLoss,
-			})
+	for _, meta := range querySessionMeta {
+		nearRelayID, err := meta.NearRelayIDs.Int64()
+		if err != nil {
+			continue
 		}
-	*/
+
+		nearRelayRTT, err := meta.NearRelayRTTs.Float64()
+		if err != nil {
+			continue
+		}
+
+		nearRelayJitter, err := meta.NearRelayJitters.Float64()
+		if err != nil {
+			continue
+		}
+
+		nearRelayPacketLoss, err := meta.NearRelayPacketLosses.Float64()
+		if err != nil {
+			continue
+		}
+
+		nearRelays = append(nearRelays, LookerNearRelay{
+			ID:     nearRelayID,
+			RTT:    nearRelayRTT,
+			Jitter: nearRelayJitter,
+			PL:     nearRelayPacketLoss,
+		})
+	}
 
 	return LookerSession{
 		Meta:       querySessionMeta[0],
 		NearRelays: nearRelays,
 		Slices:     querySessionSlices,
 	}, nil
+
 }
 
 func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
