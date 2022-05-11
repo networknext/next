@@ -157,7 +157,7 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 		}
 	}
 
-	runnable := exec.Command("gsutil", "cp", artifactName, outputLocation)
+	runnable := exec.CommandContext(ctx, "gsutil", "cp", artifactName, outputLocation)
 	buffer, err := runnable.CombinedOutput()
 
 	if err != nil {
