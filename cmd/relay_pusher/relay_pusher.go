@@ -133,6 +133,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	binFileGCPTimeout, err := envvar.GetDuration("BIN_FILE_GCP_TIMEOUT", time.Second*5)
+	if err != nil {
+		core.Error("failed to parse BIN_FILE_GCP_TIMEOUT: %v", err)
+		return 1
+	}
+
 	remoteDBLocations := make([]string, 0)
 
 	relayBackendNames := envvar.GetList("RELAY_BACKEND_INSTANCE_NAMES", []string{})
@@ -608,6 +614,9 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	// Create error channel to error out from any goroutines
+	errChan := make(chan error, 1)
+
 	// Database binary sync goroutine
 	dbTicker := time.NewTicker(dbSyncInterval)
 	wg.Add(1)
@@ -617,45 +626,70 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-dbTicker.C:
-				start := time.Now()
+				// Use anonymous function to allow for defers to complete
+				func() {
+					start := time.Now()
 
-				// Store the known list of instance names
-				databaseInstanceNames := remoteDBLocations
+					defer func() {
+						updateTime := time.Since(start)
+						duration := float64(updateTime.Milliseconds())
+						relayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration.Set(duration)
+					}()
 
-				// The names of instances in a MIG can change, so get them each time
-				relayGatewayMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, relayGatewayMIGName)
-				if err != nil {
-					core.Error("failed to fetch relay gateway mig instance names: %v", err)
-				} else {
-					// Add the gateway mig instance names to the list
-					databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
-				}
+					// Store the known list of instance names
+					databaseInstanceNames := remoteDBLocations
 
-				// Do the overlay.bin first. Relay backends pull in these changes only when database.bin changes
-				if err := gcpStorage.CopyFromBucketToRemote(ctx, overlayBinFileName, databaseInstanceNames, overlayBinFileOutputLocation); err != nil {
-					core.Error("failed to copy overlay bin file to overlay locations: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure.Add(1)
-					// Don't continue here, need to record update duration
-				}
+					// The names of instances in a MIG can change, so get them each time
+					relayGatewayMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, relayGatewayMIGName)
+					if err != nil {
+						core.Error("failed to fetch relay gateway mig instance names: %v", err)
+					} else {
+						// Add the gateway mig instance names to the list
+						databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
+					}
 
-				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
-					core.Error("failed to copy database bin file to database locations: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Add(1)
-					// Don't continue here, need to record update duration
-				}
+					// Use specific context to let service restart if it takes too long for overlay.bin to be pulled from cloud storage
+					gcpOverlayCtx, gcpOverlayCancel := context.WithTimeout(ctx, binFileGCPTimeout)
+					defer gcpOverlayCancel()
 
-				updateTime := time.Since(start)
-				duration := float64(updateTime.Milliseconds())
-				relayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration.Set(duration)
+					// Do the overlay.bin first. Relay backends pull in these changes only when database.bin changes
+					if err := gcpStorage.CopyFromBucketToRemote(gcpOverlayCtx, overlayBinFileName, databaseInstanceNames, overlayBinFileOutputLocation); err != nil {
+						core.Error("failed to copy overlay bin file to overlay locations: %v", err)
 
+						switch err {
+						case context.DeadlineExceeded:
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.BinFilePullTimeoutError.Add(1)
+							errChan <- err
+							return
+						default:
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure.Add(1)
+							// Don't error out here, need to proceed to next step
+						}
+					}
+
+					// Use specific context to let service restart if it takes too long for database.bin to be pulled from cloud storage
+					gcpDBCtx, gcpDBCancel := context.WithTimeout(ctx, binFileGCPTimeout)
+					defer gcpDBCancel()
+
+					if err := gcpStorage.CopyFromBucketToRemote(gcpDBCtx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
+						core.Error("failed to copy database bin file to database locations: %v", err)
+
+						switch err {
+						case context.DeadlineExceeded:
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.BinFilePullTimeoutError.Add(1)
+							errChan <- err
+							return
+						default:
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Add(1)
+							// Don't need to return here since end of operations and defers will execute
+						}
+					}
+				}()
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-
-	// Create error channel to error out from any goroutines
-	errChan := make(chan error, 1)
 
 	// Setup the status handler info
 	statusData := &metrics.RelayPusherStatus{}
