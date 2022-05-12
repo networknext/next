@@ -27,8 +27,8 @@ const getters = {
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
-  hasAnalytics: (state: any, getters: any) => (state.userProfile.hasAnalytics || getters.isAdmin),
-  hasBilling: (state: any, getters: any) => (state.userProfile.hasBilling || getters.isAdmin),
+  hasAnalytics: (state: any, getters: any) => ((state.userProfile.hasAnalytics && getters.isExplorer) || getters.isAdmin),
+  hasBilling: (state: any, getters: any) => ((state.userProfile.hasBilling && getters.isExplorer) || getters.isAdmin),
   hasTrial: (state: any) => state.userProfile.hasTrial,
   isSeller: (state: any, getters: any) => (state.userProfile.seller || getters.isAdmin),
   userProfile: (state: any) => state.userProfile,
@@ -75,13 +75,13 @@ const actions = {
     }
     return Promise.all(promises)
       .then((responses: any) => {
-        let allBuyers = []
+        let allBuyers: Array<any> = []
         const userProfile = cloneDeep(state.userProfile)
         if (getters.registeredToCompany) {
-          allBuyers = responses[2].buyers
-          userProfile.pubKey = responses[1].game_config.public_key
+          allBuyers = responses[2].buyers || []
+          userProfile.pubKey = responses[1].game_config.public_key || ''
         } else {
-          allBuyers = responses[1].buyers
+          allBuyers = responses[1].buyers || []
         }
 
         const userInformation = responses[0].account
@@ -97,6 +97,7 @@ const actions = {
         userProfile.hasAnalytics = userInformation.analytics || false
         userProfile.hasBilling = userInformation.billing || false
         userProfile.hasTrial = userInformation.trial || true
+        userProfile.signedTOS = userInformation.signed_tos || false
         userProfile.domains = responses[0].domains || []
 
         dispatch('updateUserProfile', userProfile)
@@ -119,6 +120,13 @@ const actions = {
           dateRange: DateFilterType.LAST_7
         }
         dispatch('updateCurrentFilter', defaultFilter)
+
+        if (getters.isAdmin) {
+          const isDemo = Vue.$cookies.get('isDemo')
+          if (isDemo) {
+            dispatch('toggleIsDemo', true)
+          }
+        }
 
         const query = window.location.search
         if (query.includes(EMAIL_VERIFICATION_URL)) {

@@ -1,23 +1,30 @@
 <template>
-  <div class="card-body">
-    <h5 class="card-title">
-      Analytic Dashboards (Beta)
-    </h5>
-    <p class="card-text">
-      Currated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.
-    </p>
-    <div class="card" v-if="tabs.length > 0">
-      <div class="card-body">
-        <div class="row border-bottom mb-3">
-          <ul>
-            <li :class="{ 'blue-accent': tabIndex === selectedTabIndex }" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex)">
-              <a>{{ tab }}</a>
-            </li>
-          </ul>
+  <div class="card" style="margin-bottom: 250px;" v-if="tabs.length > 0">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs">
+        <li class="nav-item" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex, false)">
+          <a class="nav-link" :class="{ active: selectedTabIndex === tabIndex }">{{ tab }}</a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body" v-if="!subTabs[tabs[selectedTabIndex]]">
+      <div v-for="(dashboard, dashIndex) in tabDashboards" :key="dashIndex">
+        <div class="row">
+          <LookerEmbed :dashURL="dashboard" dashID="previewDash" />
         </div>
-        <div class="row" v-for="(url, urlIndex) in urls" :key="urlIndex">
-          <Alert ref="failureAlert"/>
-          <LookerEmbed :dashURL="url" dashID="analyticsDash" />
+      </div>
+    </div>
+    <div class="card-body" v-if="subTabs[tabs[selectedTabIndex]]">
+      <div class="row border-bottom mb-3">
+        <ul class="sub-ul">
+          <li class="sub-li" :class="{ 'blue-accent': subTabIndex === selectedSubTabIndex }" v-for="(subTab, subTabIndex) in subTabs[tabs[selectedTabIndex]]" :key="subTabIndex" @click="selectTab(subTabIndex, true)">
+            <a class="sub-link">{{ subTab }}</a>
+          </li>
+        </ul>
+      </div>
+      <div v-for="(dashboard, dashIndex) in tabDashboards" :key="dashIndex">
+        <div class="row">
+          <LookerEmbed :dashURL="dashboard" dashID="previewDash" />
         </div>
       </div>
     </div>
@@ -44,30 +51,39 @@ export default class Analytics extends Vue {
   }
 
   private unwatchFilter: any
+  private currentTab: string
+  private currentSubTab: string
   private dashboards: any
-  private domain: string
+  private selectedSubTabIndex: number
   private selectedTabIndex: number
-  private tabs: Array<string>
-  private urls: Array<string>
+  private tabs: Array<any>
+  private tabDashboards: Array<any>
+  private subTabs: any
 
   constructor () {
     super()
-    this.domain = window.location.origin
+    this.currentTab = ''
+    this.currentSubTab = ''
+    this.dashboards = {}
+    this.selectedSubTabIndex = -1
     this.selectedTabIndex = -1
     this.tabs = []
-    this.urls = []
+    this.tabDashboards = []
+    this.subTabs = {}
   }
 
   private mounted () {
-    // This is only necessary for admins - when the filter changes, grab the new analytics URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchAnalyticsDashboards()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      // This is only necessary for admins - when the filter changes, grab the new analytics URL
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchAnalyticsDashboards()
+        }
+      )
+    }
 
     this.fetchAnalyticsDashboards()
   }
@@ -79,33 +95,45 @@ export default class Analytics extends Vue {
   }
 
   private fetchAnalyticsDashboards () {
+    const customerCode = this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     this.$apiService.fetchAnalyticsDashboards({
-      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      customer_code: customerCode
     })
       .then((response: any) => {
-        this.dashboards = response.dashboards || []
-        if (this.dashboards.length === 0) {
-          return
+        this.dashboards = response.dashboards || {}
+        this.tabs = response.tabs || []
+        this.subTabs = response.sub_tabs || {}
+
+        if (this.currentTab === '') {
+          this.selectedTabIndex = 0
+          this.selectedSubTabIndex = 0
+        } else {
+          const tabIndex = this.tabs.indexOf(this.currentTab)
+          this.selectedTabIndex = tabIndex > 0 ? tabIndex : 0
         }
-        this.tabs = Object.keys(this.dashboards)
-        this.tabs.sort((a: any, b: any) => {
-          if (a === 'General') {
-            return -1
+
+        this.currentTab = this.tabs[this.selectedTabIndex]
+
+        const subTabs = this.subTabs[this.currentTab]
+
+        if (subTabs) {
+          const firstSubTab = subTabs[this.selectedSubTabIndex]
+          if (this.currentSubTab === '') {
+            this.tabDashboards = this.dashboards[`${this.currentTab}/${firstSubTab}`]
+          } else {
+            const subTabDashboards: Array<any> = this.dashboards[this.currentSubTab]
+            if (!subTabDashboards) {
+              this.currentSubTab = `${this.currentTab}/${firstSubTab}`
+            }
+
+            this.tabDashboards = this.dashboards[this.currentSubTab]
+
+            const tabIndex = subTabs.indexOf(this.currentSubTab)
+            this.selectedSubTabIndex = tabIndex > 0 ? tabIndex : 0
           }
-
-          if (b === 'General') {
-            return 1
-          }
-
-          if (a === b) {
-            return 0
-          }
-
-          return a < b ? -1 : 1
-        })
-
-        this.selectedTabIndex = 0
-        this.urls = this.dashboards[this.tabs[0]]
+        } else {
+          this.tabDashboards = this.dashboards[this.currentTab]
+        }
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -115,29 +143,46 @@ export default class Analytics extends Vue {
       })
   }
 
-  private selectTab (index: number) {
-    if (index === this.selectedTabIndex) {
+  private selectTab (index: number, isSubTab: boolean) {
+    if (isSubTab ? index === this.selectedSubTabIndex : index === this.selectedTabIndex) {
       return
     }
-    this.selectedTabIndex = index
+
+    if (isSubTab) {
+      this.selectedSubTabIndex = index
+    } else {
+      this.selectedTabIndex = index
+      this.selectedSubTabIndex = 0
+    }
 
     // TODO: This is a bit wasteful because we are making multiple URLs when we only need the one specific to the selected tab. Make a refresh endpoint that will just reload the tab
     this.$apiService.fetchAnalyticsDashboards({
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.dashboards = response.dashboards || []
-        this.urls = this.dashboards[this.tabs[index]]
+        this.dashboards = response.dashboards || {}
+        this.tabs = response.tabs || []
+        this.subTabs = response.sub_tabs || {}
+
+        // If a tab is deleted in the admin tool before this tab switch, the selectedIndex could be greater than the number of new tabs
+        if (this.selectedTabIndex > this.tabs.length) {
+          this.selectedTabIndex = 0
+        }
+
+        this.currentTab = this.tabs[this.selectedTabIndex]
+        const subTabs = this.subTabs[this.currentTab]
+
+        if (subTabs) {
+          const firstSubTab = subTabs[this.selectedSubTabIndex]
+          this.currentSubTab = `${this.currentTab}/${firstSubTab}`
+          this.tabDashboards = this.dashboards[this.currentSubTab]
+        } else {
+          this.tabDashboards = this.dashboards[this.currentTab]
+        }
       })
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
         console.log(error)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong fetching analytics dashboards')
-        console.log(error)
-        this.$refs.failureAlert.setMessage('Failed to fetch analytics dashboards. Please refresh the page')
-        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 }
@@ -145,7 +190,11 @@ export default class Analytics extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  ul {
+  .nav-link {
+    cursor: pointer;
+  }
+
+  .sub-ul {
     list-style-type: none;
     margin-left: 1rem;
     margin-bottom: 0;
@@ -155,11 +204,11 @@ export default class Analytics extends Vue {
     overflow: hidden;
   }
 
-  li {
+  .sub-li {
     float: left;
   }
 
-  li:hover {
+  .sub-li:hover {
     border-top: 1px solid transparent;
     border-left: 1px solid transparent;
     border-right: 1px solid transparent;
@@ -168,7 +217,7 @@ export default class Analytics extends Vue {
     border-color: #e9ecef #e9ecef #dee2e6;
   }
 
-  li a {
+  .sub-link {
     display: block;
     text-align: center;
     padding: 16px;
@@ -176,6 +225,7 @@ export default class Analytics extends Vue {
     padding-bottom: 4px;
     text-decoration: none;
     cursor: pointer;
+    color: black;
   }
 
   .blue-accent {

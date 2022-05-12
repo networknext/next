@@ -29,43 +29,191 @@
               @click="downloadSDK()"
               class="btn btn-primary m-1 btn-width white-link"
             >
-              <font-awesome-icon icon="download"
-                                  class="fa-w-16 fa-fw"
-              />
-              SDK v4.0.16
+              <div class="row">
+                <div class="col">
+                  SDK v4.20
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="download"
+                                      class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
             </a>
             <a
-              id="ue4-button"
-              @click="downloadUE4()"
+              id="sdk-button"
+              @click="viewSDKSource()"
               class="btn btn-primary m-1 btn-width white-link"
             >
-              <font-awesome-icon icon="download"
-                                  class="fa-w-16 fa-fw"
-              />
-              UE4 Plugin
+              <div class="row">
+                <div class="col">
+                  Github Source
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="code"
+                                      class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
             </a>
             <a
               id="docs-button"
               @click="downloadDocs()"
               class="btn btn-primary m-1 btn-width white-link"
             >
-              <font-awesome-icon icon="download"
-                                  class="fa-w-16 fa-fw"
-              />
-              Documentation
+              <div class="row">
+                <div class="col">
+                  Documentation
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="book"
+                                      class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
             </a>
           </div>
         </div>
         <h5 class="card-title">
             Network Next SDK
         </h5>
+        <div style="font-size: 90%;">For console source please email support@networknext.com.</div>
       </div>
       <hr />
       <div class="card-body">
         <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
+            <a
+              id="ue4-plugin-button"
+              @click="downloadUE4Plugin()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Plugin Download
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="download"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+            <a
+              id="ue4-source-button"
+              @click="viewUE4Source()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Github Source
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="code"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <h5>
+          Unreal Engine Support
+        </h5>
+        <div style="font-size: 90%;">Download the official Network Next Unreal Engine Plugin. Source, and usage instructions are available through Github.</div>
+      </div>
+      <hr />
+      <div class="card-body">
+        <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
+            <a
+              id="unity-plugin-button"
+              @click="downloadUnityPlugin()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Plugin Download
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="download"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+            <a
+              id="unity-source-button"
+              @click="viewUnitySource()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Github Source
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="code"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <h5>
+          Unity Support
+        </h5>
+        <div style="font-size: 90%;">Download the official Network Next Unity Plugin. Source, examples and a traditional / UNET implementation are available through Github.</div>
+      </div>
+      <hr />
+      <div class="card-body">
+        <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="unitySupport" data-tour="unitySupport">
+            <a
+              id="enet-button"
+              @click="downloadEnet()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  ENet Support
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="download"
+                                      class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+            <a
+              id="unity-source-button"
+              @click="viewENetSource()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <div class="row">
+                <div class="col">
+                  Github Source
+                </div>
+                <div class="col-auto">
+                  <font-awesome-icon icon="code"
+                                    class="fa-w-16 fa-fw"
+                  />
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <h5>
+          ENet Support
+        </h5>
+        <div style="font-size: 90%;">Download the official Network Next ENet implementation. Source and usage examples are available through Github.</div>
+      </div>
+      <hr v-if="false" />
+      <div class="card-body" v-if="false">
+        <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
-              id="2021-white-paper-button"
+              id="white-paper-button"
               @click="download2022WhitePaper()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -77,9 +225,9 @@
           </div>
         </div>
         <h5>
-          State of the Internet for Real-Time Games 2022 Report <br />
+          State of the Internet for Real-Time Games 2022 Whitepaper <br />
         </h5>
-        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
+        <div style="font-size: 90%;">Analysis of over 10 million unique players identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
     </div>
   </div>
@@ -87,13 +235,25 @@
 
 <script lang="ts">
 import {
+  ENET_DOWNLOAD_EVENT,
+  ENET_DOWNLOAD_URL,
+  ENET_SOURCE_EVENT,
+  ENET_SOURCE_URL,
   IMPORTANT_CLICKS_CATEGORY,
   SDK_DOCUMENTATION_EVENT,
   SDK_DOCUMENTATION_URL,
   SDK_DOWNLOAD_EVENT,
   SDK_DOWNLOAD_URL,
+  SDK_SOURCE_EVENT,
+  SDK_SOURCE_URL,
   UE4_PLUGIN_DOWNLOAD_EVENT,
   UE4_PLUGIN_DOWNLOAD_URL,
+  UE4_PLUGIN_SOURCE_EVENT,
+  UE4_PLUGIN_SOURCE_URL,
+  UNITY_PLUGIN_DOWNLOAD_EVENT,
+  UNITY_PLUGIN_DOWNLOAD_URL,
+  UNITY_PLUGIN_SOURCE_EVENT,
+  UNITY_PLUGIN_SOURCE_URL,
   WHITE_PAPER_DOWNLOAD_EVENT,
   WHITE_PAPER_DOWNLOAD_URL
 } from '@/components/types/Constants'
@@ -127,7 +287,8 @@ export default class DownloadsWorkspace extends Vue {
         params: {
           placement: 'left'
         }
-      },
+      }
+      /* TODO: Add this back in when the white paper is ready
       {
         target: '[data-tour="dataReports"]',
         header: {
@@ -138,6 +299,7 @@ export default class DownloadsWorkspace extends Vue {
           placement: 'left'
         }
       }
+      */
     ]
 
     this.downloadsTourOptions = {
@@ -181,6 +343,20 @@ export default class DownloadsWorkspace extends Vue {
     })
   }
 
+  private viewSDKSource () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(SDK_SOURCE_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(SDK_SOURCE_URL)
+    this.$apiService.sendSDKSourceViewSlackNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
   private downloadDocs () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event(SDK_DOCUMENTATION_EVENT, {
@@ -195,14 +371,84 @@ export default class DownloadsWorkspace extends Vue {
     })
   }
 
-  private downloadUE4 () {
+  private downloadUnityPlugin () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(UNITY_PLUGIN_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(UNITY_PLUGIN_DOWNLOAD_URL)
+    this.$apiService.sendUnityDownloadNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private viewUnitySource () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(UNITY_PLUGIN_SOURCE_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(UNITY_PLUGIN_SOURCE_URL)
+    this.$apiService.sendUnitySourceViewNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private downloadUE4Plugin () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event(UE4_PLUGIN_DOWNLOAD_EVENT, {
         event_category: IMPORTANT_CLICKS_CATEGORY
       })
     }
     window.open(UE4_PLUGIN_DOWNLOAD_URL)
-    this.$apiService.sendUE4DownloadNotifications({
+    this.$apiService.sendUE4DownloadNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private viewUE4Source () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(UE4_PLUGIN_SOURCE_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(UE4_PLUGIN_SOURCE_URL)
+    this.$apiService.sendUE4SourceViewNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private downloadEnet () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(ENET_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(ENET_DOWNLOAD_URL)
+    this.$apiService.sendENetDownloadNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private viewENetSource () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(ENET_SOURCE_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(ENET_SOURCE_URL)
+    this.$apiService.sendENetSourceViewSlackNotification({
       email: this.$store.getters.userProfile.email,
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode
@@ -216,7 +462,7 @@ export default class DownloadsWorkspace extends Vue {
       })
     }
     window.open(WHITE_PAPER_DOWNLOAD_URL)
-    this.$apiService.send2022WhitePaperDownloadNotifications({
+    this.$apiService.send2022WhitePaperDownloadNotification({
       email: this.$store.getters.userProfile.email,
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode
@@ -230,19 +476,11 @@ export default class DownloadsWorkspace extends Vue {
   .btn-width {
     min-width: 180px;
   }
-  #sdk-button {
+  a {
     border-color: #009FDF;
     background-color: #009FDF;
   }
-  #docs-button {
-    border-color: #009FDF;
-    background-color: #009FDF;
-  }
-  #sdk-button:hover {
-    border-color: rgb(0, 139, 194);
-    background-color: rgb(0, 139, 194);
-  }
-  #docs-button:hover {
+  a:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }

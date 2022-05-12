@@ -7,7 +7,6 @@
       $store.getters.userProfile.companyName !== ''
     ) || $store.getters.isAdmin
     ">
-    <TermsOfServiceModal v-if="showTOS"/>
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">
       Manage how your game connects to Network Next.
@@ -97,27 +96,14 @@ export default class GameConfiguration extends Vue {
       this.pubKey = this.userProfile.pubKey || ''
     }
 
-    // TODO: Make a modal events bus rather than using the root application bus
-    this.$root.$on('showTOSModal', this.showTOSModalCallback)
     this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
   }
 
   private beforeDestroy () {
-    this.$root.$off('showTOSModal')
     this.$root.$off('hideTOSModal')
   }
 
-  private showTOSModalCallback () {
-    if (!this.showTOS) {
-      this.showTOS = true
-    }
-  }
-
   private hideTOSModalCallback (accepted: boolean) {
-    if (this.showTOS) {
-      this.showTOS = false
-    }
-
     if (accepted) {
       this.updatePubKey()
     }
@@ -126,7 +112,7 @@ export default class GameConfiguration extends Vue {
   private checkTOS () {
     if (this.$store.getters.userProfile.buyerID === '') {
       // Launch TOS modal
-      this.showTOS = true
+      this.$root.$emit('showTOSModal')
       return
     }
 
@@ -139,6 +125,22 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then(() => {
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+
+        // Give a Looker seat to the Owner of the account
+        return this.$apiService.updateUserRoles({
+          user_id: this.$store.getters.userProfile.auth0ID,
+          roles: [
+            {
+              name: 'Explorer'
+            },
+            {
+              name: 'Owner'
+            }
+          ]
+        })
+      })
+      .then(() => {
         this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -146,7 +148,7 @@ export default class GameConfiguration extends Vue {
             this.$refs.responseAlert.resetAlert()
           }
         }, 5000)
-        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+
         return this.$authService.refreshToken()
       })
       .catch((error: Error) => {

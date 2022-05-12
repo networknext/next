@@ -13,6 +13,7 @@ import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
 import { FeatureEnum, Flag } from './components/types/FeatureTypes'
 import VueTour from 'vue-tour'
+import VueCookies from 'vue-cookies'
 
 /**
  * Main file responsible for mounting the App component,
@@ -80,6 +81,9 @@ if (useAPI) {
 // Setup vue tour - This handles all of our sign up and new user tours
 require('vue-tour/dist/vue-tour.css')
 Vue.use(VueTour)
+
+// Leverage cookies for persisting across refreshes
+Vue.use(VueCookies)
 
 // Setup up google tag manager for analytics
 const gtagID = process.env.VUE_APP_GTAG_ID || ''

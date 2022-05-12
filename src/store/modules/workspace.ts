@@ -3,6 +3,7 @@
  */
 
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * TODO: Namespace these
@@ -17,6 +18,7 @@ export default {
     },
     finishedTours: [],
     finishedSignUpTours: [],
+    isDemo: false,
     isTour: false,
     isSignUpTour: false,
     killLoops: false,
@@ -26,6 +28,7 @@ export default {
     currentPage: (state: any) => state.currentPage,
     currentFilter: (state: any) => state.filter,
     isTour: (state: any) => state.isTour,
+    isDemo: (state: any) => state.isDemo,
     isSignUpTour: (state: any) => state.isSignUpTour,
     killLoops: (state: any) => state.killLoops,
     finishedTours: (state: any) => state.finishedTours,
@@ -41,6 +44,23 @@ export default {
     },
     toggleIsTour ({ commit }: any, isTour: boolean) {
       commit('TOGGLE_IS_TOUR', isTour)
+    },
+    toggleIsDemo ({ commit, getters }: any, isDemo: boolean) {
+      // If we are in demo mode, swap out the buyer name for their ID
+      if (isDemo) {
+        const allBuyers: Array<any> = getters.allBuyers || []
+        const newBuyerList: Array<any> = []
+        allBuyers.forEach((buyer: any) => {
+          const newBuyerEntry = cloneDeep(buyer)
+          newBuyerEntry.company_name = buyer.alias
+          if (newBuyerEntry.company_name !== '') {
+            newBuyerList.push(newBuyerEntry)
+          }
+        })
+
+        commit('UPDATE_ALL_BUYERS', newBuyerList)
+      }
+      commit('TOGGLE_IS_DEMO', isDemo)
     },
     toggleKillLoops ({ commit }: any, killLoops: boolean) {
       commit('TOGGLE_KILL_LOOPS', killLoops)
@@ -67,6 +87,9 @@ export default {
     },
     UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
       state.filter = newFilter
+    },
+    TOGGLE_IS_DEMO (state: any, isDemo: boolean) {
+      state.isDemo = isDemo
     },
     TOGGLE_IS_TOUR (state: any, isTour: boolean) {
       state.isTour = isTour

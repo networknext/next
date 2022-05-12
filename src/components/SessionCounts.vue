@@ -1,8 +1,8 @@
 <template>
   <div
-    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+    class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
   >
-    <h1 class="count-header" v-if="showCount" data-test="currentPage">
+    <h1 class="count-header" v-if="showCount" data-test="currentPage" style="max-width: 80%;">
       {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
       <span
         class="badge badge-dark"
@@ -13,8 +13,9 @@
         data-test="nnSessions"
       >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
-    <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+    <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="max-width: 50%">
       <Alert ref="sessionCountAlert">
+        <br />
         <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
         </a>
@@ -22,7 +23,7 @@
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <BuyerFilter id="buyer-filter" v-if="$store.getters.isBuyer || $store.getters.isAdmin" />
+      <BuyerFilter v-if="$store.getters.isBuyer || $store.getters.isAdmin" :liveOnly="true" />
     </div>
   </div>
 </template>
@@ -77,6 +78,7 @@ export default class SessionCounts extends Vue {
   private alertToggle: boolean
   private retryCount: number
 
+  private unwatchDemoMode: any
   private unwatchFilter: any
   private unwatchKillLoops: any
 
@@ -109,9 +111,30 @@ export default class SessionCounts extends Vue {
         this.showReloadAlert()
       }
     )
+    this.unwatchDemoMode = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.isDemo
+      },
+      () => {
+        if (this.$store.getters.isDemo) {
+          this.$refs.sessionCountAlert.toggleSlots(false)
+          this.$refs.sessionCountAlert.setMessage('Demo Mode')
+          this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
+        } else {
+          this.$refs.sessionCountAlert.resetAlert()
+        }
+      }
+    )
+
     if (this.$store.getters.isAnonymousPlus) {
       this.$refs.sessionCountAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
       this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+    }
+
+    if (this.$store.getters.isDemo) {
+      this.$refs.sessionCountAlert.toggleSlots(false)
+      this.$refs.sessionCountAlert.setMessage('Demo Mode')
+      this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
     }
 
     this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
@@ -128,6 +151,7 @@ export default class SessionCounts extends Vue {
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
+    this.unwatchDemoMode()
     this.unwatchFilter()
     this.unwatchKillLoops()
     this.$root.$off('failedMapPointLookup')

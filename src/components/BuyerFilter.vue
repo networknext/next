@@ -1,10 +1,12 @@
 <template>
-  <div id="buyer-filter" class="px-2">
-    <select class="form-control" @change="updateFilter($event.target.value)">
-      <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
-        {{ option.name }}
-      </option>
-    </select>
+  <div class="row" id="buyer-filter">
+    <div class="col">
+      <select class="form-control" @change="updateFilter($event.target.value)">
+        <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
+          {{ option.name }}
+        </option>
+      </select>
+    </div>
   </div>
 </template>
 
@@ -23,6 +25,7 @@ export default class BuyerFilter extends Vue {
   @Prop({ default: true }) readonly liveOnly!: boolean
 
   private filterOptions: Array<any>
+  private unwatchBuyerList: any
 
   constructor () {
     super()
@@ -30,6 +33,29 @@ export default class BuyerFilter extends Vue {
   }
 
   private mounted () {
+    if (this.$store.getters.isAdmin) {
+      this.unwatchBuyerList = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.allBuyers
+        },
+        () => {
+          this.setupFilters()
+        }
+      )
+    }
+
+    this.setupFilters()
+  }
+
+  private beforeDestroy () {
+    if (this.$store.getters.isAdmin) {
+      this.unwatchBuyerList()
+    }
+  }
+
+  private setupFilters () {
+    this.filterOptions = []
+
     if (this.includeAll) {
       this.filterOptions.push({
         name: 'All',

@@ -180,6 +180,10 @@ describe('GameConfiguration.vue', () => {
       return Promise.resolve()
     })
 
+    const roleUpdateSpy = jest.spyOn(localVue.prototype.$apiService, 'updateUserRoles').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
     const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
@@ -231,45 +235,15 @@ describe('GameConfiguration.vue', () => {
     // Submit new public key
     await gameConfigButton.trigger('submit')
 
-    const modal = wrapper.find('.modal-container')
-    expect(modal.exists()).toBeTruthy()
+    wrapper.vm.$root.$emit('hideTOSModal', true)
 
-    const modalTitle = modal.find('.card-header')
-    expect(modalTitle.exists()).toBeTruthy()
-    expect(modalTitle.text()).toBe('Monitoring Service Evaluation Terms')
-
-    const modalBody = modal.find('.card-body')
-    expect(modalBody.exists()).toBeTruthy()
-
-    let modalButtons = modal.findAll('.btn')
-    expect(modalButtons.length).toBe(2)
-
-    expect(modalButtons.at(0).text()).toBe('Deny')
-    expect(modalButtons.at(1).text()).toBe('Accept')
-
-    expect(modalButtons.at(0).classes('btn-secondary')).toBeTruthy()
-    expect(modalButtons.at(1).classes('btn-success')).toBeTruthy()
-
-    await modalButtons.at(0).trigger('click')
-
-    // Check to make sure the spy functions were NOT hit
-    expect(updateGameConfigurationSpy).toBeCalledTimes(0)
-    expect(spyPubKeyEntered).toBeCalledTimes(0)
-
-    await gameConfigButton.trigger('submit')
-
-    modalButtons = modal.findAll('.btn')
-    expect(modalButtons.length).toBe(2)
-
-    await modalButtons.at(1).trigger('click')
-
-    // Check to make sure the spy functions were hit
-    expect(updateGameConfigurationSpy).toBeCalledTimes(1)
-    expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(refreshToken).toBeCalledTimes(1)
-
-    // Wait for UI to react
+    // Wait for UI to react - send signature and public key submittion, plus one more for reacting to everything
     await localVue.nextTick()
+    await localVue.nextTick()
+    await localVue.nextTick()
+
+    expect(roleUpdateSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -279,6 +253,7 @@ describe('GameConfiguration.vue', () => {
 
     updateGameConfigurationSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    roleUpdateSpy.mockReset()
     refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
@@ -299,6 +274,10 @@ describe('GameConfiguration.vue', () => {
     })
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const roleUpdateSpy = jest.spyOn(localVue.prototype.$apiService, 'updateUserRoles').mockImplementation(() => {
       return Promise.resolve()
     })
 
@@ -358,10 +337,13 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(refreshToken).toBeCalledTimes(1)
 
     // Wait for UI to react
     await localVue.nextTick()
+    await localVue.nextTick()
+
+    expect(roleUpdateSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -371,6 +353,7 @@ describe('GameConfiguration.vue', () => {
 
     updateGameConfigurationSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    roleUpdateSpy.mockReset()
     refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)

@@ -5,10 +5,9 @@ import store from '@/store'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 import AccountSettings from '@/components/AccountSettings.vue'
-import Analytics from '@/components/Analytics.vue'
-import Discovery from '@/components/Discovery.vue'
+import AnalyticsWorkspace from '@/workspaces/AnalyticsWorkspace.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
-import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
+import SavesWorkspace from '@/workspaces/SavesWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import GetAccessModal from '@/components/GetAccessModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
@@ -18,11 +17,10 @@ import SessionDetails from '@/components/SessionDetails.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
-import Supply from '@/components/Supply.vue'
-import Usage from '@/components/Usage.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
+import UsageWorkspace from '@/workspaces/UsageWorkspace.vue'
 
 Vue.use(VueRouter)
 
@@ -34,37 +32,25 @@ const routes: Array<RouteConfig> = [
     component: DownloadsWorkspace
   },
   {
-    path: '/explore',
-    name: 'explore',
-    component: ExplorationWorkspace,
+    path: '/usage',
+    name: 'usage',
+    component: UsageWorkspace,
     children: [
       {
-        path: 'analytics',
-        name: 'analytics',
-        component: Analytics
-      },
-      {
-        path: 'usage',
-        name: 'usage',
-        component: Usage,
-        children: [
-          {
-            path: '*',
-            name: 'invoice'
-          }
-        ]
-      },
-      {
-        path: 'discovery',
-        name: 'discovery',
-        component: Discovery
-      },
-      {
-        path: 'supply',
-        name: 'supply',
-        component: Supply
+        path: '*',
+        name: 'invoice'
       }
     ]
+  },
+  {
+    path: '/analytics',
+    name: 'analytics',
+    component: AnalyticsWorkspace
+  },
+  {
+    path: '/saves',
+    name: 'saves',
+    component: SavesWorkspace
   },
   {
     path: '/get-access',
@@ -180,10 +166,9 @@ const ViewerRoutes = [
 ]
 
 const ExplorerRoutes = [
-  'explore',
+  'analytics',
   'usage',
-  'invoice',
-  'analytics'
+  'invoice'
 ]
 
 const OwnerRoutes = [
@@ -213,19 +198,31 @@ function checkMapModal (toName: string, fromName: string) {
 }
 
 router.onError(() => {
-  updateCurrentPage('map')
-  router.push('/map')
+  if (router.currentRoute.fullPath !== '/map') {
+    updateCurrentPage('map')
+    router.push('/map')
+  }
 })
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  const toName = to.name || ''
+  let toName = to.name || ''
   const fromName = from.name || ''
+
+  if (to.fullPath === '/') {
+    router.push('/map')
+    return
+  }
+
+  if (to.fullPath === router.currentRoute.fullPath) {
+    return
+  }
 
   if (toName === '404') {
     next(new Error('Route does not exist'))
     return
   }
+
   // Email is verified - catch this event, refresh the user's token and go to the map
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
@@ -243,6 +240,12 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   checkMapModal(toName, fromName)
+
+  if (toName === 'explore') {
+    toName = 'saves'
+    next('/explore/saves')
+    return
+  }
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) !== -1) {

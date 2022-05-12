@@ -8,7 +8,7 @@
           <img class="logo-fit" src="../assets/logo.png" />
         </div>
       </a>
-      <ul class="navbar-nav px-3 w-100 mr-auto">
+      <ul class="navbar-nav mr-auto">
         <li class="nav-item text-nowrap">
           <router-link
             to="/map"
@@ -16,6 +16,17 @@
             :class="{ active: $store.getters.currentPage == 'map' }"
             data-test="mapLink"
           >Map</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/saves"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'saves'
+            }"
+            v-if="false"
+          >Saves</router-link>
         </li>
         <li class="nav-item text-nowrap">
           <router-link
@@ -63,20 +74,6 @@
         </li>
         <li class="nav-item text-nowrap">
           <router-link
-            to="/explore"
-            class="nav-link"
-            :class="{
-              active:
-                $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage === 'invoice' ||
-                $store.getters.currentPage == 'usage' ||
-                $store.getters.currentPage == 'discovery'
-            }"
-            v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
-          >Explore</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-          <router-link
             to="/settings"
             class="nav-link"
             :class="{
@@ -89,9 +86,34 @@
             v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
           >Settings</router-link>
         </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/usage"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'usage' ||
+                $store.getters.currentPage == 'invoice'
+            }"
+            v-if="$store.getters.hasBilling"
+          >Usage</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/analytics"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'analytics'
+            }"
+            v-if="$store.getters.hasAnalytics"
+          >Analytics</router-link>
+        </li>
       </ul>
-      <ul class="navbar-nav px-3 w-100" v-if="portalVersion !== ''">
-        <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item text-nowrap">
+          <a style="cursor: pointer; color: white;" v-if="$store.getters.isAdmin" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</a>
+        </li>
       </ul>
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
@@ -107,7 +129,11 @@
         </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
-        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;">
+        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;"
+          data-toggle="tooltip"
+          data-placement="right"
+          :title="$store.getters.isAdmin ? portalVersion : $store.getters.userProfile.email "
+        >
           {{ $store.getters.userProfile.email || "" }}
         </li>
       </ul>
@@ -192,7 +218,7 @@ export default class NavBar extends Vue {
         header: {
           title: 'Get Access'
         },
-        content: '<strong>Try it for your game for FREE!</strong><br><br> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. Please contact us in <strong>chat</strong> (lower right) if you have any questions.'
+        content: '<strong>Try it for your game for FREE!</strong><br><br> Just create an account and log in to try Network Next: <ul><li>Download the open source SDK and documentation.</li><li>Integrate the SDK into your game.</li></ul> Now you\'re in control of the network. <br /><br /> Please contact info@networknext.com if you have any questions.'
       }
     ]
 
@@ -208,8 +234,8 @@ export default class NavBar extends Vue {
     this.getAccessTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_TOURS', 'get-access')
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Get access tour finished', {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          this.$gtag.event('Get access tour finished', {
             event_category: 'Tours'
           })
         }
@@ -235,8 +261,8 @@ export default class NavBar extends Vue {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloadLink')
 
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Download link tour finished', {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          this.$gtag.event('Download link tour finished', {
             event_category: 'Tours'
           })
         }
@@ -306,6 +332,22 @@ export default class NavBar extends Vue {
 
   private openNotificationsModal () {
     this.$root.$emit('showNotificationsModal')
+  }
+
+  private toggleDemo (isDemo: boolean) {
+    if (!isDemo) {
+      this.$apiService.fetchAllBuyers()
+        .then((response: any) => {
+          const allBuyers = response.buyers || []
+          this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+
+          this.$cookies.remove('isDemo')
+        })
+    } else {
+      this.$cookies.set('isDemo', true)
+    }
+
+    this.$store.dispatch('toggleIsDemo', isDemo)
   }
 }
 </script>

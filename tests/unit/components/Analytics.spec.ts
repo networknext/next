@@ -6,15 +6,19 @@ import { VueConstructor } from 'vue/types/umd'
 import { Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 
-export interface AnalyticsDashboards {
+interface AnalyticsDashboards {
   [tab: string]: Array<string>;
 }
 
-function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, customerCode: string): jest.SpyInstance<any, unknown[]> {
+interface SubCategoryMap {
+  [subTab: string]: any
+}
+
+function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, tabs: Array<string>, subTabs: SubCategoryMap, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsDashboards').mockImplementation((args: any) => {
     expect(args.customer_code).toBe(customerCode)
 
-    return success ? Promise.resolve({ dashboards: dashboards }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
+    return success ? Promise.resolve({ dashboards: dashboards, tabs: tabs, sub_tabs: subTabs }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
   })
 }
 
@@ -53,7 +57,7 @@ describe('Analytics.vue', () => {
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {}, '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {}, [], {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -75,7 +79,8 @@ describe('Analytics.vue', () => {
       General: [
         '127.0.0.1'
       ]
-    }, '')
+    }, ['General'],
+    {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -84,17 +89,17 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(1)
-    expect(tabs.at(0).text()).toBe('General')
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(1)
+    expect(mainTabs.at(0).text()).toBe('General')
 
-    const selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    const activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('General')
 
-    const dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
 
     wrapper.destroy()
 
@@ -108,7 +113,8 @@ describe('Analytics.vue', () => {
         '127.0.0.1',
         '127.0.0.2'
       ]
-    }, '')
+    }, ['General'],
+    {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -117,25 +123,25 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(1)
-    expect(tabs.at(0).text()).toBe('General')
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(1)
+    expect(mainTabs.at(0).text()).toBe('General')
 
-    const selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    const activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('General')
 
-    const dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(2)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
-    expect(dashboards.at(1).attributes('dashurl')).toBe('127.0.0.2')
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(2)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    expect(lookerStubs.at(1).attributes('dashurl')).toBe('127.0.0.2')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('mounts a multiple dashboard categories and one dashboard', async () => {
+  it('mounts multiple dashboard categories and one dashboard each', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
       General: [
@@ -144,7 +150,7 @@ describe('Analytics.vue', () => {
       Platform: [
         '127.0.0.2'
       ]
-    }, '')
+    }, ['General', 'Platform'], {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -153,34 +159,34 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(2)
-    expect(tabs.at(0).text()).toBe('General')
-    expect(tabs.at(1).text()).toBe('Platform')
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('General')
+    expect(mainTabs.at(1).text()).toBe('Platform')
 
-    const selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    const activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('General')
 
-    const dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('mounts a multiple dashboard categories and one dashboard - General not first', async () => {
+  it('mounts multiple dashboard categories and one dashboard each - different order', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      Platform: [
+      General: [
         '127.0.0.1'
       ],
-      General: [
+      Platform: [
         '127.0.0.2'
       ]
-    }, '')
+    }, ['Platform', 'General'], {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -189,18 +195,60 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(2)
-    expect(tabs.at(0).text()).toBe('General')
-    expect(tabs.at(1).text()).toBe('Platform')
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Platform')
+    expect(mainTabs.at(1).text()).toBe('General')
 
-    const selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    const activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('Platform')
 
-    const dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.2')
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.2')
+
+    wrapper.destroy()
+
+    analyticDashSpy.mockReset()
+  })
+
+  it('mounts a multiple dashboard categories and multiple dashboards each', async () => {
+    const store = new Vuex.Store(defaultStore)
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      Platform: [
+        '127.0.0.1',
+        '127.0.0.2',
+        '127.0.0.3'
+      ],
+      General: [
+        '127.0.0.4',
+        '127.0.0.5',
+        '127.0.0.6'
+      ]
+    }, ['Platform', 'General'], {}, '')
+
+    const wrapper = shallowMount(Analytics, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(1)
+
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Platform')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    const activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('Platform')
+
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(3)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    expect(lookerStubs.at(1).attributes('dashurl')).toBe('127.0.0.2')
+    expect(lookerStubs.at(2).attributes('dashurl')).toBe('127.0.0.3')
 
     wrapper.destroy()
 
@@ -210,13 +258,17 @@ describe('Analytics.vue', () => {
   it('check tab switching', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      General: [
-        '127.0.0.1'
-      ],
       Platform: [
-        '127.0.0.2'
+        '127.0.0.1',
+        '127.0.0.2',
+        '127.0.0.3'
+      ],
+      General: [
+        '127.0.0.4',
+        '127.0.0.5',
+        '127.0.0.6'
       ]
-    }, '')
+    }, ['Platform', 'General'], {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -225,46 +277,61 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(2)
-    expect(tabs.at(0).text()).toBe('General')
-    expect(tabs.at(1).text()).toBe('Platform')
+    let mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Platform')
+    expect(mainTabs.at(1).text()).toBe('General')
 
-    let selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    let activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('Platform')
 
-    let dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    let lookerStubs = wrapper.findAll('lookerembed-stub')
 
-    await tabs.at(1).trigger('click')
+    expect(lookerStubs.length).toBe(3)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    expect(lookerStubs.at(1).attributes('dashurl')).toBe('127.0.0.2')
+    expect(lookerStubs.at(2).attributes('dashurl')).toBe('127.0.0.3')
+
+    await mainTabs.at(1).trigger('click')
 
     await localVue.nextTick()
 
-    selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('Platform')
+    expect(analyticDashSpy).toBeCalledTimes(2)
 
-    dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.2')
+    mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Platform')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    activeTab = wrapper.find('.active')
+    expect(activeTab.text()).toBe('General')
+
+    lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(3)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.4')
+    expect(lookerStubs.at(1).attributes('dashurl')).toBe('127.0.0.5')
+    expect(lookerStubs.at(2).attributes('dashurl')).toBe('127.0.0.6')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('mounts a multiple dashboard categories and multiple dashboards', async () => {
+  it('mounts a single category with two sub categories and one dashboard per category', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      General: [
+      'Retention/Latency': [
         '127.0.0.1',
-        '127.0.0.2'
       ],
-      Platform: [
-        '127.0.0.3',
-        '127.0.0.4'
+      'Retention/Region': [
+        '127.0.0.2'
+      ]
+    }, ['Retention'],
+    {
+      Retention: [
+        'Latency',
+        'Region'
       ]
     }, '')
 
@@ -275,19 +342,241 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const tabs = wrapper.findAll('li')
-    expect(tabs.length).toBe(2)
-    expect(tabs.at(0).text()).toBe('General')
-    expect(tabs.at(1).text()).toBe('Platform')
+    const mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(1)
+    expect(mainTabs.at(0).text()).toBe('Retention')
 
-    const selectedTab = wrapper.findAll('.blue-accent')
-    expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    const activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
 
-    const dashboards = wrapper.findAll('lookerembed-stub')
-    expect(dashboards.length).toBe(2)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
-    expect(dashboards.at(1).attributes('dashurl')).toBe('127.0.0.2')
+    const subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    const activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Latency')
+
+    const lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+
+    wrapper.destroy()
+
+    analyticDashSpy.mockReset()
+  })
+
+  it('checks switching between sub tabs', async () => {
+    const store = new Vuex.Store(defaultStore)
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'Retention/Latency': [
+        '127.0.0.1',
+      ],
+      'Retention/Region': [
+        '127.0.0.2'
+      ]
+    }, ['Retention'],
+    {
+      Retention: [
+        'Latency',
+        'Region'
+      ]
+    }, '')
+
+    const wrapper = shallowMount(Analytics, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(1)
+
+    let mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(1)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+
+    let activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
+
+    let subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    let activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Latency')
+
+    let lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+
+    await subTabs.at(1).trigger('click')
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(2)
+
+    mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(1)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+
+    activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
+
+    subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Region')
+
+    lookerStubs = wrapper.findAll('lookerembed-stub')
+
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.2')
+
+    wrapper.destroy()
+
+    analyticDashSpy.mockReset()
+  })
+
+  it('checks switching between sub tabs with other main tabs present', async () => {
+    const store = new Vuex.Store(defaultStore)
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      General: [
+        '127.0.0.3'
+      ],
+      'Retention/Latency': [
+        '127.0.0.1',
+      ],
+      'Retention/Region': [
+        '127.0.0.2'
+      ]
+    }, ['Retention', 'General'],
+    {
+      Retention: [
+        'Latency',
+        'Region'
+      ]
+    }, '')
+
+    const wrapper = shallowMount(Analytics, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(1)
+
+    let mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    let activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
+
+    let subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    let activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Latency')
+
+    let lookerStubs = wrapper.findAll('lookerembed-stub')
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+
+    await mainTabs.at(1).trigger('click')
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(2)
+
+    mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('General')
+
+    subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(0)
+
+    activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeFalsy()
+
+    lookerStubs = wrapper.findAll('lookerembed-stub')
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.3')
+
+    await mainTabs.at(0).trigger('click')
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(3)
+
+    mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
+
+    subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Latency')
+
+    lookerStubs = wrapper.findAll('lookerembed-stub')
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.1')
+
+    await subTabs.at(1).trigger('click')
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(4)
+
+    mainTabs = wrapper.findAll('.nav-link')
+    expect(mainTabs.length).toBe(2)
+    expect(mainTabs.at(0).text()).toBe('Retention')
+    expect(mainTabs.at(1).text()).toBe('General')
+
+    activeMainTab = wrapper.find('.active')
+    expect(activeMainTab.exists()).toBeTruthy()
+    expect(activeMainTab.text()).toBe('Retention')
+
+    subTabs = wrapper.findAll('.sub-li')
+    expect(subTabs.length).toBe(2)
+    expect(subTabs.at(0).text()).toBe('Latency')
+    expect(subTabs.at(1).text()).toBe('Region')
+
+    activeSubTab = wrapper.find('.blue-accent')
+    expect(activeSubTab.exists()).toBeTruthy()
+    expect(activeSubTab.text()).toBe('Region')
+
+    lookerStubs = wrapper.findAll('lookerembed-stub')
+    expect(lookerStubs.length).toBe(1)
+    expect(lookerStubs.at(0).attributes('dashurl')).toBe('127.0.0.2')
 
     wrapper.destroy()
 
