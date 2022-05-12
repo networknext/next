@@ -141,7 +141,6 @@ export default class UserSessions extends Vue {
     this.currentPage = 0
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
-      console.log('mounted, fetching sessions')
       this.fetchUserSessions()
     }
   }
@@ -169,7 +168,6 @@ export default class UserSessions extends Vue {
   }
 
   private reloadSessions () {
-    console.log('In reload sessions.....')
     this.currentPage = 0
     this.showSessions = false
     this.sessions = []
@@ -177,13 +175,16 @@ export default class UserSessions extends Vue {
   }
 
   private fetchUserSessions () {
-    console.log(this.searchID)
     if (this.searchID === '') {
       return
     }
-    console.log('Refreshing sessions....')
 
-    this.$apiService.fetchUserSessions({ user_id: this.searchID, page: this.currentPage, timeframe: this.$store.getters.currentFilter.dateRange })
+    this.$apiService.fetchUserSessions({
+      user_id: this.searchID,
+      page: this.currentPage,
+      timeframe: this.$store.getters.currentFilter.dateRange,
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+    })
       .then((response: any) => {
         this.sessions = this.sessions.concat(response.sessions)
         this.currentPage = response.page

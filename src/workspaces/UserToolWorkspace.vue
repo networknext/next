@@ -16,6 +16,10 @@
       <h1 class="h2">
         User Tool
       </h1>
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
+        <div class="mr-auto"></div>
+        <BuyerFilter id="buyer-filter" v-if="$store.getters.isAdmin" />
+      </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
       <div class="form-group">
@@ -55,6 +59,7 @@ import { NavigationGuardNext, Route } from 'vue-router'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import LookerDateFilter from '@/components/LookerDateFilter.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -67,6 +72,7 @@ import LookerDateFilter from '@/components/LookerDateFilter.vue'
 @Component({
   components: {
     Alert,
+    BuyerFilter,
     LookerDateFilter,
     UserSessions
   }
