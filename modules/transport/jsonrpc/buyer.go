@@ -138,9 +138,10 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserID    string `json:"user_id"`
-	Page      int    `json:"page"`
-	Timeframe string `json:"timeframe"`
+	UserID       string `json:"user_id"`
+	Page         int    `json:"page"`
+	Timeframe    string `json:"timeframe"`
+	CustomerCode string `json:"customer_code"`
 }
 
 type UserSessionsReply struct {
@@ -159,6 +160,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		core.Error("%v", err)
 		return err
 	}
+
+	isAdmin := middleware.VerifyAnyRole(r, middleware.AdminRole)
+
 	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
@@ -231,7 +235,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 						session.Anonymise()
-					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 						// Don't show sessions where the company code does not match the request's
 						continue
 					}
@@ -248,7 +252,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	if s.UseBigtable {
+	if s.UseBigtable && !isAdmin {
 		var rowsByHash []bigtable.Row
 		var rowsByID []bigtable.Row
 		var rowsByHexID []bigtable.Row
@@ -331,9 +335,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		reply.Page = MaxBigTableDays // TODO: Change the name of this
 	}
 
-	if s.UseLooker {
+	if s.UseLooker || isAdmin {
 		// TODO: Add date picker to user tool and add support for multiple userID types (hash, hex, ID)
-		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe)
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe, args.CustomerCode)
 		if err != nil {
 			core.Error("UserSessions(): %v:", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -3162,8 +3166,9 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 }
 
 type TestLookerUserSessionLookupArgs struct {
-	UserID    string `json:"user_id"`
-	Timeframe string `json:"time_frame"`
+	UserID       string `json:"user_id"`
+	Timeframe    string `json:"time_frame"`
+	CustomerCode string `json:"customer_code"`
 }
 type TestLookerUserSessionLookupReply struct {
 	Sessions []UserSession `json:"sessions"`
@@ -3202,7 +3207,7 @@ func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestL
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe)
+	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe, args.CustomerCode)
 	if err != nil {
 		core.Error("TestLookerUserSessionLookup(): %v:", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]

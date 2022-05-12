@@ -343,7 +343,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 
 }
 
-func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
+func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string, customerCode string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
 	querySessions := make([]LookerSessionMeta, 0)
 
 	queryTimeFrame := timeFrame
@@ -377,38 +377,43 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 	// Add the timeframe to optimize query
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
-	filterUserIDs := ""
+	filterExpression := ""
 
 	// Build User ID filter - User could pass in something that hasn't been hashed yet or isn't in hex so we have to handle those cases
 	if userID != "" {
 		uintID64, err := strconv.ParseUint(userID, 16, 64)
 		if err == nil {
-			filterUserIDs = fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+			filterExpression = fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
 		}
 	}
 
 	if userIDHex != "" {
 		uintID64, err := strconv.ParseUint(userIDHex, 16, 64)
 		if err == nil {
-			if filterUserIDs != "" {
-				filterUserIDs = filterUserIDs + " OR "
+			if filterExpression != "" {
+				filterExpression = filterExpression + " OR "
 			}
-			filterUserIDs = filterUserIDs + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+			filterExpression = filterExpression + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
 		}
 	}
 
 	if userIDHash != "" {
 		uintID64, err := strconv.ParseUint(userIDHash, 16, 64)
 		if err == nil {
-			if filterUserIDs != "" {
-				filterUserIDs = filterUserIDs + " OR "
+			if filterExpression != "" {
+				filterExpression = filterExpression + " OR "
 			}
-			filterUserIDs = filterUserIDs + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+			filterExpression = filterExpression + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
 		}
 	}
 
+	if customerCode != "" {
+		filterExpression = "(" + filterExpression + ")"
+		filterExpression = filterExpression + " AND " + fmt.Sprintf("${datacenter_info_v3.customer_code} = \"%s\"", customerCode)
+	}
+
 	// If none of the passed in user IDs work, return no sessions
-	if filterUserIDs == "" {
+	if filterExpression == "" {
 		return querySessions, nil
 	}
 
@@ -417,7 +422,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 		View:             LOOKER_SESSION_SUMMARY_VIEW,
 		Fields:           &requiredFields,
 		Filters:          &requiredFilters,
-		FilterExpression: &filterUserIDs,
+		FilterExpression: &filterExpression,
 		Sorts:            &sorts,
 	}
 
