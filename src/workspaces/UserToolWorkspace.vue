@@ -34,7 +34,7 @@
                     v-model="searchID"
             >
           </div>
-          <div class="col-auto" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)">
+          <div class="col-auto" v-if="$store.getters.isAdmin">
             <LookerDateFilter />
           </div>
           <div class="col-auto">

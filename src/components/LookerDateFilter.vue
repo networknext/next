@@ -10,7 +10,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { DateFilterType, Filter } from '@/components/types/FilterTypes'
+import { DateFilterType, Filter, LookerDateFilterOption } from '@/components/types/FilterTypes'
 
 /**
  * This component is a reusable filter component
@@ -19,7 +19,7 @@ import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 
 @Component
 export default class LookerDateFilter extends Vue {
-  private filterOptions: Array<any>
+  private filterOptions: Array<LookerDateFilterOption>
 
   constructor () {
     super()
@@ -31,24 +31,34 @@ export default class LookerDateFilter extends Vue {
       {
         name: 'Last 7 Days',
         value: DateFilterType.LAST_7
-      },
-      {
-        name: 'Last 14 Days',
-        value: DateFilterType.LAST_14
-      },
-      {
-        name: 'Last 30 Days',
-        value: DateFilterType.LAST_30
-      },
-      {
-        name: 'Last 60 Days',
-        value: DateFilterType.LAST_60
-      },
-      {
-        name: 'Last 90 Days',
-        value: DateFilterType.LAST_90
       }
     ]
+
+    if (!(this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus)) {
+      this.filterOptions = this.filterOptions.concat([
+        {
+          name: 'Last 14 Days',
+          value: DateFilterType.LAST_14
+        },
+        {
+          name: 'Last 30 Days',
+          value: DateFilterType.LAST_30
+        }
+      ])
+
+      if (this.$store.getters.hasAnalytics) {
+        this.filterOptions = this.filterOptions.concat([
+          {
+            name: 'Last 60 Days',
+            value: DateFilterType.LAST_60
+          },
+          {
+            name: 'Last 90 Days',
+            value: DateFilterType.LAST_90
+          }
+        ])
+      }
+    }
   }
 
   // TODO: Figure out best way to offer custom date range

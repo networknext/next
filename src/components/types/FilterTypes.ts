@@ -9,6 +9,11 @@ export enum DateFilterType {
   LAST_90 = '90 days'
 }
 
+export interface LookerDateFilterOption {
+  name: string;
+  value: DateFilterType;
+}
+
 export interface Filter {
   companyCode: string;
   dateRange: DateFilterType;
