@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.0"
+    #define NEXT_VERSION_FULL                              "4.20.1"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                0
+    #define NEXT_VERSION_PATCH_INT                                1
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -352,8 +352,6 @@ NEXT_EXPORT_FUNC void next_server_destroy( struct next_server_t * server );
 NEXT_EXPORT_FUNC uint16_t next_server_port( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC struct next_address_t next_server_address( struct next_server_t * server );
-
-NEXT_EXPORT_FUNC int next_server_state( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_update( struct next_server_t * server );
 
