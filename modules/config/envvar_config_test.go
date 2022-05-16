@@ -43,13 +43,5 @@ func TestConfigInterface(t *testing.T) {
 		assert.Equal(t, featureConfig.AllFeatures()[0].Description, "Bigtable integration for historic session data with override")
 		assert.Equal(t, featureConfig.AllFeatures()[0].Value, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
 		assert.True(t, featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE))
-
-		// check vanity
-		assert.Equal(t, featureConfig.AllFeatures()[3].Name, "FEATURE_VANITY_METRIC")
-		assert.Equal(t, featureConfig.AllFeatures()[3].Enum, config.FEATURE_VANITY_METRIC)
-		assert.Equal(t, featureConfig.AllFeatures()[3].Value, false)
-		assert.Equal(t, featureConfig.AllFeatures()[3].Description, "Vanity metrics for fast aggregate statistic lookup")
-		assert.Equal(t, featureConfig.AllFeatures()[3].Value, featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC))
-		assert.False(t, featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC))
 	})
 }

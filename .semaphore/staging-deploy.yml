@@ -44,14 +44,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-staging
             - make publish-analytics-artifacts-staging
-        - name: API
-          commands:
-            - make build-api-artifacts-staging
-            - make publish-api-artifacts-staging
-        - name: Vanity
-          commands:
-            - make build-vanity-artifacts-staging
-            - make publish-vanity-artifacts-staging
         - name: Portal
           commands:
             - make build-portal-artifacts-staging
@@ -80,6 +72,10 @@ blocks:
           commands:
             - make build-server-backend4-artifacts-staging
             - make publish-server-backend4-artifacts-staging
+        - name: Server Backend 5
+          commands:
+            - make build-server-backend5-artifacts-staging
+            - make publish-server-backend5-artifacts-staging
         - name: Fake Relays
           commands:
             - make build-fake-relays-artifacts-staging
@@ -104,5 +100,17 @@ blocks:
           commands:
             - make build-pingdom-artifacts-staging
             - make publish-pingdom-artifacts-staging
+        - name: Match Data
+          commands:
+            - make build-match-data-artifacts-staging
+            - make publish-match-data-artifacts-staging
+        - name: Magic Backend
+          commands:
+            - make build-magic-backend-artifacts-staging
+            - make publish-magic-backend-artifacts-staging
+        - name: Magic Frontend
+          commands:
+            - make build-magic-frontend-artifacts-staging
+            - make publish-magic-frontend-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging

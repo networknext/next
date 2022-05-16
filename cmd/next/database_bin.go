@@ -181,7 +181,6 @@ func createStagingDatabaseBin(numRelays int) {
 
 	buyerGhostArmy := routing.Buyer{
 		CompanyCode:    "ghost-army",
-		ShortName:      "ghost-army",
 		ID:             uint64(0),
 		HexID:          "0000000000000000",
 		Live:           true,
@@ -200,7 +199,6 @@ func createStagingDatabaseBin(numRelays int) {
 
 	buyerNext := routing.Buyer{
 		CompanyCode:    "next",
-		ShortName:      "next",
 		ID:             uint64(13672574147039585173),
 		HexID:          "bdbebdbf0f7be395",
 		Live:           true,
@@ -220,7 +218,6 @@ func createStagingDatabaseBin(numRelays int) {
 
 	buyerStagingSeller := routing.Buyer{
 		CompanyCode:    "stagingseller",
-		ShortName:      "stagingseller",
 		ID:             uint64(13053258624167246632),
 		HexID:          "b5267d8f3ecafb28",
 		Live:           true,
@@ -555,15 +552,15 @@ func checkBuyersInBinFile() {
 
 	// print a list
 	sort.SliceStable(buyers, func(i, j int) bool {
-		return buyers[i].ShortName < buyers[j].ShortName
+		return buyers[i].CompanyCode < buyers[j].CompanyCode
 	})
 
 	fmt.Println("Buyers:")
-	fmt.Printf("\t%-25s %-16s  %-5s\n", "ShortName", "ID", "Live")
+	fmt.Printf("\t%-25s %-16s  %-5s\n", "CompanyCode", "ID", "Live")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 50))
 	for _, buyer := range buyers {
 		id := strings.ToUpper(fmt.Sprintf("%016x", buyer.ID))
-		fmt.Printf("\t%-25s %016s %5t\n", buyer.ShortName, id, buyer.Live)
+		fmt.Printf("\t%-25s %016s %5t\n", buyer.CompanyCode, id, buyer.Live)
 	}
 	fmt.Println()
 }
@@ -587,7 +584,7 @@ func checkDCMapsInBinFile() {
 
 	for buyerID, buyer := range incomingDB.BuyerMap {
 		if dcMaps, ok := incomingDB.DatacenterMaps[buyerID]; ok {
-			fmt.Printf("\t%s:\n", buyer.ShortName)
+			fmt.Printf("\t%s:\n", buyer.CompanyCode)
 			fmt.Printf("\t\t%-25s %-16s\n", "Datacenter", "Alias")
 			fmt.Printf("\t\t%s\n", strings.Repeat("-", 50))
 			for _, dcMap := range dcMaps {

@@ -45,14 +45,11 @@ export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVq
 export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
 export NEXT_HOSTNAME = 127.0.0.1
 export NEXT_PORT = 40000
-export NEXT_BEACON_ADDRESS = 127.0.0.1:35000
 export NEXT_DEBUG_LOGS=1
 
 ####################
 ##    RELAY ENV   ##
 ####################
-
-export RELAY_BINARY_NAME = relay-2.0.6
 
 ifndef RELAY_BACKEND_HOSTNAME
 export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30002
@@ -68,10 +65,6 @@ endif
 
 ifndef RELAY_FORWARDER
 export RELAY_FORWARDER =
-endif
-
-ifndef MONDAY_API_KEY
-export MONDAY_API_KEY = eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjExNDIwOTg2NCwidWlkIjoxMzkwNDcyNSwiaWFkIjoiMjAyMS0wNi0xOFQxNjoyODo0MS44ODRaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTAyNzE4MCwicmduIjoidXNlMSJ9.0lFdTkvvUL1qFyWSQmgIehQZ_9nlEgrDHwKUQ9qQL24
 endif
 
 ifndef RELAY_ADDRESS
@@ -103,6 +96,14 @@ endif
 
 ifndef SERVER_BACKEND_PRIVATE_KEY
 export SERVER_BACKEND_PRIVATE_KEY = FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+endif
+
+ifndef SERVER_BACKEND_IP
+export SERVER_BACKEND_IP = 127.0.0.1:40000
+endif
+
+ifndef MAGIC_URI
+export MAGIC_URI = http://127.0.0.1:41008/magic
 endif
 
 ## Relay routing keys are used to ENCRYPT and SIGN route tokens sent to a relay
@@ -225,6 +226,18 @@ ifndef BILLING_ENTRY_VETO
 export BILLING_ENTRY_VETO = true
 endif
 
+ifndef MATCH_DATA_BATCHED_MESSAGE_COUNT
+export MATCH_DATA_BATCHED_MESSAGE_COUNT = 1
+endif
+
+ifndef MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES
+export MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES = 100
+endif
+
+ifndef MATCH_DATA_ENTRY_VETO
+export MATCH_DATA_ENTRY_VETO = true
+endif
+
 ifndef POST_SESSION_THREAD_COUNT
 export POST_SESSION_THREAD_COUNT = 100
 endif
@@ -276,14 +289,6 @@ endif
 
 ifndef BIGTABLE_HISTORICAL_TXT
 export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
-endif
-
-ifndef FEATURE_VANITY_METRIC
-export FEATURE_VANITY_METRIC = false
-endif
-
-ifndef BEACON_ENTRY_VETO
-export BEACON_ENTRY_VETO = false
 endif
 
 ## New Relay Backend
@@ -347,8 +352,12 @@ dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 	@PORT=30005 ./dist/relay_frontend
 
 .PHONY: dev-server-backend4
-dev-server-backend4: build-server-backend4 ## runs a local server backend
+dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
+
+.PHONY: dev-server-backend5
+dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend5
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -357,6 +366,14 @@ dev-relay: build-reference-relay  ## runs a local relay
 .PHONY: dev-relays
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
+
+.PHONY: dev-magic-backend
+dev-magic-backend: build-magic-backend ## runs a local magic backend
+	@PORT=41007 ./dist/magic_backend
+
+.PHONY: dev-magic-frontend
+dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
+	@PORT=41008 ./dist/magic_frontend
 
 ##############################################
 
@@ -372,6 +389,12 @@ build-client4: build-sdk4
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-test4
+build-test4: build-sdk4
+	@printf "Building test 4... "
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test4 ./sdk4/test.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: build-server5
 build-server5: build-sdk5
 	@printf "Building server 5... "
@@ -384,43 +407,41 @@ build-client5: build-sdk5
 	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/client5 ./cmd/client5/client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
+.PHONY: build-test5
+build-test5: build-sdk5
+	@printf "Building test 5... "
+	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/test5 ./sdk5/test.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: dev-client4
-dev-client4: build-client4  ## runs a local client
+dev-client4: build-client4  ## runs a local client (sdk4)
 	@./scripts/client-spawner4.sh -n 1
 
 .PHONY: dev-clients4
-dev-clients4: build-client4  ## runs 10 local clients
+dev-clients4: build-client4  ## runs 10 local clients (sdk4)
 	@./scripts/client-spawner4.sh -n 10
 
 .PHONY: dev-server4
-dev-server4: build-sdk4 build-server4  ## runs a local server
+dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 	@./dist/server4
 
 .PHONY: dev-client5
-dev-client5: build-client5  ## runs a local client
+dev-client5: build-client5  ## runs a local client (sdk5)
 	@./scripts/client-spawner5.sh -n 1
 
 .PHONY: dev-clients5
-dev-clients5: build-client5  ## runs 10 local clients
+dev-clients5: build-client5  ## runs 10 local clients (sdk5)
 	@./scripts/client-spawner5.sh -n 10
 
 .PHONY: dev-server5
-dev-server5: build-sdk5 build-server5  ## runs a local server
+dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
 	@./dist/server5
 
 ##########################################
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 API_URI=localhost:41003 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 VANITY_URI=localhost:41005 ./dist/portal
-
-.PHONY: dev-beacon
-dev-beacon: build-beacon ## runs a local beacon
-	@HTTP_PORT=35000 UDP_PORT=35000 ./dist/beacon
-
-.PHONY: dev-beacon-inserter
-dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
-	@PORT=35001 ./dist/beacon_inserter
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 ./dist/portal
 
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
@@ -429,6 +450,10 @@ dev-billing: build-billing ## runs a local billing service
 .PHONY: dev-analytics-pusher
 dev-analytics-pusher: build-analytics-pusher ## runs a local analytics pusher service
 	@PORT=41002 ./dist/analytics_pusher
+
+.PHONY: dev-match-data
+dev-match-data: build-match-data ## runs a local match data service
+	@PORT=41003 ./dist/match_data
 
 .PHONY: dev-analytics
 dev-analytics: build-analytics ## runs a local analytics service
@@ -442,14 +467,6 @@ dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
 dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
-.PHONY: dev-api
-dev-api: build-api ## runs a local api endpoint service
-	@PORT=41003 ENABLE_STACKDRIVER_METRICS=true ./dist/api
-
-.PHONY: dev-vanity
-dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
-	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
-
 .PHONY: dev-pingdom
 dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
 	@PORT=41006 ./dist/pingdom
@@ -459,8 +476,20 @@ dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
 #####################
 
 .PHONY: test
-test: clean ## runs unit tests
+test: clean ## runs backend unit tests
 	@./scripts/test-unit-backend.sh
+
+.PHONY: test-sdk4
+test-sdk4: dist build-test4 ## runs sdk4 unit tests
+	$(DIST_DIR)/test4
+
+.PHONY: test-sdk5
+test-sdk5: dist build-test5 ## runs sdk5 unit tests
+	$(DIST_DIR)/test5
+
+.PHONY: test-relay
+test-relay: dist build-reference-relay ## runs relay unit tests
+	$(DIST_DIR)/reference_relay test
 
 .PHONY: build-analytics
 build-analytics: dist
@@ -535,7 +564,7 @@ run-test-func4:
 	printf "\ndone\n\n"
 
 .PHONY: test-func4
-test-func4: build-test-func4 run-test-func4 ## runs functional tests
+test-func4: build-test-func4 run-test-func4 ## runs functional tests (sdk4)
 
 .PHONY: build-test-func4-parallel
 build-test-func4-parallel: dist
@@ -546,7 +575,7 @@ run-test-func4-parallel:
 	@./scripts/test-func4-parallel.sh
 
 .PHONY: test-func4-parallel
-test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel
+test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel (sdk4)
 
 #######################
 
@@ -587,16 +616,16 @@ run-test-func5:
 	printf "\ndone\n\n"
 
 .PHONY: test-func5
-test-func5: build-test-func5 run-test-func5 ## runs functional tests
+test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 
 #######################
 
 .PHONY: dev-reference-backend4
-dev-reference-backend4: ## runs a local reference backend4
+dev-reference-backend4: ## runs a local reference backend (sdk4)
 	$(GO) run reference/backend4/backend4.go
 
 .PHONY: dev-reference-backend5
-dev-reference-backend5: ## runs a local reference backend4
+dev-reference-backend5: ## runs a local reference backend (sdk5)
 	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
@@ -615,7 +644,7 @@ $(DIST_DIR)/$(SDKNAME4).so: dist
 
 $(DIST_DIR)/$(SDKNAME5).so: dist
 	@printf "Building sdk5... "
-	@$(CXX) $(CXX_FLAGS) -fPIC -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -fPIC  -DNEXT_COMPILE_WITH_TESTS=1 -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk4
@@ -640,22 +669,16 @@ build-portal:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: build-beacon
-build-beacon:
-	@printf "Building beacon..."
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
-	@printf "done\n"
-
-.PHONY: build-beacon-inserter
-build-beacon-inserter:
-	@printf "Building beacon inserter..."
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
-	@printf "done\n"
-
 .PHONY: build-server-backend4
 build-server-backend4:
 	@printf "Building server backend 4... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@printf "done\n"
+
+.PHONY: build-server-backend5
+build-server-backend5:
+	@printf "Building server backend 5... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -670,27 +693,33 @@ build-analytics-pusher:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
-.PHONY: build-api
-build-api: dist
-	@printf "Building api... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/api ./cmd/api/api.go
+.PHONY: build-magic-backend
+build-magic-backend:
+	@printf "Building magic backend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
 	@printf "done\n"
 
-.PHONY: build-vanity
-build-vanity: dist
-	@printf "Building vanity metrics ..."
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
+.PHONY: build-magic-frontend
+build-magic-frontend:
+	@printf "Building magic frontend... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_frontend ./cmd/magic_frontend/magic_frontend.go
+	@printf "done\n"
+
+.PHONY: build-match-data
+build-match-data:
+	@printf "Building match data... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/match_data ./cmd/match_data/match_data.go
 	@printf "done\n"
 
 .PHONY: build-fake-server
 build-fake-server: dist
-	@printf "Building fake server..."
+	@printf "Building fake server... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
 .PHONY: build-pingdom
 build-pingdom: dist
-	@printf "Building pingdom..."
+	@printf "Building pingdom... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
@@ -698,11 +727,6 @@ build-pingdom: dist
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
-
-.PHONY: deploy-vanity-dev
-deploy-vanity-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t vanity -n vanity -b gs://development_artifacts
-	./deploy/deploy.sh -e dev -c dev-2 -t vanity -n vanity -b gs://development_artifacts
 
 .PHONY: deploy-analytics-pusher-dev
 deploy-analytics-pusher-dev:
@@ -719,13 +743,6 @@ deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
-.PHONY: deploy-vanity-staging
-deploy-vanity-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t vanity -n vanity -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-2 -t vanity -n vanity -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-3 -t vanity -n vanity -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-4 -t vanity -n vanity -b gs://staging_artifacts
-
 .PHONY: deploy-analytics-pusher-staging
 deploy-analytics-pusher-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
@@ -740,13 +757,6 @@ deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-
-.PHONY: deploy-vanity-prod
-deploy-vanity-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t vanity -n vanity -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-3 -t vanity -n vanity -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-4 -t vanity -n vanity -b gs://prod_artifacts
 
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
@@ -772,14 +782,6 @@ build-load-test-client-artifacts: build-load-test-client
 build-billing-artifacts-dev: build-billing
 	./deploy/build-artifacts.sh -e dev -s billing
 
-.PHONY: build-beacon-artifacts-dev
-build-beacon-artifacts-dev: build-beacon
-	./deploy/build-artifacts.sh -e dev -s beacon
-
-.PHONY: build-beacon-inserter-artifacts-dev
-build-beacon-inserter-artifacts-dev: build-beacon-inserter
-	./deploy/build-artifacts.sh -e dev -s beacon_inserter
-
 .PHONY: build-analytics-pusher-artifacts-dev
 build-analytics-pusher-artifacts-dev: build-analytics-pusher
 	./deploy/build-artifacts.sh -e dev -s analytics_pusher
@@ -788,13 +790,17 @@ build-analytics-pusher-artifacts-dev: build-analytics-pusher
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
-.PHONY: build-api-artifacts-dev
-build-api-artifacts-dev: build-api
-	./deploy/build-artifacts.sh -e dev -s api
+.PHONY: build-magic-backend-artifacts-dev
+build-magic-backend-artifacts-dev: build-magic-backend
+	./deploy/build-artifacts.sh -e dev -s magic_backend
 
-.PHONY: build-vanity-artifacts-dev
-build-vanity-artifacts-dev: build-vanity
-	./deploy/build-artifacts.sh -e dev -s vanity
+.PHONY: build-magic-frontend-artifacts-dev
+build-magic-frontend-artifacts-dev: build-magic-frontend
+	./deploy/build-artifacts.sh -e dev -s magic_frontend
+
+.PHONY: build-match-data-artifacts-dev
+build-match-data-artifacts-dev: build-match-data
+	./deploy/build-artifacts.sh -e dev -s match_data
 
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
@@ -820,17 +826,13 @@ build-portal-cruncher-artifacts-dev: build-portal-cruncher
 build-server-backend4-artifacts-dev: build-server-backend4
 	./deploy/build-artifacts.sh -e dev -s server_backend4
 
+.PHONY: build-server-backend5-artifacts-dev
+build-server-backend5-artifacts-dev: build-server-backend5
+	./deploy/build-artifacts.sh -e dev -s server_backend5
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
-
-.PHONY: build-beacon-artifacts-staging
-build-beacon-artifacts-staging: build-beacon
-	./deploy/build-artifacts.sh -e staging -s beacon
-
-.PHONY: build-beacon-inserter-artifacts-staging
-build-beacon-inserter-artifacts-staging: build-beacon-inserter
-	./deploy/build-artifacts.sh -e staging -s beacon_inserter
 
 .PHONY: build-analytics-pusher-artifacts-staging
 build-analytics-pusher-artifacts-staging: build-analytics-pusher
@@ -840,13 +842,17 @@ build-analytics-pusher-artifacts-staging: build-analytics-pusher
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
 
-.PHONY: build-api-artifacts-staging
-build-api-artifacts-staging: build-api
-	./deploy/build-artifacts.sh -e staging -s api
+.PHONY: build-magic-backend-artifacts-staging
+build-magic-backend-artifacts-staging: build-magic-backend
+	./deploy/build-artifacts.sh -e staging -s magic_backend
 
-.PHONY: build-vanity-artifacts-staging
-build-vanity-artifacts-staging: build-vanity
-	./deploy/build-artifacts.sh -e staging -s vanity
+.PHONY: build-magic-frontend-artifacts-staging
+build-magic-frontend-artifacts-staging: build-magic-frontend
+	./deploy/build-artifacts.sh -e staging -s magic_frontend
+
+.PHONY: build-match-data-artifacts-staging
+build-match-data-artifacts-staging: build-match-data
+	./deploy/build-artifacts.sh -e staging -s match_data
 
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
@@ -868,6 +874,10 @@ build-portal-cruncher-artifacts-staging: build-portal-cruncher
 build-server-backend4-artifacts-staging: build-server-backend4
 	./deploy/build-artifacts.sh -e staging -s server_backend4
 
+.PHONY: build-server-backend5-artifacts-staging
+build-server-backend5-artifacts-staging: build-server-backend5
+	./deploy/build-artifacts.sh -e staging -s server_backend5
+
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
@@ -875,14 +885,6 @@ build-billing-artifacts-prod: build-billing
 .PHONY: build-debug-billing-artifacts-prod-debug
 build-debug-billing-artifacts-prod-debug: build-billing
 	./deploy/build-artifacts.sh -e prod -s debug_billing
-
-.PHONY: build-beacon-artifacts-prod
-build-beacon-artifacts-prod: build-beacon
-	./deploy/build-artifacts.sh -e prod -s beacon
-
-.PHONY: build-beacon-inserter-artifacts-prod
-build-beacon-inserter-artifacts-prod: build-beacon-inserter
-	./deploy/build-artifacts.sh -e prod -s beacon_inserter
 
 .PHONY: build-analytics-pusher-artifacts-prod
 build-analytics-pusher-artifacts-prod: build-analytics-pusher
@@ -892,13 +894,17 @@ build-analytics-pusher-artifacts-prod: build-analytics-pusher
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
-.PHONY: build-api-artifacts-prod
-build-api-artifacts-prod: build-api
-	./deploy/build-artifacts.sh -e prod -s api
+.PHONY: build-magic-backend-artifacts-prod
+build-magic-backend-artifacts-prod: build-magic-backend
+	./deploy/build-artifacts.sh -e prod -s magic_backend
 
-.PHONY: build-vanity-artifacts-prod
-build-vanity-artifacts-prod: build-vanity
-	./deploy/build-artifacts.sh -e prod -s vanity
+.PHONY: build-magic-frontend-artifacts-prod
+build-magic-frontend-artifacts-prod: build-magic-frontend
+	./deploy/build-artifacts.sh -e prod -s magic_frontend
+
+.PHONY: build-match-data-artifacts-prod
+build-match-data-artifacts-prod: build-match-data
+	./deploy/build-artifacts.sh -e prod -s match_data
 
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
@@ -920,17 +926,13 @@ build-portal-cruncher-artifacts-prod: build-portal-cruncher
 build-server-backend4-artifacts-prod: build-server-backend4
 	./deploy/build-artifacts.sh -e prod -s server_backend4
 
+.PHONY: build-server-backend5-artifacts-prod
+build-server-backend5-artifacts-prod: build-server-backend5
+	./deploy/build-artifacts.sh -e prod -s server_backend5
+
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
-
-.PHONY: publish-beacon-artifacts-dev
-publish-beacon-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon
-
-.PHONY: publish-beacon-inserter-artifacts-dev
-publish-beacon-inserter-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon_inserter
 
 .PHONY: publish-analytics-pusher-artifacts-dev
 publish-analytics-pusher-artifacts-dev:
@@ -940,13 +942,17 @@ publish-analytics-pusher-artifacts-dev:
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
 
-.PHONY: publish-api-artifacts-dev
-publish-api-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s api
+.PHONY: publish-magic-backend-artifacts-dev
+publish-magic-backend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_backend
 
-.PHONY: publish-vanity-artifacts-dev
-publish-vanity-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s vanity
+.PHONY: publish-magic-frontend-artifacts-dev
+publish-magic-frontend-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_frontend
+
+.PHONY: publish-match-data-artifacts-dev
+publish-match-data-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s match_data
 
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
@@ -972,17 +978,13 @@ publish-portal-cruncher-artifacts-dev:
 publish-server-backend4-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
 
+.PHONY: publish-server-backend5-artifacts-dev
+publish-server-backend5-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
+
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
-
-.PHONY: publish-beacon-artifacts-staging
-publish-beacon-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon
-
-.PHONY: publish-beacon-inserter-artifacts-staging
-publish-beacon-inserter-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon_inserter
 
 .PHONY: publish-analytics-pusher-artifacts-staging
 publish-analytics-pusher-artifacts-staging:
@@ -992,13 +994,17 @@ publish-analytics-pusher-artifacts-staging:
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
 
-.PHONY: publish-api-artifacts-staging
-publish-api-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s api
+.PHONY: publish-magic-backend-artifacts-staging
+publish-magic-backend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_backend
 
-.PHONY: publish-vanity-artifacts-staging
-publish-vanity-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s vanity
+.PHONY: publish-magic-frontend-artifacts-staging
+publish-magic-frontend-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_frontend
+
+.PHONY: publish-match-data-artifacts-staging
+publish-match-data-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s match_data
 
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
@@ -1019,6 +1025,10 @@ publish-portal-cruncher-artifacts-staging:
 .PHONY: publish-server-backend4-artifacts-staging
 publish-server-backend4-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
+
+.PHONY: publish-server-backend5-artifacts-staging
+publish-server-backend5-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend5
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -1048,22 +1058,6 @@ publish-debug-billing-artifacts-prod-debug:
 deploy-debug-billing-prod-debug:
 	./deploy/deploy.sh -e prod -c prod-1 -t debug-billing -n debug_billing -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
-.PHONY: publish-beacon-artifacts-prod
-publish-beacon-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon
-
-.PHONY: publish-beacon-inserter-artifacts-prod
-publish-beacon-inserter-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s beacon_inserter
-
-.PHONY: publish-api-artifacts-prod
-publish-api-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s api
-
-.PHONY: publish-vanity-artifacts-prod
-publish-vanity-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
-
 .PHONY: publish-analytics-pusher-artifacts-prod
 publish-analytics-pusher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics_pusher
@@ -1071,6 +1065,18 @@ publish-analytics-pusher-artifacts-prod:
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
+
+.PHONY: publish-magic-backend-artifacts-prod
+publish-magic-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_backend
+
+.PHONY: publish-magic-frontend-artifacts-prod
+publish-magic-frontend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_frontend
+
+.PHONY: publish-match-data-artifacts-prod
+publish-match-data-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s match_data
 
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod:
@@ -1088,9 +1094,13 @@ publish-portal-artifacts-prod:
 publish-portal-cruncher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
-.PHONY: publish-server-backend4-artifacts-prod4
+.PHONY: publish-server-backend4-artifacts-prod
 publish-server-backend4-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
+
+.PHONY: publish-server-backend5-artifacts-prod
+publish-server-backend5-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend5
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -1415,7 +1425,7 @@ deploy-ghost-army-prod:
 #######################
 
 .PHONY: dev-fake-relays
-dev-fake-relays: build-fake-relays ## runs a local relay forwarder
+dev-fake-relays: build-fake-relays ## runs local fake relays
 	@PORT=30007 ./dist/fake_relays
 
 .PHONY: build-fake-relays
@@ -1588,7 +1598,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

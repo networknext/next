@@ -5,9 +5,11 @@ package core
 import "C"
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"math/rand"
 	"net"
@@ -15,8 +17,6 @@ import (
 	"strconv"
 	"sync"
 	"unsafe"
-	"bytes"
-	"hash/fnv"
 )
 
 const CostBias = 3
@@ -1480,28 +1480,28 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 }
 
 type RouteShader struct {
-	DisableNetworkNext        bool
-	AnalysisOnly              bool
-	SelectionPercent          int
-	ABTest                    bool
-	ProMode                   bool
-	ReduceLatency             bool
-	ReduceJitter              bool
-	ReducePacketLoss          bool
-	Multipath                 bool
-	AcceptableLatency         int32
-	LatencyThreshold          int32
-	AcceptablePacketLoss      float32
-	BandwidthEnvelopeUpKbps   int32
-	BandwidthEnvelopeDownKbps int32
-	BannedUsers               map[uint64]bool
-	PacketLossSustained       float32
+	DisableNetworkNext        bool            `json:"disable_network_next"`
+	AnalysisOnly              bool            `json:"analysis_only"`
+	SelectionPercent          int             `json:"selection_percentage"`
+	ABTest                    bool            `json:"ab_test"`
+	ProMode                   bool            `json:"pro_mode"`
+	ReduceLatency             bool            `json:"reduce_latency"`
+	ReduceJitter              bool            `json:"reduce_jitter"`
+	ReducePacketLoss          bool            `json:"reduce_packet_loss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int32           `json:"acceptable_latency"`
+	LatencyThreshold          int32           `json:"latency_threshold"`
+	AcceptablePacketLoss      float32         `json:"acceptable_packet_loss"`
+	BandwidthEnvelopeUpKbps   int32           `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps int32           `json:"bandwidth_envelope_down_kbps"`
+	BannedUsers               map[uint64]bool `json:"banned_users"`
+	PacketLossSustained       float32         `json:"packet_loss_sustained"`
 }
 
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:        false,
-		AnalysisOnly:              false,
+		AnalysisOnly:              true,
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
@@ -1563,23 +1563,23 @@ type RouteState struct {
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold           int32
-	RouteSwitchThreshold           int32
-	MaxLatencyTradeOff             int32
-	RTTVeto_Default                int32
-	RTTVeto_Multipath              int32
-	RTTVeto_PacketLoss             int32
-	MultipathOverloadThreshold     int32
-	TryBeforeYouBuy                bool
-	ForceNext                      bool
-	LargeCustomer                  bool
-	Uncommitted                    bool
-	MaxRTT                         int32
-	HighFrequencyPings             bool
-	RouteDiversity                 int32
-	MultipathThreshold             int32
-	EnableVanityMetrics            bool
-	ReducePacketLossMinSliceNumber int32
+	RouteSelectThreshold           int32 `json:"route_select_threshold"`
+	RouteSwitchThreshold           int32 `json:"route_switch_threshold"`
+	MaxLatencyTradeOff             int32 `json:"max_latency_trade_off"`
+	RTTVeto_Default                int32 `json:"rtt_veto_default"`
+	RTTVeto_Multipath              int32 `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss             int32 `json:"rtt_veto_packet_loss"`
+	MultipathOverloadThreshold     int32 `json:"multipath_overload_threshold"`
+	TryBeforeYouBuy                bool  `json:"try_before_you_buy"`
+	ForceNext                      bool  `json:"force_next"`
+	LargeCustomer                  bool  `json:"large_customer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int32 `json:"max_rtt"`
+	HighFrequencyPings             bool  `json:"high_frequency_pings"`
+	RouteDiversity                 int32 `json:"route_diversity"`
+	MultipathThreshold             int32 `json:"multipath_threshold"`
+	EnableVanityMetrics            bool  `json:"enable_vanity_metrics"`
+	ReducePacketLossMinSliceNumber int32 `json:"reduce_packet_loss_min_slice_number"`
 }
 
 func NewInternalConfig() InternalConfig {
@@ -2019,30 +2019,30 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 
 	sum := uint16(0)
 
-    for i := 0; i < len(fromAddress); i++ {
-    	sum += uint16(fromAddress[i])
-    }
+	for i := 0; i < len(fromAddress); i++ {
+		sum += uint16(fromAddress[i])
+	}
 
-    sum += uint16(fromPortData[0])
-    sum += uint16(fromPortData[1])
+	sum += uint16(fromPortData[0])
+	sum += uint16(fromPortData[1])
 
-    for i := 0; i < len(toAddress); i++ {
-    	sum += uint16(toAddress[i])
-    }
+	for i := 0; i < len(toAddress); i++ {
+		sum += uint16(toAddress[i])
+	}
 
-    sum += uint16(toPortData[0])
-    sum += uint16(toPortData[1])
+	sum += uint16(toPortData[0])
+	sum += uint16(toPortData[1])
 
-    sum += uint16(packetLengthData[0])
-    sum += uint16(packetLengthData[1])
-    sum += uint16(packetLengthData[2])
-    sum += uint16(packetLengthData[3])
+	sum += uint16(packetLengthData[0])
+	sum += uint16(packetLengthData[1])
+	sum += uint16(packetLengthData[2])
+	sum += uint16(packetLengthData[3])
 
 	var sumData [2]byte
 	binary.LittleEndian.PutUint16(sumData[:], sum)
 
-    output[0] = 1 | ( sumData[0] ^ sumData[1] ^ 193 );
-    output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
+	output[0] = 1 | (sumData[0] ^ sumData[1] ^ 193)
+	output[1] = 1 | ((255 - output[0]) ^ 113)
 }
 
 func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
@@ -2068,155 +2068,164 @@ func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPo
 	var data [8]byte
 	binary.LittleEndian.PutUint64(data[:], uint64(hashValue))
 
-    output[0] = ( ( data[6] & 0xC0 ) >> 6 ) + 42
-    output[1] = ( data[3] & 0x1F ) + 200
-    output[2] = ( ( data[2] & 0xFC ) >> 2 ) + 5
-    output[3] = data[0]
-    output[4] = ( data[2] & 0x03 ) + 78
-    output[5] = ( data[4] & 0x7F ) + 96
-    output[6] = ( ( data[1] & 0xFC ) >> 2 ) + 100
-    if ( data[7] & 1 ) == 0 { 
-    	output[7] = 79
-    } else { 
-    	output[7] = 7 
-    }
-    if ( data[4] & 0x80 ) == 0 {
-    	output[8] = 37
-    } else { 
-    	output[8] = 83
-    }
-    output[9] = ( data[5] & 0x07 ) + 124
-    output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175
-    output[11] = ( data[6] & 0x3F ) + 33
-    value := ( data[1] & 0x03 ); 
-    if value == 0 { 
-    	output[12] = 97
-    } else if value == 1 { 
-    	output[12] = 5
-    } else if value == 2 { 
-    	output[12] = 43
-    } else { 
-    	output[12] = 13
-    }
-    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210
-    output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17
+	output[0] = ((data[6] & 0xC0) >> 6) + 42
+	output[1] = (data[3] & 0x1F) + 200
+	output[2] = ((data[2] & 0xFC) >> 2) + 5
+	output[3] = data[0]
+	output[4] = (data[2] & 0x03) + 78
+	output[5] = (data[4] & 0x7F) + 96
+	output[6] = ((data[1] & 0xFC) >> 2) + 100
+	if (data[7] & 1) == 0 {
+		output[7] = 79
+	} else {
+		output[7] = 7
+	}
+	if (data[4] & 0x80) == 0 {
+		output[8] = 37
+	} else {
+		output[8] = 83
+	}
+	output[9] = (data[5] & 0x07) + 124
+	output[10] = ((data[1] & 0xE0) >> 5) + 175
+	output[11] = (data[6] & 0x3F) + 33
+	value := (data[1] & 0x03)
+	if value == 0 {
+		output[12] = 97
+	} else if value == 1 {
+		output[12] = 5
+	} else if value == 2 {
+		output[12] = 43
+	} else {
+		output[12] = 13
+	}
+	output[13] = ((data[5] & 0xF8) >> 3) + 210
+	output[14] = ((data[7] & 0xFE) >> 1) + 17
 }
 
 func BasicPacketFilter(data []byte, packetLength int) bool {
 
-    if packetLength < 18 {
-        return false
-    }
+	if packetLength < 18 {
+		return false
+	}
 
-    if data[0] < 0x01 || data[0] > 0x63 {
-        return false
-    }
+	if data[0] < 0x01 || data[0] > 0x63 {
+		return false
+	}
 
-    if data[1] < 0x2A || data[1] > 0x2D {
-        return false
-    }
+	if data[1] < 0x2A || data[1] > 0x2D {
+		return false
+	}
 
-    if data[2] < 0xC8 || data[2] > 0xE7 {
-        return false
-    }
+	if data[2] < 0xC8 || data[2] > 0xE7 {
+		return false
+	}
 
-    if data[3] < 0x05 || data[3] > 0x44 {
-        return false
-    }
+	if data[3] < 0x05 || data[3] > 0x44 {
+		return false
+	}
 
-    if data[5] < 0x4E || data[5] > 0x51 {
-        return false
-    }
+	if data[5] < 0x4E || data[5] > 0x51 {
+		return false
+	}
 
-    if data[6] < 0x60 || data[6] > 0xDF {
-        return false
-    }
+	if data[6] < 0x60 || data[6] > 0xDF {
+		return false
+	}
 
-    if data[7] < 0x64 || data[7] > 0xE3 {
-        return false
-    }
+	if data[7] < 0x64 || data[7] > 0xE3 {
+		return false
+	}
 
-    if data[8] != 0x07 && data[8] != 0x4F {
-        return false
-    }
+	if data[8] != 0x07 && data[8] != 0x4F {
+		return false
+	}
 
-    if data[9] != 0x25 && data[9] != 0x53 {
-        return false
-    }
-    
-    if data[10] < 0x7C || data[10] > 0x83 {
-        return false
-    }
+	if data[9] != 0x25 && data[9] != 0x53 {
+		return false
+	}
 
-    if data[11] < 0xAF || data[11] > 0xB6 {
-        return false
-    }
+	if data[10] < 0x7C || data[10] > 0x83 {
+		return false
+	}
 
-    if data[12] < 0x21 || data[12] > 0x60 {
-        return false
-    }
+	if data[11] < 0xAF || data[11] > 0xB6 {
+		return false
+	}
 
-    if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
-        return false
-    }
+	if data[12] < 0x21 || data[12] > 0x60 {
+		return false
+	}
 
-    if data[14] < 0xD2 || data[14] > 0xF1 {
-        return false
-    }
+	if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
+		return false
+	}
 
-    if data[15] < 0x11 || data[15] > 0x90 {
-        return false
-    }
+	if data[14] < 0xD2 || data[14] > 0xF1 {
+		return false
+	}
 
-    return true
+	if data[15] < 0x11 || data[15] > 0x90 {
+		return false
+	}
+
+	return true
 }
 
 func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
-    if packetLength < 18 {
-        return false;
-    }
-    var a [15]byte
-    var b [2]byte
-    GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
-    if bytes.Compare(a[0:15], data[1:16]) != 0 {
-        return false
-    }
-    if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
-        return false
-    }
-    return true;
+	if packetLength < 18 {
+		return false
+	}
+	var a [15]byte
+	var b [2]byte
+	GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
+	GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+	if bytes.Compare(a[0:15], data[1:16]) != 0 {
+		return false
+	}
+	if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
+		return false
+	}
+	return true
 }
 
-func GetAddressData(address *net.UDPAddr, addressData []byte, addressPort *uint16, addressBytes *int) {
+// TODO: Get this working for IPv6
+func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 
-	// todo
-	*addressPort = 0
-	*addressBytes = 0
+	// this works only for IPv4
+	addressData := address.IP[12:16]
+	addressPort := uint16(address.Port)
+	return addressData, addressPort
 
 	/*
-    next_assert( address );
-    if ( address->type == NEXT_ADDRESS_IPV4 )
-    {
-        address_data[0] = address->data.ipv4[0];
-        address_data[1] = address->data.ipv4[1];
-        address_data[2] = address->data.ipv4[2];
-        address_data[3] = address->data.ipv4[3];
-        *address_bytes = 4;
-    }
-    else if ( address->type == NEXT_ADDRESS_IPV6 )
-    {
-        for ( int i = 0; i < 8; ++i )
-        {
-            address_data[i*2]   = address->data.ipv6[i] >> 8;
-            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
-        }
-        *address_bytes = 16;
-    }
-    else
-    {
-        *address_bytes = 0;
-    }
-    *address_port = address->port;
-    */
+		next_assert( address );
+		if ( address->type == NEXT_ADDRESS_IPV4 )
+		{
+		   address_data[0] = address->data.ipv4[0];
+		   address_data[1] = address->data.ipv4[1];
+		   address_data[2] = address->data.ipv4[2];
+		   address_data[3] = address->data.ipv4[3];
+		   *address_bytes = 4;
+		}
+		else if ( address->type == NEXT_ADDRESS_IPV6 )
+		{
+		   for ( int i = 0; i < 8; ++i )
+		   {
+		       address_data[i*2]   = address->data.ipv6[i] >> 8;
+		       address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+		   }
+		   *address_bytes = 16;
+		}
+		else
+		{
+		   *address_bytes = 0;
+		}
+		*address_port = address->port;
+	*/
+}
+
+// Strips the packet type, chonkle, and pittle from the given packet.
+// Assumes that given packet has the following structure:
+// packetType (1) + chonkle (15) + packetData (X) + pittle (2)
+func GetPacketDataSDK5(data []byte) []byte {
+	return data[16 : len(data)-2]
 }

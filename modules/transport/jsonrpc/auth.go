@@ -8,18 +8,20 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 	"gopkg.in/auth0.v4/management"
 )
 
 const (
-	MAX_USER_LOOKUP_PAGES = 100
+	MAX_USER_LOOKUP_PAGES = 10
 )
 
 type AuthService struct {
@@ -33,7 +35,7 @@ type AuthService struct {
 	UserManager          storage.UserManager
 	SlackClient          notifications.SlackClient
 	Storage              storage.Storer
-	LookerSecret         string
+	LookerClient         *looker.LookerClient
 }
 
 type AccountsArgs struct {
@@ -66,6 +68,7 @@ type account struct {
 	LastName    string             `json:"last_name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	SignedTOS   bool               `json:"signed_tos"`
 	Analytics   bool               `json:"analytics"`
 	Billing     bool               `json:"billing"`
 	Trial       bool               `json:"trial"`
@@ -74,6 +77,7 @@ type account struct {
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	ctx := r.Context()
+	reply.UserAccounts = make([]account, 0)
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
@@ -83,14 +87,23 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return &err
 	}
 
-	reply.UserAccounts = make([]account, 0)
-
 	requestCustomerCode := middleware.RequestUserCustomerCode(ctx)
 	if requestCustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AllAccounts(): %v", err.Error())
 		return &err
 	}
+
+	customer, err := s.Storage.Customer(ctx, requestCustomerCode)
+	if err != nil {
+		core.Error("AllAccounts(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	// We don't care about the error here due to buyer and seller accounts not being guaranteed
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, requestCustomerCode)
 
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
@@ -99,6 +112,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		return &err
 	}
 
+	// Find all users associated with the customer account
 	for _, a := range totalUsers {
 		customerCode, ok := a.AppMetadata["company_code"].(string)
 		if !ok || requestCustomerCode != customerCode {
@@ -111,16 +125,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return &err
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
-		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), customerCode)
-		customer, err := s.Storage.Customer(r.Context(), customerCode)
-		if err != nil {
-			core.Error("AllAccounts(): %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			return &err
-		}
-
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
 
 	return nil
@@ -150,6 +155,8 @@ func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	ctx := r.Context()
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	if args.UserID == "" {
@@ -159,7 +166,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		return &err
 	}
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UserAccount(): %v", err.Error())
@@ -191,15 +198,15 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 	var company routing.Customer
 	if companyCode != "" {
-		company, err = s.Storage.Customer(r.Context(), companyCode)
+		company, err = s.Storage.Customer(ctx, companyCode)
 		if err != nil {
 			core.Error("UserAccount(): %v: Could not find customer account for customer code: %v", err.Error(), companyCode)
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 	}
-	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
-	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), companyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, companyCode)
 
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
@@ -212,7 +219,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin, company.BuyerTOSSignedTimestamp != "")
 
 	return nil
 }
@@ -223,6 +230,8 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		core.Error("DeleteUserAccount(): %v", err.Error())
 		return &err
 	}
+
+	ctx := r.Context()
 
 	if args.UserID == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
@@ -243,7 +252,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	}
 
 	// Non admin trying to delete user from another company
-	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	requestCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if (!ok || requestCompanyCode != userCompanyCode) && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("DeleteUserAccount(): %v", err.Error())
@@ -276,6 +285,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	var adminString string = "Admin"
 	var accounts []account
 
+	ctx := r.Context()
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
@@ -294,7 +305,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	}
 
 	// Gather request user information
-	userCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	userCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok || userCompanyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AddUserAccount(): %v", err.Error())
@@ -305,8 +316,8 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	emails := args.Emails
 	falseValue := false
 
-	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), userCompanyCode)
-	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), userCompanyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, userCompanyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(ctx, userCompanyCode)
 
 	registered := make(map[string]*management.User)
 
@@ -394,13 +405,13 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			}
 		}
 
-		company, err := s.Storage.Customer(r.Context(), userCompanyCode)
+		customer, err := s.Storage.Customer(ctx, userCompanyCode)
 		if err != nil {
 			core.Error("AddUserAccount(): %v", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -431,7 +442,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool, isAdmin bool) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool, isAdmin bool, signedTOS bool) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -460,6 +471,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		LastName:    u.GetFamilyName(),
 		Email:       u.GetEmail(),
 		Roles:       roles,
+		SignedTOS:   signedTOS,
 		Analytics:   buyer.Analytics,
 		Billing:     buyer.Billing,
 		Trial:       buyer.Trial,
@@ -493,6 +505,8 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		core.Error("UserDatabase(): %v", err.Error())
 		return &err
 	}
+
+	ctx := r.Context()
 
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
@@ -533,7 +547,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 			CreationTime: account.CreatedAt.String(),
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
 
 		if buyer.ID != 0 {
 			entry.BuyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -564,18 +578,20 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
+	ctx := r.Context()
+
 	if isAdmin {
 		reply.Roles = append(reply.Roles, s.RoleCache["Admin"])
 	}
 
-	requestCustomerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	requestCustomerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AllRoles(): %v", err.Error())
 		return &err
 	}
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), requestCustomerCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
 	if err != nil {
 		// Buyer account doesn't exist - this could be due to the customer not entering a public key yet so return Owner role only
 		reply.Roles = append(reply.Roles, s.RoleCache["Owner"])
@@ -611,7 +627,8 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 
 	for name, role := range s.RoleCache {
-		if name == "Admin" || (!isAdmin && name == "Explorer" && buyer.LookerSeats <= seatsTaken) {
+		// Skip the admin role, it was taken care of earlier, and skip Explorer if all seats have been used
+		if name == "Admin" || (!isAdmin && name == "Explorer" && seatsTaken >= buyer.LookerSeats) {
 			continue
 		}
 		reply.Roles = append(reply.Roles, role)
@@ -650,7 +667,6 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
-	var err error
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateUserRoles(): %v", err.Error())
@@ -664,9 +680,11 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return &err
 	}
 
+	ctx := r.Context()
+
 	allRoles := s.RoleCacheToArray(true)
 
-	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
+	err := s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
 		core.Error("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -678,6 +696,48 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return nil
 	}
 
+	allowedLookerSeats := 0
+
+	requestCustomerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
+	if ok {
+		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, requestCustomerCode)
+		if err == nil {
+			allowedLookerSeats = int(buyer.LookerSeats)
+		}
+	}
+
+	seatsTaken := 0
+	if allowedLookerSeats > 0 {
+		// If valid buyer account, grab all users to determine Looker usage
+		totalUsers, err := s.FetchAllAccountsFromAuth0()
+		if err != nil {
+			core.Error("UpdateUserRoles(): %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		for _, a := range totalUsers {
+			userCustomerCode, ok := a.AppMetadata["company_code"].(string)
+			if !ok || requestCustomerCode != userCustomerCode {
+				continue
+			}
+			userRoles, err := s.UserManager.Roles(*a.ID)
+			if err != nil {
+				core.Error("UpdateUserRoles(): %v: Failed to get user roles", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			for _, role := range userRoles.Roles {
+				if role.GetName() == s.RoleCache["Explorer"].GetName() {
+					seatsTaken = seatsTaken + 1
+				}
+			}
+		}
+	}
+
+	allowedRoles := make([]*management.Role, 0)
+
 	// Make sure someone who isn't admin isn't assigning admin
 	for _, role := range args.Roles {
 		if role.GetName() == s.RoleCache["Admin"].GetName() && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
@@ -685,16 +745,27 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 			core.Error("UpdateUserRoles(): %v", err.Error())
 			return &err
 		}
+
+		if role.GetName() == s.RoleCache["Explorer"].GetName() && seatsTaken >= allowedLookerSeats {
+			continue
+		}
+
+		allowedRoles = append(allowedRoles, s.RoleCache[role.GetName()])
 	}
 
-	err = s.UserManager.AssignRoles(args.UserID, args.Roles...)
+	if len(allowedRoles) == 0 {
+		reply.Roles = allowedRoles
+		return nil
+	}
+
+	err = s.UserManager.AssignRoles(args.UserID, allowedRoles...)
 	if err != nil {
 		core.Error("UpdateUserRoles(): %v: Failed to assign user roles", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
 
-	reply.Roles = args.Roles
+	reply.Roles = allowedRoles
 
 	sort.Slice(reply.Roles, func(i, j int) bool {
 		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
@@ -731,7 +802,9 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	ctx := r.Context()
+
+	assignedCompanyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if ok && assignedCompanyCode != "" {
 		err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
 		core.Error("SetupCompanyAccount(): %v: User is already assigned to a company. Please reach out to support for further assistance.", err.Error())
@@ -739,7 +812,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	}
 
 	// grab request user information
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	requestUser := ctx.Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("SetupCompanyAccount(): %v", err.Error())
@@ -754,7 +827,6 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	ctx := r.Context()
 	roles := []*management.Role{}
 
 	// Check if customer account exists already
@@ -841,7 +913,9 @@ func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountD
 		return &err
 	}
 
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	ctx := r.Context()
+
+	requestUser := ctx.Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UpdateAccountDetails(): %v", err.Error())
@@ -982,8 +1056,7 @@ type UpdateDomainsArgs struct {
 	Domains []string `json:"domains"`
 }
 
-type UpdateDomainsReply struct {
-}
+type UpdateDomainsReply struct{}
 
 func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
@@ -991,32 +1064,21 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
 		return &err
 	}
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error())
-		return &err
-	}
+
+	ctx := r.Context()
+
+	customerCode := middleware.RequestUserCustomerCode(ctx)
 	if customerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error())
 		return &err
 	}
-	ctx := context.Background()
 
-	company, err := s.Storage.Customer(r.Context(), customerCode)
+	domains := strings.Join(args.Domains, ", ")
+	err := s.Storage.UpdateCustomer(ctx, customerCode, "AutomaticSigninDomains", domains)
 	if err != nil {
-		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	company.AutomaticSignInDomains = strings.Join(args.Domains, ", ")
-
-	err = s.Storage.SetCustomer(ctx, company)
-	if err != nil {
-		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		core.Error("UpdateAutoSignupDomains(): %v: Failed to update customer auto signup domains", err.Error())
 		return &err
 	}
 
@@ -1129,6 +1191,40 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 	return nil
 }
 
+func (s *AuthService) CustomerViewedSDKSourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the SDK source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the SDK source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :technologist:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedSDKSourceNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
 func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
 	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -1163,17 +1259,17 @@ func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request,
 	return nil
 }
 
-func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+func (s *AuthService) CustomerDownloadedUE4PluginNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("CustomerDownloadedUE4PluginNotifications(): %v", err.Error())
+		core.Error("CustomerDownloadedUE4PluginNotification(): %v", err.Error())
 		return &err
 	}
 
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
-		core.Error("CustomerDownloadedUE4PluginNotifications(): %v", err.Error())
+		core.Error("CustomerDownloadedUE4PluginNotification(): %v", err.Error())
 		return &err
 	}
 
@@ -1191,7 +1287,211 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-		core.Error("CustomerDownloadedUE4PluginNotifications(): %v", err.Error())
+		core.Error("CustomerDownloadedUE4PluginNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerViewedUE4SourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedUE4SourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedUE4SourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the UE4 source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the UE4 source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :information_source:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedUE4SourceNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerDownloadedUnityPluginNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerDownloadedUnityPluginNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerDownloadedUnityPluginNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded the Unity plugin", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded the Unity plugin", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :electric_plug:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerDownloadedUnityPluginNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerViewedUnitySourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedUnitySourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedUnitySourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the Unity source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the Unity source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :information_source:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedUnitySourceNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerDownloaded2022WhitePaperNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerDownloadedWhitePaperNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerDownloadedWhitePaperNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded the 2022 white paper", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded the 2022 white paper", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :microscope:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerDownloadedWhitePaperNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerDownloadedENetDownloadNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerDownloadedENetDownloadNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerDownloadedENetDownloadNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded ENet", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded ENet", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :signal_strength:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerDownloadedENetDownloadNotification(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerViewedENetSourceNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s viewed the ENet source", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the ENet source", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :information_source:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerViewedENetSourceNotification(): %v", err.Error())
 		return &err
 	}
 	return nil
@@ -1422,4 +1722,68 @@ func (s *AuthService) RoleCacheToArray(removeAdmin bool) []*management.Role {
 	}
 
 	return allRoles
+}
+
+func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
+	allUserAccounts, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		core.Error("CleanUpExplorerRoles(): %v: Failed to fetch user list", err.Error())
+		return err
+	}
+
+	currentTime := time.Now().UTC()
+
+	removedUsers := make([]string, 0)
+	for _, a := range allUserAccounts {
+		// If the account hasn't logged in in 30 days or more
+		if currentTime.Sub(a.GetLastLogin()) >= (time.Hour * 24 * 30) {
+			customerCode, ok := a.AppMetadata["company_code"].(string)
+			if !ok || customerCode == "" {
+				continue
+			}
+
+			buyerAccount, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to look up buyer account", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			// If the buyer is live, ignore them
+			if buyerAccount.Live {
+				continue
+			}
+
+			// Get all of the roles assigned to the user
+			userRoles, err := s.UserManager.Roles(*a.ID)
+			if err != nil {
+				core.Error("CleanUpExplorerRoles(): %v: Failed to get user roles", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
+
+			for _, role := range userRoles.Roles {
+				explorerRole := s.RoleCache["Explorer"]
+				if role.GetName() == explorerRole.GetName() {
+					err = s.UserManager.RemoveRoles(*a.ID, explorerRole)
+					if err != nil {
+						core.Error("CleanUpExplorerRoles(): %v: Failed to remove explorer role", err.Error())
+						return err
+					}
+
+					removedUsers = append(removedUsers, a.GetID())
+				}
+			}
+		}
+	}
+
+	// Loop through removed user IDs and delete them from our Looker account
+	for _, userID := range removedUsers {
+		err := s.LookerClient.RemoveLookerUserByAuth0ID(userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

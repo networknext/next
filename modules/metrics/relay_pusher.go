@@ -30,9 +30,10 @@ type RelayPusherStatus struct {
 	MaxmindStorageUploadFailureISP  int `json:"maxmind_storage_upload_failure_isp"`
 	MaxmindStorageUploadFailureCity int `json:"maxmind_storage_upload_failure_city"`
 	DatabaseSCPWriteFailure         int `json:"database_scp_write_failure"`
+	OverlaySCPWriteFailure          int `json:"overlay_scp_write_failure"`
 
 	// Durations
-	DBBinaryTotalUpdateDurationMs float64 `json:"db_binary_total_update_duration_ms"`
+	BinaryTotalUpdateDurationMs   float64 `json:"binary_total_update_duration_ms"`
 	MaxmindDBCityUpdateDurationMs float64 `json:"maxmind_db_city_update_duration_ms"`
 	MaxmindDBISPUpdateDurationMs  float64 `json:"maxmind_db_isp_update_duration_ms"`
 }
@@ -57,7 +58,7 @@ type RelayPusherMetrics struct {
 	MaxmindSuccessfulCitySCP            Counter
 	MaxmindSuccessfulISPStorageUploads  Counter
 	MaxmindSuccessfulCityStorageUploads Counter
-	DBBinaryTotalUpdateDuration         Gauge
+	BinaryTotalUpdateDuration           Gauge
 	MaxmindDBCityUpdateDuration         Gauge
 	MaxmindDBISPUpdateDuration          Gauge
 	ErrorMetrics                        RelayPusherErrorMetrics
@@ -71,7 +72,7 @@ var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
 	MaxmindSuccessfulCitySCP:            &EmptyCounter{},
 	MaxmindSuccessfulISPStorageUploads:  &EmptyCounter{},
 	MaxmindSuccessfulCityStorageUploads: &EmptyCounter{},
-	DBBinaryTotalUpdateDuration:         &EmptyGauge{},
+	BinaryTotalUpdateDuration:           &EmptyGauge{},
 	MaxmindDBCityUpdateDuration:         &EmptyGauge{},
 	MaxmindDBISPUpdateDuration:          &EmptyGauge{},
 	ErrorMetrics:                        EmptyRelayPusherErrorMetrics,
@@ -87,6 +88,7 @@ type RelayPusherErrorMetrics struct {
 	MaxmindStorageUploadFailureISP  Counter
 	MaxmindStorageUploadFailureCity Counter
 	DatabaseSCPWriteFailure         Counter
+	OverlaySCPWriteFailure          Counter
 }
 
 // EmptyRelayPusherErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -99,6 +101,7 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindStorageUploadFailureISP:  &EmptyCounter{},
 	MaxmindStorageUploadFailureCity: &EmptyCounter{},
 	DatabaseSCPWriteFailure:         &EmptyCounter{},
+	OverlaySCPWriteFailure:          &EmptyCounter{},
 }
 
 // NewRelayPusherServiceMetrics creates the metrics that the beacon insertion service will use.
@@ -201,12 +204,12 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		return nil, err
 	}
 
-	RelayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "DB Update Duration",
+	RelayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Binary File(s) Update Duration",
 		ServiceName: "relay_pusher",
-		ID:          "db_update.duration",
+		ID:          "binary_file_update.duration",
 		Unit:        "ms",
-		Description: "The total amount of time it takes to update database binary file on all relay backends in ms.",
+		Description: "The total amount of time it takes to update database and overlay binary files on all relay backends in ms.",
 	})
 	if err != nil {
 		return nil, err
@@ -297,6 +300,17 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "database_scp_call_failure.count",
 		Unit:        "failures",
 		Description: "The total number of database SCP file copy failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Overlay SCP Call Failures",
+		ServiceName: "relay_pusher",
+		ID:          "overlay_scp_call_failure.count",
+		Unit:        "failures",
+		Description: "The total number of overlay SCP file copy failures.",
 	})
 	if err != nil {
 		return nil, err

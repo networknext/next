@@ -1340,13 +1340,13 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 		}
 
 		buyer.LookerSeats = lookerSeats
-	case "ShortName":
-		shortName, ok := value.(string)
+	case "Alias":
+		alias, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("ShortName: %v is not a valid string type (%T)", value, value)
+			return fmt.Errorf("Alias: %v is not a valid string type (%T)", value, value)
 		}
 
-		buyer.ShortName = shortName
+		buyer.Alias = alias
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
@@ -1462,6 +1462,39 @@ func (m *InMemory) UpdateCustomer(ctx context.Context, customerID string, field 
 		}
 
 		customer.Name = name
+
+	case "TOSSignerFirstName":
+		firstName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerFirstName = firstName
+
+	case "TOSSignerLastName":
+		lastName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerLastName = lastName
+
+	case "TOSSignerEmail":
+		email, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignerEmail = email
+
+	case "TOSSignerTimestamp":
+		timestamp, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.BuyerTOSSignedTimestamp = timestamp
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
 	}
@@ -1525,18 +1558,6 @@ func (m *InMemory) GetAnalyticsDashboardCategories(ctx context.Context) ([]looke
 	return categories, fmt.Errorf("GetAnalyticsDashboardCategories not implemented in InMemory storer")
 }
 
-// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
-func (m *InMemory) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
-	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories, fmt.Errorf("GetPremiumAnalyticsDashboardCategories not implemented in InMemory storer")
-}
-
-// GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
-func (m *InMemory) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
-	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories, fmt.Errorf("GetFreeAnalyticsDashboardCategories not implemented in InMemory storer")
-}
-
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
 func (m *InMemory) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error) {
 	category := looker.AnalyticsDashboardCategory{}
@@ -1549,8 +1570,13 @@ func (m *InMemory) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, lab
 	return category, fmt.Errorf("GetAnalyticsDashboardCategoryByLabel not implemented in InMemory storer")
 }
 
+func (m *InMemory) GetAnalyticsDashboardSubCategoriesByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboardCategory, error) {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories, fmt.Errorf("GetAnalyticsDashboardSubCategoriesByCategoryID not implemented in InMemory storer")
+}
+
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, parentCategoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in InMemory storer")
 }
 
@@ -1576,6 +1602,11 @@ func (m *InMemory) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id in
 	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryID not implemented in InMemory storer")
 }
 
+func (m *InMemory) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCustomerID not implemented in InMemory storer")
+}
+
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
 func (m *InMemory) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
@@ -1594,13 +1625,7 @@ func (m *InMemory) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Ana
 	return dashboards, fmt.Errorf("GetFreeAnalyticsDashboards not implemented in InMemory storer")
 }
 
-// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (m *InMemory) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards, fmt.Errorf("GetDiscoveryAnalyticsDashboards not implemented in InMemory storer")
-}
-
-// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+// GetAnalyticsDashboards get all looker dashboards
 func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
 	return dashboards, fmt.Errorf("GetAnalyticsDashboards not implemented in InMemory storer")
@@ -1631,7 +1656,7 @@ func (m *InMemory) GetAnalyticsDashboardByName(ctx context.Context, name string)
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (db *InMemory) AddAnalyticsDashboard(ctx context.Context, order int32, name string, adminOnly bool, premium bool, lookerID int64, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in InMemory storer")
 }
 

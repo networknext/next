@@ -1410,14 +1410,16 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	t.Parallel()
 	var storer = storage.InMemory{}
 
+	ctx := context.Background()
+
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
-	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	err := storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local", BuyerTOSSignedTimestamp: time.Now().String()})
 	assert.NoError(t, err)
-	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	err = storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
 	assert.NoError(t, err)
-	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
 	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
@@ -1462,16 +1464,26 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - new buyer", func(t *testing.T) {
+	t.Run("hasn't signed TOS", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
 		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - new buyer", func(t *testing.T) {
+		err := storer.UpdateCustomer(ctx, "local-local", "TOSSignerTimestamp", time.Now().String())
+		assert.NoError(t, err)
+
+		var reply jsonrpc.GameConfigurationReply
+		err = svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
 		assert.NoError(t, err)
 
 		newBuyer, err := storer.BuyerWithCompanyCode(reqContext, "local-local")
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local-local", newBuyer.CompanyCode)
-		assert.False(t, newBuyer.Live)
+		assert.True(t, newBuyer.Live)
+		assert.True(t, newBuyer.RouteShader.AnalysisOnly)
 		assert.Equal(t, "12939405032490452521", fmt.Sprintf("%d", newBuyer.ID))
 		assert.Equal(t, "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==", reply.GameConfiguration.PublicKey)
 	})
@@ -2023,7 +2035,7 @@ func TestJSAddRouteShader(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, rs.DisableNetworkNext, !reply.RouteShader.DisableNetworkNext)
-		assert.Equal(t, rs.AnalysisOnly, !reply.RouteShader.AnalysisOnly)
+		assert.Equal(t, rs.AnalysisOnly, reply.RouteShader.AnalysisOnly)
 		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
 		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
 		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
@@ -2513,15 +2525,78 @@ func TestUpdateBuyer(t *testing.T) {
 		}
 	})
 
-	t.Run("success short name", func(t *testing.T) {
+	t.Run("success alias", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply
-		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "ShortName", Value: "short-name"}, &reply)
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "Alias", Value: "buyer alias"}, &reply)
 		assert.NoError(t, err)
 	})
 
 	t.Run("success public key", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply
 		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
+func TestSignTOS(t *testing.T) {
+	var storer = storage.InMemory{}
+
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, true)
+
+	t.Run("insufficient priviledges", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	middleware.SetIsAnonymous(req, false)
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Owner",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no company", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
+	req = req.WithContext(reqContext)
+
+	t.Run("no first name", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no last name", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{FirstName: "test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no email", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{FirstName: "test", LastName: "test"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no first name", func(t *testing.T) {
+		var reply jsonrpc.SignedTOSReply
+		err := svc.SignedBuyerTOS(req, &jsonrpc.SignedTOSArgs{FirstName: "Test", LastName: "test", Email: "test@test.com"}, &reply)
 		assert.NoError(t, err)
 	})
 }
