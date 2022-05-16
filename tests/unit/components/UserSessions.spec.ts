@@ -3,6 +3,10 @@ import UserSessions from '@/components/UserSessions.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { MAX_USER_SESSION_PAGES } from '@/components/types/Constants'
+import { FlagPlugin } from '@/plugins/flags'
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
+import Vuex from 'vuex'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 
 function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, nextPage: number, userID: string, page: number): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUserSessions').mockImplementation((args: any) => {
@@ -33,27 +37,78 @@ describe('UserSessions.vue no sessions', () => {
   }
 
   localVue.use(JSONRPCPlugin)
+  localVue.use(FlagPlugin, {
+    flags: [],
+    useAPI: false,
+    apiService: {}
+  })
+
+  const defaultStore = {
+    state: {
+      filter: {
+        companyCode: '',
+        dataRange: DateFilterType.LAST_7
+      },
+      userProfile: newDefaultProfile(),
+      isAnonymous: false,
+      isAnonymousPlus: false,
+      isAdmin: false
+    },
+    getters: {
+      currentPage: (state: any) => state.currentPage,
+      currentFilter: (state: any) => state.filter,
+      isAnonymous: (state: any) => state.isAnonymous,
+      isAnonymousPlus: (state: any) => state.isAnonymousPlus,
+      isAdmin: (state: any) => state.isAdmin,
+      userProfile: (state: any) => state.userProfile
+    },
+    actions: {},
+    mutations: {
+      UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
+        state.filter = newFilter
+      },
+      UPDATE_IS_ANONYMOUS (state: any, isAnonymous: boolean) {
+        state.isAnonymous = isAnonymous
+      },
+      UPDATE_IS_ANONYMOUS_PLUS (state: any, isAnonymousPlus: boolean) {
+        state.isAnonymousPlus = isAnonymousPlus
+      },
+      UPDATE_IS_TOUR (state: any, isTour: boolean) {
+        state.isTour = isTour
+      },
+      UPDATE_IS_ADMIN (state: any, isAdmin: boolean) {
+        state.isAdmin = isAdmin
+      },
+      UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
+        state.userProfile = userProfile
+      }
+    }
+  }
 
   const stubs = [
     'router-link'
   ]
 
   it('mounts the user sessions table successfully', () => {
+    const store = new Vuex.Store(defaultStore)
+
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks
+      localVue, stubs, mocks, store
     })
     expect(wrapper.exists()).toBeTruthy()
     wrapper.destroy()
   })
 
   it('checks default view with no sessions', async () => {
+    const store = new Vuex.Store(defaultStore)
+
     $route.path = '/user-tool/00000000'
     $route.params.pathMatch = '00000000'
 
     const sessionsSpy = fetchUserSessionsMock(localVue, true, [], MAX_USER_SESSION_PAGES, '00000000', 0)
 
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks
+      localVue, stubs, mocks, store
     })
     expect(wrapper.exists()).toBeTruthy()
 
@@ -107,6 +162,8 @@ describe('UserSessions.vue no sessions', () => {
   })
 
   it('checks default view with sessions - 1 page', async () => {
+    const store = new Vuex.Store(defaultStore)
+
     $route.path = '/user-tool/00000000'
     $route.params.pathMatch = '00000000'
 
@@ -127,7 +184,7 @@ describe('UserSessions.vue no sessions', () => {
     ], MAX_USER_SESSION_PAGES, '00000000', 0)
 
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks
+      localVue, stubs, mocks, store
     })
     expect(wrapper.exists()).toBeTruthy()
 
@@ -193,6 +250,8 @@ describe('UserSessions.vue no sessions', () => {
   })
 
   it('checks default view with sessions - 2 pages', async () => {
+    const store = new Vuex.Store(defaultStore)
+
     $route.path = '/user-tool/00000000'
     $route.params.pathMatch = '00000000'
 
@@ -213,7 +272,7 @@ describe('UserSessions.vue no sessions', () => {
     ], 1, '00000000', 0)
 
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks
+      localVue, stubs, mocks, store
     })
     expect(wrapper.exists()).toBeTruthy()
 
