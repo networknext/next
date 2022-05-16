@@ -127,7 +127,6 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup feature config for bigtable
-	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BIGTABLE",
@@ -142,7 +141,6 @@ func mainReturnWithCode() int {
 			Description: "Leverage Looker API for user and session tool lookups",
 		},
 	})
-	featureConfig = envVarConfig
 
 	// Setup Bigtable
 
@@ -154,8 +152,8 @@ func mainReturnWithCode() int {
 		core.Debug("detected bigtable emulator host")
 	}
 
-	useLooker := featureConfig.FeatureEnabled(config.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)
-	useBigtable := !useLooker && featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
+	useLooker := envVarConfig.FeatureEnabled(config.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)
+	useBigtable := !useLooker && envVarConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
 
 	var btClient *storage.BigTable
 	var btCfName string
