@@ -193,6 +193,12 @@
                 <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                     Nearby Relays
                 </dt>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length === 0 && getBuyerIsLive(meta.customer_id)">
+                  No Near Relays
+                </dd>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length === 0 && !getBuyerIsLive(meta.customer_id)">
+                  Customer is not live
+                </dd>
                 <table id="nearby-relays-table" class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                   <thead>
                     <tr>
@@ -383,6 +389,18 @@ export default class SessionDetails extends Vue {
       }
     }
     return ''
+  }
+
+  private getBuyerIsLive (buyerID: string) {
+    const allBuyers: Array<any> = this.$store.getters.allBuyers || []
+
+    for (let i = 0; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].is_live
+      }
+    }
+
+    return false
   }
 
   private fetchSessionDetails () {
