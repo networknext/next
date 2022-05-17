@@ -13077,13 +13077,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
-
-    if ( server->autodetect_finished )
-    {
-        NEXT_PLATFORM_THREAD_RETURN();
-    }
-
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // autodetect datacenter is currently windows and linux only (mac is just for testing...)
@@ -13174,7 +13167,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 		else
 		{
 			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out" );
+	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
 		}
     }
 	
