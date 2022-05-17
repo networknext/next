@@ -225,7 +225,11 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 		Sorts:   &sorts,
 	}
 
-	lookerBody, _ := json.Marshal(query)
+	lookerBody, err := json.Marshal(query)
+	if err != nil {
+		return LookerSession{}, err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
 		return LookerSession{}, err
@@ -427,7 +431,11 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 		Sorts:            &sorts,
 	}
 
-	lookerBody, _ := json.Marshal(query)
+	lookerBody, err := json.Marshal(query)
+	if err != nil {
+		return querySessions, err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
 		return querySessions, err
