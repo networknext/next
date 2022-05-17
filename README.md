@@ -32,15 +32,15 @@ This is a monorepo that contains the Network Next backend.
 2. Create a PR to push your changes to the "prod" branch
 3. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
 4. Deploy the Server Backend half of the backend first, since it only relies on the route matrix. Deploy supporting services in order of consumer to producer, and roll the Server Backend MIG as the last step:
-	
+
 	----
 	1. Portal Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 	2. Portal Cruncher (`make deploy-portal-crunchers-prod`)
 	3. Ghost Army (`make deploy-ghost-army-prod`)
 	----
 	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
-	---- 
-	1. Server Backend 4 (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+	----
+	1. Server Backend 4 & 5 (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.
 		- Once the new server backend instances are healthy and running, force the UDP load balancer to stop sending traffic to the old instance by setting the metadata field of each **old** server backend instances. Use the template below to set the metadata value per **old** instance before the connection drain ends. You will need the prod credentials to do this (i.e. setting `GOOGLE_APPLICATION_CREDENTIALS` to the prod credentials file downloaded from GCP).
 			- Example: `gcloud compute instances add-metadata server-backend4-mig-6mr0 --metadata connection-drain=true --project=network-next-v3-prod`
@@ -52,6 +52,8 @@ This is a monorepo that contains the Network Next backend.
 		- Check the `/status` endpoint of Relay Backend 1 to ensure a similar amount of routes are generated compared to Relay Backend 2 before deploying Relay Backend 2
 	5. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
 	6. Relay Forwarder (`make deploy-relay-forwarder-prod`)
+    7. Magic Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+    8. Magic Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
 6. The following services can be deployed at any time:
 	1. Relay Pusher (`make deploy-relay-pusher-prod`)
 	2. Pingdom (`make deploy-pingdom-prod`)
@@ -193,18 +195,20 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
 
 1. `./next select local`: setup local environment
-2. `make dev-relay-gateway`: run the relay gateway
-3. `make dev-relay-backend-1`: run the relay backend 1 (requires redis-server)
-4. `make dev-relay-backend-2`: run the relay backend 2 (requires redis-server)
-5. `make dev-relay-frontend`: run the relay frontend (require redis-server)
-6. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
-7. `make dev-server-backend4`: run the server backend for sdk4
-8. `make dev-server4`: this will run a fake game server for sdk4 and register itself with the server backend
-9. `make dev-client4`: this will run a fake game client for sdk4 and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients4` to create 10 client sessions.
-10. `make dev-portal-cruncher-1`: run portal cruncher 1
-11. `make dev-portal-cruncher-2`: run portal cruncher 2
-12. `make dev-portal`: this will run the Portal Backend RPC API
-13. You will then need to clone the portal repo, https://github.com/networknext/portal, run through its setup, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
+2. `make dev-magic-backend`: run the magic backend (requires redis-server)
+3. `make dev-magic-frontend`: run the magic frontend (requires redis-server)
+4. `make dev-relay-gateway`: run the relay gateway
+5. `make dev-relay-backend-1`: run the relay backend 1 (requires redis-server)
+6. `make dev-relay-backend-2`: run the relay backend 2 (requires redis-server)
+7. `make dev-relay-frontend`: run the relay frontend (require redis-server)
+8. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
+9. `make dev-server-backend4` or `make dev-server-backend5`: run the server backend for sdk4 or sdk5
+10. `make dev-server4` or `make dev-server5`: this will run a fake game server for sdk4 or sdk5 and register itself with the server backend
+11. `make dev-client4` or `make dev-client5`: this will run a fake game client for sdk4 or sdk5 and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients4` or `make dev-clients5` to create 10 client sessions.
+12. `make dev-portal-cruncher-1`: run portal cruncher 1
+13. `make dev-portal-cruncher-2`: run portal cruncher 2
+14. `make dev-portal`: this will run the Portal Backend RPC API
+15. You will then need to clone the portal repo, https://github.com/networknext/portal, run through its setup, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
@@ -232,7 +236,7 @@ nn=> \i pgsql-empty.sql
 nn=> \i hp-pgsql-seed.sql
 ```
 
-At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.  
+At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.
 
 ## Local Billing and Analytics
 
