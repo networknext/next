@@ -10312,6 +10312,7 @@ struct next_server_internal_t
 
     bool autodetecting;
     bool autodetect_finished;
+    bool autodetect_actually_did_something;
     bool autodetect_succeeded;
     double autodetect_start_time;
     char autodetect_result[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -13094,7 +13095,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
 
-    bool autodetect_result = true;
+    bool autodetect_result = false;
+    bool autodetect_actually_did_something = false;
     char autodetect_output[1024];
 
     if ( autodetect_input[0] == '\0' 
@@ -13121,12 +13123,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
         
-        server->autodetect_finished = true;
-
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
         }
+
+        autodetect_actually_did_something = true;
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
@@ -13135,6 +13137,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
     server->autodetect_finished = true;
     server->autodetect_succeeded = autodetect_result;
+    server->autodetect_actually_did_something = autodetect_actually_did_something;
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
@@ -13180,16 +13183,19 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     server->autodetect_thread = NULL;
     server->autodetecting = false;
 
-    if ( server->autodetect_succeeded )
+    if ( server->autodetect_actually_did_something )
     {
-	    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
-	    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
-	    server->datacenter_id = next_datacenter_id( server->datacenter_name );
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-	}
-	else
-	{
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+	    if ( server->autodetect_succeeded )
+	    {
+		    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
+		    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
+		    server->datacenter_id = next_datacenter_id( server->datacenter_name );
+		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+		}
+		else
+		{
+		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+		}
 	}
 
     return true;
