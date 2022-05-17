@@ -13094,7 +13094,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
 
-    bool autodetect_result = false;
+    bool autodetect_result = true;
     char autodetect_output[1024];
 
     if ( autodetect_input[0] == '\0' 
