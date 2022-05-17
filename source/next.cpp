@@ -13144,6 +13144,9 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     if ( next_global_config.disable_network_next )
         return true;
 
+    if ( server->resolving_hostname )	// IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
+    	return true;
+
     if ( !server->autodetecting )
         return true;
 
@@ -13190,6 +13193,13 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
 		}
 	}
+
+    next_server_notify_autodetect_finished_t * notify = (next_server_notify_autodetect_finished_t*) next_malloc( server->context, sizeof( next_server_notify_autodetect_finished_t ) );
+    notify->type = NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED;
+    {
+        next_platform_mutex_guard( &server->notify_mutex );
+        next_queue_push( server->notify_queue, notify );
+    }
 
     return true;
 }
@@ -13789,6 +13799,7 @@ void next_server_update( next_server_t * server )
                 next_server_notify_autodetect_finished_t * autodetect_finished = (next_server_notify_autodetect_finished_t*) notify;
                 strncpy( server->autodetect_datacenter, autodetect_finished->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
                 server->autodetect_finished = true;
+                next_printf( NEXT_LOG_LEVEL_INFO, "server is ready to receive client connections" );
             }
             break;
 
