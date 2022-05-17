@@ -353,12 +353,13 @@ func mainReturnWithCode() int {
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
 		// Still let essential goroutines finish even though we got an error
 		cancel()
-		// wg.Wait()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
 
 		// Close the redis pool connection
-		// portalCruncher.CloseRedisPool()
+		portalCruncher.CloseRedisPool()
 		// Close Bigtable client
-		// portalCruncher.CloseBigTable()
+		portalCruncher.CloseBigTable()
 
 		return 1
 	}
