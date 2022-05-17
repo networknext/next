@@ -20,6 +20,8 @@ const (
 	PacketTypeServerResponseSDK5     = 53
 	PacketTypeSessionUpdateSDK5      = 54
 	PacketTypeSessionResponseSDK5    = 55
+	PacketTypeMatchDataRequestSDK5   = 56
+	PacketTypeMatchDataResponseSDK5  = 57
 )
 
 func UnmarshalPacketSDK5(packet Packet, data []byte) error {
@@ -29,7 +31,7 @@ func UnmarshalPacketSDK5(packet Packet, data []byte) error {
 	return nil
 }
 
-func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
+func MarshalPacketSDK5(packetType int, packetObject Packet, magic []byte, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 	packet := make([]byte, DefaultMaxPacketSize)
 	packet[0] = byte(packetType)
 
@@ -51,8 +53,6 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, t
 
 	packet = crypto.SignPacketSDK5(privateKey[:], packet, serializeBytes)
 
-	var magic [8]byte
-
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
@@ -61,7 +61,7 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, from *net.UDPAddr, t
 
 	packetLength := len(packet)
 
-	core.GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic, fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
 	core.GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
@@ -341,6 +341,7 @@ type SessionResponsePacketSDK5 struct {
 	Committed          bool
 	HasDebug           bool
 	Debug              string
+	DontPingNearRelays bool
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [core.MaxNearRelays]bool
 	HighFrequencyPings bool
@@ -398,6 +399,8 @@ func (packet *SessionResponsePacketSDK5) Serialize(stream encoding.Stream) error
 	if packet.HasDebug {
 		stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
 	}
+
+	stream.SerializeBool(&packet.DontPingNearRelays)
 
 	stream.SerializeBool(&packet.ExcludeNearRelays)
 	if packet.ExcludeNearRelays {
@@ -483,20 +486,34 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&sessionData.Initial)
 
-	locationSize := uint32(sessionData.Location.Size())
-	stream.SerializeUint32(&locationSize)
-	if stream.IsReading() {
-		locationBytes := make([]byte, locationSize)
-		stream.SerializeBytes(locationBytes)
-		if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
-			return err
-		}
-	} else {
-		locationBytes, err := sessionData.Location.MarshalBinary()
+	var err error
+	var locSize uint64
+	var loc []byte
+
+	if stream.IsWriting() {
+		loc, err = routing.WriteLocation(&sessionData.Location)
 		if err != nil {
 			return err
 		}
-		stream.SerializeBytes(locationBytes)
+
+		locSize = sessionData.Location.Size()
+	}
+
+	stream.SerializeUint64(&locSize)
+	if locSize > 0 {
+		if stream.IsReading() {
+			loc = make([]byte, routing.MaxLocationSize)
+		}
+
+		loc = loc[:locSize]
+		stream.SerializeBytes(loc)
+
+		if stream.IsReading() {
+			err = routing.ReadLocation(&sessionData.Location, loc)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	stream.SerializeBool(&sessionData.RouteChanged)
@@ -596,5 +613,59 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 	// MAY ONLY BE ADDED *AFTER* YOUR NEW FIELDS.
 	// FAILING TO FOLLOW THESE INSRUCTIONS WILL BREAK PRODUCTION!!!!
 
+	return stream.Error()
+}
+
+type MatchDataRequestPacketSDK5 struct {
+	Version        SDKVersion
+	BuyerID        uint64
+	ServerAddress  net.UDPAddr
+	DatacenterID   uint64
+	UserHash       uint64
+	SessionID      uint64
+	RetryNumber    uint32
+	MatchID        uint64
+	NumMatchValues int32
+	MatchValues    [MaxMatchValues]float64
+}
+
+func (packet *MatchDataRequestPacketSDK5) Serialize(stream encoding.Stream) error {
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.BuyerID)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeUint32(&packet.RetryNumber)
+	stream.SerializeUint64(&packet.MatchID)
+
+	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
+
+	stream.SerializeBool(&hasMatchValues)
+
+	if hasMatchValues {
+		stream.SerializeInteger(&packet.NumMatchValues, 0, MaxMatchValues)
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			stream.SerializeFloat64(&packet.MatchValues[i])
+		}
+	}
+
+	return stream.Error()
+}
+
+type MatchDataResponsePacketSDK5 struct {
+	SessionID uint64
+	Response  uint32
+}
+
+func (packet *MatchDataResponsePacketSDK5) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }

@@ -64,6 +64,10 @@ blocks:
           commands:
             - make build-server-backend4-artifacts-dev
             - make publish-server-backend4-artifacts-dev
+        - name: Server Backend 5
+          commands:
+            - make build-server-backend5-artifacts-dev
+            - make publish-server-backend5-artifacts-dev
         - name: Debug Server Backend 4
           commands:
             - make build-debug-server-backend4-artifacts-dev
