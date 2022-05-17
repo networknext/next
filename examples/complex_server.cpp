@@ -499,9 +499,9 @@ int main()
 
         update_client_timeouts( &server_context );
 
-    	if ( !printed_datacenter && next_server_autodetect_finished( server ) )
+    	if ( !printed_datacenter && next_server_ready( server ) )
     	{
-    		next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: %s", next_server_autodetected_datacenter( server ) );
+    		next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is %s", next_server_datacenter( server ) );
     		printed_datacenter = true;
     	}
 

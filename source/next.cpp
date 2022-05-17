@@ -45,15 +45,8 @@
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
-#if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME   "prod.losangelesfreewaysatnight.com"
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME    "dev.losangelesfreewaysatnight.com"
-#endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_PORT                                    "40100"
-
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           10
-#define NEXT_SERVER_AUTODETECT_TIMEOUT                                 30
+#define NEXT_SERVER_AUTODETECT_TIMEOUT                                 10
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
@@ -3743,7 +3736,6 @@ void * next_global_context = NULL;
 struct next_config_internal_t
 {
     char server_backend_hostname[256];
-    char ping_backend_hostname[256];
     uint64_t client_customer_id;
     uint64_t server_customer_id;
     uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
@@ -3763,8 +3755,6 @@ void next_default_config( next_config_t * config )
     memset( config, 0, sizeof(next_config_t) );
     strncpy( config->server_backend_hostname, NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config->server_backend_hostname) );
     config->server_backend_hostname[sizeof(config->server_backend_hostname)-1] = '\0';
-    strncpy( config->ping_backend_hostname, NEXT_PING_BACKEND_HOSTNAME, sizeof(config->ping_backend_hostname) );
-    config->ping_backend_hostname[sizeof(config->ping_backend_hostname)-1] = '\0';
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
@@ -3868,9 +3858,6 @@ int next_init( void * context, next_config_t * config_in )
 
     strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
     config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
-
-    strncpy( config.ping_backend_hostname, config_in ? config_in->ping_backend_hostname : NEXT_PING_BACKEND_HOSTNAME, sizeof(config.ping_backend_hostname) );
-    config.ping_backend_hostname[sizeof(config.ping_backend_hostname)-1] = '\0';
 
     if ( config_in )
     {
@@ -10282,14 +10269,9 @@ struct next_server_internal_t
     void (*wake_up_callback)( void * context );
     void * context;
     int state;
-    bool resolving_hostname;
     uint64_t customer_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
-    char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
-    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
-    bool autodetect_finished;
-    bool autodetect_succeeded;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -10319,15 +10301,22 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    double resolve_hostname_start_time;
+    bool resolving_hostname;
     bool resolve_hostname_finished;
+    double resolve_hostname_start_time;
     next_address_t resolve_hostname_result;
     next_platform_mutex_t resolve_hostname_mutex;
     next_platform_thread_t * resolve_hostname_thread;
 
     NEXT_DECLARE_SENTINEL(4)
 
-    // todo: autodetect thread stuff
+    bool autodetecting;
+    bool autodetect_finished;
+    bool autodetect_succeeded;
+    double autodetect_start_time;
+    char autodetect_result[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    next_platform_mutex_t autodetect_mutex;
+    next_platform_thread_t * autodetect_thread;
 
     NEXT_DECLARE_SENTINEL(5)
 
@@ -10381,6 +10370,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_autodetect_thread_function( void * context );
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -10864,9 +10854,6 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 {
     FILE * file;
 
-    // todo
-    next_sleep(60);
-
     // are we in a multiplay datacenter?
 
     if ( strlen( input_datacenter ) <= 10 ||
@@ -10975,6 +10962,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 {
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    
     // we need curl to do any autodetect. bail if we don't have it
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
@@ -10989,7 +10977,8 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl exists" );
 
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
     // we need access to powershell and Invoke-RestMethod to do any autodetect. bail if we don't have it
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for powershell Invoke-RestMethod" );
@@ -11050,9 +11039,6 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
-    strncpy( server->autodetect_datacenter, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-
     server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
     if ( !server->resolve_hostname_thread )
     {
@@ -11060,6 +11046,32 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
+    server->resolve_hostname_start_time = next_time();
+    server->resolving_hostname = true;
+    server->resolve_hostname_finished = false;
+}
+
+void next_server_internal_autodetect( next_server_internal_t * server )
+{
+    if ( server->autodetecting )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server is already autodetecting" );
+        return;
+    }
+
+    server->autodetect_thread = next_platform_thread_create( server->context, next_server_internal_autodetect_thread_function, server );
+    if ( !server->autodetect_thread )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create autodetect thread" );
+        return;
+    }
+
+    server->autodetect_start_time = next_time();
+    server->autodetecting = true;
+}
+
+void next_server_internal_initialize( next_server_internal_t * server )
+{
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
@@ -11067,9 +11079,9 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         server->state = NEXT_SERVER_STATE_INITIALIZING;
     }
     
-    server->resolve_hostname_start_time = next_time();
-    server->resolving_hostname = true;
-    server->resolve_hostname_finished = false;
+	next_server_internal_resolve_hostname( server );
+
+	next_server_internal_autodetect( server );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -11147,9 +11159,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     next_assert( datacenter );
-
-    strncpy( server->autodetect_input, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    server->autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
 
     const bool datacenter_is_empty_string = datacenter[0] == '\0';
 
@@ -11242,6 +11251,15 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
+    result = next_platform_mutex_create( &server->autodetect_mutex );
+    
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create autodetect mutex" );
+        next_server_internal_destroy( server );
+        return NULL;
+    }
+
     server->pending_session_manager = next_pending_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
     {
@@ -11260,7 +11278,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     if ( !next_global_config.disable_network_next && server->valid_customer_private_key )
     {
-        next_server_internal_resolve_hostname( server );
+        next_server_internal_initialize( server );
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
@@ -11286,12 +11304,16 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_platform_socket_destroy( server->socket );
     }
+
     if ( server->resolve_hostname_thread )
     {
         next_platform_thread_destroy( server->resolve_hostname_thread );
 	}
 
-    // todo: clean up autodetect thread
+    if ( server->autodetect_thread )
+    {
+        next_platform_thread_destroy( server->autodetect_thread );
+	}
 
     if ( server->command_queue )
     {
@@ -11316,6 +11338,7 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_platform_mutex_destroy( &server->command_mutex );
     next_platform_mutex_destroy( &server->notify_mutex );
     next_platform_mutex_destroy( &server->resolve_hostname_mutex );
+    next_platform_mutex_destroy( &server->autodetect_mutex );
 
     next_server_internal_verify_sentinels( server );
 
@@ -13031,26 +13054,9 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     {
 	    next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
 	}
-
-    return true;
-}
-
-/*
-    strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-    server->datacenter_id = next_datacenter_id( server->datacenter_name );
-    next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-    next_server_notify_autodetect_finished_t * notify = (next_server_notify_autodetect_finished_t*) next_malloc( server->context, sizeof( next_server_notify_autodetect_finished_t ) );
-    strncpy( notify->autodetect_datacenter, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-    notify->type = NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED;
-    {
-        next_platform_mutex_guard( &server->notify_mutex );
-        next_queue_push( server->notify_queue, notify );
-    }
-
-    if ( result.type == NEXT_ADDRESS_NONE )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server in direct only mode" );
+	else
+	{
+        next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname. going to direct only mode" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         server->resolving_hostname = false;
         next_server_notify_failed_to_resolve_hostname_t * notify = (next_server_notify_failed_to_resolve_hostname_t*) next_malloc( server->context, sizeof( next_server_notify_failed_to_resolve_hostname_t ) );
@@ -13060,9 +13066,16 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
             next_queue_push( server->notify_queue, notify );
         }
     }
-*/
 
-/*
+    return true;
+}
+
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_autodetect_thread_function( void * context )
+{
+    next_assert( context );
+
+    next_server_internal_t * server = (next_server_internal_t*) context;
+
     // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
 
     if ( server->autodetect_finished )
@@ -13074,7 +13087,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     // autodetect datacenter is currently windows and linux only (mac is just for testing...)
 
-    const char * autodetect_input = server->autodetect_input;
+    const char * autodetect_input = server->datacenter_name;
     
     char autodetect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_address_t server_address_no_port = server->server_address;
@@ -13084,25 +13097,25 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     bool autodetect_result = false;
     char autodetect_output[1024];
 
-    if ( server->autodetect_datacenter[0] == '\0' 
+    if ( autodetect_input[0] == '\0' 
             ||
-         ( server->autodetect_datacenter[0] == 'c' &&
-           server->autodetect_datacenter[1] == 'l' &&
-           server->autodetect_datacenter[2] == 'o' &&
-           server->autodetect_datacenter[3] == 'u' &&
-           server->autodetect_datacenter[4] == 'd' &&
-           server->autodetect_datacenter[5] == '\0' ) 
+         ( autodetect_input[0] == 'c' &&
+           autodetect_input[1] == 'l' &&
+           autodetect_input[2] == 'o' &&
+           autodetect_input[3] == 'u' &&
+           autodetect_input[4] == 'd' &&
+           autodetect_input[5] == '\0' ) 
             ||
-         ( server->autodetect_datacenter[0] == 'm' && 
-           server->autodetect_datacenter[1] == 'u' && 
-           server->autodetect_datacenter[2] == 'l' && 
-           server->autodetect_datacenter[3] == 't' && 
-           server->autodetect_datacenter[4] == 'i' && 
-           server->autodetect_datacenter[5] == 'p' && 
-           server->autodetect_datacenter[6] == 'l' && 
-           server->autodetect_datacenter[7] == 'a' && 
-           server->autodetect_datacenter[8] == 'y' && 
-           server->autodetect_datacenter[9] == '.' ) )
+         ( autodetect_input[0] == 'm' && 
+           autodetect_input[1] == 'u' && 
+           autodetect_input[2] == 'l' && 
+           autodetect_input[3] == 't' && 
+           autodetect_input[4] == 'i' && 
+           autodetect_input[5] == 'p' && 
+           autodetect_input[6] == 'l' && 
+           autodetect_input[7] == 'a' && 
+           autodetect_input[8] == 'y' && 
+           autodetect_input[9] == '.' ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
@@ -13113,18 +13126,18 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
-            strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
-            server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            server->autodetect_succeeded = true;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server could not autodetect datacenter. all sessions will go direct" );
         }
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-*/
+
+    next_platform_mutex_guard( &server->autodetect_mutex );
+    strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    server->autodetect_finished = true;
+    server->autodetect_succeeded = autodetect_result;
+
+    NEXT_PLATFORM_THREAD_RETURN();
+}
 
 static bool next_server_internal_update_autodetect( next_server_internal_t * server )
 {
@@ -13135,11 +13148,49 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     if ( next_global_config.disable_network_next )
         return true;
 
-    // todo -- check if not autodetecting, early out
+    if ( !server->autodetecting )
+        return true;
 
-    // todo -- check for autodetect result finish, or timeout
- 
-    // todo -- join and destroy the thread, copy results etc.
+    bool finished = false;
+    {
+        next_platform_mutex_guard( &server->autodetect_mutex );
+        finished = server->autodetect_finished;
+    }
+
+    if ( finished )
+    {
+		next_platform_thread_join( server->autodetect_thread );
+    }
+    else
+    {
+    	if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
+    	{
+    		// keep waiting
+		    return false;
+		}
+		else
+		{
+			// but don't wait forever...
+	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out" );
+		}
+    }
+	
+	next_platform_thread_destroy( server->autodetect_thread );
+	
+    server->autodetect_thread = NULL;
+    server->autodetecting = false;
+
+    if ( server->autodetect_succeeded )
+    {
+	    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
+	    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
+	    server->datacenter_id = next_datacenter_id( server->datacenter_name );
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+	}
+	else
+	{
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+	}
 
     return true;
 }
@@ -13158,7 +13209,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     
     next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-    if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
+    if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname && !server->autodetecting )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
@@ -14137,7 +14188,7 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     return NEXT_TRUE;
 }
 
-NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) 
+NEXT_BOOL next_server_ready( next_server_t * server ) 
 {
     next_server_verify_sentinels( server );
 
@@ -14149,7 +14200,7 @@ NEXT_BOOL next_server_autodetect_finished( next_server_t * server )
     return NEXT_FALSE;
 }
 
-const char * next_server_autodetected_datacenter( next_server_t * server )
+const char * next_server_datacenter( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
