@@ -119,6 +119,10 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 		for {
 			select {
 			case <-ctx.Done():
+				// Close receiving channels
+				close(cruncher.redisCountMessageChan)
+				close(cruncher.redisDataMessageChan)
+				close(cruncher.btDataMessageChan)
 				return
 			case err := <-cruncher.ReceiveMessage(ctx):
 				if err != nil {
