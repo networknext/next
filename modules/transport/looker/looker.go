@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +36,8 @@ const (
 	LOOKER_SESSION_SUMMARY_VIEW     = "billing2_session_summary"
 	LOOKER_DATACENTER_INFO_VIEW     = "datacenter_info_v3"
 	LOOKER_RELAY_INFO_VIEW          = "relay_info_v3"
-	LOOKER_RELAY_ID_TO_STATS_FILTER = "${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset}"
+	LOOKER_NEAR_RELAY_OFFSET_FILTER = "${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset}"
+	// LOOKER_NEXT_RELAY_OFFSET_FILTER = ""
 )
 
 type LookerWebhookAttachment struct {
@@ -140,20 +142,24 @@ type LookerSessionMeta struct {
 }
 
 type LookerSessionSlice struct {
-	Timestamp         string  `json:"billing2.timestamp_time"`
-	NextRTT           float64 `json:"billing2.next_rtt"`
-	NextJitter        float64 `json:"billing2.next_jitter"`
-	NextPacketLoss    float64 `json:"billing2.next_packet_loss"`
-	DirectRTT         float64 `json:"billing2.direct_rtt"`
-	DirectJitter      float64 `json:"billing2.direct_jitter"`
-	DirectPacketLoss  float64 `json:"billing2.direct_packet_loss"`
-	PredictedRTT      float64 `json:"billing2.predicted_next_rtt"`
-	RouteDiversity    int32   `json:"billing2.route_diversity"`
-	EnvelopeUp        int64   `json:"billing2.next_bytes_up"`
-	EnvelopeDown      int64   `json:"billing2.next_bytes_down"`
-	OnNetworkNext     string  `json:"billing2.next"`
-	IsMultiPath       string  `json:"billing2.multipath"`
-	IsTryBeforeYouBuy string  `json:"billing2.is_try_before_you_buy"`
+	Timestamp         string            `json:"billing2.timestamp_time"`
+	SliceNumber       int               `json:"billing2.slice_number"`
+	NextRTT           float64           `json:"billing2.next_rtt"`
+	NextJitter        float64           `json:"billing2.next_jitter"`
+	NextPacketLoss    float64           `json:"billing2.next_packet_loss"`
+	DirectRTT         float64           `json:"billing2.direct_rtt"`
+	DirectJitter      float64           `json:"billing2.direct_jitter"`
+	DirectPacketLoss  float64           `json:"billing2.direct_packet_loss"`
+	PredictedRTT      float64           `json:"billing2.predicted_next_rtt"`
+	RouteDiversity    int32             `json:"billing2.route_diversity"`
+	EnvelopeUp        int64             `json:"billing2.next_bytes_up"`
+	EnvelopeDown      int64             `json:"billing2.next_bytes_down"`
+	OnNetworkNext     string            `json:"billing2.next"`
+	IsMultiPath       string            `json:"billing2.multipath"`
+	IsTryBeforeYouBuy string            `json:"billing2.is_try_before_you_buy"`
+	NextRelays        []LookerNextRelay `json:"next_relays"`
+	NextRelayName     string            `json:"relay_info_v3.relay_name,omitempty"`
+	NextRelayOffset   int               `json:"billing2__next_relays.offset,omitempty"`
 }
 
 type LookerNearRelay struct {
@@ -162,6 +168,11 @@ type LookerNearRelay struct {
 	RTT    float64
 	Jitter float64
 	PL     float64
+}
+
+type LookerNextRelay struct {
+	Offset int
+	Name   string
 }
 
 type LookerSession struct {
@@ -221,7 +232,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
-	filterExpression := fmt.Sprintf(LOOKER_RELAY_ID_TO_STATS_FILTER)
+	filterExpression := fmt.Sprintf(LOOKER_NEAR_RELAY_OFFSET_FILTER)
 
 	if customerCode != "" {
 		filterExpression = "(" + filterExpression + ")"
@@ -271,6 +282,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 
 	requiredFields = []string{
 		LOOKER_BILLING2_VIEW + ".timestamp_time",
+		LOOKER_BILLING2_VIEW + ".slice_number",
 		LOOKER_BILLING2_VIEW + ".next_rtt",
 		LOOKER_BILLING2_VIEW + ".next_jitter",
 		LOOKER_BILLING2_VIEW + ".next_packet_loss",
@@ -283,8 +295,10 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 		LOOKER_BILLING2_VIEW + ".route_diversity",
 		LOOKER_BILLING2_VIEW + ".next",
 		LOOKER_BILLING2_VIEW + ".multipath",
-		// LOOKER_BILLING2_VIEW + ".try_before_you_buy",
+		LOOKER_RELAY_INFO_VIEW + ".relay_name",
+		"billing2__next_relays.offset",
 	}
+
 	sorts = []string{LOOKER_BILLING2_VIEW + ".timestamp_time"}
 	requiredFilters = make(map[string]interface{})
 
@@ -323,6 +337,29 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 		return LookerSession{}, err
 	}
 
+	sort.Slice(querySessionSlices, func(i int, j int) bool {
+		return querySessionSlices[i].SliceNumber < querySessionSlices[j].SliceNumber
+	})
+
+	filteredSlices := make([]LookerSessionSlice, 0)
+
+	for _, slice := range querySessionSlices {
+		if slice.SliceNumber == len(filteredSlices) {
+			filteredSlices = append(filteredSlices, slice)
+		}
+
+		filteredSlices[slice.SliceNumber].NextRelays = append(filteredSlices[slice.SliceNumber].NextRelays, LookerNextRelay{
+			Offset: slice.NextRelayOffset,
+			Name:   slice.NextRelayName,
+		})
+	}
+
+	for _, slice := range filteredSlices {
+		sort.Slice(slice.NextRelays, func(i int, j int) bool {
+			return slice.NextRelays[i].Offset < slice.NextRelays[j].Offset
+		})
+	}
+
 	for _, meta := range querySessionMeta {
 		nearRelayID, err := meta.NearRelayIDs.Int64()
 		if err != nil {
@@ -358,7 +395,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 	return LookerSession{
 		Meta:       querySessionMeta[0],
 		NearRelays: nearRelays,
-		Slices:     querySessionSlices,
+		Slices:     filteredSlices,
 	}, nil
 
 }

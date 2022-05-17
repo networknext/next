@@ -3161,6 +3161,16 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 		nearbyRelays[i].ClientStats.PacketLoss = relay.PL
 	}
 
+	hops := make([]transport.RelayHop, 0)
+
+	fmt.Printf("%+v\n\n", lookerSession.Slices[len(lookerSession.Slices)-1].NextRelays)
+
+	for _, hop := range lookerSession.Slices[len(lookerSession.Slices)-1].NextRelays {
+		hops = append(hops, transport.RelayHop{
+			Name: hop.Name,
+		})
+	}
+
 	reply.Meta = transport.SessionMeta{
 		ID:         uint64(lookerSession.Meta.SessionID),
 		UserHash:   uint64(lookerSession.Meta.UserHash),
@@ -3171,6 +3181,7 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 			Latitude:  float32(lookerSession.Meta.Latitude),
 			Longitude: float32(lookerSession.Meta.Longitude),
 		},
+		Hops:            hops,
 		Platform:        uint8(lookerSession.Meta.Platform),
 		DatacenterName:  lookerSession.Meta.DatacenterName,
 		DatacenterAlias: lookerSession.Meta.DatacenterAlias,
