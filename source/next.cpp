@@ -13077,6 +13077,11 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
+    bool autodetect_result = false;
+    bool autodetect_actually_did_something = false;
+    char autodetect_output[1024];
+    memset( autodetect_output, 0, sizeof(autodetect_output) );
+
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // autodetect datacenter is currently windows and linux only (mac is just for testing...)
@@ -13087,10 +13092,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_address_t server_address_no_port = server->server_address;
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
-
-    bool autodetect_result = false;
-    bool autodetect_actually_did_something = false;
-    char autodetect_output[1024];
 
     if ( autodetect_input[0] == '\0' 
             ||
