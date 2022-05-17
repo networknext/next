@@ -20,20 +20,22 @@ import (
 )
 
 const (
-	LOOKER_SESSION_TIMEOUT      = 86400
-	EMBEDDED_USER_GROUP_ID      = 3
-	USAGE_DASH_URL              = "/embed/dashboards-next/11"
-	BASE_URL                    = "https://networknextexternal.cloud.looker.com"
-	API_VERSION                 = "4.0"
-	API_TIMEOUT                 = 300
-	LOOKER_SAVES_ROW_LIMIT      = "10"
-	LOOKER_AUTH_URI             = "%s/api/3.1/login?client_id=%s&client_secret=%s"
-	LOOKER_QUERY_RUNNER_URI     = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
-	LOOKER_PROD_MODEL           = "network_next_prod"
-	LOOKER_SAVES_VIEW           = "daily_big_saves"
-	LOOKER_BILLING2_VIEW        = "billing2"
-	LOOKER_SESSION_SUMMARY_VIEW = "billing2_session_summary"
-	LOOKER_DATACENTER_INFO_VIEW = "datacenter_info_v3"
+	LOOKER_SESSION_TIMEOUT          = 86400
+	EMBEDDED_USER_GROUP_ID          = 3
+	USAGE_DASH_URL                  = "/embed/dashboards-next/11"
+	BASE_URL                        = "https://networknextexternal.cloud.looker.com"
+	API_VERSION                     = "4.0"
+	API_TIMEOUT                     = 300
+	LOOKER_SAVES_ROW_LIMIT          = "10"
+	LOOKER_AUTH_URI                 = "%s/api/3.1/login?client_id=%s&client_secret=%s"
+	LOOKER_QUERY_RUNNER_URI         = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
+	LOOKER_PROD_MODEL               = "network_next_prod"
+	LOOKER_SAVES_VIEW               = "daily_big_saves"
+	LOOKER_BILLING2_VIEW            = "billing2"
+	LOOKER_SESSION_SUMMARY_VIEW     = "billing2_session_summary"
+	LOOKER_DATACENTER_INFO_VIEW     = "datacenter_info_v3"
+	LOOKER_RELAY_INFO_VIEW          = "relay_info_v3"
+	LOOKER_RELAY_ID_TO_STATS_FILTER = "${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset}"
 )
 
 type LookerWebhookAttachment struct {
@@ -127,6 +129,7 @@ type LookerSessionMeta struct {
 	BuyerID               int64       `json:"billing2_session_summary.buyer_id,omitempty"`
 	SDK                   string      `json:"billing2_session_summary.sdk_version,omitempty"`
 	ClientAddress         string      `json:"billing2_session_summary.client_address,omitempty"`
+	NearRelayNames        string      `json:"relay_info_v3.relay_name,omitempty"`
 	NearRelayIDs          json.Number `json:"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids,omitempty"`
 	NearRelayRTTs         json.Number `json:"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts,omitempty"`
 	NearRelayJitters      json.Number `json:"billing2_session_summary__near_relay_jitters.billing2_session_summary__near_relay_jitters,omitempty"`
@@ -167,7 +170,7 @@ type LookerSession struct {
 	Slices     []LookerSessionSlice
 }
 
-func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string) (LookerSession, error) {
+func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string, customerCode string) (LookerSession, error) {
 	// Looker API always passes back an array - "this is the rows for that query - # rows >= 0"
 	querySessionMeta := make([]LookerSessionMeta, 0)
 	querySessionSlices := make([]LookerSessionSlice, 0)
@@ -203,6 +206,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 		LOOKER_SESSION_SUMMARY_VIEW + ".longitude",
 		LOOKER_SESSION_SUMMARY_VIEW + ".sdk_version",
 		LOOKER_SESSION_SUMMARY_VIEW + ".client_address",
+		LOOKER_RELAY_INFO_VIEW + ".relay_name",
 		"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids",
 		"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts",
 		"billing2_session_summary__near_relay_jitters.billing2_session_summary__near_relay_jitters",
@@ -217,12 +221,20 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
+	filterExpression := fmt.Sprintf(LOOKER_RELAY_ID_TO_STATS_FILTER)
+
+	if customerCode != "" {
+		filterExpression = "(" + filterExpression + ")"
+		filterExpression = filterExpression + " AND " + fmt.Sprintf("${datacenter_info_v3.customer_code} = \"%s\"", customerCode)
+	}
+
 	query := v4.WriteQuery{
-		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SESSION_SUMMARY_VIEW,
-		Fields:  &requiredFields,
-		Filters: &requiredFilters,
-		Sorts:   &sorts,
+		Model:            LOOKER_PROD_MODEL,
+		View:             LOOKER_SESSION_SUMMARY_VIEW,
+		Fields:           &requiredFields,
+		Filters:          &requiredFilters,
+		FilterExpression: &filterExpression,
+		Sorts:            &sorts,
 	}
 
 	lookerBody, err := json.Marshal(query)
@@ -317,6 +329,8 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 			continue
 		}
 
+		nearRelayName := meta.NearRelayNames
+
 		nearRelayRTT, err := meta.NearRelayRTTs.Float64()
 		if err != nil {
 			continue
@@ -334,6 +348,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 
 		nearRelays = append(nearRelays, LookerNearRelay{
 			ID:     nearRelayID,
+			Name:   nearRelayName,
 			RTT:    nearRelayRTT,
 			Jitter: nearRelayJitter,
 			PL:     nearRelayPacketLoss,

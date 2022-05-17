@@ -3123,8 +3123,9 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 }
 
 type TestLookerSessionLookupArgs struct {
-	SessionID string `json:"session_id"`
-	Timeframe string `json:"time_frame"`
+	SessionID    string `json:"session_id"`
+	Timeframe    string `json:"time_frame"`
+	CustomerCode string `json:"customer_code"`
 }
 type TestLookerSessionLookupReply struct {
 	Meta   transport.SessionMeta    `json:"meta"`
@@ -3138,13 +3139,13 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 	if args.SessionID == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "SessionID"
-		core.Error("TestLookerUserSessionLookup(): %v: SessionID is required", err.Error())
+		core.Error("TestLookerSessionLookup(): %v: SessionID is required", err.Error())
 		return &err
 	}
 
-	lookerSession, err := s.LookerClient.RunSessionLookupQuery(args.SessionID, args.Timeframe)
+	lookerSession, err := s.LookerClient.RunSessionLookupQuery(args.SessionID, args.Timeframe, args.CustomerCode)
 	if err != nil {
-		core.Error("TestLookerUserSessionLookup(): %v:", err.Error())
+		core.Error("TestLookerSessionLookup(): %v:", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
 		return &err
 	}
@@ -3154,22 +3155,10 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 	for i, relay := range lookerSession.NearRelays {
 		relayID := uint64(relay.ID)
 		nearbyRelays[i].ID = relayID
+		nearbyRelays[i].Name = relay.Name
 		nearbyRelays[i].ClientStats.RTT = relay.RTT
 		nearbyRelays[i].ClientStats.Jitter = relay.Jitter
 		nearbyRelays[i].ClientStats.PacketLoss = relay.PL
-
-		if s.Env == "local" || s.Env == "dev" {
-			nearbyRelays[i].Name = "Unknown"
-			continue
-		}
-
-		relay, err := s.Storage.Relay(r.Context(), relayID)
-		if err != nil {
-			nearbyRelays[i].Name = "Unknown"
-			continue
-		}
-
-		nearbyRelays[i].Name = relay.Name
 	}
 
 	reply.Meta = transport.SessionMeta{
@@ -3194,7 +3183,7 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 	for _, slice := range lookerSession.Slices {
 		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
 		if err != nil {
-			core.Error("TestLookerUserSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+			core.Error("TestLookerSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
 			continue
 		}
 
