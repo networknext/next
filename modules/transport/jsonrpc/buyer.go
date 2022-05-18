@@ -885,7 +885,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			})
 		}
 
-		if s.Env == "prod" {
+		if s.Env == "prod" || s.Env == "dev" {
 			buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
 			if err != nil {
 				err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
