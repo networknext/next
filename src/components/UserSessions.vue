@@ -123,7 +123,7 @@ import { NavigationGuardNext, Route } from 'vue-router'
 import { MAX_USER_SESSION_PAGES } from './types/Constants'
 import { FeatureEnum } from './types/FeatureTypes'
 
-const ENTRIES_PER_PAGE = 40
+const DEFAULT_ENTRIES_PER_PAGE = 40
 
 /**
  * This component displays all of the information related to the user
@@ -132,9 +132,11 @@ const ENTRIES_PER_PAGE = 40
 
 @Component
 export default class UserSessions extends Vue {
+  private ENTRIES_PER_PAGE = process.env.VUE_APP_USER_SESSION_PER_PAGE || DEFAULT_ENTRIES_PER_PAGE
+
   get currentPageSessions () {
-    const startIndex = this.currentPage - 1 > 0 ? (this.currentPage - 1) * ENTRIES_PER_PAGE : 0
-    const endIndex = startIndex + ENTRIES_PER_PAGE < this.readOnlySessions.length - 1 ? startIndex + ENTRIES_PER_PAGE : this.readOnlySessions.length - 1
+    const startIndex = this.currentPage - 1 > 0 ? (this.currentPage - 1) * this.ENTRIES_PER_PAGE : 0
+    const endIndex = startIndex + this.ENTRIES_PER_PAGE < this.readOnlySessions.length - 1 ? startIndex + this.ENTRIES_PER_PAGE : this.readOnlySessions.length - 1
 
     return this.$store.getters.isAdmin ? this.readOnlySessions.slice(startIndex, endIndex) : this.sessions
   }
@@ -221,7 +223,7 @@ export default class UserSessions extends Vue {
         this.readOnlySessions = response.sessions || []
 
         if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
-          this.numPages = Math.ceil(this.readOnlySessions.length / ENTRIES_PER_PAGE)
+          this.numPages = Math.ceil(this.readOnlySessions.length / this.ENTRIES_PER_PAGE)
           this.currentPage = 1
         } else {
           this.sessions = this.sessions.concat(this.readOnlySessions)
