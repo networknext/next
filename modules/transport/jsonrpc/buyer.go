@@ -906,7 +906,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	// Use bigtable if error from redis or requesting historic information
-	if s.UseBigtable && !isAdmin && !isLiveSession {
+	if s.UseBigtable && !isLiveSession && (!s.UseLooker || (s.UseLooker && !isAdmin)) {
 		metaRows, err := s.BigTable.GetRowWithRowKey(ctx, fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
