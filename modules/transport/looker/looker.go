@@ -36,7 +36,7 @@ const (
 	LOOKER_SESSION_SUMMARY_VIEW     = "billing2_session_summary"
 	LOOKER_DATACENTER_INFO_VIEW     = "datacenter_info_v3"
 	LOOKER_RELAY_INFO_VIEW          = "relay_info_v3"
-	LOOKER_NEAR_RELAY_OFFSET_FILTER = "${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset}"
+	LOOKER_NEAR_RELAY_OFFSET_FILTER = "if(${billing2_session_summary.ever_on_next}=yes,${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset},yes)"
 	// LOOKER_NEXT_RELAY_OFFSET_FILTER = ""
 )
 
