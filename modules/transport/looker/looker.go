@@ -131,6 +131,7 @@ type LookerSessionMeta struct {
 	BuyerID               int64       `json:"billing2_session_summary.buyer_id,omitempty"`
 	SDK                   string      `json:"billing2_session_summary.sdk_version,omitempty"`
 	ClientAddress         string      `json:"billing2_session_summary.client_address,omitempty"`
+	OnNetworkNext         string      `json:"billing2_session_summary.ever_on_next"`
 	NearRelayNames        string      `json:"relay_info_v3.relay_name,omitempty"`
 	NearRelayIDs          json.Number `json:"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids,omitempty"`
 	NearRelayRTTs         json.Number `json:"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts,omitempty"`
@@ -217,6 +218,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 		LOOKER_SESSION_SUMMARY_VIEW + ".longitude",
 		LOOKER_SESSION_SUMMARY_VIEW + ".sdk_version",
 		LOOKER_SESSION_SUMMARY_VIEW + ".client_address",
+		LOOKER_SESSION_SUMMARY_VIEW + ".ever_on_next",
 		LOOKER_RELAY_INFO_VIEW + ".relay_name",
 		"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids",
 		"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts",
@@ -344,10 +346,12 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 	filteredSlices := make([]LookerSessionSlice, 0)
 
 	for _, slice := range querySessionSlices {
+		// If the slice number hasn't been seen before, add it to the slice array - filter out duplicate slices
 		if slice.SliceNumber == len(filteredSlices) {
 			filteredSlices = append(filteredSlices, slice)
 		}
 
+		// Always add the next relays to the slice if they exist
 		filteredSlices[slice.SliceNumber].NextRelays = append(filteredSlices[slice.SliceNumber].NextRelays, LookerNextRelay{
 			Offset: slice.NextRelayOffset,
 			Name:   slice.NextRelayName,
@@ -355,9 +359,11 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 	}
 
 	for _, slice := range filteredSlices {
-		sort.Slice(slice.NextRelays, func(i int, j int) bool {
-			return slice.NextRelays[i].Offset < slice.NextRelays[j].Offset
-		})
+		if len(slice.NextRelays) > 0 {
+			sort.Slice(slice.NextRelays, func(i int, j int) bool {
+				return slice.NextRelays[i].Offset < slice.NextRelays[j].Offset
+			})
+		}
 	}
 
 	for _, meta := range querySessionMeta {
