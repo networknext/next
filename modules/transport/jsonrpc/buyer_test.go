@@ -966,6 +966,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		UseBigtable:            true,
+		UseLooker:              false,
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:        &metrics.EmptyBigTableMetrics,
