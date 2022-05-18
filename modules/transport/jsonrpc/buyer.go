@@ -902,6 +902,11 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
 		})
 
+		// Sometimes there is an empty hop struct added to the meta data that we don't need
+		if len(reply.Meta.Hops) == 1 && reply.Meta.Hops[0].Name == "" {
+			reply.Meta.Hops = make([]transport.RelayHop, 0)
+		}
+
 		return nil
 	}
 
