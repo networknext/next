@@ -37,7 +37,6 @@ const (
 	LOOKER_DATACENTER_INFO_VIEW     = "datacenter_info_v3"
 	LOOKER_RELAY_INFO_VIEW          = "relay_info_v3"
 	LOOKER_NEAR_RELAY_OFFSET_FILTER = "if(${billing2_session_summary.ever_on_next}=yes,${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset},yes)"
-	// LOOKER_NEXT_RELAY_OFFSET_FILTER = ""
 )
 
 type LookerWebhookAttachment struct {
@@ -238,7 +237,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 
 	if customerCode != "" {
 		filterExpression = "(" + filterExpression + ")"
-		filterExpression = filterExpression + " AND " + fmt.Sprintf("${datacenter_info_v3.customer_code} = \"%s\"", customerCode)
+		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
 	}
 
 	query := v4.WriteQuery{
@@ -472,7 +471,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 
 	if customerCode != "" {
 		filterExpression = "(" + filterExpression + ")"
-		filterExpression = filterExpression + " AND " + fmt.Sprintf("${datacenter_info_v3.customer_code} = \"%s\"", customerCode)
+		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
 	}
 
 	// If none of the passed in user IDs work, return no sessions
@@ -716,7 +715,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		ExternalUserId:  fmt.Sprintf(`\%s\`, requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
@@ -726,7 +725,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
 		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Nonce:           fmt.Sprintf(`"%s"`, nonce),
 		Time:            time.Now().Unix(),
 	}
 
@@ -819,7 +818,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		ExternalUserId:  fmt.Sprintf(`"%s"`, requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
@@ -829,7 +828,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
 		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Nonce:           fmt.Sprintf(`"%s"`, nonce),
 		Time:            time.Now().Unix(),
 	}
 
@@ -847,7 +846,7 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 	options := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		ExternalUserId:  fmt.Sprintf(`"%s"`, requestID),
 		FirstName:       "",
 		LastName:        "",
 		GroupsIds:       make([]int, 0),
@@ -859,7 +858,7 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 		SessionLength:   3600,
 		EmbedURL:        "/login/embed/" + url.QueryEscape("/embed/dashboards-next/?"), // TODO: Replace the ? with the correct dash ID
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Nonce:           fmt.Sprintf(`"%s"`, nonce),
 		Time:            time.Now().Unix(),
 	}
 
