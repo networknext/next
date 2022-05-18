@@ -15,13 +15,18 @@
       <h1 class="h2">
         Session Tool
       </h1>
-      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
-        <Alert ref="verifyAlert">
-          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
-            Resend email
-          </a>
-        </Alert>
-      </div>
+    <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="max-width: 50%">
+      <Alert ref="verifyAlert">
+        <br />
+        <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
+          Resend email
+        </a>
+      </Alert>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
+      <div class="mr-auto"></div>
+      <BuyerFilter v-if="$store.getters.isBuyer || $store.getters.isAdmin" :liveOnly="true" />
+    </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchSessionDetails()">
       <div class="form-group">
@@ -36,6 +41,9 @@
                    v-model="searchID"
                    data-test="searchInput"
             >
+          </div>
+          <div class="col-auto" v-if="$store.getters.isAdmin">
+            <LookerDateFilter />
           </div>
           <div class="col-auto">
             <button id="session-tool-button" class="btn btn-primary" type="submit">
@@ -58,6 +66,9 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import { EMAIL_CONFIRMATION_MESSAGE, SESSION_TOOL_ALERT } from '@/components/types/Constants'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import LookerDateFilter from '@/components/LookerDateFilter.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
+
 /**
  * This component holds the workspace elements related to the session tool in the Portal
  */
@@ -68,7 +79,9 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 @Component({
   components: {
-    Alert
+    Alert,
+    BuyerFilter,
+    LookerDateFilter
   }
 })
 export default class SessionToolWorkspace extends Vue {

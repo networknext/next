@@ -31,7 +31,7 @@ describe('SessionsWorkspace.vue', () => {
       allBuyers: [],
       filter: {
         companyCode: '',
-        dataRange: DateFilterType.CURRENT_MONTH
+        dataRange: DateFilterType.LAST_7
       },
       killLoops: false,
       isAnonymous: false,
@@ -493,14 +493,14 @@ describe('SessionsWorkspace.vue', () => {
 
     spy = topSessionsMock(localVue, true, [session], 'test')
 
-    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.CURRENT_MONTH }
+    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.LAST_7 }
     store.commit('UPDATE_CURRENT_FILTER', newFilter)
 
     await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(2)
 
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.CURRENT_MONTH })
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
 
     spy.mockReset()
 

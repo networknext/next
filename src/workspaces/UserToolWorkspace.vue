@@ -16,6 +16,10 @@
       <h1 class="h2">
         User Tool
       </h1>
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
+        <div class="mr-auto"></div>
+        <BuyerFilter id="buyer-filter" v-if="$store.getters.isAdmin" />
+      </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
       <div class="form-group">
@@ -29,6 +33,9 @@
                     placeholder="Enter a User ID to view their sessions."
                     v-model="searchID"
             >
+          </div>
+          <div class="col-auto" v-if="$store.getters.isAdmin">
+            <LookerDateFilter />
           </div>
           <div class="col-auto">
             <button id="user-tool-button" class="btn btn-primary" type="submit">
@@ -50,6 +57,9 @@ import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
+import LookerDateFilter from '@/components/LookerDateFilter.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -62,6 +72,8 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
 @Component({
   components: {
     Alert,
+    BuyerFilter,
+    LookerDateFilter,
     UserSessions
   }
 })
@@ -72,6 +84,7 @@ export default class UserToolWorkspace extends Vue {
     inputAlert: Alert;
   }
 
+  private FeatureEnum: any
   private searchID: string
 
   constructor () {
@@ -92,6 +105,7 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private created () {
+    this.FeatureEnum = FeatureEnum
     this.searchID = this.$route.params.pathMatch || ''
   }
 

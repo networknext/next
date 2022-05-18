@@ -16,7 +16,7 @@ describe('BuyerFilter.vue', () => {
       allBuyers: [],
       filter: {
         companyCode: '',
-        dateRange: DateFilterType.CURRENT_MONTH
+        dateRange: DateFilterType.LAST_7
       },
       isAdmin: false,
       isBuyer: true,
@@ -231,7 +231,7 @@ describe('BuyerFilter.vue', () => {
 
     store.commit('UPDATE_ALL_BUYERS', [])
     store.commit('UPDATE_IS_ADMIN', false)
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.CURRENT_MONTH })
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
 
     wrapper.destroy()
   })

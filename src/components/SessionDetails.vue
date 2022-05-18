@@ -1,5 +1,19 @@
 <template>
   <div>
+    <div class="row" style="text-align: center;" v-show="showSpinner">
+      <div class="col"></div>
+      <div class="col">
+        <div
+          class="spinner-border"
+          role="status"
+          id="customers-spinner"
+          style="margin:1rem;"
+        >
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+      <div class="col"></div>
+    </div>
     <v-tour name="sessionDetailsTour" :steps="sessionDetailsTourSteps" :options="sessionDetailsTourOptions" :callbacks="sessionDetailsTourCallbacks"></v-tour>
     <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
@@ -78,7 +92,7 @@
         </div>
       </div>
       <div class="col-12 col-lg-4">
-        <div class="card">
+        <div class="card mb-5">
           <div class="card-img-top">
             <div style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
               <div id="session-tool-map"></div>
@@ -193,11 +207,11 @@
                 <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                     Nearby Relays
                 </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && getBuyerIsLive(meta.customer_id)">
-                    No Near Relays
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length === 0 && getBuyerIsLive(meta.customer_id)">
+                  No Near Relays
                 </dd>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(meta.customer_id)">
-                    Customer is not live
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length === 0 && !getBuyerIsLive(meta.customer_id)">
+                  Customer is not live
                 </dd>
                 <table id="nearby-relays-table" class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                   <thead>
@@ -277,6 +291,7 @@ export default class SessionDetails extends Vue {
   }
 
   private showDetails = false
+  private showSpinner: boolean
 
   private searchID: string
 
@@ -347,6 +362,8 @@ export default class SessionDetails extends Vue {
         }
       }
     }
+
+    this.showSpinner = true
   }
 
   private mounted () {
@@ -392,13 +409,14 @@ export default class SessionDetails extends Vue {
   }
 
   private getBuyerIsLive (buyerID: string) {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
+    const allBuyers: Array<any> = this.$store.getters.allBuyers || []
+
+    for (let i = 0; i < allBuyers.length; i++) {
       if (allBuyers[i].id === buyerID) {
         return allBuyers[i].is_live
       }
     }
+
     return false
   }
 
@@ -407,6 +425,11 @@ export default class SessionDetails extends Vue {
       .then((response: any) => {
         this.meta = response.meta
         this.slices = response.slices
+
+        const enableRefresh = response.refresh || false
+        if (!enableRefresh) {
+          clearInterval(this.detailsLoop)
+        }
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
@@ -421,7 +444,7 @@ export default class SessionDetails extends Vue {
 
           const cellSize = 10
           const aggregation = 'MEAN'
-          const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+          const gpuAggregation = false
 
           this.viewState.latitude = this.meta.location.latitude
           this.viewState.longitude = this.meta.location.longitude
@@ -496,6 +519,7 @@ export default class SessionDetails extends Vue {
           this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
+      .finally(() => { this.showSpinner = false })
   }
 
   private restartLoop () {

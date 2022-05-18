@@ -56,6 +56,11 @@ const flags: Array<Flag> = [
     name: FeatureEnum.FEATURE_TOUR,
     description: 'New product tour to replace intercom',
     value: false
+  },
+  {
+    name: FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT,
+    description: 'Leverage Looker API for user tool and session tool',
+    value: false
   }
 ]
 

@@ -1,12 +1,18 @@
 <template>
   <div>
-    <div
-      class="spinner-border"
-      role="status"
-      id="sessions-spinner"
-      v-show="!showSessions"
-    >
-      <span class="sr-only">Loading...</span>
+    <div class="row" style="text-align: center;" v-show="!showSessions">
+      <div class="col"></div>
+      <div class="col">
+        <div
+          class="spinner-border"
+          role="status"
+          id="customers-spinner"
+          style="margin:1rem;"
+        >
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+      <div class="col"></div>
     </div>
     <div class="table-responsive table-no-top-line" v-if="showSessions">
       <table class="table table-sm">
@@ -49,8 +55,8 @@
             </th>
           </tr>
         </thead>
-        <tbody v-if="sessions.length > 0">
-          <tr id="data-row" v-for="(session, index) in sessions" :key="index">
+        <tbody v-if="currentPageSessions.length > 0">
+          <tr id="data-row" v-for="(session, index) in currentPageSessions" :key="index">
             <td>
               {{ convertUTCDateToLocalDate(new Date(session.time_stamp)) }}
             </td>
@@ -74,7 +80,7 @@
             </td>
           </tr>
         </tbody>
-        <tbody v-if="sessions.length === 0">
+        <tbody v-if="currentPageSessions.length === 0">
           <tr>
             <td colspan="7" class="text-muted">
                 There are no sessions belonging to this user.
@@ -82,15 +88,30 @@
           </tr>
         </tbody>
       </table>
-      <div class="float-left" style="padding-bottom: 20px;">
-        <button id="more-sessions-button" class="btn btn-primary" @click="reloadSessions()">
-          Refresh Sessions
-        </button>
-      </div>
-      <div class="float-right" style="padding-bottom: 20px;">
-        <button id="more-sessions-button" class="btn btn-primary" v-if="this.currentPage < MAX_PAGES" @click="fetchMoreSessions()">
-          More Sessions
-        </button>
+      <nav v-if="$store.getters.isAdmin">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
+            <a class="page-link" @click.prevent="changePage(currentPage - 1)">Previous</a>
+          </li>
+          <li class="page-item" :class="{ active: currentPage === page }" v-for="page in numPages" :key="page">
+            <a class="page-link" @click.prevent="changePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
+            <a class="page-link" @click.prevent="changePage(currentPage + 1)">Next</a>
+          </li>
+        </ul>
+      </nav>
+      <div v-if="!($flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && $store.getters.isAdmin)">
+        <div class="float-left" style="padding-bottom: 20px;">
+          <button id="more-sessions-button" class="btn btn-primary" @click="reloadSessions()">
+            Refresh Sessions
+          </button>
+        </div>
+        <div class="float-right" style="padding-bottom: 20px;">
+          <button id="more-sessions-button" class="btn btn-primary" v-if="this.currentPage < MAX_PAGES" @click="fetchMoreSessions()">
+            More Sessions
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -100,6 +121,9 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
 import { MAX_USER_SESSION_PAGES } from './types/Constants'
+import { FeatureEnum } from './types/FeatureTypes'
+
+const DEFAULT_ENTRIES_PER_PAGE = 40
 
 /**
  * This component displays all of the information related to the user
@@ -108,23 +132,46 @@ import { MAX_USER_SESSION_PAGES } from './types/Constants'
 
 @Component
 export default class UserSessions extends Vue {
+  private ENTRIES_PER_PAGE = process.env.VUE_APP_USER_SESSION_PER_PAGE || DEFAULT_ENTRIES_PER_PAGE
+
+  get currentPageSessions () {
+    const startIndex = this.currentPage - 1 > 0 ? (this.currentPage - 1) * this.ENTRIES_PER_PAGE : 0
+    const endIndex = startIndex + this.ENTRIES_PER_PAGE < this.readOnlySessions.length - 1 ? startIndex + this.ENTRIES_PER_PAGE : this.readOnlySessions.length - 1
+
+    return this.$store.getters.isAdmin ? this.readOnlySessions.slice(startIndex, endIndex) : this.sessions
+  }
+
   private sessions: Array<any>
-  private sessionLoop: any
+  private readOnlySessions: Array<any>
   private showSessions: boolean
   private searchID: string
   private currentPage: number
+  private numPages: number
+  private unwatchFilter: any
+  private FeatureEnum: any
   private MAX_PAGES = MAX_USER_SESSION_PAGES
 
   constructor () {
     super()
     this.searchID = ''
     this.sessions = []
+    this.readOnlySessions = []
     this.showSessions = false
-    this.sessionLoop = null
     this.currentPage = 0
+    this.numPages = 0
+    this.FeatureEnum = FeatureEnum
   }
 
   private mounted () {
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        this.reloadSessions()
+      }
+    )
+
     this.currentPage = 0
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
@@ -133,8 +180,9 @@ export default class UserSessions extends Vue {
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (this.sessionLoop) {
-      clearInterval(this.sessionLoop)
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
+      next()
+      return
     }
     this.showSessions = false
     this.searchID = to.params.pathMatch || ''
@@ -146,7 +194,7 @@ export default class UserSessions extends Vue {
   }
 
   private beforeDestroy () {
-    clearInterval(this.sessionLoop)
+    this.unwatchFilter()
   }
 
   private fetchMoreSessions () {
@@ -165,10 +213,22 @@ export default class UserSessions extends Vue {
       return
     }
 
-    this.$apiService.fetchUserSessions({ user_id: this.searchID, page: this.currentPage })
+    this.$apiService.fetchUserSessions({
+      user_id: this.searchID,
+      page: this.currentPage,
+      timeframe: this.$store.getters.currentFilter.dateRange,
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+    })
       .then((response: any) => {
-        this.sessions = this.sessions.concat(response.sessions)
-        this.currentPage = response.page
+        this.readOnlySessions = response.sessions || []
+
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
+          this.numPages = Math.ceil(this.readOnlySessions.length / this.ENTRIES_PER_PAGE)
+          this.currentPage = 1
+        } else {
+          this.sessions = this.sessions.concat(this.readOnlySessions)
+          this.currentPage = response.page
+        }
       })
       .catch((error: Error) => {
         if (this.sessions.length === 0) {
@@ -181,6 +241,14 @@ export default class UserSessions extends Vue {
           this.showSessions = true
         }
       })
+  }
+
+  private changePage (pageNumber: number) {
+    this.showSessions = false
+    this.currentPage = pageNumber
+    setTimeout(() => {
+      this.showSessions = true
+    }, 1000)
   }
 
   private convertUTCDateToLocalDate (date: Date) {
@@ -196,6 +264,10 @@ export default class UserSessions extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  a {
+    cursor: pointer;
+  }
+
   #more-sessions-button {
     border-color: #009FDF;
     background-color: #009FDF;
