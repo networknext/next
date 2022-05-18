@@ -1,5 +1,19 @@
 <template>
   <div>
+    <div class="row" style="text-align: center;" v-show="!showDetails">
+      <div class="col"></div>
+      <div class="col">
+        <div
+          class="spinner-border"
+          role="status"
+          id="customers-spinner"
+          style="margin:1rem;"
+        >
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+      <div class="col"></div>
+    </div>
     <v-tour name="sessionDetailsTour" :steps="sessionDetailsTourSteps" :options="sessionDetailsTourOptions" :callbacks="sessionDetailsTourCallbacks"></v-tour>
     <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
@@ -409,6 +423,11 @@ export default class SessionDetails extends Vue {
         this.meta = response.meta
         this.slices = response.slices
 
+        const enableRefresh = response.refresh || false
+        if (!enableRefresh) {
+          clearInterval(this.detailsLoop)
+        }
+
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
         if (!this.showDetails) {
@@ -422,7 +441,7 @@ export default class SessionDetails extends Vue {
 
           const cellSize = 10
           const aggregation = 'MEAN'
-          const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
+          const gpuAggregation = false
 
           this.viewState.latitude = this.meta.location.latitude
           this.viewState.longitude = this.meta.location.longitude
