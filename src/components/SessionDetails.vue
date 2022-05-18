@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="row" style="text-align: center;" v-show="!showDetails">
+    <div class="row" style="text-align: center;" v-show="showSpinner">
       <div class="col"></div>
       <div class="col">
         <div
@@ -92,7 +92,7 @@
         </div>
       </div>
       <div class="col-12 col-lg-4">
-        <div class="card">
+        <div class="card mb-5">
           <div class="card-img-top">
             <div style="width: 100%; height: 40vh; margin: 0px; padding: 0px; position: relative;">
               <div id="session-tool-map"></div>
@@ -291,6 +291,7 @@ export default class SessionDetails extends Vue {
   }
 
   private showDetails = false
+  private showSpinner: boolean
 
   private searchID: string
 
@@ -361,6 +362,8 @@ export default class SessionDetails extends Vue {
         }
       }
     }
+
+    this.showSpinner = true
   }
 
   private mounted () {
@@ -516,6 +519,7 @@ export default class SessionDetails extends Vue {
           this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
+      .finally(() => { this.showSpinner = false })
   }
 
   private restartLoop () {
