@@ -885,17 +885,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			})
 		}
 
-		if s.Env == "prod" || s.Env == "dev" {
-			buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
-			if err != nil {
-				err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
-				core.Error("%v", err)
-				return err
-			}
-
-			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				reply.Meta.Anonymise()
-			}
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CustomerCode)) {
+			reply.Meta.Anonymise()
 		}
 
 		sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
