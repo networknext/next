@@ -885,8 +885,18 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			})
 		}
 
-		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CustomerCode)) {
-			reply.Meta.Anonymise()
+		buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
+		if err != nil {
+			// The buyer entry won't exist in environments that aren't prod so only anonymize if !admin
+			err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
+			core.Error("%v", err)
+			if !isAdmin {
+				reply.Meta.Anonymise()
+			}
+		} else {
+			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				reply.Meta.Anonymise()
+			}
 		}
 
 		sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
