@@ -650,9 +650,9 @@ This function return true once server has finished DNS resolve of the Network Ne
 
 .. code-block:: c++
 
-	const bool autodetect_finished = next_server_autodetect_finished( server );
+	const bool ready = next_server_ready( server );
 
-	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
+	printf( "server is ready = %s\n", ready ? "true" : "false" );
 
 next_server_datacenter
 ----------------------
