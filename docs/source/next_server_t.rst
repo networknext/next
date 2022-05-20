@@ -627,16 +627,16 @@ Here is how to query it, and print out various interesting values:
 	    printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
 	}
 
-next_server_autodetect_finished
--------------------------------
+next_server_ready
+-----------------
 
-Determines if the server has finished autodetecting the datacenter name after calling *next_server_create*.
+Wait until this function returns true, before sending clients to connect to your server.
+
+This function return true once server has finished DNS resolve of the Network Next backend IP address, and has completed autodetection of the datacenter when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
 
 .. code-block:: c++
 
-	NEXT_BOOL next_server_autodetect_finished( struct next_server_t * server );
-
-This function allows you to check if the server has finished determining its datacenter name when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
+	NEXT_BOOL next_server_ready( struct next_server_t * server );
 
 **Parameters:**
 
@@ -644,7 +644,7 @@ This function allows you to check if the server has finished determining its dat
 
 **Return value:**
 
-	True if the server has finished autodetection, false otherwise.
+	True if the server is ready to receive client connections, false otherwise.
 
 **Example:**
 
@@ -654,14 +654,14 @@ This function allows you to check if the server has finished determining its dat
 
 	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
 
-next_server_autodetected_datacenter
------------------------------------
+next_server_datacenter
+----------------------
 
-Gets the autodetected datacenter name.
+Call this once next_server_ready returns true to get the autodetected datacenter name.
 
 .. code-block:: c++
 
-	const char * next_server_autodetected_datacenter( struct next_server_t * server );
+	const char * next_server_datacenter( struct next_server_t * server );
 
 **Parameters:**
 
@@ -675,12 +675,12 @@ Gets the autodetected datacenter name.
 
 .. code-block:: c++
 
-	const bool autodetect_finished = next_server_autodetect_finished( server );
+	const bool ready = next_server_ready( server );
 
-	if ( autodetect_finished )
+	if ( ready )
 	{
-		const char * autodetected_datacenter = next_server_autodetected_datacenter( server );
-		printf( "server autodetected datacenter = %s\n", autodetected_datacenter );
+		const char * datacenter = next_server_datacenter( server );
+		printf( "server datacenter is %s\n", datacenter );
 	}
 
 next_server_event
