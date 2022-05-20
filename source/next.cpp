@@ -579,7 +579,7 @@ void next_printf( const char * format, ... )
 {
     va_list args;
     va_start( args, format );
-    char buffer[1024];
+    char buffer[64*1024];
     vsnprintf( buffer, sizeof(buffer), format, args );
     log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
     va_end( args );
@@ -3745,6 +3745,7 @@ struct next_config_internal_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
+    bool disable_autodetect;
 };
 
 static next_config_internal_t next_global_config;
@@ -3867,11 +3868,11 @@ int next_init( void * context, next_config_t * config_in )
 
     config.disable_network_next = config_in ? config_in->disable_network_next : false;
 
-    const char * next_disable_override = next_platform_getenv( "NEXT_DISABLE_NETWORK_NEXT" );
+    const char * next_disable_network_next_override = next_platform_getenv( "NEXT_DISABLE_NETWORK_NEXT" );
     {
-        if ( next_disable_override != NULL )
+        if ( next_disable_network_next_override != NULL )
         {
-            int value = atoi( next_disable_override );
+            int value = atoi( next_disable_network_next_override );
             if ( value > 0 )
             {
                 config.disable_network_next = true;
@@ -3882,6 +3883,25 @@ int next_init( void * context, next_config_t * config_in )
     if ( config.disable_network_next )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
+    }
+
+    config.disable_autodetect = config_in ? config_in->disable_autodetect : false;
+
+    const char * next_disable_autodetect_override = next_platform_getenv( "NEXT_DISABLE_AUTODETECT" );
+    {
+        if ( next_disable_autodetect_override != NULL )
+        {
+            int value = atoi( next_disable_autodetect_override );
+            if ( value > 0 )
+            {
+                config.disable_autodetect = true;
+            }
+        }
+    }
+
+    if ( config.disable_autodetect )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "autodetect is disabled" );
     }
 
     const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
@@ -9134,18 +9154,7 @@ struct NextBackendMatchDataRequestPacket
 
     NextBackendMatchDataRequestPacket()
     {
-        version_major = NEXT_VERSION_MAJOR_INT;
-        version_minor = NEXT_VERSION_MINOR_INT;
-        version_patch = NEXT_VERSION_PATCH_INT;
-        customer_id = 0;
-        memset( &server_address, 0, sizeof(next_address_t) );
-        datacenter_id = 0;
-        user_hash = 0;
-        session_id = 0;
-        retry_number = 0;
-        match_id = 0;
-        num_match_values = 0;
-        memset( match_values, 0, sizeof(match_values) );
+    	memset( this, 0, sizeof(NextBackendMatchDataRequestPacket) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -10800,6 +10809,7 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
     nhost = NULL;
 
     char buf[10*1024];
+    memset( buf, 0, sizeof(buf) );
 
     while ( fgets(buf, sizeof(buf), sfi) ) 
     {
@@ -10896,14 +10906,47 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
     const char * city = input_datacenter + 10;
 
-    // capture whois output for address
+    // try to read in cache of whois in whois.txt first
 
-    char whois_buffer[1024*256];
+    bool have_cached_whois = false;
+    char whois_buffer[1024*64];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-    char * whois_output = &whois_buffer[0];
-    size_t bytes_remaining = sizeof(whois_buffer) - 1;
-    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
-    
+	FILE * f = fopen( "whois.txt", "r");
+	if ( f )
+	{
+		fseek( f, 0, SEEK_END );
+		size_t fsize = ftell( f );
+		fseek( f, 0, SEEK_SET );
+		if ( fsize > sizeof(whois_buffer) - 1 )
+		{
+			fsize = sizeof(whois_buffer) - 1;
+		}
+		if ( fread( whois_buffer, fsize, 1, f ) == 1 )
+		{
+			next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
+			have_cached_whois = true;
+		}
+		fclose( f );
+	}
+
+	// if we couldn't read whois.txt, run whois locally and store the result to whois.txt
+
+	if ( !have_cached_whois )
+	{
+		next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
+	    char * whois_output = &whois_buffer[0];
+	    size_t bytes_remaining = sizeof(whois_buffer) - 1;
+	    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+   		FILE * f = fopen( "whois.txt", "w" );
+   		if ( f )
+   		{
+   			next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
+   			fputs( whois_buffer, f );
+   			fflush( f );
+   			fclose( f );
+   		}
+	}
+
     // check against multiplay supplier mappings
 
     bool found = false;
@@ -10937,8 +10980,11 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
             continue;
         }
 
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "checking for supplier \"%s\" with substring \"%s\"", supplier, substring );
+
         if ( strstr( whois_buffer, substring ) )
         {
+        	next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
             sprintf( output, "%s.%s", supplier, city );
             found = true;
         }
@@ -10950,7 +10996,6 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
-        next_printf( "\nmultiplay.txt:\n\n%s\nwhois:\n%s\n\n", multiplay_buffer, whois_buffer );
         return false;
     }
 
@@ -13093,7 +13138,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
 
-    if ( autodetect_input[0] == '\0' 
+    if ( !next_global_config.disable_autodetect &&
+    	 ( autodetect_input[0] == '\0' 
             ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
@@ -13111,7 +13157,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
            autodetect_input[6] == 'l' && 
            autodetect_input[7] == 'a' && 
            autodetect_input[8] == 'y' && 
-           autodetect_input[9] == '.' ) )
+           autodetect_input[9] == '.' ) ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
@@ -13460,6 +13506,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
+	        packet.version_major = NEXT_VERSION_MAJOR_INT;
+	        packet.version_minor = NEXT_VERSION_MINOR_INT;
+	        packet.version_patch = NEXT_VERSION_PATCH_INT;
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
@@ -16929,6 +16978,9 @@ static void test_backend_packets()
         next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendMatchDataRequestPacket in, out;
+        in.version_major = NEXT_VERSION_MAJOR_INT;
+        in.version_minor = NEXT_VERSION_MINOR_INT;
+        in.version_patch = NEXT_VERSION_PATCH_INT;
         in.customer_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         in.datacenter_id = next_datacenter_id( "local" );

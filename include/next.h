@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.1"
+    #define NEXT_VERSION_FULL                              "4.20.2"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                1
+    #define NEXT_VERSION_PATCH_INT                                2
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -173,6 +173,7 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     NEXT_BOOL disable_network_next;
+    NEXT_BOOL disable_autodetect;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( struct next_config_t * config );
@@ -269,7 +270,7 @@ struct next_client_stats_t
 // -----------------------------------------
 
 #define NEXT_CLIENT_STATE_CLOSED        0
-#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_OPEN          1
 #define NEXT_CLIENT_STATE_ERROR         2
 
 struct next_client_t;
