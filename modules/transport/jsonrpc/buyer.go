@@ -354,13 +354,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			reply.Sessions = append(reply.Sessions, UserSession{
 				Timestamp: timeStamp.Add(5 * time.Hour),
 				Meta: transport.SessionMeta{
-					ID:         uint64(session.SessionID),
-					UserHash:   uint64(session.UserHash),
-					Connection: uint8(session.Connection),
-					Location: routing.Location{
-						ISP: session.ISP,
-					},
-					Platform:        uint8(session.Platform),
+					ID:              uint64(session.SessionID),
 					DatacenterName:  session.DatacenterName,
 					DatacenterAlias: session.DatacenterAlias,
 					ServerAddr:      session.ServerAddress,
@@ -823,15 +817,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 
 		hops := make([]transport.RelayHop, 0)
-		for _, hop := range lookerSession.Slices[len(lookerSession.Slices)-1].NextRelays {
-			hops = append(hops, transport.RelayHop{
-				Name: hop.Name,
-			})
-		}
 
 		reply.Meta = transport.SessionMeta{
 			ID:         uint64(lookerSession.Meta.SessionID),
-			UserHash:   uint64(lookerSession.Meta.UserHash),
+			UserHash:   uint64(lookerSession.Slices[0].UserHash),
 			BuyerID:    uint64(lookerSession.Meta.BuyerID),
 			Connection: uint8(lookerSession.Meta.Connection),
 			Location: routing.Location{
@@ -843,11 +832,11 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			Platform:        uint8(lookerSession.Meta.Platform),
 			DatacenterName:  lookerSession.Meta.DatacenterName,
 			DatacenterAlias: lookerSession.Meta.DatacenterAlias,
-			SDK:             lookerSession.Meta.SDK,
+			SDK:             lookerSession.Meta.SDKVersion,
 			ClientAddr:      lookerSession.Meta.ClientAddress,
 			NearbyRelays:    nearbyRelays,
 			ServerAddr:      lookerSession.Meta.ServerAddress,
-			OnNetworkNext:   strings.ToLower(lookerSession.Meta.OnNetworkNext) == "yes",
+			OnNetworkNext:   strings.ToLower(lookerSession.Meta.EverOnNext) == "yes",
 		}
 
 		for _, slice := range lookerSession.Slices {
@@ -859,29 +848,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 			reply.Slices = append(reply.Slices, transport.SessionSlice{
 				Timestamp: timeStamp,
-				Next: routing.Stats{
-					RTT:        slice.NextRTT,
-					Jitter:     slice.NextJitter,
-					PacketLoss: slice.NextPacketLoss,
-				},
-				Direct: routing.Stats{
-					RTT:        slice.DirectRTT,
-					Jitter:     slice.DirectJitter,
-					PacketLoss: slice.DirectPacketLoss,
-				},
-				Predicted: routing.Stats{
-					RTT: slice.PredictedRTT,
-					// Jitter: slice.PredictedJitter,
-					// PacketLoss: slice.PredictedPacketLoss,
-				},
-				Envelope: routing.Envelope{
-					Up:   slice.EnvelopeUp,
-					Down: slice.EnvelopeDown,
-				},
-				RouteDiversity:    uint32(slice.RouteDiversity),
-				OnNetworkNext:     strings.ToLower(slice.OnNetworkNext) == "yes",     // Looker forces these to be strings - yes or no
-				IsMultiPath:       strings.ToLower(slice.IsMultiPath) == "yes",       // Looker forces these to be strings - yes or no
-				IsTryBeforeYouBuy: strings.ToLower(slice.IsTryBeforeYouBuy) == "yes", // Looker forces these to be strings - yes or no
 			})
 		}
 
@@ -3246,5 +3212,38 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	urlOptions.UserAttributes["customer_code"] = customerCode
 
 	reply.URL = notifications.BuildLookerURL(urlOptions)
+	return nil
+}
+
+type TestSessionMetaLookupArgs struct {
+	SessionID    string `json:"session_id"`
+	CustomerCode string `json:"customer_code"`
+}
+
+type TestSessionMetaLookupReply struct{}
+
+func (s *BuyersService) TestSessionMetaLookup(r *http.Request, args *TestSessionMetaLookupArgs, reply *TestSessionMetaLookupReply) error {
+	lookupData, err := s.LookerClient.RunSessionTimestampLookupQuery(args.SessionID, "")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	metaData, err := s.LookerClient.RunSessionMetaDataQuery(lookupData.SessionID, lookupData.TimestampTime, "")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	fmt.Println(metaData)
+
+	sessionSlices, err := s.LookerClient.RunSessionSliceLookupQuery(lookupData.SessionID, lookupData.TimestampDate, "")
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	fmt.Println(sessionSlices)
+
 	return nil
 }
