@@ -51,6 +51,7 @@ Use this to set default values for config variables, then make only the changes 
 - **socket_send_buffer_size** -- 1000000
 - **socket_receive_buffer_size** -- 1000000
 - **disable_network_next** -- false
+- **disable_autodetect** -- false
 
 **Example:**
 
