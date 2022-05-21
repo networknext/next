@@ -10036,7 +10036,6 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     next_crypto_generichash( packet_data + 1, NEXT_PACKET_HASH_BYTES, message, message_length, next_backend_packet_hash_key, NEXT_CRYPTO_GENERICHASH_KEYBYTES );
 
-
     return NEXT_OK;
 }
 
