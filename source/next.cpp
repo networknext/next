@@ -9152,6 +9152,14 @@ struct NextBackendMatchDataRequestPacket
     int num_match_values;
     double match_values[NEXT_MAX_MATCH_VALUES];
 
+    void Reset()
+    {
+        memset( this, 0, sizeof(NextBackendMatchDataRequestPacket) );
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+    }
+
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, version_major, 8 );
@@ -13497,7 +13505,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
-            memset( &packet, 0, sizeof(packet) );
+            packet.Reset();
 	        packet.version_major = NEXT_VERSION_MAJOR_INT;
 	        packet.version_minor = NEXT_VERSION_MINOR_INT;
 	        packet.version_patch = NEXT_VERSION_PATCH_INT;
@@ -16970,6 +16978,8 @@ static void test_backend_packets()
         next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendMatchDataRequestPacket in, out;
+        in.Reset();
+        out.Reset();
         in.version_major = NEXT_VERSION_MAJOR_INT;
         in.version_minor = NEXT_VERSION_MINOR_INT;
         in.version_patch = NEXT_VERSION_PATCH_INT;
