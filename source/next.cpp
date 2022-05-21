@@ -9152,11 +9152,6 @@ struct NextBackendMatchDataRequestPacket
     int num_match_values;
     double match_values[NEXT_MAX_MATCH_VALUES];
 
-    NextBackendMatchDataRequestPacket()
-    {
-    	memset( this, 0, sizeof(NextBackendMatchDataRequestPacket) );
-    }
-
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_bits( stream, version_major, 8 );
@@ -9193,11 +9188,6 @@ struct NextBackendMatchDataResponsePacket
 {
     uint64_t session_id;
     uint32_t response;
-
-    NextBackendMatchDataResponsePacket()
-    {
-        memset( this, 0, sizeof(NextBackendMatchDataResponsePacket) );
-    }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
@@ -12065,6 +12055,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
 
             NextBackendMatchDataResponsePacket packet;
+            memset( &packet, 0, sizeof(packet) );
 
             if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
             {
@@ -13506,6 +13497,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
+            memset( &packet, 0, sizeof(packet) );
 	        packet.version_major = NEXT_VERSION_MAJOR_INT;
 	        packet.version_minor = NEXT_VERSION_MINOR_INT;
 	        packet.version_patch = NEXT_VERSION_PATCH_INT;
