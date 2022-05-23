@@ -11007,7 +11007,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
+ 
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
 {
 
