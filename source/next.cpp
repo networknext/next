@@ -579,7 +579,11 @@ void next_printf( const char * format, ... )
 {
     va_list args;
     va_start( args, format );
+#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
     char buffer[64*1024];
+#else // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    char buffer[1024];
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
     vsnprintf( buffer, sizeof(buffer), format, args );
     log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
     va_end( args );
@@ -591,7 +595,11 @@ void next_printf( int level, const char * format, ... )
         return;
     va_list args;
     va_start( args, format );
+#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    char buffer[64*1024];
+#else // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
     char buffer[1024];
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
     vsnprintf( buffer, sizeof( buffer ), format, args );
     log_function( level, "%s", buffer );
     va_end( args );
