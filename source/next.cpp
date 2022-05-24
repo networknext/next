@@ -4105,6 +4105,7 @@ struct next_config_internal_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
+    bool disable_autodetect;
 };
 
 static next_config_internal_t next_global_config;
@@ -4242,6 +4243,25 @@ int next_init( void * context, next_config_t * config_in )
     if ( config.disable_network_next )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
+    }
+
+    config.disable_autodetect = config_in ? config_in->disable_autodetect : false;
+
+    const char * next_disable_autodetect_override = next_platform_getenv( "NEXT_DISABLE_AUTODETECT" );
+    {
+        if ( next_disable_autodetect_override != NULL )
+        {
+            int value = atoi( next_disable_autodetect_override );
+            if ( value > 0 )
+            {
+                config.disable_autodetect = true;
+            }
+        }
+    }
+
+    if ( config.disable_autodetect )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "autodetect is disabled" );
     }
 
     const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
