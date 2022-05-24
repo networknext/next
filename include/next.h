@@ -167,6 +167,7 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     NEXT_BOOL disable_network_next;
+    NEXT_BOOL disable_autodetect;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( struct next_config_t * config );
@@ -363,6 +364,12 @@ NEXT_EXPORT_FUNC void next_server_send_packet( struct next_server_t * server, co
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+
+NEXT_EXPORT_FUNC NEXT_BOOL next_server_ready( struct next_server_t * server );
+
+NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
+
+// todo: bring across server events and match data
 
 // -----------------------------------------
 
