@@ -13877,7 +13877,7 @@ void next_server_update( next_server_t * server )
                 next_server_notify_ready_t * ready = (next_server_notify_ready_t*) notify;
                 strncpy( server->datacenter_name, ready->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
                 server->ready = true;
-                next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is %s", ready->datacenter_name );
+                next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", ready->datacenter_name );
                 next_printf( NEXT_LOG_LEVEL_INFO, "server is ready to receive client connections" );
             }
             break;
