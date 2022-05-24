@@ -369,7 +369,11 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_ready( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
 
-// todo: bring across server events and match data
+NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
+
+NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
 
 // -----------------------------------------
 
