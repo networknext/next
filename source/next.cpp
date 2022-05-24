@@ -10212,7 +10212,7 @@ struct next_server_command_flush_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
-#define NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED                  5
+#define NEXT_SERVER_NOTIFY_READY                                5
 #define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                       6
 
 struct next_server_notify_t
@@ -10256,9 +10256,9 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
     // ...
 };
 
-struct next_server_notify_autodetect_finished_t : public next_server_notify_t
+struct next_server_notify_ready_t : public next_server_notify_t
 {
-    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 };
 
 struct next_server_notify_flush_finished_t : public next_server_notify_t
@@ -11185,7 +11185,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    memset( server, 0, sizeof( next_server_internal_t) );
+    memset( server, 0, sizeof(next_server_internal_t) );
 
     server->wake_up_callback = wake_up_callback;
 
@@ -11357,11 +11357,13 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     if ( server->resolve_hostname_thread )
     {
+    	next_platform_thread_join( server->resolve_hostname_thread );
         next_platform_thread_destroy( server->resolve_hostname_thread );
 	}
 
     if ( server->autodetect_thread )
     {
+    	next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
 	}
 
@@ -13024,6 +13026,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool success = false;
 
+    double start_time = next_time();
+
     for ( int i = 0; i < 10; ++i )
     {
         if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
@@ -13036,6 +13040,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
         }
+    }
+
+    if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+    {
+	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
+	    NEXT_PLATFORM_THREAD_RETURN();
     }
 
     if ( !success )
@@ -13132,6 +13143,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     char autodetect_output[1024];
     memset( autodetect_output, 0, sizeof(autodetect_output) );
 
+    double start_time = next_time();
+
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // autodetect datacenter is currently windows and linux only (mac is just for testing...)
@@ -13177,6 +13190,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+    if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
+    {
+	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+	    NEXT_PLATFORM_THREAD_RETURN();
+    }
 
     next_platform_mutex_guard( &server->autodetect_mutex );
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
@@ -13246,8 +13266,10 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 		}
 	}
 
-    next_server_notify_autodetect_finished_t * notify = (next_server_notify_autodetect_finished_t*) next_malloc( server->context, sizeof( next_server_notify_autodetect_finished_t ) );
-    notify->type = NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED;
+    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    notify->type = NEXT_SERVER_NOTIFY_READY;
     {
         next_platform_mutex_guard( &server->notify_mutex );
         next_queue_push( server->notify_queue, notify );
@@ -13625,8 +13647,8 @@ struct next_server_t
     next_proxy_session_manager_t * session_manager;
     next_address_t address;
     uint16_t bound_port;
-    bool autodetect_finished;
-    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    bool ready;
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     bool flushing;
     bool flushed;
 
@@ -13850,11 +13872,12 @@ void next_server_update( next_server_t * server )
             }
             break;
 
-            case NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED:
+            case NEXT_SERVER_NOTIFY_READY:
             {
-                next_server_notify_autodetect_finished_t * autodetect_finished = (next_server_notify_autodetect_finished_t*) notify;
-                strncpy( server->autodetect_datacenter, autodetect_finished->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-                server->autodetect_finished = true;
+                next_server_notify_ready_t * ready = (next_server_notify_ready_t*) notify;
+                strncpy( server->datacenter_name, ready->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+                server->ready = true;
+                next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is %s", ready->datacenter_name );
                 next_printf( NEXT_LOG_LEVEL_INFO, "server is ready to receive client connections" );
             }
             break;
@@ -14258,7 +14281,7 @@ NEXT_BOOL next_server_ready( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
-    if ( server->autodetect_finished ) 
+    if ( server->ready ) 
     {
         return NEXT_TRUE;
     }
@@ -14270,7 +14293,7 @@ const char * next_server_datacenter( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
-    return server->autodetect_datacenter;
+    return server->datacenter_name;
 }
 
 void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events )
@@ -14349,9 +14372,9 @@ void next_server_flush( struct next_server_t * server )
 {
     next_assert( server );
 
-    if ( !server->autodetect_finished )
+    if ( !server->ready )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is not initialized" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is not ready" );
         return;
     }
 

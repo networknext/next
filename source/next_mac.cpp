@@ -576,14 +576,14 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-    next_assert( mutex-> ok );
+    next_assert( mutex->ok );
     pthread_mutex_lock( &mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-    next_assert( mutex-> ok );
+    next_assert( mutex->ok );
     pthread_mutex_unlock( &mutex->handle );
 }
 
