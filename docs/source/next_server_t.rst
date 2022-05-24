@@ -68,7 +68,7 @@ Then, create a server:
 
 .. code-block:: c++
 
-    next_server_t * server = next_server_create( NULL, "0.0.0.0:0", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:50000", "local", server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );
@@ -103,6 +103,10 @@ Gets the port the server socket is bound to.
 
 	uint16_t next_server_port( next_server_t * server );
 
+**Parameters:**
+
+	- **server** -- The server instance.
+
 **Return value:** 
 
 	The port number the server socket is bound to.
@@ -118,9 +122,42 @@ Gets the port the server socket is bound to.
         return 1;
     }
 
-    const uint16_t server_port = next_server_port( client );
+    const uint16_t server_port = next_server_port( server );
 
-    printf( "the client is bound to port %d\n", server_port );
+    printf( "the server is bound to port %d\n", server_port );
+
+next_server_address
+-------------------
+
+Gets the address of the server instance.
+
+.. code-block:: c++
+
+	next_address_t next_server_address( next_server_t * server )
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:** 
+
+	The address of the server.
+
+**Example:**
+
+.. code-block:: c++
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    if ( server == NULL )
+    {
+        printf( "error: failed to create server\n" );
+        return 1;
+    }
+
+    next_address_t server_address = next_server_address( server );
+
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    printf( "the server address is %s\n", next_address_to_string( &server_address, address_buffer ) );
 
 next_server_state
 -----------------
@@ -271,6 +308,34 @@ Tags a session for potentially different network optimization parameters.
 
 	next_server_tag_session( server, client_address, "pro" );
 
+next_server_tag_session_multiple
+--------------------------------
+
+Tags a session with multiple tags for potentially different network optimization parameters.
+
+.. code-block:: c++
+
+	void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **tags** -- The tags to be applied to the client. Some ideas: "pro", "streamer" or "dev".
+
+	- **num_tags** -- The number of tags to be applied to the client.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * tags[] = { "pro", "streamer" };
+	const int num_tags = 2;
+
+	next_server_tag_session_multiple( server, client_address, tags, num_tags );
+
 next_server_session_upgraded
 ----------------------------
 
@@ -278,7 +343,7 @@ Checks if a session has been upgraded.
 
 .. code-block:: c++
 
-	bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+	NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 **Parameters:**
 
@@ -359,3 +424,361 @@ Packets sent via this function do not apply to your network next bandwidth envel
 	uint8_t packet_data[32];
 	memset( packet_data, 0, sizeof(packet_data) );
 	next_server_send_packet_direct( server, client_address, packet_data, sizeof(packet_data) );
+
+next_server_stats
+-----------------
+
+Gets statistics for a specific client address.
+
+.. code-block:: c++
+
+	NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **next_address_t** -- The address of the client to get statistics for.
+
+	- **next_server_stats_t** -- The pointer to the server stats struct to fill.
+
+**Return value:**
+
+	True if a session exists for the given IP address, false otherwise.
+
+**Example**
+
+The server stats struct is defined as follows:
+
+.. code-block:: c++
+
+	struct next_server_stats_t
+	{
+	    struct next_address_t address;
+	    uint64_t session_id;
+	    uint64_t user_hash;
+	    int platform_id;
+	    int connection_type;
+	    NEXT_BOOL next;
+	    NEXT_BOOL committed;
+	    NEXT_BOOL multipath;
+	    NEXT_BOOL reported;
+	    NEXT_BOOL fallback_to_direct;
+	    float direct_min_rtt;
+	    float direct_max_rtt;
+	    float direct_prime_rtt;
+	    float direct_jitter;
+	    float direct_packet_loss;
+	    float next_rtt;
+	    float next_jitter;
+	    float next_packet_loss;
+	    float next_kbps_up;
+	    float next_kbps_down;
+	    uint64_t packets_sent_client_to_server;
+	    uint64_t packets_sent_server_to_client;
+	    uint64_t packets_lost_client_to_server;
+	    uint64_t packets_lost_server_to_client;
+	    uint64_t packets_out_of_order_client_to_server;
+	    uint64_t packets_out_of_order_server_to_client;
+	    float jitter_client_to_server;
+	    float jitter_server_to_client;
+	    int num_tags;
+	    uint64_t tags[NEXT_MAX_TAGS];
+	};
+
+Here is how to query it, and print out various interesting values:
+
+.. code-block:: c++
+
+	next_server_stats_t stats;
+	if ( !next_server_stats( server, client_address, &stats ) )
+	{
+	    printf( "server does not contain a session for provided address" );
+	    return;
+	}
+	
+	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	printf( "address = %s\n", next_address_to_string( client_address, address_buffer ) );
+
+	const char * platform = "unknown";
+
+	switch ( stats.platform_id )
+	{
+	    case NEXT_PLATFORM_WINDOWS:
+	        platform = "windows";
+	        break;
+
+	    case NEXT_PLATFORM_MAC:
+	        platform = "mac";
+	        break;
+
+	    case NEXT_PLATFORM_LINUX:
+	        platform = "linux";
+	        break;
+
+	    case NEXT_PLATFORM_SWITCH:
+	        platform = "nintendo switch";
+	        break;
+
+	    case NEXT_PLATFORM_PS4:
+	        platform = "ps4";
+	        break;
+
+	    case NEXT_PLATFORM_PS5:
+	        platform = "ps5";
+	        break;
+
+	    case NEXT_PLATFORM_IOS:
+	        platform = "ios";
+	        break;
+
+	    case NEXT_PLATFORM_XBOX_ONE:
+	        platform = "xbox one";
+	        break;
+
+	    case NEXT_PLATFORM_XBOX_SERIES_X:
+	        platform = "xbox series x";
+	        break;
+
+	    default:
+	        break;
+	}
+
+	printf( "session_id = %" PRIx64 "\n", stats.session_id );
+
+	printf( "platform_id = %s (%d)\n", platform, (int) stats.platform_id );
+
+	const char * connection = "unknown";
+	
+	switch ( stats.connection_type )
+	{
+	    case NEXT_CONNECTION_TYPE_WIRED:
+	        connection = "wired";
+	        break;
+
+	    case NEXT_CONNECTION_TYPE_WIFI:
+	        connection = "wifi";
+	        break;
+
+	    case NEXT_CONNECTION_TYPE_CELLULAR:
+	        connection = "cellular";
+	        break;
+
+	    default:
+	        break;
+	}
+
+	printf( "connection_type = %s (%d)\n", connection, stats.connection_type );
+
+	if ( !stats.fallback_to_direct )
+	{
+	    printf( "committed = %s\n", stats.committed ? "true" : "false" );
+	    printf( "multipath = %s\n", stats.multipath ? "true" : "false" );
+	    printf( "reported = %s\n", stats.reported ? "true" : "false" );
+	}
+
+	printf( "fallback_to_direct = %s\n", stats.fallback_to_direct ? "true" : "false" );
+
+	printf( "direct_min_rtt = %.2fms\n", stats.direct_min_rtt );
+	printf( "direct_max_rtt = %.2fms\n", stats.direct_max_rtt );
+	printf( "direct_prime_rtt = %.2fms\n", stats.direct_prime_rtt );
+	printf( "direct_jitter = %.2fms\n", stats.direct_jitter );
+	printf( "direct_packet_loss = %.1f%%\n", stats.direct_packet_loss );
+
+	if ( stats.next )
+	{
+	    printf( "next_rtt = %.2fms\n", stats.next_rtt );
+	    printf( "next_jitter = %.2fms\n", stats.next_jitter );
+	    printf( "next_packet_loss = %.1f%%\n", stats.next_packet_loss );
+	    printf( "next_bandwidth_up = %.1fkbps\n", stats.next_kbps_up );
+	    printf( "next_bandwidth_down = %.1fkbps\n", stats.next_kbps_down );
+	}
+
+	if ( !stats.fallback_to_direct )
+	{
+	    printf( "packets_sent_client_to_server = %" PRId64 "\n", stats.packets_sent_client_to_server );
+	    printf( "packets_sent_server_to_client = %" PRId64 "\n", stats.packets_sent_server_to_client );
+	    printf( "packets_lost_client_to_server = %" PRId64 "\n", stats.packets_lost_client_to_server );
+	    printf( "packets_lost_server_to_client = %" PRId64 "\n", stats.packets_lost_server_to_client );
+	    printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats.packets_out_of_order_client_to_server );
+	    printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats.packets_out_of_order_server_to_client );
+	    printf( "jitter_client_to_server = %f\n", stats.jitter_client_to_server );
+	    printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
+	}
+
+	if ( stats.num_tags > 0 )
+	{
+	    printf( "tags = [" );
+	    for ( int i = 0; i < stats.num_tags; ++i )
+	    {
+	        if ( i != stats.num_tags - 1 )
+	        {
+	            printf( "%" PRIx64 ",", stats.tags[i] );
+	        }
+	        else
+	        {
+	            printf( "%" PRIx64, stats.tags[i] );
+	        }
+	    }
+	    printf( "]\n" );
+	}
+	else
+	{
+	    printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
+	}
+
+next_server_ready
+-----------------
+
+Wait until this function returns true, before sending clients to connect to your server.
+
+This function return true once server has finished DNS resolve of the Network Next backend IP address, and has completed autodetection of the datacenter when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
+
+.. code-block:: c++
+
+	NEXT_BOOL next_server_ready( struct next_server_t * server );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:**
+
+	True if the server is ready to receive client connections, false otherwise.
+
+**Example:**
+
+.. code-block:: c++
+
+	const bool ready = next_server_ready( server );
+
+	printf( "server is ready = %s\n", ready ? "true" : "false" );
+
+next_server_datacenter
+----------------------
+
+Call this once next_server_ready returns true to get the autodetected datacenter name.
+
+.. code-block:: c++
+
+	const char * next_server_datacenter( struct next_server_t * server );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:**
+
+	The name of the autodetected datacenter.
+
+**Example:**
+
+.. code-block:: c++
+
+	const bool ready = next_server_ready( server );
+
+	if ( ready )
+	{
+		const char * datacenter = next_server_datacenter( server );
+		printf( "server datacenter is %s\n", datacenter );
+	}
+
+next_server_event
+-----------------
+
+Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
+
+You can define up to 64 event flags for your game, one event per bit in the *server_events* bitfield.
+
+Use this function to input in-game events that may be relevant to analytics.
+
+.. code-block:: c++
+
+	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client that triggered the event.
+
+	- **server_events** -- Bitfield of events that just triggered for the session.
+
+**Example:**
+
+.. code-block:: c++
+
+	enum GameEvents
+	{
+		GAME_EVENT_RESPAWNED = (1<<0),
+		GAME_EVENT_CATCH = (1<<1),
+		GAME_EVENT_THROW = (1<<2),
+		GAME_EVENT_KNOCKED_OUT = (1<<3),
+		GAME_EVENT_WON_MATCH = (1<<4),
+		GAME_EVENT_LOST_MATCH = (1<<5),
+		// ...
+	};
+
+	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
+
+next_server_match
+-----------------
+
+Associates a session with a match id and set of match values for that session.
+
+Match id can be any unique match id you have.
+
+Match values can include any information that you want to feed into analytics.
+
+For example: win/loss ratio, skill, kill/death ratio, skill, time spent in matchmaker, load time in seconds.
+
+Call this function once per-session at the beginning of each match on the server.
+
+.. code-block:: c++
+
+	void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
+
+**Parameters:**
+	
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to assign match data.
+
+	- **match_id** -- The match id to assign to the session. Pass in any unique per-match identifier you have.
+
+	- **match_values** -- The array of match values for the session.
+
+	- **num_match_values** -- The number of match values in the array.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * match_id = "this is a unique match id";
+	const double match_values[] = {10.0, 20.0, 30.0};
+	int num_match_values = 3;
+	next_server_match( server, address, match_id, match_values, num_match_values );
+
+next_server_flush
+-----------------
+
+Call this to flush all server data before shutting a server down.
+
+.. code-block:: c++
+
+	void next_server_flush( struct next_server_t * server );
+
+This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
+
+After calling this function, destroy the server via *next_server_destroy*.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_flush( server );
+	next_server_destroy( server );

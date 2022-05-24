@@ -17,19 +17,22 @@ Configuration struct for the Network Next SDK.
 	    int socket_send_buffer_size;
 	    int socket_receive_buffer_size;
 	    bool disable_network_next;
+	    bool disable_autodetect;
 	};
 
 **hostname** - The hostname for the backend the Network Next SDK is talking to. Set to "prod.spacecats.net" by default.
 
 **customer_public_key** - The customer public key as a base64 encoded string.
 
-**customer_private_key** - The customer public key as a base64 encoded string.
+**customer_private_key** - The customer private key as a base64 encoded string.
 
 **socket_send_buffer_size** - The size of the socket send buffer in bytes.
 
 **socket_receive_buffer_size** - The size of the socket receive buffer in bytes.
 
 **disable_network_next** - Set this to true to disable Network Next entirely and always send packets across the public internet.
+
+**disable_autodetect*** - Set this to true to disable autodetect datacenter from running. In this case the datacenter string passed in is always used as is.
 
 next_default_config
 -------------------
@@ -48,6 +51,7 @@ Use this to set default values for config variables, then make only the changes 
 - **socket_send_buffer_size** -- 1000000
 - **socket_receive_buffer_size** -- 1000000
 - **disable_network_next** -- false
+- **disable_autodetect** -- false
 
 **Example:**
 
@@ -228,7 +232,7 @@ The default log level is info. This includes both info messages and errors, whic
 .. code-block:: c++
 
 	// unleash the kraken!
-	next_set_log_level( NEXT_LOG_LEVEL_DEBUG );
+	next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
 next_log_function
 -----------------

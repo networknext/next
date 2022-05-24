@@ -58,16 +58,16 @@ Disables network next and send packets over the public internet.
 
 	$ export NEXT_DISABLE_NETWORK_NEXT=1
 
-NEXT_DISABLE_PACKET_TAGGING
----------------------------
+NEXT_DISABLE_AUTODETECT
+-----------------------
 
-Disables DOCSIS 3.1 packet tagging.
+Disables datacenter autodetection. The datacenter string passed in is always the datacenter used.
 
 **Example:**
 
 .. code-block:: console
 
-	$ export NEXT_DISABLE_PACKET_TAGGING=1
+	$ export NEXT_DISABLE_AUTODETECT=1
 
 NEXT_SOCKET_SEND_BUFFER_SIZE
 ----------------------------
