@@ -6822,6 +6822,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
+#if NEXT_DEBUG
+
         const uint8_t * packet_data = client->upgrade_response_packet_data;
         const int packet_bytes = client->upgrade_response_packet_bytes;
 
@@ -6830,6 +6832,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+
+#endif // #if NEXT_DEBUG
 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
