@@ -887,7 +887,7 @@ func mainReturnWithCode() int {
 				core.Error("invalid METADATA_SYNC_INTERVAL: %v", err)
 				return 1
 			}
-			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+			//connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
 
 			// Start a goroutine to shutdown the HTTP server when the metadata changes
 			go func() {
@@ -905,13 +905,10 @@ func mainReturnWithCode() int {
 						if err != nil {
 							core.Error("failed to get list of instances in server backend MIG : %v", err)
 						}
-						instanceID, err := metadata.InstanceID()
-						if err != nil {
-							core.Error("failed to get Instance ID : %v", err)
-						}
-						val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList, instanceID)
+
+						val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList)
 						if val {
-							core.Debug("connection drain metadata field %s is true, shutting down HTTP server", connectionDrainMetadata)
+							core.Debug("the instance is deleting, shutting down HTTP server")
 							// Shutdown the HTTP server
 							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
 							defer cancel()
@@ -1083,22 +1080,16 @@ func getMIGInstancesStatusList(gcpProjectID string, migName string) ([]InstanceI
 
 	return instances, nil
 }
-func checkIfInstanceIsInDeletingAction(currentInstancesList []InstanceInfo, myInstanceID string) bool {
-	var stoppingInstances []string
+func checkIfInstanceIsInDeletingAction(currentInstancesList []InstanceInfo) bool {
+	myInstanceId, err := metadata.InstanceID()
+	if err != nil {
+		core.Error("failed to get Instance ID : %v", err)
+	}
 	//check current list
 	for i := range currentInstancesList {
-		if currentInstancesList[i].CurrentAction == "DELETING" {
-			stoppingInstances = append(stoppingInstances, currentInstancesList[i].Id)
-		}
-	}
-	return contains(stoppingInstances, myInstanceID)
-}
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
+		if currentInstancesList[i].CurrentAction == "DELETING" && currentInstancesList[i].Id == myInstanceId {
 			return true
 		}
 	}
-
 	return false
 }
