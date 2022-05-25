@@ -18,6 +18,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"strings"
@@ -89,6 +90,13 @@ func mainReturnWithCode() int {
 	env, err := backend.GetEnv()
 	if err != nil {
 		core.Error("could not get env: %v", err)
+		return 1
+	}
+
+	//Get Server Backend MIG name
+	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
+	if serverBackendMIGName == "" {
+		core.Error("SERVER_BACKEND_MIG_NAME not set")
 		return 1
 	}
 
@@ -888,12 +896,21 @@ func mainReturnWithCode() int {
 					select {
 					case <-ticker.C:
 						// Get metadata value for connection drain
-						val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+						/*val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
 						if err != nil {
 							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
 						}
-
-						if val == "true" {
+						*/
+						MIGInstancesStatusList, err := getMIGInstancesStatusList(gcpProjectID, serverBackendMIGName)
+						if err != nil {
+							core.Error("failed to get list of instances in server backend MIG : %v", err)
+						}
+						instanceID, err := metadata.InstanceID()
+						if err != nil {
+							core.Error("failed to get Instance ID : %v", err)
+						}
+						val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList, instanceID)
+						if val {
 							core.Debug("connection drain metadata field %s is true, shutting down HTTP server", connectionDrainMetadata)
 							// Shutdown the HTTP server
 							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
@@ -1044,4 +1061,44 @@ func mainReturnWithCode() int {
 	fmt.Println("Successfully shutdown.")
 
 	return 0
+}
+
+type InstanceInfo struct {
+	CurrentAction  string
+	Id             string
+	InstanceStatus string
+}
+
+func getMIGInstancesStatusList(gcpProjectID string, migName string) ([]InstanceInfo, error) {
+	// Get the latest instance list in the relay backend mig
+	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", migName, "--zone", "us-central1-a", "--format", "json")
+
+	instancesListJson, err := runnable.CombinedOutput()
+	if err != nil {
+		core.Error("Cannot get the Instances Status list %v", err)
+		return nil, err
+	}
+	var instances []InstanceInfo
+	json.Unmarshal([]byte(instancesListJson), &instances)
+
+	return instances, nil
+}
+func checkIfInstanceIsInDeletingAction(currentInstancesList []InstanceInfo, myInstanceID string) bool {
+	var stoppingInstances []string
+	//check current list
+	for i := range currentInstancesList {
+		if currentInstancesList[i].CurrentAction == "DELETING" {
+			stoppingInstances = append(stoppingInstances, currentInstancesList[i].Id)
+		}
+	}
+	return contains(stoppingInstances, myInstanceID)
+}
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
