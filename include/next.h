@@ -87,10 +87,12 @@
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
-#define NEXT_PLATFORM_GDK                                         10
-#define NEXT_PLATFORM_MAX                                         10
+#define NEXT_PLATFORM_GDK                                        10
+#define NEXT_PLATFORM_MAX                                        10
 
 #define NEXT_MAX_TAGS                                             8
+
+#define NEXT_MAX_MATCH_VALUES                                    64
 
 #if defined(_WIN32)
 #define NOMINMAX
