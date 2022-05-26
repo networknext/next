@@ -737,7 +737,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		sql,
 		int64(buyer.ID),
 		buyer.Alias,
-		buyer.Alias,
+		buyer.CompanyCode,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
 		buyer.Analytics,
