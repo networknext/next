@@ -728,14 +728,15 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"))
+	sql.Write([]byte("sdk_generated_id, alias, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
 		int64(buyer.ID),
+		buyer.Alias,
 		buyer.Alias,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
