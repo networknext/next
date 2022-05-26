@@ -77,6 +77,8 @@ type BuyersService struct {
 	BigTable        *storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
 
+	UseLooker bool
+
 	BqClient *bigquery.Client
 
 	GithubClient                   *github.Client
@@ -136,8 +138,10 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserID string `json:"user_id"`
-	Page   int    `json:"page"`
+	UserID       string `json:"user_id"`
+	Page         int    `json:"page"`
+	Timeframe    string `json:"timeframe"`
+	CustomerCode string `json:"customer_code"`
 }
 
 type UserSessionsReply struct {
@@ -156,6 +160,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		core.Error("%v", err)
 		return err
 	}
+
+	isAdmin := middleware.VerifyAnyRole(r, middleware.AdminRole)
+
 	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
@@ -228,7 +235,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 						session.Anonymise()
-					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 						// Don't show sessions where the company code does not match the request's
 						continue
 					}
@@ -245,7 +252,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	if s.UseBigtable {
+	if s.UseBigtable && !isAdmin {
 		var rowsByHash []bigtable.Row
 		var rowsByID []bigtable.Row
 		var rowsByHexID []bigtable.Row
@@ -325,8 +332,41 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 		}
 	} else {
-		// This is only for situations where Bigtable isn't being used (local dev)
-		reply.Page = MaxBigTableDays
+		reply.Page = MaxBigTableDays // TODO: Change the name of this
+	}
+
+	if s.UseLooker || isAdmin {
+		// TODO: Add date picker to user tool and add support for multiple userID types (hash, hex, ID)
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe, args.CustomerCode)
+		if err != nil {
+			core.Error("UserSessions(): %v:", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+			return &err
+		}
+
+		for _, session := range lookerUserSessions {
+			timeStamp, err := time.Parse("2006-01-02 15:04:05", session.Timestamp)
+			if err != nil {
+				core.Error("UserSessions(): Failed to parse timestamp in UTC: %v:", err.Error())
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, UserSession{
+				Timestamp: timeStamp.Add(5 * time.Hour),
+				Meta: transport.SessionMeta{
+					ID:         uint64(session.SessionID),
+					UserHash:   uint64(session.UserHash),
+					Connection: uint8(session.Connection),
+					Location: routing.Location{
+						ISP: session.ISP,
+					},
+					Platform:        uint8(session.Platform),
+					DatacenterName:  session.DatacenterName,
+					DatacenterAlias: session.DatacenterAlias,
+					ServerAddr:      session.ServerAddress,
+				},
+			})
+		}
 	}
 
 	// Sort the sessions by timestamp
@@ -724,17 +764,28 @@ func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, repl
 }
 
 type SessionDetailsArgs struct {
-	SessionID string `json:"session_id"`
+	SessionID    string `json:"session_id"`
+	Timeframe    string `json:"timeframe"`
+	CustomerCode string `json:"customer_code"`
 }
 
 type SessionDetailsReply struct {
-	Meta   transport.SessionMeta    `json:"meta"`
-	Slices []transport.SessionSlice `json:"slices"`
+	Meta    transport.SessionMeta    `json:"meta"`
+	Slices  []transport.SessionSlice `json:"slices"`
+	Refresh bool                     `json:"refresh"`
 }
 
 func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs, reply *SessionDetailsReply) error {
 	var err error
 	var historic bool = false
+
+	ctx := r.Context()
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	timeFrame := "7 days"
+
+	reply.Refresh = false
 
 	if args.SessionID == "" {
 		err = fmt.Errorf("SessionDetails() session ID is required")
@@ -742,13 +793,127 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
+	if args.Timeframe != "" {
+		timeFrame = args.Timeframe
+	}
+
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
+	isLiveSession := !(err != nil || metaString == "")
+
+	if s.UseLooker && isAdmin && !isLiveSession {
+		lookerSession, err := s.LookerClient.RunSessionLookupQuery(args.SessionID, timeFrame, args.CustomerCode)
+		if err != nil {
+			err = fmt.Errorf("SessionDetails(): failed to look up session in Looker: %v", err)
+			core.Error("%v", err)
+			return err
+		}
+
+		nearbyRelays := make([]transport.NearRelayPortalData, len(lookerSession.NearRelays))
+
+		for i, relay := range lookerSession.NearRelays {
+			relayID := uint64(relay.ID)
+			nearbyRelays[i].ID = relayID
+			nearbyRelays[i].Name = relay.Name
+			nearbyRelays[i].ClientStats.RTT = relay.RTT
+			nearbyRelays[i].ClientStats.Jitter = relay.Jitter
+			nearbyRelays[i].ClientStats.PacketLoss = relay.PL
+		}
+
+		hops := make([]transport.RelayHop, 0)
+		for _, hop := range lookerSession.Slices[len(lookerSession.Slices)-1].NextRelays {
+			hops = append(hops, transport.RelayHop{
+				Name: hop.Name,
+			})
+		}
+
+		reply.Meta = transport.SessionMeta{
+			ID:         uint64(lookerSession.Meta.SessionID),
+			UserHash:   uint64(lookerSession.Meta.UserHash),
+			BuyerID:    uint64(lookerSession.Meta.BuyerID),
+			Connection: uint8(lookerSession.Meta.Connection),
+			Location: routing.Location{
+				ISP:       lookerSession.Meta.ISP,
+				Latitude:  float32(lookerSession.Meta.Latitude),
+				Longitude: float32(lookerSession.Meta.Longitude),
+			},
+			Hops:            hops,
+			Platform:        uint8(lookerSession.Meta.Platform),
+			DatacenterName:  lookerSession.Meta.DatacenterName,
+			DatacenterAlias: lookerSession.Meta.DatacenterAlias,
+			SDK:             lookerSession.Meta.SDK,
+			ClientAddr:      lookerSession.Meta.ClientAddress,
+			NearbyRelays:    nearbyRelays,
+			ServerAddr:      lookerSession.Meta.ServerAddress,
+			OnNetworkNext:   strings.ToLower(lookerSession.Meta.OnNetworkNext) == "yes",
+		}
+
+		for _, slice := range lookerSession.Slices {
+			timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
+			if err != nil {
+				core.Error("TestLookerSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+				continue
+			}
+
+			reply.Slices = append(reply.Slices, transport.SessionSlice{
+				Timestamp: timeStamp,
+				Next: routing.Stats{
+					RTT:        slice.NextRTT,
+					Jitter:     slice.NextJitter,
+					PacketLoss: slice.NextPacketLoss,
+				},
+				Direct: routing.Stats{
+					RTT:        slice.DirectRTT,
+					Jitter:     slice.DirectJitter,
+					PacketLoss: slice.DirectPacketLoss,
+				},
+				Predicted: routing.Stats{
+					RTT: slice.PredictedRTT,
+					// Jitter: slice.PredictedJitter,
+					// PacketLoss: slice.PredictedPacketLoss,
+				},
+				Envelope: routing.Envelope{
+					Up:   slice.EnvelopeUp,
+					Down: slice.EnvelopeDown,
+				},
+				RouteDiversity:    uint32(slice.RouteDiversity),
+				OnNetworkNext:     strings.ToLower(slice.OnNetworkNext) == "yes",     // Looker forces these to be strings - yes or no
+				IsMultiPath:       strings.ToLower(slice.IsMultiPath) == "yes",       // Looker forces these to be strings - yes or no
+				IsTryBeforeYouBuy: strings.ToLower(slice.IsTryBeforeYouBuy) == "yes", // Looker forces these to be strings - yes or no
+			})
+		}
+
+		buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
+		if err != nil {
+			// The buyer entry won't exist in environments that aren't prod so only anonymize if !admin
+			err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
+			core.Error("%v", err)
+			if !isAdmin {
+				reply.Meta.Anonymise()
+			}
+		} else {
+			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				reply.Meta.Anonymise()
+			}
+		}
+
+		sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
+			return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
+		})
+
+		// Sometimes there is an empty hop struct added to the meta data that we don't need
+		if len(reply.Meta.Hops) == 1 && reply.Meta.Hops[0].Name == "" {
+			reply.Meta.Hops = make([]transport.RelayHop, 0)
+		}
+
+		return nil
+	}
+
 	// Use bigtable if error from redis or requesting historic information
-	if s.UseBigtable && (err != nil || metaString == "") {
-		metaRows, err := s.BigTable.GetRowWithRowKey(r.Context(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+	if s.UseBigtable && !isLiveSession && (!s.UseLooker || (s.UseLooker && !isAdmin)) {
+		metaRows, err := s.BigTable.GetRowWithRowKey(ctx, fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
@@ -781,9 +946,11 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			core.Error("%v", err)
 			return err
 		}
+
+		reply.Refresh = true
 	}
 
-	buyer, err := s.Storage.Buyer(r.Context(), reply.Meta.BuyerID)
+	buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		core.Error("%v", err)
@@ -820,7 +987,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			reply.Slices = append(reply.Slices, slice)
 		}
 	} else {
-		sliceRows, err := s.BigTable.GetRowsWithPrefix(r.Context(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(ctx, fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
