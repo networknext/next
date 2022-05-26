@@ -887,7 +887,7 @@ func mainReturnWithCode() int {
 				core.Error("invalid METADATA_SYNC_INTERVAL: %v", err)
 				return 1
 			}
-			//connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
 
 			// Start a goroutine to shutdown the HTTP server when the metadata changes
 			go func() {
@@ -907,7 +907,14 @@ func mainReturnWithCode() int {
 						}
 
 						val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList)
-						if val {
+
+						// Get metadata value for connection drain
+						valMetadata, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+						if err != nil {
+							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+						}
+
+						if val || valMetadata == "true" {
 							core.Debug("the instance is deleting, shutting down HTTP server")
 							// Shutdown the HTTP server
 							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
