@@ -715,7 +715,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf(`\%s\`, requestID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
@@ -818,7 +818,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf(`"%s"`, requestID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
@@ -846,7 +846,7 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 	options := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf(`"%s"`, requestID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		FirstName:       "",
 		LastName:        "",
 		GroupsIds:       make([]int, 0),
