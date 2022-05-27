@@ -10779,6 +10779,22 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
+        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
+        {
+            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
+        {
+            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
         default:
             return NEXT_ERROR;
     }
@@ -10882,6 +10898,22 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int pack
         case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
         {
             NextBackendSessionResponsePacket * packet = (NextBackendSessionResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
+        {
+            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
+        {
+            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -15088,6 +15120,8 @@ void next_server_update( next_server_t * server )
             break;
 
             // todo: NEXT_SERVER_NOTIFY_FLUSH_FINISHED
+
+            // todo: put a log in flush finished, so we can verify with logs in func test that it actually completes successfully
 
             case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
@@ -19500,12 +19534,95 @@ void test_session_response_packet_continue_dont_ping_near_relays()
 
 void test_match_data_request_packet()
 {
-	// todo
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+	    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+	    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+	    next_crypto_sign_keypair( public_key, private_key );
+
+	    uint8_t magic[8];
+	    uint8_t from_address[4];
+	    uint8_t to_address[4];
+	    next_random_bytes( magic, 8 );
+	    next_random_bytes( from_address, 4 );
+	    next_random_bytes( to_address, 4 );
+	    uint16_t from_port = uint16_t( i + 1000000 );
+	    uint16_t to_port = uint16_t( i + 5000 );
+
+	    static NextBackendMatchDataRequestPacket in, out;
+	    in.Reset();
+	    out.Reset();
+	    in.version_major = NEXT_VERSION_MAJOR_INT;
+	    in.version_minor = NEXT_VERSION_MINOR_INT;
+	    in.version_patch = NEXT_VERSION_PATCH_INT;
+	    in.customer_id = 1231234127431LL;
+	    next_address_parse( &in.server_address, "127.0.0.1:12345" );
+	    in.datacenter_id = next_datacenter_id( "local" );
+	    in.user_hash = 11111111;
+	    in.session_id = 1234342431431LL;
+	    in.match_id = 1234342431431LL;
+	    in.num_match_values = NEXT_MAX_MATCH_VALUES;
+	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    {
+	        in.match_values[i] = i + 10.0f;
+	    }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+
+        const uint8_t packet_id = packet_data[0];
+        next_check( packet_id == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        next_check( next_read_backend_packet( packet_id, packet_data + 16, packet_bytes - 18, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
+
+	    next_check( in.version_major == out.version_major );
+	    next_check( in.version_minor == out.version_minor );
+	    next_check( in.version_patch == out.version_patch );
+	    next_check( in.customer_id == out.customer_id );
+	    next_check( next_address_equal( &in.server_address, &out.server_address ) );
+	    next_check( in.datacenter_id == out.datacenter_id );
+	    next_check( in.user_hash == out.user_hash );
+	    next_check( in.session_id == out.session_id );
+	    next_check( in.match_id == out.match_id );
+	    next_check( in.num_match_values == out.num_match_values );
+	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    {
+	        next_check( in.match_values[i] = out.match_values[i] );
+	    }
+	}
 }
 
 void test_match_data_response_packet()
 {
 	// todo
+
+	/*
+
+        static NextBackendSessionResponsePacket in, out;
+        in.slice_number = 10000;
+        in.session_id = 1234342431431LL;
+        in.near_relays_changed = false;
+        in.dont_ping_near_relays = true;
+        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
+        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        {
+            in.session_data[i] = uint8_t(i);
+        }
+        in.high_frequency_pings = true;
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+	*/	
 }
 
 /*
