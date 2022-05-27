@@ -126,6 +126,11 @@
 #define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
 #define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
+#define NEXT_MATCH_DATA_RESPONSE_OK                                     0
+#define NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER                       1
+#define NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED                 2
+#define NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE                    3
+
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
 #define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING                   (1<<2)
@@ -13091,8 +13096,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // match data response
 
-    // todo: update to new way to read packets
-    /*
     if ( packet_id == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
     {
         if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
@@ -13104,7 +13107,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         NextBackendMatchDataResponsePacket packet;
         memset( &packet, 0, sizeof(packet) );
 
-        if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+        if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. packet failed to read" );
             return;
@@ -13161,7 +13164,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         return;
     }
-    */
 
     // upgrade response packet
 
@@ -14773,8 +14775,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( !session->has_match_data || session->match_data_response_received )
             continue;
 
-        // todo: update to new way to write packets
-        /*
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
@@ -14796,14 +14796,32 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->match_data_request_packet = packet;
 
-            int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data packet for backend" );
-                return;
-            }
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
 
-            next_assert( check_packet_hash( packet_data, packet_bytes ) );
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
+                return;
+			}
+
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
             
@@ -14820,20 +14838,37 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent match data packet to backend for session %" PRIx64 " (%d)", session->session_id, session->match_data_request_packet.retry_number );
 
-            int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data packet for backend" );
-                return;
-            }
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
 
-            next_assert( check_packet_hash( packet_data, packet_bytes ) );
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
+                return;
+			}
+
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
             session->next_match_data_resend_time += ( session->match_data_flush && !session->match_data_flush_finished ) ? NEXT_MATCH_DATA_FLUSH_RESEND_TIME : NEXT_MATCH_DATA_RESEND_TIME;
         }
-        */
     }
 }
 
