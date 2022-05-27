@@ -15154,9 +15154,10 @@ void next_server_update( next_server_t * server )
             }
             break;
 
-            // todo: NEXT_SERVER_NOTIFY_FLUSH_FINISHED
-
-            // todo: put a log in flush finished, so we can verify with logs in func test that it actually completes successfully
+            case NEXT_SERVER_NOTIFY_FLUSH_FINISHED:
+            {
+                server->flushed = true;
+            }
 
             case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
@@ -15685,7 +15686,14 @@ void next_server_flush( struct next_server_t * server )
         next_sleep( 0.1 );
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server flush finished" );
+    if ( next_time() > flush_timeout )
+    {
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server flush timed out :(" );
+    }
+    else
+    {
+	    next_printf( NEXT_LOG_LEVEL_INFO, "server flush finished" );	
+    }
 }
 
 // ---------------------------------------------------------------
