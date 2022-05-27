@@ -45,6 +45,7 @@
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
+#define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                         		 10.0
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_MAX_PACKET_BYTES                                        4096
@@ -10984,9 +10985,10 @@ struct next_server_command_flush_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
-#define NEXT_SERVER_NOTIFY_READY                        		5
-#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                  		6
-#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        7
+#define NEXT_SERVER_NOTIFY_INIT_TIMED_OUT                       5
+#define NEXT_SERVER_NOTIFY_READY                        		6
+#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                  		7
+#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        8
 
 struct next_server_notify_t
 {
@@ -11025,6 +11027,11 @@ struct next_server_notify_session_timed_out_t : public next_server_notify_t
 };
 
 struct next_server_notify_failed_to_resolve_hostname_t : public next_server_notify_t
+{
+    // ...
+};
+
+struct next_server_notify_init_timed_out_t : public next_server_notify_t
 {
     // ...
 };
@@ -11120,6 +11127,7 @@ struct next_server_internal_t
     uint64_t server_init_request_id;
     double server_init_resend_time;
     double server_init_timeout_time;
+    bool received_init_response;
 
     NEXT_DECLARE_SENTINEL(8)
 
@@ -11934,6 +11942,7 @@ void next_server_internal_initialize( next_server_internal_t * server )
         next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
 
         server->state = NEXT_SERVER_STATE_INITIALIZING;
+        server->server_init_timeout_time = next_time() + NEXT_SERVER_INIT_TIMEOUT;
     }
     
 	next_server_internal_resolve_hostname( server );
@@ -12764,7 +12773,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
-            server->state = NEXT_SERVER_STATE_INITIALIZED;
+            server->received_init_response = true;
 
             memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
             memcpy( server->current_magic, packet.current_magic, 8 );
@@ -14355,16 +14364,104 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 		}
 	}
 
-    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-    notify->type = NEXT_SERVER_NOTIFY_READY;
-    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
-    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    return true;
+}
+
+void next_server_internal_update_init( next_server_internal_t * server )
+{
+    next_server_internal_verify_sentinels( server );
+
+    next_assert( server );
+
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
+    	return;
+
+    next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
+
+    const double current_time = next_time();
+
+    // check for init timeout
+
+    if ( server->server_init_request_id != 0 && server->server_init_timeout_time <= current_time )
     {
-        next_platform_mutex_guard( &server->notify_mutex );
-        next_queue_push( server->notify_queue, notify );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
+        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+	    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+	    notify->type = NEXT_SERVER_NOTIFY_READY;
+	    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+	    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+	    {
+	        next_platform_mutex_guard( &server->notify_mutex );
+	        next_queue_push( server->notify_queue, notify );
+	    }
+        return;
     }
 
-    return true;
+    // check for initializing -> initialized transition
+
+	if ( server->resolve_hostname_finished && server->autodetect_finished && server->received_init_response )
+	{
+	    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+	    notify->type = NEXT_SERVER_NOTIFY_READY;
+	    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+	    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+	    {
+	        next_platform_mutex_guard( &server->notify_mutex );
+	        next_queue_push( server->notify_queue, notify );
+	    }
+	    server->state = NEXT_SERVER_STATE_INITIALIZED;
+	}
+
+	// send init request packets repeatedly until we get a response or time out...
+
+    if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
+        return;
+
+    while ( server->server_init_request_id == 0 )
+    {
+        server->server_init_request_id = next_random_uint64();
+    }
+
+    server->server_init_resend_time = current_time + 1.0;
+
+    NextBackendServerInitRequestPacket packet;
+
+    packet.request_id = server->server_init_request_id;
+    packet.customer_id = server->customer_id;
+    packet.datacenter_id = server->datacenter_id;
+    strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+    next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+    int packet_bytes = 0;
+    if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
+        return;
+    }
+
+    next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+
+    next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
 }
 
 void next_server_internal_backend_update( next_server_internal_t * server )
@@ -14379,70 +14476,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( server->resolving_hostname )
         return;
-
-    // server init
-
-    if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
-    {
-        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
-
-        if ( server->server_init_request_id != 0 && server->server_init_timeout_time < current_time )
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server init response timed out. falling back to direct mode only :(" );
-            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            return;
-        }
-
-        if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
-            return;
-
-        while ( server->server_init_request_id == 0 )
-        {
-            server->server_init_request_id = next_random_uint64();
-            server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
-        }
-
-        server->server_init_resend_time = current_time + 1.0;
-
-        NextBackendServerInitRequestPacket packet;
-
-        packet.request_id = server->server_init_request_id;
-        packet.customer_id = server->customer_id;
-        packet.datacenter_id = server->datacenter_id;
-        strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-        packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-
-        uint8_t magic[8];
-        memset( magic, 0, sizeof(magic) );
-
-        uint8_t from_address_data[32];
-        uint8_t to_address_data[32];
-        uint16_t from_address_port;
-        uint16_t to_address_port;
-        int from_address_bytes;
-        int to_address_bytes;
-
-        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
-        next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
-
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-        next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-        int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
-            return;
-        }
-
-        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
-
-        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
-    }
 
     // tracker updates
 
@@ -14480,6 +14513,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( server->server_update_request_id != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only :(" );
+            // todo: there should probably be a counter on this
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
             return;
         }
@@ -14891,6 +14925,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
             next_server_internal_update_resolve_hostname( server );
 
             next_server_internal_update_autodetect( server );
+
+			next_server_internal_update_init( server );
 
             next_server_internal_update_pending_upgrades( server );
 
