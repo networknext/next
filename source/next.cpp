@@ -175,6 +175,8 @@
 #define NEXT_BACKEND_SERVER_RESPONSE_PACKET                            53
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET                             54
 #define NEXT_BACKEND_SESSION_RESPONSE_PACKET                           55
+#define NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET                         56
+#define NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET                        57
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
@@ -13057,7 +13059,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // match data response
 
-    // todo
+    // todo: update to new way to read packets
     /*
     if ( packet_id == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
     {
@@ -13901,12 +13903,6 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
 
 void next_server_internal_match_data( next_server_internal_t * server, const next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
 {
-	(void) server;
-	(void) address;
-	(void) match_id;
-	(void) match_values;
-	(void) num_match_values;
-	/*
     next_assert( server );
     next_assert( address );
 
@@ -13940,7 +13936,6 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
-    */
 }
 
 void next_server_internal_flush_session_update( next_server_internal_t * server )
@@ -14063,7 +14058,6 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
             }
             break;
 
-            /*
             case NEXT_SERVER_COMMAND_MATCH_DATA:
             {
                 next_server_command_match_data_t * match_data = (next_server_command_match_data_t*) command;
@@ -14076,7 +14070,6 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
                 next_server_internal_flush( server );
             }
             break;
-            */
 
             default: break;
         }
@@ -14738,8 +14731,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     // match data
 
-    // todo
-    /*
     for ( int i = 0; i <= max_entry_index; ++i )
     {
         if ( server->session_manager->session_ids[i] == 0 )
@@ -14750,6 +14741,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( !session->has_match_data || session->match_data_response_received )
             continue;
 
+        // todo: update to new way to write packets
+        /*
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
@@ -14808,8 +14801,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->next_match_data_resend_time += ( session->match_data_flush && !session->match_data_flush_finished ) ? NEXT_MATCH_DATA_FLUSH_RESEND_TIME : NEXT_MATCH_DATA_RESEND_TIME;
         }
+        */
     }
-    */
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context )
@@ -15539,13 +15532,6 @@ void next_server_event( struct next_server_t * server, const struct next_address
 
 void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values )
 {
-	// todo
-	(void) server;
-	(void) address;
-	(void) match_id;
-	(void) match_values;
-	(void) num_match_values;
-	/*
     next_server_verify_sentinels( server );
 
     next_assert( server );
@@ -15583,7 +15569,6 @@ void next_server_match( struct next_server_t * server, const struct next_address
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
-    */
 }
 
 void next_server_flush( struct next_server_t * server )
@@ -19513,6 +19498,80 @@ void test_session_response_packet_continue_dont_ping_near_relays()
     }
 }
 
+void test_match_data_request_packet()
+{
+	// todo
+}
+
+void test_match_data_response_packet()
+{
+	// todo
+}
+
+/*
+    // match data
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendMatchDataRequestPacket in, out;
+        in.Reset();
+        out.Reset();
+        in.version_major = NEXT_VERSION_MAJOR_INT;
+        in.version_minor = NEXT_VERSION_MINOR_INT;
+        in.version_patch = NEXT_VERSION_PATCH_INT;
+        in.customer_id = 1231234127431LL;
+        next_address_parse( &in.server_address, "127.0.0.1:12345" );
+        in.datacenter_id = next_datacenter_id( "local" );
+        in.user_hash = 11111111;
+        in.session_id = 1234342431431LL;
+        in.match_id = 1234342431431LL;
+        in.num_match_values = NEXT_MAX_MATCH_VALUES;
+        for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+        {
+            in.match_values[i] = i + 10.0f;
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
+
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.customer_id == out.customer_id );
+        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.user_hash == out.user_hash );
+        next_check( in.session_id == out.session_id );
+        next_check( in.match_id == out.match_id );
+        next_check( in.num_match_values == out.num_match_values );
+        for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+        {
+            next_check( in.match_values[i] = out.match_values[i] );
+        }
+    }
+
+    // match data response
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendMatchDataResponsePacket in, out;
+        in.session_id = 1234342431431LL;
+        in.response = NEXT_MATCH_DATA_RESPONSE_OK;
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET );
+
+        next_check( in.session_id == out.session_id );
+        next_check( in.response == out.response );
+    }
+*/
+
 void test_pending_session_manager()
 {
     const int InitialSize = 32;
@@ -20559,6 +20618,8 @@ void next_test()
         RUN_TEST( test_session_response_packet_direct_dont_ping_near_relays );
         RUN_TEST( test_session_response_packet_route_dont_ping_near_relays );
         RUN_TEST( test_session_response_packet_continue_dont_ping_near_relays );
+        RUN_TEST( test_match_data_request_packet );
+        RUN_TEST( test_match_data_response_packet );
         RUN_TEST( test_pending_session_manager );
         RUN_TEST( test_proxy_session_manager );
         RUN_TEST( test_session_manager );
