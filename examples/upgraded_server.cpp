@@ -88,6 +88,8 @@ int main()
         next_sleep( 1.0 / 60.0 );
     }
 
+    printf( "\nshutting down\n" );
+
     next_server_flush( server );
     
     next_server_destroy( server );

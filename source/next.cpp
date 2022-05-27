@@ -12418,6 +12418,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->flushing )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -12491,6 +12494,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 
     if ( next_global_config.disable_network_next )
         return;
+
+    if ( server->flushing )
+    	return;
 
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
@@ -12581,7 +12587,8 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             entry->client_ping_timed_out = true;
         }
 
-        if ( entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
+        // IMPORTANT: Don't time out sessions during server flush. Otherwise the server flush might wait longer than necessary.
+        if ( !server->flushing && entry->last_client_stats_update + NEXT_SERVER_SESSION_TIMEOUT <= current_time )
         {
             next_server_notify_session_timed_out_t * notify = (next_server_notify_session_timed_out_t*) next_malloc( server->context, sizeof( next_server_notify_session_timed_out_t ) );
             notify->type = NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT;
@@ -12631,7 +12638,8 @@ void next_server_internal_update_flush( next_server_internal_t * server )
 	if ( server->flushed )
 		return;
 
-    if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
+    if ( next_global_config.disable_network_next || server->state != NEXT_SERVER_STATE_INITIALIZED || 
+    	 ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush ) )
     {
     	next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
     	
@@ -14373,6 +14381,9 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     next_assert( server );
 
+	if ( next_global_config.disable_network_next )
+		return;
+
     if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
     	return;
 
@@ -14411,6 +14422,16 @@ void next_server_internal_update_init( next_server_internal_t * server )
 	    }
 	    server->state = NEXT_SERVER_STATE_INITIALIZED;
 	}
+
+	// wait until we have resolved the backend hostname
+
+	if ( !server->resolve_hostname_finished )
+		return;
+
+	// wait until we have autodetected the datacenter
+
+	if ( !server->autodetect_finished )
+		return;
 
 	// send init request packets repeatedly until we get a response or time out...
 
@@ -14512,8 +14533,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         if ( server->server_update_request_id != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only :(" );
-            // todo: there should probably be a counter on this
+            next_printf( NEXT_LOG_LEVEL_INFO, "server update response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
             return;
         }
@@ -14922,6 +14942,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         if ( current_time >= last_update_time + 0.1 )
         {
+            next_server_internal_update_flush( server );
+
             next_server_internal_update_resolve_hostname( server );
 
             next_server_internal_update_autodetect( server );
@@ -15194,6 +15216,7 @@ void next_server_update( next_server_t * server )
             {
                 server->flushed = true;
             }
+            break;
 
             case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
@@ -15681,15 +15704,21 @@ void next_server_flush( struct next_server_t * server )
 {
     next_assert( server );
 
+    if ( next_global_config.disable_network_next == true )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. network next is disabled" );
+        return;
+    }
+
     if ( !server->ready )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is not initialized" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is not initialized" );
         return;
     }
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is already flushed" );
         return;
     }
 
