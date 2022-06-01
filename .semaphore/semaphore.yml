@@ -13,7 +13,7 @@ global_job_config:
   prologue:
     commands:
       - checkout
-      - touch .env
+      - cp envs/local.env .env
       - make clean
       - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
       - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
