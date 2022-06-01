@@ -712,7 +712,6 @@ func main() {
 			env.Write()
 
 			if args[0] == "local" {
-				
 				// Set up everything needed to run the database.bin generator
 				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 				os.Setenv("FEATURE_POSTGRESQL", "false")
@@ -740,7 +739,29 @@ func main() {
 			}
 
 			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
-			exec.Command("cp", "-f", fmt.Sprintf("envs/%s.env", args[0]), ".env")
+			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
+
+			if _, err := os.Stat(envFilePath); err != nil {
+				return err
+			}
+
+			rawFile, err := os.Open(envFilePath)
+			if err != nil {
+				return err
+			}
+
+			defer rawFile.Close()
+
+			rootEnvFile, err := os.Create(".env")
+			if err != nil {
+				return err
+			}
+
+			defer rootEnvFile.Close()
+
+			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
+				return err
+			}
 
 			fmt.Printf("Selected %s environment\n", env.Name)
 
