@@ -44,7 +44,7 @@ const BACKEND_MODE_ON_ON_OFF = 5
 const BACKEND_MODE_ROUTE_SWITCHING = 6
 const BACKEND_MODE_UNCOMMITTED = 7
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
-const BACKEND_MODE_USER_FLAGS = 9
+const BACKEND_MODE_SERVER_EVENTS = 9
 const BACKEND_MODE_FORCE_RETRY = 10
 const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
@@ -510,9 +510,9 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 	}
 
-	if backend.mode == BACKEND_MODE_USER_FLAGS {
-		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.UserFlags != 0x123 {
-			panic("user flags not set on session update")
+	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
+		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.ServerEvents != 0x123 {
+			panic("server flags not set on session update")
 		}
 	}
 
@@ -719,8 +719,8 @@ func main() {
 		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
 	}
 
-	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
-		backend.mode = BACKEND_MODE_USER_FLAGS
+	if os.Getenv("BACKEND_MODE") == "SERVER_EVENTS" {
+		backend.mode = BACKEND_MODE_SERVER_EVENTS
 	}
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
@@ -975,8 +975,6 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-
-	fmt.Printf("relay update\n")
 
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {

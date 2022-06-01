@@ -2527,7 +2527,6 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		/*
 		test_passthrough,
 		test_direct_upgraded,
 		test_network_next_route,
@@ -2554,9 +2553,7 @@ func main() {
 		test_server_under_load,
 		test_session_update_retry,
 		test_bandwidth_over_limit,
-		*/
 		test_packet_loss,
-		/*
 		test_bandwidth,
 		test_jitter,
 		test_tags,
@@ -2565,7 +2562,6 @@ func main() {
 		test_next_stats,
 		test_report_session,
 		test_client_ping_timed_out,
-		*/
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
