@@ -1,40 +1,121 @@
 DONE
 
-	Bring across the autodetect fixes from SDK 4.20.2
-
-	Bring across server flush
-
-	Bring across server events
-
-	Bring across match data
-
-	Unit tests for match data packets.
-
-	Update match data request packet send to new way to write packets.
-
-	Make sure match response packet receive is working.
-
-	Bring across notify for flush.
-
-	Server initialize with backend should have a timeout, eg. total 10 seconds.
-
-	If the backend doesn't init within 10 seconds, go to direct only state.
-
-	Server ready should really only happen once the initialize happens with the backend.
-
-	If the server is in direct mode only, or network next is disabled, return from flush immediately.
-
-	Get server and ref backend 5 talking.
-
-	Fix server flush so it doesn't timeout.
-
-	Get sdk5 client, server, relay and reference backend working locally.
+	Verify func tests pass with sdk5
 
 TODO
 
-	-----------------
+	Their is a weird thing where the packet loss test fails because the backend doesn't see the packet loss.
 
-	Verify func tests pass with sdk5
+	When this fails, the client and server are printing out a lot of "debug: header failed to decrypt"
+
+	Need to work out why this is the case, because if the header doesn't decrypt, something is wrong.
+
+	It's also strange to see the func tests passing, even though a lot of packets are getting dropped. I'm not sure how this is possible.
+
+	Moving back to the simplest network next packet test to see what's going on.
+
+	The server prints out lots of this:
+
+		53.250730: debug: header failed to decrypt
+		53.270049: debug: header failed to decrypt
+		53.287005: debug: header failed to decrypt
+		53.287039: debug: server received client stats packet for session 7b93f5766bc6b512
+		53.304159: debug: header failed to decrypt
+		53.322156: debug: header failed to decrypt
+		53.341063: debug: header failed to decrypt
+		53.357939: debug: header failed to decrypt
+		53.357997: debug: header failed to decrypt
+		53.375238: debug: header failed to decrypt
+		53.392033: debug: header failed to decrypt
+		53.412626: debug: header failed to decrypt
+		53.430543: debug: header failed to decrypt
+		53.447930: debug: header failed to decrypt
+		53.464992: debug: header failed to decrypt
+		53.465241: debug: header failed to decrypt
+		53.481837: debug: header failed to decrypt
+		53.500207: debug: header failed to decrypt
+		53.518121: debug: header failed to decrypt
+
+	These packets are frequent, eg. 10HZ. They could be the ping packets?
+
+	For the client, the debug header failing to decrypt is much less frequent:
+
+		3.967237: info: client next route (committed)
+		3.967257: debug: client sent route update ack packet to server
+		3.978124: debug: client sent route request to relay
+		3.978681: debug: client received route response from relay
+		3.978686: debug: client network next route is confirmed
+		13.989283: debug: client received route update packet from server
+		13.989348: info: client next route (committed)
+		13.989366: debug: client sent route update ack packet to server
+		14.007125: debug: client sent route request to relay
+		14.007497: debug: client received route response from relay
+		14.007500: debug: client network next route is confirmed
+		14.027512: debug: header failed to decrypt
+		23.963351: debug: client received route update packet from server
+		23.963401: info: client next route (committed)
+		23.963421: debug: client sent route update ack packet to server
+		23.981215: debug: client sent route request to relay
+		23.981595: debug: client received route response from relay
+		23.981600: debug: client network next route is confirmed
+		34.023302: debug: client received route update packet from server
+		34.023349: info: client next route (committed)
+		34.023366: debug: client sent route update ack packet to server
+		34.044098: debug: client sent route request to relay
+		34.044492: debug: client received route response from relay
+		34.044498: debug: client network next route is confirmed
+		44.023434: debug: client received route update packet from server
+		44.023484: info: client next route (committed)
+		44.023506: debug: client sent route update ack packet to server
+		44.023510: debug: client sent route request to relay
+		44.023901: debug: client received route response from relay
+		44.023905: debug: client network next route is confirmed
+		44.027734: debug: header failed to decrypt
+		54.045167: debug: client received route update packet from server
+
+	I think that different packet types on the client and server are not setup correctly to be written (or read).
+
+	To debug this, add something to "header failed to decrypt" to print out the packet id.
+
+	This way I can guess which packet types are having problems. Without this I'm blind...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------
 
