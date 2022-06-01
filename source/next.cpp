@@ -1,4 +1,4 @@
-/*
+-/*
     Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -5637,7 +5637,6 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
 
     if ( result != 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "header failed to decrypt" );
         return NEXT_ERROR;
     }
 

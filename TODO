@@ -79,6 +79,10 @@ TODO
 
 	This way I can guess which packet types are having problems. Without this I'm blind...
 
+	Maybe, header failed to decrypt, is just trying different magics. Thus, it makes sense that it would fail. Yeah.
+
+	It's a red herring...
+
 
 
 
