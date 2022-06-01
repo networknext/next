@@ -14679,6 +14679,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
+
+            // todo
+            printf( "packets_lost_client_to_server = %d\n", (int) session->stats_packets_lost_client_to_server );
+            printf( "packets_lost_server_to_client = %d\n", (int) session->stats_packets_lost_server_to_client );
+
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
