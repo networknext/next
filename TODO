@@ -4,155 +4,56 @@ DONE
 
 TODO
 
-	Their is a weird thing where the packet loss test fails because the backend doesn't see the packet loss.
+	Bring across server flush func tests.
 
-	When this fails, the client and server are printing out a lot of "debug: header failed to decrypt"
+	Bring across server event func tests.
 
-	Need to work out why this is the case, because if the header doesn't decrypt, something is wrong.
+	Bring across match data func tests.
 
-	It's also strange to see the func tests passing, even though a lot of packets are getting dropped. I'm not sure how this is possible.
+	-----------------------
 
-	Moving back to the simplest network next packet test to see what's going on.
+	Func test to make sure that next_server_ready becomes true on the successful path "welcome to network next :)" and datacenter is set on success path.
 
-	The server prints out lots of this:
+	Func test to make sure that next_server_ready becomes true, when the server can't init with the backend (eg. ready post-init timeout...)
 
-		53.250730: debug: header failed to decrypt
-		53.270049: debug: header failed to decrypt
-		53.287005: debug: header failed to decrypt
-		53.287039: debug: server received client stats packet for session 7b93f5766bc6b512
-		53.304159: debug: header failed to decrypt
-		53.322156: debug: header failed to decrypt
-		53.341063: debug: header failed to decrypt
-		53.357939: debug: header failed to decrypt
-		53.357997: debug: header failed to decrypt
-		53.375238: debug: header failed to decrypt
-		53.392033: debug: header failed to decrypt
-		53.412626: debug: header failed to decrypt
-		53.430543: debug: header failed to decrypt
-		53.447930: debug: header failed to decrypt
-		53.464992: debug: header failed to decrypt
-		53.465241: debug: header failed to decrypt
-		53.481837: debug: header failed to decrypt
-		53.500207: debug: header failed to decrypt
-		53.518121: debug: header failed to decrypt
+	Func test to make sure that next_server_ready becomes true, when the whois times out.
 
-	These packets are frequent, eg. 10HZ. They could be the ping packets?
+	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
 
-	For the client, the debug header failing to decrypt is much less frequent:
+	-----------------------
 
-		3.967237: info: client next route (committed)
-		3.967257: debug: client sent route update ack packet to server
-		3.978124: debug: client sent route request to relay
-		3.978681: debug: client received route response from relay
-		3.978686: debug: client network next route is confirmed
-		13.989283: debug: client received route update packet from server
-		13.989348: info: client next route (committed)
-		13.989366: debug: client sent route update ack packet to server
-		14.007125: debug: client sent route request to relay
-		14.007497: debug: client received route response from relay
-		14.007500: debug: client network next route is confirmed
-		14.027512: debug: header failed to decrypt
-		23.963351: debug: client received route update packet from server
-		23.963401: info: client next route (committed)
-		23.963421: debug: client sent route update ack packet to server
-		23.981215: debug: client sent route request to relay
-		23.981595: debug: client received route response from relay
-		23.981600: debug: client network next route is confirmed
-		34.023302: debug: client received route update packet from server
-		34.023349: info: client next route (committed)
-		34.023366: debug: client sent route update ack packet to server
-		34.044098: debug: client sent route request to relay
-		34.044492: debug: client received route response from relay
-		34.044498: debug: client network next route is confirmed
-		44.023434: debug: client received route update packet from server
-		44.023484: info: client next route (committed)
-		44.023506: debug: client sent route update ack packet to server
-		44.023510: debug: client sent route request to relay
-		44.023901: debug: client received route response from relay
-		44.023905: debug: client network next route is confirmed
-		44.027734: debug: header failed to decrypt
-		54.045167: debug: client received route update packet from server
+	Func test for disable autodetect, and no autodetect code runs (try with "cloud" and with "multiplay.[cityname]")
 
-	I think that different packet types on the client and server are not setup correctly to be written (or read).
+	-----------------------
 
-	To debug this, add something to "header failed to decrypt" to print out the packet id.
+	Func test to make sure that even if whois and autodetect timeouts are disabled, the init times out after 10 seconds, next_server_ready becomes true and we have the datacenter.
 
-	This way I can guess which packet types are having problems. Without this I'm blind...
+	-----------------------
 
-	Maybe, header failed to decrypt, is just trying different magics. Thus, it makes sense that it would fail. Yeah.
+	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
 
-	It's a red herring...
+	-----------------------
 
+	Func test for multiplay failure autodetect -> multiplay.[cityname], ready is true and datacenter is set.
 
+	Func test to make sure we can parse the whois to get the multiplay supplier, eg. stash a whois.txt with inap or whatever, and make sure multiplay autodetect works.
 
+	Func test to make sure that multiplay whois caches the whois.txt file after running whois successfully.
 
+	-----------------------
 
+	Func test for "cloud" autodetect running GCP and AWS autodetects via logs.
 
+	----------------------------------------------------
 
+	Extend SDK5 to pass in the mean direct RTT
 
+	----------------------------------------------------
 
+	Extend SDK5 to pass in the direct bandwidth in kbps up/down, not just sending actual bandwidth when on next.
 
+	----------------------------------------------------
 
+	Add any func tests necessary to test the mean direct RTT and direct bandwidth usage.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------
-
-	Review func tests and check that server event, match data and server flush tests are live.
-
-	-----------------
-
-	Implement various func tests for multiplay autodetect via whois.
-
-	-----------------
-
-	There should be func tests for the client getting the ready notify.
-
-	There should be func tests for client ready timeout, eg. long delay in whois, long delay in autodetect, long delay in server init with backend.
-
-	There should be a test that packets are sent and received direct (not dropped), with long delays set on whois, autodetect and server init. eg. no accel but packets get in.
-
-	Func test for disable autodetect, and no autodetect code runs.
-
-	Func test for multiplay failure autodetect -> multiplay.cityname.
-
-	Func test to make sure we get the datacenter name, eg. fill in a whois.txt with inap or whatever, and make sure multiplay autodetect works.
-
-	Func test to make sure that GCP and AWS detect are on when "cloud" is passed in.
-
-	Func test to make sure that next_server_ready is true, and datacenter is set.
-
-	Func test to make sure that next_server_ready is true, when timeout, and datacenter is set to what is passed in.
-
-	Should we make next_server_datacenter cache the datacenter passed in prior to ready?
-
-	Func test to verify server fallback to direct only if the server can't talk to the backend mid-session (session update request).
-
-	Func test to verify server fallback to direct only if the server can't init (server init request).
-
-	----------------
+	----------------------------------------------------
