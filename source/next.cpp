@@ -14386,11 +14386,9 @@ void next_server_internal_update_init( next_server_internal_t * server )
     if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
     	return;
 
-    next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
+    // check for init timeout
 
     const double current_time = next_time();
-
-    // check for init timeout
 
     if ( server->server_init_request_id != 0 && server->server_init_timeout_time <= current_time )
     {
@@ -14411,6 +14409,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
 	if ( server->resolve_hostname_finished && server->autodetect_finished && server->received_init_response )
 	{
+        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 	    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
 	    notify->type = NEXT_SERVER_NOTIFY_READY;
 	    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
@@ -14679,10 +14678,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_platform_mutex_acquire( &server->session_mutex );
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
-
-            // todo
-            printf( "packets_lost_client_to_server = %d\n", (int) session->stats_packets_lost_client_to_server );
-            printf( "packets_lost_server_to_client = %d\n", (int) session->stats_packets_lost_server_to_client );
 
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
