@@ -1,3 +1,9 @@
+#!make
+
+# IMPORTANT: Select environment before you run this makefile, eg. "next select local", "next select dev5"
+include .env
+export $(shell sed 's/=.*//' .env)
+
 CXX_FLAGS := -g -Wall -Wextra -std=c++17
 GO = go
 GOFMT = gofmt
@@ -32,20 +38,6 @@ SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
-
-export ENV = local
-
-##################
-##    SDK ENV   ##
-##################
-
-export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local
-export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
-export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
-export NEXT_HOSTNAME = 127.0.0.1
-export NEXT_PORT = 40000
-export NEXT_DEBUG_LOGS=1
 
 ####################
 ##    RELAY ENV   ##

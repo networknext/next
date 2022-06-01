@@ -705,17 +705,14 @@ func main() {
 		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
-			}
-
-			if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
-				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
+				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev4|dev5|prod4|prod5)"), 0)
 			}
 
 			env.Name = args[0]
 			env.Write()
 
 			if args[0] == "local" {
+				
 				// Set up everything needed to run the database.bin generator
 				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 				os.Setenv("FEATURE_POSTGRESQL", "false")
@@ -739,9 +736,14 @@ func main() {
 						fmt.Printf("Failed to start redis: %v\n", err)
 					}
 				}
+
 			}
 
+			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
+			exec.Command("cp", "-f", fmt.Sprintf("envs/%s.env", args[0]), ".env")
+
 			fmt.Printf("Selected %s environment\n", env.Name)
+
 			return nil
 		},
 	}
@@ -752,13 +754,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
-					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
-				}
-
 				env.Name = args[0]
 				env.Write()
-
 				fmt.Printf("Selected %s environment\n", env.Name)
 			}
 
