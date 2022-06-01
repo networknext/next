@@ -1,0 +1,73 @@
+DONE
+
+	Bring across the autodetect fixes from SDK 4.20.2
+
+	Bring across server flush
+
+	Bring across server events
+
+	Bring across match data
+
+	Unit tests for match data packets.
+
+	Update match data request packet send to new way to write packets.
+
+	Make sure match response packet receive is working.
+
+	Bring across notify for flush.
+
+	Server initialize with backend should have a timeout, eg. total 10 seconds.
+
+	If the backend doesn't init within 10 seconds, go to direct only state.
+
+	Server ready should really only happen once the initialize happens with the backend.
+
+	If the server is in direct mode only, or network next is disabled, return from flush immediately.
+
+	Get server and ref backend 5 talking.
+
+	Fix server flush so it doesn't timeout.
+
+	Get sdk5 client, server, relay and reference backend working locally.
+
+TODO
+
+	-----------------
+
+	Verify func tests pass with sdk5
+
+	-----------------
+
+	Review func tests and check that server event, match data and server flush tests are live.
+
+	-----------------
+
+	Implement various func tests for multiplay autodetect via whois.
+
+	-----------------
+
+	There should be func tests for the client getting the ready notify.
+
+	There should be func tests for client ready timeout, eg. long delay in whois, long delay in autodetect, long delay in server init with backend.
+
+	There should be a test that packets are sent and received direct (not dropped), with long delays set on whois, autodetect and server init. eg. no accel but packets get in.
+
+	Func test for disable autodetect, and no autodetect code runs.
+
+	Func test for multiplay failure autodetect -> multiplay.cityname.
+
+	Func test to make sure we get the datacenter name, eg. fill in a whois.txt with inap or whatever, and make sure multiplay autodetect works.
+
+	Func test to make sure that GCP and AWS detect are on when "cloud" is passed in.
+
+	Func test to make sure that next_server_ready is true, and datacenter is set.
+
+	Func test to make sure that next_server_ready is true, when timeout, and datacenter is set to what is passed in.
+
+	Should we make next_server_datacenter cache the datacenter passed in prior to ready?
+
+	Func test to verify server fallback to direct only if the server can't talk to the backend mid-session (session update request).
+
+	Func test to verify server fallback to direct only if the server can't init (server init request).
+
+	----------------
