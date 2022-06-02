@@ -14404,7 +14404,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     const double current_time = next_time();
 
-    if ( server->server_init_request_id != 0 && server->server_init_timeout_time <= current_time )
+    if ( server->server_init_timeout_time <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
