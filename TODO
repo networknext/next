@@ -2,31 +2,31 @@ DONE
 
 	Verify func tests pass with sdk5
 
+	Func test to make sure that next_server_ready becomes true on the successful path "welcome to network next :)" and datacenter is set on success path.
+
+	Func test to make sure that next_server_ready becomes true, when the server can't init with the backend (eg. ready post-init timeout...)
+
 TODO
+
+	Func test for disable autodetect, and no autodetect code runs "cloud".
+
+	Func test for disable autodetect, and no autodetect code runs "multiplay.newyork".
+
+	-----------------------
+
+	Func test to make sure that next_server_ready becomes true, when the whois times out.
+
+	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
+
+	Func test to make sure that even if whois and autodetect timeouts are disabled, the init times out after 10 seconds, next_server_ready becomes true and we have the datacenter.
+
+	-----------------------
 
 	Bring across server flush func tests.
 
 	Bring across server event func tests.
 
 	Bring across match data func tests.
-
-	-----------------------
-
-	Func test to make sure that next_server_ready becomes true on the successful path "welcome to network next :)" and datacenter is set on success path.
-
-	Func test to make sure that next_server_ready becomes true, when the server can't init with the backend (eg. ready post-init timeout...)
-
-	Func test to make sure that next_server_ready becomes true, when the whois times out.
-
-	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
-
-	-----------------------
-
-	Func test for disable autodetect, and no autodetect code runs (try with "cloud" and with "multiplay.[cityname]")
-
-	-----------------------
-
-	Func test to make sure that even if whois and autodetect timeouts are disabled, the init times out after 10 seconds, next_server_ready becomes true and we have the datacenter.
 
 	-----------------------
 
