@@ -6,11 +6,11 @@ DONE
 
 	Func test to make sure that next_server_ready becomes true, when the server can't init with the backend (eg. ready post-init timeout...)
 
-TODO
-
 	Func test for disable autodetect, and no autodetect code runs "cloud".
 
 	Func test for disable autodetect, and no autodetect code runs "multiplay.newyork".
+
+TODO
 
 	-----------------------
 
@@ -20,6 +20,8 @@ TODO
 
 	Func test to make sure that even if whois and autodetect timeouts are disabled, the init times out after 10 seconds, next_server_ready becomes true and we have the datacenter.
 
+	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
+
 	-----------------------
 
 	Bring across server flush func tests.
@@ -27,22 +29,6 @@ TODO
 	Bring across server event func tests.
 
 	Bring across match data func tests.
-
-	-----------------------
-
-	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
-
-	-----------------------
-
-	Func test for multiplay failure autodetect -> multiplay.[cityname], ready is true and datacenter is set.
-
-	Func test to make sure we can parse the whois to get the multiplay supplier, eg. stash a whois.txt with inap or whatever, and make sure multiplay autodetect works.
-
-	Func test to make sure that multiplay whois caches the whois.txt file after running whois successfully.
-
-	-----------------------
-
-	Func test for "cloud" autodetect running GCP and AWS autodetects via logs.
 
 	----------------------------------------------------
 
@@ -54,6 +40,10 @@ TODO
 
 	----------------------------------------------------
 
-	Add any func tests necessary to test the mean direct RTT and direct bandwidth usage.
+	Add func test necessary for mean direct RTT
+
+	----------------------------------------------------
+
+	Add func test necessary for direct bandwidth up/down actual usage in kbps
 
 	----------------------------------------------------

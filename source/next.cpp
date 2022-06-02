@@ -14132,6 +14132,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 {
     next_assert( context );
 
+    double start_time = next_time();
+
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     const char * hostname = next_global_config.server_backend_hostname;
@@ -14172,7 +14174,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
-    // todo: if we have timed out don't grab the mutex
+    if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
+    {
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
 
     next_platform_mutex_guard( &server->resolve_hostname_mutex );
     server->resolve_hostname_finished = true;
@@ -14252,6 +14259,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 {
     next_assert( context );
 
+    double start_time = next_time();
+
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     bool autodetect_result = false;
@@ -14300,7 +14309,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-    // todo: if we have timed out, don't grab the mutex
+    if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+    {
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
 
     next_platform_mutex_guard( &server->autodetect_mutex );
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
