@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"errors"
 )
 
 const (
@@ -187,6 +188,10 @@ type ServerConfig struct {
 	server_port          int
 	restart_time         float64
 	tags_multi           bool
+	datacenter           string
+	disable_autodetect   bool
+	force_resolve_hostname_timeout bool
+	force_autodetect_timeout bool
 }
 
 func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -240,6 +245,22 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	if config.tags_multi {
 		cmd.Env = append(cmd.Env, "SERVER_TAGS_MULTI=1")
+	}
+
+	if config.datacenter != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_DATACENTER=%s", config.datacenter))
+	}
+
+	if config.disable_autodetect {
+		cmd.Env = append(cmd.Env, "NEXT_DISABLE_AUTODETECT=1")
+	}
+
+	if config.force_resolve_hostname_timeout {
+		cmd.Env = append(cmd.Env, "NEXT_FORCE_RESOLVE_HOSTNAME_TIMEOUT=1")
+	}
+
+	if config.force_autodetect_timeout {
+		cmd.Env = append(cmd.Env, "NEXT_FORCE_AUTODETECT_TIMEOUT=1")
 	}
 
 	var output bytes.Buffer
@@ -326,6 +347,19 @@ func client_check(client_counters []uint64, client_stdout *bytes.Buffer, server_
 		fmt.Printf("\n--------------------------------------------------------------------------\n")
 		fmt.Printf("\n")
 		panic("client check failed!")
+	}
+}
+
+func server_check(server_stdout *bytes.Buffer, backend_stdout *bytes.Buffer, condition bool) {
+	if !condition {
+		if backend_stdout != nil {
+			fmt.Printf("\n--------------------------------------------------------------------------\n")
+			fmt.Printf("\n%s", backend_stdout)
+		}
+		fmt.Printf("\n--------------------------------------------------------------------------\n")
+		fmt.Printf("\n%s", server_stdout)
+		fmt.Printf("\n--------------------------------------------------------------------------\n")
+		panic("server check failed!")
 	}
 }
 
@@ -2523,6 +2557,349 @@ func test_client_ping_timed_out() {
 
 }
 
+func test_server_ready_success() {
+
+	fmt.Printf("test_server_ready_success\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+
+}
+
+func test_server_ready_fallback_to_direct() {
+
+	fmt.Printf("test_server_ready_fallback_to_direct\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+
+	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
+
+	server_check(server_stdout, nil, serverFallbackToDirect)
+	server_check(server_stdout, nil, serverReady)
+	server_check(server_stdout, nil, serverDatacenter)
+
+}
+
+func test_server_ready_autodetect_cloud() {
+
+	fmt.Printf("test_server_ready_autodetect_cloud\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "cloud"
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
+	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, serverAutodetecting)
+	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, serverMultiplayAutodetect)
+	server_check(server_stdout, backend_stdout, serverAutodetectFailed)
+
+}
+
+func test_server_ready_autodetect_multiplay_success() {
+
+	fmt.Printf("test_server_ready_autodetect_multiplay_success\n")
+
+   f, err := os.Create("whois.txt")
+   if err != nil {
+      panic(err)
+   }
+	f.WriteString("Internap\n")
+   f.Close()
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "multiplay.newyork"
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverInputDatacenter := strings.Contains(server_stdout.String(), "info: server input datacenter is 'multiplay.newyork'")
+	serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'inap.newyork'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverFoundInap := strings.Contains(server_stdout.String(), "debug: found supplier inap")
+	serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'inap.newyork' [323c61af696bff50]")
+
+	os.Remove("whois.txt")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverInputDatacenter)
+	server_check(server_stdout, backend_stdout, serverReadyDatacenter)
+	server_check(server_stdout, backend_stdout, serverAutodetecting)
+	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, serverFoundInap)
+	server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
+
+}
+
+func test_server_ready_autodetect_multiplay_fail() {
+
+	fmt.Printf("test_server_ready_autodetect_multiplay_fail\n")
+
+	os.Remove("whois.txt")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "multiplay.newyork"
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'multiplay.newyork'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: could not autodetect multiplay datacenter :(")
+	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'multiplay.newyork' [c38c805d821cd0d3]")
+
+	serverCachedWhois := true
+	if _, err := os.Stat("whois.txt"); errors.Is(err, os.ErrNotExist) {
+		serverCachedWhois = false
+	}
+
+	os.Remove("whois.txt")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, serverAutodetecting)
+	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, serverMultiplayAutodetect)
+	server_check(server_stdout, backend_stdout, serverAutodetectFailed)
+	server_check(server_stdout, backend_stdout, serverCachedWhois)
+
+}
+
+func test_server_ready_disable_autodetect_cloud() {
+
+	fmt.Printf("test_server_ready_disable_autodetect_cloud\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "cloud"
+	serverConfig.disable_autodetect = true
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
+	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, !serverAutodetecting)
+	server_check(server_stdout, backend_stdout, !serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, !serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, !serverMultiplayAutodetect)
+	server_check(server_stdout, backend_stdout, !serverAutodetectFailed)
+
+}
+
+func test_server_ready_disable_autodetect_multiplay() {
+
+	fmt.Printf("test_server_ready_disable_autodetect_multiplay\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "multiplay.newyork"
+	serverConfig.disable_autodetect = true
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'multiplay.newyork'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
+	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
+
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, !serverAutodetecting)
+	server_check(server_stdout, backend_stdout, !serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, !serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, !serverMultiplayAutodetect)
+	server_check(server_stdout, backend_stdout, !serverAutodetectFailed)
+
+}
+
+func test_server_ready_resolve_hostname_timeout() {
+
+	fmt.Printf("test_server_ready_resolve_hostname_timeout\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "local"
+	serverConfig.force_resolve_hostname_timeout = true
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
+	serverTimedOutHostnameResolve := strings.Contains(server_stdout.String(), "info: resolve hostname timed out")
+
+	server_check(server_stdout, backend_stdout, serverFallbackToDirect)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, serverTimedOutHostnameResolve)
+
+}
+
+func test_server_ready_autodetect_timeout() {
+
+	fmt.Printf("test_server_ready_autodetect_timeout\n")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "local"
+	serverConfig.force_autodetect_timeout = true
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	time.Sleep(time.Second * 15)
+
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	server_cmd.Wait()
+	backend_cmd.Wait()
+
+	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
+	serverTimedOutAutodetect := strings.Contains(server_stdout.String(), "info: autodetect timed out. sticking with 'local' [249f1fb6f3a680e8]")
+
+	server_check(server_stdout, backend_stdout, serverFallbackToDirect)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverDatacenter)
+	server_check(server_stdout, backend_stdout, serverTimedOutAutodetect)
+
+}
+
 type test_function func()
 
 func main() {
@@ -2562,6 +2939,15 @@ func main() {
 		test_next_stats,
 		test_report_session,
 		test_client_ping_timed_out,
+		test_server_ready_success,
+ 		test_server_ready_fallback_to_direct,
+ 		test_server_ready_autodetect_cloud,
+ 		test_server_ready_autodetect_multiplay_success,
+ 		test_server_ready_autodetect_multiplay_fail,
+ 		test_server_ready_disable_autodetect_cloud,
+		test_server_ready_disable_autodetect_multiplay,
+		test_server_ready_resolve_hostname_timeout,
+		test_server_ready_autodetect_timeout,
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
