@@ -10,15 +10,11 @@ DONE
 
 	Func test for disable autodetect, and no autodetect code runs "multiplay.newyork".
 
-TODO
-
-	-----------------------
-
 	Func test to make sure that next_server_ready becomes true, when the whois times out.
 
 	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
 
-	Func test to make sure that even if whois and autodetect timeouts are disabled, the init times out after 10 seconds, next_server_ready becomes true and we have the datacenter.
+TODO
 
 	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
 
@@ -32,11 +28,11 @@ TODO
 
 	----------------------------------------------------
 
-	Extend SDK5 to pass in the mean direct RTT
+	Extend SDK5 to pass up the mean direct RTT from client -> server, server -> backend.
 
 	----------------------------------------------------
 
-	Extend SDK5 to pass in the direct bandwidth in kbps up/down, not just sending actual bandwidth when on next.
+	Extend SDK5 to pass up the direct bandwidth in kbps up/down, not just sending actual bandwidth when on next.
 
 	----------------------------------------------------
 

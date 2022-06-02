@@ -10983,11 +10983,10 @@ struct next_server_command_flush_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT            1
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
-#define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
-#define NEXT_SERVER_NOTIFY_INIT_TIMED_OUT                       5
-#define NEXT_SERVER_NOTIFY_READY                        		6
-#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                  		7
-#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        8
+#define NEXT_SERVER_NOTIFY_INIT_TIMED_OUT                       4
+#define NEXT_SERVER_NOTIFY_READY                        		5
+#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                  		6
+#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        7
 
 struct next_server_notify_t
 {
@@ -11023,11 +11022,6 @@ struct next_server_notify_session_timed_out_t : public next_server_notify_t
 {
     next_address_t address;
     uint64_t session_id;
-};
-
-struct next_server_notify_failed_to_resolve_hostname_t : public next_server_notify_t
-{
-    // ...
 };
 
 struct next_server_notify_init_timed_out_t : public next_server_notify_t
@@ -14248,15 +14242,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 	}
 	else
 	{
-        next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname. going to direct only mode" );
-        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname" );
         server->resolving_hostname = false;
-        next_server_notify_failed_to_resolve_hostname_t * notify = (next_server_notify_failed_to_resolve_hostname_t*) next_malloc( server->context, sizeof( next_server_notify_failed_to_resolve_hostname_t ) );
-        notify->type = NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME;
-        {
-            next_platform_mutex_guard( &server->notify_mutex );
-            next_queue_push( server->notify_queue, notify );
-        }
     }
 
     return true;
@@ -15002,7 +14989,6 @@ struct next_server_t
     void * context;
     next_server_internal_t * internal;
     next_platform_thread_t * thread;
-    bool failed_to_resolve_hostname;
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
@@ -15219,12 +15205,6 @@ void next_server_update( next_server_t * server )
                 {
                     next_proxy_session_manager_remove_by_address( server->session_manager, &session_timed_out->address );
                 }
-            }
-            break;
-
-            case NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME:
-            {
-                server->failed_to_resolve_hostname = true;
             }
             break;
 
