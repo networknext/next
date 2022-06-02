@@ -14174,6 +14174,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
+#if NEXT_DEVELOPMENT
+    if ( next_platform_getenv( "NEXT_FORCE_RESOLVE_HOSTNAME_TIMEOUT" ) )
+    {
+        next_sleep( NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT * 2 );
+    }
+#endif // #if NEXT_DEVELOPMENT
+
     if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
@@ -14308,6 +14315,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+#if NEXT_DEVELOPMENT
+    if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
+    {
+        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 2 );
+    }
+#endif // #if NEXT_DEVELOPMENT
 
     if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
     {
