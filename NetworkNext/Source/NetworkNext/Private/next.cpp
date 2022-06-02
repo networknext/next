@@ -3876,7 +3876,7 @@ int next_init( void * context, next_config_t * config_in )
         config.socket_receive_buffer_size = config_in->socket_receive_buffer_size;
     }
 
-    config.disable_network_next = config_in ? config_in->disable_network_next != 0 : false;
+    config.disable_network_next = config_in ? config_in->disable_network_next : false;
 
     const char * next_disable_override = next_platform_getenv( "NEXT_DISABLE_NETWORK_NEXT" );
     {
@@ -7160,7 +7160,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.reported = client->reported;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
-        packet.committed = client->client_stats.committed != 0;
+        packet.committed = client->client_stats.committed;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
@@ -7177,8 +7177,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             packet.next_kbps_down = 0;
         }
 
-        packet.next = client->client_stats.next != 0;
-        packet.committed = client->client_stats.committed != 0;
+        packet.next = client->client_stats.next;
+        packet.committed = client->client_stats.committed;
         packet.next_rtt = client->client_stats.next_rtt;
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
@@ -7860,7 +7860,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         bool send_direct = !send_over_network_next;
         next_platform_mutex_release( &client->internal->route_manager_mutex );
 
-        bool multipath = client->client_stats.multipath != 0;
+        bool multipath = client->client_stats.multipath;
 
         if ( send_over_network_next && multipath )
         {
@@ -9021,7 +9021,7 @@ struct NextBackendSessionUpdatePacket
         }
 
         // IMPORTANT: Anonymize the client address before sending it up to our backend
-        // This ensures that we are fully compliant with the GDRP and there is zero risk
+        // This ensures that we are fully compliant with the GDPR and there is zero risk
         // the address will be accidentally stored or intecepted in transit
         if ( Stream::IsWriting )
         {
@@ -13421,6 +13421,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     while ( !quit || !finished_hostname_resolve )
     {
+        if ( server->flushed )
+            break;
+
         next_server_internal_block_and_receive_packet( server );
 
         double current_time = next_time();
@@ -17463,6 +17466,8 @@ static void test_jitter_tracker()
     next_check( tracker.jitter <= 0.000001 );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 static bool client_woke_up = false;
 static bool server_woke_up = false;
 
@@ -17522,6 +17527,8 @@ static void test_wake_up()
     next_check( client_woke_up );
     next_check( server_woke_up );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 void test_anonymize_address_ipv4()
 {
@@ -17636,7 +17643,9 @@ void next_test()
     RUN_TEST( test_packet_loss_tracker );
     RUN_TEST( test_out_of_order_tracker );
     RUN_TEST( test_jitter_tracker );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
     RUN_TEST( test_wake_up );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
     RUN_TEST( test_anonymize_address_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_anonymize_address_ipv6 );
