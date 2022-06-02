@@ -14172,6 +14172,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
+    // todo: if we have timed out don't grab the mutex
+
     next_platform_mutex_guard( &server->resolve_hostname_mutex );
     server->resolve_hostname_finished = true;
     server->resolve_hostname_result = address;
@@ -14293,15 +14295,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
         
-        if ( autodetect_result )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
-        }
-
         autodetect_actually_did_something = true;
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+    // todo: if we have timed out, don't grab the mutex
 
     next_platform_mutex_guard( &server->autodetect_mutex );
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
