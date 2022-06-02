@@ -46,8 +46,8 @@
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
-#define NEXT_SERVER_AUTODETECT_TIMEOUT                         		 10.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
+#define NEXT_SERVER_AUTODETECT_TIMEOUT                         		  9.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
