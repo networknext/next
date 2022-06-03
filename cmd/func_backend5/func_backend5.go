@@ -516,6 +516,10 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 	}
 
+	if sessionUpdate.ServerEvents > 0 {
+		fmt.Printf("server events %x\n", sessionUpdate.ServerEvents)
+	}
+
 	// Extract ids and addresses into own list to make response
 	var nearRelayIDs = [MaxRelays]uint64{}
 	var nearRelayAddresses = [MaxRelays]net.UDPAddr{}

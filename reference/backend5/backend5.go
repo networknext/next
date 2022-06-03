@@ -3017,7 +3017,7 @@ func main() {
 
 		} else if packetType == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET {
 
-			fmt.Printf( "*** match data request packet ***\n" )
+			fmt.Printf("*** match data request packet ***\n")
 
 			// todo
 

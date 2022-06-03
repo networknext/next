@@ -268,7 +268,7 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
 	}
 
 	if hasServerEvents {
-	 	stream.SerializeUint64(&packet.ServerEvents)
+		stream.SerializeUint64(&packet.ServerEvents)
 	}
 
 	stream.SerializeFloat32(&packet.DirectMinRTT)
