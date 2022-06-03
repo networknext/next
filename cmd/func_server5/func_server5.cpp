@@ -236,6 +236,36 @@ int main()
         next_sleep( 1.0 / 60.0 );
     }
     
+    if ( flush )
+    {
+        uint64_t event1 = (1<<10);
+        uint64_t event2 = (1<<20);
+        uint64_t event3 = (1<<30);
+
+        const double match_values[] = {10.10f, 20.20f, 30.30f};
+        int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+
+        for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
+        {
+            next_address_t client_address;
+            if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
+                continue;
+
+            if ( server_events )
+            {
+                next_server_event( server, &client_address, event1 | event2 | event3 );
+            }
+
+            if ( match_data )
+            {
+                next_server_match( server, &client_address, "test match id", match_values, num_match_values );
+            }
+
+        }
+
+        next_server_flush ( server );
+    }
+
     next_server_destroy( server );
     
     next_term();

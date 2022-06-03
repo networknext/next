@@ -3029,7 +3029,6 @@ func test_server_events() {
 
 }
 
-/*
 func test_match_id() {
 
 	fmt.Printf("test_match_id\n")
@@ -3068,28 +3067,27 @@ func test_match_id() {
 	serverSawMatchDataRequest := strings.Contains(server_stdout.String(), "server sent match data packet")
 	serverSawMatchDataResponse := strings.Contains(server_stdout.String(), "server successfully recorded match data")
 
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataRequest)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataResponse)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
+
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 50*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 40*60)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLIENT_TO_SERVER_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_SERVER_TO_CLIENT_PACKET_LOSS] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED] == client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT])
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_UPGRADED] >= 40*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
 
 }
 
+/*
 func test_match_values() {
 
 	fmt.Printf("test_match_values\n")
@@ -3498,61 +3496,61 @@ type test_function func()
 func main() {
 	allTests := []test_function{
 		/*
-					test_passthrough,
-					test_direct_upgraded,
-					test_network_next_route,
-					test_fallback_to_direct_backend,
-					test_fallback_to_direct_client_side,
-					test_fallback_to_direct_server_restart,
-					test_disable_on_server,
-					test_disable_on_client,
-					test_route_switching,
-					test_on_off,
-					test_on_on_off,
-					test_reconnect_direct,
-					test_reconnect_direct_no_upgrade,
-					test_reconnect_next,
-					test_connect_to_another_server_direct,
-					test_connect_to_another_server_next,
-					test_multipath,
-					test_multipath_next_packet_loss,
-					test_multipath_fallback_to_direct,
-					test_uncommitted,
-					test_uncommitted_to_committed,
-					test_packet_loss_direct,
-					test_packet_loss_next,
-					test_server_under_load,
-					test_session_update_retry,
-					test_bandwidth_over_limit,
-					test_packet_loss,
-					test_bandwidth,
-					test_jitter,
-					test_tags,
-					test_tags_multi,
-					test_direct_stats,
-					test_next_stats,
-					test_report_session,
-					test_client_ping_timed_out,
-					test_server_ready_success,
-			 		test_server_ready_fallback_to_direct,
-			 		test_server_ready_autodetect_cloud,
-			 		test_server_ready_autodetect_multiplay_success,
-			 		test_server_ready_autodetect_multiplay_fail,
-			 		test_server_ready_disable_autodetect_cloud,
-					test_server_ready_disable_autodetect_multiplay,
-					test_server_ready_resolve_hostname_timeout,
-					test_server_ready_autodetect_timeout,
-					test_client_connect_before_ready,
-		*/
+		test_passthrough,
+		test_direct_upgraded,
+		test_network_next_route,
+		test_fallback_to_direct_backend,
+		test_fallback_to_direct_client_side,
+		test_fallback_to_direct_server_restart,
+		test_disable_on_server,
+		test_disable_on_client,
+		test_route_switching,
+		test_on_off,
+		test_on_on_off,
+		test_reconnect_direct,
+		test_reconnect_direct_no_upgrade,
+		test_reconnect_next,
+		test_connect_to_another_server_direct,
+		test_connect_to_another_server_next,
+		test_multipath,
+		test_multipath_next_packet_loss,
+		test_multipath_fallback_to_direct,
+		test_uncommitted,
+		test_uncommitted_to_committed,
+		test_packet_loss_direct,
+		test_packet_loss_next,
+		test_server_under_load,
+		test_session_update_retry,
+		test_bandwidth_over_limit,
+		test_packet_loss,
+		test_bandwidth,
+		test_jitter,
+		test_tags,
+		test_tags_multi,
+		test_direct_stats,
+		test_next_stats,
+		test_report_session,
+		test_client_ping_timed_out,
+		test_server_ready_success,
+ 		test_server_ready_fallback_to_direct,
+ 		test_server_ready_autodetect_cloud,
+ 		test_server_ready_autodetect_multiplay_success,
+ 		test_server_ready_autodetect_multiplay_fail,
+ 		test_server_ready_disable_autodetect_cloud,
+		test_server_ready_disable_autodetect_multiplay,
+		test_server_ready_resolve_hostname_timeout,
+		test_server_ready_autodetect_timeout,
+		test_client_connect_before_ready,
 		test_server_events,
+		*/
+		test_match_id,
 		/*
-			test_match_id,
-			test_match_values,
-			test_match_data_retry,
-			test_flush,
-			test_flush_retry,
-			test_flush_server_events_and_match_data,
-			test_flush_server_events_and_match_data_retry,
+		test_match_values,
+		test_match_data_retry,
+		test_flush,
+		test_flush_retry,
+		test_flush_server_events_and_match_data,
+		test_flush_server_events_and_match_data_retry,
 		*/
 	}
 

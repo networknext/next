@@ -52,6 +52,8 @@ const BACKEND_MODE_TAGS = 13
 const BACKEND_MODE_DIRECT_STATS = 14
 const BACKEND_MODE_NEXT_STATS = 15
 const BACKEND_MODE_NEAR_RELAY_STATS = 16
+const BACKEND_MODE_MATCH_ID = 17
+const BACKEND_MODE_MATCH_VALUES = 18
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -321,6 +323,65 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	if _, err := w.Write(updateResponseData); err != nil {
 		fmt.Printf("error: failed to write server response: %v\n", err)
+		return
+	}
+}
+
+func MatchDataRequestHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var matchDataRequest transport.MatchDataRequestPacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&matchDataRequest, core.GetPacketDataSDK5(incoming.Data)); err != nil {
+		fmt.Printf("error: failed to read match data request packet: %v\n", err)
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && matchDataRequest.RetryNumber < 4 {
+		fmt.Printf("force retry for match data request packet\n")
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
+		fmt.Printf("match id %x\n", matchDataRequest.MatchID)
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
+		for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
+			fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
+		}
+	}
+
+	matchDataResponse := &transport.MatchDataResponsePacketSDK5{
+		SessionID: matchDataRequest.SessionID,
+		Response:  transport.MatchDataResponseOK,
+	}
+
+	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	toAddress := &incoming.From
+
+	var emptyMagic [8]byte
+	matchDataResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeMatchDataResponseSDK5, matchDataResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
+	if err != nil {
+		fmt.Printf("error: failed to marshal match data response: %v\n", err)
+		return
+	}
+
+	if !core.BasicPacketFilter(matchDataResponseData[:], len(matchDataResponseData)) {
+		panic("basic packet filter failed on match data response")
+	}
+
+	{
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+
+		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
+		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
+
+		if !core.AdvancedPacketFilter(matchDataResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(matchDataResponseData)) {
+			panic("advanced packet filter failed on match data response\n")
+		}
+	}
+
+	if _, err := w.Write(matchDataResponseData); err != nil {
+		fmt.Printf("error: failed to write match data response: %v\n", err)
 		return
 	}
 }
@@ -751,6 +812,14 @@ func main() {
 		backend.mode = BACKEND_MODE_NEXT_STATS
 	}
 
+	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
+		backend.mode = BACKEND_MODE_MATCH_ID
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
+		backend.mode = BACKEND_MODE_MATCH_VALUES
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -840,6 +909,8 @@ func main() {
 				ServerUpdateHandlerFunc(&buffer, &packet)
 			case transport.PacketTypeSessionUpdateSDK5:
 				SessionUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeMatchDataRequestSDK5:
+				MatchDataRequestHandlerFunc(&buffer, &packet)
 			default:
 				fmt.Printf("unknown packet type %d\n", packetType)
 			}
