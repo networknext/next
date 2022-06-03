@@ -28,18 +28,10 @@ TODO
 
 	----------------------------------------------------
 
-	Extend SDK5 to pass up the mean direct RTT from client -> server, server -> backend.
+	Get sdk5 up and working in dev.
 
 	----------------------------------------------------
 
-	Extend SDK5 to pass up the direct bandwidth in kbps up/down, not just sending actual bandwidth when on next.
-
-	----------------------------------------------------
-
-	Add func test necessary for mean direct RTT
-
-	----------------------------------------------------
-
-	Add func test necessary for direct bandwidth up/down actual usage in kbps
+	Get sdk5 up and working in prod.
 
 	----------------------------------------------------
