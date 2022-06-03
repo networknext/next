@@ -3866,7 +3866,7 @@ int next_init( void * context, next_config_t * config_in )
         config.socket_receive_buffer_size = config_in->socket_receive_buffer_size;
     }
 
-    config.disable_network_next = config_in ? config_in->disable_network_next : false;
+    config.disable_network_next = config_in ? config_in->disable_network_next != 0 : false;
 
     const char * next_disable_network_next_override = next_platform_getenv( "NEXT_DISABLE_NETWORK_NEXT" );
     {
@@ -3885,7 +3885,7 @@ int next_init( void * context, next_config_t * config_in )
         next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
     }
 
-    config.disable_autodetect = config_in ? config_in->disable_autodetect : false;
+    config.disable_autodetect = config_in ? config_in->disable_autodetect != 0 : false;
 
     const char * next_disable_autodetect_override = next_platform_getenv( "NEXT_DISABLE_AUTODETECT" );
     {
@@ -7169,7 +7169,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.reported = client->reported;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
-        packet.committed = client->client_stats.committed;
+        packet.committed = client->client_stats.committed != 0;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
@@ -7186,8 +7186,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             packet.next_kbps_down = 0;
         }
 
-        packet.next = client->client_stats.next;
-        packet.committed = client->client_stats.committed;
+        packet.next = client->client_stats.next != 0;
+        packet.committed = client->client_stats.committed != 0;
         packet.next_rtt = client->client_stats.next_rtt;
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
@@ -7869,7 +7869,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         bool send_direct = !send_over_network_next;
         next_platform_mutex_release( &client->internal->route_manager_mutex );
 
-        bool multipath = client->client_stats.multipath;
+        bool multipath = client->client_stats.multipath != 0;
 
         if ( send_over_network_next && multipath )
         {
@@ -10934,13 +10934,13 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 	    char * whois_output = &whois_buffer[0];
 	    size_t bytes_remaining = sizeof(whois_buffer) - 1;
 	    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
-   		FILE * f = fopen( "whois.txt", "w" );
-   		if ( f )
+   		FILE * whois_file = fopen( "whois.txt", "w" );
+   		if ( whois_file )
    		{
    			next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
-   			fputs( whois_buffer, f );
-   			fflush( f );
-   			fclose( f );
+   			fputs( whois_buffer, whois_file );
+   			fflush( whois_file );
+   			fclose( whois_file );
    		}
 	}
 
