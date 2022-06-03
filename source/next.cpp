@@ -14850,9 +14850,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendMatchDataRequestPacket packet;
             packet.Reset();
-	        packet.version_major = NEXT_VERSION_MAJOR_INT;
-	        packet.version_minor = NEXT_VERSION_MINOR_INT;
-	        packet.version_patch = NEXT_VERSION_PATCH_INT;
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
@@ -14860,6 +14857,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.session_id = session->session_id;
             packet.match_id = session->match_id;
             packet.num_match_values = session->num_match_values;
+            next_assert( packet.num_match_values <= NEXT_MAX_MATCH_VALUES );
             for ( int j = 0; j < session->num_match_values; ++j )
             {
                 packet.match_values[j] = session->match_values[j];
