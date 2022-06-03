@@ -4527,6 +4527,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
+	float mean_rtt;						// mean rtt (ms)
     float min_rtt;                      // minimum rtt (ms)
     float max_rtt;                      // maximum rtt (ms)
     float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
@@ -4693,8 +4694,9 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = optional_route_changed_time;
     }
 
-    // calculate min, max and prime RTT (prime is second largest RTT value)
+    // calculate mean, min, max and prime RTT (prime is second largest RTT value)
 
+    double sum_rtt = 0.0;
     double min_rtt = FLT_MAX;
     double max_rtt = 0.0;
     double prime_rtt = 0.0;
@@ -4710,6 +4712,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
             if ( entry->time_pong_received > entry->time_ping_sent )
             {
                 double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                sum_rtt += rtt;
                 if ( rtt < min_rtt )
                 {
                     min_rtt = rtt;
@@ -4739,6 +4742,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     next_assert( max_rtt >= 0.0 );
     next_assert( prime_rtt >= 0.0 );
 
+    stats->mean_rtt = float( sum_rtt / num_pongs );
     stats->min_rtt = float( min_rtt );
     stats->max_rtt = float( max_rtt );
     stats->prime_rtt = float( prime_rtt );
@@ -16173,7 +16177,7 @@ void test_stream()
     next_check( readObject == writeObject );
 }
 
-static bool equal_within_tolerance( float a, float b, float tolerance = 0.0001f )
+static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
 {
     return fabs(double(a)-double(b)) <= tolerance;
 }
@@ -16414,6 +16418,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
+        next_check( route_stats.mean_rtt == 0.0f );
         next_check( route_stats.min_rtt == 0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
@@ -16436,6 +16441,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
+        next_check( route_stats.mean_rtt == 0.0f );
         next_check( route_stats.min_rtt == 0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
@@ -16461,6 +16467,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16476,6 +16483,7 @@ void test_ping_stats()
         static next_ping_history_t history;
         next_ping_history_clear( &history );
 
+        const double expected_mean_rtt = 0.105078;
         const double expected_min_rtt = 0.1;
         const double expected_max_rtt = 1.0;
         const double expected_prime_rtt = 0.5;
@@ -16503,6 +16511,9 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        printf( "%f\n", route_stats.mean_rtt / 1000.0 );
+
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_mean_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.prime_rtt, expected_prime_rtt * 1000.0 ) );
@@ -16517,6 +16528,7 @@ void test_ping_stats()
         static next_ping_history_t history;
         next_ping_history_clear( &history );
 
+        const double expected_mean_rtt = 0.105078;
         const double expected_min_rtt = 0.1;
         const double expected_max_rtt = 1.0;
         const double expected_prime_rtt = 0.5;
@@ -16544,6 +16556,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_mean_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.prime_rtt, expected_prime_rtt * 1000.0 ) );
@@ -16551,7 +16564,8 @@ void test_ping_stats()
         next_check( route_stats.packet_loss == 0.0 );
     }
 
-    // add some pings and set them to have a pong response, but leave the last second of pings without response. packet loss should be zero
+    // add some pings and set them to have a pong response, but leave the last second of pings without response. 
+	// packet loss should be zero.
     {
         const double ping_safety = 1.0;
 
@@ -16604,6 +16618,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16631,6 +16646,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16658,6 +16674,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability

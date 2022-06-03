@@ -14,9 +14,9 @@ DONE
 
 	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
 
-TODO
-
 	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
+
+TODO
 
 	-----------------------
 
