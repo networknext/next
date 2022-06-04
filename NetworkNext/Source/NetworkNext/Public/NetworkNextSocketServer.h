@@ -23,7 +23,9 @@
 #pragma once
 
 #include "NetworkNextSocket.h"
-#include "next.h"
+
+struct next_server_t;
+struct next_address_t;
 
 class FNetworkNextSocketServer : public FNetworkNextSocket
 {
