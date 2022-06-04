@@ -21,6 +21,7 @@
 */
 
 #include "NetworkNextSocketServer.h"
+#include "next.h"
 
 FNetworkNextSocketServer::FNetworkNextSocketServer(const FString& InSocketDescription, const FName& InSocketProtocol)
     : FNetworkNextSocket(ENetworkNextSocketType::TYPE_Server, InSocketDescription, InSocketProtocol)

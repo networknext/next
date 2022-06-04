@@ -21,6 +21,7 @@
 */
 
 #include "NetworkNextSocketClient.h"
+#include "next.h"
 
 FNetworkNextSocketClient::FNetworkNextSocketClient(const FString& InSocketDescription, const FName& InSocketProtocol)
     : FNetworkNextSocket(ENetworkNextSocketType::TYPE_Client, InSocketDescription, InSocketProtocol)
