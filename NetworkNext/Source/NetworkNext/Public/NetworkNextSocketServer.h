@@ -26,12 +26,15 @@
 
 struct next_server_t;
 
+#ifndef NEXT_ADDRESS_ALREADY_DEFINED
 struct next_address_t
 {
     union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
     uint16_t port;
     uint8_t type;
 };
+#define NEXT_ADDRESS_ALREADY_DEFINED
+#endif // #ifndef NEXT_ADDRESS_ALREADY_DEFINED
 
 class FNetworkNextSocketServer : public FNetworkNextSocket
 {
