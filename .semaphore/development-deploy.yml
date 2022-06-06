@@ -104,6 +104,14 @@ blocks:
           commands:
             - make build-magic-frontend-artifacts-dev
             - make publish-magic-frontend-artifacts-dev
+        - name: Test Server 4
+          commands:
+            - make build-test-server4-artifacts-dev
+            - make publish-test-server4-artifacts-dev
+        - name: Test Server 5
+          commands:
+            - make build-test-server5-artifacts-dev
+            - make publish-test-server5-artifacts-dev
 
       secrets:
         - name: google-cloud-platform

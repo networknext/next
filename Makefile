@@ -1,14 +1,20 @@
-CXX_FLAGS := -g -Wall -Wextra -std=c++17
+#!make
+
+# IMPORTANT: Select environment before you run this makefile, eg. "next select local", "next select dev5"
+include .env
+export $(shell sed 's/=.*//' .env)
+
+CXX_FLAGS := -g -Wall -Wextra -std=c++17 -DNEXT_DEVELOPMENT=1
 GO = go
 GOFMT = gofmt
 TAR = tar
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
 	CXX = g++
 else
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
+	LDFLAGS = -lsodium -lcurl -lpthread -lm
 	CXX = g++-8
 endif
 
@@ -32,20 +38,6 @@ SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
-
-export ENV = local
-
-##################
-##    SDK ENV   ##
-##################
-
-export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local
-export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
-export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
-export NEXT_HOSTNAME = 127.0.0.1
-export NEXT_PORT = 40000
-export NEXT_DEBUG_LOGS=1
 
 ####################
 ##    RELAY ENV   ##
@@ -377,6 +369,12 @@ dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
 
 ##############################################
 
+.PHONY: build-test-server4
+build-test-server4: build-sdk4
+	@printf "Building test server 4... "
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test_server4 ./cmd/test_server4/test_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: build-server4
 build-server4: build-sdk4
 	@printf "Building server 4... "
@@ -393,6 +391,12 @@ build-client4: build-sdk4
 build-test4: build-sdk4
 	@printf "Building test 4... "
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test4 ./sdk4/test.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-test-server5
+build-test-server5: build-sdk5
+	@printf "Building test server 5... "
+	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/test_server5 ./cmd/test_server5/test_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-server5
@@ -566,17 +570,6 @@ run-test-func4:
 .PHONY: test-func4
 test-func4: build-test-func4 run-test-func4 ## runs functional tests (sdk4)
 
-.PHONY: build-test-func4-parallel
-build-test-func4-parallel: dist
-	@docker build -t func_tests -f ./cmd/func_tests4/Dockerfile .
-
-.PHONY: run-test-func4-parallel
-run-test-func4-parallel:
-	@./scripts/test-func4-parallel.sh
-
-.PHONY: test-func4-parallel
-test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel (sdk4)
-
 #######################
 
 .PHONY: build-functional-server5
@@ -620,12 +613,12 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 
 #######################
 
-.PHONY: dev-reference-backend4
-dev-reference-backend4: ## runs a local reference backend (sdk4)
+.PHONY: dev-ref-backend4
+dev-ref-backend4: ## runs a local reference backend (sdk4)
 	$(GO) run reference/backend4/backend4.go
 
-.PHONY: dev-reference-backend5
-dev-reference-backend5: ## runs a local reference backend (sdk5)
+.PHONY: dev-ref-backend5
+dev-ref-backend5: ## runs a local reference backend (sdk5)
 	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
@@ -830,6 +823,14 @@ build-server-backend4-artifacts-dev: build-server-backend4
 build-server-backend5-artifacts-dev: build-server-backend5
 	./deploy/build-artifacts.sh -e dev -s server_backend5
 
+.PHONY: build-test-server4-artifacts-dev
+build-test-server4-artifacts-dev: build-test-server4
+	./deploy/build-artifacts.sh -e dev -s test_server4
+
+.PHONY: build-test-server5-artifacts-dev
+build-test-server5-artifacts-dev: build-test-server5
+	./deploy/build-artifacts.sh -e dev -s test_server5
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -981,6 +982,14 @@ publish-server-backend4-artifacts-dev:
 .PHONY: publish-server-backend5-artifacts-dev
 publish-server-backend5-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
+
+.PHONY: publish-test-server4-artifacts-dev
+publish-test-server4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server4
+
+.PHONY: publish-test-server5-artifacts-dev
+publish-test-server5-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server5
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
@@ -1598,7 +1607,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-test-server4 build-test-server5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

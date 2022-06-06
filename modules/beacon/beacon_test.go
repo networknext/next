@@ -1,4 +1,5 @@
 package beacon_test
+
 /*
 import (
 	"context"
