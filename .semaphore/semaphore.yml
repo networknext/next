@@ -44,6 +44,7 @@ blocks:
             - env_var: CONFIG
               values: [ "debug_portable", "release_portable" ]
           commands:
+            - brew install premake
             - premake5 gmake
             - make -j32 config=$CONFIG
             - ./bin/test
