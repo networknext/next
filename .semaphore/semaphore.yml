@@ -44,7 +44,7 @@ blocks:
         - name: test
           matrix:
             - env_var: GCC_VERSION
-              values: [ "6", "7", "8" ]
+              values: [ "7", "8", "9" ]
             - env_var: CONFIG
               values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
           commands:
