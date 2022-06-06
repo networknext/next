@@ -14,7 +14,8 @@ global_job_config:
 
 blocks:
 
-  - name: Test on Linux
+  - name: "Test on Linux"
+    dependencies: []
     task:
       jobs:
         - name: test
@@ -32,7 +33,8 @@ blocks:
             - make -j32 config=$CONFIG
             - ./bin/test
 
-  - name: Test on MacOS
+  - name: "Test on MacOS"
+    dependencies: []
     task:
       agent:
         machine:
