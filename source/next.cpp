@@ -4634,6 +4634,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = 0.0;
     }
 
+    stats->mean_rtt = 0.0f;
     stats->min_rtt = 0.0f;
     stats->max_rtt = 0.0f;
     stats->prime_rtt = 0.0f;
