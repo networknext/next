@@ -49,7 +49,6 @@ blocks:
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
-            - sem-version c $GCC_VERSION
             - gcc --version
             - make -j32 config=$CONFIG
             - ./bin/test
