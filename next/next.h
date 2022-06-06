@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.0"
+    #define NEXT_VERSION_FULL                              "4.20.2"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                0
+    #define NEXT_VERSION_PATCH_INT                                2
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -159,17 +159,21 @@
 #define NEXT_PLATFORM_HAS_IPV6 1
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_PS5 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+#define NEXT_PLATFORM_CAN_RUN_SERVER 1
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+
 // -----------------------------------------
 
 struct next_config_t
 {
     char server_backend_hostname[256];
-    char ping_backend_hostname[256];
     char customer_public_key[256];
     char customer_private_key[256];
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     NEXT_BOOL disable_network_next;
+    NEXT_BOOL disable_autodetect;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( struct next_config_t * config );
@@ -266,7 +270,7 @@ struct next_client_stats_t
 // -----------------------------------------
 
 #define NEXT_CLIENT_STATE_CLOSED        0
-#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_OPEN          1
 #define NEXT_CLIENT_STATE_ERROR         2
 
 struct next_client_t;
@@ -349,8 +353,6 @@ NEXT_EXPORT_FUNC uint16_t next_server_port( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC struct next_address_t next_server_address( struct next_server_t * server );
 
-NEXT_EXPORT_FUNC int next_server_state( struct next_server_t * server );
-
 NEXT_EXPORT_FUNC void next_server_update( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( struct next_server_t * server, const struct next_address_t * address, const char * user_id );
@@ -367,9 +369,9 @@ NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * ser
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_autodetect_finished( struct next_server_t * server );
+NEXT_EXPORT_FUNC NEXT_BOOL next_server_ready( struct next_server_t * server );
 
-NEXT_EXPORT_FUNC const char * next_server_autodetected_datacenter( struct next_server_t * server );
+NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
