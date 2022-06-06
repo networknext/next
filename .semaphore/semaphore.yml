@@ -4,7 +4,7 @@ name: Test
 
 agent:
   machine:
-    type: e1-standard-2
+    type: e1-standard-8
     os_image: ubuntu1804
 
 global_job_config:
@@ -38,13 +38,11 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-2
+          type: e1-standard-8
           os_image: ubuntu2004
       jobs:
         - name: test
           matrix:
-            - env_var: GCC_VERSION
-              values: [ "7", "8", "9" ]
             - env_var: CONFIG
               values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
           commands:
