@@ -15,7 +15,7 @@ ifeq ($(OS),darwin)
 	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm
-	CXX = g++-8
+	CXX = g++
 endif
 
 SDKNAME4 = libnext4
