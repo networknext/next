@@ -341,7 +341,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else if ( timeout_seconds > 0.0f )
     {
-        // blocking with receive timeout
+    	// blocking with receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
@@ -576,14 +576,14 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-    next_assert( mutex-> ok );
+    next_assert( mutex->ok );
     pthread_mutex_lock( &mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-    next_assert( mutex-> ok );
+    next_assert( mutex->ok );
     pthread_mutex_unlock( &mutex->handle );
 }
 
