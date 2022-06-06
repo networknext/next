@@ -4,12 +4,14 @@ agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
+  containers:
+    - name: main
+      image: nbopardi/networknext:backend
 global_job_config:
   secrets:
     - name: sdk5-repo-access
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
