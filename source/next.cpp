@@ -14265,8 +14265,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool autodetect_result = false;
     bool autodetect_actually_did_something = false;
-    char autodetect_output[1024];
-    memset( autodetect_output, 0, sizeof(autodetect_output) );
+    char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -14325,7 +14324,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_platform_mutex_guard( &server->autodetect_mutex );
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH - 1 );
-    autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH] = '\0';
+    autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
     server->autodetect_finished = true;
     server->autodetect_succeeded = autodetect_result;
     server->autodetect_actually_did_something = autodetect_actually_did_something;
