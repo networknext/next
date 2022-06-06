@@ -369,6 +369,12 @@ dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
 
 ##############################################
 
+.PHONY: build-test-server4
+build-test-server4: build-sdk4
+	@printf "Building test server 4... "
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test_server4 ./cmd/test_server4/test_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: build-server4
 build-server4: build-sdk4
 	@printf "Building server 4... "
@@ -385,6 +391,12 @@ build-client4: build-sdk4
 build-test4: build-sdk4
 	@printf "Building test 4... "
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test4 ./sdk4/test.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-test-server5
+build-test-server5: build-sdk5
+	@printf "Building test server 5... "
+	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/test_server5 ./cmd/test_server5/test_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-server5
@@ -811,6 +823,14 @@ build-server-backend4-artifacts-dev: build-server-backend4
 build-server-backend5-artifacts-dev: build-server-backend5
 	./deploy/build-artifacts.sh -e dev -s server_backend5
 
+.PHONY: build-test-server4-artifacts-dev
+build-test-server4-artifacts-dev: build-test-server4
+	./deploy/build-artifacts.sh -e dev -s test_server4
+
+.PHONY: build-test-server5-artifacts-dev
+build-test-server5-artifacts-dev: build-test-server5
+	./deploy/build-artifacts.sh -e dev -s test_server5
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
@@ -962,6 +982,14 @@ publish-server-backend4-artifacts-dev:
 .PHONY: publish-server-backend5-artifacts-dev
 publish-server-backend5-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
+
+.PHONY: publish-test-server4-artifacts-dev
+publish-test-server4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server4
+
+.PHONY: publish-test-server5-artifacts-dev
+publish-test-server5-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server5
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
@@ -1579,7 +1607,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-test-server4 build-test-server5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
