@@ -194,12 +194,6 @@ blocks:
             - artifact pull workflow portal.dev.tar.gz && cd ..
             - make publish-portal-artifacts-dev
 
-        - name: "Portal"
-          commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow portal.dev.tar.gz && cd ..
-            - make publish-portal-artifacts-dev
-
         - name: "Portal Cruncher"
           commands:
             - mkdir dist && cd dist
