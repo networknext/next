@@ -62,7 +62,6 @@ blocks:
         - name: "Build SDK4"
           commands:
             - brew install libsodium
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
