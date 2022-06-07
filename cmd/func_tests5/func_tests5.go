@@ -3539,6 +3539,11 @@ func main() {
 		tests = allTests // No command line args, run all tests
 	}
 
+	go func() {
+		time.Sleep(time.Duration(len(tests)*80) * time.Second)
+		panic("tests took too long!")
+	}()
+
 	for i := range tests {
 		tests[i]()
 	}
