@@ -79,19 +79,18 @@ blocks:
             - git submodule update
             - make -j32 test-relay
 
-  - name: "Functional Tests (SDK5)"
+  - name: "Functional Tests 5"
     dependencies: []
     task:
       agent:
         machine:
           type: e1-standard-8
           os_image: ubuntu2004
-        containers:
-          - name: main
-            image: nbopardi/networknext:backend
       jobs:
         - name: "test_flush"
           commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev zeromq-dev
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init

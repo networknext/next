@@ -1622,5 +1622,5 @@ update-sdk5:
 
 .PHONY: clean
 clean: ## cleans everything
-	@rm -fr $(DIST_DIR)
+	@rm -rf $(DIST_DIR)
 	@mkdir -p $(DIST_DIR)
