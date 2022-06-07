@@ -82,6 +82,13 @@ blocks:
   - name: "Functional Tests (SDK5)"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+        containers:
+          - name: main
+            image: nbopardi/networknext:backend
       jobs:
         - name: "test_flush"
           commands:
