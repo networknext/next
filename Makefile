@@ -4,7 +4,7 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-CXX_FLAGS := -g -Wall -Wextra -std=c++17 -DNEXT_DEVELOPMENT=1
+CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1
 GO = go
 GOFMT = gofmt
 TAR = tar

@@ -5,7 +5,7 @@ name: Test
 agent:
   machine:
     type: e1-standard-8
-    os_image: ubuntu1804
+    os_image: ubuntu2004
 
 global_job_config:
   secrets:
@@ -21,9 +21,6 @@ blocks:
     dependencies: []
     task:
       agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu1804
         containers:
           - name: main
             image: nbopardi/networknext:backend
