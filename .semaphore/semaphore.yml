@@ -53,25 +53,7 @@ blocks:
             - make -j32 config=$CONFIG
             - ./bin/test
 
-  - name: "Test on MacOS 12"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: a1-standard-4
-          os_image: macos-xcode12
-      jobs:
-        - name: test
-          matrix:
-            - env_var: CONFIG
-              values: [ "debug_portable", "release_portable" ]
-          commands:
-            - brew install premake
-            - premake5 gmake
-            - make -j32 config=$CONFIG
-            - ./bin/test
-
-  - name: "Test on MacOS 13"
+  - name: "Test on MacOS"
     dependencies: []
     task:
       agent:
