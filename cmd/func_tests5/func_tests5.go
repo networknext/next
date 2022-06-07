@@ -441,17 +441,32 @@ func test_direct_upgraded() {
 	serverConfig := &ServerConfig{}
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
+	fmt.Printf("creating server\n")
+
 	server_cmd, server_stdout := server(serverConfig)
+
+	fmt.Printf("creating backend\n")
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
+	fmt.Printf("waiting for client...\n")
+
 	client_cmd.Wait()
+
+	fmt.Printf("client finished\n")
 
 	server_cmd.Process.Signal(os.Interrupt)
 	backend_cmd.Process.Signal(os.Interrupt)
 
+	fmt.Printf("waiting for server\n")
+
 	server_cmd.Wait()
+
+	fmt.Printf("waiting for backend\n")
+
 	backend_cmd.Wait()
+
+	fmt.Printf("done!\n")
 
 	client_counters := read_client_counters(client_stderr.String())
 
