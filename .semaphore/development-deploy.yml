@@ -6,9 +6,6 @@ agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu2004
-  containers:
-    - name: main
-      image: nbopardi/networknext:backend
 
 global_job_config:
   secrets:
@@ -16,8 +13,6 @@ global_job_config:
     - name: google-cloud-platform
   prologue:
     commands:
-      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-      - gcloud auth configure-docker -q
       - checkout
       - cp envs/local.env .env
 
@@ -28,6 +23,14 @@ blocks:
     dependencies: []
 
     task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+        containers:
+          - name: main
+            image: nbopardi/networknext:backend
 
       jobs:
 
@@ -114,11 +117,6 @@ blocks:
 
     task:
 
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
-
       prologue:
         commands:
             - sudo apt-get update
@@ -138,3 +136,21 @@ blocks:
         - name: "Test Server 5"
           commands:
             - make build-test-server5-artifacts-dev
+
+
+  - name: "Publish Artifacts"
+    
+    dependencies: ["Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - gcloud auth configure-docker -q
+
+      jobs:
+
+        - name: "Billing"
+          commands:
+            - make publish-billing-artifacts-dev
