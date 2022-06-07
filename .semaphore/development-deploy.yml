@@ -107,6 +107,7 @@ blocks:
           commands:
             - make build-magic-frontend-artifacts-dev
 
+
   - name: "Build Artifacts (Native)"
 
     dependencies: []

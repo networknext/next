@@ -542,7 +542,6 @@ func test_network_next_route() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] >= 40*60, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 
 }
 
