@@ -17,7 +17,7 @@ global_job_config:
 
 blocks:
 
-  - name: "Unit Tests"
+  - name: "Test Backend"
     dependencies: []
     task:
       agent:
@@ -28,7 +28,7 @@ blocks:
           - name: main
             image: nbopardi/networknext:backend
       jobs:
-        - name: Run Tests
+        - name: "Unit Tests"
           commands:
             - make test
       env_vars:
@@ -37,11 +37,11 @@ blocks:
         - name: BIGTABLE_EMULATOR_HOST
           value: "127.0.0.1:8086"
 
-  - name: "Build SDK4"
+  - name: "Test SDK 4"
     dependencies: []
     task:
       jobs:
-        - name: "Build SDK4"
+        - name: "Unit Tests"
           commands:
             - sudo apt-get update
             - sudo apt-get install -y libsodium-dev
@@ -49,13 +49,13 @@ blocks:
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
-            - make -j32 build-sdk4
+            - make -j32 test-sdk4
 
-  - name: "Build SDK5"
+  - name: "Test SDK 5"
     dependencies: []
     task:
       jobs:
-        - name: "Build SDK5"
+        - name: "Unit Tests"
           commands:
             - sudo apt-get update
             - sudo apt-get install -y libsodium-dev
@@ -63,7 +63,21 @@ blocks:
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
-            - make -j32 build-sdk5
+            - make -j32 test-sdk5
+
+  - name: "Test Relay"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Unit Tests"
+          commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+            - make -j32 test-relay
 
 promotions:
 
