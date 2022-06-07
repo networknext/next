@@ -3152,26 +3152,31 @@ func main() {
 		test_flush_server_events_and_match_data_retry,
 	}
 
-	// If there are command line arguments, use reflection to see what tests to run
 	var tests []test_function
-	prefix := "main."
+
 	if len(os.Args) > 1 {
-		for _, funcName := range os.Args[1:] {
-			for _, test := range allTests {
-				name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-				name = name[len(prefix):]
-				if funcName == name {
-					tests = append(tests, test)
-				}
+		funcName := os.Args[1]
+		for _, test := range allTests {
+			name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+			name = name[len("main."):]
+			if funcName == name {
+				tests = append(tests, test)
+				break
 			}
+		}
+		if len(tests) == 0 {
+			panic(fmt.Sprintf("could not find any test: '%s'", funcName))
 		}
 	} else {
 		tests = allTests // No command line args, run all tests
 	}
 
-	for {
-		for i := range tests {
-			tests[i]()
-		}
+	go func() {
+		time.Sleep(time.Duration(len(tests)*80) * time.Second)
+		panic("tests took too long!")
+	}()
+
+	for i := range tests {
+		tests[i]()
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"sort"
 	"sync"
@@ -603,178 +604,6 @@ func MatchDataHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
-func main() {
-
-	rand.Seed(time.Now().UnixNano())
-
-	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
-	backend.statsDatabase = routing.NewStatsDatabase()
-	backend.routeMatrix = &routing.RouteMatrix{}
-
-	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
-		backend.statsDatabase.DeleteEntry(relayData.ID)
-		return nil
-	})
-
-	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
-		backend.mode = BACKEND_MODE_FORCE_DIRECT
-	}
-
-	if os.Getenv("BACKEND_MODE") == "RANDOM" {
-		backend.mode = BACKEND_MODE_RANDOM
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MULTIPATH" {
-		backend.mode = BACKEND_MODE_MULTIPATH
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ON_OFF" {
-		backend.mode = BACKEND_MODE_ON_OFF
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ON_ON_OFF" {
-		backend.mode = BACKEND_MODE_ON_ON_OFF
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ROUTE_SWITCHING" {
-		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
-	}
-
-	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED" {
-		backend.mode = BACKEND_MODE_UNCOMMITTED
-	}
-
-	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED_TO_COMMITTED" {
-		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
-	}
-
-	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
-		backend.mode = BACKEND_MODE_USER_FLAGS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
-		backend.mode = BACKEND_MODE_FORCE_RETRY
-	}
-
-	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
-		backend.mode = BACKEND_MODE_BANDWIDTH
-	}
-
-	if os.Getenv("BACKEND_MODE") == "JITTER" {
-		backend.mode = BACKEND_MODE_JITTER
-	}
-
-	if os.Getenv("BACKEND_MODE") == "TAGS" {
-		backend.mode = BACKEND_MODE_TAGS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
-		backend.mode = BACKEND_MODE_DIRECT_STATS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
-		backend.mode = BACKEND_MODE_NEXT_STATS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
-		backend.mode = BACKEND_MODE_MATCH_ID
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
-		backend.mode = BACKEND_MODE_MATCH_VALUES
-	}
-
-	go OptimizeThread()
-
-	go TimeoutThread()
-
-	go WebServer()
-
-	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
-	lc := net.ListenConfig{
-		Control: func(network string, address string, c syscall.RawConn) error {
-			err := c.Control(func(fileDescriptor uintptr) {
-				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
-				}
-
-				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
-				}
-			})
-
-			return err
-		},
-	}
-
-	for {
-		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
-		if err != nil {
-			panic(fmt.Sprintf("could not bind socket: %v", err))
-		}
-
-		conn := lp.(*net.UDPConn)
-
-		dataArray := [transport.DefaultMaxPacketSize]byte{}
-		for {
-			data := dataArray[:]
-			size, fromAddr, err := conn.ReadFromUDP(data)
-			if err != nil {
-				fmt.Printf("failed to read udp packet: %v\n", err)
-				break
-			}
-
-			if size <= 0 {
-				continue
-			}
-
-			data = data[:size]
-
-			// Check the packet hash is legit and remove the hash from the beginning of the packet
-			// to continue processing the packet as normal
-			if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-				fmt.Println("received non network next packet")
-				continue
-			}
-
-			packetType := data[0]
-			data = data[crypto.PacketHashSize+1 : size]
-
-			var buffer bytes.Buffer
-			packet := transport.UDPPacket{From: *fromAddr, Data: data}
-
-			switch packetType {
-			case transport.PacketTypeServerInitRequest:
-				ServerInitHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeServerUpdate:
-				ServerUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeSessionUpdate:
-				SessionUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeMatchDataRequest:
-				MatchDataHandlerFunc(&buffer, &packet)
-			default:
-				fmt.Printf("unknown packet type %d\n", packet.Data[0])
-			}
-
-			if buffer.Len() > 0 {
-				response := buffer.Bytes()
-
-				// Sign and hash the response
-				response = crypto.SignPacket(crypto.BackendPrivateKey, response)
-				crypto.HashPacket(crypto.PacketHashKey, response)
-
-				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-					fmt.Printf("failed to write UDP response: %v\n", err)
-				}
-			}
-		}
-	}
-}
-
 // -----------------------------------------------------------
 
 const InitRequestMagic = uint32(0x9083708f)
@@ -1109,4 +938,191 @@ func WebServer() {
 	router.HandleFunc("/near", NearHandler).Methods("GET")
 	fmt.Printf("WebServer\n")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
+}
+
+func UDPServer() {
+
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+				}
+
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+				}
+			})
+
+			return err
+		},
+	}
+
+	for {
+		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
+		if err != nil {
+			panic(fmt.Sprintf("could not bind socket: %v", err))
+		}
+
+		conn := lp.(*net.UDPConn)
+
+		dataArray := [transport.DefaultMaxPacketSize]byte{}
+		for {
+			data := dataArray[:]
+			size, fromAddr, err := conn.ReadFromUDP(data)
+			if err != nil {
+				fmt.Printf("failed to read udp packet: %v\n", err)
+				break
+			}
+
+			if size <= 0 {
+				continue
+			}
+
+			data = data[:size]
+
+			// Check the packet hash is legit and remove the hash from the beginning of the packet
+			// to continue processing the packet as normal
+			if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+				fmt.Println("received non network next packet")
+				continue
+			}
+
+			packetType := data[0]
+			data = data[crypto.PacketHashSize+1 : size]
+
+			var buffer bytes.Buffer
+			packet := transport.UDPPacket{From: *fromAddr, Data: data}
+
+			switch packetType {
+			case transport.PacketTypeServerInitRequest:
+				ServerInitHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeServerUpdate:
+				ServerUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeSessionUpdate:
+				SessionUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeMatchDataRequest:
+				MatchDataHandlerFunc(&buffer, &packet)
+			default:
+				fmt.Printf("unknown packet type %d\n", packet.Data[0])
+			}
+
+			if buffer.Len() > 0 {
+				response := buffer.Bytes()
+
+				// Sign and hash the response
+				response = crypto.SignPacket(crypto.BackendPrivateKey, response)
+				crypto.HashPacket(crypto.PacketHashKey, response)
+
+				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+					fmt.Printf("failed to write UDP response: %v\n", err)
+				}
+			}
+		}
+	}	
+}
+
+func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	backend.serverDatabase = make(map[string]ServerEntry)
+	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
+	backend.statsDatabase = routing.NewStatsDatabase()
+	backend.routeMatrix = &routing.RouteMatrix{}
+
+	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
+		backend.statsDatabase.DeleteEntry(relayData.ID)
+		return nil
+	})
+
+	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
+		backend.mode = BACKEND_MODE_FORCE_DIRECT
+	}
+
+	if os.Getenv("BACKEND_MODE") == "RANDOM" {
+		backend.mode = BACKEND_MODE_RANDOM
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MULTIPATH" {
+		backend.mode = BACKEND_MODE_MULTIPATH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ON_OFF" {
+		backend.mode = BACKEND_MODE_ON_OFF
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ON_ON_OFF" {
+		backend.mode = BACKEND_MODE_ON_ON_OFF
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ROUTE_SWITCHING" {
+		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
+	}
+
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED
+	}
+
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED_TO_COMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
+	}
+
+	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
+		backend.mode = BACKEND_MODE_USER_FLAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
+		backend.mode = BACKEND_MODE_FORCE_RETRY
+	}
+
+	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
+		backend.mode = BACKEND_MODE_BANDWIDTH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "JITTER" {
+		backend.mode = BACKEND_MODE_JITTER
+	}
+
+	if os.Getenv("BACKEND_MODE") == "TAGS" {
+		backend.mode = BACKEND_MODE_TAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
+		backend.mode = BACKEND_MODE_DIRECT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
+		backend.mode = BACKEND_MODE_NEXT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
+		backend.mode = BACKEND_MODE_MATCH_ID
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
+		backend.mode = BACKEND_MODE_MATCH_VALUES
+	}
+
+	go OptimizeThread()
+
+	go TimeoutThread()
+
+	go WebServer()
+
+	go UDPServer()
+
+	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case <-termChan:
+		core.Debug("received shutdown signal")
+		return
+	}
 }
