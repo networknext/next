@@ -2,11 +2,6 @@ version: v1.0
 
 name: Test
 
-agent:
-  machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
-
 global_job_config:
   secrets:
     - name: sdk5-repo-access
@@ -40,6 +35,10 @@ blocks:
   - name: "SDK4"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
@@ -54,6 +53,10 @@ blocks:
   - name: "SDK5"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
@@ -68,6 +71,10 @@ blocks:
   - name: "Relay"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
@@ -84,7 +91,7 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-8
+          type: e1-standard-2
           os_image: ubuntu2004
 
       prologue:
