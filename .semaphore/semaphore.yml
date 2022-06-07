@@ -43,6 +43,12 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
             - make -j32 test-sdk4
 
   - name: "SDK5"
@@ -51,10 +57,13 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
             - make -j32 test-sdk5
-        - name: "test_flush"
-            - make -j32 build-test-func5
-            - ./dist/test_func5 test_flush
 
   - name: "Relay"
     dependencies: []
