@@ -14,7 +14,6 @@ global_job_config:
     commands:
       - checkout
       - cp envs/local.env .env
-      - make clean
 
 blocks:
 

@@ -303,7 +303,7 @@ help:
 
 .PHONY: dist
 dist:
-	mkdir -p $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
 
 #####################
 ##   Happy Path    ##
@@ -1623,4 +1623,4 @@ update-sdk5:
 .PHONY: clean
 clean: ## cleans everything
 	@rm -fr $(DIST_DIR)
-	@mkdir $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
