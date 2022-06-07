@@ -167,10 +167,6 @@ blocks:
           commands:
             - ./dist/func_tests5 test_multipath
 
-        - name: "test_multipath"
-          commands:
-            - ./dist/func_tests5 test_multipath
-
         - name: "test_multipath_next_packet_loss"
           commands:
             - ./dist/func_tests5 test_multipath_next_packet_loss
