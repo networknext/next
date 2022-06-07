@@ -4,7 +4,7 @@ name: "Development Deploy"
 
 agent:
   machine:
-    type: e1-standard-8
+    type: e1-standard-2
     os_image: ubuntu2004
   containers:
     - name: main
@@ -22,11 +22,12 @@ global_job_config:
 
 blocks:
 
-  - name: "Build Artifacts"
+  - name: "Build Artifacts (Golang)"
 
     dependencies: []
 
     task:
+
       jobs:
 
         - name: "Billing"
@@ -104,3 +105,34 @@ blocks:
         - name: "Magic Frontend"
           commands:
             - make build-magic-frontend-artifacts-dev
+
+  - name: "Build Artifacts (Native)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+            - make -j32 build-test-func5
+
+      jobs:
+
+        - name: "Test Server 4"
+          commands:
+            - make build-test-server4-artifacts-dev
+
+        - name: "Test Server 5"
+          commands:
+            - make build-test-server5-artifacts-dev
