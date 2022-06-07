@@ -79,6 +79,26 @@ blocks:
             - git submodule update
             - make -j32 test-relay
 
+  - name: "Functional Tests 4"
+    dependencies: []
+    task:
+
+      prologue:
+        commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+            - make -j32 build-test-func4
+
+      jobs:
+
+        - name: "test_direct_raw"
+          commands:
+            - ./dist/func_tests5 test_direct_raw
+
   - name: "Functional Tests 5a"
     dependencies: []
     task:
