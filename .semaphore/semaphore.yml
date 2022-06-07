@@ -107,6 +107,42 @@ blocks:
           commands:
             - ./dist/func_tests5 test_direct_upgraded
 
+        - name: "test_network_next_route"
+          commands:
+            - ./dist/func_tests5 test_network_next_route
+
+        - name: "test_fallback_to_direct_backend"
+          commands:
+            - ./dist/func_tests5 test_fallback_to_direct_backend
+
+        - name: "test_fallback_to_direct_client_side"
+          commands:
+            - ./dist/func_tests5 test_fallback_to_direct_client_side
+
+        - name: "test_fallback_to_direct_server_restart"
+          commands:
+            - ./dist/func_tests5 test_fallback_to_direct_server_restart
+
+        - name: "test_disable_on_server"
+          commands:
+            - ./dist/func_tests5 test_disable_on_server
+
+        - name: "test_disable_on_client"
+          commands:
+            - ./dist/func_tests5 test_disable_on_client
+
+        - name: "test_route_switching"
+          commands:
+            - ./dist/func_tests5 test_route_switching
+
+        - name: "test_on_off"
+          commands:
+            - ./dist/func_tests5 test_on_off
+
+        - name: "test_on_on_off"
+          commands:
+            - ./dist/func_tests5 test_on_on_off
+
 promotions:
 
   - name: "Development Deployment"
