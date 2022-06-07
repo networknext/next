@@ -172,8 +172,42 @@ blocks:
 
         - name: "Billing"
           commands:
-            - mkdir dist
-            - cd dist
-            - artifact pull workflow billing.dev.tar.gz
-            - cd ..
+            - mkdir dist && cd dist
+            - artifact pull workflow billing.dev.tar.gz && cd ..
             - make publish-billing-artifacts-dev
+
+        - name: "Analytics Pusher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow analytics_pusher.dev.tar.gz && cd ..
+            - make publish-analytics-pusher-artifacts-dev
+
+        - name: "Analytics"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow analytics.dev.tar.gz && cd ..
+            - make publish-analytics-artifacts-dev
+
+        - name: "Portal"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow portal.dev.tar.gz && cd ..
+            - make publish-portal-artifacts-dev
+
+        - name: "Portal"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow portal.dev.tar.gz && cd ..
+            - make publish-portal-artifacts-dev
+
+        - name: "Portal Cruncher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow portal_cruncher.dev.tar.gz && cd ..
+            - make publish-portal-cruncher-artifacts-dev
+
+        - name: "Relay Gateway"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_gateway.dev.tar.gz && cd ..
+            - make publish-relay-gateway-artifacts-dev
