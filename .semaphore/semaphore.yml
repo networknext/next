@@ -1,12 +1,12 @@
 version: v1.0
+
 name: Test
+
 agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
-  containers:
-    - name: main
-      image: nbopardi/networknext:backend
+
 global_job_config:
   secrets:
     - name: sdk5-repo-access
@@ -14,16 +14,21 @@ global_job_config:
     commands:
       - checkout
       - cp envs/local.env .env
-      - make clean
-      - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - git submodule init
-      - git submodule update
+
 blocks:
+
   - name: Unit Tests
+    dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu1804
+        containers:
+          - name: main
+            image: nbopardi/networknext:backend
       jobs:
-        - name: Backend
+        - name: Run Tests
           commands:
             - make test
       env_vars:
@@ -31,20 +36,15 @@ blocks:
           value: "127.0.0.1:12000"
         - name: BIGTABLE_EMULATOR_HOST
           value: "127.0.0.1:8086"
-promotions:
-  - name: Development Deployment
-    pipeline_file: development-deploy.yml
-    auto_promote:
-      when: branch = 'dev' AND result = 'passed'
-  - name: Staging Deployment
-    pipeline_file: staging-deploy.yml
-    auto_promote:
-      when: branch = 'staging' AND result = 'passed'
-  - name: Production Deployment
-    pipeline_file: production-deploy.yml
-    auto_promote:
-      when: branch = 'prod' AND result = 'passed'
-  - name: Production Debug Deployment
-    pipeline_file: production-debug-deploy.yml
-    auto_promote:
-      when: branch = 'prod_debug' AND result = 'passed'
+
+  - name: Build SDK5 on Linux
+    dependencies: []
+    task:
+      jobs:
+        - name: Build SDK5
+          commands:
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+            - make build-sdk5
