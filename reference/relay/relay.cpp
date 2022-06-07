@@ -7606,7 +7606,7 @@ int main( int argc, const char ** argv )
         }
 
         relay_platform_mutex_acquire( relay.mutex );
-        auto iter = relay.sessions->begin();
+        std::map<uint64_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
         {
             if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )
