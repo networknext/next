@@ -12,6 +12,7 @@ agent:
 
 global_job_config:
   secrets:
+    - name: sdk5-repo-access
     - name: google-cloud-platform
   prologue:
     commands:
