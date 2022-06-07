@@ -64,3 +64,25 @@ blocks:
             - git submodule init
             - git submodule update
             - make -j32 build-sdk5
+
+promotions:
+
+  - name: "Development Deployment"
+    pipeline_file: development-deploy.yml
+    auto_promote:
+      when: branch = 'dev' AND result = 'passed'
+  
+  - name: "Staging Deployment"
+    pipeline_file: staging-deploy.yml
+    auto_promote:
+      when: branch = 'staging' AND result = 'passed'
+  
+  - name: "Production Deployment"
+    pipeline_file: production-deploy.yml
+    auto_promote:
+      when: branch = 'prod' AND result = 'passed'
+  
+  - name: "Production Debug Deployment"
+    pipeline_file: production-debug-deploy.yml
+    auto_promote:
+      when: branch = 'prod_debug' AND result = 'passed'
