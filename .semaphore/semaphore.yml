@@ -96,7 +96,7 @@ blocks:
             - git submodule init
             - git submodule update
             - make -j32 build-test-func5
-            - ./dist/func_tests5 test-flush
+            - ./dist/func_tests5 test_flush
 
 promotions:
 

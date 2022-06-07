@@ -3533,6 +3533,9 @@ func main() {
 				}
 			}
 		}
+		if len(tests) == 0 {
+			panic("could not find any tests!")
+		}
 	} else {
 		tests = allTests // No command line args, run all tests
 	}
