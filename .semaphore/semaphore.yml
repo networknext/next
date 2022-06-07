@@ -87,8 +87,11 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        prologue:
+        - name: "test_passthrough"
           commands:
+            - ./dist/func_tests5 test_passthrough
+      prologue:
+        commands:
             - sudo apt-get update
             - sudo apt-get install -y libsodium-dev libzmq3-dev
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
@@ -96,9 +99,6 @@ blocks:
             - git submodule init
             - git submodule update
             - make -j32 build-test-func5
-        - name: "test_passthrough"
-          commands:
-            - ./dist/func_tests5 test_passthrough
 
 promotions:
 
