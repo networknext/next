@@ -143,6 +143,78 @@ blocks:
           commands:
             - ./dist/func_tests5 test_on_on_off
 
+        - name: "test_reconnect_direct"
+          commands:
+            - ./dist/func_tests5 test_reconnect_direct
+
+        - name: "test_reconnect_direct_no_upgrade"
+          commands:
+            - ./dist/func_tests5 test_reconnect_direct_no_upgrade
+
+        - name: "test_reconnect_next"
+          commands:
+            - ./dist/func_tests5 test_reconnect_next
+
+        - name: "test_connect_to_another_server_direct"
+          commands:
+            - ./dist/func_tests5 test_connect_to_another_server_direct
+
+        - name: "test_connect_to_another_server_next"
+          commands:
+            - ./dist/func_tests5 test_connect_to_another_server_next
+
+        - name: "test_multipath"
+          commands:
+            - ./dist/func_tests5 test_multipath
+
+        - name: "test_multipath"
+          commands:
+            - ./dist/func_tests5 test_multipath
+
+        - name: "test_multipath_next_packet_loss"
+          commands:
+            - ./dist/func_tests5 test_multipath_next_packet_loss
+
+        - name: "test_multipath_fallback_to_direct"
+          commands:
+            - ./dist/func_tests5 test_multipath_fallback_to_direct
+
+        - name: "test_uncommitted"
+          commands:
+            - ./dist/func_tests5 test_uncommitted_to_committed
+
+        - name: "test_packet_loss_direct"
+          commands:
+            - ./dist/func_tests5 test_packet_loss_direct
+
+        - name: "test_packet_loss_next"
+          commands:
+            - ./dist/func_tests5 test_packet_loss_next
+
+        - name: "test_server_under_load"
+          commands:
+            - ./dist/func_tests5 test_server_under_load
+
+        - name: "test_session_update_retry"
+          commands:
+            - ./dist/func_tests5 test_session_update_retry
+
+        - name: "test_bandwidth_over_limit"
+          commands:
+            - ./dist/func_tests5 test_bandwidth_over_limit
+
+        - name: "test_packet_loss"
+          commands:
+            - ./dist/func_tests5 test_packet_loss
+
+        - name: "test_bandwidth"
+          commands:
+            - ./dist/func_tests5 test_bandwidth
+
+        - name: "test_jitter"
+          commands:
+            - ./dist/func_tests5 test_jitter
+
 promotions:
 
   - name: "Development Deployment"
