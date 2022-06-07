@@ -37,7 +37,7 @@ blocks:
         - name: "Billing"
           commands:
             - make build-billing-artifacts-dev
-            - artifact push workflow ../dist/billing.dev.tar.gz
+            - artifact push workflow dist/billing.dev.tar.gz
         
         - name: "Analytics Pusher"
           commands:
@@ -154,5 +154,5 @@ blocks:
 
         - name: "Billing"
           commands:
-            - artifact pull workflow ../dist/billing.dev.tar.gz
+            - artifact pull workflow dist/billing.dev.tar.gz
             - make publish-billing-artifacts-dev
