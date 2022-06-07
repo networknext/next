@@ -154,5 +154,7 @@ blocks:
 
         - name: "Billing"
           commands:
-            - artifact pull workflow dist/billing.dev.tar.gz
+            - cd dist
+            - artifact pull workflow billing.dev.tar.gz
+            - cd ...
             - make publish-billing-artifacts-dev
