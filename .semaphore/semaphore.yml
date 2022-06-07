@@ -17,7 +17,7 @@ global_job_config:
 
 blocks:
 
-  - name: "Test Backend"
+  - name: "Backend"
     dependencies: []
     task:
       agent:
@@ -37,7 +37,7 @@ blocks:
         - name: BIGTABLE_EMULATOR_HOST
           value: "127.0.0.1:8086"
 
-  - name: "Test SDK 4"
+  - name: "SDK4"
     dependencies: []
     task:
       jobs:
@@ -51,7 +51,7 @@ blocks:
             - git submodule update
             - make -j32 test-sdk4
 
-  - name: "Test SDK 5"
+  - name: "SDK5"
     dependencies: []
     task:
       jobs:
@@ -65,7 +65,7 @@ blocks:
             - git submodule update
             - make -j32 test-sdk5
 
-  - name: "Test Relay"
+  - name: "Relay"
     dependencies: []
     task:
       jobs:
