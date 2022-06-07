@@ -154,6 +154,7 @@ blocks:
 
         - name: "Billing"
           commands:
+            - mkdir dist
             - cd dist
             - artifact pull workflow billing.dev.tar.gz
             - cd ...
