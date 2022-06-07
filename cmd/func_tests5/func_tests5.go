@@ -3523,7 +3523,7 @@ func main() {
 	var tests []test_function
 
 	if len(os.Args) > 1 {
-		funcName :/ os.Args[1]
+		funcName := os.Args[1]
 		for _, test := range allTests {
 			name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
 			name = name[len("main."):]
