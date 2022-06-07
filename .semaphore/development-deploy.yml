@@ -157,5 +157,5 @@ blocks:
             - mkdir dist
             - cd dist
             - artifact pull workflow billing.dev.tar.gz
-            - cd ...
+            - cd ..
             - make publish-billing-artifacts-dev
