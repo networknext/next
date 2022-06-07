@@ -1,119 +1,106 @@
 version: v1.0
-name: Development Deploy
+
+name: "Development Deploy"
+
 agent:
   machine:
     type: e1-standard-8
-    os_image: ubuntu1804
+    os_image: ubuntu2004
   containers:
     - name: main
       image: nbopardi/networknext:backend
+
 global_job_config:
   secrets:
-    - name: sdk5-repo-access
+    - name: google-cloud-platform
   prologue:
     commands:
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
       - cp envs/local.env .env
-      - make clean
-      - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - git submodule init
-      - git submodule update
+
 blocks:
-  - name: Build & Publish Artifacts
+
+  - name: "Build Artifacts"
+
     dependencies: []
+
     task:
       jobs:
-        - name: Billing
+
+        - name: "Billing"
           commands:
             - make build-billing-artifacts-dev
-            - make publish-billing-artifacts-dev
-        - name: Analytics Pusher
+        
+        - name: "Analytics Pusher"
           commands:
             - make build-analytics-pusher-artifacts-dev
-            - make publish-analytics-pusher-artifacts-dev
-        - name: Analytics
+        
+        - name: "Analytics"
           commands:
             - make build-analytics-artifacts-dev
-            - make publish-analytics-artifacts-dev
-        - name: Portal
+        
+        - name: "Portal"
           commands:
             - make build-portal-artifacts-dev
-            - make publish-portal-artifacts-dev
-        - name: Portal Cruncher
+        
+        - name: "Portal Cruncher"
           commands:
             - make build-portal-cruncher-artifacts-dev
-            - make publish-portal-cruncher-artifacts-dev
-        - name: Relay Gateway
+        
+        - name: "Relay Gateway"
           commands:
             - make build-relay-gateway-artifacts-dev
-            - make publish-relay-gateway-artifacts-dev
-        - name: Relay Backend
+        
+        - name: "Relay Backend"
           commands:
             - make build-relay-backend-artifacts-dev
-            - make publish-relay-backend-artifacts-dev
-        - name: Relay Frontend
+        
+        - name: "Relay Frontend"
           commands:
             - make build-relay-frontend-artifacts-dev
-            - make publish-relay-frontend-artifacts-dev
-        - name: Relay Forwarder
+        
+        - name: "Relay Forwarder"
           commands:
             - make build-relay-forwarder-artifacts-dev
-            - make publish-relay-forwarder-artifacts-dev
-        - name: Server Backend 4
+        
+        - name: "Server Backend 4"
           commands:
             - make build-server-backend4-artifacts-dev
-            - make publish-server-backend4-artifacts-dev
-        - name: Server Backend 5
+        
+        - name: "Server Backend 5"
           commands:
             - make build-server-backend5-artifacts-dev
-            - make publish-server-backend5-artifacts-dev
-        - name: Debug Server Backend 4
+        
+        - name: "Debug Server Backend 4"
           commands:
             - make build-debug-server-backend4-artifacts-dev
-            - make publish-debug-server-backend4-artifacts-dev
-        - name: Debug Relay Backend
+        
+        - name: "Debug Relay Backend"
           commands:
             - make build-debug-relay-backend-artifacts-dev
-            - make publish-debug-relay-backend-artifacts-dev
-        - name: Bootstrap Script
-          commands:
-            - make publish-bootstrap-script-dev
-        - name: Ghost Army
+        
+        - name: "Ghost Army"
           commands:
             - make build-ghost-army-artifacts-dev
-            - make publish-ghost-army-artifacts-dev
-            - make publish-ghost-army-bootstrap-script-dev
-        - name: Relay Pusher
+        
+        - name: "Relay Pusher"
           commands:
             - make build-relay-pusher-artifacts-dev
-            - make publish-relay-pusher-artifacts-dev
-        - name: Pingdom
+        
+        - name: "Pingdom"
           commands:
             - make build-pingdom-artifacts-dev
-            - make publish-pingdom-artifacts-dev
-        - name: Match Data
+        
+        - name: "Match Data"
           commands:
             - make build-match-data-artifacts-dev
-            - make publish-match-data-artifacts-dev
-        - name: Magic Backend
+        
+        - name: "Magic Backend"
           commands:
             - make build-magic-backend-artifacts-dev
-            - make publish-magic-backend-artifacts-dev
-        - name: Magic Frontend
+        
+        - name: "Magic Frontend"
           commands:
             - make build-magic-frontend-artifacts-dev
-            - make publish-magic-frontend-artifacts-dev
-        - name: Test Server 4
-          commands:
-            - make build-test-server4-artifacts-dev
-            - make publish-test-server4-artifacts-dev
-        - name: Test Server 5
-          commands:
-            - make build-test-server5-artifacts-dev
-            - make publish-test-server5-artifacts-dev
-
-      secrets:
-        - name: google-cloud-platform
