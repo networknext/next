@@ -45,6 +45,8 @@ blocks:
           commands:
             - sudo apt-get update
             - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
             - make -j32 build-sdk4
@@ -60,6 +62,8 @@ blocks:
         - name: "Build SDK4"
           commands:
             - brew install libsodium
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
             - make -j32 build-sdk4
@@ -89,6 +93,8 @@ blocks:
         - name: "Build SDK5"
           commands:
             - brew install libsodium
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
             - make -j32 build-sdk5
