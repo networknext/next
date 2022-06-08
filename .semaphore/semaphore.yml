@@ -86,6 +86,11 @@ blocks:
     dependencies: []
     task:
 
+      agent:
+        machine:
+          type: e1-standard-4
+          os_image: ubuntu2004
+
       prologue:
         commands:
             - sudo apt-get install -y libsodium-dev libzmq3-dev
