@@ -108,6 +108,7 @@ blocks:
             - artifact push workflow dist/func_backend4
             - artifact push workflow dist/func_tests4
             - artifact push workflow dist/reference_relay4
+            - artifact push workflow dist/libnext4.so
 
   - name: "Run Functional Tests 4"
     dependencies: ["Build Functional Tests 4"]
@@ -127,12 +128,14 @@ blocks:
             - artifact pull workflow func_backend4
             - artifact pull workflow func_tests4
             - artifact pull workflow reference_relay4
+            - artifact pull workflow libnext4.so
             - cd ..
             - chmod +x dist/func_client4
             - chmod +x dist/func_server4
             - chmod +x dist/func_backend4
             - chmod +x dist/func_tests4
             - chmod +x dist/reference_relay4
+            - chmod +x dist/libnext4.so
             - mv dist/reference_relay4 dist/reference_relay
 
       jobs:
