@@ -131,7 +131,7 @@ blocks:
             - chmod +x dist/func_server4
             - chmod +x dist/func_backend4
             - chmod +x dist/func_tests4
-            - chmod +x dist/func_reference_relay
+            - chmod +x dist/reference_relay
 
       jobs:
 
