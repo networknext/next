@@ -77,7 +77,15 @@ int main()
         return 1;
     }
 
-    next_client_open_session( client, "127.0.0.1:32202" );
+    const char * server_address = "127.0.0.1:40000";
+
+    const char * server_address_override = getenv( "NEXT_SERVER_ADDRESS" );
+    if ( server_address_override )
+    {
+        server_address = server_address_override;
+    }
+
+    next_client_open_session( client, server_address );
 
 #if NEXT_VERSION_MAJOR_INT >= 4
     double accumulator = 0.0;
