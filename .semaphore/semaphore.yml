@@ -109,7 +109,7 @@ blocks:
             - artifact push workflow dist/reference_relay
 
   - name: "Run Functional Tests 4"
-    dependencies: []
+    dependencies: ["Build Functional Tests 4"]
     task:
 
       agent:
@@ -119,6 +119,7 @@ blocks:
 
       prologue:
         commands:
+            - mkdir -p dist
             - cd dist
             - artifact pull workflow func_client4
             - artifact pull workflow func_server4
