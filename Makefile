@@ -4,7 +4,7 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-CXX_FLAGS := -g -Wall -Wextra -std=c++17 -DNEXT_DEVELOPMENT=1
+CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1
 GO = go
 GOFMT = gofmt
 TAR = tar
@@ -15,7 +15,7 @@ ifeq ($(OS),darwin)
 	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm
-	CXX = g++-8
+	CXX = g++
 endif
 
 SDKNAME4 = libnext4
@@ -303,7 +303,7 @@ help:
 
 .PHONY: dist
 dist:
-	mkdir -p $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
 
 #####################
 ##   Happy Path    ##
@@ -1622,5 +1622,5 @@ update-sdk5:
 
 .PHONY: clean
 clean: ## cleans everything
-	@rm -fr $(DIST_DIR)
-	@mkdir $(DIST_DIR)
+	@rm -rf $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)

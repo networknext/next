@@ -1,5 +1,8 @@
 package jsonrpc_test
 
+// todo: maybe convert to functional test
+
+/*
 import (
 	"net/http"
 	"net/http/httptest"
@@ -27,3 +30,4 @@ func TestFlagList(t *testing.T) {
 		assert.Equal(t, 0, len(reply.Flags))
 	})
 }
+*/

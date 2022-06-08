@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: convert to functional test or remove
+
+/*
 import (
 	"testing"
 
@@ -57,3 +60,4 @@ func TestLocalRoleManager(t *testing.T) {
 		assert.Equal(t, 3, len(users.Roles))
 	})
 }
+*/
