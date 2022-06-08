@@ -4,6 +4,44 @@ TODO
 
 	----------------------------------------------------
 
+	Backport autodetect timeout and flush fixes back to sdk4.
+
+	----------------------------------------------------
+
+	Backport server ready tests back to sdk4.
+
+	----------------------------------------------------
+
+	Make sure all sdk4 examples flush the server.
+
+	----------------------------------------------------
+
+	Make sure all sdk4 tests flush the server.
+
+	----------------------------------------------------
+
+	Update sdk5 docs that you must flush the server.
+
+	----------------------------------------------------
+
+	Update sdk4 docs that you must flush the server.
+
+	----------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+	----------------------------------------------------
+
 	Get sdk5 up and working in dev.
 
 	----------------------------------------------------
