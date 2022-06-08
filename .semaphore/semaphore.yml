@@ -24,13 +24,10 @@ blocks:
         machine:
           type: e1-standard-8
           os_image: ubuntu2004
-        containers:
-          - name: main
-            image: nbopardi/networknext:backend
       jobs:
         - name: "Unit Tests"
           commands:
-            - make test
+            - make -j32 test
 
   - name: "SDK4"
     dependencies: []
