@@ -1,119 +1,298 @@
 version: v1.0
-name: Development Deploy
+
+name: "Development Deploy"
+
 agent:
   machine:
-    type: e1-standard-8
-    os_image: ubuntu1804
-  containers:
-    - name: main
-      image: nbopardi/networknext:backend
+    type: e1-standard-2
+    os_image: ubuntu2004
+
 global_job_config:
   secrets:
     - name: sdk5-repo-access
+    - name: google-cloud-platform
   prologue:
     commands:
-      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-      - gcloud auth configure-docker -q
       - checkout
       - cp envs/local.env .env
-      - make clean
-      - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-      - git submodule init
-      - git submodule update
+
 blocks:
-  - name: Build & Publish Artifacts
+
+  - name: "Build Artifacts (Golang)"
+
     dependencies: []
+
     task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - cache restore
+
       jobs:
-        - name: Billing
+
+        - name: "Billing"
           commands:
             - make build-billing-artifacts-dev
-            - make publish-billing-artifacts-dev
-        - name: Analytics Pusher
+            - artifact push workflow dist/billing.dev.tar.gz
+        
+        - name: "Analytics Pusher"
           commands:
             - make build-analytics-pusher-artifacts-dev
-            - make publish-analytics-pusher-artifacts-dev
-        - name: Analytics
+            - artifact push workflow dist/analytics_pusher.dev.tar.gz
+        
+        - name: "Analytics"
           commands:
             - make build-analytics-artifacts-dev
-            - make publish-analytics-artifacts-dev
-        - name: Portal
+            - artifact push workflow dist/analytics.dev.tar.gz
+        
+        - name: "Portal"
           commands:
             - make build-portal-artifacts-dev
-            - make publish-portal-artifacts-dev
-        - name: Portal Cruncher
+            - artifact push workflow dist/portal.dev.tar.gz
+        
+        - name: "Portal Cruncher"
           commands:
             - make build-portal-cruncher-artifacts-dev
-            - make publish-portal-cruncher-artifacts-dev
-        - name: Relay Gateway
+            - artifact push workflow dist/portal_cruncher.dev.tar.gz
+        
+        - name: "Relay Gateway"
           commands:
             - make build-relay-gateway-artifacts-dev
-            - make publish-relay-gateway-artifacts-dev
-        - name: Relay Backend
+            - artifact push workflow dist/relay_gateway.dev.tar.gz
+        
+        - name: "Relay Backend"
           commands:
             - make build-relay-backend-artifacts-dev
-            - make publish-relay-backend-artifacts-dev
-        - name: Relay Frontend
+            - artifact push workflow dist/relay_backend.dev.tar.gz
+        
+        - name: "Relay Frontend"
           commands:
             - make build-relay-frontend-artifacts-dev
-            - make publish-relay-frontend-artifacts-dev
-        - name: Relay Forwarder
+            - artifact push workflow dist/relay_frontend.dev.tar.gz
+        
+        - name: "Relay Forwarder"
           commands:
             - make build-relay-forwarder-artifacts-dev
-            - make publish-relay-forwarder-artifacts-dev
-        - name: Server Backend 4
+            - artifact push workflow dist/relay_forwarder.dev.tar.gz
+        
+        - name: "Server Backend 4"
           commands:
             - make build-server-backend4-artifacts-dev
-            - make publish-server-backend4-artifacts-dev
-        - name: Server Backend 5
+            - artifact push workflow dist/server_backend4.dev.tar.gz
+        
+        - name: "Server Backend 5"
           commands:
             - make build-server-backend5-artifacts-dev
-            - make publish-server-backend5-artifacts-dev
-        - name: Debug Server Backend 4
+            - artifact push workflow dist/server_backend5.dev.tar.gz
+        
+        - name: "Debug Server Backend 4"
           commands:
             - make build-debug-server-backend4-artifacts-dev
-            - make publish-debug-server-backend4-artifacts-dev
-        - name: Debug Relay Backend
+            - artifact push workflow dist/debug_server_backend4.dev.tar.gz
+        
+        - name: "Debug Relay Backend"
           commands:
             - make build-debug-relay-backend-artifacts-dev
-            - make publish-debug-relay-backend-artifacts-dev
-        - name: Bootstrap Script
-          commands:
-            - make publish-bootstrap-script-dev
-        - name: Ghost Army
+            - artifact push workflow dist/debug_relay_backend.dev.tar.gz
+        
+        - name: "Ghost Army"
           commands:
             - make build-ghost-army-artifacts-dev
-            - make publish-ghost-army-artifacts-dev
-            - make publish-ghost-army-bootstrap-script-dev
-        - name: Relay Pusher
+            - artifact push workflow dist/ghost_army.dev.tar.gz
+        
+        - name: "Relay Pusher"
           commands:
             - make build-relay-pusher-artifacts-dev
-            - make publish-relay-pusher-artifacts-dev
-        - name: Pingdom
+            - artifact push workflow dist/relay_pusher.dev.tar.gz
+        
+        - name: "Pingdom"
           commands:
             - make build-pingdom-artifacts-dev
-            - make publish-pingdom-artifacts-dev
-        - name: Match Data
+            - artifact push workflow dist/pingdom.dev.tar.gz
+        
+        - name: "Match Data"
           commands:
             - make build-match-data-artifacts-dev
-            - make publish-match-data-artifacts-dev
-        - name: Magic Backend
+            - artifact push workflow dist/match_data.dev.tar.gz
+        
+        - name: "Magic Backend"
           commands:
             - make build-magic-backend-artifacts-dev
-            - make publish-magic-backend-artifacts-dev
-        - name: Magic Frontend
+            - artifact push workflow dist/magic_backend.dev.tar.gz
+        
+        - name: "Magic Frontend"
           commands:
             - make build-magic-frontend-artifacts-dev
-            - make publish-magic-frontend-artifacts-dev
-        - name: Test Server 4
-          commands:
-            - make build-test-server4-artifacts-dev
-            - make publish-test-server4-artifacts-dev
-        - name: Test Server 5
-          commands:
-            - make build-test-server5-artifacts-dev
-            - make publish-test-server5-artifacts-dev
+            - artifact push workflow dist/magic_frontend.dev.tar.gz
 
-      secrets:
-        - name: google-cloud-platform
+
+  - name: "Build Artifacts (Native)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+
+      jobs:
+
+        - name: "Test Server 4"
+          commands:
+            - make -j32 build-test-server4-artifacts-dev
+            - artifact push workflow dist/test_server4.dev.tar.gz
+
+        - name: "Test Server 5"
+          commands:
+            - make -j32 build-test-server5-artifacts-dev
+            - artifact push workflow dist/test_server5.dev.tar.gz
+
+
+  - name: "Publish Artifacts"
+    
+    dependencies: ["Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
+      jobs:
+
+        - name: "Billing"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow billing.dev.tar.gz && cd ..
+            - make publish-billing-artifacts-dev
+
+        - name: "Analytics Pusher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow analytics_pusher.dev.tar.gz && cd ..
+            - make publish-analytics-pusher-artifacts-dev
+
+        - name: "Analytics"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow analytics.dev.tar.gz && cd ..
+            - make publish-analytics-artifacts-dev
+
+        - name: "Portal"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow portal.dev.tar.gz && cd ..
+            - make publish-portal-artifacts-dev
+
+        - name: "Portal Cruncher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow portal_cruncher.dev.tar.gz && cd ..
+            - make publish-portal-cruncher-artifacts-dev
+
+        - name: "Relay Gateway"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_gateway.dev.tar.gz && cd ..
+            - make publish-relay-gateway-artifacts-dev
+
+        - name: "Relay Backend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_backend.dev.tar.gz && cd ..
+            - make publish-relay-backend-artifacts-dev
+
+        - name: "Relay Frontend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_frontend.dev.tar.gz && cd ..
+            - make publish-relay-frontend-artifacts-dev
+
+        - name: "Relay Forwarder"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_forwarder.dev.tar.gz && cd ..
+            - make publish-relay-forwarder-artifacts-dev
+
+        - name: "Server Backend 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow server_backend4.dev.tar.gz && cd ..
+            - make publish-server-backend4-artifacts-dev
+
+        - name: "Server Backend 5"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow server_backend5.dev.tar.gz && cd ..
+            - make publish-server-backend5-artifacts-dev
+
+        - name: "Debug Server Backend 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow debug_server_backend4.dev.tar.gz && cd ..
+            - make publish-debug-server-backend4-artifacts-dev
+
+        - name: "Ghost Army"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow ghost_army.dev.tar.gz && cd ..
+            - make publish-ghost-army-artifacts-dev
+
+        - name: "Relay Pusher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_pusher.dev.tar.gz && cd ..
+            - make publish-relay-pusher-artifacts-dev
+
+        - name: "Pingdom"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow pingdom.dev.tar.gz && cd ..
+            - make publish-pingdom-artifacts-dev
+
+        - name: "Match Data"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow match_data.dev.tar.gz && cd ..
+            - make publish-match-data-artifacts-dev
+
+        - name: "Magic Backend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow magic_backend.dev.tar.gz && cd ..
+            - make publish-magic-backend-artifacts-dev
+
+        - name: "Magic Frontend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow magic_frontend.dev.tar.gz && cd ..
+            - make publish-magic-frontend-artifacts-dev
+
+        - name: "Test Server 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow test_server4.dev.tar.gz && cd ..
+            - make publish-test-server4-artifacts-dev
+
+        - name: "Test Server 5"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow test_server5.dev.tar.gz && cd ..
+            - make publish-test-server5-artifacts-dev

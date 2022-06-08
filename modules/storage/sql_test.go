@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: convert to functional test
+
+/*
 import (
 	"context"
 	"encoding/base64"
@@ -2282,3 +2285,4 @@ func TestAnalyticsDashboards(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+*/
