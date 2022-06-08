@@ -499,6 +499,8 @@ int main()
 
         next_sleep( delta_time );
     }
+
+    next_server_flush( server );
     
     next_server_destroy( server );
     

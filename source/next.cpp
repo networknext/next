@@ -95,7 +95,7 @@
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
 #define NEXT_MATCH_DATA_FLUSH_RESEND_TIME                             1.0
-#define NEXT_SERVER_FLUSH_TIMEOUT                                    10.0
+#define NEXT_SERVER_FLUSH_TIMEOUT                                    30.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -12176,6 +12176,9 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
+    // IMPORTANT: Please call next_server_flush before destroying the server!
+    next_assert( server->state != NEXT_SERVER_STATE_INITIALIZING );
+
     if ( server->socket )
     {
         next_platform_socket_destroy( server->socket );
@@ -13847,6 +13850,9 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13898,6 +13904,9 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13935,6 +13944,9 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13957,6 +13969,9 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     next_assert( address );
 
     next_server_internal_verify_sentinels( server );
+
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -14059,17 +14074,6 @@ void next_server_internal_flush( next_server_internal_t * server )
 
 void next_server_internal_pump_commands( next_server_internal_t * server )
 {
-    // IMPORTANT: do not pump commands until after server has initialized (or initialize has timed out)
-    // This delays any upgrades until after the server has initialized and received magic values from the backend.
-    // This is necessary to avoid clients getting upgraded with incorrect magic values that stops them from being able
-    // to communicate with relays, since magic values come down in the server init. If the server is in direct only
-    // mode it has stopped communicating with the backend and relays, so it is OK for it to have garbage magic numbers.
-
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED && server->state != NEXT_SERVER_STATE_DIRECT_ONLY )
-    {
-        return;
-    }
-
     while ( true )
     {
         next_server_internal_verify_sentinels( server );
@@ -14450,6 +14454,15 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
 	if ( !server->autodetect_finished )
 		return;
+
+	// if we have started flushing, abort the init...
+
+	if ( server->flushing )
+	{
+		next_printf( NEXT_LOG_LEVEL_INFO, "server aborting init, flushing" );
+		server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+		return;
+	}
 
 	// send init request packets repeatedly until we get a response or time out...
 
@@ -15722,12 +15735,6 @@ void next_server_flush( struct next_server_t * server )
         return;
     }
 
-    if ( !server->ready )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is not initialized" );
-        return;
-    }
-
     if ( server->flushing )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is already flushed" );
@@ -16513,8 +16520,6 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        printf( "%f\n", route_stats.mean_rtt / 1000.0 );
-
         next_check( equal_within_tolerance( route_stats.mean_rtt, expected_mean_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
@@ -17119,6 +17124,7 @@ void test_server_ipv4()
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
     next_server_update( server );
+    next_server_flush( server );
     next_server_destroy( server );
 }
 
@@ -17150,6 +17156,7 @@ void test_server_ipv6()
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
     next_server_update( server );
+    next_server_flush( server );
     next_server_destroy( server );
 }
 
@@ -20671,6 +20678,8 @@ void test_passthrough_packets()
 
     next_client_destroy( client );
 
+    next_server_flush( server );
+
     next_server_destroy( server );
 }
 
@@ -20736,6 +20745,8 @@ void test_wake_up()
     next_client_close_session( client );
 
     next_client_destroy( client );
+
+    next_server_flush( server );
 
     next_server_destroy( server );
 
