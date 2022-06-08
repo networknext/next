@@ -102,11 +102,12 @@ blocks:
             - git submodule init
             - git submodule update
             - make -j32 build-test-func4
+            - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
             - artifact push workflow dist/func_server4
             - artifact push workflow dist/func_backend4
             - artifact push workflow dist/func_tests4
-            - artifact push workflow dist/reference_relay
+            - artifact push workflow dist/reference_relay4
 
   - name: "Run Functional Tests 4"
     dependencies: ["Build Functional Tests 4"]
@@ -114,7 +115,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-4
+          type: e1-standard-2
           os_image: ubuntu2004
 
       prologue:
@@ -125,13 +126,14 @@ blocks:
             - artifact pull workflow func_server4
             - artifact pull workflow func_backend4
             - artifact pull workflow func_tests4
-            - artifact pull workflow reference_relay
+            - artifact pull workflow reference_relay4
             - cd ..
             - chmod +x dist/func_client4
             - chmod +x dist/func_server4
             - chmod +x dist/func_backend4
             - chmod +x dist/func_tests4
-            - chmod +x dist/reference_relay
+            - chmod +x dist/reference_relay4
+            - mv dist/reference_relay4 dist/reference_relay
 
       jobs:
 
