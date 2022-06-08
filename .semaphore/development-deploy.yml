@@ -213,6 +213,78 @@ blocks:
             - artifact pull workflow relay_gateway.dev.tar.gz && cd ..
             - make publish-relay-gateway-artifacts-dev
 
+        - name: "Relay Backend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_backend.dev.tar.gz && cd ..
+            - make publish-relay-backend-artifacts-dev
+
+        - name: "Relay Frontend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_frontend.dev.tar.gz && cd ..
+            - make publish-relay-frontend-artifacts-dev
+
+        - name: "Relay Forwarder"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_forwarder.dev.tar.gz && cd ..
+            - make publish-relay-forwarder-artifacts-dev
+
+        - name: "Server Backend 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow server_backend4.dev.tar.gz && cd ..
+            - make publish-server-backend4-artifacts-dev
+
+        - name: "Server Backend 5"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow server_backend5.dev.tar.gz && cd ..
+            - make publish-server-backend5-artifacts-dev
+
+        - name: "Debug Server Backend 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow debug_server_backend4.dev.tar.gz && cd ..
+            - make publish-debug-server-backend4-artifacts-dev
+
+        - name: "Ghost Army"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow ghost_army.dev.tar.gz && cd ..
+            - make publish-ghost-army-artifacts-dev
+
+        - name: "Relay Pusher"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow relay_pusher.dev.tar.gz && cd ..
+            - make publish-relay-pusher-artifacts-dev
+
+        - name: "Pingdom"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow pingdom.dev.tar.gz && cd ..
+            - make publish-pingdom-artifacts-dev
+
+        - name: "Match Data"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow match_data.dev.tar.gz && cd ..
+            - make publish-match-data-artifacts-dev
+
+        - name: "Magic Backend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow magic_backend.dev.tar.gz && cd ..
+            - make publish-magic-backend-artifacts-dev
+
+        - name: "Magic Frontend"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow magic_frontend.dev.tar.gz && cd ..
+            - make publish-magic-frontend-artifacts-dev
+
         - name: "Test Server 4"
           commands:
             - mkdir dist && cd dist
