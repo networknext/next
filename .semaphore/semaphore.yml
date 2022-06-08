@@ -35,6 +35,10 @@ blocks:
   - name: "SDK4"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
@@ -49,6 +53,10 @@ blocks:
   - name: "SDK5"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
@@ -63,6 +71,10 @@ blocks:
   - name: "Relay"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
       jobs:
         - name: "Unit Tests"
           commands:
