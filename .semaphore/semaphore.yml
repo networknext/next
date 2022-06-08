@@ -91,8 +91,9 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
 
-      prologue:
-        commands:
+      jobs:
+        - name: "Build"
+          commands:
             - sudo apt-get install -y libsodium-dev libzmq3-dev
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
