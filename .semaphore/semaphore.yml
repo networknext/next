@@ -137,6 +137,7 @@ blocks:
             - chmod +x dist/reference_relay4
             - chmod +x dist/libnext4.so
             - mv dist/reference_relay4 dist/reference_relay
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
 
       jobs:
 
