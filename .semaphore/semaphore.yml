@@ -341,21 +341,29 @@ blocks:
             - artifact push workflow dist/reference_relay5
             - artifact push workflow dist/libnext5.so
 
-  - name: "Functional Tests 5a"
-    dependencies: []
+  - name: "Run Functional Tests 5a"
+    dependencies: ["Build Functional Tests 5"]
     task:
 
       prologue:
         commands:
-            - sudo apt-get update
+            - mkdir -p dist
+            - cd dist
+            - artifact pull workflow func_client4
+            - artifact pull workflow func_server4
+            - artifact pull workflow func_backend4
+            - artifact pull workflow func_tests4
+            - artifact pull workflow reference_relay4
+            - artifact pull workflow libnext4.so
+            - cd ..
+            - chmod +x dist/func_client4
+            - chmod +x dist/func_server4
+            - chmod +x dist/func_backend4
+            - chmod +x dist/func_tests4
+            - chmod +x dist/reference_relay4
+            - chmod +x dist/libnext4.so
+            - mv dist/reference_relay4 dist/reference_relay
             - sudo apt-get install -y libsodium-dev libzmq3-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - checkout
-            - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
-            - make -j32 build-test-func5
 
       jobs:
 
@@ -559,21 +567,29 @@ blocks:
           commands:
             - ./dist/func_tests5 test_flush_retry
 
-  - name: "Functional Tests 5b"
-    dependencies: []
+  - name: "Run Functional Tests 5b"
+    dependencies: ["Build Functional Tests 5"]
     task:
 
       prologue:
         commands:
-            - sudo apt-get update
+            - mkdir -p dist
+            - cd dist
+            - artifact pull workflow func_client4
+            - artifact pull workflow func_server4
+            - artifact pull workflow func_backend4
+            - artifact pull workflow func_tests4
+            - artifact pull workflow reference_relay4
+            - artifact pull workflow libnext4.so
+            - cd ..
+            - chmod +x dist/func_client4
+            - chmod +x dist/func_server4
+            - chmod +x dist/func_backend4
+            - chmod +x dist/func_tests4
+            - chmod +x dist/reference_relay4
+            - chmod +x dist/libnext4.so
+            - mv dist/reference_relay4 dist/reference_relay
             - sudo apt-get install -y libsodium-dev libzmq3-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - checkout
-            - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
-            - make -j32 build-test-func5
 
       jobs:
 
