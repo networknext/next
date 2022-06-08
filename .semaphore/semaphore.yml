@@ -31,11 +31,6 @@ blocks:
         - name: "Unit Tests"
           commands:
             - make test
-      env_vars:
-        - name: PUBSUB_EMULATOR_HOST
-          value: "127.0.0.1:12000"
-        - name: BIGTABLE_EMULATOR_HOST
-          value: "127.0.0.1:8086"
 
   - name: "SDK4"
     dependencies: []
