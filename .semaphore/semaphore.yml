@@ -111,7 +111,7 @@ blocks:
             - artifact push workflow dist/libnext4.so
 
   - name: "Run Functional Tests 4"
-    dependencies: ["Backend", "SDK4", "SDK5", "Relay", "Build Functional Tests 4"]
+    dependencies: ["Backend", "Build Functional Tests 4"]
     task:
 
       agent:
@@ -342,7 +342,7 @@ blocks:
             - artifact push workflow dist/libnext5.so
 
   - name: "Run Functional Tests 5a"
-    dependencies: ["Backend", "SDK4", "SDK5", "Relay", "Build Functional Tests 5"]
+    dependencies: ["Backend", "Build Functional Tests 5"]
     task:
 
       prologue:
@@ -568,7 +568,7 @@ blocks:
             - ./dist/func_tests5 test_flush_retry
 
   - name: "Run Functional Tests 5b"
-    dependencies: ["Backend", "SDK4", "SDK5", "Relay", "Build Functional Tests 5"]
+    dependencies: ["Backend", "Build Functional Tests 5"]
     task:
 
       prologue:
