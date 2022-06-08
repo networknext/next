@@ -30,6 +30,7 @@ blocks:
             - sudo apt-get update
             - sudo apt-get install -y libsodium-dev libzmq3-dev
             - make test
+            - cache store
 
   - name: "SDK4"
     dependencies: []
