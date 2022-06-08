@@ -3058,9 +3058,6 @@ func test_flush_server_events_and_match_data_retry() {
 
 	client_counters := read_client_counters(client_stderr.String())
 
-	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
-	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
-
 	backendSawMatchID := strings.Contains(backend_stdout.String(), "match id d5f5127019cac4e5")
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 	backendSawServerEvents := strings.Contains(backend_stdout.String(), "server events 40100400")
