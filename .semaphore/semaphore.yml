@@ -27,6 +27,8 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
             - make -j32 test
 
   - name: "SDK4"
