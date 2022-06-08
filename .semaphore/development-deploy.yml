@@ -211,3 +211,15 @@ blocks:
             - mkdir dist && cd dist
             - artifact pull workflow relay_gateway.dev.tar.gz && cd ..
             - make publish-relay-gateway-artifacts-dev
+
+        - name: "Test Server 4"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow test_server4.dev.tar.gz && cd ..
+            - make publish-test-server4-artifacts-dev
+
+        - name: "Test Server 5"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow test_server5.dev.tar.gz && cd ..
+            - make publish-test-server5-artifacts-dev
