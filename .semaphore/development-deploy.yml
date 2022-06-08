@@ -157,10 +157,12 @@ blocks:
         - name: "Test Server 4"
           commands:
             - make -j32 build-test-server4-artifacts-dev
+            - artifact push workflow dist/test_server4.dev.tar.gz
 
         - name: "Test Server 5"
           commands:
             - make -j32 build-test-server5-artifacts-dev
+            - artifact push workflow dist/test_server5.dev.tar.gz
 
 
   - name: "Publish Artifacts"
