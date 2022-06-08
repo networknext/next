@@ -637,7 +637,7 @@ $(DIST_DIR)/$(SDKNAME4).so: dist
 
 $(DIST_DIR)/$(SDKNAME5).so: dist
 	@printf "Building sdk5... "
-	@$(CXX) $(CXX_FLAGS) -fPIC  -DNEXT_COMPILE_WITH_TESTS=1 -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -fPIC -DNEXT_COMPILE_WITH_TESTS=1 -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk4
