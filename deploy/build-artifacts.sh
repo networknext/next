@@ -41,13 +41,13 @@ build-artifacts() {
         cp ${DIST_DIR}/test_server4 ${DIST_DIR}/artifact/${SERVICE}/app
         cp ${DIR}/../cmd/test_server4/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
         cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz * ${SYSTEMD_SERVICE_FILE} && cd ../..
   elif [ "$SERVICE" = "test_server5" ]; then
   	    cp ${DIST_DIR}/libnext5.so ${DIST_DIR}/artifact/${SERVICE}/libnext5.so
         cp ${DIST_DIR}/test_server5 ${DIST_DIR}/artifact/${SERVICE}/app
         cp ${DIR}/../cmd/test_server5/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
         cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz * && cd ../..
   else
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
