@@ -10,10 +10,6 @@ agent:
 global_job_config:
   secrets:
     - name: sdk5-repo-access
-  prologue:
-    commands:
-      - checkout
-      - cp envs/local.env .env
 
 blocks:
 
@@ -27,6 +23,8 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+            - checkout
+            - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev libzmq3-dev
             - make test
             - cache store
@@ -44,6 +42,8 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - checkout
+            - cp envs/local.env .env
             - git submodule init
             - git submodule update
             - make -j32 test-sdk4
@@ -61,6 +61,8 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - checkout
+            - cp envs/local.env .env
             - git submodule init
             - git submodule update
             - make -j32 test-sdk5
@@ -76,13 +78,36 @@ blocks:
         - name: "Unit Tests"
           commands:
             - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
+            - checkout
+            - cp envs/local.env .env
             - make -j32 test-relay
 
-  - name: "Functional Tests 4"
+  - name: "Build Functional Tests 4"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - checkout
+            - cp envs/local.env .env
+            - git submodule init
+            - git submodule update
+            - make -j32 build-test-func4
+            - artifact push workflow dist/func_client4
+            - artifact push workflow dist/func_server4
+            - artifact push workflow dist/func_backend4
+            - artifact push workflow dist/func_tests4
+            - artifact push workflow dist/reference_relay
+
+  - name: "Run Functional Tests 4"
     dependencies: []
     task:
 
@@ -93,12 +118,13 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
-            - make -j32 build-test-func4
+            - cd dist
+            - artifact pull workflow func_client4
+            - artifact pull workflow func_server4
+            - artifact pull workflow func_backend4
+            - artifact pull workflow func_tests4
+            - artifact pull workflow reference_relay
+            - cd ..
 
       jobs:
 
