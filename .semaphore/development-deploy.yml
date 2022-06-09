@@ -185,7 +185,7 @@ blocks:
           commands:
             - mkdir dist && cd dist
             - artifact pull workflow bootstrap.sh && cd ..
-            - make publish-bootstrap-script-dev
+            - gsutil cp bootstrap.sh gs://development_artifacts/bootstrap.sh
 
         - name: "Billing"
           commands:
