@@ -199,7 +199,7 @@ blocks:
 
             - mv reference_relay4 reference_relay
 
-            - cd ~/backend
+            - cd ~
 
       jobs:
 
