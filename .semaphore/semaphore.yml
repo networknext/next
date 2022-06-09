@@ -53,7 +53,15 @@ blocks:
           commands:
             - checkout
             - cp envs/local.env .env
-            - sudo apt-get install -y libsodium-dev libzmq4-dev
+            - sudo apt-get install -y libsodium-dev # libzmq4-dev
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
             - make test
             - cache store
 
