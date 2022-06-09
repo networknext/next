@@ -13,7 +13,7 @@ global_job_config:
 
 blocks:
 
-  - name: "ZeroMQ"
+  - name: "Dependencies"
     dependencies: []
     task:
       agent:
@@ -21,28 +21,17 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        - name: "Build ZeroMQ"
-          commands:
-            - wget http://download.zeromq.org/zeromq-4.1.2.tar.gz
-            - tar -xvf zeromq-4.1.2.tar.gz
-            - cd zeromq-4.1.2
-            - ./configure && make check
-            - sudo make install
-            - sudo ldconfig
-
-  - name: "Sodium"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-      jobs:
-        - name: "Build Sodium"
+        - name: "Build Sodium and ZeroMQ"
           commands:
             - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
             - tar -xvf 1.0.18-RELEASE.tar.gz
             - cd 1.0.18-RELEASE
+            - ./configure && make check
+            - sudo make install
+            - sudo ldconfig
+            - wget http://download.zeromq.org/zeromq-4.1.2.tar.gz
+            - tar -xvf zeromq-4.1.2.tar.gz
+            - cd zeromq-4.1.2
             - ./configure && make check
             - sudo make install
             - sudo ldconfig
