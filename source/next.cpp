@@ -6025,7 +6025,7 @@ bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 {
     next_route_manager_verify_sentinels( route_manager );
 
-    if ( route_manager->fallback_to_direct )
+    if ( route_manager->route_data.current_route )
     	return false;
 
     next_assert( route_manager->route_data.current_route );

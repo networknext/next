@@ -4,6 +4,20 @@ TODO
 
 	----------------------------------------------------
 
+	Backport race condition on fallback to direct to sdk4.
+
+	----------------------------------------------------
+
+	There's something wrong with session flush impl.
+
+	I think if a session update is in flight when server flush is called, the server goes, ok i'm fluhsed done.
+
+	But it really needs to be a session update response that confirms the timeout.
+
+	Without this, very rarely the session flush can fail...
+
+	----------------------------------------------------
+
 	Backport autodetect timeout and flush fixes back to sdk4.
 
 	----------------------------------------------------
