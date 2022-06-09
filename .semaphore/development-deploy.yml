@@ -38,7 +38,7 @@ blocks:
 
         - name: "Bootstrap"
           commands:
-            - artifact push workflow dist/bootstrap.sh
+            - artifact push workflow deploy/bootstrap.sh
 
         - name: "Billing"
           commands:
