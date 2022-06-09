@@ -184,6 +184,10 @@ blocks:
             - artifact pull workflow libsodium.so
             - artifact pull workflow libzmq.so
 
+            - sudo mv libsodium.so /usr/local/lib
+            - sudo mv libzmq.so /usr/local/lib
+            - ldconfig
+
             - cd ..
             - chmod +x dist/func_client4
             - chmod +x dist/func_server4
