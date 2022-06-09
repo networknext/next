@@ -45,7 +45,22 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get install -y libsodium-dev libzmq4-dev
+
+            - checkout
+
+            - cd ~/backend/libs/sodium
+            - ./configure
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+          
             - cache restore
 
       jobs:
