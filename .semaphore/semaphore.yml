@@ -184,21 +184,22 @@ blocks:
             - artifact pull workflow libsodium.so
             - artifact pull workflow libzmq.so
 
+            - chmod +x func_client4
+            - chmod +x func_server4
+            - chmod +x func_backend4
+            - chmod +x func_tests4
+            - chmod +x reference_relay4
+            - chmod +x libnext4.so
+            - chmod +x libsodium.so
+            - chmod +x libzmq.so
+
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
             - sudo ldconfig
 
-            - cd ..
-            - chmod +x dist/func_client4
-            - chmod +x dist/func_server4
-            - chmod +x dist/func_backend4
-            - chmod +x dist/func_tests4
-            - chmod +x dist/reference_relay4
-            - chmod +x dist/libnext4.so
-            - chmod +x dist/libsodium.so
-            - chmod +x dist/libzmq.so
+            - mv reference_relay4 reference_relay
 
-            - mv dist/reference_relay4 dist/reference_relay
+            - cd ~/backend
 
       jobs:
 
