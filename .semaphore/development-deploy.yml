@@ -18,6 +18,20 @@ global_job_config:
 
 blocks:
 
+  - name: "Build Artifacts (Scripts)"
+
+    dependencies: []
+
+    task:
+
+      jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - checkout
+            - artifact push workflow deploy/bootstrap.sh
+
+
   - name: "Build Artifacts (Golang)"
 
     dependencies: []
@@ -35,11 +49,6 @@ blocks:
             - cache restore
 
       jobs:
-
-        - name: "Bootstrap"
-          commands:
-            - checkout
-            - artifact push workflow deploy/bootstrap.sh
 
         - name: "Billing"
           commands:
