@@ -5509,9 +5509,14 @@ bool next_route_manager_committed( next_route_manager_t * route_manager )
     return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
-void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
+bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
 {
     next_route_manager_verify_sentinels( route_manager );
+
+    if ( !route_manager->route_data.current_route )
+    {
+    	return false;
+    }
 
     next_assert( route_manager->route_data.current_route );
     next_assert( to );
@@ -5526,12 +5531,14 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, packet_data ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
-        return;
+        return false;
     }
 
     memcpy( packet_data + NEXT_HEADER_BYTES, payload_data, payload_bytes );
 
     *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
+
+    return true;
 }
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
@@ -7922,12 +7929,18 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
 
             next_platform_mutex_acquire( &client->internal->route_manager_mutex );
-            next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
+            bool result = next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
             next_platform_mutex_release( &client->internal->route_manager_mutex );
 
-            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
-
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+            if ( result )
+            {
+	            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+	            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+            }
+            else
+            {
+            	send_direct = true;
+            }
         }
 
         if ( send_direct )
