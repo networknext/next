@@ -26,14 +26,14 @@ blocks:
             
             - checkout
 
-            - cd ~/libs/sodium
+            - cd ~/backend/libs/sodium
             - ./configure
             - make -j32
             - sudo make -j32 install
             - sudo ldconfig
             - artifact push workflow /usr/local/lib/libsodium.so
 
-            - cd ~/libs/zeromq
+            - cd ~/backend/libs/zeromq
             - ./autogen.sh
             - ./configure
             - make -j32
