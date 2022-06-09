@@ -181,7 +181,7 @@ blocks:
 
   - name: "Publish Artifacts"
     
-    dependencies: ["Build Artifacts (Scripts", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
     
     task:
 
