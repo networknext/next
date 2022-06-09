@@ -16,46 +16,63 @@ ARTIFACT_BUCKET=
 build-artifacts() {
   printf "Building ${SERVICE} ${ENV} artifact... \n"
 	mkdir -p ${DIST_DIR}/artifact/${SERVICE}
+
 	if [ "$SERVICE" = "relay" ]; then
+
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}
 		cp ${DIR}/${SERVICE}/${SERVICE}.service ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}.service
 		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz ${SERVICE} ${SERVICE}.service install.sh && cd ../..
+
   elif [ "$SERVICE" = "debug_server_backend" ]; then
+
 		cp ${DIST_DIR}/server_backend ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/server_backend/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
 		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+		cp /usr/local/lib/libsodium.so ${DIST_DIR}/artifact/${SERVICE}/
+		cp /usr/local/lib/libzmq.so ${DIST_DIR}/artifact/${SERVICE}/
+
   elif [ "$SERVICE" = "debug_relay_backend" ]; then
+
 		cp ${DIST_DIR}/relay_backend ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/relay_backend/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
 		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+		cp /usr/local/lib/libsodium.so ${DIST_DIR}/artifact/${SERVICE}/
+		cp /usr/local/lib/libzmq.so ${DIST_DIR}/artifact/${SERVICE}/
+
   elif [ "$SERVICE" = "debug_billing" ]; then
+
         cp ${DIST_DIR}/billing ${DIST_DIR}/artifact/${SERVICE}/app
         cp ${DIR}/../cmd/billing/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
         cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+		cp /usr/local/lib/libsodium.so ${DIST_DIR}/artifact/${SERVICE}/
+		cp /usr/local/lib/libzmq.so ${DIST_DIR}/artifact/${SERVICE}/
+
   elif [ "$SERVICE" = "test_server4" ]; then
+
   	    cp ${DIST_DIR}/libnext4.so ${DIST_DIR}/artifact/${SERVICE}/libnext4.so
         cp ${DIST_DIR}/test_server4 ${DIST_DIR}/artifact/${SERVICE}/app
         cp ${DIR}/../cmd/test_server4/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
         cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz * ${SYSTEMD_SERVICE_FILE} && cd ../..
+
   elif [ "$SERVICE" = "test_server5" ]; then
+
   	    cp ${DIST_DIR}/libnext5.so ${DIST_DIR}/artifact/${SERVICE}/libnext5.so
         cp ${DIST_DIR}/test_server5 ${DIST_DIR}/artifact/${SERVICE}/app
         cp ${DIR}/../cmd/test_server5/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
         cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-        cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz * && cd ../..
+
   else
+
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app
 		cp ${DIR}/../cmd/${SERVICE}/${ENV}.env ${DIST_DIR}/artifact/${SERVICE}/app.env
 		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-		cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz app app.env ${SYSTEMD_SERVICE_FILE} && cd ../..
+		cp /usr/local/lib/libsodium.so ${DIST_DIR}/artifact/${SERVICE}/
+		cp /usr/local/lib/libzmq.so ${DIST_DIR}/artifact/${SERVICE}/
+
 	fi
 
-  printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"
+	cd ${DIST_DIR}/artifact/${SERVICE} && tar -zcf ../../${SERVICE}.${ENV}.tar.gz * && cd ../..
+	printf "${DIST_DIR}/${SERVICE}.${ENV}.tar.gz\n"
 	printf "done\n"
 }
 
