@@ -23,11 +23,9 @@ blocks:
       jobs:
         - name: "Build ZeroMQ"
           commands:
-            - sudo apt-get install -y autogen
             - wget http://download.zeromq.org/zeromq-4.1.2.tar.gz
             - tar -xvf zeromq-4.1.2.tar.gz
             - cd zeromq-4.1.2
-            - ./autogen.sh
             - ./configure && make check
             - sudo make install
             - sudo ldconfig
@@ -42,11 +40,9 @@ blocks:
       jobs:
         - name: "Build Sodium"
           commands:
-            - sudo apt-get install -y autogen
             - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
             - tar -xvf 1.0.18-RELEASE.tar.gz
             - cd 1.0.18-RELEASE
-            - ./autogen.sh
             - ./configure && make check
             - sudo make install
             - sudo ldconfig
