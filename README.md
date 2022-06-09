@@ -6,7 +6,7 @@
 
 This repository contains the UE4 plugin for Network Next.
 
-It's tested working with Unreal Engine 4.25.
+It's tested working with Unreal Engine 4.25 and 4.27.
 
 This repo includes PC, Mac, Linux and console support (PS4, PS5, XBox One, XBox Series X, Nintendo Switch).
 
