@@ -149,6 +149,7 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
+            - cd ~/backend
             - make -j32 build-test-func4
 
             - mv dist/reference_relay dist/reference_relay4
