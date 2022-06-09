@@ -35,7 +35,7 @@ blocks:
 
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
-            - ./configure
+            - ./configure --with-norm=no --with-pgm=no
             - make -j32
             - sudo make -j32 install
             - sudo ldconfig
