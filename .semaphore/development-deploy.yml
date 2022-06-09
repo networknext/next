@@ -194,13 +194,12 @@ blocks:
         - name: "Bootstrap"
           commands:
             - artifact pull workflow bootstrap.sh
-            - gsutil cp bootstrap.sh gs://development_artifacts/bootstrap.sh
+            - gsutil cp bootstrap.sh gs://development_artifacts/
 
         - name: "Billing"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow billing.dev.tar.gz && cd ..
-            - make publish-billing-artifacts-dev
+            - artifact pull workflow billing.dev.tar.gz
+            - gsutil cp billing.dev.tar.gz gs://development_artifacts/
 
         - name: "Analytics Pusher"
           commands:
