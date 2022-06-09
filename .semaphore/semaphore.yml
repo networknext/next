@@ -23,7 +23,7 @@ blocks:
       jobs:
         - name: "Build ZeroMQ"
           commands:
-            - sudo apt-get install -y libtool
+            - sudo apt-get install -y autoconf
             - wget http://download.zeromq.org/zeromq-4.1.2.tar.gz
             - tar -xvf zeromq-4.1.2.tar.gz
             - cd zeromq-4.1.2
@@ -42,7 +42,7 @@ blocks:
       jobs:
         - name: "Build Sodium"
           commands:
-            - sudo apt-get install -y libtool
+            - sudo apt-get install -y autoconf
             - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
             - tar -xvf 1.0.18-RELEASE.tar.gz
             - cd 1.0.18-RELEASE
