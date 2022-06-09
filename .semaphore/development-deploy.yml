@@ -45,7 +45,7 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - sudo apt-get install -y libsodium-dev libzmq4-dev
             - cache restore
 
       jobs:
