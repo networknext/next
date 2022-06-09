@@ -137,6 +137,8 @@ blocks:
 
             - checkout
             - cp envs/local.env .env
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
 
@@ -146,9 +148,6 @@ blocks:
             - make -j32
             - sudo make -j32 install
             - sudo ldconfig
-
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
 
             - make -j32 build-test-func4
 
