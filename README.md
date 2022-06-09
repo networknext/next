@@ -38,3 +38,24 @@ This repo includes PC, Mac, Linux and console support (PS4, PS5, XBox One, XBox 
 
         export NEXT_SERVER_ADDRESS=10.2.100.23:7777        # change to the public IP:port of your server
         export NEXT_DATACENTER=cloud                       # autodetects datacenter in GCP or AWS
+
+# If you are building for PS5
+
+**PLATFORM_PS5** must be defined and there must be a platform socket subsystem definition for PS5 for the plugin to work. If you are using a stock build of the UE4 engine source, you must do the following:
+
+1. Add the following to "\Engine\Source\Runtime\Sockets\Public\SocketSubsystem.h" within the "PLATFORM_SOCKETSUBSYSTEM" ifndef block:
+```
+#elif PLATFORM_PS5
+        #define PLATFORM_SOCKETSUBSYSTEM FName(TEXT("PS5"))
+```
+2. Add the following to "\Engine\Source\Runtime\Core\Public\HAL\Platform.h" within the platform define section at the top of the file:
+```
+#if !defined(PLATFORM_PS5)
+	#define PLATFORM_PS5 0
+#endif
+```
+3. Add the **PLATFORM_PS5** definition "\Engine\Platforms\PS5\Source\Programs\UnrealBuildTool\UEBuildPS5.cs" by adding the following to the "SetUpEnvironment" function:
+```
+CompileEnvironment.Definitions.Add("PLATFORM_PS5=1");
+```
+If this step is not done correctly, you will see the following error: "Building unreal engine on PS5, but PLATFORM_PS5 is not defined! Please follow steps in README.md for PS5 platform setup!"

@@ -80,7 +80,7 @@ void FNetworkNextSocketSubsystem::Destroy()
 
 bool FNetworkNextSocketSubsystem::Init(FString& Error)
 {
-	UE_LOG(LogNetworkNext, Display, TEXT("Network Next socket subsystem initializing...."));
+	UE_LOG(LogNetworkNext, Display, TEXT("Network Next socket subsystem initializing"));
 
 	ISocketSubsystem* PlatformSubsystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
 
