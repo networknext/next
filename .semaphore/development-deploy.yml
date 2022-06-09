@@ -18,6 +18,21 @@ global_job_config:
 
 blocks:
 
+
+  - name: "Build Artifacts (Scripts)"
+
+    dependencies: []
+
+    task:
+
+      jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - checkout
+            - artifact push workflow deploy/bootstrap.sh
+
+
   - name: "Build Artifacts (Golang)"
 
     dependencies: []
@@ -33,12 +48,6 @@ blocks:
         commands:
             - sudo apt-get install -y libsodium-dev libzmq3-dev
             - cache restore
-
-      jobs:
-
-        - name: "Bootstrap"
-          commands:
-            - artifact push workflow deploy/bootstrap.sh
 
         - name: "Billing"
           commands:
@@ -183,8 +192,7 @@ blocks:
 
         - name: "Bootstrap"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow bootstrap.sh && cd ..
+            - artifact pull workflow bootstrap.sh
             - gsutil cp bootstrap.sh gs://development_artifacts/bootstrap.sh
 
         - name: "Billing"
