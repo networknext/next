@@ -36,6 +36,10 @@ blocks:
 
       jobs:
 
+        - name: "Bootstrap"
+          commands:
+            - artifact push workflow dist/bootstrap.sh
+
         - name: "Billing"
           commands:
             - make build-billing-artifacts-dev
@@ -176,6 +180,12 @@ blocks:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
 
       jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - mkdir dist && cd dist
+            - artifact pull workflow bootstrap.sh && cd ..
+            - make publish-bootstrap-script-dev
 
         - name: "Billing"
           commands:
