@@ -26,7 +26,8 @@ blocks:
             - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
             - tar -xvf 1.0.18-RELEASE.tar.gz
             - cd libsodium-1.0.18-RELEASE
-            - ./configure && make -j32
+            - ./configure
+            - make -j32
             - sudo make -j32 install
             - sudo ldconfig
             - cd ..
@@ -34,7 +35,8 @@ blocks:
             - tar -xvf v4.1.8.tar.gz
             - cd zeromq4-1-4.1.8
             - ./autogen.sh
-            - ./configure && make -j32
+            - ./configure
+            - make -j32
             - sudo make -j32 install
             - sudo ldconfig
 
