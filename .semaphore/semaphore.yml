@@ -31,7 +31,7 @@ blocks:
             - sudo ldconfig
             - cd ..
             - wget https://github.com/zeromq/zeromq4-1/archive/refs/tags/v4.1.8.tar.gz
-            - tar -xvf zeromq-4.1.8.tar.gz
+            - tar -xvf v4.1.8.tar.gz
             - cd zeromq-4.1.8
             - ./configure && make check
             - sudo make install
