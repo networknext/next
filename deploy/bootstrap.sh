@@ -35,9 +35,6 @@ gsutil cp "$bucket/libpgm-5.2.so.0" '/usr/local/lib'
 # Copy libzmq from GCP Storage
 gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
 
-# Copy libnext from GCP Storage
-gsutil cp "$bucket/libnext.so" '/usr/local/lib'
-
 # Refresh the known libs on the system
 ldconfig
 
