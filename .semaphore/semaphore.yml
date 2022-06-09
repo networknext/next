@@ -23,26 +23,22 @@ blocks:
       jobs:
         - name: "Build Sodium and ZeroMQ"
           commands:
+            
+            - checkout
 
-            - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
-            - tar -xvf 1.0.18-RELEASE.tar.gz
-            - cd libsodium-1.0.18-RELEASE
+            - cd ~/libs/sodium
             - ./configure
             - make -j32
             - sudo make -j32 install
             - sudo ldconfig
-            - cd ..
             - artifact push workflow /usr/local/lib/libsodium.so
 
-            - wget https://github.com/zeromq/zeromq4-1/archive/refs/tags/v4.1.8.tar.gz
-            - tar -xvf v4.1.8.tar.gz
-            - cd zeromq4-1-4.1.8
+            - cd ~/libs/zeromq
             - ./autogen.sh
             - ./configure
             - make -j32
             - sudo make -j32 install
             - sudo ldconfig
-            - cd ..
             - artifact push workflow /usr/local/lib/libzmq.so
 
   - name: "Backend"
