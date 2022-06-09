@@ -135,6 +135,11 @@ blocks:
 
             - sudo apt-get install -y libsodium-dev
 
+            - checkout
+            - cp envs/local.env .env
+            - git submodule init
+            - git submodule update
+
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
             - ./configure --with-norm=no --with-pgm=no
@@ -144,10 +149,6 @@ blocks:
 
             - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - checkout
-            - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
 
             - make -j32 build-test-func4
 
