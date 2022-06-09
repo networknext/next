@@ -25,7 +25,7 @@ blocks:
           commands:
             - wget https://github.com/jedisct1/libsodium/archive/refs/tags/1.0.18-RELEASE.tar.gz
             - tar -xvf 1.0.18-RELEASE.tar.gz
-            - cd 1.0.18-RELEASE
+            - cd libsodium-1.0.18-RELEASE
             - ./configure && make check
             - sudo make install
             - sudo ldconfig
