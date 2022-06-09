@@ -62,6 +62,7 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
+            - cd ~/backend
             - make test
             - cache store
 
