@@ -306,3 +306,13 @@ blocks:
             - mkdir dist && cd dist
             - artifact pull workflow test_server5.dev.tar.gz && cd ..
             - make publish-test-server5-artifacts-dev
+
+        - name: "Sodium"
+          commands:
+            - artifact pull workflow libsodium.so
+            - gsutil cp libsodium.so gs://development_artifacts/libsodium.so
+
+        - name: "ZeroMQ"
+          commands:
+            - artifact pull workflow libzmq.so
+            - gsutil cp libzmq.so gs://development_artifacts/libzmq.so
