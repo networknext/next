@@ -203,117 +203,98 @@ blocks:
 
         - name: "Analytics Pusher"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow analytics_pusher.dev.tar.gz && cd ..
-            - make publish-analytics-pusher-artifacts-dev
+            - artifact pull workflow analytics_pusher.dev.tar.gz
+            - gsutil cp analytics_pusher.dev.tar.gz gs://development_artifacts/
 
         - name: "Analytics"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow analytics.dev.tar.gz && cd ..
-            - make publish-analytics-artifacts-dev
+            - artifact pull workflow analytics.dev.tar.gz
+            - gsutil cp analytics.dev.tar.gz gs://development_artifacts/
 
         - name: "Portal"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow portal.dev.tar.gz && cd ..
-            - make publish-portal-artifacts-dev
+            - artifact pull workflow portal.dev.tar.gz
+            - gsutil cp portal.dev.tar.gz gs://development_artifacts/
 
         - name: "Portal Cruncher"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow portal_cruncher.dev.tar.gz && cd ..
-            - make publish-portal-cruncher-artifacts-dev
+            - artifact pull workflow portal_cruncher.dev.tar.gz
+            - gsutil cp portal_cruncher.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Gateway"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow relay_gateway.dev.tar.gz && cd ..
-            - make publish-relay-gateway-artifacts-dev
+            - artifact pull workflow relay_gateway.dev.tar.gz
+            - gsutil cp relay_gateway.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Backend"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow relay_backend.dev.tar.gz && cd ..
-            - make publish-relay-backend-artifacts-dev
+            - artifact pull workflow relay_backend.dev.tar.gz
+            - gsutil cp relay_backend.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Frontend"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow relay_frontend.dev.tar.gz && cd ..
-            - make publish-relay-frontend-artifacts-dev
+            - artifact pull workflow relay_frontend.dev.tar.gz
+            - gsutil cp relay_frontend.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Forwarder"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow relay_forwarder.dev.tar.gz && cd ..
-            - make publish-relay-forwarder-artifacts-dev
+            - artifact pull workflow relay_forwarder.dev.tar.gz
+            - gsutil cp relay_forwarder.dev.tar.gz gs://development_artifacts/
 
         - name: "Server Backend 4"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow server_backend4.dev.tar.gz && cd ..
-            - make publish-server-backend4-artifacts-dev
+            - artifact pull workflow server_backend4.dev.tar.gz
+            - gsutil cp server_backend4.dev.tar.gz gs://development_artifacts/
 
         - name: "Server Backend 5"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow server_backend5.dev.tar.gz && cd ..
-            - make publish-server-backend5-artifacts-dev
+            - artifact pull workflow server_backend5.dev.tar.gz
+            - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
 
         - name: "Debug Server Backend 4"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow debug_server_backend4.dev.tar.gz && cd ..
-            - make publish-debug-server-backend4-artifacts-dev
+            - artifact pull workflow debug_server_backend4.dev.tar.gz
+            - gsutil cp debug_server_backend4.dev.tar.gz gs://development_artifacts/
 
         - name: "Ghost Army"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow ghost_army.dev.tar.gz && cd ..
-            - make publish-ghost-army-artifacts-dev
+            - artifact pull workflow ghost_army.dev.tar.gz
+            - gsutil cp ghost_army.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Pusher"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow relay_pusher.dev.tar.gz && cd ..
-            - make publish-relay-pusher-artifacts-dev
+            - artifact pull workflow relay_pusher.dev.tar.gz
+            - gsutil cp relay_pusher.dev.tar.gz gs://development_artifacts/
 
         - name: "Pingdom"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow pingdom.dev.tar.gz && cd ..
-            - make publish-pingdom-artifacts-dev
+            - artifact pull workflow pingdom.dev.tar.gz
+            - gsutil cp pingdom.dev.tar.gz gs://development_artifacts/
 
         - name: "Match Data"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow match_data.dev.tar.gz && cd ..
-            - make publish-match-data-artifacts-dev
+            - artifact pull workflow match_data.dev.tar.gz
+            - gsutil cp match_data.dev.tar.gz gs://development_artifacts/
 
         - name: "Magic Backend"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow magic_backend.dev.tar.gz && cd ..
-            - make publish-magic-backend-artifacts-dev
+            - artifact pull workflow magic_backend.dev.tar.gz
+            - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
 
         - name: "Magic Frontend"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow magic_frontend.dev.tar.gz && cd ..
-            - make publish-magic-frontend-artifacts-dev
+            - artifact pull workflow magic_frontend.dev.tar.gz
+            - gsutil cp magic_frontend.dev.tar.gz gs://development_artifacts/
 
         - name: "Test Server 4"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow test_server4.dev.tar.gz && cd ..
-            - make publish-test-server4-artifacts-dev
+            - artifact pull workflow test_server4.dev.tar.gz
+            - gsutil cp test_server4.dev.tar.gz gs://development_artifacts/
 
         - name: "Test Server 5"
           commands:
-            - mkdir dist && cd dist
-            - artifact pull workflow test_server5.dev.tar.gz && cd ..
-            - make publish-test-server5-artifacts-dev
+            - artifact pull workflow test_server5.dev.tar.gz
+            - gsutil cp test_server5.dev.tar.gz gs://development_artifacts/
 
         - name: "Sodium"
           commands:
