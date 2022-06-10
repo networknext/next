@@ -564,7 +564,7 @@ build-test-func4: clean dist build-sdk4 build-reference-relay build-functional-s
 .PHONY: run-test-func4
 run-test-func4:
 	@printf "\nRunning functional tests 4...\n\n" ; \
-	$(GO) run ./cmd/func_tests4/func_tests4.go $(tests) ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests4/func_tests4.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func4
@@ -596,7 +596,7 @@ build-functional-backend5: dist
 .PHONY: build-functional-tests5
 build-functional-tests5: dist
 	@printf "Building functional tests 5... " ; \
-	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests5/*.go ; \
+	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests4/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func5
@@ -605,7 +605,7 @@ build-test-func5: clean dist build-sdk5 build-reference-relay build-functional-s
 .PHONY: run-test-func5
 run-test-func5:
 	@printf "\nRunning functional tests 5...\n\n" ; \
-	$(GO) run ./cmd/func_tests5/func_tests5.go $(tests) ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests5/func_tests5.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func5
