@@ -85,7 +85,6 @@ blocks:
             - git submodule init
             - git submodule update
             - export LD_LIBRARY_PATH=. && make -j32 test-sdk4
-            - artifact push workflow ./dist/libnext4.so
 
   - name: "SDK5"
     dependencies: []
@@ -105,7 +104,6 @@ blocks:
             - git submodule init
             - git submodule update
             - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
-            - artifact push workflow ./dist/libnext5.so
 
   - name: "Relay"
     dependencies: []
