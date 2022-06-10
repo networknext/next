@@ -534,13 +534,13 @@ endif
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
 	@printf "Building functional server 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client4
 build-functional-client4: build-sdk4
 	@printf "Building functional client 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional4
