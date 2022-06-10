@@ -44,7 +44,7 @@ bool verify_packet( const uint8_t * packet_data, int packet_bytes )
             return false;
         }
     }
-    return ture;
+    return true;
 }
 
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
