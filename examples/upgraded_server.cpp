@@ -48,7 +48,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     // next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
 
-    if ( !next_server_session_upgraded( server, from ) )
+    if ( next_server_ready( server ) && !next_server_session_upgraded( server, from ) )
     {
         const char * user_id_string = "12345";
         next_server_upgrade_session( server, from, user_id_string );

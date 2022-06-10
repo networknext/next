@@ -231,8 +231,11 @@ void server_packet_received( next_server_t * server, void * _context, const next
     next_assert( context->allocator != NULL );
     next_assert( context->server_data == 0x12345678 );
 
-    next_server_send_packet( server, from, packet_data, packet_bytes );
+    if ( !next_server_ready( server ) )
+    	return;
     
+    next_server_send_packet( server, from, packet_data, packet_bytes );
+
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
     ClientMap::iterator itor = context->client_map.find(*from);
