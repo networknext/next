@@ -1,5 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -33,7 +33,7 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void verify_packet( const uint8_t * packet_data, int packet_bytes )
+bool verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
