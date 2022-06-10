@@ -206,175 +206,175 @@ blocks:
 
         - name: "test_direct_raw"
           commands:
-            - ./dist/func_tests4 test_direct_raw
+            - cd ./dist && ./func_tests4 test_direct_raw
 
         - name: "test_direct_upgraded"
           commands:
-            - ./dist/func_tests4 test_direct_upgraded
+            - cd ./dist && ./func_tests4 test_direct_upgraded
 
         - name: "test_network_next_route"
           commands:
-            - ./dist/func_tests4 test_network_next_route
+            - cd ./dist && ./func_tests4 test_network_next_route
 
         - name: "test_fallback_to_direct_backend"
           commands:
-            - ./dist/func_tests4 test_fallback_to_direct_backend
+            - cd ./dist && ./func_tests4 test_fallback_to_direct_backend
 
         - name: "test_fallback_to_direct_client_side"
           commands:
-            - ./dist/func_tests4 test_fallback_to_direct_client_side
+            - cd ./dist && ./func_tests4 test_fallback_to_direct_client_side
 
         - name: "test_fallback_to_direct_server_restart"
           commands:
-            - ./dist/func_tests4 test_fallback_to_direct_server_restart
+            - cd ./dist && ./func_tests4 test_fallback_to_direct_server_restart
 
         - name: "test_disable_on_server"
           commands:
-            - ./dist/func_tests4 test_disable_on_server
+            - cd ./dist && ./func_tests4 test_disable_on_server
 
         - name: "test_disable_on_client"
           commands:
-            - ./dist/func_tests4 test_disable_on_client
+            - cd ./dist && ./func_tests4 test_disable_on_client
 
         - name: "test_route_switching"
           commands:
-            - ./dist/func_tests4 test_route_switching
+            - cd ./dist && ./func_tests4 test_route_switching
 
         - name: "test_on_off"
           commands:
-            - ./dist/func_tests4 test_on_off
+            - cd ./dist && ./func_tests4 test_on_off
 
         - name: "test_on_on_off"
           commands:
-            - ./dist/func_tests4 test_on_on_off
+            - cd ./dist && ./func_tests4 test_on_on_off
 
         - name: "test_reconnect_direct"
           commands:
-            - ./dist/func_tests4 test_reconnect_direct
+            - cd ./dist && ./func_tests4 test_reconnect_direct
 
         - name: "test_reconnect_direct_no_upgrade"
           commands:
-            - ./dist/func_tests4 test_reconnect_direct_no_upgrade
+            - cd ./dist && ./func_tests4 test_reconnect_direct_no_upgrade
 
         - name: "test_reconnect_next"
           commands:
-            - ./dist/func_tests4 test_reconnect_next
+            - cd ./dist && ./func_tests4 test_reconnect_next
 
         - name: "test_connect_to_another_server_direct"
           commands:
-            - ./dist/func_tests4 test_connect_to_another_server_direct
+            - cd ./dist && ./func_tests4 test_connect_to_another_server_direct
 
         - name: "test_connect_to_another_server_next"
           commands:
-            - ./dist/func_tests4 test_connect_to_another_server_next
+            - cd ./dist && ./func_tests4 test_connect_to_another_server_next
 
         - name: "test_multipath"
           commands:
-            - ./dist/func_tests4 test_multipath
+            - cd ./dist && ./func_tests4 test_multipath
 
         - name: "test_multipath_next_packet_loss"
           commands:
-            - ./dist/func_tests4 test_multipath_next_packet_loss
+            - cd ./dist && ./func_tests4 test_multipath_next_packet_loss
 
         - name: "test_multipath_fallback_to_direct"
           commands:
-            - ./dist/func_tests4 test_multipath_fallback_to_direct
+            - cd ./dist && ./func_tests4 test_multipath_fallback_to_direct
 
         - name: "test_uncommitted"
           commands:
-            - ./dist/func_tests4 test_uncommitted
+            - cd ./dist && ./func_tests4 test_uncommitted
 
         - name: "test_uncommitted_to_committed"
           commands:
-            - ./dist/func_tests4 test_uncommitted_to_committed
+            - cd ./dist && ./func_tests4 test_uncommitted_to_committed
 
         - name: "test_packet_loss_direct"
           commands:
-            - ./dist/func_tests4 test_packet_loss_direct
+            - cd ./dist && ./func_tests4 test_packet_loss_direct
 
         - name: "test_packet_loss_next"
           commands:
-            - ./dist/func_tests4 test_packet_loss_next
+            - cd ./dist && ./func_tests4 test_packet_loss_next
 
         - name: "test_server_under_load"
           commands:
-            - ./dist/func_tests4 test_server_under_load
+            - cd ./dist && ./func_tests4 test_server_under_load
 
         - name: "test_session_update_retry"
           commands:
-            - ./dist/func_tests4 test_session_update_retry
+            - cd ./dist && ./func_tests4 test_session_update_retry
 
         - name: "test_bandwidth_over_limit"
           commands:
-            - ./dist/func_tests4 test_bandwidth_over_limit
+            - cd ./dist && ./func_tests4 test_bandwidth_over_limit
 
         - name: "test_packet_loss"
           commands:
-            - ./dist/func_tests4 test_packet_loss
+            - cd ./dist && ./func_tests4 test_packet_loss
 
         - name: "test_bandwidth"
           commands:
-            - ./dist/func_tests4 test_bandwidth
+            - cd ./dist && ./func_tests4 test_bandwidth
 
         - name: "test_jitter"
           commands:
-            - ./dist/func_tests4 test_jitter
+            - cd ./dist && ./func_tests4 test_jitter
 
         - name: "test_tags"
           commands:
-            - ./dist/func_tests4 test_tags
+            - cd ./dist && ./func_tests4 test_tags
 
         - name: "test_tags_multi"
           commands:
-            - ./dist/func_tests4 test_tags_multi
+            - cd ./dist && ./func_tests4 test_tags_multi
 
         - name: "test_direct_stats"
           commands:
-            - ./dist/func_tests4 test_direct_stats
+            - cd ./dist && ./func_tests4 test_direct_stats
 
         - name: "test_next_stats"
           commands:
-            - ./dist/func_tests4 test_next_stats
+            - cd ./dist && ./func_tests4 test_next_stats
 
         - name: "test_report_session"
           commands:
-            - ./dist/func_tests4 test_report_session
+            - cd ./dist && ./func_tests4 test_report_session
 
         - name: "test_client_ping_timed_out"
           commands:
-            - ./dist/func_tests4 test_client_ping_timed_out
+            - cd ./dist && ./func_tests4 test_client_ping_timed_out
 
         - name: "test_server_events"
           commands:
-            - ./dist/func_tests4 test_server_events
+            - cd ./dist && ./func_tests4 test_server_events
 
         - name: "test_match_id"
           commands:
-            - ./dist/func_tests4 test_match_id
+            - cd ./dist && ./func_tests4 test_match_id
 
         - name: "test_match_values"
           commands:
-            - ./dist/func_tests4 test_match_values
+            - cd ./dist && ./func_tests4 test_match_values
 
         - name: "test_match_data_retry"
           commands:
-            - ./dist/func_tests4 test_match_data_retry
+            - cd ./dist && ./func_tests4 test_match_data_retry
 
         - name: "test_flush"
           commands:
-            - ./dist/func_tests4 test_flush
+            - cd ./dist && ./func_tests4 test_flush
 
         - name: "test_flush_retry"
           commands:
-            - ./dist/func_tests4 test_flush_retry
+            - cd ./dist && ./func_tests4 test_flush_retry
 
         - name: "test_flush_server_events_and_match_data"
           commands:
-            - ./dist/func_tests4 test_flush_server_events_and_match_data
+            - cd ./dist && ./func_tests4 test_flush_server_events_and_match_data
 
         - name: "test_flush_server_events_and_match_data_retry"
           commands:
-            - ./dist/func_tests4 test_flush_server_events_and_match_data_retry
+            - cd ./dist && ./func_tests4 test_flush_server_events_and_match_data_retry
 
 
   - name: "Build Functional Tests 5"
@@ -464,203 +464,203 @@ blocks:
 
         - name: "test_passthrough"
           commands:
-            - ./dist/func_tests5 test_passthrough
+            - cd ./dist && ./func_tests5 test_passthrough
 
         - name: "test_direct_upgraded"
           commands:
-            - ./dist/func_tests5 test_direct_upgraded
+            - cd ./dist && ./func_tests5 test_direct_upgraded
 
         - name: "test_network_next_route"
           commands:
-            - ./dist/func_tests5 test_network_next_route
+            - cd ./dist && ./func_tests5 test_network_next_route
 
         - name: "test_fallback_to_direct_backend"
           commands:
-            - ./dist/func_tests5 test_fallback_to_direct_backend
+            - cd ./dist && ./func_tests5 test_fallback_to_direct_backend
 
         - name: "test_fallback_to_direct_client_side"
           commands:
-            - ./dist/func_tests5 test_fallback_to_direct_client_side
+            - cd ./dist && ./func_tests5 test_fallback_to_direct_client_side
 
         - name: "test_fallback_to_direct_server_restart"
           commands:
-            - ./dist/func_tests5 test_fallback_to_direct_server_restart
+            - cd ./dist && ./func_tests5 test_fallback_to_direct_server_restart
 
         - name: "test_disable_on_server"
           commands:
-            - ./dist/func_tests5 test_disable_on_server
+            - cd ./dist && ./func_tests5 test_disable_on_server
 
         - name: "test_disable_on_client"
           commands:
-            - ./dist/func_tests5 test_disable_on_client
+            - cd ./dist && ./func_tests5 test_disable_on_client
 
         - name: "test_route_switching"
           commands:
-            - ./dist/func_tests5 test_route_switching
+            - cd ./dist && ./func_tests5 test_route_switching
 
         - name: "test_on_off"
           commands:
-            - ./dist/func_tests5 test_on_off
+            - cd ./dist && ./func_tests5 test_on_off
 
         - name: "test_on_on_off"
           commands:
-            - ./dist/func_tests5 test_on_on_off
+            - cd ./dist && ./func_tests5 test_on_on_off
 
         - name: "test_reconnect_direct"
           commands:
-            - ./dist/func_tests5 test_reconnect_direct
+            - cd ./dist && ./func_tests5 test_reconnect_direct
 
         - name: "test_reconnect_direct_no_upgrade"
           commands:
-            - ./dist/func_tests5 test_reconnect_direct_no_upgrade
+            - cd ./dist && ./func_tests5 test_reconnect_direct_no_upgrade
 
         - name: "test_reconnect_next"
           commands:
-            - ./dist/func_tests5 test_reconnect_next
+            - cd ./dist && ./func_tests5 test_reconnect_next
 
         - name: "test_connect_to_another_server_direct"
           commands:
-            - ./dist/func_tests5 test_connect_to_another_server_direct
+            - cd ./dist && ./func_tests5 test_connect_to_another_server_direct
 
         - name: "test_connect_to_another_server_next"
           commands:
-            - ./dist/func_tests5 test_connect_to_another_server_next
+            - cd ./dist && ./func_tests5 test_connect_to_another_server_next
 
         - name: "test_multipath"
           commands:
-            - ./dist/func_tests5 test_multipath
+            - cd ./dist && ./func_tests5 test_multipath
 
         - name: "test_multipath_next_packet_loss"
           commands:
-            - ./dist/func_tests5 test_multipath_next_packet_loss
+            - cd ./dist && ./func_tests5 test_multipath_next_packet_loss
 
         - name: "test_multipath_fallback_to_direct"
           commands:
-            - ./dist/func_tests5 test_multipath_fallback_to_direct
+            - cd ./dist && ./func_tests5 test_multipath_fallback_to_direct
 
         - name: "test_uncommitted"
           commands:
-            - ./dist/func_tests5 test_uncommitted_to_committed
+            - cd ./dist && ./func_tests5 test_uncommitted_to_committed
 
         - name: "test_packet_loss_direct"
           commands:
-            - ./dist/func_tests5 test_packet_loss_direct
+            - cd ./dist && ./func_tests5 test_packet_loss_direct
 
         - name: "test_packet_loss_next"
           commands:
-            - ./dist/func_tests5 test_packet_loss_next
+            - cd ./dist && ./func_tests5 test_packet_loss_next
 
         - name: "test_server_under_load"
           commands:
-            - ./dist/func_tests5 test_server_under_load
+            - cd ./dist && ./func_tests5 test_server_under_load
 
         - name: "test_session_update_retry"
           commands:
-            - ./dist/func_tests5 test_session_update_retry
+            - cd ./dist && ./func_tests5 test_session_update_retry
 
         - name: "test_bandwidth_over_limit"
           commands:
-            - ./dist/func_tests5 test_bandwidth_over_limit
+            - cd ./dist && ./func_tests5 test_bandwidth_over_limit
 
         - name: "test_packet_loss"
           commands:
-            - ./dist/func_tests5 test_packet_loss
+            - cd ./dist && ./func_tests5 test_packet_loss
 
         - name: "test_bandwidth"
           commands:
-            - ./dist/func_tests5 test_bandwidth
+            - cd ./dist && ./func_tests5 test_bandwidth
 
         - name: "test_jitter"
           commands:
-            - ./dist/func_tests5 test_jitter
+            - cd ./dist && ./func_tests5 test_jitter
 
         - name: "test_tags"
           commands:
-            - ./dist/func_tests5 test_tags
+            - cd ./dist && ./func_tests5 test_tags
 
         - name: "test_tags_multi"
           commands:
-            - ./dist/func_tests5 test_tags_multi
+            - cd ./dist && ./func_tests5 test_tags_multi
 
         - name: "test_direct_stats"
           commands:
-            - ./dist/func_tests5 test_direct_stats
+            - cd ./dist && ./func_tests5 test_direct_stats
 
         - name: "test_next_stats"
           commands:
-            - ./dist/func_tests5 test_next_stats
+            - cd ./dist && ./func_tests5 test_next_stats
 
         - name: "test_report_session"
           commands:
-            - ./dist/func_tests5 test_report_session
+            - cd ./dist && ./func_tests5 test_report_session
 
         - name: "test_client_ping_timed_out"
           commands:
-            - ./dist/func_tests5 test_client_ping_timed_out
+            - cd ./dist && ./func_tests5 test_client_ping_timed_out
 
         - name: "test_server_ready_success"
           commands:
-            - ./dist/func_tests5 test_server_ready_success
+            - cd ./dist && ./func_tests5 test_server_ready_success
 
         - name: "test_server_ready_fallback_to_direct"
           commands:
-            - ./dist/func_tests5 test_server_ready_fallback_to_direct
+            - cd ./dist && ./func_tests5 test_server_ready_fallback_to_direct
 
         - name: "test_server_ready_autodetect_cloud"
           commands:
-            - ./dist/func_tests5 test_server_ready_autodetect_cloud
+            - cd ./dist && ./func_tests5 test_server_ready_autodetect_cloud
 
         - name: "test_server_ready_autodetect_multiplay_success"
           commands:
-            - ./dist/func_tests5 test_server_ready_autodetect_multiplay_success
+            - cd ./dist && ./func_tests5 test_server_ready_autodetect_multiplay_success
 
         - name: "test_server_ready_autodetect_multiplay_fail"
           commands:
-            - ./dist/func_tests5 test_server_ready_autodetect_multiplay_fail
+            - cd ./dist && ./func_tests5 test_server_ready_autodetect_multiplay_fail
 
         - name: "test_server_ready_disable_autodetect_cloud"
           commands:
-            - ./dist/func_tests5 test_server_ready_disable_autodetect_cloud
+            - cd ./dist && ./func_tests5 test_server_ready_disable_autodetect_cloud
 
         - name: "test_server_ready_disable_autodetect_multiplay"
           commands:
-            - ./dist/func_tests5 test_server_ready_disable_autodetect_multiplay
+            - cd ./dist && ./func_tests5 test_server_ready_disable_autodetect_multiplay
 
         - name: "test_server_ready_resolve_hostname_timeout"
           commands:
-            - ./dist/func_tests5 test_server_ready_resolve_hostname_timeout
+            - cd ./dist && ./func_tests5 test_server_ready_resolve_hostname_timeout
 
         - name: "test_server_ready_autodetect_timeout"
           commands:
-            - ./dist/func_tests5 test_server_ready_resolve_hostname_timeout
+            - cd ./dist && ./func_tests5 test_server_ready_resolve_hostname_timeout
 
         - name: "test_client_connect_before_ready"
           commands:
-            - ./dist/func_tests5 test_client_connect_before_ready
+            - cd ./dist && ./func_tests5 test_client_connect_before_ready
 
         - name: "test_server_events"
           commands:
-            - ./dist/func_tests5 test_server_events
+            - cd ./dist && ./func_tests5 test_server_events
 
         - name: "test_match_id"
           commands:
-            - ./dist/func_tests5 test_match_id
+            - cd ./dist && ./func_tests5 test_match_id
 
         - name: "test_match_values"
           commands:
-            - ./dist/func_tests5 test_match_values
+            - cd ./dist && ./func_tests5 test_match_values
 
         - name: "test_match_data_retry"
           commands:
-            - ./dist/func_tests5 test_match_data_retry
+            - cd ./dist && ./func_tests5 test_match_data_retry
 
         - name: "test_flush"
           commands:
-            - ./dist/func_tests5 test_flush
+            - cd ./dist && ./func_tests5 test_flush
 
         - name: "test_flush_retry"
           commands:
-            - ./dist/func_tests5 test_flush_retry
+            - cd ./dist && ./func_tests5 test_flush_retry
 
   - name: "Run Functional Tests 5b"
     dependencies: ["Build Functional Tests 5"]
@@ -708,11 +708,11 @@ blocks:
 
         - name: "test_flush_server_events_and_match_data"
           commands:
-            - ./dist/func_tests5 test_flush_server_events_and_match_data
+            - cd ./dist && ./func_tests5 test_flush_server_events_and_match_data
 
         - name: "test_flush_server_events_and_match_data_retry"
           commands:
-            - ./dist/func_tests5 test_flush_server_events_and_match_data_retry
+            - cd ./dist && ./func_tests5 test_flush_server_events_and_match_data_retry
 
 promotions:
 
