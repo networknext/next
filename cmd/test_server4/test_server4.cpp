@@ -1,5 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -33,7 +33,7 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void verify_packet( const uint8_t * packet_data, int packet_bytes )
+bool verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
@@ -41,9 +41,10 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
         if ( packet_data[i] != (uint8_t) ( ( start + i ) % 256 ) )
         {
             printf( "%d: %d != %d (%d)\n", i, packet_data[i], ( start + i ) % 256, packet_bytes );
+            return false;
         }
-        next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
     }
+    return true;
 }
 
 void server_packet_received( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
@@ -54,7 +55,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    if ( !next_server_session_upgraded( server, from ) )
+    if ( next_server_ready( server ) && !next_server_session_upgraded( server, from ) )
     {
         next_server_upgrade_session( server, from, 0 );
 
