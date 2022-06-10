@@ -322,3 +322,18 @@ blocks:
           commands:
             - artifact pull workflow libzmq.so
             - gsutil cp libzmq.so gs://development_artifacts/libzmq.so
+
+        - name: "SDK4"
+          commands:
+            - artifact pull workflow libnext4.so
+            - gsutil cp libnext4.so gs://development_artifacts/libnext4.so
+
+        - name: "SDK5"
+          commands:
+            - artifact pull workflow libnext5.so
+            - gsutil cp libnext5.so gs://development_artifacts/libnext5.so
+
+        - name: "Reference Relay"
+          commands:
+            - artifact pull workflow reference_relay
+            - gsutil cp reference_relay gs://development_artifacts/reference_relay
