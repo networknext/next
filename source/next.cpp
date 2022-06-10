@@ -14471,7 +14471,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
 	if ( server->flushing )
 	{
-		next_printf( NEXT_LOG_LEVEL_INFO, "server aborting init, flushing" );
+		next_printf( NEXT_LOG_LEVEL_INFO, "server aborted init" );
 		server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
 		return;
 	}
