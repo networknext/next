@@ -195,6 +195,7 @@ blocks:
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
+            - sudo mv libnext4.so /usr/local/lib
             - sudo ldconfig
 
             - mv reference_relay4 reference_relay
@@ -452,6 +453,7 @@ blocks:
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
+            - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
             - mv reference_relay5 reference_relay
@@ -695,6 +697,7 @@ blocks:
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
+            - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
             - mv reference_relay5 reference_relay
