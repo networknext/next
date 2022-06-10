@@ -596,7 +596,7 @@ build-functional-backend5: dist
 .PHONY: build-functional-tests5
 build-functional-tests5: dist
 	@printf "Building functional tests 5... " ; \
-	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests4/*.go ; \
+	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests5/*.go ; \
 	printf "done\n" ; \
 
 .PHONY: build-test-func5
