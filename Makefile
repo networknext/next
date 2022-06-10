@@ -575,13 +575,13 @@ test-func4: build-test-func4 run-test-func4 ## runs functional tests (sdk4)
 .PHONY: build-functional-server5
 build-functional-server5: build-sdk5
 	@printf "Building functional server 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/func_server5 ./cmd/func_server5/func_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server5 ../cmd/func_server5/func_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client5
 build-functional-client5: build-sdk5
 	@printf "Building functional client 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/func_client5 ./cmd/func_client5/func_client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional5
