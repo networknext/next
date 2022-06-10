@@ -84,7 +84,7 @@ blocks:
             - cp envs/local.env .env
             - git submodule init
             - git submodule update
-            - make -j32 test-sdk4
+            - export LD_LIBRARY_PATH=. && make -j32 test-sdk4
 
   - name: "SDK5"
     dependencies: []
@@ -103,7 +103,7 @@ blocks:
             - cp envs/local.env .env
             - git submodule init
             - git submodule update
-            - make -j32 test-sdk5
+            - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
 
   - name: "Relay"
     dependencies: []
