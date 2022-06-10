@@ -13,6 +13,34 @@ global_job_config:
 
 blocks:
 
+  - name: "Dependencies"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      jobs:
+        - name: "Build Sodium and ZeroMQ"
+          commands:
+            
+            - checkout
+
+            - cd ~/backend/libs/sodium
+            - ./configure
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+            - artifact push workflow /usr/local/lib/libsodium.so
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+            - artifact push workflow /usr/local/lib/libzmq.so
+
   - name: "Backend"
     dependencies: []
     task:
@@ -23,9 +51,19 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+
             - checkout
             - cp envs/local.env .env
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - sudo apt-get install -y libsodium-dev
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
             - make test
             - cache store
 
@@ -94,14 +132,26 @@ blocks:
       jobs:
         - name: "Build"
           commands:
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+
+            - sudo apt-get install -y libsodium-dev
+
             - checkout
             - cp envs/local.env .env
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
             - make -j32 build-test-func4
+
             - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
             - artifact push workflow dist/func_server4
@@ -111,7 +161,7 @@ blocks:
             - artifact push workflow dist/libnext4.so
 
   - name: "Run Functional Tests 4"
-    dependencies: ["Build Functional Tests 4"]
+    dependencies: ["Build Functional Tests 4", "Dependencies"]
     task:
 
       agent:
@@ -121,23 +171,35 @@ blocks:
 
       prologue:
         commands:
+
             - mkdir -p dist
             - cd dist
+
             - artifact pull workflow func_client4
             - artifact pull workflow func_server4
             - artifact pull workflow func_backend4
             - artifact pull workflow func_tests4
             - artifact pull workflow reference_relay4
             - artifact pull workflow libnext4.so
-            - cd ..
-            - chmod +x dist/func_client4
-            - chmod +x dist/func_server4
-            - chmod +x dist/func_backend4
-            - chmod +x dist/func_tests4
-            - chmod +x dist/reference_relay4
-            - chmod +x dist/libnext4.so
-            - mv dist/reference_relay4 dist/reference_relay
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - artifact pull workflow libsodium.so
+            - artifact pull workflow libzmq.so
+
+            - chmod +x func_client4
+            - chmod +x func_server4
+            - chmod +x func_backend4
+            - chmod +x func_tests4
+            - chmod +x reference_relay4
+            - chmod +x libnext4.so
+            - chmod +x libsodium.so
+            - chmod +x libzmq.so
+
+            - sudo mv libsodium.so /usr/local/lib
+            - sudo mv libzmq.so /usr/local/lib
+            - sudo ldconfig
+
+            - mv reference_relay4 reference_relay
+
+            - cd ~
 
       jobs:
 
@@ -313,6 +375,7 @@ blocks:
           commands:
             - ./dist/func_tests4 test_flush_server_events_and_match_data_retry
 
+
   - name: "Build Functional Tests 5"
     dependencies: []
     task:
@@ -325,14 +388,26 @@ blocks:
       jobs:
         - name: "Build"
           commands:
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+
+            - sudo apt-get install -y libsodium-dev
+
             - checkout
             - cp envs/local.env .env
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
             - make -j32 build-test-func5
+
             - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
             - artifact push workflow dist/func_server5
@@ -341,29 +416,47 @@ blocks:
             - artifact push workflow dist/reference_relay5
             - artifact push workflow dist/libnext5.so
 
+
   - name: "Run Functional Tests 5a"
     dependencies: ["Build Functional Tests 5"]
     task:
 
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
       prologue:
         commands:
+
             - mkdir -p dist
             - cd dist
+
             - artifact pull workflow func_client5
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
             - artifact pull workflow func_tests5
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
-            - cd ..
-            - chmod +x dist/func_client5
-            - chmod +x dist/func_server5
-            - chmod +x dist/func_backend5
-            - chmod +x dist/func_tests5
-            - chmod +x dist/reference_relay5
-            - chmod +x dist/libnext5.so
-            - mv dist/reference_relay5 dist/reference_relay
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - artifact pull workflow libsodium.so
+            - artifact pull workflow libzmq.so
+
+            - chmod +x func_client5
+            - chmod +x func_server5
+            - chmod +x func_backend5
+            - chmod +x func_tests5
+            - chmod +x reference_relay5
+            - chmod +x libnext5.so
+            - chmod +x libsodium.so
+            - chmod +x libzmq.so
+
+            - sudo mv libsodium.so /usr/local/lib
+            - sudo mv libzmq.so /usr/local/lib
+            - sudo ldconfig
+
+            - mv reference_relay5 reference_relay
+
+            - cd ~
 
       jobs:
 
@@ -571,25 +664,42 @@ blocks:
     dependencies: ["Build Functional Tests 5"]
     task:
 
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
       prologue:
         commands:
+
             - mkdir -p dist
             - cd dist
+
             - artifact pull workflow func_client5
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
             - artifact pull workflow func_tests5
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
-            - cd ..
-            - chmod +x dist/func_client5
-            - chmod +x dist/func_server5
-            - chmod +x dist/func_backend5
-            - chmod +x dist/func_tests5
-            - chmod +x dist/reference_relay5
-            - chmod +x dist/libnext5.so
-            - mv dist/reference_relay5 dist/reference_relay
-            - sudo apt-get install -y libsodium-dev libzmq3-dev
+            - artifact pull workflow libsodium.so
+            - artifact pull workflow libzmq.so
+
+            - chmod +x func_client5
+            - chmod +x func_server5
+            - chmod +x func_backend5
+            - chmod +x func_tests5
+            - chmod +x reference_relay5
+            - chmod +x libnext5.so
+            - chmod +x libsodium.so
+            - chmod +x libzmq.so
+
+            - sudo mv libsodium.so /usr/local/lib
+            - sudo mv libzmq.so /usr/local/lib
+            - sudo ldconfig
+
+            - mv reference_relay5 reference_relay
+
+            - cd ~
 
       jobs:
 

@@ -931,209 +931,9 @@ build-server-backend4-artifacts-prod: build-server-backend4
 build-server-backend5-artifacts-prod: build-server-backend5
 	./deploy/build-artifacts.sh -e prod -s server_backend5
 
-.PHONY: publish-billing-artifacts-dev
-publish-billing-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
-
-.PHONY: publish-analytics-pusher-artifacts-dev
-publish-analytics-pusher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-dev
-publish-analytics-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-dev
-publish-magic-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-dev
-publish-magic-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-dev
-publish-match-data-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s match_data
-
-.PHONY: publish-relay-artifacts-dev
-publish-relay-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
-
-.PHONY: publish-pingdom-artifacts-dev
-publish-pingdom-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
-
-.PHONY: publish-portal-artifacts-dev
-publish-portal-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
-
-.PHONY: publish-portal-artifacts-dev-test
-publish-portal-artifacts-dev-test:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
-
-.PHONY: publish-portal-cruncher-artifacts-dev
-publish-portal-cruncher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-dev
-publish-server-backend4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-dev
-publish-server-backend5-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
-
-.PHONY: publish-test-server4-artifacts-dev
-publish-test-server4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server4
-
-.PHONY: publish-test-server5-artifacts-dev
-publish-test-server5-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s test_server5
-
-.PHONY: publish-billing-artifacts-staging
-publish-billing-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
-
-.PHONY: publish-analytics-pusher-artifacts-staging
-publish-analytics-pusher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-staging
-publish-analytics-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-staging
-publish-magic-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-staging
-publish-magic-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-staging
-publish-match-data-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s match_data
-
-.PHONY: publish-relay-artifacts-staging
-publish-relay-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
-
-.PHONY: publish-pingdom-artifacts-staging
-publish-pingdom-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
-
-.PHONY: publish-portal-artifacts-staging
-publish-portal-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
-
-.PHONY: publish-portal-cruncher-artifacts-staging
-publish-portal-cruncher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-staging
-publish-server-backend4-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-staging
-publish-server-backend5-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend5
-
-.PHONY: publish-fake-server-artifacts-staging
-publish-fake-server-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_server
-
-.PHONY: publish-load-test-server-artifacts
-publish-load-test-server-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
-
-.PHONY: publish-load-test-client-artifacts
-publish-load-test-client-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
-
-.PHONY: publish-load-test-server-list
-publish-load-test-server-list:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
-
-.PHONY: publish-billing-artifacts-prod
-publish-billing-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
-
-.PHONY: publish-debug-billing-artifacts-prod-debug
-publish-debug-billing-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_billing
-
 .PHONY: deploy-debug-billing-prod-billing
 deploy-debug-billing-prod-debug:
 	./deploy/deploy.sh -e prod -c prod-1 -t debug-billing -n debug_billing -b $(ARTIFACT_BUCKET_PROD_DEBUG)
-
-.PHONY: publish-analytics-pusher-artifacts-prod
-publish-analytics-pusher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-prod
-publish-analytics-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-prod
-publish-magic-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-prod
-publish-magic-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-prod
-publish-match-data-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s match_data
-
-.PHONY: publish-relay-artifacts-prod
-publish-relay-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
-
-.PHONY: publish-pingdom-artifacts-prod
-publish-pingdom-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
-
-.PHONY: publish-portal-artifacts-prod
-publish-portal-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
-
-.PHONY: publish-portal-cruncher-artifacts-prod
-publish-portal-cruncher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-prod
-publish-server-backend4-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-prod
-publish-server-backend5-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend5
-
-.PHONY: publish-bootstrap-script-dev
-publish-bootstrap-script-dev:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-staging
-publish-bootstrap-script-staging:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-prod
-publish-bootstrap-script-prod:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-prod-debug
-publish-bootstrap-script-prod-debug:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
-	@printf "done\n"
 
 .PHONY: build-next
 build-next:
@@ -1175,18 +975,6 @@ deploy-relay-pusher-staging:
 deploy-relay-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
 
-.PHONY: publish-relay-pusher-artifacts-dev
-publish-relay-pusher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_pusher
-
-.PHONY: publish-relay-pusher-artifacts-staging
-publish-relay-pusher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_pusher
-
-.PHONY: publish-relay-pusher-artifacts-prod
-publish-relay-pusher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_pusher
-
 #############################
 #    Debug Server Backend   #
 #############################
@@ -1206,22 +994,6 @@ build-debug-server-backend4-artifacts-prod: build-server-backend4
 .PHONY: build-debug-server-backend4-artifacts-prod-debug
 build-debug-server-backend4-artifacts-prod-debug: build-server-backend4
 	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-dev
-publish-debug-server-backend4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-staging
-publish-debug-server-backend4-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-prod
-publish-debug-server-backend4-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-prod-debug
-publish-debug-server-backend4-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend4
 
 .PHONY: deploy-debug-server-backend4-dev
 deploy-debug-server-backend4-dev:
@@ -1258,22 +1030,6 @@ build-debug-relay-backend-artifacts-prod: build-relay-backend
 .PHONY: build-debug-relay-backend-artifacts-prod-debug
 build-debug-relay-backend-artifacts-prod-debug: build-relay-backend
 	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-dev
-publish-debug-relay-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-staging
-publish-debug-relay-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-prod
-publish-debug-relay-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-prod-debug
-publish-debug-relay-backend-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_relay_backend
 
 .PHONY: deploy-debug-relay-backend-dev
 deploy-debug-relay-backend-dev:
@@ -1337,18 +1093,6 @@ deploy-relay-backend-prod-1:
 deploy-relay-backend-prod-2:
 	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://prod_artifacts
 
-.PHONY: publish-relay-backend-artifacts-dev
-publish-relay-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
-
-.PHONY: publish-relay-backend-artifacts-staging
-publish-relay-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
-
-.PHONY: publish-relay-backend-artifacts-prod
-publish-relay-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_backend
-
 #######################
 #     Ghost Army      #
 #######################
@@ -1375,24 +1119,6 @@ build-ghost-army-analyzer:
 	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
 	@printf "done\n"
 
-.PHONY: publish-ghost-army-bootstrap-script-dev
-publish-ghost-army-bootstrap-script-dev:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-staging
-publish-ghost-army-bootstrap-script-staging:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-prod
-publish-ghost-army-bootstrap-script-prod:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
 .PHONY: build-ghost-army-artifacts-dev
 build-ghost-army-artifacts-dev: build-ghost-army
 	./deploy/build-artifacts.sh -e dev -s ghost_army
@@ -1404,18 +1130,6 @@ build-ghost-army-artifacts-staging: build-ghost-army
 .PHONY: build-ghost-army-artifacts-prod
 build-ghost-army-artifacts-prod: build-ghost-army
 	./deploy/build-artifacts.sh -e prod -s ghost_army
-
-.PHONY: publish-ghost-army-artifacts-dev
-publish-ghost-army-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
-
-.PHONY: publish-ghost-army-artifacts-staging
-publish-ghost-army-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
-
-.PHONY: publish-ghost-army-artifacts-prod
-publish-ghost-army-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
 
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
@@ -1447,25 +1161,13 @@ build-fake-relays:
 build-fake-relays-artifacts-dev: build-fake-relays
 	./deploy/build-artifacts.sh -e dev -s fake_relays
 
-.PHONY: publish-fake-relays-artifacts-dev
-publish-fake-relays-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s fake_relays
-
 .PHONY: build-fake-relays-artifacts-staging
 build-fake-relays-artifacts-staging: build-fake-relays
 	./deploy/build-artifacts.sh -e staging -s fake_relays
 
-.PHONY: publish-fake-relays-artifacts-staging
-publish-fake-relays-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_relays
-
 .PHONY: build-fake-relays-artifacts-prod
 build-fake-relays-artifacts-prod: build-fake-relays
 	./deploy/build-artifacts.sh -e prod -s fake_relays
-
-.PHONY: publish-fake-relays-artifacts-prod
-publish-fake-relays-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s fake_relays
 
 #######################
 # Relay Build Process #
@@ -1507,18 +1209,6 @@ build-relay-forwarder-artifacts-staging: build-relay-forwarder
 build-relay-forwarder-artifacts-prod: build-relay-forwarder
 	./deploy/build-artifacts.sh -e prod -s relay_forwarder
 
-.PHONY: publish-relay-forwarder-artifacts-dev
-publish-relay-forwarder-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-staging
-publish-relay-forwarder-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-prod
-publish-relay-forwarder-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
-
 .PHONY: deploy-relay-forwarder-dev
 deploy-relay-forwarder-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts
@@ -1553,18 +1243,6 @@ build-relay-gateway-artifacts-staging: build-relay-gateway
 build-relay-gateway-artifacts-prod: build-relay-gateway
 	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
-.PHONY: publish-relay-gateway-artifacts-dev
-publish-relay-gateway-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-staging
-publish-relay-gateway-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-prod
-publish-relay-gateway-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
-
 #######################
 ##   Relay Frontend  ##
 #######################
@@ -1586,18 +1264,6 @@ build-relay-frontend-artifacts-staging: build-relay-frontend
 .PHONY: build-relay-frontend-artifacts-prod
 build-relay-frontend-artifacts-prod: build-relay-frontend
 	./deploy/build-artifacts.sh -e prod -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-dev
-publish-relay-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-staging
-publish-relay-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-prod
-publish-relay-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
 
 #######################
 
