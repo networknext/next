@@ -119,6 +119,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - make -j32 test-relay
+            - artifact push workflow ./dist/reference_relay
 
   - name: "Build Functional Tests 4"
     dependencies: []
