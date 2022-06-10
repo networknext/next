@@ -509,6 +509,15 @@ func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRo
 		return &err
 	}
 
+	// Check if the buyer actually has a route shader
+	if _, err := s.Storage.RouteShader(ctx, buyer.ID); err != nil {
+		if err := s.Storage.AddRouteShader(ctx, core.NewRouteShader(), buyer.ID); err != nil {
+			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
+	}
+
 	// TODO: Update functions should be using database ID here
 
 	wasError := false
