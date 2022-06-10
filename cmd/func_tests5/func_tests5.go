@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	relayBin   = "./dist/reference_relay"
-	backendBin = "./dist/func_backend5"
-	clientBin  = "./dist/func_client5"
-	serverBin  = "./dist/func_server5"
+	relayBin   = "./reference_relay"
+	backendBin = "./func_backend5"
+	clientBin  = "./func_client5"
+	serverBin  = "./func_server5"
 )
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
