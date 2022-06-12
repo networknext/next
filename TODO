@@ -1,36 +1,12 @@
 DONE
 
-TODO
-
-	----------------------------------------------------
-
 	Backport race condition on fallback to direct to sdk4.
 
-	----------------------------------------------------
+TODO
 
-	There's something wrong with session flush impl.
+	Fix session flush in sdk5
 
-	I think if a session update is in flight when server flush is called, the server goes, ok i'm fluhsed done.
-
-	But it really needs to be a session update response that confirms the timeout.
-
-	Without this, very rarely the session flush can fail...
-
-	----------------------------------------------------
-
-	Backport autodetect timeout and flush fixes back to sdk4.
-
-	----------------------------------------------------
-
-	Backport server ready tests back to sdk4.
-
-	----------------------------------------------------
-
-	Make sure all sdk4 examples flush the server.
-
-	----------------------------------------------------
-
-	Make sure all sdk4 tests flush the server.
+	Fix session flush in sdk4
 
 	----------------------------------------------------
 
@@ -39,27 +15,5 @@ TODO
 	----------------------------------------------------
 
 	Update sdk4 docs that you must flush the server.
-
-	----------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-	----------------------------------------------------
-
-	Get sdk5 up and working in dev.
-
-	----------------------------------------------------
-
-	Get sdk5 up and working in prod.
 
 	----------------------------------------------------
