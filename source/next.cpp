@@ -9440,6 +9440,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(29)
 
+    uint32_t session_flush_update_sequence;
     bool session_update_flush;
     bool session_update_flush_finished;
     bool match_data_flush;
@@ -12063,7 +12064,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 entry->previous_server_events = 0;
             }
 
-            if ( entry->session_update_flush && entry->session_update_packet.client_ping_timed_out )
+            if ( entry->session_update_flush && entry->session_update_packet.client_ping_timed_out  && packet.slice_number == entry->session_flush_update_sequence - 1 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
                 entry->session_update_flush_finished = true;
@@ -12898,6 +12899,10 @@ void next_server_internal_flush_session_update( next_server_internal_t * server 
         session->client_ping_timed_out = true;
         session->session_update_packet.client_ping_timed_out = true;
 
+        // IMPORTANT: Make sure to only accept a backend session response for the next session update
+        // sent out, not the current session update (if any is in flight). This way flush succeeds
+        // even if it called in the middle of a session update in progress.
+        session->session_flush_update_sequence = session->update_sequence + 1;
         session->session_update_flush = true;
         server->num_session_updates_to_flush++;
     }

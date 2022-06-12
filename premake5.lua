@@ -65,7 +65,7 @@ project "sodium"
 	filter "system:windows"
 		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
 		linkoptions { "/ignore:4221" }
-	configuration { "gmake" }
+	filter { "action:gmake" }
   		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable", "-Wno-type-limits" }
 
 project "test"
