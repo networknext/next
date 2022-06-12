@@ -279,6 +279,8 @@ int main( int argc, char ** argv )
             {
                 next_assert( server_allocator[i] != NULL );
 
+                next_server_flush( servers[i] );
+
                 next_server_destroy( servers[i] );
 
                 delete server_allocator[i];
