@@ -78,7 +78,9 @@ Then, create a server:
 next_server_destroy
 -------------------
 
-Destroys a server instance, and the socket it manages internally.
+Destroys a server instance.
+
+Make sure to call next_server_flush before destroying the server.
 
 .. code-block:: c++
 
@@ -770,7 +772,7 @@ Call this to flush all server data before shutting a server down.
 
 This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
 
-After calling this function, destroy the server via *next_server_destroy*.
+After calling this function, you can destroy the server via *next_server_destroy*.
 
 **Parameters:**
 
