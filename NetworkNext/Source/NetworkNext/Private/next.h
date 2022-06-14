@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.2"
+    #define NEXT_VERSION_FULL                              "4.20.3"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                2
+    #define NEXT_VERSION_PATCH_INT                                3
 
 #else // !defined(NEXT_DEVELOPMENT)
 
