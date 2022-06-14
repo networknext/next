@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.2"
+    #define NEXT_VERSION_FULL                              "4.20.3"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                2
+    #define NEXT_VERSION_PATCH_INT                                3
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -162,6 +162,10 @@
 #if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
 #define NEXT_PLATFORM_CAN_RUN_SERVER 1
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+
+#if NEXT_UNREAL_ENGINE && NEXT_PLATFORM == NEXT_PLATFORM_PS5 && !defined(PLATFORM_PS5)
+#error Building unreal engine on PS5, but PLATFORM_PS5 is not defined! Please follow steps in README.md for PS5 platform setup!
+#endif // #if NEXT_UNREAL_ENGINE && NEXT_PLATFORM == NEXT_PLATFORM_PS5 && !defined(PLATFORM_PS5)
 
 // -----------------------------------------
 
