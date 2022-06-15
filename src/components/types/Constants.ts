@@ -1,7 +1,7 @@
 export const ANALYTICS_TRIAL_SIGNUP_RESPONSE = 'Congratulations! You are now signed up for a free analytics trial!'
 export const EMAIL_CONFIRMATION_MESSAGE = 'Please check your email to verify your email address:'
 export const EMAIL_VERIFICATION_URL = 'Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.'
-export const SDK_DOWNLOAD_URL = 'https://storage.googleapis.com/portal_sdk_download_storage/next-4.20.0.zip'
+export const SDK_DOWNLOAD_URL = 'https://storage.googleapis.com/portal_sdk_download_storage/next-4.20.3.zip'
 export const SDK_DOWNLOAD_EVENT = 'sdk-download'
 export const SDK_SOURCE_URL = 'https://github.com/networknext/sdk4'
 export const SDK_SOURCE_EVENT = 'sdk-source-view'
