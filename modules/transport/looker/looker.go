@@ -36,7 +36,7 @@ const (
 	LOOKER_SESSION_LOOK_UP_VIEW     = "billing2_session_summary_lookup_only"
 	LOOKER_DATACENTER_INFO_VIEW     = "datacenter_info_v3"
 	LOOKER_RELAY_INFO_VIEW          = "relay_info_v3"
-	LOOKER_NEAR_RELAY_OFFSET_FILTER = "if(${billing2_session_summary.ever_on_next}=yes,${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset},yes)"
+	LOOKER_NEAR_RELAY_OFFSET_FILTER = "if(is_null(${relay_info_v3.relay_name}) OR length(${relay_info_v3.relay_name}) = 0,yes,${billing2_session_summary__near_relay_ids.offset}=${billing2_session_summary__near_relay_jitters.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_rtts.offset} AND ${billing2_session_summary__near_relay_ids.offset} = ${billing2_session_summary__near_relay_packet_losses.offset})"
 )
 
 type LookerWebhookAttachment struct {
@@ -122,11 +122,24 @@ type LookerSessionTimestampLookup struct {
 	TimestampDate string `json:"billing2_session_summary.start_timestamp_date"`
 	TimestampTime string `json:"billing2_session_summary.start_timestamp_time"`
 	SessionID     int64  `json:"billing2_session_summary.session_id"`
+	BuyerID       int64  `json:"billing2_session_summary.buyer_id"`
+}
+
+type LookerUserSessionMeta struct {
+	Timestamp       string `json:"billing2_session_summary.start_timestamp_time"`
+	SessionID       int64  `json:"billing2_session_summary.session_id"`
+	Platform        int8   `json:"billing2_session_summary.platform_type"`
+	Connection      int8   `json:"billing2_session_summary.connection_type"`
+	ISP             string `json:"billing2_session_summary.isp"`
+	ServerAddress   string `json:"billing2_session_summary.server_address"`
+	DatacenterName  string `json:"datacenter_info_v3.datacenter_name"`
+	DatacenterAlias string `json:"datacenter_info_v3.alias"`
 }
 type LookerSessionMeta struct {
 	Timestamp             string      `json:"billing2_session_summary.start_timestamp_date"`
 	SessionID             int64       `json:"billing2_session_summary.session_id"`
 	BuyerID               int64       `json:"billing2_session_summary.buyer_id"`
+	UserHash              int64       `json:"billing2_session_summary.user_hash"`
 	EverOnNext            string      `json:"billing2_session_summary.ever_on_next"`
 	SDKVersion            string      `json:"billing2_session_summary.sdk_version"`
 	ClientAddress         string      `json:"billing2_session_summary.client_address"`
@@ -148,7 +161,6 @@ type LookerSessionMeta struct {
 type LookerSessionSlice struct {
 	Timestamp         string            `json:"billing2.timestamp_time"`
 	SessionID         int64             `json:"billing2.session_id"`
-	UserHash          int64             `json:"billing2.user_hash"`
 	SliceNumber       int               `json:"billing2.slice_number"`
 	NextRTT           float64           `json:"billing2.next_rtt"`
 	NextJitter        float64           `json:"billing2.next_jitter"`
@@ -164,6 +176,7 @@ type LookerSessionSlice struct {
 	IsMultiPath       string            `json:"billing2.multipath"`
 	IsTryBeforeYouBuy string            `json:"billing2.is_try_before_you_buy"`
 	NextRelays        []LookerNextRelay `json:"next_relays"`
+	NextRelayName     string            `json:"relay_info_v3.relay_name,omitempty"`
 	NextRelayOffset   int               `json:"billing2__next_relays.offset"`
 }
 
@@ -212,6 +225,7 @@ func (l *LookerClient) RunSessionTimestampLookupQuery(sessionID string, timeFram
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_date",
 		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".buyer_id",
 	}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
@@ -255,8 +269,6 @@ func (l *LookerClient) RunSessionTimestampLookupQuery(sessionID string, timeFram
 		return LookerSessionTimestampLookup{}, err
 	}
 
-	fmt.Printf("%+v\n\n", querySessionLookup)
-
 	resp.Body.Close()
 
 	if len(querySessionLookup) == 0 {
@@ -266,21 +278,22 @@ func (l *LookerClient) RunSessionTimestampLookupQuery(sessionID string, timeFram
 	return querySessionLookup[0], nil
 }
 
-func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, customerCode string) (LookerSessionMeta, error) {
-	queryNewRelayMeta := make([]LookerSessionMeta, 0)
+func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, customerCode string, analysisOnly bool) ([]LookerSessionMeta, error) {
+	queryMeta := make([]LookerSessionMeta, 0)
 
 	if date == "" {
-		return LookerSessionMeta{}, fmt.Errorf("a specific date is required for session slice lookup")
+		return queryMeta, fmt.Errorf("a specific date is required for session slice lookup")
 	}
 
 	token, err := l.FetchAuthToken()
 	if err != nil {
-		return LookerSessionMeta{}, err
+		return queryMeta, err
 	}
 
 	requiredFields := []string{
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
 		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".user_hash",
 		LOOKER_SESSION_SUMMARY_VIEW + ".platform_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".isp",
@@ -303,7 +316,10 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".session_id"] = fmt.Sprintf("%d", sessionID)
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = date
 
-	filterExpression := fmt.Sprintf(LOOKER_NEAR_RELAY_OFFSET_FILTER)
+	filterExpression := ""
+	if !analysisOnly {
+		filterExpression = fmt.Sprintf(LOOKER_NEAR_RELAY_OFFSET_FILTER)
+	}
 
 	if customerCode != "" {
 		filterExpression = "(" + filterExpression + ")"
@@ -321,12 +337,12 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 
 	lookerBody, err := json.Marshal(query)
 	if err != nil {
-		return LookerSessionMeta{}, err
+		return queryMeta, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
-		return LookerSessionMeta{}, err
+		return queryMeta, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -334,30 +350,25 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return LookerSessionMeta{}, err
+		return queryMeta, err
 	}
 	defer resp.Body.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return LookerSessionMeta{}, err
+		return queryMeta, err
 	}
 
-	fmt.Print(buf.String())
-
-	if err = json.Unmarshal(buf.Bytes(), &queryNewRelayMeta); err != nil {
-		return LookerSessionMeta{}, err
+	if err = json.Unmarshal(buf.Bytes(), &queryMeta); err != nil {
+		return queryMeta, err
 	}
 
-	fmt.Printf("%+v\n\n", queryNewRelayMeta)
-
-	if len(queryNewRelayMeta) == 0 {
-		return LookerSessionMeta{}, fmt.Errorf("failed to fetch near relays and meta data")
-
+	if len(queryMeta) == 0 {
+		return queryMeta, fmt.Errorf("failed to fetch near relays and meta data")
 	}
 
-	return queryNewRelayMeta[0], nil
+	return queryMeta, nil
 }
 
 func (l *LookerClient) RunSessionSliceLookupQuery(sessionID int64, date string, customerCode string) ([]LookerSessionSlice, error) {
@@ -433,8 +444,6 @@ func (l *LookerClient) RunSessionSliceLookupQuery(sessionID int64, date string, 
 	if err = json.Unmarshal(buf.Bytes(), &querySessionSlices); err != nil {
 		return querySessionSlices, err
 	}
-
-	fmt.Printf("%+v\n\n", querySessionSlices)
 
 	return querySessionSlices, nil
 }
@@ -658,8 +667,8 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 	return LookerSession{}, nil
 }
 
-func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string, customerCode string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
-	querySessions := make([]LookerSessionMeta, 0)
+func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string, customerCode string) ([]LookerUserSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
+	querySessions := make([]LookerUserSessionMeta, 0)
 
 	queryTimeFrame := timeFrame
 

@@ -358,6 +358,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					DatacenterName:  session.DatacenterName,
 					DatacenterAlias: session.DatacenterAlias,
 					ServerAddr:      session.ServerAddress,
+					Platform:        uint8(session.Platform),
+					Connection:      uint8(session.Connection),
+					Location: routing.Location{
+						ISP: session.ISP,
+					},
 				},
 			})
 		}
@@ -798,81 +803,15 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	isLiveSession := !(err != nil || metaString == "")
 
 	if s.UseLooker && isAdmin && !isLiveSession {
-		lookerSession, err := s.LookerClient.RunSessionLookupQuery(args.SessionID, timeFrame, args.CustomerCode)
+		sessionMeta, sessionSlices, err := s.LookerSessionDetails(ctx, args.SessionID, timeFrame, args.CustomerCode)
 		if err != nil {
-			err = fmt.Errorf("SessionDetails(): failed to look up session in Looker: %v", err)
+			err = fmt.Errorf("SessionDetails() failed to fetch session details from Looker: %v", err)
 			core.Error("%v", err)
 			return err
 		}
 
-		nearbyRelays := make([]transport.NearRelayPortalData, len(lookerSession.NearRelays))
-
-		for i, relay := range lookerSession.NearRelays {
-			relayID := uint64(relay.ID)
-			nearbyRelays[i].ID = relayID
-			nearbyRelays[i].Name = relay.Name
-			nearbyRelays[i].ClientStats.RTT = relay.RTT
-			nearbyRelays[i].ClientStats.Jitter = relay.Jitter
-			nearbyRelays[i].ClientStats.PacketLoss = relay.PL
-		}
-
-		hops := make([]transport.RelayHop, 0)
-
-		reply.Meta = transport.SessionMeta{
-			ID:         uint64(lookerSession.Meta.SessionID),
-			UserHash:   uint64(lookerSession.Slices[0].UserHash),
-			BuyerID:    uint64(lookerSession.Meta.BuyerID),
-			Connection: uint8(lookerSession.Meta.Connection),
-			Location: routing.Location{
-				ISP:       lookerSession.Meta.ISP,
-				Latitude:  float32(lookerSession.Meta.Latitude),
-				Longitude: float32(lookerSession.Meta.Longitude),
-			},
-			Hops:            hops,
-			Platform:        uint8(lookerSession.Meta.Platform),
-			DatacenterName:  lookerSession.Meta.DatacenterName,
-			DatacenterAlias: lookerSession.Meta.DatacenterAlias,
-			SDK:             lookerSession.Meta.SDKVersion,
-			ClientAddr:      lookerSession.Meta.ClientAddress,
-			NearbyRelays:    nearbyRelays,
-			ServerAddr:      lookerSession.Meta.ServerAddress,
-			OnNetworkNext:   strings.ToLower(lookerSession.Meta.EverOnNext) == "yes",
-		}
-
-		for _, slice := range lookerSession.Slices {
-			timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
-			if err != nil {
-				core.Error("TestLookerSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
-				continue
-			}
-
-			reply.Slices = append(reply.Slices, transport.SessionSlice{
-				Timestamp: timeStamp,
-			})
-		}
-
-		buyer, err := s.Storage.Buyer(ctx, reply.Meta.BuyerID)
-		if err != nil {
-			// The buyer entry won't exist in environments that aren't prod so only anonymize if !admin
-			err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
-			core.Error("%v", err)
-			if !isAdmin {
-				reply.Meta.Anonymise()
-			}
-		} else {
-			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				reply.Meta.Anonymise()
-			}
-		}
-
-		sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
-			return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
-		})
-
-		// Sometimes there is an empty hop struct added to the meta data that we don't need
-		if len(reply.Meta.Hops) == 1 && reply.Meta.Hops[0].Name == "" {
-			reply.Meta.Hops = make([]transport.RelayHop, 0)
-		}
+		reply.Meta = sessionMeta
+		reply.Slices = sessionSlices
 
 		return nil
 	}
@@ -3215,35 +3154,188 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	return nil
 }
 
-type TestSessionMetaLookupArgs struct {
-	SessionID    string `json:"session_id"`
-	CustomerCode string `json:"customer_code"`
-}
-
-type TestSessionMetaLookupReply struct{}
-
-func (s *BuyersService) TestSessionMetaLookup(r *http.Request, args *TestSessionMetaLookupArgs, reply *TestSessionMetaLookupReply) error {
-	lookupData, err := s.LookerClient.RunSessionTimestampLookupQuery(args.SessionID, "")
+func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID string, timeFrame string, customerCode string) (transport.SessionMeta, []transport.SessionSlice, error) {
+	lookupData, err := s.LookerClient.RunSessionTimestampLookupQuery(sessionID, timeFrame)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
 
-	metaData, err := s.LookerClient.RunSessionMetaDataQuery(lookupData.SessionID, lookupData.TimestampTime, "")
-	if err != nil {
-		fmt.Println(err)
-		return err
+	analysisOnly := false
+	if s.Env == "local" {
+		analysisOnly = true
+	} else {
+		buyer, err := s.Storage.Buyer(ctx, uint64(lookupData.BuyerID))
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("LookerSessionDetails(): %v: Failed to fetch buyer", err.Error())
+			return transport.SessionMeta{}, []transport.SessionSlice{}, &err
+		}
+
+		analysisOnly = buyer.RouteShader.AnalysisOnly
 	}
 
-	fmt.Println(metaData)
-
-	sessionSlices, err := s.LookerClient.RunSessionSliceLookupQuery(lookupData.SessionID, lookupData.TimestampDate, "")
+	metaData, err := s.LookerClient.RunSessionMetaDataQuery(lookupData.SessionID, lookupData.TimestampTime, customerCode, analysisOnly)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
 
-	fmt.Println(sessionSlices)
+	// Looker returns n rows of meta data for n near relays. Sort through and pull out the near relay info
+	nearRelays := make([]transport.NearRelayPortalData, 0)
+	for _, row := range metaData {
+		if row.NearRelayNames == "" {
+			continue
+		}
 
-	return nil
+		// Parse relay ID
+		relayID, err := row.NearRelayIDs.Int64()
+		if err != nil {
+			continue
+		}
+
+		// Parse relay RTT
+		relayRTT, err := row.NearRelayRTTs.Float64()
+		if err != nil {
+			continue
+		}
+
+		// Parse relay Jitter
+		relayJitter, err := row.NearRelayJitters.Float64()
+		if err != nil {
+			continue
+		}
+
+		// Parse relay PL
+		relayPacketLoss, err := row.NearRelayPacketLosses.Float64()
+		if err != nil {
+			continue
+		}
+
+		nearRelays = append(nearRelays, transport.NearRelayPortalData{
+			ID:   uint64(relayID),
+			Name: row.NearRelayNames,
+			ClientStats: routing.Stats{
+				RTT:        relayRTT,
+				Jitter:     relayJitter,
+				PacketLoss: relayPacketLoss,
+			},
+		})
+	}
+
+	// Sort near relays by increasing RTT
+	sort.Slice(nearRelays, func(i int, j int) bool {
+		return nearRelays[i].ClientStats.RTT < nearRelays[j].ClientStats.RTT
+	})
+
+	// Build the meta data off of the first meta entry returned by Looker (Looker duplicates row for near relays so all entries are the same - near relays)
+	metaEntry := metaData[0]
+	sessionMeta := transport.SessionMeta{
+		ID:           uint64(lookupData.SessionID),
+		BuyerID:      uint64(metaEntry.BuyerID),
+		UserHash:     uint64(metaEntry.UserHash),
+		NearbyRelays: nearRelays,
+		ClientAddr:   metaEntry.ClientAddress,
+		ServerAddr:   metaEntry.ServerAddress,
+		Connection:   uint8(metaEntry.Connection),
+		Location: routing.Location{
+			Latitude:  float32(metaEntry.Latitude),
+			Longitude: float32(metaEntry.Longitude),
+			ISP:       metaEntry.ISP,
+		},
+		DatacenterName:  metaEntry.DatacenterName,
+		DatacenterAlias: metaEntry.DatacenterAlias,
+		Platform:        uint8(metaEntry.Platform),
+		SDK:             metaEntry.SDKVersion,
+		// Stupid looker...
+		OnNetworkNext: strings.ToLower(metaEntry.EverOnNext) == "yes",
+	}
+
+	lookerSessionSlices, err := s.LookerClient.RunSessionSliceLookupQuery(lookupData.SessionID, lookupData.TimestampDate, customerCode)
+	if err != nil {
+		return transport.SessionMeta{}, []transport.SessionSlice{}, err
+	}
+
+	// Sort slices by slice number to make sure everything coming out of looker is in order
+	sort.Slice(lookerSessionSlices, func(i int, j int) bool {
+		return lookerSessionSlices[i].SliceNumber < lookerSessionSlices[j].SliceNumber
+	})
+
+	filteredSlices := make([]looker.LookerSessionSlice, 0)
+	for _, slice := range lookerSessionSlices {
+		// If the slice number hasn't been seen before, add it to the slice array - filter out duplicate slices
+		if slice.SliceNumber >= len(filteredSlices) {
+			filteredSlices = append(filteredSlices, slice)
+		}
+
+		// Always add the next relays to the slice if they exist
+		filteredSlices[slice.SliceNumber].NextRelays = append(filteredSlices[slice.SliceNumber].NextRelays, looker.LookerNextRelay{
+			Offset: slice.NextRelayOffset,
+			Name:   slice.NextRelayName,
+		})
+	}
+
+	sessionSlices := make([]transport.SessionSlice, len(filteredSlices))
+	for i, slice := range filteredSlices {
+		// If the slice has a next route, sort the hops by their offset to make sure they are in order
+		if len(slice.NextRelays) > 0 {
+			sort.Slice(slice.NextRelays, func(i int, j int) bool {
+				return slice.NextRelays[i].Offset < slice.NextRelays[j].Offset
+			})
+		}
+
+		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
+		if err != nil {
+			core.Error("TestSessionMetaLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+			continue
+		}
+
+		envUp := 0
+		envDown := 0
+		onNetworkNext := strings.ToLower(slice.OnNetworkNext) == "yes"
+
+		if onNetworkNext {
+			envUp = int(((8 * slice.EnvelopeUp) / 10) / 1000)
+			envDown = int(((8 * slice.EnvelopeDown) / 10) / 1000)
+		}
+
+		sessionSlices[i] = transport.SessionSlice{
+			Timestamp: timeStamp,
+			Next: routing.Stats{
+				RTT:        slice.NextRTT,
+				Jitter:     slice.NextJitter,
+				PacketLoss: slice.NextPacketLoss,
+			},
+			Direct: routing.Stats{
+				RTT:        slice.DirectRTT,
+				Jitter:     slice.DirectJitter,
+				PacketLoss: slice.DirectPacketLoss,
+			},
+			Predicted: routing.Stats{
+				RTT: slice.PredictedRTT,
+			},
+			Envelope: routing.Envelope{
+				Up:   int64(envUp),
+				Down: int64(envDown),
+			},
+			RouteDiversity: uint32(slice.RouteDiversity),
+			// Stupid looker...
+			OnNetworkNext:     onNetworkNext,
+			IsMultiPath:       strings.ToLower(slice.IsMultiPath) == "yes",
+			IsTryBeforeYouBuy: strings.ToLower(slice.IsTryBeforeYouBuy) == "yes",
+		}
+	}
+
+	lastSlice := filteredSlices[len(filteredSlices)-1]
+
+	sessionMeta.Hops = make([]transport.RelayHop, 0)
+	// 6-16-22 - Portal doesn't support slice scrubbing so we will just take the last slice and use its next relays as the session hops
+	// TODO: In the future, allow Portal users to scrub the session to see all routes taken and update this block to use the NextRelays array
+	if sessionMeta.OnNetworkNext {
+		for _, relay := range lastSlice.NextRelays {
+			sessionMeta.Hops = append(sessionMeta.Hops, transport.RelayHop{
+				Name: relay.Name,
+			})
+		}
+	}
+
+	return sessionMeta, sessionSlices[1:], nil
 }
