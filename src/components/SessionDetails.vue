@@ -427,8 +427,10 @@ export default class SessionDetails extends Vue {
         this.slices = response.slices
 
         const enableRefresh = response.refresh || false
-        if (!enableRefresh) {
-          clearInterval(this.detailsLoop)
+        if (enableRefresh && !this.detailsLoop) {
+          this.detailsLoop = setInterval(() => {
+            this.fetchSessionDetails()
+          }, 10000)
         }
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
@@ -527,9 +529,6 @@ export default class SessionDetails extends Vue {
       clearInterval(this.detailsLoop)
     }
     this.fetchSessionDetails()
-    this.detailsLoop = setInterval(() => {
-      this.fetchSessionDetails()
-    }, 10000)
   }
 
   private generateCharts () {

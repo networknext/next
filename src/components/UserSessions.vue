@@ -93,8 +93,20 @@
           <li class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
             <a class="page-link" @click.prevent="changePage(currentPage - 1)">Previous</a>
           </li>
-          <li class="page-item" :class="{ active: currentPage === page }" v-for="page in numPages" :key="page">
-            <a class="page-link" @click.prevent="changePage(page)">{{ page }}</a>
+          <li class="page-item" v-if="currentPage - (PAGINATION_RANGE + 1) > 0">
+            <a class="page-link" @click.prevent="changePage(currentPage - (PAGINATION_RANGE + 1))">...</a>
+          </li>
+          <li class="page-item" v-for="index in oldPageNumbers" :key="(currentPage - 6) + index">
+            <a class="page-link" @click.prevent="changePage((currentPage - 6) + index)">{{ (currentPage - 6) + index }}</a>
+          </li>
+          <li class="page-item active">
+            <a class="page-link">{{ currentPage }}</a>
+          </li>
+          <li class="page-item" v-for="index in newPageNumbers" :key="currentPage + index">
+            <a class="page-link" @click.prevent="changePage(currentPage + index)">{{ currentPage + index }}</a>
+          </li>
+          <li class="page-item" v-if="currentPage + (PAGINATION_RANGE + 1) < numPages">
+            <a class="page-link" @click.prevent="changePage(currentPage + (PAGINATION_RANGE + 1))">...</a>
           </li>
           <li class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
             <a class="page-link" @click.prevent="changePage(currentPage + 1)">Next</a>
@@ -133,6 +145,19 @@ const DEFAULT_ENTRIES_PER_PAGE = 40
 @Component
 export default class UserSessions extends Vue {
   private ENTRIES_PER_PAGE = process.env.VUE_APP_USER_SESSION_PER_PAGE || DEFAULT_ENTRIES_PER_PAGE
+  private PAGINATION_RANGE = 5
+
+  get oldPageNumbers () {
+    if (this.currentPage - this.PAGINATION_RANGE > 0) {
+      return this.PAGINATION_RANGE
+    } else {
+      return this.currentPage - 1
+    }
+  }
+
+  get newPageNumbers () {
+    return this.currentPage + this.PAGINATION_RANGE <= this.numPages - 1 ? this.PAGINATION_RANGE : this.numPages - this.currentPage
+  }
 
   get currentPageSessions () {
     const startIndex = this.currentPage - 1 > 0 ? (this.currentPage - 1) * this.ENTRIES_PER_PAGE : 0
