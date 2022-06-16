@@ -792,22 +792,39 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if args.Timeframe != "" {
-		timeFrame = args.Timeframe
-	}
-
 	sessionMetaClient := s.RedisPoolSessionMeta.Get()
 	defer sessionMetaClient.Close()
 
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	isLiveSession := !(err != nil || metaString == "")
 
-	if s.UseLooker && isAdmin && !isLiveSession {
+	useLooker := false
+	useBigTable := false
+
+	// TODO: if !isLiveSession && s.UseLooker && middleware.VerifyAllRoles(r, middleware.ExplorerRole) && analyticsSub....
+	if !isLiveSession && isAdmin && s.UseLooker {
+		useLooker = true
+	}
+
+	if !isLiveSession && !useLooker && s.UseBigtable {
+		useBigTable = true
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		useLooker = false
+		useBigTable = false
+	}
+
+	if useLooker {
 		sessionMeta, sessionSlices, err := s.LookerSessionDetails(ctx, args.SessionID, timeFrame, args.CustomerCode)
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() failed to fetch session details from Looker: %v", err)
 			core.Error("%v", err)
 			return err
+		}
+
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CustomerCode)) {
+			sessionMeta.Anonymise()
 		}
 
 		reply.Meta = sessionMeta
@@ -817,7 +834,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	// Use bigtable if error from redis or requesting historic information
-	if s.UseBigtable && !isLiveSession && (!s.UseLooker || (s.UseLooker && !isAdmin)) {
+	if useBigTable {
 		metaRows, err := s.BigTable.GetRowWithRowKey(ctx, fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
