@@ -347,7 +347,7 @@ func refreshAuth(env Environment) error {
 		clientID = PROD_AUTH0_CLIENT_ID
 		clientSecret = PROD_AUTH0_CLIENT_SECRET
 		domain = PROD_AUTH0_DOMAIN
-	case "dev":
+	case "dev4", "dev5":
 		audience = DEV_AUTH0_AUDIENCE
 		clientID = DEV_AUTH0_CLIENT_ID
 		clientSecret = DEV_AUTH0_CLIENT_SECRET
