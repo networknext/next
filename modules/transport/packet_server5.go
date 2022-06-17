@@ -172,7 +172,7 @@ type SessionUpdatePacketSDK5 struct {
 	HasNearRelayPings               bool
 	NumTags                         int32
 	Tags                            [MaxTags]uint64
-	UserFlags                       uint64
+	ServerEvents                    uint64
 	DirectMinRTT                    float32
 	DirectMaxRTT                    float32
 	DirectPrimeRTT                  float32
@@ -251,13 +251,12 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&packet.HasNearRelayPings)
 
 	hasTags := stream.IsWriting() && packet.NumTags > 0
-	// hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+	hasServerEvents := stream.IsWriting() && packet.ServerEvents != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
 	stream.SerializeBool(&hasTags)
-	// TODO: bring this back when server events are included in sdk5
-	// stream.SerializeBool(&hasUserFlags)
+	stream.SerializeBool(&hasServerEvents)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
@@ -268,9 +267,9 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	// if hasUserFlags {
-	// 	stream.SerializeUint64(&packet.UserFlags)
-	// }
+	if hasServerEvents {
+		stream.SerializeUint64(&packet.ServerEvents)
+	}
 
 	stream.SerializeFloat32(&packet.DirectMinRTT)
 	stream.SerializeFloat32(&packet.DirectMaxRTT)

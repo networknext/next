@@ -178,7 +178,7 @@ func TestIsOldestInstance_OtherInstance_TimeVarianceCheck(t *testing.T) {
 	assert.NotNil(t, ms)
 
 	otherMetadata := getTestMagicInstanceMetadata(initTime)
-	otherMetadata.UpdatedAt = initTime.Add(-10*time.Second)
+	otherMetadata.UpdatedAt = initTime.Add(-10 * time.Second)
 	err = ms.InsertInstanceMetadata(otherMetadata)
 	assert.NoError(t, err)
 

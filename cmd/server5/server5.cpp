@@ -1,5 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2020 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -54,7 +54,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    if ( !next_server_session_upgraded( server, from ) )
+    if ( next_server_ready( server ) && !next_server_session_upgraded( server, from ) )
     {
         next_server_upgrade_session( server, from, 0 );
 
@@ -84,6 +84,8 @@ int main()
 
         next_sleep( 1.0 / 1000.0 );
     }
+
+    next_server_flush( server );
     
     next_server_destroy( server );
     
