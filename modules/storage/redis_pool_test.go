@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: convert to functional tests
+
+/*
 import (
 	"testing"
 
@@ -39,3 +42,4 @@ func TestValidateRedisPoolSuccess(t *testing.T) {
 	err = storage.ValidateRedisPool(pool)
 	assert.NoError(t, err)
 }
+*/

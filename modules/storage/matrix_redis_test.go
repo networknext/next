@@ -1,5 +1,8 @@
 package storage
 
+// todo: convert to functional tests
+
+/*
 import (
 	"testing"
 	"time"
@@ -60,3 +63,4 @@ func TestRedisMatrixStore_MatrixTestSuite_RelayBackendLiveData(t *testing.T) {
 	assert.Equal(t, ld.ID, rbArr[0].ID)
 	assert.Equal(t, ld2.ID, rbArr[1].ID)
 }
+*/

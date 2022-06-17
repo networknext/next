@@ -725,7 +725,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
 		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf(`"%s"`, nonce),
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
 	}
 
@@ -828,7 +828,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
 		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf(`"%s"`, nonce),
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
 	}
 
@@ -858,7 +858,7 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 		SessionLength:   3600,
 		EmbedURL:        "/login/embed/" + url.QueryEscape("/embed/dashboards-next/?"), // TODO: Replace the ? with the correct dash ID
 		ForceLogout:     true,
-		Nonce:           fmt.Sprintf(`"%s"`, nonce),
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
 	}
 

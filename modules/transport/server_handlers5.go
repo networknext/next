@@ -1607,7 +1607,7 @@ func BuildBillingEntry2SDK5(state *SessionHandlerStateSDK5, sliceDuration uint64
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
 		RouteDiversity:                  int32(state.RouteDiversity),
-		UserFlags:                       state.Packet.UserFlags,
+		UserFlags:                       state.Packet.ServerEvents,
 		DatacenterID:                    state.Packet.DatacenterID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,

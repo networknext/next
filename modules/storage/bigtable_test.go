@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: this needs to be conveted to a functional test
+
+/*
 import (
 	"context"
 	"fmt"
@@ -1199,3 +1202,4 @@ func TestBigTable(t *testing.T) {
 		assert.EqualError(t, err, errorStr)
 	})
 }
+*/
