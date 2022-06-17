@@ -10,7 +10,7 @@ agent:
 global_job_config:
   secrets:
     - name: sdk5-repo-access
-    - name: google-cloud-platform
+    - name: google-cloud-platform-prod
   prologue:
     commands:
       - checkout
@@ -62,7 +62,7 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-          
+
             - cache restore
 
       jobs:
@@ -71,92 +71,92 @@ blocks:
           commands:
             - make build-billing-artifacts-prod
             - artifact push workflow dist/billing.prod.tar.gz
-        
+
         - name: "Analytics Pusher"
           commands:
             - make build-analytics-pusher-artifacts-prod
             - artifact push workflow dist/analytics_pusher.prod.tar.gz
-        
+
         - name: "Analytics"
           commands:
             - make build-analytics-artifacts-prod
             - artifact push workflow dist/analytics.prod.tar.gz
-        
+
         - name: "Portal"
           commands:
             - make build-portal-artifacts-prod
             - artifact push workflow dist/portal.prod.tar.gz
-        
+
         - name: "Portal Cruncher"
           commands:
             - make build-portal-cruncher-artifacts-prod
             - artifact push workflow dist/portal_cruncher.prod.tar.gz
-        
+
         - name: "Relay Gateway"
           commands:
             - make build-relay-gateway-artifacts-prod
             - artifact push workflow dist/relay_gateway.prod.tar.gz
-        
+
         - name: "Relay Backend"
           commands:
             - make build-relay-backend-artifacts-prod
             - artifact push workflow dist/relay_backend.prod.tar.gz
-        
+
         - name: "Relay Frontend"
           commands:
             - make build-relay-frontend-artifacts-prod
             - artifact push workflow dist/relay_frontend.prod.tar.gz
-        
+
         - name: "Relay Forwarder"
           commands:
             - make build-relay-forwarder-artifacts-prod
             - artifact push workflow dist/relay_forwarder.prod.tar.gz
-        
+
         - name: "Server Backend 4"
           commands:
             - make build-server-backend4-artifacts-prod
             - artifact push workflow dist/server_backend4.prod.tar.gz
-        
+
         - name: "Server Backend 5"
           commands:
             - make build-server-backend5-artifacts-prod
             - artifact push workflow dist/server_backend5.prod.tar.gz
-        
+
         - name: "Debug Server Backend 4"
           commands:
             - make build-debug-server-backend4-artifacts-prod
             - artifact push workflow dist/debug_server_backend4.prod.tar.gz
-        
+
         - name: "Debug Relay Backend"
           commands:
             - make build-debug-relay-backend-artifacts-prod
             - artifact push workflow dist/debug_relay_backend.prod.tar.gz
-        
+
         - name: "Ghost Army"
           commands:
             - make build-ghost-army-artifacts-prod
             - artifact push workflow dist/ghost_army.prod.tar.gz
-        
+
         - name: "Relay Pusher"
           commands:
             - make build-relay-pusher-artifacts-prod
             - artifact push workflow dist/relay_pusher.prod.tar.gz
-        
+
         - name: "Pingdom"
           commands:
             - make build-pingdom-artifacts-prod
             - artifact push workflow dist/pingdom.prod.tar.gz
-        
+
         - name: "Match Data"
           commands:
             - make build-match-data-artifacts-prod
             - artifact push workflow dist/match_data.prod.tar.gz
-        
+
         - name: "Magic Backend"
           commands:
             - make build-magic-backend-artifacts-prod
             - artifact push workflow dist/magic_backend.prod.tar.gz
-        
+
         - name: "Magic Frontend"
           commands:
             - make build-magic-frontend-artifacts-prod
@@ -197,9 +197,9 @@ blocks:
 
 
   - name: "Publish Artifacts"
-    
+
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
-    
+
     task:
 
       prologue:
