@@ -2645,7 +2645,7 @@ int relay_verify_header_sdk4( int direction, const uint8_t * private_key, uint8_
     if ( buffer_length < RELAY_HEADER_BYTES_SDK4 )
     {
         // todo
-        printf( "packet too small\n" );
+        printf( "packet too small (sdk4)\n" );
         return RELAY_ERROR;
     }
 
@@ -2710,7 +2710,7 @@ int relay_verify_header_sdk4( int direction, const uint8_t * private_key, uint8_
     if ( result != 0 )
     {
         // todo
-        printf( "failed to decrypt\n" );
+        printf( "failed to decrypt (sdk4)\n" );
         return RELAY_ERROR;
     }
 
@@ -2832,7 +2832,7 @@ int relay_verify_header_sdk5( int direction, int packet_type, const uint8_t * pr
     if ( buffer_length < RELAY_HEADER_BYTES_SDK5 )
     {
         // todo
-        printf( "packet too small\n" );
+        printf( "packet too small (sdk5)\n" );
         return RELAY_ERROR;
     }
 
@@ -2895,7 +2895,7 @@ int relay_verify_header_sdk5( int direction, int packet_type, const uint8_t * pr
     if ( result != 0 )
     {
         // todo
-        printf( "failed to decrypt\n" );
+        printf( "failed to decrypt (sdk5)\n" );
         return RELAY_ERROR;
     }
 
@@ -7606,7 +7606,7 @@ int main( int argc, const char ** argv )
         }
 
         relay_platform_mutex_acquire( relay.mutex );
-        auto iter = relay.sessions->begin();
+        std::map<uint64_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
         {
             if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )

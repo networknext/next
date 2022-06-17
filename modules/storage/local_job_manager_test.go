@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: convert to functional tests
+
+/*
 import (
 	"testing"
 
@@ -27,3 +30,4 @@ func TestLocalJobManager(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+*/

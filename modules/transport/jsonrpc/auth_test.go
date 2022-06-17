@@ -1,5 +1,8 @@
 package jsonrpc_test
 
+// todo: convert to functional test
+
+/*
 import (
 	"context"
 	"fmt"
@@ -1809,3 +1812,4 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+*/

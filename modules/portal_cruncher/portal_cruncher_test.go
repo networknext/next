@@ -1,5 +1,8 @@
 package portalcruncher_test
 
+// todo: this needs to become a functional test
+
+/*
 import (
 	"bufio"
 	"bytes"
@@ -916,3 +919,4 @@ func TestCloseBigTable(t *testing.T) {
 	err = portalCruncher.InsertIntoBigtable(ctx, []*transport.SessionPortalData{&sessionData}, "local", ghostarmy.GhostArmyBuyerID("local"))
 	assert.Error(t, err)
 }
+*/

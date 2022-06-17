@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: convert to functional test
+
+/*
 import (
 	"testing"
 	"time"
@@ -101,3 +104,4 @@ func TestNewRawRedisClientClose(t *testing.T) {
 	err = redisClient.Close()
 	assert.Error(t, err)
 }
+*/

@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: these need to be converted to functional tests
+
+/*
 import (
 	"fmt"
 	"testing"
@@ -170,3 +173,4 @@ func TestMultipathVetoHandlerSyncSuccess(t *testing.T) {
 		assert.Equal(t, true, multipathVetoMap[i])
 	}
 }
+*/
