@@ -7,6 +7,7 @@ agent:
 global_job_config:
   secrets:
     - name: sdk5-repo-access
+    - name: google-cloud-platform-prod
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
@@ -39,5 +40,3 @@ blocks:
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod-debug
-      secrets:
-        - name: google-cloud-platform-prod
