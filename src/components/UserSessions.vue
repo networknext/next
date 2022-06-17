@@ -90,11 +90,14 @@
       </table>
       <nav v-if="$store.getters.isAdmin">
         <div class="pagination-container">
+          <div id="page-counter" class="col-auto">
+            Total Pages: {{ numPages }}
+          </div>
           <ul class="pagination justify-content-center col">
-            <li class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
+            <li id="previous-page-button" class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
               <a class="page-link" @click.prevent="changePage(currentPage - 1)">Previous</a>
             </li>
-            <li class="page-item" v-if="currentPage - (PAGINATION_RANGE + 1) > 0">
+            <li id="skip-backward-button" class="page-item" v-if="currentPage - (PAGINATION_RANGE + 1) > 0">
               <a class="page-link" @click.prevent="changePage(currentPage - (PAGINATION_RANGE + 1))">...</a>
             </li>
             <li class="page-item" v-for="index in oldPageNumbers" :key="oldIndexToPageNumber(index)">
@@ -106,15 +109,16 @@
             <li class="page-item" v-for="index in newPageNumbers" :key="currentPage + index">
               <a class="page-link" @click.prevent="changePage(currentPage + index)">{{ currentPage + index }}</a>
             </li>
-            <li class="page-item" v-if="currentPage + (PAGINATION_RANGE + 1) < numPages">
+            <li id="skip-forward-button" class="page-item" v-if="currentPage + (PAGINATION_RANGE + 1) < numPages">
               <a class="page-link" @click.prevent="changePage(currentPage + (PAGINATION_RANGE + 1))">...</a>
             </li>
-            <li class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
+            <li id="next-page-button" class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
               <a class="page-link" @click.prevent="changePage(currentPage + 1)">Next</a>
             </li>
           </ul>
+          <div class="col-auto" style="padding-top: .5rem;">Entries per page:</div>
           <div class="col-auto">
-            <select class="form-control" @change="updateEntriesPerPage($event.target.value)">
+            <select id="per-page-dropdown" class="form-control" @change="updateEntriesPerPage($event.target.value)">
               <option v-for="option in entriesPerPageList" :key="option" :value="option" :selected="entriesPerPage === option">
                 {{ option }}
               </option>
@@ -157,7 +161,6 @@ export default class UserSessions extends Vue {
   private entriesPerPageList: Array<number>
 
   get oldPageNumbers () {
-    console.log(this.currentPage)
     if (this.currentPage - this.PAGINATION_RANGE > 0) {
       return this.PAGINATION_RANGE
     } else {
@@ -278,8 +281,6 @@ export default class UserSessions extends Vue {
         if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
           this.numPages = Math.ceil(this.readOnlySessions.length / this.entriesPerPage)
           this.currentPage = 1
-          console.log(this.numPages)
-          console.log(this.readOnlySessions.length)
         } else {
           this.sessions = this.sessions.concat(this.readOnlySessions)
           this.currentPage = response.page
@@ -316,6 +317,7 @@ export default class UserSessions extends Vue {
     this.changePage(1)
   }
 
+  // Helper function to avoid clogging template with JS
   private oldIndexToPageNumber (index: number) {
     return this.currentPage - this.PAGINATION_RANGE <= 0 ? index : (this.currentPage - this.PAGINATION_RANGE) + (index - 1)
   }

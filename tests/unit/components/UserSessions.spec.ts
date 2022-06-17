@@ -7,6 +7,8 @@ import { FlagPlugin } from '@/plugins/flags'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import Vuex from 'vuex'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
+import { entries, result } from 'lodash'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, nextPage: number, userID: string, page: number): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUserSessions').mockImplementation((args: any) => {
@@ -17,8 +19,27 @@ function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boole
   })
 }
 
+function fetchLookerUserSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, userID: string): jest.SpyInstance<any, unknown[]> {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUserSessions').mockImplementation((args: any) => {
+    expect(args.user_id).toBe(userID)
+
+    return success ? Promise.resolve({ sessions: sessions }) : Promise.reject(new Error('Mock Error'))
+  })
+}
+
 describe('UserSessions.vue no sessions', () => {
   const localVue = createLocalVue()
+  localVue.use(FlagPlugin, {
+    flags: [
+      {
+        name: FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT,
+        description: 'Leverage Looker API for user tool and session tool',
+        value: true
+      }
+    ],
+    useAPI: false,
+    apiService: {}
+  })
 
   const $route = {
     path: '/user-tool',
@@ -386,6 +407,109 @@ describe('UserSessions.vue no sessions', () => {
     expect(dataRows.at(13).text()).toBe('127.0.0.2')
 
     sessionsSpy.mockReset()
+
+    wrapper.destroy()
+  })
+
+  it('checks new looker functionality (new default behavior)', async () => {
+    const store = new Vuex.Store(defaultStore)
+    store.commit('UPDATE_IS_ADMIN', true)
+
+    $route.path = '/user-tool/00000000'
+    $route.params.pathMatch = '00000000'
+
+    const totalSessions = 200
+
+    let mockSessions = []
+
+    for (let i = 0; i < totalSessions; i++) {
+      // Add the mock session to the array
+      mockSessions.push({
+        timestamp: i, // Bad date but doesn't matter here
+        meta: {
+          id: `0000000${i}`,
+          platform: 'test',
+          connection: 'wifi',
+          location: {
+            isp: 'test'
+          },
+          datacenter_alias: 'test',
+          server_addr: `127.0.0.${i}`
+        }
+      })
+    }
+
+    const sessionsSpy = fetchLookerUserSessionsMock(localVue, true, mockSessions, '00000000')
+
+    const wrapper = shallowMount(UserSessions, {
+      localVue, stubs, mocks, store
+    })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(sessionsSpy).toBeCalledTimes(1)
+
+    await localVue.nextTick()
+
+    const entriesDropDown = wrapper.find('#per-page-dropdown')
+    expect(entriesDropDown.exists()).toBeTruthy()
+
+    console.log(wrapper.html())
+
+    const paginationNav = wrapper.find('.pagination')
+    expect(paginationNav.exists()).toBeTruthy()
+
+    const skipBackwardButton = paginationNav.find('#skip-backward-button')
+    expect(skipBackwardButton.exists()).toBeFalsy()
+
+    const pageItems = paginationNav.findAll('li')
+    expect(pageItems.length).toBeGreaterThan(0)
+
+    const pageLinks = paginationNav.findAll('a')
+    expect(pageLinks.length).toBeGreaterThan(0)
+
+    const previousButton = paginationNav.find('#previous-page-button')
+    expect(previousButton.exists()).toBeTruthy()
+    expect(previousButton.classes('disabled')).toBeTruthy()
+
+    const nextButton = paginationNav.find('#next-page-button')
+    expect(nextButton.exists()).toBeTruthy()
+    expect(nextButton.classes('disabled')).toBeFalsy()
+
+    expect(pageLinks.at(1).text()).toBe("1") // First page after disabled previous button
+    expect(pageItems.at(1).classes('active')).toBeTruthy()
+
+    const skipForwardButton = paginationNav.find('#skip-forward-button')
+    expect(skipForwardButton.exists()).toBeTruthy()
+
+    expect(pageLinks.at(pageLinks.length - 3).text()).toBe("6") // 5 pages shown at a time - skip next and ... buttons
+
+    const pageCounter = wrapper.find('#page-counter')
+    expect(pageCounter.exists()).toBeTruthy()
+    expect(pageCounter.text()).toBe('Total Pages: ' + Math.ceil(totalSessions / 10))
+
+    const sessionTable = wrapper.find('table')
+    expect(sessionTable.exists()).toBeTruthy()
+
+    const tableHeaders = wrapper.findAll('th')
+    expect(tableHeaders.length).toBe(7)
+
+    expect(tableHeaders.at(0).text()).toBe('Date')
+    expect(tableHeaders.at(1).text()).toBe('Session ID')
+    expect(tableHeaders.at(2).text()).toBe('Platform')
+    expect(tableHeaders.at(3).text()).toBe('Connection Type')
+    expect(tableHeaders.at(4).text()).toBe('ISP')
+    expect(tableHeaders.at(5).text()).toBe('Datacenter')
+    expect(tableHeaders.at(6).text()).toBe('Server Address')
+
+    const tableBody = sessionTable.find('tbody')
+    expect(tableBody.exists()).toBeTruthy()
+
+    const sessionEntries = tableBody.findAll('tr')
+    expect(sessionEntries.length).toBe(10)
+
+    store.commit('UPDATE_IS_ADMIN', false)
 
     wrapper.destroy()
   })
