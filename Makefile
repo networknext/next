@@ -31,7 +31,7 @@ DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
-ARTIFACT_BUCKET_PROD = gs://prod_artifacts
+ARTIFACT_BUCKET_PROD = gs://production_artifacts
 ARTIFACT_BUCKET_PROD_DEBUG = gs://prod_debug_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 SYSTEMD_SERVICE_FILE = app.service
@@ -746,18 +746,18 @@ deploy-pingdom-staging:
 
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
 
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://production_artifacts
 
 .PHONY: deploy-pingdom-prod
 deploy-pingdom-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://production_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -973,7 +973,7 @@ deploy-relay-pusher-staging:
 
 .PHONY: deploy-relay-pusher-prod
 deploy-relay-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
 
 #############################
 #    Debug Server Backend   #
@@ -1087,11 +1087,11 @@ deploy-relay-backend-staging-2:
 
 .PHONY: deploy-relay-backend-prod-1
 deploy-relay-backend-prod-1:
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 .PHONY: deploy-relay-backend-prod-2
 deploy-relay-backend-prod-2:
-	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -1141,7 +1141,7 @@ deploy-ghost-army-staging:
 
 .PHONY: deploy-ghost-army-prod
 deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://production_artifacts
 
 #######################
 #     Fake Relay      #
@@ -1219,7 +1219,7 @@ deploy-relay-forwarder-staging:
 
 .PHONY: deploy-relay-forwarder-prod
 deploy-relay-forwarder-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-forwarder -n relay_forwarder -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
 
 #######################
 #    Relay Gateway    #
