@@ -713,6 +713,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	buyer := sqlBuyer{
 		ID:                  b.ID,
+		CompanyCode:         b.CompanyCode,
 		Alias:               b.Alias,
 		IsLiveCustomer:      b.Live,
 		Debug:               b.Debug,
@@ -737,7 +738,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		sql,
 		int64(buyer.ID),
 		buyer.Alias,
-		buyer.Alias,
+		buyer.CompanyCode,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
 		buyer.Analytics,
