@@ -13051,6 +13051,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
         next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+        address.port = uint16_t( atoi(port) );
         success = true;
     }    
     else
