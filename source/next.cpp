@@ -13027,6 +13027,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 {
     next_assert( context );
 
+    double start_time = next_time();
+
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     const char * hostname = next_global_config.server_backend_hostname;
@@ -13044,19 +13046,29 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool success = false;
 
-    double start_time = next_time();
+    // first try to parse the hostname directly as an address, this is a common case in testbeds and there's no reason to actually run a DNS resolve on it
 
-    for ( int i = 0; i < 10; ++i )
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
-        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+        success = true;
+    }    
+    else
+    {
+        // try to resolve the hostname, retry a few times if it doesn't succeed right away
+
+        for ( int i = 0; i < 10; ++i )
         {
-            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-            success = true;
-            break;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+            if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+            {
+                next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+                success = true;
+                break;
+            }
+            else
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+            }
         }
     }
 
