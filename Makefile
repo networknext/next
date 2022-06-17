@@ -9,6 +9,8 @@ GO = go
 GOFMT = gofmt
 TAR = tar
 
+export LD_LIBRARY_PATH=.
+
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
 	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
