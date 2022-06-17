@@ -338,7 +338,7 @@ func createStagingDatabaseBin(numRelays int) {
 	// Create datacenter maps for next and stagingseller
 	dcMapsNext := make(map[uint64]routing.DatacenterMap)
 	dcMapsStagingSeller := make(map[uint64]routing.DatacenterMap)
-	for dcID, _ := range dbWrapper.DatacenterMap {
+	for dcID := range dbWrapper.DatacenterMap {
 		dcMapNext := routing.DatacenterMap{
 			BuyerID:      buyerNext.ID,
 			DatacenterID: dcID,

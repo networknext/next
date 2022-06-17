@@ -347,7 +347,7 @@ func refreshAuth(env Environment) error {
 		clientID = PROD_AUTH0_CLIENT_ID
 		clientSecret = PROD_AUTH0_CLIENT_SECRET
 		domain = PROD_AUTH0_DOMAIN
-	case "dev":
+	case "dev4", "dev5":
 		audience = DEV_AUTH0_AUDIENCE
 		clientID = DEV_AUTH0_CLIENT_ID
 		clientSecret = DEV_AUTH0_CLIENT_SECRET
@@ -705,11 +705,7 @@ func main() {
 		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
-			}
-
-			if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
-				handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
+				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev4|dev5|prod4|prod5)"), 0)
 			}
 
 			env.Name = args[0]
@@ -739,9 +735,36 @@ func main() {
 						fmt.Printf("Failed to start redis: %v\n", err)
 					}
 				}
+
+			}
+
+			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
+			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
+
+			if _, err := os.Stat(envFilePath); err != nil {
+				return err
+			}
+
+			rawFile, err := os.Open(envFilePath)
+			if err != nil {
+				return err
+			}
+
+			defer rawFile.Close()
+
+			rootEnvFile, err := os.Create(".env")
+			if err != nil {
+				return err
+			}
+
+			defer rootEnvFile.Close()
+
+			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
+				return err
 			}
 
 			fmt.Printf("Selected %s environment\n", env.Name)
+
 			return nil
 		},
 	}
@@ -752,13 +775,8 @@ func main() {
 		ShortHelp:  "Display environment",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				if args[0] != "local" && args[0] != "dev" && args[0] != "nrb" && args[0] != "staging" && args[0] != "prod" {
-					handleRunTimeError(fmt.Sprintf("Invalid environment %s: use (local|dev|nrb|staging|prod)\n", args[0]), 0)
-				}
-
 				env.Name = args[0]
 				env.Write()
-
 				fmt.Printf("Selected %s environment\n", env.Name)
 			}
 

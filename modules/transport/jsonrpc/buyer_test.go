@@ -1,5 +1,8 @@
 package jsonrpc_test
 
+// todo: convert to functional test
+
+/*
 import (
 	"context"
 	"encoding/json"
@@ -2601,3 +2604,4 @@ func TestSignTOS(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+*/

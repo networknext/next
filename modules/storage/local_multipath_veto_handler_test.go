@@ -1,5 +1,8 @@
 package storage_test
 
+// todo: this needs to be converted to a functional test
+
+/*
 import (
 	"testing"
 
@@ -59,3 +62,4 @@ func TestLocalGetMapCopyExistingCustomerCode(t *testing.T) {
 	multipathVetoMap := multipathVetoHandler.GetMapCopy("local")
 	assert.Equal(t, map[uint64]bool{1234567890: true}, multipathVetoMap)
 }
+*/

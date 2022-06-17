@@ -52,6 +52,8 @@ const NEXT_BACKEND_SERVER_UPDATE_PACKET = 52
 const NEXT_BACKEND_SERVER_RESPONSE_PACKET = 53
 const NEXT_BACKEND_SESSION_UPDATE_PACKET = 54
 const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 55
+const NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET = 56
+const NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET = 57
 
 const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
@@ -3012,6 +3014,13 @@ func main() {
 				fmt.Printf("error: failed to send session response packet: %v\n", err)
 				continue
 			}
+
+		} else if packetType == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET {
+
+			fmt.Printf("*** match data request packet ***\n")
+
+			// todo
+
 		}
 	}
 }
