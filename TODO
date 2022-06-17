@@ -1,45 +1,19 @@
 DONE
 
-	Verify func tests pass with sdk5
+	Backport race condition on fallback to direct to sdk4.
 
-	Func test to make sure that next_server_ready becomes true on the successful path "welcome to network next :)" and datacenter is set on success path.
+	Fix session flush in sdk5
 
-	Func test to make sure that next_server_ready becomes true, when the server can't init with the backend (eg. ready post-init timeout...)
-
-	Func test for disable autodetect, and no autodetect code runs "cloud".
-
-	Func test for disable autodetect, and no autodetect code runs "multiplay.newyork".
-
-	Func test to make sure that next_server_ready becomes true, when the whois times out.
-
-	Func test to make sure that next_server_ready becomes true, when the autodetect times out.
+	Fix session flush in sdk4
 
 TODO
 
-	Func test to make sure we still receive packets while an autodetect runs long (fix bug with packet receive thread being blocked on autodetect completing...)
+	----------------------------------------------------
 
-	-----------------------
-
-	Bring across server flush func tests.
-
-	Bring across server event func tests.
-
-	Bring across match data func tests.
+	Update sdk5 docs that you must flush the server.
 
 	----------------------------------------------------
 
-	Extend SDK5 to pass up the mean direct RTT from client -> server, server -> backend.
-
-	----------------------------------------------------
-
-	Extend SDK5 to pass up the direct bandwidth in kbps up/down, not just sending actual bandwidth when on next.
-
-	----------------------------------------------------
-
-	Add func test necessary for mean direct RTT
-
-	----------------------------------------------------
-
-	Add func test necessary for direct bandwidth up/down actual usage in kbps
+	Update sdk4 docs that you must flush the server.
 
 	----------------------------------------------------

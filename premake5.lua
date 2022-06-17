@@ -7,7 +7,7 @@ solution "next"
 	warnings "Extra"
 	floatingpoint "Fast"
 	flags { "FatalWarnings" }
-	defines { "NEXT_COMPILE_WITH_TESTS", "NEXT_DEVELOPMENT=1" }
+	defines { "NEXT_COMPILE_WITH_TESTS" }
 	filter "configurations:Debug"
 		symbols "On"
 		defines { "_DEBUG" }

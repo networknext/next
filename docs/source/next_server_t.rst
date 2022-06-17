@@ -78,7 +78,9 @@ Then, create a server:
 next_server_destroy
 -------------------
 
-Destroys a server instance, and the socket it manages internally.
+Destroys a server instance.
+
+Make sure to call next_server_flush before destroying the server.
 
 .. code-block:: c++
 

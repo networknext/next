@@ -95,7 +95,7 @@
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
 #define NEXT_MATCH_DATA_FLUSH_RESEND_TIME                             1.0
-#define NEXT_SERVER_FLUSH_TIMEOUT                                    10.0
+#define NEXT_SERVER_FLUSH_TIMEOUT                                    30.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -4527,6 +4527,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
+	float mean_rtt;						// mean rtt (ms)
     float min_rtt;                      // minimum rtt (ms)
     float max_rtt;                      // maximum rtt (ms)
     float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
@@ -4633,6 +4634,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = 0.0;
     }
 
+    stats->mean_rtt = 0.0f;
     stats->min_rtt = 0.0f;
     stats->max_rtt = 0.0f;
     stats->prime_rtt = 0.0f;
@@ -4693,8 +4695,9 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = optional_route_changed_time;
     }
 
-    // calculate min, max and prime RTT (prime is second largest RTT value)
+    // calculate mean, min, max and prime RTT (prime is second largest RTT value)
 
+    double sum_rtt = 0.0;
     double min_rtt = FLT_MAX;
     double max_rtt = 0.0;
     double prime_rtt = 0.0;
@@ -4710,6 +4713,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
             if ( entry->time_pong_received > entry->time_ping_sent )
             {
                 double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                sum_rtt += rtt;
                 if ( rtt < min_rtt )
                 {
                     min_rtt = rtt;
@@ -4739,6 +4743,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     next_assert( max_rtt >= 0.0 );
     next_assert( prime_rtt >= 0.0 );
 
+    stats->mean_rtt = float( sum_rtt / num_pongs );
     stats->min_rtt = float( min_rtt );
     stats->max_rtt = float( max_rtt );
     stats->prime_rtt = float( prime_rtt );
@@ -6016,9 +6021,12 @@ bool next_route_manager_committed( next_route_manager_t * route_manager )
     return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
-void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes, const uint8_t * magic, const next_address_t * client_external_address )
+bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_route_manager_verify_sentinels( route_manager );
+
+    if ( !route_manager->route_data.current_route )
+    	return false;
 
     next_assert( route_manager->route_data.current_route );
     next_assert( to );
@@ -6044,13 +6052,15 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     if ( *packet_bytes == 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
-        return;
+        return false;
     }
 
     next_assert( next_basic_packet_filter( packet_data, *packet_bytes ) );
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, *packet_bytes ) );
 
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
+
+    return true;
 }
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, uint8_t packet_type, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
@@ -8652,12 +8662,19 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
 
             next_platform_mutex_acquire( &client->internal->route_manager_mutex );
-            next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes, client->current_magic, &client->client_external_address );
+            bool result = next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes, client->current_magic, &client->client_external_address );
             next_platform_mutex_release( &client->internal->route_manager_mutex );
 
-            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
-
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+            if ( result )
+            {
+	            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+	            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+	        }
+	        else
+	        {
+	        	// could not send over network next. race condition with fallback to direct. send direct instead...
+	        	send_direct = true;
+	        }
         }
 
         if ( send_direct )
@@ -10209,6 +10226,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(29)
 
+	uint32_t session_flush_update_sequence;
     bool session_update_flush;
     bool session_update_flush_finished;
     bool match_data_flush;
@@ -12171,6 +12189,9 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
+    // IMPORTANT: Please call next_server_flush before destroying the server!
+    next_assert( server->state != NEXT_SERVER_STATE_INITIALIZING );
+
     if ( server->socket )
     {
         next_platform_socket_destroy( server->socket );
@@ -12681,7 +12702,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
              packet_id != NEXT_BACKEND_SERVER_UPDATE_PACKET &&
              packet_id != NEXT_BACKEND_SERVER_RESPONSE_PACKET &&
              packet_id != NEXT_BACKEND_SESSION_UPDATE_PACKET &&
-             packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
+             packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET && 
+             packet_id != NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET )
         {
             if ( !next_advanced_packet_filter( packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
@@ -13094,7 +13116,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->previous_server_events = 0;
         }
 
-        if ( entry->session_update_flush && entry->session_update_packet.client_ping_timed_out )
+        if ( entry->session_update_flush && entry->session_update_packet.client_ping_timed_out && packet.slice_number == entry->session_flush_update_sequence - 1 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
             entry->session_update_flush_finished = true;
@@ -13841,6 +13863,9 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13892,6 +13917,9 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13929,6 +13957,9 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
 
     next_server_internal_verify_sentinels( server );
 
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
+
     if ( next_global_config.disable_network_next )
         return;
 
@@ -13951,6 +13982,9 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     next_assert( address );
 
     next_server_internal_verify_sentinels( server );
+
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    	return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -13999,6 +14033,10 @@ void next_server_internal_flush_session_update( next_server_internal_t * server 
         session->client_ping_timed_out = true;
         session->session_update_packet.client_ping_timed_out = true;
 
+        // IMPORTANT: Make sure to only accept a backend session response for the next session update
+        // sent out, not the current session update (if any is in flight). This way flush succeeds
+        // even if it called in the middle of a session update in progress.
+        session->session_flush_update_sequence = session->update_sequence + 1;
         session->session_update_flush = true;
         server->num_session_updates_to_flush++;
     }
@@ -14053,17 +14091,6 @@ void next_server_internal_flush( next_server_internal_t * server )
 
 void next_server_internal_pump_commands( next_server_internal_t * server )
 {
-    // IMPORTANT: do not pump commands until after server has initialized (or initialize has timed out)
-    // This delays any upgrades until after the server has initialized and received magic values from the backend.
-    // This is necessary to avoid clients getting upgraded with incorrect magic values that stops them from being able
-    // to communicate with relays, since magic values come down in the server init. If the server is in direct only
-    // mode it has stopped communicating with the backend and relays, so it is OK for it to have garbage magic numbers.
-
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED && server->state != NEXT_SERVER_STATE_DIRECT_ONLY )
-    {
-        return;
-    }
-
     while ( true )
     {
         next_server_internal_verify_sentinels( server );
@@ -14271,8 +14298,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool autodetect_result = false;
     bool autodetect_actually_did_something = false;
-    char autodetect_output[1024];
-    memset( autodetect_output, 0, sizeof(autodetect_output) );
+    char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -14331,6 +14357,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_platform_mutex_guard( &server->autodetect_mutex );
     strncpy( server->autodetect_result, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
     server->autodetect_finished = true;
     server->autodetect_succeeded = autodetect_result;
     server->autodetect_actually_did_something = autodetect_actually_did_something;
@@ -14456,6 +14483,15 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
 	if ( !server->autodetect_finished )
 		return;
+
+	// if we have started flushing, abort the init...
+
+	if ( server->flushing )
+	{
+		next_printf( NEXT_LOG_LEVEL_INFO, "server aborted init" );
+		server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+		return;
+	}
 
 	// send init request packets repeatedly until we get a response or time out...
 
@@ -14857,10 +14893,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
+            
             packet.Reset();
-	        packet.version_major = NEXT_VERSION_MAJOR_INT;
-	        packet.version_minor = NEXT_VERSION_MINOR_INT;
-	        packet.version_patch = NEXT_VERSION_PATCH_INT;
+            
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
@@ -14868,6 +14903,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.session_id = session->session_id;
             packet.match_id = session->match_id;
             packet.num_match_values = session->num_match_values;
+            next_assert( packet.num_match_values <= NEXT_MAX_MATCH_VALUES );
             for ( int j = 0; j < session->num_match_values; ++j )
             {
                 packet.match_values[j] = session->match_values[j];
@@ -14893,7 +14929,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
                 return;
@@ -14935,7 +14971,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
                 return;
@@ -15728,12 +15764,6 @@ void next_server_flush( struct next_server_t * server )
         return;
     }
 
-    if ( !server->ready )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is not initialized" );
-        return;
-    }
-
     if ( server->flushing )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. server is already flushed" );
@@ -16185,7 +16215,7 @@ void test_stream()
     next_check( readObject == writeObject );
 }
 
-static bool equal_within_tolerance( float a, float b, float tolerance = 0.0001f )
+static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
 {
     return fabs(double(a)-double(b)) <= tolerance;
 }
@@ -16426,6 +16456,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
+        next_check( route_stats.mean_rtt == 0.0f );
         next_check( route_stats.min_rtt == 0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
@@ -16448,6 +16479,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
+        next_check( route_stats.mean_rtt == 0.0f );
         next_check( route_stats.min_rtt == 0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
@@ -16473,6 +16505,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16488,6 +16521,7 @@ void test_ping_stats()
         static next_ping_history_t history;
         next_ping_history_clear( &history );
 
+        const double expected_mean_rtt = 0.105078;
         const double expected_min_rtt = 0.1;
         const double expected_max_rtt = 1.0;
         const double expected_prime_rtt = 0.5;
@@ -16515,6 +16549,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_mean_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.prime_rtt, expected_prime_rtt * 1000.0 ) );
@@ -16529,6 +16564,7 @@ void test_ping_stats()
         static next_ping_history_t history;
         next_ping_history_clear( &history );
 
+        const double expected_mean_rtt = 0.105078;
         const double expected_min_rtt = 0.1;
         const double expected_max_rtt = 1.0;
         const double expected_prime_rtt = 0.5;
@@ -16556,6 +16592,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_mean_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.prime_rtt, expected_prime_rtt * 1000.0 ) );
@@ -16563,7 +16600,8 @@ void test_ping_stats()
         next_check( route_stats.packet_loss == 0.0 );
     }
 
-    // add some pings and set them to have a pong response, but leave the last second of pings without response. packet loss should be zero
+    // add some pings and set them to have a pong response, but leave the last second of pings without response. 
+	// packet loss should be zero.
     {
         const double ping_safety = 1.0;
 
@@ -16616,6 +16654,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16643,6 +16682,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -16670,6 +16710,7 @@ void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
+        next_check( equal_within_tolerance( route_stats.mean_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
         next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
         // IMPORTANT: prime is unstable in this case due to numerical instability
@@ -17112,6 +17153,7 @@ void test_server_ipv4()
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
     next_server_update( server );
+    next_server_flush( server );
     next_server_destroy( server );
 }
 
@@ -17143,6 +17185,7 @@ void test_server_ipv6()
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
     next_server_update( server );
+    next_server_flush( server );
     next_server_destroy( server );
 }
 
@@ -20664,6 +20707,8 @@ void test_passthrough_packets()
 
     next_client_destroy( client );
 
+    next_server_flush( server );
+
     next_server_destroy( server );
 }
 
@@ -20729,6 +20774,8 @@ void test_wake_up()
     next_client_close_session( client );
 
     next_client_destroy( client );
+
+    next_server_flush( server );
 
     next_server_destroy( server );
 
