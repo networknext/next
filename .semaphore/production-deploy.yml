@@ -1,109 +1,339 @@
 version: v1.0
-name: Production Deploy
+
+name: "Production Deploy"
+
 agent:
   machine:
-    type: e1-standard-8
-    os_image: ubuntu1804
+    type: e1-standard-2
+    os_image: ubuntu2004
+
 global_job_config:
   secrets:
     - name: sdk5-repo-access
+    - name: google-cloud-platform
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev libzmq3-dev
-      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-      - gcloud auth configure-docker -q
       - checkout
-      - sem-version go 1.13
       - cp envs/local.env .env
-      - make clean
-      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk5
-      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk5
-      - git submodule init
-      - git submodule update
+
 blocks:
-  - name: Build & Publish Artifacts
+
+  - name: "Build Artifacts (Scripts)"
+
     dependencies: []
+
     task:
+
       jobs:
-        - name: Billing
+
+        - name: "Bootstrap"
+          commands:
+            - checkout
+            - artifact push workflow deploy/bootstrap.sh
+
+
+  - name: "Build Artifacts (Golang)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - checkout
+
+            - cd ~/backend/libs/sodium
+            - ./configure
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
+          
+            - cache restore
+
+      jobs:
+
+        - name: "Billing"
           commands:
             - make build-billing-artifacts-prod
-            - make publish-billing-artifacts-prod
-        - name: Analytics Pusher
+            - artifact push workflow dist/billing.prod.tar.gz
+        
+        - name: "Analytics Pusher"
           commands:
             - make build-analytics-pusher-artifacts-prod
-            - make publish-analytics-pusher-artifacts-prod
-        - name: Analytics
+            - artifact push workflow dist/analytics_pusher.prod.tar.gz
+        
+        - name: "Analytics"
           commands:
             - make build-analytics-artifacts-prod
-            - make publish-analytics-artifacts-prod
-        - name: Portal
+            - artifact push workflow dist/analytics.prod.tar.gz
+        
+        - name: "Portal"
           commands:
             - make build-portal-artifacts-prod
-            - make publish-portal-artifacts-prod
-        - name: Portal Cruncher
+            - artifact push workflow dist/portal.prod.tar.gz
+        
+        - name: "Portal Cruncher"
           commands:
             - make build-portal-cruncher-artifacts-prod
-            - make publish-portal-cruncher-artifacts-prod
-        - name: Relay Gateway
+            - artifact push workflow dist/portal_cruncher.prod.tar.gz
+        
+        - name: "Relay Gateway"
           commands:
             - make build-relay-gateway-artifacts-prod
-            - make publish-relay-gateway-artifacts-prod
-        - name: Relay Backend
+            - artifact push workflow dist/relay_gateway.prod.tar.gz
+        
+        - name: "Relay Backend"
           commands:
             - make build-relay-backend-artifacts-prod
-            - make publish-relay-backend-artifacts-prod
-        - name: Relay Frontend
+            - artifact push workflow dist/relay_backend.prod.tar.gz
+        
+        - name: "Relay Frontend"
           commands:
             - make build-relay-frontend-artifacts-prod
-            - make publish-relay-frontend-artifacts-prod
-        - name: Relay Forwarder
+            - artifact push workflow dist/relay_frontend.prod.tar.gz
+        
+        - name: "Relay Forwarder"
           commands:
             - make build-relay-forwarder-artifacts-prod
-            - make publish-relay-forwarder-artifacts-prod
-        - name: Server Backend 4
+            - artifact push workflow dist/relay_forwarder.prod.tar.gz
+        
+        - name: "Server Backend 4"
           commands:
             - make build-server-backend4-artifacts-prod
-            - make publish-server-backend4-artifacts-prod
-        - name: Server Backend 5
+            - artifact push workflow dist/server_backend4.prod.tar.gz
+        
+        - name: "Server Backend 5"
           commands:
             - make build-server-backend5-artifacts-prod
-            - make publish-server-backend5-artifacts-prod
-        - name: Debug Server Backend 4
+            - artifact push workflow dist/server_backend5.prod.tar.gz
+        
+        - name: "Debug Server Backend 4"
           commands:
             - make build-debug-server-backend4-artifacts-prod
-            - make publish-debug-server-backend4-artifacts-prod
-        - name: Debug Relay Backend
+            - artifact push workflow dist/debug_server_backend4.prod.tar.gz
+        
+        - name: "Debug Relay Backend"
           commands:
             - make build-debug-relay-backend-artifacts-prod
-            - make publish-debug-relay-backend-artifacts-prod
-        - name: Bootstrap Script
-          commands:
-            - make publish-bootstrap-script-prod
-        - name: Ghost Army
+            - artifact push workflow dist/debug_relay_backend.prod.tar.gz
+        
+        - name: "Ghost Army"
           commands:
             - make build-ghost-army-artifacts-prod
-            - make publish-ghost-army-artifacts-prod
-            - make publish-ghost-army-bootstrap-script-prod
-        - name: Relay Pusher
+            - artifact push workflow dist/ghost_army.prod.tar.gz
+        
+        - name: "Relay Pusher"
           commands:
             - make build-relay-pusher-artifacts-prod
-            - make publish-relay-pusher-artifacts-prod
-        - name: Pingdom
+            - artifact push workflow dist/relay_pusher.prod.tar.gz
+        
+        - name: "Pingdom"
           commands:
             - make build-pingdom-artifacts-prod
-            - make publish-pingdom-artifacts-prod
-        - name: Match Data
+            - artifact push workflow dist/pingdom.prod.tar.gz
+        
+        - name: "Match Data"
           commands:
             - make build-match-data-artifacts-prod
-            - make publish-match-data-artifacts-prod
-        - name: Magic Backend
+            - artifact push workflow dist/match_data.prod.tar.gz
+        
+        - name: "Magic Backend"
           commands:
             - make build-magic-backend-artifacts-prod
-            - make publish-magic-backend-artifacts-prod
-        - name: Magic Frontend
+            - artifact push workflow dist/magic_backend.prod.tar.gz
+        
+        - name: "Magic Frontend"
           commands:
             - make build-magic-frontend-artifacts-prod
-            - make publish-magic-frontend-artifacts-prod
-      secrets:
-        - name: google-cloud-platform-prod
+            - artifact push workflow dist/magic_frontend.prod.tar.gz
+
+
+  - name: "Build Artifacts (Native)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+
+      jobs:
+
+        - name: "Test Server 4"
+          commands:
+            - make -j32 build-test-server4-artifacts-prod
+            - artifact push workflow dist/test_server4.prod.tar.gz
+
+        - name: "Test Server 5"
+          commands:
+            - make -j32 build-test-server5-artifacts-prod
+            - artifact push workflow dist/test_server5.prod.tar.gz
+
+
+  - name: "Publish Artifacts"
+    
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
+      jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - artifact pull workflow bootstrap.sh
+            - gsutil cp bootstrap.sh gs://production_artifacts/
+
+        - name: "Billing"
+          commands:
+            - artifact pull workflow billing.prod.tar.gz
+            - gsutil cp billing.prod.tar.gz gs://production_artifacts/
+
+        - name: "Analytics Pusher"
+          commands:
+            - artifact pull workflow analytics_pusher.prod.tar.gz
+            - gsutil cp analytics_pusher.prod.tar.gz gs://production_artifacts/
+
+        - name: "Analytics"
+          commands:
+            - artifact pull workflow analytics.prod.tar.gz
+            - gsutil cp analytics.prod.tar.gz gs://production_artifacts/
+
+        - name: "Portal"
+          commands:
+            - artifact pull workflow portal.prod.tar.gz
+            - gsutil cp portal.prod.tar.gz gs://production_artifacts/
+
+        - name: "Portal Cruncher"
+          commands:
+            - artifact pull workflow portal_cruncher.prod.tar.gz
+            - gsutil cp portal_cruncher.prod.tar.gz gs://production_artifacts/
+
+        - name: "Relay Gateway"
+          commands:
+            - artifact pull workflow relay_gateway.prod.tar.gz
+            - gsutil cp relay_gateway.prod.tar.gz gs://production_artifacts/
+
+        - name: "Relay Backend"
+          commands:
+            - artifact pull workflow relay_backend.prod.tar.gz
+            - gsutil cp relay_backend.prod.tar.gz gs://production_artifacts/
+
+        - name: "Relay Frontend"
+          commands:
+            - artifact pull workflow relay_frontend.prod.tar.gz
+            - gsutil cp relay_frontend.prod.tar.gz gs://production_artifacts/
+
+        - name: "Relay Forwarder"
+          commands:
+            - artifact pull workflow relay_forwarder.prod.tar.gz
+            - gsutil cp relay_forwarder.prod.tar.gz gs://production_artifacts/
+
+        - name: "Server Backend 4"
+          commands:
+            - artifact pull workflow server_backend4.prod.tar.gz
+            - gsutil cp server_backend4.prod.tar.gz gs://production_artifacts/
+
+        - name: "Server Backend 5"
+          commands:
+            - artifact pull workflow server_backend5.prod.tar.gz
+            - gsutil cp server_backend5.prod.tar.gz gs://production_artifacts/
+
+        - name: "Debug Server Backend 4"
+          commands:
+            - artifact pull workflow debug_server_backend4.prod.tar.gz
+            - gsutil cp debug_server_backend4.prod.tar.gz gs://production_artifacts/
+
+        - name: "Ghost Army"
+          commands:
+            - artifact pull workflow ghost_army.prod.tar.gz
+            - gsutil cp ghost_army.prod.tar.gz gs://production_artifacts/
+
+        - name: "Relay Pusher"
+          commands:
+            - artifact pull workflow relay_pusher.prod.tar.gz
+            - gsutil cp relay_pusher.prod.tar.gz gs://production_artifacts/
+
+        - name: "Pingdom"
+          commands:
+            - artifact pull workflow pingdom.prod.tar.gz
+            - gsutil cp pingdom.prod.tar.gz gs://production_artifacts/
+
+        - name: "Match Data"
+          commands:
+            - artifact pull workflow match_data.prod.tar.gz
+            - gsutil cp match_data.prod.tar.gz gs://production_artifacts/
+
+        - name: "Magic Backend"
+          commands:
+            - artifact pull workflow magic_backend.prod.tar.gz
+            - gsutil cp magic_backend.prod.tar.gz gs://production_artifacts/
+
+        - name: "Magic Frontend"
+          commands:
+            - artifact pull workflow magic_frontend.prod.tar.gz
+            - gsutil cp magic_frontend.prod.tar.gz gs://production_artifacts/
+
+        - name: "Test Server 4"
+          commands:
+            - artifact pull workflow test_server4.prod.tar.gz
+            - gsutil cp test_server4.prod.tar.gz gs://production_artifacts/
+
+        - name: "Test Server 5"
+          commands:
+            - artifact pull workflow test_server5.prod.tar.gz
+            - gsutil cp test_server5.prod.tar.gz gs://production_artifacts/
+
+        - name: "Sodium"
+          commands:
+            - artifact pull workflow libsodium.so
+            - gsutil cp libsodium.so gs://production_artifacts/libsodium.so
+
+        - name: "ZeroMQ"
+          commands:
+            - artifact pull workflow libzmq.so
+            - gsutil cp libzmq.so gs://production_artifacts/libzmq.so
+
+        - name: "SDK4"
+          commands:
+            - artifact pull workflow libnext4.so
+            - gsutil cp libnext4.so gs://production_artifacts/libnext4.so
+
+        - name: "SDK5"
+          commands:
+            - artifact pull workflow libnext5.so
+            - gsutil cp libnext5.so gs://production_artifacts/libnext5.so
+
+        - name: "Reference Relay"
+          commands:
+            - artifact pull workflow reference_relay
+            - gsutil cp reference_relay gs://production_artifacts/reference_relay
