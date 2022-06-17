@@ -833,6 +833,14 @@ build-test-server4-artifacts-dev: build-test-server4
 build-test-server5-artifacts-dev: build-test-server5
 	./deploy/build-artifacts.sh -e dev -s test_server5
 
+.PHONY: build-test-server4-artifacts-prod
+build-test-server4-artifacts-prod: build-test-server4
+	./deploy/build-artifacts.sh -e prod -s test_server4
+
+.PHONY: build-test-server5-artifacts-prod
+build-test-server5-artifacts-prod: build-test-server5
+	./deploy/build-artifacts.sh -e prod -s test_server5
+
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
 	./deploy/build-artifacts.sh -e staging -s billing
