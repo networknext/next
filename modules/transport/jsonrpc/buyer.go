@@ -3315,7 +3315,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		sessionSlices[i] = transport.SessionSlice{
-			Timestamp: timeStamp,
+			Timestamp: timeStamp.Add(4 * time.Hour),
 			Next: routing.Stats{
 				RTT:        slice.NextRTT,
 				Jitter:     slice.NextJitter,
