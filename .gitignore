@@ -1,42 +1,10 @@
-
-# Visual Studio
-.vs
-*.db
-*.opendb
-*.vcxproj.user
-*.csproj.user
-*.vcxproj.filter
-*.vcxproj.filters
-
-# Xcode
-xcuserdata
-
-# Makefiles
-Makefile
-*.make
-
-# Misc
+.env
 .DS_Store
-.gdb_history
-
-# Sublime text
-*.sublime-project
-*.sublime-workspace
-
-# Directories we don't ever want to commit
+*.swp
+*.o
+*.d
 bin
 obj
-ipch
-lib
-int
-Debug
-Release
-Profile
-Durango
-next-*
-docs/build
-visualstudio
-lib/.DS_Store
-Prospero_Debug
-Prospero_Release
-Gaming.XBox.*
+Makefile
+*.make
+*.txt
