@@ -1,0 +1,9 @@
+.env
+.DS_Store
+*.swp
+*.o
+*.d
+bin
+obj
+Makefile
+*.make
