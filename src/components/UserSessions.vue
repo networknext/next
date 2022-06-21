@@ -73,7 +73,7 @@
               {{ session.meta.location.isp || "Unknown"}}
             </td>
             <td>
-              {{ session.meta.datacenter_alias !== "" ? session.meta.datacenter_alias : session.meta.datacenter_name }}
+              {{ session.meta.datacenter_alias !== "" ? session.meta.datacenter_alias : session.meta.datacenter_name !== "" ? session.meta.datacenter_name : "Unknown" }}
             </td>
             <td>
               {{ session.meta.server_addr }}
