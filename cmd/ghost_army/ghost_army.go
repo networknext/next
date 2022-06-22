@@ -3,20 +3,26 @@ package main
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
 )
@@ -25,11 +31,152 @@ const (
 	SecondsInDay = 86400
 )
 
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
+)
+
 func main() {
 	os.Exit(mainReturnWithCode())
 }
 
 func mainReturnWithCode() int {
+	ctx := context.Background()
+
+	serviceName := "ghost_army"
+	fmt.Printf("\n%s\n\n", serviceName)
+
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
+
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		core.Error("could not parse NEXT_DEBUG: %v", err)
+		isDebug = false
+	}
+
+	if isDebug {
+		core.Debug("running as debug")
+	}
+
+	gcpProjectID := backend.GetGCPProjectID()
+
+	env, err := backend.GetEnv()
+	if err != nil {
+		core.Error("could not get env: %v", err)
+		return 1
+	}
+
+	// FUCK THIS LOGGING SYSTEM!!!
+	logger := log.NewNopLogger()
+
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		core.Error("could not get metrics handler: %v", err)
+		return 1
+	}
+
+	if gcpProjectID != "" {
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			core.Error("could not initialize stackdriver profiler: %v", err)
+			return 1
+		}
+	}
+
+	ghostArmyMetrics, err := metrics.NewGhostArmyMetrics(ctx, metricsHandler)
+	if err != nil {
+		core.Error("could not create backend metrics: %v", err)
+		return 1
+	}
+
+	// Setup the status handler info
+
+	statusData := &metrics.GhostArmyStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				newStatusData := &metrics.GhostArmyStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(float64(runtime.NumGoroutine()))
+				newStatusData.MemoryAllocated = memoryUsed()
+
+				// Success Metrics
+				newStatusData.EntriesPublished = int(ghostArmyMetrics.SuccessMetrics.SessionEntriesPublished.Value())
+
+				// Error Metrics
+				newStatusData.EntryPublishingFailure = int(ghostArmyMetrics.ErrorMetrics.SessionEntryPublishFailure.Value())
+				newStatusData.SessionsOverEstimate = int(ghostArmyMetrics.ErrorMetrics.PublishedSessionsOverEstimate.Value())
+				newStatusData.SessionEntryMarshalFailure = int(ghostArmyMetrics.ErrorMetrics.SessionEntryMarshalFailure.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
+	// Start HTTP server
+	{
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			core.Error("invalid FEATURE_ENABLE_PPROF: %v", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		httpPort := envvar.Get("HTTP_PORT", "40001")
+
+		srv := &http.Server{
+			Addr:    ":" + httpPort,
+			Handler: router,
+		}
+
+		go func() {
+			fmt.Printf("started http server on port %s\n\n", httpPort)
+			err := srv.ListenAndServe()
+			if err != nil {
+				core.Error("failed to start http server: %v", err)
+				return
+			}
+		}()
+	}
+
 	// this var is just used to catch the situation where ghost army publishes
 	// way too many slices in a given interval. Shouldn't happen anymore but just in case
 
@@ -53,12 +200,6 @@ func mainReturnWithCode() int {
 	datacenterCSV := envvar.Get("DATACENTERS_CSV", "")
 	if datacenterCSV == "" {
 		core.Error("DATACENTERS_CSV not set")
-		return 1
-	}
-
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("could not get ENV: %v", err)
 		return 1
 	}
 
@@ -111,6 +252,7 @@ func mainReturnWithCode() int {
 	bin, err := ioutil.ReadFile(infile)
 	if err != nil {
 		core.Error("could not read '%s': %v", infile, err)
+		return 1
 	}
 
 	// unmarshal
@@ -148,12 +290,9 @@ func mainReturnWithCode() int {
 
 	publishChan := make(chan transport.SessionPortalData)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-
 	portalPublishers := make([]pubsub.Publisher, 0)
 	{
-		core.Debug("setting up portal cruncher")
+		fmt.Println("setting up portal cruncher")
 
 		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
 
@@ -177,7 +316,12 @@ func mainReturnWithCode() int {
 
 			portalPublishers = append(portalPublishers, portalCruncherPublisher)
 		}
+
+		fmt.Println("portal cruncher setup complete")
 	}
+
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
 
 	wg.Add(1)
 	go func() {
@@ -191,11 +335,18 @@ func mainReturnWithCode() int {
 				// TODO: switch to serialization instead of binary encoding
 				sessionBytes, err := slice.MarshalBinary()
 				if err != nil {
+					ghostArmyMetrics.ErrorMetrics.SessionEntryMarshalFailure.Add(1)
 					core.Error("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
 
-				portalPublishers[publisherIndex].Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
+				if _, err := portalPublishers[publisherIndex].Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes); err != nil {
+					ghostArmyMetrics.ErrorMetrics.SessionEntryPublishFailure.Add(1)
+					core.Error("failed to publish ghost army session: %v", err)
+				} else {
+					ghostArmyMetrics.SuccessMetrics.SessionEntriesPublished.Add(1)
+				}
+
 				publisherIndex = (publisherIndex + 1) % len(portalPublishers)
 			case <-ctx.Done():
 				return
@@ -273,6 +424,7 @@ func mainReturnWithCode() int {
 
 				if diff > estimatedPeakSessionCount {
 					core.Debug("sent more than %d slices this interval, num sent = %d, current interval in secs = %d - %d", estimatedPeakSessionCount, diff, sliceBegin, sliceBegin+interval)
+					ghostArmyMetrics.ErrorMetrics.PublishedSessionsOverEstimate.Add(1)
 				}
 
 				// increment by the interval
