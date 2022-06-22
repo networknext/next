@@ -30,6 +30,7 @@ blocks:
           commands:
             - checkout
             - artifact push workflow deploy/bootstrap.sh
+            - artifact push workflow deploy/ghost_army_bootstrap.sh
 
 
   - name: "Build Artifacts (Golang)"
@@ -197,9 +198,9 @@ blocks:
 
 
   - name: "Publish Artifacts"
-    
+
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
-    
+
     task:
 
       prologue:
@@ -211,7 +212,9 @@ blocks:
         - name: "Bootstrap"
           commands:
             - artifact pull workflow bootstrap.sh
+            - artifact pull workflow ghost_army_bootstrap.sh
             - gsutil cp bootstrap.sh gs://production_artifacts/
+            - gsutil cp ghost_army_bootstrap.sh gs://production_artifacts/
 
         - name: "Billing"
           commands:
