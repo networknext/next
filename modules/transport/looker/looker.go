@@ -128,6 +128,7 @@ type LookerSessionTimestampLookup struct {
 type LookerUserSessionMeta struct {
 	Timestamp       string `json:"billing2_session_summary.start_timestamp_time"`
 	SessionID       int64  `json:"billing2_session_summary.session_id"`
+	BuyerID         int64  `json:"billing2_session_summary.buyer_id"`
 	Platform        int8   `json:"billing2_session_summary.platform_type"`
 	Connection      int8   `json:"billing2_session_summary.connection_type"`
 	ISP             string `json:"billing2_session_summary.isp"`
@@ -670,13 +671,6 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string,
 func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string, customerCode string) ([]LookerUserSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
 	querySessions := make([]LookerUserSessionMeta, 0)
 
-	queryTimeFrame := timeFrame
-
-	// Set default timeframe
-	if queryTimeFrame == "" {
-		queryTimeFrame = "7 days"
-	}
-
 	// Auth Looker API connection
 	token, err := l.FetchAuthToken()
 	if err != nil {
@@ -687,6 +681,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 	requiredFields := []string{
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
 		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".buyer_id",
 		LOOKER_SESSION_SUMMARY_VIEW + ".user_hash",
 		LOOKER_SESSION_SUMMARY_VIEW + ".platform_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type",
@@ -699,7 +694,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 	requiredFilters := make(map[string]interface{})
 
 	// Add the timeframe to optimize query
-	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = timeFrame
 
 	filterExpression := ""
 

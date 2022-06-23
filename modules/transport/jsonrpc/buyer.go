@@ -161,10 +161,18 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		return err
 	}
 
+	timeFrame := "7 days"
+
 	isAdmin := middleware.VerifyAnyRole(r, middleware.AdminRole)
 
 	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
+
+	buyers := s.Storage.Buyers(r.Context())
+	buyerMap := make(map[uint64]routing.Buyer)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
 
 	var sessionSlice transport.SessionSlice
 
@@ -226,11 +234,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 
-					buyer, err := s.Storage.Buyer(r.Context(), session.BuyerID)
-					if err != nil {
-						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-						core.Error("%v", err)
-						return err
+					buyer, exists := buyerMap[session.BuyerID]
+					if !exists {
+						core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
+						continue
 					}
 
 					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
@@ -336,8 +343,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if s.UseLooker || isAdmin {
-		// TODO: Add date picker to user tool and add support for multiple userID types (hash, hex, ID)
-		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe, args.CustomerCode)
+		if args.Timeframe != "" {
+			timeFrame = args.Timeframe
+		}
+
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, timeFrame, args.CustomerCode)
 		if err != nil {
 			core.Error("UserSessions(): %v:", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -351,7 +361,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				continue
 			}
 
-			reply.Sessions = append(reply.Sessions, UserSession{
+			userSession := UserSession{
 				Timestamp: timeStamp.Add(5 * time.Hour),
 				Meta: transport.SessionMeta{
 					ID:              uint64(session.SessionID),
@@ -364,7 +374,22 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						ISP: session.ISP,
 					},
 				},
-			})
+			}
+
+			buyer, exists := buyerMap[uint64(session.BuyerID)]
+			if !exists {
+				core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
+				continue
+			}
+
+			if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+				userSession.Meta.Anonymise()
+			} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				// Don't show sessions where the company code does not match the request's
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, userSession)
 		}
 	}
 
@@ -430,6 +455,12 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
+	buyers := s.Storage.Buyers(r.Context())
+	buyerMap := make(map[uint64]routing.Buyer)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
+
 	for _, row := range rows {
 		if err := transport.ReadSessionMeta(&sessionMeta, row[s.BigTableCfName][0].Value); err != nil {
 			err = fmt.Errorf("GetHistoricalSlices() failed to serialize session meta: %v", err)
@@ -455,11 +486,10 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				buyer, err := s.Storage.Buyer(r.Context(), sessionMeta.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
-					core.Error("%v", err)
-					return err
+				buyer, exists := buyerMap[uint64(sessionMeta.BuyerID)]
+				if !exists {
+					core.Error("UserSessions() session meta buyer ID %016x does not exist", sessionMeta.BuyerID)
+					continue
 				}
 
 				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
@@ -801,18 +831,33 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	useLooker := false
 	useBigTable := false
 
-	// TODO: if !isLiveSession && s.UseLooker && middleware.VerifyAllRoles(r, middleware.ExplorerRole) && analyticsSub....
 	if !isLiveSession && isAdmin && s.UseLooker {
 		useLooker = true
+
+		if args.Timeframe != "" {
+			timeFrame = args.Timeframe
+		}
 	}
 
 	if !isLiveSession && !useLooker && s.UseBigtable {
 		useBigTable = true
 	}
 
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
+	anonymousPlus := middleware.VerifyAllRoles(r, middleware.UnverifiedRole)
+
+	// Redis only - anon & anon plus & unassigned
+	requestCustomerCode := middleware.RequestUserCustomerCode(ctx)
+	if anonymous || anonymousPlus || (requestCustomerCode == "" && !middleware.VerifyAllRoles(r, middleware.UnverifiedRole)) {
 		useLooker = false
 		useBigTable = false
+	}
+
+	// Assigned users can't look up other company sessions
+	if !isAdmin && args.CustomerCode != "" && requestCustomerCode != "" && requestCustomerCode != args.CustomerCode {
+		err := fmt.Errorf("SessionDetails(): %v", ErrInsufficientPrivileges)
+		core.Error("%v", err)
+		return err
 	}
 
 	if useLooker {
@@ -3334,8 +3379,8 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 				Down: int64(envDown),
 			},
 			RouteDiversity: uint32(slice.RouteDiversity),
+			OnNetworkNext:  onNetworkNext,
 			// Stupid looker...
-			OnNetworkNext:     onNetworkNext,
 			IsMultiPath:       strings.ToLower(slice.IsMultiPath) == "yes",
 			IsTryBeforeYouBuy: strings.ToLower(slice.IsTryBeforeYouBuy) == "yes",
 		}
