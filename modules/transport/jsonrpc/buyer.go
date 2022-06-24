@@ -155,6 +155,8 @@ type UserSession struct {
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
+	ctx := r.Context()
+
 	if args.UserID == "" {
 		err := fmt.Errorf("UserSessions() user id is required")
 		core.Error("%v", err)
@@ -199,6 +201,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
+	// TODO: Remove page related functions when switching over to Looker 100%
 	// Only grab the live session on the first request
 	if args.Page == 0 {
 		// Fetch live sessions if there are any
@@ -259,7 +262,32 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	if s.UseBigtable && !isAdmin {
+	useLooker := false
+	useBigTable := false
+
+	if isAdmin && s.UseLooker {
+		useLooker = true
+
+		if args.Timeframe != "" {
+			timeFrame = args.Timeframe
+		}
+	}
+
+	if !useLooker && s.UseBigtable {
+		useBigTable = true
+	}
+
+	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
+	anonymousPlus := middleware.VerifyAllRoles(r, middleware.UnverifiedRole)
+
+	// Redis only - anon & anon plus & unassigned
+	requestCustomerCode := middleware.RequestUserCustomerCode(ctx)
+	if anonymous || anonymousPlus || (requestCustomerCode == "" && !middleware.VerifyAllRoles(r, middleware.UnverifiedRole)) {
+		useLooker = false
+		useBigTable = false
+	}
+
+	if useBigTable {
 		var rowsByHash []bigtable.Row
 		var rowsByID []bigtable.Row
 		var rowsByHexID []bigtable.Row
@@ -342,7 +370,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		reply.Page = MaxBigTableDays // TODO: Change the name of this
 	}
 
-	if s.UseLooker || isAdmin {
+	if useLooker {
 		if args.Timeframe != "" {
 			timeFrame = args.Timeframe
 		}
@@ -365,6 +393,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				Timestamp: timeStamp.Add(5 * time.Hour),
 				Meta: transport.SessionMeta{
 					ID:              uint64(session.SessionID),
+					BuyerID:         uint64(session.BuyerID),
 					DatacenterName:  session.DatacenterName,
 					DatacenterAlias: session.DatacenterAlias,
 					ServerAddr:      session.ServerAddress,
@@ -383,7 +412,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 			// Doing the same buyer check this way to make local testing easier
 			if !isAdmin {
-				buyer, exists := buyerMap[uint64(session.BuyerID)]
+				buyer, exists := buyerMap[uint64(userSession.Meta.BuyerID)]
 				if !exists {
 					core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
 					continue
