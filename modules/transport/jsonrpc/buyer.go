@@ -376,17 +376,23 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				},
 			}
 
-			buyer, exists := buyerMap[uint64(session.BuyerID)]
-			if !exists {
-				core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
-				continue
-			}
-
+			// If anon or not assigned, anonymize all sessions
 			if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 				userSession.Meta.Anonymise()
-			} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				// Don't show sessions where the company code does not match the request's
-				continue
+			}
+
+			// Doing the same buyer check this way to make local testing easier
+			if !isAdmin {
+				buyer, exists := buyerMap[uint64(session.BuyerID)]
+				if !exists {
+					core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
+					continue
+				}
+
+				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
+				}
 			}
 
 			reply.Sessions = append(reply.Sessions, userSession)
@@ -864,6 +870,12 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		sessionMeta, sessionSlices, err := s.LookerSessionDetails(ctx, args.SessionID, timeFrame, args.CustomerCode)
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() failed to fetch session details from Looker: %v", err)
+			core.Error("%v", err)
+			return err
+		}
+
+		if len(sessionSlices) == 0 {
+			err = fmt.Errorf("SessionDetails() failed to fetch session slices from Looker: no slices available for this session")
 			core.Error("%v", err)
 			return err
 		}
