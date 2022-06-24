@@ -166,6 +166,12 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
+	buyers := s.Storage.Buyers(r.Context())
+	buyerMap := make(map[uint64]routing.Buyer)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
+
 	var sessionSlice transport.SessionSlice
 
 	// Raw user input
@@ -226,11 +232,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 
-					buyer, err := s.Storage.Buyer(r.Context(), session.BuyerID)
-					if err != nil {
-						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-						core.Error("%v", err)
-						return err
+					buyer, exists := buyerMap[session.BuyerID]
+					if !exists {
+						core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
+						continue
 					}
 
 					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
@@ -428,6 +433,12 @@ func (s *BuyersService) GetHistoricalSessions(ctx context.Context, reply *UserSe
 }
 
 func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, liveSessionIDString string, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
+	buyers := s.Storage.Buyers(r.Context())
+	buyerMap := make(map[uint64]routing.Buyer)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
+
 	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
@@ -456,8 +467,8 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				buyer, err := s.Storage.Buyer(r.Context(), sessionMeta.BuyerID)
-				if err != nil {
+				buyer, exists := buyerMap[sessionMeta.BuyerID]
+				if !exists {
 					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
 					core.Error("%v", err)
 					return err
