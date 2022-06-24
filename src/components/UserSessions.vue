@@ -272,7 +272,7 @@ export default class UserSessions extends Vue {
     this.$apiService.fetchUserSessions({
       user_id: this.searchID,
       page: this.currentPage,
-      timeframe: this.$store.getters.currentFilter.dateRange,
+      timeframe: this.$store.getters.currentFilter.dateRange || '',
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {

@@ -421,7 +421,11 @@ export default class SessionDetails extends Vue {
   }
 
   private fetchSessionDetails () {
-    this.$apiService.fetchSessionDetails({ session_id: this.searchID })
+    this.$apiService.fetchSessionDetails({
+      session_id: this.searchID,
+      timeframe: this.$store.getters.currentFilter.dateRange || '',
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+    })
       .then((response: any) => {
         this.meta = response.meta
         this.slices = response.slices
