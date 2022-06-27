@@ -359,7 +359,13 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if useLooker {
-		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, timeFrame, args.CustomerCode)
+		queryTimeframe := timeFrame
+
+		if args.Timeframe != "" {
+			queryTimeframe = args.Timeframe
+		}
+
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, queryTimeframe, args.CustomerCode)
 		if err != nil {
 			core.Error("UserSessions(): %v:", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
