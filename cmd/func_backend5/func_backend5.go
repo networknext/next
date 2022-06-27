@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"sort"
 	"sync"
@@ -44,7 +45,7 @@ const BACKEND_MODE_ON_ON_OFF = 5
 const BACKEND_MODE_ROUTE_SWITCHING = 6
 const BACKEND_MODE_UNCOMMITTED = 7
 const BACKEND_MODE_UNCOMMITTED_TO_COMMITTED = 8
-const BACKEND_MODE_USER_FLAGS = 9
+const BACKEND_MODE_SERVER_EVENTS = 9
 const BACKEND_MODE_FORCE_RETRY = 10
 const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
@@ -52,6 +53,8 @@ const BACKEND_MODE_TAGS = 13
 const BACKEND_MODE_DIRECT_STATS = 14
 const BACKEND_MODE_NEXT_STATS = 15
 const BACKEND_MODE_NEAR_RELAY_STATS = 16
+const BACKEND_MODE_MATCH_ID = 17
+const BACKEND_MODE_MATCH_VALUES = 18
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -325,6 +328,65 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
+func MatchDataRequestHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var matchDataRequest transport.MatchDataRequestPacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&matchDataRequest, core.GetPacketDataSDK5(incoming.Data)); err != nil {
+		fmt.Printf("error: failed to read match data request packet: %v\n", err)
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && matchDataRequest.RetryNumber < 4 {
+		fmt.Printf("force retry for match data request packet\n")
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
+		fmt.Printf("match id %x\n", matchDataRequest.MatchID)
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
+		for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
+			fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
+		}
+	}
+
+	matchDataResponse := &transport.MatchDataResponsePacketSDK5{
+		SessionID: matchDataRequest.SessionID,
+		Response:  transport.MatchDataResponseOK,
+	}
+
+	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	toAddress := &incoming.From
+
+	var emptyMagic [8]byte
+	matchDataResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeMatchDataResponseSDK5, matchDataResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
+	if err != nil {
+		fmt.Printf("error: failed to marshal match data response: %v\n", err)
+		return
+	}
+
+	if !core.BasicPacketFilter(matchDataResponseData[:], len(matchDataResponseData)) {
+		panic("basic packet filter failed on match data response")
+	}
+
+	{
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+
+		fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
+		toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
+
+		if !core.AdvancedPacketFilter(matchDataResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(matchDataResponseData)) {
+			panic("advanced packet filter failed on match data response\n")
+		}
+	}
+
+	if _, err := w.Write(matchDataResponseData); err != nil {
+		fmt.Printf("error: failed to write match data response: %v\n", err)
+		return
+	}
+}
+
 func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
 	numExcluded := 0
 	for i := 0; i < int(routeState.NumNearRelays); i++ {
@@ -510,10 +572,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 	}
 
-	if backend.mode == BACKEND_MODE_USER_FLAGS {
-		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.UserFlags != 0x123 {
-			panic("user flags not set on session update")
+	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
+		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.ServerEvents != 0x123 {
+			panic("server flags not set on session update")
 		}
+	}
+
+	if sessionUpdate.ServerEvents > 0 {
+		fmt.Printf("server events %x\n", sessionUpdate.ServerEvents)
 	}
 
 	// Extract ids and addresses into own list to make response
@@ -670,187 +736,6 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
-func main() {
-	sendAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
-
-	receiveAddress := sendAddress
-
-	rand.Seed(time.Now().UnixNano())
-
-	backend.serverDatabase = make(map[string]ServerEntry)
-	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
-	backend.statsDatabase = routing.NewStatsDatabase()
-	backend.routeMatrix = &routing.RouteMatrix{}
-
-	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
-		backend.statsDatabase.DeleteEntry(relayData.ID)
-		return nil
-	})
-
-	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
-		backend.mode = BACKEND_MODE_FORCE_DIRECT
-	}
-
-	if os.Getenv("BACKEND_MODE") == "RANDOM" {
-		backend.mode = BACKEND_MODE_RANDOM
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MULTIPATH" {
-		backend.mode = BACKEND_MODE_MULTIPATH
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ON_OFF" {
-		backend.mode = BACKEND_MODE_ON_OFF
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ON_ON_OFF" {
-		backend.mode = BACKEND_MODE_ON_ON_OFF
-	}
-
-	if os.Getenv("BACKEND_MODE") == "ROUTE_SWITCHING" {
-		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
-	}
-
-	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED" {
-		backend.mode = BACKEND_MODE_UNCOMMITTED
-	}
-
-	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED_TO_COMMITTED" {
-		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
-	}
-
-	if os.Getenv("BACKEND_MODE") == "USER_FLAGS" {
-		backend.mode = BACKEND_MODE_USER_FLAGS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
-		backend.mode = BACKEND_MODE_FORCE_RETRY
-	}
-
-	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
-		backend.mode = BACKEND_MODE_BANDWIDTH
-	}
-
-	if os.Getenv("BACKEND_MODE") == "JITTER" {
-		backend.mode = BACKEND_MODE_JITTER
-	}
-
-	if os.Getenv("BACKEND_MODE") == "TAGS" {
-		backend.mode = BACKEND_MODE_TAGS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
-		backend.mode = BACKEND_MODE_DIRECT_STATS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
-		backend.mode = BACKEND_MODE_NEXT_STATS
-	}
-
-	go OptimizeThread()
-
-	go TimeoutThread()
-
-	GenerateMagic(magicUpcoming[:])
-	GenerateMagic(magicCurrent[:])
-	GenerateMagic(magicPrevious[:])
-
-	go UpdateMagic()
-
-	go WebServer()
-
-	fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
-
-	lc := net.ListenConfig{
-		Control: func(network string, address string, c syscall.RawConn) error {
-			err := c.Control(func(fileDescriptor uintptr) {
-				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
-				}
-
-				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
-				}
-			})
-
-			return err
-		},
-	}
-
-	for {
-		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
-		if err != nil {
-			panic(fmt.Sprintf("could not bind socket: %v", err))
-		}
-
-		conn := lp.(*net.UDPConn)
-
-		dataArray := [transport.DefaultMaxPacketSize]byte{}
-		for {
-			data := dataArray[:]
-			size, fromAddr, err := conn.ReadFromUDP(data)
-			if err != nil {
-				fmt.Printf("failed to read udp packet: %v\n", err)
-				break
-			}
-
-			if size <= 0 {
-				continue
-			}
-
-			data = data[:size]
-
-			if !core.BasicPacketFilter(data[:], len(data)) {
-				fmt.Printf("basic packet filter failed\n")
-				continue
-			}
-
-			{
-				to := receiveAddress
-
-				var emptyMagic [8]byte
-
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-
-				fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
-				toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
-
-				if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
-					fmt.Printf("advanced packet filter failed\n")
-					continue
-				}
-			}
-
-			packetType := data[0]
-
-			var buffer bytes.Buffer
-			packet := transport.UDPPacket{From: *fromAddr, Data: data}
-
-			switch packetType {
-			case transport.PacketTypeServerInitRequestSDK5:
-				ServerInitHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeServerUpdateSDK5:
-				ServerUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeSessionUpdateSDK5:
-				SessionUpdateHandlerFunc(&buffer, &packet)
-			default:
-				fmt.Printf("unknown packet type %d\n", packetType)
-			}
-
-			if buffer.Len() > 0 {
-				response := buffer.Bytes()
-
-				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-					fmt.Printf("failed to write UDP response: %v\n", err)
-				}
-			}
-		}
-	}
-}
-
 // -----------------------------------------------------------
 
 const InitRequestMagic = uint32(0x9083708f)
@@ -975,8 +860,6 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-
-	fmt.Printf("relay update\n")
 
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -1196,4 +1079,214 @@ func WebServer() {
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
+}
+// -----------------------------------------------
+
+func UDPServer() {
+
+	sendAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+
+	receiveAddress := sendAddress
+
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+				}
+
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+				}
+			})
+
+			return err
+		},
+	}
+
+	for {
+		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
+		if err != nil {
+			panic(fmt.Sprintf("could not bind socket: %v", err))
+		}
+
+		conn := lp.(*net.UDPConn)
+
+		dataArray := [transport.DefaultMaxPacketSize]byte{}
+		for {
+			data := dataArray[:]
+			size, fromAddr, err := conn.ReadFromUDP(data)
+			if err != nil {
+				fmt.Printf("failed to read udp packet: %v\n", err)
+				break
+			}
+
+			if size <= 0 {
+				continue
+			}
+
+			data = data[:size]
+
+			if !core.BasicPacketFilter(data[:], len(data)) {
+				fmt.Printf("basic packet filter failed\n")
+				continue
+			}
+
+			{
+				to := receiveAddress
+
+				var emptyMagic [8]byte
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
+				toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+				if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
+					fmt.Printf("advanced packet filter failed\n")
+					continue
+				}
+			}
+
+			packetType := data[0]
+
+			var buffer bytes.Buffer
+			packet := transport.UDPPacket{From: *fromAddr, Data: data}
+
+			switch packetType {
+			case transport.PacketTypeServerInitRequestSDK5:
+				ServerInitHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeServerUpdateSDK5:
+				ServerUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeSessionUpdateSDK5:
+				SessionUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeMatchDataRequestSDK5:
+				MatchDataRequestHandlerFunc(&buffer, &packet)
+			default:
+				fmt.Printf("unknown packet type %d\n", packetType)
+			}
+
+			if buffer.Len() > 0 {
+				response := buffer.Bytes()
+
+				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+					fmt.Printf("failed to write UDP response: %v\n", err)
+				}
+			}
+		}
+	}
+}
+
+// -----------------------------------------------
+
+func main() {
+
+	rand.Seed(time.Now().UnixNano())
+
+	backend.serverDatabase = make(map[string]ServerEntry)
+	backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
+	backend.statsDatabase = routing.NewStatsDatabase()
+	backend.routeMatrix = &routing.RouteMatrix{}
+
+	backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
+		backend.statsDatabase.DeleteEntry(relayData.ID)
+		return nil
+	})
+
+	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
+		backend.mode = BACKEND_MODE_FORCE_DIRECT
+	}
+
+	if os.Getenv("BACKEND_MODE") == "RANDOM" {
+		backend.mode = BACKEND_MODE_RANDOM
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MULTIPATH" {
+		backend.mode = BACKEND_MODE_MULTIPATH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ON_OFF" {
+		backend.mode = BACKEND_MODE_ON_OFF
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ON_ON_OFF" {
+		backend.mode = BACKEND_MODE_ON_ON_OFF
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ROUTE_SWITCHING" {
+		backend.mode = BACKEND_MODE_ROUTE_SWITCHING
+	}
+
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED
+	}
+
+	if os.Getenv("BACKEND_MODE") == "UNCOMMITTED_TO_COMMITTED" {
+		backend.mode = BACKEND_MODE_UNCOMMITTED_TO_COMMITTED
+	}
+
+	if os.Getenv("BACKEND_MODE") == "SERVER_EVENTS" {
+		backend.mode = BACKEND_MODE_SERVER_EVENTS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "FORCE_RETRY" {
+		backend.mode = BACKEND_MODE_FORCE_RETRY
+	}
+
+	if os.Getenv("BACKEND_MODE") == "BANDWIDTH" {
+		backend.mode = BACKEND_MODE_BANDWIDTH
+	}
+
+	if os.Getenv("BACKEND_MODE") == "JITTER" {
+		backend.mode = BACKEND_MODE_JITTER
+	}
+
+	if os.Getenv("BACKEND_MODE") == "TAGS" {
+		backend.mode = BACKEND_MODE_TAGS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {
+		backend.mode = BACKEND_MODE_DIRECT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
+		backend.mode = BACKEND_MODE_NEXT_STATS
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
+		backend.mode = BACKEND_MODE_MATCH_ID
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
+		backend.mode = BACKEND_MODE_MATCH_VALUES
+	}
+
+	go OptimizeThread()
+
+	go TimeoutThread()
+
+	GenerateMagic(magicUpcoming[:])
+	GenerateMagic(magicCurrent[:])
+	GenerateMagic(magicPrevious[:])
+
+	go UpdateMagic()
+
+	go WebServer()
+
+	go UDPServer()
+
+	fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case <-termChan:
+		core.Debug("received shutdown signal")
+		return
+	}
 }

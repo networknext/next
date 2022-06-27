@@ -38,7 +38,7 @@ type RelayPusherStatus struct {
 	MaxmindDBISPUpdateDurationMs  float64 `json:"maxmind_db_isp_update_duration_ms"`
 }
 
-// RelayPusherServiceMetrics defines a set of metrics for the beacon insertion service.
+// RelayPusherServiceMetrics defines a set of metrics for the relay pusher service.
 type RelayPusherServiceMetrics struct {
 	ServiceMetrics     *ServiceMetrics
 	RelayPusherMetrics *RelayPusherMetrics
@@ -50,7 +50,7 @@ var EmptyRelayPusherServiceMetrics RelayPusherServiceMetrics = RelayPusherServic
 	RelayPusherMetrics: &EmptyRelayPusherMetrics,
 }
 
-// RelayPusherMetrics defines a set of metrics for monitoring the beacon insertion service.
+// RelayPusherMetrics defines a set of metrics for monitoring the relay pusher service.
 type RelayPusherMetrics struct {
 	MaxmindSuccessfulHTTPCallsISP       Counter
 	MaxmindSuccessfulHTTPCallsCity      Counter
@@ -78,7 +78,7 @@ var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
 	ErrorMetrics:                        EmptyRelayPusherErrorMetrics,
 }
 
-// RelayPusherErrorMetrics defines a set of metrics for recording errors for the beacon insertion service.
+// RelayPusherErrorMetrics defines a set of metrics for recording errors for the relay pusher service.
 type RelayPusherErrorMetrics struct {
 	MaxmindHTTPFailureISP           Counter
 	MaxmindHTTPFailureCity          Counter
@@ -89,6 +89,7 @@ type RelayPusherErrorMetrics struct {
 	MaxmindStorageUploadFailureCity Counter
 	DatabaseSCPWriteFailure         Counter
 	OverlaySCPWriteFailure          Counter
+	BinFilePullTimeoutError         Counter
 }
 
 // EmptyRelayPusherErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -102,9 +103,10 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindStorageUploadFailureCity: &EmptyCounter{},
 	DatabaseSCPWriteFailure:         &EmptyCounter{},
 	OverlaySCPWriteFailure:          &EmptyCounter{},
+	BinFilePullTimeoutError:         &EmptyCounter{},
 }
 
-// NewRelayPusherServiceMetrics creates the metrics that the beacon insertion service will use.
+// NewRelayPusherServiceMetrics creates the metrics that the relay pusher service will use.
 func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (*RelayPusherServiceMetrics, error) {
 	RelayPusherServiceMetrics := &RelayPusherServiceMetrics{}
 	var err error
@@ -311,6 +313,17 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "overlay_scp_call_failure.count",
 		Unit:        "failures",
 		Description: "The total number of overlay SCP file copy failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.BinFilePullTimeoutError, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Bin File Pull Timeout Errors",
+		ServiceName: "relay_pusher",
+		ID:          "bin_file_pull_timeout_error.count",
+		Unit:        "failures",
+		Description: "The total number of times the service timed out pulling a .bin file from GCP Cloud Storage.",
 	})
 	if err != nil {
 		return nil, err

@@ -1,15 +1,23 @@
-CXX_FLAGS := -g -Wall -Wextra -std=c++17
+#!make
+
+# IMPORTANT: Select environment before you run this makefile, eg. "next select local", "next select dev5"
+include .env
+export $(shell sed 's/=.*//' .env)
+
+CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1
 GO = go
 GOFMT = gofmt
 TAR = tar
 
+export LD_LIBRARY_PATH=.
+
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -DNEXT_DEVELOPMENT
+	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
 	CXX = g++
 else
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -DNEXT_DEVELOPMENT
-	CXX = g++-8
+	LDFLAGS = -lsodium -lcurl -lpthread -lm
+	CXX = g++
 endif
 
 SDKNAME4 = libnext4
@@ -25,27 +33,13 @@ DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
-ARTIFACT_BUCKET_PROD = gs://prod_artifacts
+ARTIFACT_BUCKET_PROD = gs://production_artifacts
 ARTIFACT_BUCKET_PROD_DEBUG = gs://prod_debug_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
 COST_FILE = $(DIST_DIR)/cost.bin
 OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
-
-export ENV = local
-
-##################
-##    SDK ENV   ##
-##################
-
-export NEXT_LOG_LEVEL = 4
-export NEXT_DATACENTER = local
-export NEXT_CUSTOMER_PUBLIC_KEY = leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
-export NEXT_CUSTOMER_PRIVATE_KEY = leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
-export NEXT_HOSTNAME = 127.0.0.1
-export NEXT_PORT = 40000
-export NEXT_DEBUG_LOGS=1
 
 ####################
 ##    RELAY ENV   ##
@@ -311,7 +305,7 @@ help:
 
 .PHONY: dist
 dist:
-	mkdir -p $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
 
 #####################
 ##   Happy Path    ##
@@ -377,65 +371,77 @@ dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
 
 ##############################################
 
+.PHONY: build-test-server4
+build-test-server4: build-sdk4
+	@printf "Building test server 4... "
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: build-server4
 build-server4: build-sdk4
 	@printf "Building server 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server4/server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-client4
 build-client4: build-sdk4
 	@printf "Building client 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-test4
 build-test4: build-sdk4
 	@printf "Building test 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/test4 ./sdk4/test.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-test-server5
+build-test-server5: build-sdk5
+	@printf "Building test server 5... "
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-server5
 build-server5: build-sdk5
 	@printf "Building server 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/server5 ./cmd/server5/server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-client5
 build-client5: build-sdk5
 	@printf "Building client 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/client5 ./cmd/client5/client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-test5
 build-test5: build-sdk5
 	@printf "Building test 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/test5 ./sdk5/test.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
-	@./scripts/client-spawner4.sh -n 1
+	@cd $(DIST_DIR) && ../scripts/client-spawner4.sh -n 1
 
 .PHONY: dev-clients4
 dev-clients4: build-client4  ## runs 10 local clients (sdk4)
-	@./scripts/client-spawner4.sh -n 10
+	@cd $(DIST_DIR) && ../scripts/client-spawner4.sh -n 10
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
-	@./dist/server4
+	@cd $(DIST_DIR) && ./server4
 
 .PHONY: dev-client5
 dev-client5: build-client5  ## runs a local client (sdk5)
-	@./scripts/client-spawner5.sh -n 1
+	@cd $(DIST_DIR) && ../scripts/client-spawner5.sh -n 1
 
 .PHONY: dev-clients5
 dev-clients5: build-client5  ## runs 10 local clients (sdk5)
-	@./scripts/client-spawner5.sh -n 10
+	@cd $(DIST_DIR) && ../scripts/client-spawner5.sh -n 10
 
 .PHONY: dev-server5
 dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
-	@./dist/server5
+	@cd $(DIST_DIR) && ./server5
 
 ##########################################
 
@@ -481,15 +487,15 @@ test: clean ## runs backend unit tests
 
 .PHONY: test-sdk4
 test-sdk4: dist build-test4 ## runs sdk4 unit tests
-	$(DIST_DIR)/test4
+	@cd $(DIST_DIR) && ./test4
 
 .PHONY: test-sdk5
 test-sdk5: dist build-test5 ## runs sdk5 unit tests
-	$(DIST_DIR)/test5
+	@cd $(DIST_DIR) && ./test5
 
 .PHONY: test-relay
 test-relay: dist build-reference-relay ## runs relay unit tests
-	$(DIST_DIR)/reference_relay test
+	cd $(DIST_DIR) && ./reference_relay test
 
 .PHONY: build-analytics
 build-analytics: dist
@@ -530,13 +536,13 @@ endif
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
 	@printf "Building functional server 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client4
 build-functional-client4: build-sdk4
 	@printf "Building functional client 4... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional4
@@ -560,35 +566,24 @@ build-test-func4: clean dist build-sdk4 build-reference-relay build-functional-s
 .PHONY: run-test-func4
 run-test-func4:
 	@printf "\nRunning functional tests 4...\n\n" ; \
-	$(GO) run ./cmd/func_tests4/func_tests4.go $(tests) ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests4/func_tests4.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func4
 test-func4: build-test-func4 run-test-func4 ## runs functional tests (sdk4)
-
-.PHONY: build-test-func4-parallel
-build-test-func4-parallel: dist
-	@docker build -t func_tests -f ./cmd/func_tests4/Dockerfile .
-
-.PHONY: run-test-func4-parallel
-run-test-func4-parallel:
-	@./scripts/test-func4-parallel.sh
-
-.PHONY: test-func4-parallel
-test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel (sdk4)
 
 #######################
 
 .PHONY: build-functional-server5
 build-functional-server5: build-sdk5
 	@printf "Building functional server 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/func_server5 ./cmd/func_server5/func_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server5 ../cmd/func_server5/func_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client5
 build-functional-client5: build-sdk5
 	@printf "Building functional client 5... "
-	@$(CXX) $(CXX_FLAGS) -Isdk5/include -o $(DIST_DIR)/func_client5 ./cmd/func_client5/func_client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional5
@@ -612,7 +607,7 @@ build-test-func5: clean dist build-sdk5 build-reference-relay build-functional-s
 .PHONY: run-test-func5
 run-test-func5:
 	@printf "\nRunning functional tests 5...\n\n" ; \
-	$(GO) run ./cmd/func_tests5/func_tests5.go $(tests) ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests5/func_tests5.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func5
@@ -620,12 +615,12 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 
 #######################
 
-.PHONY: dev-reference-backend4
-dev-reference-backend4: ## runs a local reference backend (sdk4)
+.PHONY: dev-ref-backend4
+dev-ref-backend4: ## runs a local reference backend (sdk4)
 	$(GO) run reference/backend4/backend4.go
 
-.PHONY: dev-reference-backend5
-dev-reference-backend5: ## runs a local reference backend (sdk5)
+.PHONY: dev-ref-backend5
+dev-ref-backend5: ## runs a local reference backend (sdk5)
 	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
@@ -639,12 +634,12 @@ dev-fake-server: build-fake-server ## runs a fake server that simulates 2 server
 
 $(DIST_DIR)/$(SDKNAME4).so: dist
 	@printf "Building sdk4... "
-	@$(CXX) $(CXX_FLAGS) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDKNAME4).so ./sdk4/source/*.cpp $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 $(DIST_DIR)/$(SDKNAME5).so: dist
 	@printf "Building sdk5... "
-	@$(CXX) $(CXX_FLAGS) -fPIC  -DNEXT_COMPILE_WITH_TESTS=1 -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
+	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -fPIC -DNEXT_COMPILE_WITH_TESTS=1 -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk4
@@ -753,18 +748,18 @@ deploy-pingdom-staging:
 
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
-	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-3-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-4-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
 
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t analytics-pusher -n analytics_pusher -b gs://production_artifacts
 
 .PHONY: deploy-pingdom-prod
 deploy-pingdom-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://production_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -829,6 +824,22 @@ build-server-backend4-artifacts-dev: build-server-backend4
 .PHONY: build-server-backend5-artifacts-dev
 build-server-backend5-artifacts-dev: build-server-backend5
 	./deploy/build-artifacts.sh -e dev -s server_backend5
+
+.PHONY: build-test-server4-artifacts-dev
+build-test-server4-artifacts-dev: build-test-server4
+	./deploy/build-artifacts.sh -e dev -s test_server4
+
+.PHONY: build-test-server5-artifacts-dev
+build-test-server5-artifacts-dev: build-test-server5
+	./deploy/build-artifacts.sh -e dev -s test_server5
+
+.PHONY: build-test-server4-artifacts-prod
+build-test-server4-artifacts-prod: build-test-server4
+	./deploy/build-artifacts.sh -e prod -s test_server4
+
+.PHONY: build-test-server5-artifacts-prod
+build-test-server5-artifacts-prod: build-test-server5
+	./deploy/build-artifacts.sh -e prod -s test_server5
 
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
@@ -930,201 +941,9 @@ build-server-backend4-artifacts-prod: build-server-backend4
 build-server-backend5-artifacts-prod: build-server-backend5
 	./deploy/build-artifacts.sh -e prod -s server_backend5
 
-.PHONY: publish-billing-artifacts-dev
-publish-billing-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s billing
-
-.PHONY: publish-analytics-pusher-artifacts-dev
-publish-analytics-pusher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-dev
-publish-analytics-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-dev
-publish-magic-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-dev
-publish-magic-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-dev
-publish-match-data-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s match_data
-
-.PHONY: publish-relay-artifacts-dev
-publish-relay-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
-
-.PHONY: publish-pingdom-artifacts-dev
-publish-pingdom-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
-
-.PHONY: publish-portal-artifacts-dev
-publish-portal-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
-
-.PHONY: publish-portal-artifacts-dev-test
-publish-portal-artifacts-dev-test:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal-test
-
-.PHONY: publish-portal-cruncher-artifacts-dev
-publish-portal-cruncher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-dev
-publish-server-backend4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-dev
-publish-server-backend5-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend5
-
-.PHONY: publish-billing-artifacts-staging
-publish-billing-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s billing
-
-.PHONY: publish-analytics-pusher-artifacts-staging
-publish-analytics-pusher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-staging
-publish-analytics-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-staging
-publish-magic-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-staging
-publish-magic-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-staging
-publish-match-data-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s match_data
-
-.PHONY: publish-relay-artifacts-staging
-publish-relay-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
-
-.PHONY: publish-pingdom-artifacts-staging
-publish-pingdom-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
-
-.PHONY: publish-portal-artifacts-staging
-publish-portal-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
-
-.PHONY: publish-portal-cruncher-artifacts-staging
-publish-portal-cruncher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-staging
-publish-server-backend4-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-staging
-publish-server-backend5-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend5
-
-.PHONY: publish-fake-server-artifacts-staging
-publish-fake-server-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_server
-
-.PHONY: publish-load-test-server-artifacts
-publish-load-test-server-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_server
-
-.PHONY: publish-load-test-client-artifacts
-publish-load-test-client-artifacts:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s load_test_client
-
-.PHONY: publish-load-test-server-list
-publish-load-test-server-list:
-	./deploy/publish-load-test-artifacts.sh -b $(ARTIFACT_BUCKET_STAGING) -s staging_servers.txt
-
-.PHONY: publish-billing-artifacts-prod
-publish-billing-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
-
-.PHONY: publish-debug-billing-artifacts-prod-debug
-publish-debug-billing-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_billing
-
 .PHONY: deploy-debug-billing-prod-billing
 deploy-debug-billing-prod-debug:
 	./deploy/deploy.sh -e prod -c prod-1 -t debug-billing -n debug_billing -b $(ARTIFACT_BUCKET_PROD_DEBUG)
-
-.PHONY: publish-analytics-pusher-artifacts-prod
-publish-analytics-pusher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics_pusher
-
-.PHONY: publish-analytics-artifacts-prod
-publish-analytics-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
-
-.PHONY: publish-magic-backend-artifacts-prod
-publish-magic-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_backend
-
-.PHONY: publish-magic-frontend-artifacts-prod
-publish-magic-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s magic_frontend
-
-.PHONY: publish-match-data-artifacts-prod
-publish-match-data-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s match_data
-
-.PHONY: publish-relay-artifacts-prod
-publish-relay-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
-
-.PHONY: publish-pingdom-artifacts-prod
-publish-pingdom-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
-
-.PHONY: publish-portal-artifacts-prod
-publish-portal-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
-
-.PHONY: publish-portal-cruncher-artifacts-prod
-publish-portal-cruncher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
-
-.PHONY: publish-server-backend4-artifacts-prod
-publish-server-backend4-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
-
-.PHONY: publish-server-backend5-artifacts-prod
-publish-server-backend5-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend5
-
-.PHONY: publish-bootstrap-script-dev
-publish-bootstrap-script-dev:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-staging
-publish-bootstrap-script-staging:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-prod
-publish-bootstrap-script-prod:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-bootstrap-script-prod-debug
-publish-bootstrap-script-prod-debug:
-	@printf "Publishing bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
-	@printf "done\n"
 
 .PHONY: build-next
 build-next:
@@ -1164,19 +983,7 @@ deploy-relay-pusher-staging:
 
 .PHONY: deploy-relay-pusher-prod
 deploy-relay-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://prod_artifacts
-
-.PHONY: publish-relay-pusher-artifacts-dev
-publish-relay-pusher-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_pusher
-
-.PHONY: publish-relay-pusher-artifacts-staging
-publish-relay-pusher-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_pusher
-
-.PHONY: publish-relay-pusher-artifacts-prod
-publish-relay-pusher-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_pusher
+	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
 
 #############################
 #    Debug Server Backend   #
@@ -1197,22 +1004,6 @@ build-debug-server-backend4-artifacts-prod: build-server-backend4
 .PHONY: build-debug-server-backend4-artifacts-prod-debug
 build-debug-server-backend4-artifacts-prod-debug: build-server-backend4
 	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-dev
-publish-debug-server-backend4-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-staging
-publish-debug-server-backend4-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-prod
-publish-debug-server-backend4-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend4
-
-.PHONY: publish-debug-server-backend4-artifacts-prod-debug
-publish-debug-server-backend4-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend4
 
 .PHONY: deploy-debug-server-backend4-dev
 deploy-debug-server-backend4-dev:
@@ -1249,22 +1040,6 @@ build-debug-relay-backend-artifacts-prod: build-relay-backend
 .PHONY: build-debug-relay-backend-artifacts-prod-debug
 build-debug-relay-backend-artifacts-prod-debug: build-relay-backend
 	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-dev
-publish-debug-relay-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-staging
-publish-debug-relay-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-prod
-publish-debug-relay-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-prod-debug
-publish-debug-relay-backend-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_relay_backend
 
 .PHONY: deploy-debug-relay-backend-dev
 deploy-debug-relay-backend-dev:
@@ -1322,23 +1097,11 @@ deploy-relay-backend-staging-2:
 
 .PHONY: deploy-relay-backend-prod-1
 deploy-relay-backend-prod-1:
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 .PHONY: deploy-relay-backend-prod-2
 deploy-relay-backend-prod-2:
-	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://prod_artifacts
-
-.PHONY: publish-relay-backend-artifacts-dev
-publish-relay-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_backend
-
-.PHONY: publish-relay-backend-artifacts-staging
-publish-relay-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_backend
-
-.PHONY: publish-relay-backend-artifacts-prod
-publish-relay-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_backend
+	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -1366,24 +1129,6 @@ build-ghost-army-analyzer:
 	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
 	@printf "done\n"
 
-.PHONY: publish-ghost-army-bootstrap-script-dev
-publish-ghost-army-bootstrap-script-dev:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-staging
-publish-ghost-army-bootstrap-script-staging:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_STAGING)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
-.PHONY: publish-ghost-army-bootstrap-script-prod
-publish-ghost-army-bootstrap-script-prod:
-	@printf "Publishing ghost army bootstrap script... \n\n"
-	@gsutil cp $(DEPLOY_DIR)/ghost_army_bootstrap.sh $(ARTIFACT_BUCKET_PROD)/ghost_army_bootstrap.sh
-	@printf "done\n"
-
 .PHONY: build-ghost-army-artifacts-dev
 build-ghost-army-artifacts-dev: build-ghost-army
 	./deploy/build-artifacts.sh -e dev -s ghost_army
@@ -1396,18 +1141,6 @@ build-ghost-army-artifacts-staging: build-ghost-army
 build-ghost-army-artifacts-prod: build-ghost-army
 	./deploy/build-artifacts.sh -e prod -s ghost_army
 
-.PHONY: publish-ghost-army-artifacts-dev
-publish-ghost-army-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s ghost_army
-
-.PHONY: publish-ghost-army-artifacts-staging
-publish-ghost-army-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s ghost_army
-
-.PHONY: publish-ghost-army-artifacts-prod
-publish-ghost-army-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s ghost_army
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
@@ -1418,7 +1151,7 @@ deploy-ghost-army-staging:
 
 .PHONY: deploy-ghost-army-prod
 deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c 1-ubuntu20 -t ghost-army -n ghost_army -b gs://production_artifacts
 
 #######################
 #     Fake Relay      #
@@ -1438,25 +1171,13 @@ build-fake-relays:
 build-fake-relays-artifacts-dev: build-fake-relays
 	./deploy/build-artifacts.sh -e dev -s fake_relays
 
-.PHONY: publish-fake-relays-artifacts-dev
-publish-fake-relays-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s fake_relays
-
 .PHONY: build-fake-relays-artifacts-staging
 build-fake-relays-artifacts-staging: build-fake-relays
 	./deploy/build-artifacts.sh -e staging -s fake_relays
 
-.PHONY: publish-fake-relays-artifacts-staging
-publish-fake-relays-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s fake_relays
-
 .PHONY: build-fake-relays-artifacts-prod
 build-fake-relays-artifacts-prod: build-fake-relays
 	./deploy/build-artifacts.sh -e prod -s fake_relays
-
-.PHONY: publish-fake-relays-artifacts-prod
-publish-fake-relays-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s fake_relays
 
 #######################
 # Relay Build Process #
@@ -1498,18 +1219,6 @@ build-relay-forwarder-artifacts-staging: build-relay-forwarder
 build-relay-forwarder-artifacts-prod: build-relay-forwarder
 	./deploy/build-artifacts.sh -e prod -s relay_forwarder
 
-.PHONY: publish-relay-forwarder-artifacts-dev
-publish-relay-forwarder-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-staging
-publish-relay-forwarder-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-prod
-publish-relay-forwarder-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
-
 .PHONY: deploy-relay-forwarder-dev
 deploy-relay-forwarder-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts
@@ -1520,7 +1229,7 @@ deploy-relay-forwarder-staging:
 
 .PHONY: deploy-relay-forwarder-prod
 deploy-relay-forwarder-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-forwarder -n relay_forwarder -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
 
 #######################
 #    Relay Gateway    #
@@ -1544,18 +1253,6 @@ build-relay-gateway-artifacts-staging: build-relay-gateway
 build-relay-gateway-artifacts-prod: build-relay-gateway
 	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
-.PHONY: publish-relay-gateway-artifacts-dev
-publish-relay-gateway-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-staging
-publish-relay-gateway-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_gateway
-
-.PHONY: publish-relay-gateway-artifacts-prod
-publish-relay-gateway-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_gateway
-
 #######################
 ##   Relay Frontend  ##
 #######################
@@ -1578,18 +1275,6 @@ build-relay-frontend-artifacts-staging: build-relay-frontend
 build-relay-frontend-artifacts-prod: build-relay-frontend
 	./deploy/build-artifacts.sh -e prod -s relay_frontend
 
-.PHONY: publish-relay-frontend-artifacts-dev
-publish-relay-frontend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-staging
-publish-relay-frontend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_frontend
-
-.PHONY: publish-relay-frontend-artifacts-prod
-publish-relay-frontend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_frontend
-
 #######################
 
 .PHONY: format
@@ -1598,7 +1283,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-test-server4 build-test-server5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
@@ -1613,5 +1298,5 @@ update-sdk5:
 
 .PHONY: clean
 clean: ## cleans everything
-	@rm -fr $(DIST_DIR)
-	@mkdir $(DIST_DIR)
+	@rm -rf $(DIST_DIR)
+	@mkdir -p $(DIST_DIR)
