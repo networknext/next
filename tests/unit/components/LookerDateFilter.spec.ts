@@ -189,37 +189,37 @@ describe('LookerDateFilter.vue', () => {
     expect(dropDownOptions.at(3).text()).toBe('Last 60 Days')
     expect(dropDownOptions.at(4).text()).toBe('Last 90 Days')
 
-    expect(store.getters.currentFilter.dateRange).toBe('7 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_7)
 
     await dropDownOptions.at(4).setSelected()
 
     await localVue.nextTick()
 
-    expect(store.getters.currentFilter.dateRange).toBe('90 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_90)
 
     await dropDownOptions.at(3).setSelected()
 
     await localVue.nextTick()
 
-    expect(store.getters.currentFilter.dateRange).toBe('60 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_60)
 
     await dropDownOptions.at(2).setSelected()
 
     await localVue.nextTick()
 
-    expect(store.getters.currentFilter.dateRange).toBe('30 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_30)
 
     await dropDownOptions.at(1).setSelected()
 
     await localVue.nextTick()
 
-    expect(store.getters.currentFilter.dateRange).toBe('14 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_14)
 
     await dropDownOptions.at(0).setSelected()
 
     await localVue.nextTick()
 
-    expect(store.getters.currentFilter.dateRange).toBe('7 days')
+    expect(store.getters.currentFilter.dateRange).toBe(DateFilterType.LAST_7)
 
     store.commit('UPDATE_IS_EXPLORER', false)
     store.commit('UPDATE_HAS_ANALYTICS', false)
