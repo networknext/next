@@ -487,12 +487,6 @@ func (s *BuyersService) GetHistoricalSessions(ctx context.Context, reply *UserSe
 }
 
 func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, liveSessionIDString string, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
-	buyers := s.Storage.Buyers(r.Context())
-	buyerMap := make(map[uint64]routing.Buyer)
-	for _, buyer := range buyers {
-		buyerMap[buyer.ID] = buyer
-	}
-
 	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
