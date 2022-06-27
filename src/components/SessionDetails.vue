@@ -310,6 +310,8 @@ export default class SessionDetails extends Vue {
 
   private detailsLoop: any = null
 
+  private unwatchFilter: any = null
+
   private viewState = {
     latitude: 0,
     longitude: 0,
@@ -367,6 +369,15 @@ export default class SessionDetails extends Vue {
   }
 
   private mounted () {
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        this.restartLoop()
+      }
+    )
+
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
       this.restartLoop()
@@ -375,6 +386,7 @@ export default class SessionDetails extends Vue {
 
   private beforeDestroy () {
     clearInterval(this.detailsLoop)
+    this.unwatchFilter()
   }
 
   private beforeRouteEnter (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
