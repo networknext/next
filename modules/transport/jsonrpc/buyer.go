@@ -3237,7 +3237,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 	}
 
 	analysisOnly := false
-	if s.Env == "local" { // If testing locally, we won't know if the session is analysis only or not so default to true
+	if s.Env == "local" || s.Env == "dev" { // If testing locally or in dev, we won't know if the session is analysis only or not so default to true
 		analysisOnly = true
 	} else {
 		buyer, err := s.Storage.Buyer(ctx, uint64(lookupData.BuyerID))
