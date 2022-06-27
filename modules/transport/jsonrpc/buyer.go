@@ -3236,6 +3236,8 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
 
+	queryCustomerCode := customerCode
+
 	analysisOnly := false
 	if s.Env == "local" || s.Env == "dev" { // If testing locally or in dev, we won't know if the session is analysis only or not so default to true
 		analysisOnly = true
@@ -3248,9 +3250,11 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		analysisOnly = buyer.RouteShader.AnalysisOnly
+
+		queryCustomerCode = buyer.CompanyCode
 	}
 
-	metaData, err := s.LookerClient.RunSessionMetaDataQuery(lookupData.SessionID, lookupData.TimestampTime, customerCode, analysisOnly)
+	metaData, err := s.LookerClient.RunSessionMetaDataQuery(lookupData.SessionID, lookupData.TimestampTime, queryCustomerCode, analysisOnly)
 	if err != nil {
 		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
@@ -3325,7 +3329,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		OnNetworkNext: strings.ToLower(metaEntry.EverOnNext) == "yes",
 	}
 
-	lookerSessionSlices, err := s.LookerClient.RunSessionSliceLookupQuery(lookupData.SessionID, lookupData.TimestampDate, customerCode)
+	lookerSessionSlices, err := s.LookerClient.RunSessionSliceLookupQuery(lookupData.SessionID, lookupData.TimestampDate, queryCustomerCode)
 	if err != nil {
 		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
@@ -3410,6 +3414,13 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 			sessionMeta.Hops = append(sessionMeta.Hops, transport.RelayHop{
 				Name: relay.Name,
 			})
+		}
+
+		// Hops can some times be an array with one empty element. If this is the case, return no hops
+		// This can happen if the session leaves next
+		// TODO: This won't be necessary once session scrubbing is a thing.
+		if len(sessionMeta.Hops) == 1 && sessionMeta.Hops[0].Name == "" {
+			sessionMeta.Hops = make([]transport.RelayHop, 0)
 		}
 	}
 

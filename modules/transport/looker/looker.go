@@ -323,8 +323,11 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 	}
 
 	if customerCode != "" {
-		filterExpression = "(" + filterExpression + ")"
-		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
+		if filterExpression != "" {
+			filterExpression = "(" + filterExpression + ") AND "
+		}
+
+		filterExpression = fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
 	}
 
 	query := v4.WriteQuery{
