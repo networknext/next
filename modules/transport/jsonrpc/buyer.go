@@ -262,20 +262,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	useLooker := false
-	useBigTable := false
-
-	if isAdmin && s.UseLooker {
-		useLooker = true
-
-		if args.Timeframe != "" {
-			timeFrame = args.Timeframe
-		}
-	}
-
-	if !useLooker && s.UseBigtable {
-		useBigTable = true
-	}
+	useLooker := isAdmin && s.UseLooker
+	useBigTable := !useLooker && s.UseBigtable
 
 	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
 	anonymousPlus := middleware.VerifyAllRoles(r, middleware.UnverifiedRole)
@@ -371,10 +359,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if useLooker {
-		if args.Timeframe != "" {
-			timeFrame = args.Timeframe
-		}
-
 		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, timeFrame, args.CustomerCode)
 		if err != nil {
 			core.Error("UserSessions(): %v:", err.Error())
@@ -405,14 +389,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				},
 			}
 
-			// If anon or not assigned, anonymize all sessions
-			if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-				userSession.Meta.Anonymise()
-			}
-
 			// Doing the same buyer check this way to make local testing easier
 			if !isAdmin {
-				buyer, exists := buyerMap[uint64(userSession.Meta.BuyerID)]
+				buyer, exists := buyerMap[userSession.Meta.BuyerID]
 				if !exists {
 					core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
 					continue
