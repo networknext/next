@@ -842,20 +842,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	isLiveSession := !(err != nil || metaString == "")
 
-	useLooker := false
-	useBigTable := false
-
-	if !isLiveSession && isAdmin && s.UseLooker {
-		useLooker = true
-
-		if args.Timeframe != "" {
-			timeFrame = args.Timeframe
-		}
-	}
-
-	if !isLiveSession && !useLooker && s.UseBigtable {
-		useBigTable = true
-	}
+	useLooker := !isLiveSession && isAdmin && s.UseLooker
+	useBigTable := !isLiveSession && !useLooker && s.UseBigtable
 
 	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
 	anonymousPlus := middleware.VerifyAllRoles(r, middleware.UnverifiedRole)
@@ -3237,13 +3225,19 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 }
 
 func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID string, timeFrame string, customerCode string) (transport.SessionMeta, []transport.SessionSlice, error) {
-	lookupData, err := s.LookerClient.RunSessionTimestampLookupQuery(sessionID, timeFrame)
+	queryTimeframe := "7 days"
+
+	if timeFrame != "" {
+		queryTimeframe = timeFrame
+	}
+
+	lookupData, err := s.LookerClient.RunSessionTimestampLookupQuery(sessionID, queryTimeframe)
 	if err != nil {
 		return transport.SessionMeta{}, []transport.SessionSlice{}, err
 	}
 
 	analysisOnly := false
-	if s.Env == "local" {
+	if s.Env == "local" { // If testing locally, we won't know if the session is analysis only or not so default to true
 		analysisOnly = true
 	} else {
 		buyer, err := s.Storage.Buyer(ctx, uint64(lookupData.BuyerID))
@@ -3366,7 +3360,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 
 		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
 		if err != nil {
-			core.Error("TestSessionMetaLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+			core.Error("LookerSessionDetails(): Failed to parse timestamp in UTC: %v:", err.Error())
 			continue
 		}
 
