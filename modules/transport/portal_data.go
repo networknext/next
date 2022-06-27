@@ -370,8 +370,8 @@ func ReadSessionPortalData(entry *SessionPortalData, data []byte) error {
 }
 
 type RelayHop struct {
-	Version uint32
-	ID      uint64 `json:"id"`
+	Version uint32 `json:"version,omitempty"`
+	ID      uint64 `json:"id,omitempty"`
 	Name    string `json:"name"`
 }
 
