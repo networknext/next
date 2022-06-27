@@ -3239,8 +3239,15 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 	queryCustomerCode := customerCode
 
 	analysisOnly := false
-	if s.Env == "local" || s.Env == "dev" { // If testing locally or in dev, we won't know if the session is analysis only or not so default to true
-		analysisOnly = true
+	if s.Env == "local" || s.Env == "dev" { // If testing locally or in dev, buyer IDs won't line up so use customer code that is passed in
+		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, queryCustomerCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("LookerSessionDetails(): %v: Failed to fetch buyer", err.Error())
+			return transport.SessionMeta{}, []transport.SessionSlice{}, &err
+		}
+
+		analysisOnly = buyer.RouteShader.AnalysisOnly
 	} else {
 		buyer, err := s.Storage.Buyer(ctx, uint64(lookupData.BuyerID))
 		if err != nil {
@@ -3250,7 +3257,6 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		analysisOnly = buyer.RouteShader.AnalysisOnly
-
 		queryCustomerCode = buyer.CompanyCode
 	}
 
