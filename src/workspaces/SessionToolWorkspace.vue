@@ -42,6 +42,7 @@
                    data-test="searchInput"
             >
           </div>
+          <!-- TODO: Change this to only hide for anon and anon plus -->
           <div class="col-auto" v-if="$store.getters.isAdmin">
             <LookerDateFilter />
           </div>

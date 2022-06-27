@@ -1,5 +1,5 @@
 <template>
-  <div class="px-2">
+  <div id="date-filter" class="px-2">
     <select class="form-control" @change="updateFilter($event.target.value)">
       <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.dateRange === option.value">
         {{ option.name }}
@@ -34,7 +34,7 @@ export default class LookerDateFilter extends Vue {
       }
     ]
 
-    if (!(this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus)) {
+    if (this.$store.getters.isOwner || this.$store.getters.isExplorer) {
       this.filterOptions = this.filterOptions.concat([
         {
           name: 'Last 14 Days',
@@ -46,7 +46,7 @@ export default class LookerDateFilter extends Vue {
         }
       ])
 
-      if (this.$store.getters.hasAnalytics) {
+      if (this.$store.getters.isExplorer && this.$store.getters.hasAnalytics) {
         this.filterOptions = this.filterOptions.concat([
           {
             name: 'Last 60 Days',

@@ -4,6 +4,7 @@ import Vuex from 'vuex'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { VueConstructor } from 'vue/types/umd'
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 
 function fetchSessionDetailsMock (localVue: VueConstructor<any>, success: boolean, meta: any, slices: Array<any>, sessionID: string) {
   return jest.spyOn(localVue.prototype.$apiService, 'fetchSessionDetails').mockImplementation((args: any) => {
@@ -46,6 +47,10 @@ describe('SessionDetails.vue', () => {
   // Init the store instance
   const defaultStore = {
     state: {
+      filter: {
+        companyCode: '',
+        dateRange: DateFilterType.LAST_7
+      },
       allBuyers: [],
       userProfile: newDefaultProfile(),
       killLoops: false,
@@ -54,6 +59,7 @@ describe('SessionDetails.vue', () => {
       isAdmin: false
     },
     getters: {
+      currentFilter: (state: any) => state.filter,
       allBuyers: (state: any) => state.allBuyers,
       userProfile: (state: any) => state.userProfile,
       killLoops: (state: any) => state.killLoops,
@@ -64,9 +70,15 @@ describe('SessionDetails.vue', () => {
     actions: {
       toggleKillLoops ({ commit }: any, killLoops: boolean) {
         commit('TOGGLE_KILL_LOOPS', killLoops)
+      },
+      updateCurrentFilter ({ commit }: any, filter: Filter) {
+        commit('UPDATE_CURRENT_FILTER', filter)
       }
     },
     mutations: {
+      UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
+        state.filter = newFilter
+      },
       UPDATE_ALL_BUYERS (state: any, allBuyers: Array<any>) {
         state.allBuyers = allBuyers
       },

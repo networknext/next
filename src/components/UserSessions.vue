@@ -73,7 +73,7 @@
               {{ session.meta.location.isp || "Unknown"}}
             </td>
             <td>
-              {{ session.meta.datacenter_alias !== "" ? session.meta.datacenter_alias : session.meta.datacenter_name }}
+              {{ session.meta.datacenter_alias !== "" ? session.meta.datacenter_alias : session.meta.datacenter_name !== "" ? session.meta.datacenter_name : "Unknown" }}
             </td>
             <td>
               {{ session.meta.server_addr }}
@@ -89,17 +89,42 @@
         </tbody>
       </table>
       <nav v-if="$store.getters.isAdmin">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
-            <a class="page-link" @click.prevent="changePage(currentPage - 1)">Previous</a>
-          </li>
-          <li class="page-item" :class="{ active: currentPage === page }" v-for="page in numPages" :key="page">
-            <a class="page-link" @click.prevent="changePage(page)">{{ page }}</a>
-          </li>
-          <li class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
-            <a class="page-link" @click.prevent="changePage(currentPage + 1)">Next</a>
-          </li>
-        </ul>
+        <div class="pagination-container">
+          <div id="page-counter" class="col-auto">
+            Total Pages: {{ numPages }}
+          </div>
+          <ul class="pagination justify-content-center col">
+            <li id="previous-page-button" class="page-item" :class="{ disabled: (currentPage - 1) <= 0 }">
+              <a class="page-link" @click.prevent="changePage(currentPage - 1)">Previous</a>
+            </li>
+            <li id="skip-backward-button" class="page-item" v-if="currentPage - (PAGINATION_RANGE + 1) > 0">
+              <a class="page-link" @click.prevent="changePage(currentPage - (PAGINATION_RANGE + 1))">...</a>
+            </li>
+            <li class="page-item" v-for="index in oldPageNumbers" :key="oldIndexToPageNumber(index)">
+              <a class="page-link" @click.prevent="changePage(oldIndexToPageNumber(index))">{{ oldIndexToPageNumber(index) }}</a>
+            </li>
+            <li class="page-item active">
+              <a class="page-link">{{ currentPage }}</a>
+            </li>
+            <li class="page-item" v-for="index in newPageNumbers" :key="currentPage + index">
+              <a class="page-link" @click.prevent="changePage(currentPage + index)">{{ currentPage + index }}</a>
+            </li>
+            <li id="skip-forward-button" class="page-item" v-if="currentPage + (PAGINATION_RANGE + 1) < numPages">
+              <a class="page-link" @click.prevent="changePage(currentPage + (PAGINATION_RANGE + 1))">...</a>
+            </li>
+            <li id="next-page-button" class="page-item" :class="{ disabled: (currentPage + 1) > numPages }">
+              <a class="page-link" @click.prevent="changePage(currentPage + 1)">Next</a>
+            </li>
+          </ul>
+          <div class="col-auto" style="padding-top: .5rem;">Entries per page:</div>
+          <div class="col-auto">
+            <select id="per-page-dropdown" class="form-control" @change="updateEntriesPerPage($event.target.value)">
+              <option v-for="option in entriesPerPageList" :key="option" :value="option" :selected="entriesPerPage === option">
+                {{ option }}
+              </option>
+            </select>
+          </div>
+        </div>
       </nav>
       <div v-if="!($flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && $store.getters.isAdmin)">
         <div class="float-left" style="padding-bottom: 20px;">
@@ -123,8 +148,6 @@ import { NavigationGuardNext, Route } from 'vue-router'
 import { MAX_USER_SESSION_PAGES } from './types/Constants'
 import { FeatureEnum } from './types/FeatureTypes'
 
-const DEFAULT_ENTRIES_PER_PAGE = 40
-
 /**
  * This component displays all of the information related to the user
  *  tool page in the Portal and has all the associated logic and api calls
@@ -132,13 +155,36 @@ const DEFAULT_ENTRIES_PER_PAGE = 40
 
 @Component
 export default class UserSessions extends Vue {
-  private ENTRIES_PER_PAGE = process.env.VUE_APP_USER_SESSION_PER_PAGE || DEFAULT_ENTRIES_PER_PAGE
+  private PAGINATION_RANGE = 5
+
+  private entriesPerPage: number
+  private entriesPerPageList: Array<number>
+
+  get oldPageNumbers () {
+    if (this.currentPage - this.PAGINATION_RANGE > 0) {
+      return this.PAGINATION_RANGE
+    } else {
+      return this.currentPage - 1
+    }
+  }
+
+  get newPageNumbers () {
+    return this.currentPage + this.PAGINATION_RANGE <= this.numPages - 1 ? this.PAGINATION_RANGE : this.numPages - this.currentPage
+  }
 
   get currentPageSessions () {
-    const startIndex = this.currentPage - 1 > 0 ? (this.currentPage - 1) * this.ENTRIES_PER_PAGE : 0
-    const endIndex = startIndex + this.ENTRIES_PER_PAGE < this.readOnlySessions.length - 1 ? startIndex + this.ENTRIES_PER_PAGE : this.readOnlySessions.length - 1
+    // StartIndex is the currentPage - 1 (pages start at 1 but index starts at 0) * the number of sessions per page
+    // If we are on the first page, just use 0 as the start index
+    const startIndex = this.currentPage === 1 ? 0 : (this.currentPage - 1) * this.entriesPerPage
 
-    return this.$store.getters.isAdmin ? this.readOnlySessions.slice(startIndex, endIndex) : this.sessions
+    // EndIndex is the startIndex + the number of entries per page
+    // If we overflow the number of entries with startIndex + number of entries per page, use (startIndex, this.readOnlySessions.length)
+    const endIndex = startIndex + this.entriesPerPage > this.readOnlySessions.length ? this.readOnlySessions.length : startIndex + this.entriesPerPage
+
+    const pageSessions = this.readOnlySessions.slice(startIndex, endIndex)
+
+    // TODO: Change this when looker user tool goes live for everyone...
+    return this.$store.getters.isAdmin ? pageSessions : this.sessions
   }
 
   private sessions: Array<any>
@@ -160,6 +206,16 @@ export default class UserSessions extends Vue {
     this.currentPage = 0
     this.numPages = 0
     this.FeatureEnum = FeatureEnum
+
+    this.entriesPerPageList = [
+      10,
+      25,
+      50,
+      100,
+      200
+    ]
+
+    this.entriesPerPage = this.entriesPerPageList[0]
   }
 
   private mounted () {
@@ -216,14 +272,14 @@ export default class UserSessions extends Vue {
     this.$apiService.fetchUserSessions({
       user_id: this.searchID,
       page: this.currentPage,
-      timeframe: this.$store.getters.currentFilter.dateRange,
+      timeframe: this.$store.getters.currentFilter.dateRange || '',
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.readOnlySessions = response.sessions || []
 
         if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
-          this.numPages = Math.ceil(this.readOnlySessions.length / this.ENTRIES_PER_PAGE)
+          this.numPages = Math.ceil(this.readOnlySessions.length / this.entriesPerPage)
           this.currentPage = 1
         } else {
           this.sessions = this.sessions.concat(this.readOnlySessions)
@@ -244,11 +300,26 @@ export default class UserSessions extends Vue {
   }
 
   private changePage (pageNumber: number) {
-    this.showSessions = false
+    if (this.showSessions) {
+      this.showSessions = false
+    }
     this.currentPage = pageNumber
     setTimeout(() => {
       this.showSessions = true
     }, 1000)
+  }
+
+  private updateEntriesPerPage (entries: string) {
+    this.showSessions = false
+    const entriesPerPage: number = parseInt(entries)
+    this.entriesPerPage = entriesPerPage
+    this.numPages = Math.ceil(this.readOnlySessions.length / this.entriesPerPage)
+    this.changePage(1)
+  }
+
+  // Helper function to avoid clogging template with JS
+  private oldIndexToPageNumber (index: number) {
+    return this.currentPage - this.PAGINATION_RANGE <= 0 ? index : (this.currentPage - this.PAGINATION_RANGE) + (index - 1)
   }
 
   private convertUTCDateToLocalDate (date: Date) {
@@ -271,5 +342,10 @@ export default class UserSessions extends Vue {
   #more-sessions-button {
     border-color: #009FDF;
     background-color: #009FDF;
+  }
+
+  .pagination-container {
+    display: flex;
+    flex-wrap: wrap;
   }
 </style>
