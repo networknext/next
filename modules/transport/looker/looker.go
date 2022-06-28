@@ -294,6 +294,7 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 	requiredFields := []string{
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
 		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".buyer_id",
 		LOOKER_SESSION_SUMMARY_VIEW + ".user_hash",
 		LOOKER_SESSION_SUMMARY_VIEW + ".platform_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type",
@@ -326,10 +327,10 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 
 	if customerCode != "" {
 		if filterExpression != "" {
-			filterExpression = "(" + filterExpression + ") AND "
+			filterExpression = fmt.Sprintf("(%s) AND ", filterExpression)
 		}
 
-		filterExpression = fmt.Sprintf(`%s${buyer_info_v2.customer_code} = "%s"`, filterExpression, customerCode)
+		filterExpression = fmt.Sprintf(`%s(${datacenter_info_v3.customer_code} = "%s" OR is_null(${datacenter_info_v3.customer_code}))`, filterExpression, customerCode)
 	}
 
 	query := v4.WriteQuery{
@@ -513,8 +514,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 	}
 
 	if customerCode != "" {
-		filterExpression = "(" + filterExpression + ")"
-		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
+		filterExpression = fmt.Sprintf(`(%s) AND (${datacenter_info_v3.customer_code} = "%s" OR is_null(${datacenter_info_v3.customer_code}))`, filterExpression, customerCode)
 	}
 
 	// If none of the passed in user IDs work, return no sessions
