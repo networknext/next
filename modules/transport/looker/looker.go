@@ -514,7 +514,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 
 	if customerCode != "" {
 		filterExpression = "(" + filterExpression + ")"
-		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${buyer_info_v2.customer_code} = "%s"`, customerCode)
+		filterExpression = filterExpression + " AND " + fmt.Sprintf(`${datacenter_info_v3.customer_code} = "%s"`, customerCode)
 	}
 
 	// If none of the passed in user IDs work, return no sessions
