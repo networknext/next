@@ -305,7 +305,7 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 		LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
 		LOOKER_SESSION_SUMMARY_VIEW + ".ever_on_next",
 		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
-		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_alias",
+		LOOKER_DATACENTER_INFO_VIEW + ".alias",
 		LOOKER_RELAY_INFO_VIEW + ".relay_name",
 		"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids",
 		"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts",
@@ -329,7 +329,7 @@ func (l *LookerClient) RunSessionMetaDataQuery(sessionID int64, date string, cus
 			filterExpression = "(" + filterExpression + ") AND "
 		}
 
-		filterExpression = fmt.Sprintf(`%s${buyer_info_v3.customer_code} = "%s"`, filterExpression, customerCode)
+		filterExpression = fmt.Sprintf(`%s${buyer_info_v2.customer_code} = "%s"`, filterExpression, customerCode)
 	}
 
 	query := v4.WriteQuery{
