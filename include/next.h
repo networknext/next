@@ -278,7 +278,7 @@ struct next_client_stats_t
 
 struct next_client_t;
 
-NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
+NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 NEXT_EXPORT_FUNC void next_client_destroy( struct next_client_t * client );
 
@@ -305,6 +305,8 @@ NEXT_EXPORT_FUNC uint64_t next_client_session_id( struct next_client_t * client 
 NEXT_EXPORT_FUNC const struct next_client_stats_t * next_client_stats( struct next_client_t * client );
 
 NEXT_EXPORT_FUNC const struct next_address_t * next_client_server_address( struct next_client_t * client );
+
+NEXT_EXPORT_FUNC NEXT_BOOL next_client_ready( struct next_client_t * client );
 
 // -----------------------------------------
 
@@ -348,7 +350,7 @@ struct next_server_stats_t
 
 struct next_server_t;
 
-NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
+NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 NEXT_EXPORT_FUNC void next_server_destroy( struct next_server_t * server );
 
@@ -383,6 +385,12 @@ NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const st
 NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
 
 NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
+
+NEXT_EXPORT_FUNC void next_server_set_packet_receive_callback( struct next_server_t * server, void (*callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end ), void * callback_data );
+
+NEXT_EXPORT_FUNC void next_server_set_send_packet_to_address_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes ), void * callback_data );
+
+NEXT_EXPORT_FUNC void next_server_set_payload_receive_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * address, const uint8_t * payload_data, int payload_bytes ), void * callback_data );
 
 // -----------------------------------------
 

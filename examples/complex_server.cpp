@@ -471,7 +471,7 @@ int main()
     server_context.allocator = &server_allocator;
     server_context.server_data = 0x12345678;
 
-    next_server_t * server = next_server_create( &server_context, server_address, bind_address, server_datacenter, server_packet_received, NULL );
+    next_server_t * server = next_server_create( &server_context, server_address, bind_address, server_datacenter, server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );

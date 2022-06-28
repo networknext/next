@@ -412,7 +412,7 @@ int main()
     client_context.client_data = 0x12345;
     client_context.last_packet_receive_time = next_time();
 
-    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received, NULL );
+    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );
