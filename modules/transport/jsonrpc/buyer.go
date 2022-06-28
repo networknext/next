@@ -359,13 +359,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if useLooker {
-		queryTimeframe := timeFrame
-
 		if args.Timeframe != "" {
-			queryTimeframe = args.Timeframe
+			timeFrame = args.Timeframe
 		}
 
-		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, queryTimeframe, args.CustomerCode)
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, timeFrame, args.CustomerCode)
 		if err != nil {
 			core.Error("UserSessions(): %v:", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -869,6 +867,10 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	}
 
 	if useLooker {
+		if args.Timeframe != "" {
+			timeFrame = args.Timeframe
+		}
+
 		sessionMeta, sessionSlices, err := s.LookerSessionDetails(ctx, args.SessionID, timeFrame, args.CustomerCode)
 		if err != nil {
 			err = fmt.Errorf("SessionDetails() failed to fetch session details from Looker: %v", err)
