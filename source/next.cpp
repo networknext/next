@@ -483,7 +483,7 @@ void next_quiet( NEXT_BOOL flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_DEBUG; //todo INFO;
+static int log_level = NEXT_LOG_LEVEL_INFO;
 
 void next_log_level( int level )
 {
@@ -3470,10 +3470,13 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
 {
     if ( data[0] == 0 )
         return true;
+
     if ( packet_length < 18 )
         return false;
+    
     uint8_t a[15];
     uint8_t b[2];
+
     next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     if ( memcmp( a, data + 1, 15 ) != 0 )
@@ -12794,9 +12797,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
-            if ( !next_advanced_packet_filter( packet_data + begin, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, begin - end ) )
+            if ( !next_advanced_packet_filter( packet_data + begin, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, end - begin ) )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
+            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
                 return;
             }
 
@@ -13866,7 +13869,12 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
 
     if ( packet_bytes <= NEXT_MTU )
     {
-    	// todo: callback here for immediate receive packet processing
+    	if ( server->payload_receive_callback )
+    	{
+    		void * callback_data = server->payload_receive_callback_data;
+    		if ( server->payload_receive_callback( callback_data, from, packet_data, packet_bytes ) )
+	    		return;
+    	}
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -16035,9 +16043,6 @@ void next_mutex_destroy( next_mutex_t * mutex )
 }
 
 // ---------------------------------------------------------------
-
-// todo
-#define NEXT_COMPILE_WITH_TESTS 1
 
 #if NEXT_COMPILE_WITH_TESTS
 
