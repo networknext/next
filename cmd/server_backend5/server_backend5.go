@@ -1109,6 +1109,7 @@ func mainReturnWithCode() int {
 				data = data[:size]
 
 				if !core.BasicPacketFilter(data, size) {
+					core.Debug("basic packet filter failed for packet from %s", fromAddr.String())
 					continue
 				}
 
@@ -1126,6 +1127,7 @@ func mainReturnWithCode() int {
 					toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
 					if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+						core.Debug("advanced packet filter failed for packet from %s", fromAddr.String())
 						continue
 					}
 				}
