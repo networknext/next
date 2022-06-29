@@ -77,7 +77,7 @@ int main()
         return 1;
     }
 
-    const char * server_address = "127.0.0.1:40000";
+    const char * server_address = "127.0.0.1:32202";
 
     const char * server_address_override = getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
