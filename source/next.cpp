@@ -13623,7 +13623,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data + begin, packet_bytes );
         if ( !entry )
         {
             // IMPORTANT: There is no need to log this case, because next_server_internal_process_client_to_server_packet already
@@ -13659,7 +13659,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data + begin, packet_bytes );
         if ( !entry )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. did not verify" );
