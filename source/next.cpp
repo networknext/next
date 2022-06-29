@@ -42,6 +42,7 @@
 #define NEXT_SERVER_BACKEND_HOSTNAME                "prod5.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME                 "dev5.spacecats.net"
+#define NEXT_DISABLE_ADVANCED_PACKET_FILTER                             1
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
@@ -3468,6 +3469,12 @@ void next_address_data( const next_address_t * address, uint8_t * address_data, 
 
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
+#if NEXT_DISABLE_ADVANCED_PACKET_FILTER
+
+	return true;
+
+#else // #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
+
     if ( data[0] == 0 )
         return true;
 
@@ -3484,6 +3491,8 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
     if ( memcmp( b, data + packet_length - 2, 2 ) != 0 )
         return false;
     return true;
+
+#endif // #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
 }
 
 // --------------------------------------------------
@@ -17709,6 +17718,8 @@ void test_basic_packet_filter()
 
 void test_advanced_packet_filter()
 {
+#if !NEXT_DISABLE_ADVANCED_PACKET_FILTER
+
     uint8_t output[256];
     memset( output, 0, sizeof(output) );
     uint64_t pass = 0;
@@ -17735,6 +17746,8 @@ void test_advanced_packet_filter()
         }
     }
     next_check( pass == 0 );
+
+#endif // #if !NEXT_DISABLE_ADVANCED_PACKET_FILTER
 }
 
 void test_passthrough()
