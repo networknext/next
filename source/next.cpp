@@ -3471,6 +3471,15 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
 {
 #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
 
+	(void) data;
+	(void) magic;
+	(void) from_address;
+	(void) from_address_bytes;
+	(void) from_port;
+	(void) to_address;
+	(void) to_port;
+	(void) packet_length;
+
 	return true;
 
 #else // #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
