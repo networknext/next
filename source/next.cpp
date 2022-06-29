@@ -3477,6 +3477,7 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
 	(void) from_address_bytes;
 	(void) from_port;
 	(void) to_address;
+	(void) to_address_bytes;
 	(void) to_port;
 	(void) packet_length;
 
