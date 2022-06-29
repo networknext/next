@@ -82,6 +82,11 @@ func mainReturnWithCode() int {
 		core.Debug("running as debug")
 	}
 
+	disableAdvancedPacketFilter, _ := envvar.GetBool("SERVER_BACKEND_DISABLE_ADVANCED_PACKET_FILTER", false)
+	if disableAdvancedPacketFilter {
+		core.Debug("advanced packet filter disabled")
+	}
+
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
@@ -1126,7 +1131,7 @@ func mainReturnWithCode() int {
 					fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
 					toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
-					if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
+					if !disableAdvancedPacketFilter && !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, size) {
 						core.Debug("advanced packet filter failed for packet from %s", fromAddr.String())
 						continue
 					}
