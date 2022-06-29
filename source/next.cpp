@@ -15712,7 +15712,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
             next_assert( next_advanced_packet_filter( direct_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
-            next_server_send_packet_to_address( server, &session_address, direct_packet_data, direct_packet_bytes );
+            next_server_send_packet_to_address( server, to_address, direct_packet_data, direct_packet_bytes );
         }
     }
     else
