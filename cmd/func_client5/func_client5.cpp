@@ -174,7 +174,7 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
     if ( client == NULL )
         return 1;
 
