@@ -748,14 +748,14 @@ deploy-pingdom-staging:
 
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-2 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-3 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-4 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-3-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-4-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
 
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t analytics-pusher -n analytics_pusher -b gs://production_artifacts
 
 .PHONY: deploy-pingdom-prod
 deploy-pingdom-prod:
@@ -1097,11 +1097,11 @@ deploy-relay-backend-staging-2:
 
 .PHONY: deploy-relay-backend-prod-1
 deploy-relay-backend-prod-1:
-	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 .PHONY: deploy-relay-backend-prod-2
 deploy-relay-backend-prod-2:
-	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -1151,7 +1151,7 @@ deploy-ghost-army-staging:
 
 .PHONY: deploy-ghost-army-prod
 deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1 -t ghost-army -n ghost_army -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c 1-ubuntu20 -t ghost-army -n ghost_army -b gs://production_artifacts
 
 #######################
 #     Fake Relay      #
@@ -1229,7 +1229,7 @@ deploy-relay-forwarder-staging:
 
 .PHONY: deploy-relay-forwarder-prod
 deploy-relay-forwarder-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
+	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
 
 #######################
 #    Relay Gateway    #
