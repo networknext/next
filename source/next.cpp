@@ -12802,11 +12802,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             	next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
                 return;
             }
-
-            begin += 16;
-            end -= 2;
         }
     }
+
+	begin += 16;
+	end -= 2;
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
     {
@@ -12928,9 +12928,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET )
     {
-    	begin += 16;
-    	end -= 2;
-
     	const int packet_bytes = end - begin;
 
         if ( packet_bytes <= 9 )
