@@ -15728,7 +15728,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_server_verify_sentinels( server );
 
     next_assert( to_address );
-    next_assert( to_address.type != NEXT_ADDRESS_NONE );
+    next_assert( to_address->type != NEXT_ADDRESS_NONE );
     next_assert( packet_data );
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
