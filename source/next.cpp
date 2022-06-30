@@ -6896,14 +6896,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
 
-	    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
-	    next_assert( notify );
-	    notify->type = NEXT_CLIENT_NOTIFY_READY;
-	    {
-	        next_platform_mutex_guard( &client->notify_mutex );
-	        next_queue_push( client->notify_queue, notify );
-	    }
-
         return;
     }
 
@@ -7681,6 +7673,15 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_route_manager_reset( client->route_manager );
                 next_route_manager_direct_route( client->route_manager, true );
                 next_platform_mutex_release( &client->route_manager_mutex );
+
+                // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
+			    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+			    next_assert( notify );
+			    notify->type = NEXT_CLIENT_NOTIFY_READY;
+			    {
+			        next_platform_mutex_guard( &client->notify_mutex );
+			        next_queue_push( client->notify_queue, notify );
+			    }
             }
             break;
 
