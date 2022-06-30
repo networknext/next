@@ -229,10 +229,7 @@ int main()
 
         next_client_update( client );
 
-        if ( !next_client_ready( client ) )
-        	continue;
-
-        if ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time )
+        if ( next_client_ready( client ) && ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time ) )
         {
             uint8_t packet_data[NEXT_MTU];
             memset( packet_data, 0, sizeof( packet_data ) );
