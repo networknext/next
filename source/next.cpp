@@ -6626,14 +6626,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
 
-    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
-    next_assert( notify );
-    notify->type = NEXT_CLIENT_NOTIFY_READY;
-    {
-        next_platform_mutex_guard( &client->notify_mutex );
-        next_queue_push( client->notify_queue, notify );
-    }
-
     return client;
 }
 
@@ -6903,6 +6895,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
+
+	    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+	    next_assert( notify );
+	    notify->type = NEXT_CLIENT_NOTIFY_READY;
+	    {
+	        next_platform_mutex_guard( &client->notify_mutex );
+	        next_queue_push( client->notify_queue, notify );
+	    }
 
         return;
     }
