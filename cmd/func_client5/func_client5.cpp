@@ -229,6 +229,9 @@ int main()
 
         next_client_update( client );
 
+        if ( !next_client_ready( client ) )
+        	continue;
+
         if ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time )
         {
             uint8_t packet_data[NEXT_MTU];
