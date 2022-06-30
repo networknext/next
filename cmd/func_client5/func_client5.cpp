@@ -209,12 +209,6 @@ int main()
     bool reported = false;
     bool second_connect_completed = false;
 
-    // IMPORTANT: Have to wait a bit here or the first packet will get dropped
-    // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
-    // and the recvfrom for the response from the server.
-    next_client_update( client );
-    next_sleep( 0.25 );
-
     while ( stop_time < 0.0 || time < stop_time )
     {
         if ( quit )

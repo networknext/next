@@ -1108,7 +1108,8 @@ func UDPServer() {
 
 	for {
 
-		// very rarely, semaphore won't let us bind to UDP because it's already in use. be tolerant of that, and try a few times to bind.
+		// very rarely, semaphore won't let us bind to UDP because the port is already in use (?!) 
+		// be tolerant of this, and retry until we can get it...
 
 		var lp net.PacketConn
 		var err error
