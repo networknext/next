@@ -5757,6 +5757,7 @@ struct next_client_command_report_session_t : public next_client_command_t
 #define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED          0
 #define NEXT_CLIENT_NOTIFY_UPGRADED                 1
 #define NEXT_CLIENT_NOTIFY_STATS_UPDATED            2
+#define NEXT_CLIENT_NOTIFY_READY                    3
 
 struct next_client_notify_t
 {
@@ -5784,6 +5785,10 @@ struct next_client_notify_stats_updated_t : public next_client_notify_t
 {
     next_client_stats_t stats;
     bool fallback_to_direct;
+};
+
+struct next_client_notify_ready_t : public next_client_notify_t
+{
 };
 
 // ---------------------------------------------------------------
@@ -6953,6 +6958,15 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_route_manager_reset( client->route_manager );
                 next_route_manager_direct_route( client->route_manager, true );
                 next_platform_mutex_release( &client->route_manager_mutex );
+
+                // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
+			    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+			    next_assert( notify );
+			    notify->type = NEXT_CLIENT_NOTIFY_READY;
+			    {
+			        next_platform_mutex_guard( &client->notify_mutex );
+			        next_queue_push( client->notify_queue, notify );
+			    }
             }
             break;
 
@@ -7545,6 +7559,7 @@ struct next_client_t
 
     void * context;
     int state;
+    bool ready;
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
@@ -7751,6 +7766,7 @@ void next_client_close_session( next_client_t * client )
         next_queue_push( client->internal->command_queue, command );
     }
 
+    client->ready = false;
     client->upgraded = false;
     client->fallback_to_direct = false;
     client->session_id = 0;    
@@ -7819,6 +7835,12 @@ void next_client_update( next_client_t * client )
                 next_client_notify_stats_updated_t * stats_updated = (next_client_notify_stats_updated_t*) notify;
                 client->client_stats = stats_updated->stats;
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
+            }
+            break;
+
+            case NEXT_CLIENT_NOTIFY_READY:
+            {
+                client->ready = true;
             }
             break;
 
@@ -8044,6 +8066,12 @@ const next_address_t * next_client_server_address( next_client_t * client )
 {
     next_assert( client );
     return &client->server_address;
+}
+
+NEXT_BOOL next_client_ready( next_client_t * client )
+{
+	next_assert( client );
+	return client->ready ? NEXT_TRUE : NEXT_FALSE;
 }
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
