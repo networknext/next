@@ -370,6 +370,13 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			return &err
 		}
 
+		// Input params didn't find any sessions
+		if len(lookerUserSessions) == 0 {
+			err := fmt.Errorf("no sessions were found for this session ID")
+			core.Error("UserSessions(): %v", err)
+			return err
+		}
+
 		for _, session := range lookerUserSessions {
 			timeStamp, err := time.Parse("2006-01-02 15:04:05", session.Timestamp)
 			if err != nil {
@@ -869,6 +876,13 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	if useLooker {
 		if args.Timeframe != "" {
 			timeFrame = args.Timeframe
+		}
+
+		// Admins can do a blanket "All" search in production
+		if args.CustomerCode == "" && !isAdmin {
+			err := fmt.Errorf("SessionDetails(): %v", ErrInsufficientPrivileges)
+			core.Error("%v", err)
+			return err
 		}
 
 		sessionMeta, sessionSlices, err := s.LookerSessionDetails(ctx, args.SessionID, timeFrame, args.CustomerCode)
@@ -3247,7 +3261,14 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 	queryCustomerCode := customerCode
 
 	analysisOnly := false
-	if s.Env == "local" || s.Env == "dev" { // If testing locally or in dev, buyer IDs won't line up so use customer code that is passed in
+	// If testing locally or in dev, buyer IDs won't line up so use customer code that is passed in
+	if s.Env == "local" || s.Env == "dev" {
+		if queryCustomerCode == "" {
+			err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
+			core.Error("LookerSessionDetails(): all filters not supported in local/dev")
+			return transport.SessionMeta{}, []transport.SessionSlice{}, &err
+		}
+
 		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, queryCustomerCode)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -3262,6 +3283,11 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			core.Error("LookerSessionDetails(): %v: Failed to fetch buyer", err.Error())
 			return transport.SessionMeta{}, []transport.SessionSlice{}, &err
+		}
+
+		// If not admin and the session doesn't fall under the searching customer, return nothing found
+		if queryCustomerCode != "" && queryCustomerCode != buyer.CompanyCode {
+			return transport.SessionMeta{}, []transport.SessionSlice{}, nil
 		}
 
 		analysisOnly = buyer.RouteShader.AnalysisOnly
