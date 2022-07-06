@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import SessionDetails from '@/components/SessionDetails.vue'
 import Vuex from 'vuex'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
@@ -130,7 +130,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -184,7 +184,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -260,7 +260,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -335,7 +335,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -412,7 +412,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -535,7 +535,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -647,7 +647,7 @@ describe('SessionDetails.vue', () => {
 
     $route.params.pathMatch = '00000000'
 
-    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    const wrapper = mount(SessionDetails, { localVue, store, mocks, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
