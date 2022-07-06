@@ -3537,7 +3537,7 @@ func main() {
 	}
 
 	go func() {
-		time.Sleep(time.Duration(len(tests)*90) * time.Second)
+		time.Sleep(time.Duration(len(tests)*120) * time.Second)
 		panic("tests took too long!")
 	}()
 

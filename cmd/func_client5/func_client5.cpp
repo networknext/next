@@ -174,7 +174,7 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
     if ( client == NULL )
         return 1;
 
@@ -209,12 +209,6 @@ int main()
     bool reported = false;
     bool second_connect_completed = false;
 
-    // IMPORTANT: Have to wait a bit here or the first packet will get dropped
-    // because of a race condition between the server getting set via OPEN_SESSION_COMMAND
-    // and the recvfrom for the response from the server.
-    next_client_update( client );
-    next_sleep( 0.25 );
-
     while ( stop_time < 0.0 || time < stop_time )
     {
         if ( quit )
@@ -229,7 +223,7 @@ int main()
 
         next_client_update( client );
 
-        if ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time )
+        if ( next_client_ready( client ) && ( stop_sending_packets_time < 0.0 || time < stop_sending_packets_time ) )
         {
             uint8_t packet_data[NEXT_MTU];
             memset( packet_data, 0, sizeof( packet_data ) );
