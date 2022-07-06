@@ -4,6 +4,7 @@ import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AlertType } from '@/components/types/AlertTypes'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 
 describe('UserToolWorkspace.vue', () => {
   const localVue = createLocalVue()
@@ -27,6 +28,10 @@ describe('UserToolWorkspace.vue', () => {
 
   const defaultStore = {
     state: {
+      filter: {
+        companyCode: '',
+        dateRange: DateFilterType.LAST_7
+      },
       userProfile: newDefaultProfile(),
       killLoops: false,
       isAnonymousPlus: false,
@@ -34,6 +39,7 @@ describe('UserToolWorkspace.vue', () => {
       isBuyer: false
     },
     getters: {
+      currentFilter: (state: any) => state.filter,
       allBuyers: (state: any) => state.allBuyers,
       userProfile: (state: any) => state.userProfile,
       isAnonymousPlus: (state: any) => state.isAnonymousPlus,
@@ -42,9 +48,15 @@ describe('UserToolWorkspace.vue', () => {
     actions: {
       toggleKillLoops ({ commit }: any, killLoops: boolean) {
         commit('TOGGLE_KILL_LOOPS', killLoops)
+      },
+      updateCurrentFilter ({ commit }: any, filter: Filter) {
+        commit('UPDATE_CURRENT_FILTER', filter)
       }
     },
     mutations: {
+      UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
+        state.filter = newFilter
+      },
       UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
         state.userProfile = userProfile
       },
