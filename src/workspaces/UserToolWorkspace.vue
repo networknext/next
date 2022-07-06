@@ -34,8 +34,7 @@
                     v-model="searchID"
             >
           </div>
-          <!-- TODO: Change this to only hide for anon and anon plus -->
-          <div class="col-auto" v-if="$store.getters.isAdmin">
+          <div class="col-auto" v-if="!($store.getters.isAnonymous || $store.getters.isAnonymousPlus)">
             <LookerDateFilter />
           </div>
           <div class="col-auto">
