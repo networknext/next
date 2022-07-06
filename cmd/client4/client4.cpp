@@ -77,32 +77,31 @@ int main()
         return 1;
     }
 
-    const char * server_address = "127.0.0.1:40000";
+    const char * connect_address = "127.0.0.1:32202";
 
-    const char * server_address_override = getenv( "NEXT_SERVER_ADDRESS" );
-    if ( server_address_override )
+    const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS" );
+    if ( connect_address_override )
     {
-        server_address = server_address_override;
+        connect_address = connect_address_override;
     }
 
-    next_client_open_session( client, server_address );
+    next_client_open_session( client, connect_address );
 
-#if NEXT_VERSION_MAJOR_INT >= 4
     double accumulator = 0.0;
-#endif // #if NEXT_VERSION_MAJOR_INT >= 4
 
     while ( !quit )
     {
         next_client_update( client );
 
-        int packet_bytes = 0;
-        uint8_t packet_data[NEXT_MTU];
-        generate_packet( packet_data, packet_bytes );
-        next_client_send_packet( client, packet_data, packet_bytes );
+        if ( next_client_ready( client ) )
+        {
+	        int packet_bytes = 0;
+	        uint8_t packet_data[NEXT_MTU];
+	        generate_packet( packet_data, packet_bytes );
+	        next_client_send_packet( client, packet_data, packet_bytes );
+	    }
 
         next_sleep( 1.0 / 60.0 );
-
-#if NEXT_VERSION_MAJOR_INT >= 4
 
         accumulator += 1.0 / 60.0;
 
@@ -247,8 +246,6 @@ int main()
             printf( "================================================================\n" );
 
         }
-
-#endif // #if NEXT_VERSION_MAJOR_INT >= 4
     }
 
     next_client_destroy( client );

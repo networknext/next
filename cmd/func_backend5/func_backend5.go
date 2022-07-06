@@ -1107,9 +1107,20 @@ func UDPServer() {
 	}
 
 	for {
-		lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
-		if err != nil {
-			panic(fmt.Sprintf("could not bind socket: %v", err))
+
+		// very rarely, semaphore won't let us bind to UDP because the port is already in use (?!) 
+		// be tolerant of this, and retry until we can get it...
+
+		var lp net.PacketConn
+		var err error
+
+		for {
+			lp, err = lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
+			if err == nil {
+				break
+			}
+			fmt.Printf( "retrying UDP socket create...\n")
+			time.Sleep(time.Second)
 		}
 
 		conn := lp.(*net.UDPConn)
