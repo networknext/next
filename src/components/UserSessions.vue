@@ -88,7 +88,7 @@
           </tr>
         </tbody>
       </table>
-      <nav v-if="currentPageSessions.length > 0">
+      <nav v-if="$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && currentPageSessions.length > 0">
         <div class="pagination-container">
           <div id="page-counter" class="col-auto">
             Total Pages: {{ numPages }}
