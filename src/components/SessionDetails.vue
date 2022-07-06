@@ -533,7 +533,7 @@ export default class SessionDetails extends Vue {
         if (this.slices.length === 0) {
           console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
           console.log(error)
-          this.$refs.inputAlert.setMessage('Failed to fetch session details')
+          this.$refs.inputAlert.setMessage('No session details were found this ID. Please make sure the ID is correct and you have the permissions to view the session')
           this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
@@ -544,6 +544,13 @@ export default class SessionDetails extends Vue {
     if (this.detailsLoop) {
       clearInterval(this.detailsLoop)
     }
+
+    this.$refs.inputAlert.resetAlert()
+
+    this.showDetails = false
+    this.showSpinner = true
+    this.meta = null
+    this.slices = []
     this.fetchSessionDetails()
   }
 

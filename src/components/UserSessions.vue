@@ -88,7 +88,7 @@
           </tr>
         </tbody>
       </table>
-      <nav v-if="$store.getters.isAdmin">
+      <nav v-if="$store.getters.isAdmin && currentPageSessions.length > 0">
         <div class="pagination-container">
           <div id="page-counter" class="col-auto">
             Total Pages: {{ numPages }}
@@ -173,6 +173,14 @@ export default class UserSessions extends Vue {
   }
 
   get currentPageSessions () {
+    if (!this.$store.getters.isAdmin) {
+      return this.sessions
+    }
+
+    if (this.readOnlySessions.length === 0) {
+      return []
+    }
+
     // StartIndex is the currentPage - 1 (pages start at 1 but index starts at 0) * the number of sessions per page
     // If we are on the first page, just use 0 as the start index
     const startIndex = this.currentPage === 1 ? 0 : (this.currentPage - 1) * this.entriesPerPage
@@ -184,7 +192,7 @@ export default class UserSessions extends Vue {
     const pageSessions = this.readOnlySessions.slice(startIndex, endIndex)
 
     // TODO: Change this when looker user tool goes live for everyone...
-    return this.$store.getters.isAdmin ? pageSessions : this.sessions
+    return pageSessions
   }
 
   private sessions: Array<any>
@@ -287,10 +295,12 @@ export default class UserSessions extends Vue {
         }
       })
       .catch((error: Error) => {
-        if (this.sessions.length === 0) {
-          console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
-          console.log(error)
-        }
+        this.sessions = []
+        this.readOnlySessions = []
+        this.numPages = 0
+
+        console.log(`Something went wrong fetching user sessions for: ${this.searchID}`)
+        console.log(error)
       })
       .finally(() => {
         if (!this.showSessions) {
