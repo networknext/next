@@ -27,14 +27,14 @@ function fetchLookerUserSessionsMock (vueInstance: VueConstructor<any>, success:
   })
 }
 
-describe('UserSessions.vue no sessions', () => {
+describe('UserSessions.vue bigtable', () => {
   const localVue = createLocalVue()
   localVue.use(FlagPlugin, {
     flags: [
       {
         name: FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT,
         description: 'Leverage Looker API for user tool and session tool',
-        value: true
+        value: false
       }
     ],
     useAPI: false,
@@ -58,11 +58,6 @@ describe('UserSessions.vue no sessions', () => {
   }
 
   localVue.use(JSONRPCPlugin)
-  localVue.use(FlagPlugin, {
-    flags: [],
-    useAPI: false,
-    apiService: {}
-  })
 
   const defaultStore = {
     state: {
@@ -120,7 +115,7 @@ describe('UserSessions.vue no sessions', () => {
     wrapper.destroy()
   })
 
-  it('checks default view with no sessions', async () => {
+  it('checks default view with no sessions - bigtable', async () => {
     const store = new Vuex.Store(defaultStore)
 
     $route.path = '/user-tool/00000000'
@@ -410,6 +405,85 @@ describe('UserSessions.vue no sessions', () => {
 
     wrapper.destroy()
   })
+})
+
+describe('UserSessions.vue looker', () => {
+  const localVue = createLocalVue()
+  localVue.use(FlagPlugin, {
+    flags: [
+      {
+        name: FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT,
+        description: 'Leverage Looker API for user tool and session tool',
+        value: true
+      }
+    ],
+    useAPI: false,
+    apiService: {}
+  })
+
+  const $route = {
+    path: '/user-tool',
+    params: {
+      pathMatch: ''
+    }
+  }
+
+  const mocks = {
+    $route,
+    $router: {
+      push: (newRoute: any) => {
+        $route.path = newRoute.path
+      }
+    }
+  }
+
+  localVue.use(JSONRPCPlugin)
+
+  const defaultStore = {
+    state: {
+      filter: {
+        companyCode: '',
+        dataRange: DateFilterType.LAST_7
+      },
+      userProfile: newDefaultProfile(),
+      isAnonymous: false,
+      isAnonymousPlus: false,
+      isAdmin: false
+    },
+    getters: {
+      currentPage: (state: any) => state.currentPage,
+      currentFilter: (state: any) => state.filter,
+      isAnonymous: (state: any) => state.isAnonymous,
+      isAnonymousPlus: (state: any) => state.isAnonymousPlus,
+      isAdmin: (state: any) => state.isAdmin,
+      userProfile: (state: any) => state.userProfile
+    },
+    actions: {},
+    mutations: {
+      UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
+        state.filter = newFilter
+      },
+      UPDATE_IS_ANONYMOUS (state: any, isAnonymous: boolean) {
+        state.isAnonymous = isAnonymous
+      },
+      UPDATE_IS_ANONYMOUS_PLUS (state: any, isAnonymousPlus: boolean) {
+        state.isAnonymousPlus = isAnonymousPlus
+      },
+      UPDATE_IS_TOUR (state: any, isTour: boolean) {
+        state.isTour = isTour
+      },
+      UPDATE_IS_ADMIN (state: any, isAdmin: boolean) {
+        state.isAdmin = isAdmin
+      },
+      UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
+        state.userProfile = userProfile
+      }
+    }
+  }
+
+  const stubs = [
+    'router-link'
+  ]
 
   it('checks new looker functionality (new default behavior)', async () => {
     const store = new Vuex.Store(defaultStore)

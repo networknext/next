@@ -88,7 +88,7 @@
           </tr>
         </tbody>
       </table>
-      <nav v-if="$store.getters.isAdmin && currentPageSessions.length > 0">
+      <nav v-if="$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && currentPageSessions.length > 0">
         <div class="pagination-container">
           <div id="page-counter" class="col-auto">
             Total Pages: {{ numPages }}
@@ -126,7 +126,7 @@
           </div>
         </div>
       </nav>
-      <div v-if="!($flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && $store.getters.isAdmin)">
+      <div v-if="!$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)">
         <div class="float-left" style="padding-bottom: 20px;">
           <button id="more-sessions-button" class="btn btn-primary" @click="reloadSessions()">
             Refresh Sessions
@@ -173,7 +173,7 @@ export default class UserSessions extends Vue {
   }
 
   get currentPageSessions () {
-    if (!this.$store.getters.isAdmin) {
+    if (!this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)) {
       return this.sessions
     }
 
@@ -244,7 +244,7 @@ export default class UserSessions extends Vue {
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)) {
       next()
       return
     }
@@ -286,7 +286,7 @@ export default class UserSessions extends Vue {
       .then((response: any) => {
         this.readOnlySessions = response.sessions || []
 
-        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT) && this.$store.getters.isAdmin) {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)) {
           this.numPages = Math.ceil(this.readOnlySessions.length / this.entriesPerPage)
           this.currentPage = 1
         } else {

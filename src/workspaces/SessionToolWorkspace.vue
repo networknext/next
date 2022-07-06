@@ -25,7 +25,7 @@
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <BuyerFilter v-if="$store.getters.isBuyer || $store.getters.isAdmin" :liveOnly="true" />
+      <BuyerFilter id="buyer-filter" v-if="$store.getters.isAdmin" />
     </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchSessionDetails()">
@@ -42,8 +42,7 @@
                    data-test="searchInput"
             >
           </div>
-          <!-- TODO: Change this to only hide for anon and anon plus -->
-          <div class="col-auto" v-if="$store.getters.isAdmin">
+          <div class="col-auto" v-if="!($store.getters.isAnonymous || $store.getters.isAnonymousPlus)">
             <LookerDateFilter />
           </div>
           <div class="col-auto">
