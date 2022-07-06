@@ -262,7 +262,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
-	useLooker := isAdmin && s.UseLooker
+	useLooker := s.UseLooker
 	useBigTable := !useLooker && s.UseBigtable
 
 	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
@@ -401,7 +401,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 
 			// Doing the same buyer check this way to make local testing easier
-			if !isAdmin {
+			if !isAdmin && s.Env != "local" && s.Env != "dev" {
 				buyer, exists := buyerMap[userSession.Meta.BuyerID]
 				if !exists {
 					core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
@@ -853,7 +853,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	isLiveSession := !(err != nil || metaString == "")
 
-	useLooker := !isLiveSession && isAdmin && s.UseLooker
+	useLooker := !isLiveSession && s.UseLooker
 	useBigTable := !isLiveSession && !useLooker && s.UseBigtable
 
 	anonymous := middleware.VerifyAllRoles(r, middleware.AnonymousRole)
