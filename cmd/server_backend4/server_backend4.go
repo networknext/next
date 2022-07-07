@@ -95,7 +95,7 @@ func mainReturnWithCode() int {
 
 	//Get Server Backend MIG name
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
-	if serverBackendMIGName == "" {
+	if serverBackendMIGName == "" && env != "local" {
 		core.Error("SERVER_BACKEND_MIG_NAME not set")
 		return 1
 	}
