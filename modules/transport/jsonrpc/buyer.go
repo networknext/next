@@ -370,11 +370,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			return &err
 		}
 
-		// Input params didn't find any sessions
+		// Input params didn't find any historic sessions - return nil to return live sessions if any
 		if len(lookerUserSessions) == 0 {
-			err := fmt.Errorf("no sessions were found for this session ID")
+			err := fmt.Errorf("no historic sessions were found for this session ID: %s", args.UserID)
 			core.Error("UserSessions(): %v", err)
-			return err
+			return nil
 		}
 
 		for _, session := range lookerUserSessions {
