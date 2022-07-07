@@ -7,6 +7,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
@@ -909,7 +910,8 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	encoder := gob.NewEncoder(&buffer)
 	encoder.Encode(newOverlay)
 
-	tempFile, err := ioutil.TempFile("", overlayFilePath)
+	tempFilePath := fmt.Sprintf("temp_%s", overlayFilePath)
+	tempFile, err := ioutil.TempFile("", tempFilePath)
 	if err != nil {
 		err := fmt.Errorf("error writing overlay.bin to temporary file: %v", err)
 		return err
@@ -922,8 +924,31 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 		return err
 	}
 
+	if env == "local" {
+		// If a local overlay file doesn't exist, copy the temp over for local relay backends
+		if _, err := os.Stat(overlayFilePath); err != nil {
+			rawFile, err := os.Open(tempFile.Name())
+			if err != nil {
+				return err
+			}
+
+			defer rawFile.Close()
+
+			rootOverlayFile, err := os.Create(overlayFilePath)
+			if err != nil {
+				return err
+			}
+
+			defer rootOverlayFile.Close()
+
+			if _, err = io.Copy(rootOverlayFile, rawFile); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Upload to GCP for relay pusher to send over to relay backends
-	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+	gsutilCpCommand := exec.Command("gsutil", "cp", overlayFilePath, bucketName)
 
 	err = gsutilCpCommand.Run()
 	if err != nil {
