@@ -147,12 +147,13 @@ func TestNearRelayHopData_RedisString(t *testing.T) {
 		err := expectedRelayHopData.ParseRedisString(relayHopStringTokens)
 		assert.NoError(t, err)
 
-		assert.Equal(t, expectedRelayHopData.Version, expectedRelayHopData.Version)
-		assert.Equal(t, expectedRelayHopData.ID, expectedRelayHopData.ID)
-		assert.Equal(t, expectedRelayHopData.Name, expectedRelayHopData.Name)
+		assert.Equal(t, expectedRelayHopData.Version, relayHopData.Version)
+		assert.Equal(t, expectedRelayHopData.ID, relayHopData.ID)
+		assert.Equal(t, expectedRelayHopData.Name, relayHopData.Name)
 	})
 }
 
+// TODO: Move this somewhere more accesible
 func testRoutingStats() routing.Stats {
 	data := routing.Stats{
 		RTT:        rand.Float64(),
