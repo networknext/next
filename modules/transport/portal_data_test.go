@@ -1,7 +1,10 @@
 package transport_test
 
 import (
+	"fmt"
+	"math"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -113,6 +116,43 @@ func TestRelayHop_Serialize(t *testing.T) {
 	})
 }
 
+func TestNearRelayHopData_RedisString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test to redis string", func(t *testing.T) {
+		relayHopData := testRelayHop()
+		relayHopRedisString := relayHopData.RedisString()
+		assert.NotEqual(t, "", relayHopRedisString)
+
+		relayHopStringTokens := strings.Split(relayHopRedisString, "|")
+
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%d", relayHopData.Version), relayHopStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", relayHopData.ID), relayHopStringTokens[index])
+		index++
+		assert.Equal(t, relayHopData.Name, relayHopStringTokens[index])
+		index++
+
+		assert.Equal(t, index, len(relayHopStringTokens))
+	})
+
+	t.Run("test parse redis string", func(t *testing.T) {
+		relayHopData := testRelayHop()
+		expectedRelayHopData := transport.RelayHop{}
+
+		relayHopRedisString := relayHopData.RedisString()
+
+		relayHopStringTokens := strings.Split(relayHopRedisString, "|")
+		err := expectedRelayHopData.ParseRedisString(relayHopStringTokens)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedRelayHopData.Version, expectedRelayHopData.Version)
+		assert.Equal(t, expectedRelayHopData.ID, expectedRelayHopData.ID)
+		assert.Equal(t, expectedRelayHopData.Name, expectedRelayHopData.Name)
+	})
+}
+
 func testRoutingStats() routing.Stats {
 	data := routing.Stats{
 		RTT:        rand.Float64(),
@@ -163,6 +203,51 @@ func TestNearRelayPortalData_Serialize(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, nearPortalData, readNearPortalData)
+	})
+}
+
+func TestNearRelayPortalData_RedisString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test to redis string", func(t *testing.T) {
+		nearRelayData := testNearRelayPortalData()
+		nearRelayRedisString := nearRelayData.RedisString()
+		assert.NotEqual(t, "", nearRelayRedisString)
+
+		nearRelayStringTokens := strings.Split(nearRelayRedisString, "|")
+		clientStatTokens := strings.Split(nearRelayData.ClientStats.RedisString(), "|")
+
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%d", nearRelayData.Version), nearRelayStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", nearRelayData.ID), nearRelayStringTokens[index])
+		index++
+		assert.Equal(t, nearRelayData.Name, nearRelayStringTokens[index])
+		index++
+
+		for i := 0; i < len(clientStatTokens); i++ {
+			assert.Equal(t, clientStatTokens[i], nearRelayStringTokens[index])
+			index++
+		}
+
+		assert.Equal(t, index, len(nearRelayStringTokens))
+	})
+
+	t.Run("test parse redis string", func(t *testing.T) {
+		nearRelayData := testNearRelayPortalData()
+		expectedNearRelayData := transport.NearRelayPortalData{}
+
+		nearRelayRedisString := nearRelayData.RedisString()
+
+		nearRelayStringTokens := strings.Split(nearRelayRedisString, "|")
+		err := expectedNearRelayData.ParseRedisString(nearRelayStringTokens)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedNearRelayData.Version, nearRelayData.Version)
+		assert.Equal(t, expectedNearRelayData.Name, nearRelayData.Name)
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedNearRelayData.ClientStats.RTT), fmt.Sprintf("%.2f", nearRelayData.ClientStats.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedNearRelayData.ClientStats.Jitter), fmt.Sprintf("%.2f", nearRelayData.ClientStats.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedNearRelayData.ClientStats.PacketLoss), fmt.Sprintf("%.2f", nearRelayData.ClientStats.PacketLoss))
 	})
 }
 
@@ -296,6 +381,136 @@ func TestSessionMeta_Serialize(t *testing.T) {
 	})
 }
 
+func TestSessionMeta_RedisString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test to redis string", func(t *testing.T) {
+		metaData := testSessionMeta()
+		metaRedisString := metaData.RedisString()
+		assert.NotEqual(t, "", metaRedisString)
+
+		locationTokens := strings.Split(metaData.Location.RedisString(), "|")
+
+		metaStringTokens := strings.Split(metaRedisString, "|")
+
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%d", metaData.Version), metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", metaData.ID), metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", metaData.UserHash), metaStringTokens[index])
+		index++
+		assert.Equal(t, metaData.DatacenterName, metaStringTokens[index])
+		index++
+		assert.Equal(t, metaData.DatacenterAlias, metaStringTokens[index])
+		index++
+
+		onNetworkNextString := "0"
+		if metaData.OnNetworkNext {
+			onNetworkNextString = "1"
+		}
+
+		assert.Equal(t, onNetworkNextString, metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", metaData.NextRTT), metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", metaData.DirectRTT), metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", metaData.DeltaRTT), metaStringTokens[index])
+		index++
+
+		for i := 0; i < len(locationTokens); i++ {
+			assert.Equal(t, locationTokens[i], metaStringTokens[index])
+			index++
+		}
+
+		assert.Equal(t, metaData.ClientAddr, metaStringTokens[index])
+		index++
+		assert.Equal(t, metaData.ServerAddr, metaStringTokens[index])
+		index++
+
+		assert.Equal(t, fmt.Sprintf("%d", len(metaData.Hops)), metaStringTokens[index])
+		index++
+		for i := 0; i < len(metaData.Hops); i++ {
+			hopTokens := strings.Split(metaData.Hops[i].RedisString(), "|")
+			for j := 0; j < len(hopTokens); j++ {
+				assert.Equal(t, hopTokens[j], metaStringTokens[index])
+				index++
+			}
+		}
+
+		assert.Equal(t, metaData.SDK, metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%d", metaData.Connection), metaStringTokens[index])
+		index++
+
+		assert.Equal(t, fmt.Sprintf("%d", len(metaData.NearbyRelays)), metaStringTokens[index])
+		index++
+		for i := 0; i < len(metaData.NearbyRelays); i++ {
+			relayTokens := strings.Split(metaData.NearbyRelays[i].RedisString(), "|")
+			for j := 0; j < len(relayTokens); j++ {
+				assert.Equal(t, relayTokens[j], metaStringTokens[index])
+				index++
+			}
+		}
+
+		assert.Equal(t, fmt.Sprintf("%d", metaData.Platform), metaStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", metaData.BuyerID), metaStringTokens[index])
+		index++
+
+		assert.Equal(t, index, len(metaStringTokens))
+	})
+
+	t.Run("test parse redis string", func(t *testing.T) {
+		metaData := testSessionMeta()
+		expectedMetaData := transport.SessionMeta{}
+
+		metaRedisString := metaData.RedisString()
+
+		metaStringTokens := strings.Split(metaRedisString, "|")
+		err := expectedMetaData.ParseRedisString(metaStringTokens)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedMetaData.Version, metaData.Version)
+		assert.Equal(t, expectedMetaData.ID, metaData.ID)
+		assert.Equal(t, expectedMetaData.BuyerID, metaData.BuyerID)
+		assert.Equal(t, expectedMetaData.DatacenterName, metaData.DatacenterName)
+		assert.Equal(t, expectedMetaData.DatacenterAlias, metaData.DatacenterAlias)
+		assert.Equal(t, expectedMetaData.OnNetworkNext, metaData.OnNetworkNext)
+		assert.Equal(t, expectedMetaData.NextRTT, math.Round(metaData.NextRTT*100)/100)
+		assert.Equal(t, expectedMetaData.DirectRTT, math.Round(metaData.DirectRTT*100)/100)
+		assert.Equal(t, expectedMetaData.DeltaRTT, math.Round(metaData.DeltaRTT*100)/100)
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedMetaData.Location.Latitude), fmt.Sprintf("%.2f", metaData.Location.Latitude))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedMetaData.Location.Longitude), fmt.Sprintf("%.2f", metaData.Location.Longitude))
+		assert.Equal(t, expectedMetaData.Location.City, metaData.Location.City)
+		assert.Equal(t, expectedMetaData.Location.Country, metaData.Location.Country)
+		assert.Equal(t, expectedMetaData.Location.CountryCode, metaData.Location.CountryCode)
+		assert.Equal(t, expectedMetaData.Location.Region, metaData.Location.Region)
+		assert.Equal(t, expectedMetaData.Location.ISP, metaData.Location.ISP)
+		assert.Equal(t, expectedMetaData.ClientAddr, metaData.ClientAddr)
+		assert.Equal(t, expectedMetaData.ServerAddr, metaData.ServerAddr)
+		assert.Equal(t, expectedMetaData.SDK, metaData.SDK)
+		assert.Equal(t, expectedMetaData.Connection, metaData.Connection)
+		assert.Equal(t, expectedMetaData.Platform, metaData.Platform)
+
+		for i, hop := range metaData.Hops {
+			assert.Equal(t, expectedMetaData.Hops[i].ID, hop.ID)
+			assert.Equal(t, expectedMetaData.Hops[i].Name, hop.Name)
+			assert.Equal(t, expectedMetaData.Hops[i].Version, hop.Version)
+		}
+
+		for i, relay := range metaData.NearbyRelays {
+			assert.Equal(t, expectedMetaData.NearbyRelays[i].ID, relay.ID)
+			assert.Equal(t, expectedMetaData.NearbyRelays[i].Name, relay.Name)
+			assert.Equal(t, expectedMetaData.NearbyRelays[i].Version, relay.Version)
+			assert.Equal(t, fmt.Sprintf("%.2f", expectedMetaData.NearbyRelays[i].ClientStats.RTT), fmt.Sprintf("%.2f", relay.ClientStats.RTT))
+			assert.Equal(t, fmt.Sprintf("%.2f", expectedMetaData.NearbyRelays[i].ClientStats.Jitter), fmt.Sprintf("%.2f", relay.ClientStats.Jitter))
+			assert.Equal(t, fmt.Sprintf("%.2f", expectedMetaData.NearbyRelays[i].ClientStats.PacketLoss), fmt.Sprintf("%.2f", relay.ClientStats.PacketLoss))
+		}
+	})
+}
+
 func testSessionSlice() transport.SessionSlice {
 	// Seed randomness
 	rand.Seed(time.Now().UnixNano())
@@ -417,6 +632,122 @@ func TestSessionSlice_Serialize(t *testing.T) {
 	})
 }
 
+func TestSessionSlice_RedisString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test to redis string", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		sliceRedisString := sliceData.RedisString()
+		assert.NotEqual(t, "", sliceRedisString)
+
+		nextStatTokens := strings.Split(sliceData.Next.RedisString(), "|")
+		directStatTokens := strings.Split(sliceData.Direct.RedisString(), "|")
+		predictedStatTokens := strings.Split(sliceData.Predicted.RedisString(), "|")
+		clientServerStatTokens := strings.Split(sliceData.ClientToServerStats.RedisString(), "|")
+		serverClientStatTokens := strings.Split(sliceData.ServerToClientStats.RedisString(), "|")
+		envelopeTokens := strings.Split(sliceData.Envelope.RedisString(), "|")
+
+		sliceStringTokens := strings.Split(sliceRedisString, "|")
+
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%d", sliceData.Version), sliceStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%d", sliceData.Timestamp.Unix()), sliceStringTokens[index])
+		index++
+
+		for i := 0; i < len(nextStatTokens); i++ {
+			assert.Equal(t, nextStatTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		for i := 0; i < len(directStatTokens); i++ {
+			assert.Equal(t, directStatTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		for i := 0; i < len(predictedStatTokens); i++ {
+			assert.Equal(t, predictedStatTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		for i := 0; i < len(clientServerStatTokens); i++ {
+			assert.Equal(t, clientServerStatTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		for i := 0; i < len(serverClientStatTokens); i++ {
+			assert.Equal(t, serverClientStatTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		assert.Equal(t, fmt.Sprintf("%d", sliceData.RouteDiversity), sliceStringTokens[index])
+		index++
+
+		for i := 0; i < len(envelopeTokens); i++ {
+			assert.Equal(t, envelopeTokens[i], sliceStringTokens[index])
+			index++
+		}
+
+		onNetworkNextString := "0"
+		if sliceData.OnNetworkNext {
+			onNetworkNextString = "1"
+		}
+
+		isMultipathString := "0"
+		if sliceData.IsMultiPath {
+			isMultipathString = "1"
+		}
+
+		isTryBeforeYouBuyString := "0"
+		if sliceData.IsTryBeforeYouBuy {
+			isTryBeforeYouBuyString = "1"
+		}
+
+		assert.Equal(t, onNetworkNextString, sliceStringTokens[index])
+		index++
+		assert.Equal(t, isMultipathString, sliceStringTokens[index])
+		index++
+		assert.Equal(t, isTryBeforeYouBuyString, sliceStringTokens[index])
+		index++
+
+		assert.Equal(t, index, len(sliceStringTokens))
+	})
+
+	t.Run("test parse redis string", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		expectedSliceData := transport.SessionSlice{}
+
+		sliceRedisString := sliceData.RedisString()
+
+		sliceStringTokens := strings.Split(sliceRedisString, "|")
+		err := expectedSliceData.ParseRedisString(sliceStringTokens)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedSliceData.Version, sliceData.Version)
+		assert.Equal(t, expectedSliceData.Timestamp.Unix(), sliceData.Timestamp.Unix())
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Next.RTT), fmt.Sprintf("%.2f", sliceData.Next.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Next.Jitter), fmt.Sprintf("%.2f", sliceData.Next.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Next.PacketLoss), fmt.Sprintf("%.2f", sliceData.Next.PacketLoss))
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Direct.RTT), fmt.Sprintf("%.2f", sliceData.Direct.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Direct.Jitter), fmt.Sprintf("%.2f", sliceData.Direct.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Direct.PacketLoss), fmt.Sprintf("%.2f", sliceData.Direct.PacketLoss))
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Predicted.RTT), fmt.Sprintf("%.2f", sliceData.Predicted.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Predicted.Jitter), fmt.Sprintf("%.2f", sliceData.Predicted.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.Predicted.PacketLoss), fmt.Sprintf("%.2f", sliceData.Predicted.PacketLoss))
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ClientToServerStats.RTT), fmt.Sprintf("%.2f", sliceData.ClientToServerStats.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ClientToServerStats.Jitter), fmt.Sprintf("%.2f", sliceData.ClientToServerStats.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ClientToServerStats.PacketLoss), fmt.Sprintf("%.2f", sliceData.ClientToServerStats.PacketLoss))
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ServerToClientStats.RTT), fmt.Sprintf("%.2f", sliceData.ServerToClientStats.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ServerToClientStats.Jitter), fmt.Sprintf("%.2f", sliceData.ServerToClientStats.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedSliceData.ServerToClientStats.PacketLoss), fmt.Sprintf("%.2f", sliceData.ServerToClientStats.PacketLoss))
+	})
+}
+
 func testSessionMapPoint() transport.SessionMapPoint {
 	// Seed randomness
 	rand.Seed(time.Now().UnixNano())
@@ -457,6 +788,47 @@ func TestSessionMapPoint_Serialize(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, mapData, readMapData)
+	})
+}
+
+func TestMapPoint_RedisString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test to redis string", func(t *testing.T) {
+		mapPointData := testSessionMapPoint()
+		mapPointRedisString := mapPointData.RedisString()
+		assert.NotEqual(t, "", mapPointRedisString)
+
+		mapPointStringTokens := strings.Split(mapPointRedisString, "|")
+
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%d", mapPointData.Version), mapPointStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", mapPointData.Latitude), mapPointStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", mapPointData.Longitude), mapPointStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%016x", mapPointData.SessionID), mapPointStringTokens[index])
+		index++
+
+		assert.Equal(t, index, len(mapPointStringTokens))
+	})
+
+	t.Run("test parse redis string", func(t *testing.T) {
+		mapPointData := testSessionMapPoint()
+		expectedMapPointData := transport.SessionMapPoint{}
+
+		mapPointRedisString := mapPointData.RedisString()
+
+		mapPointStringTokens := strings.Split(mapPointRedisString, "|")
+		err := expectedMapPointData.ParseRedisString(mapPointStringTokens)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedMapPointData.Version, mapPointData.Version)
+
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedMapPointData.Latitude), fmt.Sprintf("%.2f", mapPointData.Latitude))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedMapPointData.Longitude), fmt.Sprintf("%.2f", mapPointData.Longitude))
+		assert.Equal(t, expectedMapPointData.SessionID, mapPointData.SessionID)
 	})
 }
 
