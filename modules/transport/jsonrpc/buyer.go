@@ -892,12 +892,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			return err
 		}
 
-		if len(sessionSlices) == 0 {
-			err = fmt.Errorf("SessionDetails() failed to fetch session slices from Looker: no slices available for this session")
-			core.Error("%v", err)
-			return err
-		}
-
 		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CustomerCode)) {
 			sessionMeta.Anonymise()
 		}
