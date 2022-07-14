@@ -187,6 +187,7 @@ export default class SessionMap extends Vue {
       this.mapInstance.remove()
       this.mapInstance = null
     }
+    this.deckGlInstance = null
   }
 
   private fetchMapSessions () {
