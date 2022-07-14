@@ -181,6 +181,13 @@ export default class SessionMap extends Vue {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
     this.unwatchKillLoops()
+
+    // Destroy any existing maps
+    if (this.mapInstance) {
+      this.mapInstance.remove()
+      this.mapInstance = null
+    }
+    this.deckGlInstance = null
   }
 
   private fetchMapSessions () {

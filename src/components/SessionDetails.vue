@@ -374,7 +374,11 @@ export default class SessionDetails extends Vue {
         return getters.currentFilter
       },
       () => {
-        this.mapInstance = null
+        // Destroy any existing maps
+        if (this.mapInstance) {
+          this.mapInstance.remove()
+          this.mapInstance = null
+        }
         this.deckGlInstance = null
         this.restartLoop()
       }

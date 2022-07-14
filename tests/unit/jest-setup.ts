@@ -6,7 +6,11 @@ class DeckMock {
   }
 }
 
-class MapMock {}
+class MapMock {
+  public remove () {
+    console.log('Removing mapbox instance')
+  }
+}
 
 class LayerMock {}
 

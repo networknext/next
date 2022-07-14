@@ -72,7 +72,7 @@ describe('SessionMap.vue', () => {
   }
 
   // Run bare minimum mount test
-  it('mounts the map successfully', () => {
+  it('mounts the map successfully', async () => {
     const store = new Vuex.Store(defaultStore)
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
       [0, 0, true, '00000000']
@@ -82,6 +82,8 @@ describe('SessionMap.vue', () => {
     expect(wrapper.exists()).toBeTruthy()
 
     expect(mapPointsSpy).toBeCalledTimes(1)
+
+    await localVue.nextTick()
 
     mapPointsSpy.mockReset()
     wrapper.destroy()
