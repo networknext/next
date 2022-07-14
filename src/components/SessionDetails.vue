@@ -374,6 +374,8 @@ export default class SessionDetails extends Vue {
         return getters.currentFilter
       },
       () => {
+        this.mapInstance = null
+        this.deckGlInstance = null
         this.restartLoop()
       }
     )
@@ -440,7 +442,7 @@ export default class SessionDetails extends Vue {
     })
       .then((response: any) => {
         this.meta = response.meta
-        this.slices = response.slices
+        this.slices = response.slices || []
 
         const enableRefresh = response.refresh || false
         if (enableRefresh && !this.detailsLoop) {
@@ -450,10 +452,6 @@ export default class SessionDetails extends Vue {
         }
 
         this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
-
-        if (!this.showDetails) {
-          this.showDetails = true
-        }
 
         setTimeout(() => {
           this.generateCharts()
@@ -525,6 +523,10 @@ export default class SessionDetails extends Vue {
             this.$tours.sessionDetailsTour.start()
           }
         })
+
+        if (!this.showDetails) {
+          this.showDetails = true
+        }
       })
       .catch((error: any) => {
         if (this.detailsLoop) {
