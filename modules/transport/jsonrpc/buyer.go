@@ -892,12 +892,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			return err
 		}
 
-		if len(sessionSlices) == 0 {
-			err = fmt.Errorf("SessionDetails() failed to fetch session slices from Looker: no slices available for this session")
-			core.Error("%v", err)
-			return err
-		}
-
 		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CustomerCode)) {
 			sessionMeta.Anonymise()
 		}
@@ -1555,12 +1549,24 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	var sessionMetasDirect []transport.SessionMeta
 	var meta transport.SessionMeta
 	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-		metaString, err := redis.String(sessionMetaClient.Receive())
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
+		redisResponse, err := sessionMetaClient.Receive()
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting session meta: %v", err)
 			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
-			return sessions, err
+			continue
+		}
+
+		metaString, err := redis.String(redisResponse, err)
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse session meta redis response: %v", err)
+			core.Error("%v", err)
+			continue
+		}
+
+		if metaString == "" {
+			err = fmt.Errorf("FetchCurrentTopSessions() redis meta string is empty")
+			core.Error("%v", err)
+			continue
 		}
 
 		splitMetaStrings := strings.Split(metaString, "|")
