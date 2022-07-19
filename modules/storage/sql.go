@@ -2533,7 +2533,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 
 	dbBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select datacenters.hex_id from datacenter_maps "))
+	querySQL.Write([]byte("select datacenters.hex_id, enable_acceleration from datacenter_maps "))
 	querySQL.Write([]byte("inner join datacenters on datacenter_maps.datacenter_id "))
 	querySQL.Write([]byte("= datacenters.id where datacenter_maps.buyer_id = "))
 	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
@@ -2547,7 +2547,8 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 
 	for rows.Next() {
 		var hexID string
-		err = rows.Scan(&hexID)
+		var enableAcceleration bool
+		err = rows.Scan(&hexID, &enableAcceleration)
 		if err != nil {
 			core.Error("GetDatacenterMapsForBuyer(): error parsing returned row: %v", err)
 			return map[uint64]routing.DatacenterMap{}
@@ -2560,8 +2561,9 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 		}
 
 		dcMap := routing.DatacenterMap{
-			BuyerID:      ephemeralBuyerID,
-			DatacenterID: dcID,
+			BuyerID:            ephemeralBuyerID,
+			DatacenterID:       dcID,
+			EnableAcceleration: enableAcceleration,
 		}
 
 		dcMaps[dcID] = dcMap
@@ -2587,8 +2589,8 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
 
-	sql.Write([]byte("insert into datacenter_maps (buyer_id, datacenter_id) "))
-	sql.Write([]byte("values ($1, $2)"))
+	sql.Write([]byte("insert into datacenter_maps (buyer_id, datacenter_id, enable_acceleration) "))
+	sql.Write([]byte("values ($1, $2, $3)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2596,6 +2598,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 		sql,
 		buyer.DatabaseID,
 		datacenter.DatabaseID,
+		dcMap.EnableAcceleration,
 	)
 
 	if err != nil {
