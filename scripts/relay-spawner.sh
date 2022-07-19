@@ -6,7 +6,7 @@ export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000
 
 num_relays=1
-start_port=10000
+start_port=2000
 binary=./dist/reference_relay
 
 print_usage() {
