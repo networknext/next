@@ -169,6 +169,7 @@ create table datacenter_maps (
   alias varchar,
   buyer_id integer not null,
   datacenter_id integer not null,
+  enable_acceleration boolean not null,
   primary key (buyer_id, datacenter_id),
   constraint fk_buyer foreign key (buyer_id) references buyers(id),
   constraint fk_datacenter foreign key (datacenter_id) references datacenters(id)
