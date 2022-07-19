@@ -369,8 +369,9 @@ func SeedSQLStorage(
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
 		localDcMap := routing.DatacenterMap{
-			BuyerID:      localBuyer.ID,
-			DatacenterID: localDatacenter.ID,
+			BuyerID:            localBuyer.ID,
+			DatacenterID:       localDatacenter.ID,
+			EnableAcceleration: true,
 		}
 
 		err = db.AddDatacenterMap(ctx, localDcMap)
@@ -379,8 +380,9 @@ func SeedSQLStorage(
 		}
 
 		ghostDcMap := routing.DatacenterMap{
-			BuyerID:      ghostBuyer.ID,
-			DatacenterID: ghostDatacenter.ID,
+			BuyerID:            ghostBuyer.ID,
+			DatacenterID:       ghostDatacenter.ID,
+			EnableAcceleration: false,
 		}
 
 		err = db.AddDatacenterMap(ctx, ghostDcMap)
