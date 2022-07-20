@@ -1191,7 +1191,7 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 
 	state := transport.SessionHandlerState{}
 
@@ -1223,7 +1223,7 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter_AnalysisOnly(t *testi
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 
 	state := transport.SessionHandlerState{}
 
@@ -1256,7 +1256,7 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerState{}
@@ -1294,7 +1294,7 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerState{}
@@ -1326,7 +1326,7 @@ func TestSessionUpdateHandlerFunc_Pre_Success_AnalysisOnly(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerState{}
@@ -1821,7 +1821,8 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacent
 	assert.NoError(t, err)
 
 	state := transport.SessionHandlerState{
-		Metrics: metrics.SessionUpdateMetrics,
+		Metrics:                       metrics.SessionUpdateMetrics,
+		DatacenterAccelerationEnabled: true,
 	}
 
 	state.Datacenter = routing.Datacenter{
@@ -1882,11 +1883,12 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *
 		}
 
 		state := transport.SessionHandlerState{
-			Packet:      updatePacket,
-			Metrics:     metrics.SessionUpdateMetrics,
-			RouteMatrix: routeMatrix,
-			Datacenter:  dc,
-			Buyer:       buyer,
+			Packet:                        updatePacket,
+			Metrics:                       metrics.SessionUpdateMetrics,
+			RouteMatrix:                   routeMatrix,
+			Datacenter:                    dc,
+			Buyer:                         buyer,
+			DatacenterAccelerationEnabled: true,
 		}
 
 		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
@@ -1938,11 +1940,12 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *
 		}
 
 		state := transport.SessionHandlerState{
-			Packet:      updatePacket,
-			Metrics:     metrics.SessionUpdateMetrics,
-			RouteMatrix: routeMatrix,
-			Datacenter:  dc,
-			Buyer:       buyer,
+			Packet:                        updatePacket,
+			Metrics:                       metrics.SessionUpdateMetrics,
+			RouteMatrix:                   routeMatrix,
+			Datacenter:                    dc,
+			Buyer:                         buyer,
+			DatacenterAccelerationEnabled: true,
 		}
 
 		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
@@ -2016,11 +2019,12 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *
 		}
 
 		state := transport.SessionHandlerState{
-			Packet:      updatePacket,
-			Metrics:     metrics.SessionUpdateMetrics,
-			RouteMatrix: routeMatrix,
-			Datacenter:  dc,
-			Buyer:       buyer,
+			Packet:                        updatePacket,
+			Metrics:                       metrics.SessionUpdateMetrics,
+			RouteMatrix:                   routeMatrix,
+			Datacenter:                    dc,
+			Buyer:                         buyer,
+			DatacenterAccelerationEnabled: true,
 		}
 
 		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
@@ -2131,11 +2135,12 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *
 		}
 
 		state := transport.SessionHandlerState{
-			Packet:      updatePacket,
-			Metrics:     metrics.SessionUpdateMetrics,
-			RouteMatrix: routeMatrix,
-			Datacenter:  dc,
-			Buyer:       buyer,
+			Packet:                        updatePacket,
+			Metrics:                       metrics.SessionUpdateMetrics,
+			RouteMatrix:                   routeMatrix,
+			Datacenter:                    dc,
+			Buyer:                         buyer,
+			DatacenterAccelerationEnabled: true,
 		}
 
 		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
@@ -2214,11 +2219,12 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_RelayNoLongerExist
 	}
 
 	state := transport.SessionHandlerState{
-		Packet:      updatePacket,
-		Metrics:     metrics.SessionUpdateMetrics,
-		RouteMatrix: routeMatrix,
-		Datacenter:  dc,
-		Buyer:       buyer,
+		Packet:                        updatePacket,
+		Metrics:                       metrics.SessionUpdateMetrics,
+		RouteMatrix:                   routeMatrix,
+		Datacenter:                    dc,
+		Buyer:                         buyer,
+		DatacenterAccelerationEnabled: true,
 	}
 
 	assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
@@ -2468,8 +2474,9 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	env.SetCost("losangeles.1", "chicago.1", 10)
 
 	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterLA.ID,
+		BuyerID:            buyerID,
+		DatacenterID:       datacenterLA.ID,
+		EnableAcceleration: true,
 	}
 
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
@@ -2592,8 +2599,9 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	}
 
 	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterLA.ID,
+		BuyerID:            buyerID,
+		DatacenterID:       datacenterLA.ID,
+		EnableAcceleration: true,
 	}
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
