@@ -1005,7 +1005,7 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 		will always take direct.
 
 		This function is skipped for datacenters that are not enabled for
-		acceleration, forcing all connected clients to go direct
+		acceleration, forcing all connected clients to go direct.
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
@@ -1058,7 +1058,7 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		will always take direct.
 
 		This function is skipped for datacenters that are not enabled for
-		accelerations because sessions will always go direct
+		accelerations because sessions will always go direct.
 	*/
 
 	routeShader := &state.Buyer.RouteShader
