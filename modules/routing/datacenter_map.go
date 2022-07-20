@@ -4,8 +4,9 @@ import "fmt"
 
 // DatacenterMap maps buyer's alias names to the actual Datacenter
 type DatacenterMap struct {
-	BuyerID      uint64 `json:"buyer_id"`
-	DatacenterID uint64 `json:"datacenter_id"`
+	BuyerID            uint64 `json:"buyer_id"`
+	DatacenterID       uint64 `json:"datacenter_id"`
+	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
 func (dcm DatacenterMap) String() string {
