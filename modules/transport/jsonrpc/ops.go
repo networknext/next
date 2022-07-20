@@ -401,9 +401,10 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 }
 
 type buyerDatacenterMap struct {
-	Alias string `json:"alias"`
-	Name  string `json:"name"`
-	HexID string `json:"hex_id"`
+	Alias              string `json:"alias"`
+	Name               string `json:"name"`
+	HexID              string `json:"hex_id"`
+	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
 type FetchBuyerInformationArgs struct {
@@ -468,12 +469,13 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		datacenters := s.Storage.Datacenters(ctx)
 
 		for _, datacenter := range datacenters {
-			_, ok := buyerMaps[datacenter.ID]
+			buyerMap, ok := buyerMaps[datacenter.ID]
 			if ok {
 				reply.MappedDatacenters = append(reply.MappedDatacenters, buyerDatacenterMap{
-					Alias: datacenter.AliasName,
-					Name:  datacenter.Name,
-					HexID: fmt.Sprintf("%016x", datacenter.ID),
+					Alias:              datacenter.AliasName,
+					Name:               datacenter.Name,
+					HexID:              fmt.Sprintf("%016x", datacenter.ID),
+					EnableAcceleration: buyerMap.EnableAcceleration,
 				})
 			}
 		}
@@ -1902,8 +1904,10 @@ func (s *OpsService) DatacenterList(r *http.Request, args *DatacenterListArgs, r
 }
 
 type BuyerDatacenterMapArgs struct {
-	BuyerHexID      string `json:"buyer_hex_id"`
-	DatacenterHexID string `json:"datacenter_hex_id"`
+	BuyerHexID         string `json:"buyer_hex_id"`
+	DatacenterHexID    string `json:"datacenter_hex_id"`
+	NewDatacenterHexID string `json:"new_datacenter_hex_id"`
+	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
 type BuyerDatacenterMapReply struct{}
@@ -1928,11 +1932,48 @@ func (s *OpsService) AddBuyerDatacenterMap(r *http.Request, args *BuyerDatacente
 	}
 
 	dcMap := routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterID,
+		BuyerID:            buyerID,
+		DatacenterID:       datacenterID,
+		EnableAcceleration: args.EnableAcceleration,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
+}
+
+func (s *OpsService) UpdateBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateBuyerDatacenterMap(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("UpdateBuyerDatacenterMap(): Unable to parse Buyer ID: %s", args.BuyerHexID)
+	}
+
+	newDatacenterID, err := strconv.ParseUint(args.NewDatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("UpdateBuyerDatacenterMap(): Unable to parse new Datacenter ID: %s", args.BuyerHexID)
+	}
+
+	newDCMap := routing.DatacenterMap{
+		BuyerID:            buyerID,
+		DatacenterID:       newDatacenterID,
+		EnableAcceleration: args.EnableAcceleration,
+	}
+
+	if err := s.RemoveBuyerDatacenterMap(r, args, reply); err != nil {
+		return fmt.Errorf("UpdateBuyerDatacenterMap(): failed to remove old datacenter map: %v", err)
+	}
+
+	if err := s.Storage.AddDatacenterMap(ctx, newDCMap); err != nil {
+		return fmt.Errorf("UpdateBuyerDatacenterMap(): failed to add new datacenter map: %v", err)
+	}
+
+	return nil
 }
 
 func (s *OpsService) RemoveBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
