@@ -1915,7 +1915,7 @@ type BuyerDatacenterMapReply struct{}
 func (s *OpsService) AddBuyerDatacenterMap(r *http.Request, args *BuyerDatacenterMapArgs, reply *BuyerDatacenterMapReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("RemoveBuyerDatacenterMap(): %v", err.Error())
+		core.Error("AddBuyerDatacenterMap(): %v", err.Error())
 		return &err
 	}
 
