@@ -638,7 +638,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	bucketName := "gs://"
 	switch rfs.Env {
-	case "dev":
+	case "dev4", "dev5":
 		bucketName += DevDatabaseBinGCPBucketName
 	case "staging":
 		bucketName += StagingDatabaseBinGCPBucketName
