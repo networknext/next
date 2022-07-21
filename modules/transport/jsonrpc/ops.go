@@ -513,6 +513,7 @@ func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRo
 
 	// Check if the buyer actually has a route shader
 	if _, err := s.Storage.RouteShader(ctx, buyer.ID); err != nil {
+		// Add a default one if they don't
 		if err := s.Storage.AddRouteShader(ctx, core.NewRouteShader(), buyer.ID); err != nil {
 			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -658,6 +659,16 @@ func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuye
 		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
+	}
+
+	// Check if there is an internal config to update
+	if _, err := s.Storage.InternalConfig(ctx, buyer.ID); err != nil {
+		// If there isn't one, add the default internal config to be updated
+		if err := s.Storage.AddInternalConfig(ctx, core.NewInternalConfig(), buyer.ID); err != nil {
+			core.Error("UpdateBuyerInternalConfig(): failed to add default internal config: %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
 	}
 
 	// TODO: Update functions should be using database ID here
