@@ -1118,14 +1118,17 @@ func TestSessionUpdateHandlerSDK5Func_Pre_Success_DatacenterAccelerationDisabled
 	state.Packet.BuyerID = buyerID
 	state.StaleDuration = time.Second * 20
 	state.RouteMatrix = env.GetRouteMatrix()
-
-	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
-	state.PacketData = requestData
 	state.IpLocator = getSuccessLocator(t)
 	defer state.IpLocator.CloseCity()
 	defer state.IpLocator.CloseISP()
 
-	assert.True(t, transport.SessionPreSDK5(&state))
+	fromAddr := core.ParseAddress("127.0.0.1:32202")
+	toAddr := core.ParseAddress("127.0.0.1:40000")
+
+	requestData := env.GenerateEmptySessionUpdatePacketSDK5(fromAddr, toAddr, privateKey)
+	state.PacketData = requestData
+
+	assert.False(t, transport.SessionPreSDK5(&state))
 	assert.False(t, state.UnknownDatacenter)
 	assert.False(t, state.DatacenterNotEnabled)
 	assert.Equal(t, float64(0), state.Metrics.DatacenterNotEnabled.Value())
