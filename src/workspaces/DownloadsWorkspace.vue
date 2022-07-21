@@ -283,7 +283,7 @@ export default class DownloadsWorkspace extends Vue {
         header: {
           title: 'SDK & Documentation'
         },
-        content: 'Get our open source SDK and view our latest Documentation here.<br><br>Integration instructions are in the Getting Started section of the Documentation.<br><br>Please contact us in chat (lower right) if you have any questions.',
+        content: 'Get our open source SDK and view our latest Documentation here.<br><br>Integration instructions are in the Getting Started section of the Documentation.',
         params: {
           placement: 'left'
         }
