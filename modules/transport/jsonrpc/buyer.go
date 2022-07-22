@@ -1829,6 +1829,12 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
+		if err := s.Storage.AddInternalConfig(ctx, core.NewInternalConfig(), buyerID); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new buyer's internal config")
+			core.Error("%v", err)
+			return err
+		}
+
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 
