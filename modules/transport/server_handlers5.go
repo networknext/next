@@ -1093,18 +1093,34 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 		// currently going direct. should we take network next?
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+
 			BuildNextTokensSDK5(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
 			if state.Debug != nil {
-				*state.Debug += "route relays: "
 
+				routeRelays := "route relays: "
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
 					if i != int(routeNumRelays-1) {
-						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+						routeRelays += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
 					} else {
-						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+						routeRelays += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
 					}
 				}
+
+				routeAddresses := "route addresses: "
+				for i, routeRelay := range routeRelays[:routeNumRelays] {
+					if i != int(routeNumRelays-1) {
+						routeAddresses += fmt.Sprintf("%s - ", state.RouteMatrix.RelayAddresses[routeRelay].String())
+					} else {
+						routeAddresses += fmt.Sprintf("%s\n", state.RouteMatrix.RelayAddresses[routeRelay].String())
+					}
+				}
+
+				core.Debug(routeRelays)
+				core.Debug(routeAddresses)
+
+				*state.Debug += routeRelays
+				*state.Debug += routeAddresses
 			}
 		}
 
