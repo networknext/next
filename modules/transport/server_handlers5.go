@@ -1097,22 +1097,30 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 			BuildNextTokensSDK5(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
 			if state.Debug != nil {
-				*state.Debug += "route relays: "
+
+				routeRelays := "route relays: "
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
 					if i != int(routeNumRelays-1) {
-						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+						routeRelays += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
 					} else {
-						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+						routeRelays += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
 					}
 				}
-				*state.Debug += "route addresses: "
+
+				routeAddresses := "route addresses: "
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
 					if i != int(routeNumRelays-1) {
-						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayAddresses[routeRelay].String())
+						routeAddresses += fmt.Sprintf("%s - ", state.RouteMatrix.RelayAddresses[routeRelay].String())
 					} else {
-						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayAddresses[routeRelay].String())
+						routeAddresses += fmt.Sprintf("%s\n", state.RouteMatrix.RelayAddresses[routeRelay].String())
 					}
 				}
+
+				core.Debug(routeRelays)
+				core.Debug(routeAddresses)
+
+				*state.Debug += routeRelays
+				*state.Debug += routeAddresses
 			}
 		}
 
