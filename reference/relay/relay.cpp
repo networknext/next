@@ -6681,9 +6681,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "RELAY_ROUTE_REQUEST_PACKET_SDK5\n" );
-
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
                     relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
@@ -6753,9 +6750,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "RELAY_ROUTE_RESPONSE_PACKET_SDK5\n" );
-
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
                     relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
@@ -6831,9 +6825,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "RELAY_CONTINUE_REQUEST_PACKET_SDK5\n" );
-
                 if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
                 {
                     relay_printf( "ignoring continue request. bad packet size (%d)", packet_bytes );
@@ -6905,9 +6896,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "RELAY_CONTINUE_RESPONSE_PACKET_SDK5\n" );
-
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
                     relay_printf( "ignored continue response packet. wrong packet size (%d)", packet_bytes );
@@ -6983,9 +6971,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "RELAY_CLIENT_TO_SERVER_PACKET_SDK5\n" );
-
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
                     relay_printf( "ignored client to server packet. packet too small (%d)", packet_bytes );
@@ -7071,8 +7056,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 )
             {
-            	printf( "RELAY_SERVER_TO_CLIENT_PACKET_SDK5\n" );
-
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
                     relay_printf( "ignored server to client packet. packet too small (%d)", packet_bytes );
@@ -7313,8 +7296,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
-            	printf( "RELAY_NEAR_PING_PACKET_SDK5\n" );
-
                 if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {
                     relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
