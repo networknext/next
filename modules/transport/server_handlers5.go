@@ -1098,29 +1098,15 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 
 			if state.Debug != nil {
 
-				routeRelays := "route relays: "
+				*state.Debug += "route relays: "
+
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
 					if i != int(routeNumRelays-1) {
-						routeRelays += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
 					} else {
-						routeRelays += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
 					}
 				}
-
-				routeAddresses := "route addresses: "
-				for i, routeRelay := range routeRelays[:routeNumRelays] {
-					if i != int(routeNumRelays-1) {
-						routeAddresses += fmt.Sprintf("%s - ", state.RouteMatrix.RelayAddresses[routeRelay].String())
-					} else {
-						routeAddresses += fmt.Sprintf("%s\n", state.RouteMatrix.RelayAddresses[routeRelay].String())
-					}
-				}
-
-				core.Debug(routeRelays)
-				core.Debug(routeAddresses)
-
-				*state.Debug += routeRelays
-				*state.Debug += routeAddresses
 			}
 		}
 

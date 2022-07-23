@@ -7,14 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInternal(t *testing.T) {
-	internal := transport.SDKVersion{}
-	assert.True(t, internal.IsInternal())
-
-	notinternal := transport.SDKVersion{4, 5, 6}
-	assert.False(t, notinternal.IsInternal())
-}
-
 func TestString(t *testing.T) {
 	assert.Equal(t, "4.0.0", transport.SDKVersionMin.String())
 }
@@ -76,12 +68,5 @@ func TestAtLeast(t *testing.T) {
 		b := transport.SDKVersionMax
 
 		assert.False(t, a.AtLeast(b))
-	})
-
-	t.Run("internal", func(t *testing.T) {
-		a := transport.SDKVersion{}
-		b := transport.SDKVersionMax
-
-		assert.True(t, a.AtLeast(b))
 	})
 }
