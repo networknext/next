@@ -1093,9 +1093,11 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 		// currently going direct. should we take network next?
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+
 			BuildNextTokensSDK5(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
 			if state.Debug != nil {
+
 				*state.Debug += "route relays: "
 
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
