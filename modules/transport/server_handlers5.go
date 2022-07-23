@@ -1096,6 +1096,8 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 
 			BuildNextTokensSDK5(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
+			// todo: apparently broken
+			/*
 			if state.Debug != nil {
 
 				*state.Debug += "route relays: "
@@ -1108,6 +1110,7 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 					}
 				}
 			}
+			*/
 		}
 
 	} else {
