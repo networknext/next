@@ -69,11 +69,4 @@ func TestAtLeast(t *testing.T) {
 
 		assert.False(t, a.AtLeast(b))
 	})
-
-	t.Run("internal", func(t *testing.T) {
-		a := transport.SDKVersion{}
-		b := transport.SDKVersionMax
-
-		assert.True(t, a.AtLeast(b))
-	})
 }
