@@ -45,9 +45,10 @@ func (env *TestEnvironment) UpdateRouteShader(buyerID uint64, routeShader core.R
 	env.DatabaseWrapper.BuyerMap[buyerID] = buyer
 }
 
-func (env *TestEnvironment) AddDCMap(buyerID uint64, datacenterID uint64, datacenterName string) {
+func (env *TestEnvironment) AddDCMap(buyerID uint64, datacenterID uint64, datacenterName string, enableAcceleration bool) {
 	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterID,
+		BuyerID:            buyerID,
+		DatacenterID:       datacenterID,
+		EnableAcceleration: enableAcceleration,
 	}
 }
