@@ -110,14 +110,18 @@ func TestNewMaxmindDBReader(t *testing.T) {
 	t.Parallel()
 
 	t.Run("local file not found", func(t *testing.T) {
-		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), "./file/not/found")
+		r := routing.MaxmindDB{
+			CityFile: "./file/not/found",
+		}
+		err := r.OpenCity(context.Background())
 		assert.Error(t, err)
 	})
 
 	t.Run("local file found", func(t *testing.T) {
-		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), "../../testdata/GeoIP2-City-Test.mmdb")
+		r := routing.MaxmindDB{
+			CityFile: "../../testdata/GeoIP2-City-Test.mmdb",
+		}
+		err := r.OpenCity(context.Background())
 		assert.NoError(t, err)
 	})
 
@@ -127,8 +131,10 @@ func TestNewMaxmindDBReader(t *testing.T) {
 				w.WriteHeader(http.StatusUnauthorized)
 			}),
 		)
-		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), "./file/not/found")
+		r := routing.MaxmindDB{
+			CityFile: "./file/not/found",
+		}
+		err := r.OpenCity(context.Background())
 		assert.Error(t, err)
 		svr.Close()
 	})
@@ -140,8 +146,10 @@ func TestNewMaxmindDBReader(t *testing.T) {
 				w.Write([]byte("not gzip data"))
 			}),
 		)
-		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), "./file/not/found")
+		r := routing.MaxmindDB{
+			CityFile: "./file/not/found",
+		}
+		err := r.OpenCity(context.Background())
 		assert.Error(t, err)
 		svr.Close()
 	})
@@ -160,8 +168,10 @@ func TestNewMaxmindDBReader(t *testing.T) {
 				gw.Write(db)
 			}),
 		)
-		r := routing.MaxmindDB{}
-		err = r.OpenCity(context.Background(), "./file/not/found")
+		r := routing.MaxmindDB{
+			CityFile: "./file/not/found",
+		}
+		err = r.OpenCity(context.Background())
 		assert.Error(t, err)
 		svr.Close()
 	})
@@ -182,8 +192,10 @@ func TestNewMaxmindDBReader(t *testing.T) {
 				tw.Write([]byte("just some text"))
 			}),
 		)
-		r := routing.MaxmindDB{}
-		err := r.OpenCity(context.Background(), "./file/not/found")
+		r := routing.MaxmindDB{
+			CityFile: "./file/not/found",
+		}
+		err := r.OpenCity(context.Background())
 		assert.Error(t, err)
 		svr.Close()
 	})
@@ -193,11 +205,16 @@ func TestIPLocator(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Maxmind", func(t *testing.T) {
-		mmdb := routing.MaxmindDB{}
+		ctx := context.Background()
 
-		err := mmdb.OpenCity(context.Background(), "../../testdata/GeoIP2-City-Test.mmdb")
+		mmdb := routing.MaxmindDB{
+			CityFile: "../../testdata/GeoIP2-City-Test.mmdb",
+			IspFile:  "../../testdata/GeoIP2-ISP-Test.mmdb",
+		}
+
+		err := mmdb.OpenCity(ctx)
 		assert.NoError(t, err)
-		err = mmdb.OpenISP(context.Background(), "../../testdata/GeoIP2-ISP-Test.mmdb")
+		err = mmdb.OpenISP(ctx)
 		assert.NoError(t, err)
 
 		cityreader, err := geoip2.Open("../../testdata/GeoIP2-City-Test.mmdb")
@@ -236,12 +253,57 @@ func TestIPLocator(t *testing.T) {
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Validate Successfully", func(t *testing.T) {
+	t.Run("Validate City Successfully", func(t *testing.T) {
+		ctx := context.Background()
+
+		mmdb := routing.MaxmindDB{
+			CityFile: "../../testdata/GeoIP2-City-Test.mmdb",
+		}
+
+		err := mmdb.OpenCity(ctx)
+		assert.NoError(t, err)
+		err = mmdb.ValidateCity()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Validate City Failure", func(t *testing.T) {
 		mmdb := routing.MaxmindDB{}
 
-		err := mmdb.OpenCity(context.Background(), "../../testdata/GeoIP2-City-Test.mmdb")
+		err := mmdb.ValidateCity()
+		assert.Contains(t, err.Error(), "ValidateCity(): failed to locate test IP")
+	})
+
+	t.Run("Validate ISP Successfully", func(t *testing.T) {
+		ctx := context.Background()
+
+		mmdb := routing.MaxmindDB{
+			IspFile: "../../testdata/GeoIP2-ISP-Test.mmdb",
+		}
+
+		err := mmdb.OpenISP(ctx)
 		assert.NoError(t, err)
-		err = mmdb.OpenISP(context.Background(), "../../testdata/GeoIP2-ISP-Test.mmdb")
+		err = mmdb.ValidateISP()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Validate ISP Failure", func(t *testing.T) {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.ValidateISP()
+		assert.Contains(t, err.Error(), "ValidateISP(): failed to locate test IP")
+	})
+
+	t.Run("Validate Successfully", func(t *testing.T) {
+		ctx := context.Background()
+
+		mmdb := routing.MaxmindDB{
+			CityFile: "../../testdata/GeoIP2-City-Test.mmdb",
+			IspFile:  "../../testdata/GeoIP2-ISP-Test.mmdb",
+		}
+
+		err := mmdb.OpenCity(ctx)
+		assert.NoError(t, err)
+		err = mmdb.OpenISP(ctx)
 		assert.NoError(t, err)
 
 		err = mmdb.Validate()
