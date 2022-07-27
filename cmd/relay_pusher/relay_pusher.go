@@ -681,6 +681,21 @@ func mainReturnWithCode() int {
 						databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
 					}
 
+					overlayFile, err := os.Open(overlayBinFileName)
+					defer overlayFile.Close()
+
+					// Don't return here because we need to try out database file as well
+					if err != nil {
+						core.Error("could not load overlay binary at %s: %v", overlayBinFileName, err)
+					}
+
+					overlayNew := routing.CreateEmptyOverlayBinWrapper()
+
+					// Don't return here because we need to try out database file as well
+					if err := validateOverlayFile(overlayFile, overlayNew); err != nil {
+						core.Error("could not validate overlay binary: %v", err)
+					}
+
 					// Use specific context to let service restart if it takes too long for overlay.bin to be pulled from cloud storage
 					gcpOverlayCtx, gcpOverlayCancel := context.WithTimeout(ctx, binFileGCPTimeout)
 					defer gcpOverlayCancel()
@@ -691,13 +706,28 @@ func mainReturnWithCode() int {
 
 						switch err {
 						case context.DeadlineExceeded:
-							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.BinFilePullTimeoutError.Add(1)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlayFilePullTimeoutError.Add(1)
 							errChan <- err
 							return
 						default:
 							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure.Add(1)
 							// Don't error out here, need to proceed to next step
 						}
+					}
+
+					databaseFile, err := os.Open(databaseBinFileName)
+					defer databaseFile.Close()
+
+					if err != nil {
+						core.Error("could not load database binary at %s: %v", databaseBinFileName, err)
+						return
+					}
+
+					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
+					if err := validateDatabaseFile(databaseFile, databaseNew); err != nil {
+						core.Error("could not validate database binary: %v", err)
+						return
 					}
 
 					// Use specific context to let service restart if it takes too long for database.bin to be pulled from cloud storage
@@ -892,12 +922,38 @@ func validateCityFile(ctx context.Context, env string, cityStorageName string) e
 		IsStaging: env == "staging",
 	}
 
-	// Validate the ISP file
+	// Validate the City file
 	if err := mmdb.OpenCity(ctx); err != nil {
 		return err
 	}
 
 	if err := mmdb.ValidateCity(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateDatabaseFile(databaseFile *os.File, databaseNew *routing.DatabaseBinWrapper) error {
+	if err := backend.DecodeBinWrapper(databaseFile, databaseNew); err != nil {
+		core.Error("validateDatabaseFile() failed to decode database file: %v", err)
+		return err
+	}
+
+	if databaseNew.IsEmpty() {
+		// Don't want to use an empty bin wrapper
+		// so early out here and use existing array and hash
+		err := fmt.Errorf("new database file is empty, keeping previous values")
+		core.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func validateOverlayFile(overlayFile *os.File, overlayNew *routing.OverlayBinWrapper) error {
+	if err := backend.DecodeOverlayWrapper(overlayFile, overlayNew); err != nil {
+		core.Error("validateOverlayFile() failed to decode database file: %v", err)
 		return err
 	}
 
