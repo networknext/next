@@ -243,11 +243,11 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	metrics.Invocations.Add(1)
 	durationStart := time.Now()
 
-	if err := mmdb.OpenCity(ctx, mmdb.CityFile); err != nil {
+	if err := mmdb.OpenCity(ctx); err != nil {
 		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
 	}
-	if err := mmdb.OpenISP(ctx, mmdb.IspFile); err != nil {
+	if err := mmdb.OpenISP(ctx); err != nil {
 		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
@@ -258,8 +258,8 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 	return nil
 }
 
-func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, file)
+func (mmdb *MaxmindDB) OpenCity(ctx context.Context) error {
+	reader, err := mmdb.openMaxmindDB(ctx, mmdb.CityFile)
 	if err != nil {
 		return err
 	}
@@ -273,8 +273,8 @@ func (mmdb *MaxmindDB) CloseCity() error {
 	return mmdb.cityReader.Close()
 }
 
-func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
-	reader, err := mmdb.openMaxmindDB(ctx, file)
+func (mmdb *MaxmindDB) OpenISP(ctx context.Context) error {
+	reader, err := mmdb.openMaxmindDB(ctx, mmdb.IspFile)
 	if err != nil {
 		return err
 	}
@@ -303,28 +303,46 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.
 	return geoip2.FromBytes(maxmindBytes)
 }
 
+func (mmdb *MaxmindDB) LocateISP(ip net.IP) (*geoip2.ISP, error) {
+	if mmdb.ispReader == nil {
+		return &geoip2.ISP{}, errors.New("not configured with a Maxmind ISP DB")
+	}
+
+	ispres, err := mmdb.ispReader.ISP(ip)
+
+	if err != nil {
+		return &geoip2.ISP{}, err
+	}
+
+	return ispres, nil
+}
+
+func (mmdb *MaxmindDB) LocateCity(ip net.IP) (*geoip2.City, error) {
+	if mmdb.cityReader == nil {
+		return &geoip2.City{}, errors.New("not configured with a Maxmind City DB")
+	}
+
+	cityres, err := mmdb.cityReader.City(ip)
+
+	if err != nil {
+		return &geoip2.City{}, err
+	}
+
+	return cityres, nil
+}
+
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP, sessionID uint64) (Location, error) {
 	if mmdb.IsStaging {
 		return mmdb.LocateStagingIP(sessionID)
 	}
 
-	if mmdb.cityReader == nil {
-		return LocationNullIsland, errors.New("not configured with a Maxmind City DB")
-	}
-
-	cityres, err := mmdb.cityReader.City(ip)
-
+	cityres, err := mmdb.LocateCity(ip)
 	if err != nil {
 		return LocationNullIsland, err
 	}
 
-	if mmdb.ispReader == nil {
-		return LocationNullIsland, errors.New("not configured with a Maxmind ISP DB")
-	}
-
-	ispres, err := mmdb.ispReader.ISP(ip)
-
+	ispres, err := mmdb.LocateISP(ip)
 	if err != nil {
 		return LocationNullIsland, err
 	}
@@ -353,6 +371,56 @@ func (mmdb *MaxmindDB) LocateStagingIP(sessionID uint64) (Location, error) {
 		Latitude:  (-90.0 + lat*180.0) * 0.5,
 		Longitude: -180.0 + long*360.0,
 	}, nil
+}
+
+// Helper function for relay pusher
+func (mmdb *MaxmindDB) ValidateISP() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("ValidateISP(): failed to create test IP %s", ipStr)
+	}
+
+	ispres, err := mmdb.LocateISP(testIP)
+	if err != nil {
+		return fmt.Errorf("ValidateISP(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+
+	location := Location{
+		ISP: ispres.ISP,
+		ASN: int(ispres.AutonomousSystemNumber),
+	}
+
+	if location == LocationNullIsland {
+		return fmt.Errorf("ValidateISP(): location is null island: %v", location)
+	}
+
+	return nil
+}
+
+// Helper function for relay pusher
+func (mmdb *MaxmindDB) ValidateCity() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("ValidateCity(): failed to create test IP %s", ipStr)
+	}
+
+	cityres, err := mmdb.LocateCity(testIP)
+	if err != nil {
+		return fmt.Errorf("ValidateCity(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+
+	location := Location{
+		Latitude:  float32(cityres.Location.Latitude),
+		Longitude: float32(cityres.Location.Longitude),
+	}
+
+	if location == LocationNullIsland {
+		return fmt.Errorf("ValidateCity(): location is null island: %v", location)
+	}
+
+	return nil
 }
 
 // Checks if the Maxmind DB can locate an IP
