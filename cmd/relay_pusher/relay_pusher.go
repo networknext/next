@@ -893,11 +893,11 @@ func validateCityFile(ctx context.Context, env string, cityStorageName string) e
 	}
 
 	// Validate the ISP file
-	if err := mmdb.OpenISP(ctx); err != nil {
+	if err := mmdb.OpenCity(ctx); err != nil {
 		return err
 	}
 
-	if err := mmdb.ValidateISP(); err != nil {
+	if err := mmdb.ValidateCity(); err != nil {
 		return err
 	}
 
