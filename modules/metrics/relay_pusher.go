@@ -29,8 +29,12 @@ type RelayPusherStatus struct {
 	MaxmindSCPWriteFailure          int `json:"maxmind_scp_write_failure"`
 	MaxmindStorageUploadFailureISP  int `json:"maxmind_storage_upload_failure_isp"`
 	MaxmindStorageUploadFailureCity int `json:"maxmind_storage_upload_failure_city"`
+	MaxmindValidationFailureISP     int `json:"maxmind_validation_failure_isp"`
+	MaxmindValidationFailureCity    int `json:"maxmind_validation_failure_city"`
 	DatabaseSCPWriteFailure         int `json:"database_scp_write_failure"`
 	OverlaySCPWriteFailure          int `json:"overlay_scp_write_failure"`
+	BinFilePullTimeoutError         int `json:"bin_file_pull_timeout"`
+	OverlayFilePullTimeoutError     int `json:"overlay_file_pull_timeout"`
 
 	// Durations
 	BinaryTotalUpdateDurationMs   float64 `json:"binary_total_update_duration_ms"`

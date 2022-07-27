@@ -798,7 +798,12 @@ func mainReturnWithCode() int {
 				newStatusData.MaxmindSCPWriteFailure = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Value())
 				newStatusData.MaxmindStorageUploadFailureISP = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Value())
 				newStatusData.MaxmindStorageUploadFailureCity = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Value())
+				newStatusData.MaxmindValidationFailureISP = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP.Value())
+				newStatusData.MaxmindValidationFailureCity = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureCity.Value())
 				newStatusData.DatabaseSCPWriteFailure = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Value())
+				newStatusData.OverlaySCPWriteFailure = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlaySCPWriteFailure.Value())
+				newStatusData.BinFilePullTimeoutError = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.BinFilePullTimeoutError.Value())
+				newStatusData.OverlayFilePullTimeoutError = int(relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlayFilePullTimeoutError.Value())
 
 				// Durations
 				newStatusData.BinaryTotalUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.BinaryTotalUpdateDuration.Value()
