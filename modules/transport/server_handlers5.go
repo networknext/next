@@ -466,12 +466,13 @@ type SessionHandlerStateSDK5 struct {
 	PostSessionHandler    *PostSessionHandler
 
 	// flags
-	SignatureCheckFailed bool
-	UnknownDatacenter    bool
-	DatacenterNotEnabled bool
-	BuyerNotFound        bool
-	BuyerNotLive         bool
-	StaleRouteMatrix     bool
+	SignatureCheckFailed          bool
+	UnknownDatacenter             bool
+	DatacenterNotEnabled          bool
+	BuyerNotFound                 bool
+	BuyerNotLive                  bool
+	StaleRouteMatrix              bool
+	DatacenterAccelerationEnabled bool
 
 	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
@@ -631,10 +632,12 @@ func SessionPreSDK5(state *SessionHandlerStateSDK5) bool {
 		return true
 	}
 
+	state.DatacenterAccelerationEnabled = accelerateDatacenter(state.Database, state.Buyer.ID, state.Packet.DatacenterID)
+
 	state.Datacenter = getDatacenter(state.Database, state.Packet.DatacenterID)
 
 	destRelayIDs := state.RouteMatrix.GetDatacenterRelayIDs(state.Packet.DatacenterID)
-	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly {
+	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly && state.DatacenterAccelerationEnabled {
 		core.Debug("no relays in datacenter %x", state.Packet.DatacenterID)
 		state.Metrics.NoRelaysInDatacenter.Add(1)
 		return true
@@ -877,28 +880,36 @@ func SessionHandleFallbackToDirectSDK5(state *SessionHandlerStateSDK5) bool {
 func SessionGetNearRelaysSDK5(state *SessionHandlerStateSDK5) bool {
 
 	/*
-	   This function selects up to 32 near relays for the session,
-	   according to the players latitude and longitude determined by
-	   ip2location.
+		This function selects up to 32 near relays for the session,
+		according to the players latitude and longitude determined by
+		ip2location.
 
-	   These near relays are selected only on the first slice (slice 0)
-	   of a session, and are held fixed for the duration of the session.
+		These near relays are selected only on the first slice (slice 0)
+		of a session, and are held fixed for the duration of the session.
 
-	   The SDK pings the near relays, and reports up the latency, jitter
-	   and packet loss to each near relay, with each subsequent session
-	   update (every 10 seconds).
+		The SDK pings the near relays, and reports up the latency, jitter
+		and packet loss to each near relay, with each subsequent session
+		update (every 10 seconds).
 
-	   Network Next uses the relay ping statistics in route planning,
-	   by adding the latency to the first relay to the total route cost,
-	   and by excluding near relays with higher jitter or packet loss
-	   than the default internet route.
+		Network Next uses the relay ping statistics in route planning,
+		by adding the latency to the first relay to the total route cost,
+		and by excluding near relays with higher jitter or packet loss
+		than the default internet route.
 
-	   This function is skipped for "Analysis Only" buyers because sessions
-	   will always take direct.
+		This function is skipped for "Analysis Only" buyers because sessions
+		will always take direct.
+
+		This function is skipped for datacenters that are not enabled for
+		acceleration, forcing all connected clients to go direct
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
+		return false
+	}
+
+	if !state.DatacenterAccelerationEnabled {
+		core.Debug("datacenter acceleration disabled, not getting near relays")
 		return false
 	}
 
@@ -927,25 +938,33 @@ func SessionGetNearRelaysSDK5(state *SessionHandlerStateSDK5) bool {
 func SessionUpdateNearRelayStatsSDK5(state *SessionHandlerStateSDK5) bool {
 
 	/*
-	   This function is called once every seconds for all slices
-	   in a session after slice 0 (first slice).
+		This function is called once every seconds for all slices
+		in a session after slice 0 (first slice).
 
-	   It takes the ping statistics for each near relay, and collates them
-	   into a format suitable for route planning later on in the session
-	   update.
+		It takes the ping statistics for each near relay, and collates them
+		into a format suitable for route planning later on in the session
+		update.
 
-	   It also runs various filters inside core.ReframeRelays, which look at
-	   the history of latency, jitter and packet loss across the entire session
-	   in order to exclude near relays with bad performance from being selected.
+		It also runs various filters inside core.ReframeRelays, which look at
+		the history of latency, jitter and packet loss across the entire session
+		in order to exclude near relays with bad performance from being selected.
 
-	   This function is skipped for "Analysis Only" buyers because sessions
-	   will always take direct.
+		This function is skipped for "Analysis Only" buyers because sessions
+		will always take direct.
+
+		This function is skipped for datacenters that are not enabled for
+		accelerations because sessions will always go direct.
 	*/
 
 	routeShader := &state.Buyer.RouteShader
 
 	if routeShader.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
+		return false
+	}
+
+	if !state.DatacenterAccelerationEnabled {
+		core.Debug("datacenter acceleration disabled, not updating near relay stats")
 		return false
 	}
 
@@ -1093,9 +1112,13 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 		// currently going direct. should we take network next?
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+
 			BuildNextTokensSDK5(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
+			// todo: apparently broken
+			/*
 			if state.Debug != nil {
+
 				*state.Debug += "route relays: "
 
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
@@ -1106,6 +1129,7 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 					}
 				}
 			}
+			*/
 		}
 
 	} else {
