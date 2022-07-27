@@ -913,6 +913,8 @@ func getErrorLocator() *routing.MaxmindDB {
 }
 
 func getSuccessLocator(t *testing.T) *routing.MaxmindDB {
+	ctx := context.Background()
+
 	// Set IsStaging to true to use sessionID instead of IP Address
 	// when we are not testing IP2Location
 	mmdb := &routing.MaxmindDB{
@@ -921,9 +923,9 @@ func getSuccessLocator(t *testing.T) *routing.MaxmindDB {
 		IsStaging: true,
 	}
 
-	err := mmdb.OpenCity(context.Background(), mmdb.CityFile)
+	err := mmdb.OpenCity(ctx)
 	assert.NoError(t, err)
-	err = mmdb.OpenISP(context.Background(), mmdb.IspFile)
+	err = mmdb.OpenISP(ctx)
 	assert.NoError(t, err)
 
 	return mmdb

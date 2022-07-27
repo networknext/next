@@ -29,6 +29,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 
@@ -476,6 +477,14 @@ func mainReturnWithCode() int {
 			case <-maxmindISPUploadTicker.C:
 				// Copy the ISP file to GCP Storage
 				maxmindISPMutex.RLock()
+
+				if err := validateISPFile(ctx, env, ispStorageName); err != nil {
+					maxmindISPMutex.RUnlock()
+					core.Error("failed to validate ISP file: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP.Add(1)
+					continue
+				}
+
 				if err := gcpStorage.CopyFromLocalToBucket(ctx, ispOutputLocation, bucketName, ispStorageName); err != nil {
 					maxmindISPMutex.RUnlock()
 					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
@@ -518,6 +527,14 @@ func mainReturnWithCode() int {
 
 					// Copy the ISP file to each Server Backend
 					maxmindISPMutex.RLock()
+
+					if err := validateISPFile(ctx, env, ispStorageName); err != nil {
+						maxmindISPMutex.RUnlock()
+						core.Error("failed to validate ISP file: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP.Add(1)
+						continue
+					}
+
 					for _, instanceName := range allBackendInstanceNames {
 						if err := gcpStorage.CopyFromLocalToRemote(ctx, ispOutputLocation, instanceName); err != nil {
 							core.Error("failed to copy maxmind ISP file to instance %s: %v", instanceName, err)
@@ -552,6 +569,14 @@ func mainReturnWithCode() int {
 			case <-maxmindCityUploadTicker.C:
 				// Copy the City file to GCP Storage
 				maxmindCityMutex.RLock()
+
+				if err := validateCityFile(ctx, env, cityStorageName); err != nil {
+					maxmindCityMutex.RUnlock()
+					core.Error("failed to validate ISP file: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP.Add(1)
+					continue
+				}
+
 				if err := gcpStorage.CopyFromLocalToBucket(ctx, cityOutputLocation, bucketName, cityStorageName); err != nil {
 					maxmindCityMutex.RUnlock()
 					core.Error("failed to copy maxmind City file to GCP Cloud Storage: %v", err)
@@ -594,6 +619,14 @@ func mainReturnWithCode() int {
 
 					// Copy the City file to each Server Backend
 					maxmindCityMutex.RLock()
+
+					if err := validateCityFile(ctx, env, cityStorageName); err != nil {
+						maxmindCityMutex.RUnlock()
+						core.Error("failed to validate ISP file: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP.Add(1)
+						continue
+					}
+
 					for _, instanceName := range allBackendInstanceNames {
 						if err := gcpStorage.CopyFromLocalToRemote(ctx, cityOutputLocation, instanceName); err != nil {
 							core.Error("failed to copy maxmind City file to instance %s: %v", instanceName, err)
@@ -833,4 +866,40 @@ func getMIGInstanceNames(gcpProjectID string, migName string) ([]string, error) 
 	}
 
 	return migInstanceNames, nil
+}
+
+func validateISPFile(ctx context.Context, env string, ispStorageName string) error {
+	mmdb := &routing.MaxmindDB{
+		IspFile:   ispStorageName,
+		IsStaging: env == "staging",
+	}
+
+	// Validate the ISP file
+	if err := mmdb.OpenISP(ctx); err != nil {
+		return err
+	}
+
+	if err := mmdb.ValidateISP(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateCityFile(ctx context.Context, env string, cityStorageName string) error {
+	mmdb := &routing.MaxmindDB{
+		CityFile:  cityStorageName,
+		IsStaging: env == "staging",
+	}
+
+	// Validate the ISP file
+	if err := mmdb.OpenISP(ctx); err != nil {
+		return err
+	}
+
+	if err := mmdb.ValidateISP(); err != nil {
+		return err
+	}
+
+	return nil
 }
