@@ -91,7 +91,9 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 		if err != nil {
 			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
-		} else {
+		}
+
+		if string(buffer) != "" {
 			core.Debug("CopyFromBytesToRemote() gcloud compute scp output: %s", buffer)
 		}
 	}
@@ -124,7 +126,10 @@ func (g *GCPStorage) CopyFromLocalToBucket(ctx context.Context, outputLocation s
 		err = fmt.Errorf("failed to copy file to bucket: %v", err)
 		return err
 	}
-	core.Debug("CopyFromLocalToBucket() gsutil cp output: %s", buffer)
+
+	if string(buffer) != "" {
+		core.Debug("CopyFromLocalToBucket() gsutil cp output: %s", buffer)
+	}
 
 	return nil
 }
@@ -164,7 +169,10 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}
-	core.Debug("CopyFromBucketToLocal() gsutil cp output: %s", buffer)
+
+	if string(buffer) != "" {
+		core.Debug("CopyFromBucketToLocal() gsutil cp output: %s", buffer)
+	}
 
 	return nil
 }
@@ -188,7 +196,9 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 		if err != nil {
 			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
-		} else {
+		}
+
+		if string(buffer) != "" {
 			core.Debug("CopyFromBucketToRemote() gcloud compute scp output: %s", buffer)
 		}
 	}
