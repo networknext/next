@@ -681,12 +681,12 @@ func mainReturnWithCode() int {
 						databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
 					}
 
-					overlayFile, err := os.Open(overlayBinFileName)
+					overlayFile, err := os.Open(overlayBinFileOutputLocation)
 					defer overlayFile.Close()
 
 					// Don't return here because we need to try out database file as well
 					if err != nil {
-						core.Error("could not load overlay binary at %s: %v", overlayBinFileName, err)
+						core.Error("could not load overlay binary at %s: %v", overlayBinFileOutputLocation, err)
 					}
 
 					overlayNew := routing.CreateEmptyOverlayBinWrapper()
@@ -715,11 +715,11 @@ func mainReturnWithCode() int {
 						}
 					}
 
-					databaseFile, err := os.Open(databaseBinFileName)
+					databaseFile, err := os.Open(databaseBinFileOutputLocation)
 					defer databaseFile.Close()
 
 					if err != nil {
-						core.Error("could not load database binary at %s: %v", databaseBinFileName, err)
+						core.Error("could not load database binary at %s: %v", databaseBinFileOutputLocation, err)
 						return
 					}
 
