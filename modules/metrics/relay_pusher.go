@@ -87,6 +87,10 @@ type RelayPusherErrorMetrics struct {
 	MaxmindSCPWriteFailure          Counter
 	MaxmindStorageUploadFailureISP  Counter
 	MaxmindStorageUploadFailureCity Counter
+	MaxmindReadFailureISP           Counter
+	MaxmindReadFailureCity          Counter
+	MaxmindValidationFailureISP     Counter
+	MaxmindValidationFailureCity    Counter
 	DatabaseSCPWriteFailure         Counter
 	OverlaySCPWriteFailure          Counter
 	BinFilePullTimeoutError         Counter
@@ -101,6 +105,10 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindSCPWriteFailure:          &EmptyCounter{},
 	MaxmindStorageUploadFailureISP:  &EmptyCounter{},
 	MaxmindStorageUploadFailureCity: &EmptyCounter{},
+	MaxmindReadFailureISP:           &EmptyCounter{},
+	MaxmindReadFailureCity:          &EmptyCounter{},
+	MaxmindValidationFailureISP:     &EmptyCounter{},
+	MaxmindValidationFailureCity:    &EmptyCounter{},
 	DatabaseSCPWriteFailure:         &EmptyCounter{},
 	OverlaySCPWriteFailure:          &EmptyCounter{},
 	BinFilePullTimeoutError:         &EmptyCounter{},
@@ -291,6 +299,50 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "maxmind_upload_city_failure.count",
 		Unit:        "failures",
 		Description: "The total number of Maxmind City storage upload failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindReadFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind ISP Read Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_read_isp_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind ISP read failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindReadFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind City Read Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_read_city_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind City read failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind ISP Validation Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_validation_isp_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind ISP validation failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind City Validation Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_validation_city_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind City validation failures.",
 	})
 	if err != nil {
 		return nil, err
