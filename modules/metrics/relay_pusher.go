@@ -87,9 +87,12 @@ type RelayPusherErrorMetrics struct {
 	MaxmindSCPWriteFailure          Counter
 	MaxmindStorageUploadFailureISP  Counter
 	MaxmindStorageUploadFailureCity Counter
+	MaxmindValidationFailureISP     Counter
+	MaxmindValidationFailureCity    Counter
 	DatabaseSCPWriteFailure         Counter
 	OverlaySCPWriteFailure          Counter
 	BinFilePullTimeoutError         Counter
+	OverlayFilePullTimeoutError     Counter
 }
 
 // EmptyRelayPusherErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -101,9 +104,12 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindSCPWriteFailure:          &EmptyCounter{},
 	MaxmindStorageUploadFailureISP:  &EmptyCounter{},
 	MaxmindStorageUploadFailureCity: &EmptyCounter{},
+	MaxmindValidationFailureISP:     &EmptyCounter{},
+	MaxmindValidationFailureCity:    &EmptyCounter{},
 	DatabaseSCPWriteFailure:         &EmptyCounter{},
 	OverlaySCPWriteFailure:          &EmptyCounter{},
 	BinFilePullTimeoutError:         &EmptyCounter{},
+	OverlayFilePullTimeoutError:     &EmptyCounter{},
 }
 
 // NewRelayPusherServiceMetrics creates the metrics that the relay pusher service will use.
@@ -296,6 +302,28 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		return nil, err
 	}
 
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind ISP Validation Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_validation_isp_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind ISP validation failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindValidationFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind City Validation Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_validation_city_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind City validation failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Database SCP Call Failures",
 		ServiceName: "relay_pusher",
@@ -324,6 +352,17 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "bin_file_pull_timeout_error.count",
 		Unit:        "failures",
 		Description: "The total number of times the service timed out pulling a .bin file from GCP Cloud Storage.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.OverlayFilePullTimeoutError, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Overlay File Pull Timeout Errors",
+		ServiceName: "relay_pusher",
+		ID:          "overlay_file_pull_timeout_error.count",
+		Unit:        "failures",
+		Description: "The total number of times the service timed out pulling an overlay file from GCP Cloud Storage.",
 	})
 	if err != nil {
 		return nil, err
