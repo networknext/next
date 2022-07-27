@@ -253,6 +253,46 @@ func TestIPLocator(t *testing.T) {
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
+	t.Run("Validate City Successfully", func(t *testing.T) {
+		ctx := context.Background()
+
+		mmdb := routing.MaxmindDB{
+			CityFile: "../../testdata/GeoIP2-City-Test.mmdb",
+		}
+
+		err := mmdb.OpenCity(ctx)
+		assert.NoError(t, err)
+		err = mmdb.ValidateCity()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Validate City Failure", func(t *testing.T) {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.ValidateCity()
+		assert.Contains(t, err.Error(), "ValidateCity(): failed to locate test IP")
+	})
+
+	t.Run("Validate ISP Successfully", func(t *testing.T) {
+		ctx := context.Background()
+
+		mmdb := routing.MaxmindDB{
+			IspFile: "../../testdata/GeoIP2-ISP-Test.mmdb",
+		}
+
+		err := mmdb.OpenISP(ctx)
+		assert.NoError(t, err)
+		err = mmdb.ValidateISP()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Validate ISP Failure", func(t *testing.T) {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.ValidateISP()
+		assert.Contains(t, err.Error(), "ValidateISP(): failed to locate test IP")
+	})
+
 	t.Run("Validate Successfully", func(t *testing.T) {
 		ctx := context.Background()
 
