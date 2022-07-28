@@ -556,11 +556,11 @@ func checkBuyersInBinFile() {
 	})
 
 	fmt.Println("Buyers:")
-	fmt.Printf("\t%-25s %-16s  %-5s\n", "CompanyCode", "ID", "Live")
+	fmt.Printf("\t%-25s %-16s  %-5s  %-5s\n", "CompanyCode", "ID", "Live", "Analysis Only")
 	fmt.Printf("\t%s\n", strings.Repeat("-", 50))
 	for _, buyer := range buyers {
 		id := strings.ToUpper(fmt.Sprintf("%016x", buyer.ID))
-		fmt.Printf("\t%-25s %016s %5t\n", buyer.CompanyCode, id, buyer.Live)
+		fmt.Printf("\t%-25s %016s %5t %5t\n", buyer.CompanyCode, id, buyer.Live, buyer.RouteShader.AnalysisOnly)
 	}
 	fmt.Println()
 }
