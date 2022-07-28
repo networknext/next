@@ -52,7 +52,7 @@ extern bool next_packet_loss;
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     next_assert( packet_bytes >= 32 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes - 32; ++i )
     {
