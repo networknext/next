@@ -203,6 +203,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     if ( socket->handle < 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create socket" );
+        next_free( context, socket );
         return NULL;
     }
 

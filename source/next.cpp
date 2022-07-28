@@ -293,7 +293,7 @@ static void default_assert_function( const char * condition, const char * functi
     #elif defined(linux) || defined(__linux) || defined(__linux__) || defined(__APPLE__)
         raise(SIGTRAP);
     #else
-        #error "asserts not supported on this platform!"
+        abort();
     #endif
 }
 
@@ -429,6 +429,9 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 }
 
 // -------------------------------------------------------------
+
+// todo
+#define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
@@ -5988,9 +5991,22 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     memset( client, 0, sizeof( next_client_internal_t) );
 
-    client->wake_up_callback = wake_up_callback;
-
     next_client_internal_initialize_sentinels( client );
+
+    next_ping_history_clear( &client->next_ping_history );
+    next_ping_history_clear( &client->direct_ping_history );
+
+    next_replay_protection_reset( &client->payload_replay_protection );
+    next_replay_protection_reset( &client->special_replay_protection );
+    next_replay_protection_reset( &client->internal_replay_protection );
+
+    next_packet_loss_tracker_reset( &client->packet_loss_tracker );
+    next_out_of_order_tracker_reset( &client->out_of_order_tracker );
+    next_jitter_tracker_reset( &client->jitter_tracker );
+
+    next_client_internal_verify_sentinels( client );
+
+    client->wake_up_callback = wake_up_callback;
 
     client->context = context;
 
@@ -6079,19 +6095,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         next_client_internal_destroy( client );
         return NULL;
     }
-
-    next_ping_history_clear( &client->next_ping_history );
-    next_ping_history_clear( &client->direct_ping_history );
-
-    next_replay_protection_reset( &client->payload_replay_protection );
-    next_replay_protection_reset( &client->special_replay_protection );
-    next_replay_protection_reset( &client->internal_replay_protection );
-
-    next_packet_loss_tracker_reset( &client->packet_loss_tracker );
-    next_out_of_order_tracker_reset( &client->out_of_order_tracker );
-    next_jitter_tracker_reset( &client->jitter_tracker );
-
-    next_client_internal_verify_sentinels( client );
 
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
@@ -7857,8 +7860,13 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
+ 
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 ) // for zero byte prefix
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
+        return;
+    }
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
@@ -7872,24 +7880,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
     }
 
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet bytes are less than zero" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
-        return;
-    }
-
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( client->upgraded )
+    if ( client->upgraded && packet_bytes <= NEXT_MTU )
     {
         next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
@@ -7998,8 +7994,8 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
@@ -8027,6 +8023,24 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
 
     client->internal->packets_sent++;
+}
+
+void next_client_send_packet_raw( next_client_t * client, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_client_verify_sentinels( client );
+
+    next_assert( client->internal );
+    next_assert( client->internal->socket );
+    next_assert( to_address );
+    next_assert( packet_bytes > 0 );
+
+    if ( packet_bytes <= 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size <= 0" );
+        return;
+    }
+
+    next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 void next_client_report_session( next_client_t * client )
@@ -12712,11 +12726,10 @@ void next_server_internal_process_raw_direct_packet( next_server_internal_t * se
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
-    next_assert( packet_bytes );
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes <= NEXT_MTU )
+    if ( packet_bytes > 0 && packet_bytes <= NEXT_MTU )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -14107,7 +14120,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     next_assert( to_address );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
+    next_assert( packet_bytes > 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
     if ( next_global_config.disable_network_next )
@@ -14257,7 +14270,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     next_assert( to_address );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
+    next_assert( packet_bytes > 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
     if ( server->flushing )
@@ -14282,6 +14295,23 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+}
+
+void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_server_verify_sentinels( server );
+
+    next_assert( to_address );
+    next_assert( packet_data );
+    next_assert( packet_bytes > 0 );
+
+    if ( packet_bytes <= 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
+        return;
+    }
+
+    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
