@@ -5514,7 +5514,7 @@ bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     if ( !route_manager->route_data.current_route )
     {
-    	return false;
+        return false;
     }
 
     next_assert( route_manager->route_data.current_route );
@@ -6863,7 +6863,7 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    if ( packet_bytes <= NEXT_MTU && from_server_address )
+    if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -6965,13 +6965,13 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_platform_mutex_release( &client->route_manager_mutex );
 
                 // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
-			    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
-			    next_assert( notify );
-			    notify->type = NEXT_CLIENT_NOTIFY_READY;
-			    {
-			        next_platform_mutex_guard( &client->notify_mutex );
-			        next_queue_push( client->notify_queue, notify );
-			    }
+                next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+                next_assert( notify );
+                notify->type = NEXT_CLIENT_NOTIFY_READY;
+                {
+                    next_platform_mutex_guard( &client->notify_mutex );
+                    next_queue_push( client->notify_queue, notify );
+                }
             }
             break;
 
@@ -7527,7 +7527,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
 
     while ( !quit )
     {
-    	next_client_internal_block_and_receive_packet( client );
+        next_client_internal_block_and_receive_packet( client );
 
         double current_time = next_time();
 
@@ -7957,12 +7957,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( result )
             {
-	            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
-	            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+                next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+                client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
             }
             else
             {
-            	send_direct = true;
+                send_direct = true;
             }
         }
 
@@ -8077,8 +8077,8 @@ const next_address_t * next_client_server_address( next_client_t * client )
 
 NEXT_BOOL next_client_ready( next_client_t * client )
 {
-	next_assert( client );
-	return client->ready ? NEXT_TRUE : NEXT_FALSE;
+    next_assert( client );
+    return client->ready ? NEXT_TRUE : NEXT_FALSE;
 }
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
@@ -10957,41 +10957,41 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     bool have_cached_whois = false;
     char whois_buffer[1024*64];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-	FILE * f = fopen( "whois.txt", "r");
-	if ( f )
-	{
-		fseek( f, 0, SEEK_END );
-		size_t fsize = ftell( f );
-		fseek( f, 0, SEEK_SET );
-		if ( fsize > sizeof(whois_buffer) - 1 )
-		{
-			fsize = sizeof(whois_buffer) - 1;
-		}
-		if ( fread( whois_buffer, fsize, 1, f ) == 1 )
-		{
-			next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
-			have_cached_whois = true;
-		}
-		fclose( f );
-	}
+    FILE * f = fopen( "whois.txt", "r");
+    if ( f )
+    {
+        fseek( f, 0, SEEK_END );
+        size_t fsize = ftell( f );
+        fseek( f, 0, SEEK_SET );
+        if ( fsize > sizeof(whois_buffer) - 1 )
+        {
+            fsize = sizeof(whois_buffer) - 1;
+        }
+        if ( fread( whois_buffer, fsize, 1, f ) == 1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
+            have_cached_whois = true;
+        }
+        fclose( f );
+    }
 
-	// if we couldn't read whois.txt, run whois locally and store the result to whois.txt
+    // if we couldn't read whois.txt, run whois locally and store the result to whois.txt
 
-	if ( !have_cached_whois )
-	{
-		next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
-	    char * whois_output = &whois_buffer[0];
-	    size_t bytes_remaining = sizeof(whois_buffer) - 1;
-	    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
-   		FILE * whois_file = fopen( "whois.txt", "w" );
-   		if ( whois_file )
-   		{
-   			next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
-   			fputs( whois_buffer, whois_file );
-   			fflush( whois_file );
-   			fclose( whois_file );
-   		}
-	}
+    if ( !have_cached_whois )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
+        char * whois_output = &whois_buffer[0];
+        size_t bytes_remaining = sizeof(whois_buffer) - 1;
+        next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+        FILE * whois_file = fopen( "whois.txt", "w" );
+        if ( whois_file )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
+            fputs( whois_buffer, whois_file );
+            fflush( whois_file );
+            fclose( whois_file );
+        }
+    }
 
     // check against multiplay supplier mappings
 
@@ -11030,7 +11030,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
         if ( strstr( whois_buffer, substring ) )
         {
-        	next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
             sprintf( output, "%s.%s", supplier, city );
             found = true;
         }
@@ -11046,8 +11046,8 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         char * line = strtok( whois_buffer, separators );
         while ( line )
         {
-        	next_printf( "%s", line );
-        	line = strtok( NULL, separators );
+            next_printf( "%s", line );
+            line = strtok( NULL, separators );
         }
         return false;
     }
@@ -11178,9 +11178,9 @@ void next_server_internal_initialize( next_server_internal_t * server )
         server->state = NEXT_SERVER_STATE_INITIALIZING;
     }
     
-	next_server_internal_resolve_hostname( server );
+    next_server_internal_resolve_hostname( server );
 
-	next_server_internal_autodetect( server );
+    next_server_internal_autodetect( server );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -11406,15 +11406,15 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     if ( server->resolve_hostname_thread )
     {
-    	next_platform_thread_join( server->resolve_hostname_thread );
+        next_platform_thread_join( server->resolve_hostname_thread );
         next_platform_thread_destroy( server->resolve_hostname_thread );
-	}
+    }
 
     if ( server->autodetect_thread )
     {
-    	next_platform_thread_join( server->autodetect_thread );
+        next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
-	}
+    }
 
     if ( server->command_queue )
     {
@@ -11805,17 +11805,17 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
 void next_server_internal_update_flush( next_server_internal_t * server )
 {
-	if ( !server->flushing )
-		return;
+    if ( !server->flushing )
+        return;
 
-	if ( server->flushed )
-		return;
+    if ( server->flushed )
+        return;
 
     if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
     {
-    	next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
-    	
-    	server->flushed = true;
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
+        
+        server->flushed = true;
 
         next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
@@ -12722,7 +12722,7 @@ void next_server_internal_process_raw_direct_packet( next_server_internal_t * se
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes > 0 && packet_bytes <= NEXT_MTU )
+    if ( packet_bytes > 0 && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -13109,9 +13109,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
     {
-	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
-	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
-	    NEXT_PLATFORM_THREAD_RETURN();
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
+        NEXT_PLATFORM_THREAD_RETURN();
     }
 
     if ( !success )
@@ -13153,24 +13153,24 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( finished )
     {
-		next_platform_thread_join( server->resolve_hostname_thread );
+        next_platform_thread_join( server->resolve_hostname_thread );
     }
     else
     {
-    	if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
-		}
+        if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+        }
     }
-	
-	next_platform_thread_destroy( server->resolve_hostname_thread );
-	
+    
+    next_platform_thread_destroy( server->resolve_hostname_thread );
+    
     server->resolve_hostname_thread = NULL;
     server->resolving_hostname = false;
     server->backend_address = result;
@@ -13179,10 +13179,10 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( result.type != NEXT_ADDRESS_NONE )
     {
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
-	}
-	else
-	{
+        next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
+    }
+    else
+    {
         next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname. going to direct only mode" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         server->resolving_hostname = false;
@@ -13222,7 +13222,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_address_to_string( &server_address_no_port, autodetect_address );
 
     if ( !next_global_config.disable_autodetect &&
-    	 ( autodetect_input[0] == '\0' 
+         ( autodetect_input[0] == '\0' 
             ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
@@ -13258,9 +13258,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
     {
-	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
-	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
-	    NEXT_PLATFORM_THREAD_RETURN();
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+        NEXT_PLATFORM_THREAD_RETURN();
     }
 
     next_platform_mutex_guard( &server->autodetect_mutex );
@@ -13281,8 +13281,8 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     if ( next_global_config.disable_network_next )
         return true;
 
-    if ( server->resolving_hostname )	// IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
-    	return true;
+    if ( server->resolving_hostname )   // IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
+        return true;
 
     if ( !server->autodetecting )
         return true;
@@ -13295,41 +13295,41 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     if ( finished )
     {
-		next_platform_thread_join( server->autodetect_thread );
+        next_platform_thread_join( server->autodetect_thread );
     }
     else
     {
-    	if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
+        if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
     }
-	
-	next_platform_thread_destroy( server->autodetect_thread );
-	
+    
+    next_platform_thread_destroy( server->autodetect_thread );
+    
     server->autodetect_thread = NULL;
     server->autodetecting = false;
 
     if ( server->autodetect_actually_did_something )
     {
-	    if ( server->autodetect_succeeded )
-	    {
-		    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
-		    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
-		    server->datacenter_id = next_datacenter_id( server->datacenter_name );
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-		else
-		{
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-	}
+        if ( server->autodetect_succeeded )
+        {
+            memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
+            strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->datacenter_id = next_datacenter_id( server->datacenter_name );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+    }
 
     next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
     memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
@@ -13599,9 +13599,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendMatchDataRequestPacket packet;
             packet.Reset();
-	        packet.version_major = NEXT_VERSION_MAJOR_INT;
-	        packet.version_minor = NEXT_VERSION_MINOR_INT;
-	        packet.version_patch = NEXT_VERSION_PATCH_INT;
+            packet.version_major = NEXT_VERSION_MAJOR_INT;
+            packet.version_minor = NEXT_VERSION_MINOR_INT;
+            packet.version_patch = NEXT_VERSION_PATCH_INT;
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
@@ -13668,8 +13668,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     while ( !quit )
     {
-    	next_server_internal_block_and_receive_packet( server );
-    	
+        next_server_internal_block_and_receive_packet( server );
+        
         double current_time = next_time();
 
         if ( current_time >= last_update_time + 0.1 )
