@@ -58,6 +58,7 @@
 #define NEXT_ERROR                                               -1
 
 #define NEXT_MTU                                               1300
+#define NEXT_MAX_PACKET_BYTES                                  4096
 #define NEXT_ETHERNET_HEADER_BYTES                               18
 #define NEXT_IPV4_HEADER_BYTES                                   20
 #define NEXT_UDP_HEADER_BYTES                                     8

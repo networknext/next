@@ -47,7 +47,6 @@
 
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           10
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                 10
-#define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000

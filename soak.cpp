@@ -32,7 +32,6 @@
 #include <time.h>
 #include <map>
 
-#define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_PLATFORM_SOCKET_NON_BLOCKING                               0
 #define NEXT_PLATFORM_SOCKET_BLOCKING                                   1
 
