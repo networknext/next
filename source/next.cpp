@@ -7862,7 +7862,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
     next_assert( client->internal->socket );
     next_assert( packet_bytes > 0 );
  
-    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 ) // for zero byte prefix
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
         return;
@@ -14121,8 +14121,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     next_assert( to_address );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
-
+ 
     if ( next_global_config.disable_network_next )
     {
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
@@ -14135,15 +14134,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         return;
     }
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet is too large" );
         return;
     }
 
@@ -14152,7 +14145,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
-    if ( entry )
+    if ( entry && packet_bytes <= NEXT_MTU )
     {
         bool multipath = false;
         bool committed = false;
@@ -14271,23 +14264,11 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_assert( to_address );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
     if ( server->flushing )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server send packet direct. server is flushed" );
-        return;
-    }
-
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
         return;
     }
 
