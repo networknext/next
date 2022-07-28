@@ -377,6 +377,10 @@ blocks:
           commands:
             - cd ./dist && ./func_tests4 test_flush_server_events_and_match_data_retry
 
+        - name: "test_big_packets"
+          commands:
+            - cd ./dist && ./func_tests4 test_big_packets
+
 
   - name: "Build Functional Tests 5"
     dependencies: []
