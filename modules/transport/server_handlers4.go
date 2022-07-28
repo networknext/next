@@ -52,14 +52,18 @@ func accelerateDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, 
 	// Get all datacenters for buyer
 	datacenterAliases, ok := database.DatacenterMaps[buyerID]
 	if !ok {
+		core.Debug("accelerateDatacenter(): datacenter not found")
 		return false
 	}
 
 	// Check if the datacenter in question is linked to the buyer
 	dcMap, ok := datacenterAliases[datacenterID]
 	if !ok {
+		core.Debug("accelerateDatacenter(): datacenter map not found")
 		return false
 	}
+
+	core.Debug("accelerateDatacenter(): accelerate DC: %v", dcMap.EnableAcceleration)
 
 	return dcMap.EnableAcceleration
 }
@@ -742,6 +746,8 @@ func SessionPre(state *SessionHandlerState) bool {
 	state.DatacenterAccelerationEnabled = accelerateDatacenter(state.Database, state.Buyer.ID, state.Packet.DatacenterID)
 
 	state.Datacenter = getDatacenter(state.Database, state.Packet.DatacenterID)
+
+	core.Debug("SessionPre(): Datacenter: %s will be accelerated: %v", state.Datacenter.Name, state.DatacenterAccelerationEnabled)
 
 	destRelayIDs := state.RouteMatrix.GetDatacenterRelayIDs(state.Packet.DatacenterID)
 	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly && state.DatacenterAccelerationEnabled {
