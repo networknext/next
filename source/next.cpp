@@ -8008,15 +8008,9 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
         return;
     }
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size <= 0" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
         return;
     }
 
@@ -8038,12 +8032,6 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
     next_assert( client->internal->socket );
     next_assert( to_address );
     next_assert( packet_bytes > 0 );
-
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size <= 0" );
-        return;
-    }
 
     next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
 }
@@ -14290,12 +14278,6 @@ void next_server_send_packet_raw( struct next_server_t * server, const struct ne
     next_assert( to_address );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
-
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
 
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
