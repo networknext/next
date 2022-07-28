@@ -111,7 +111,6 @@ public:
         entries.erase( itor );
         num_allocations--;
         /*
-        // todo
         printf( "free %d bytes\n", (int)itor->second->bytes );
         */
         free( pointer );
@@ -123,7 +122,6 @@ void * malloc_function( void * context, size_t bytes )
     next_assert( context );
     Allocator * allocator = (Allocator*) context;
     /*
-    // todo
     printf( "allocated %d bytes\n", (int)bytes ); fflush( stdout );
     */
     return allocator->Alloc( bytes );

@@ -430,9 +430,6 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// todo
-#define NEXT_ENABLE_MEMORY_CHECKS 1
-
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -1495,11 +1492,11 @@ namespace next
             @param bytes The number of bytes of bitpacked data to read.
          */
 
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
-    #else // #ifndef NDEBUG
+    #else // #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes )
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         {
             next_assert( data );
             next_assert( ( size_t(data) % 4 ) == 0 );
@@ -1658,9 +1655,9 @@ namespace next
         uint64_t m_scratch;                 ///< The scratch value. New data is read in 32 bits at a top to the left of this buffer, and data is read off to the right.
         int m_numBits;                      ///< Number of bits to read in the buffer. Of course, we can't *really* know this so it's actually m_numBytes * 8.
         int m_numBytes;                     ///< Number of bytes to read in the buffer. We know this, and this is the non-rounded up version.
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         int m_numWords;                     ///< Number of words to read in the buffer. This is rounded up to the next word if necessary.
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         int m_bitsRead;                     ///< Number of bits read from the buffer so far.
         int m_scratchBits;                  ///< Number of bits currently in the scratch value. If the user wants to read more bits than this, we have to go fetch another dword from memory.
         int m_wordIndex;                    ///< Index of the next word to read from memory.
@@ -5771,7 +5768,7 @@ struct next_client_notify_packet_received_t : public next_client_notify_t
 {
     bool direct;
     int payload_bytes;
-    uint8_t payload_data[NEXT_MTU];
+    uint8_t payload_data[NEXT_MAX_PACKET_BYTES-1];
 };
 
 struct next_client_notify_upgraded_t : public next_client_notify_t
@@ -6213,6 +6210,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes - 10;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -6638,6 +6637,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
         notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -6869,6 +6870,8 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -7802,6 +7805,9 @@ void next_client_update( next_client_t * client )
             case NEXT_CLIENT_NOTIFY_PACKET_RECEIVED:
             {
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
+
+                next_assert( packet_received->payload_bytes > 0 );
+                next_assert( packet_received->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
                 client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
@@ -10280,7 +10286,7 @@ struct next_server_notify_packet_received_t : public next_server_notify_t
 {
     next_address_t from;
     int packet_bytes;
-    uint8_t packet_data[NEXT_MTU];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES-1];
 };
 
 struct next_server_notify_pending_session_cancelled_t : public next_server_notify_t
@@ -11891,7 +11897,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         notify->from = *from;
         notify->packet_bytes = packet_bytes - 10;
         next_assert( notify->packet_bytes > 0 );
-        next_assert( notify->packet_bytes <= NEXT_MTU );
+        next_assert( notify->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data + 10, size_t(notify->packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -12531,7 +12537,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         notify->from = entry->address;
         notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
         next_assert( notify->packet_bytes > 0 );
-        next_assert( notify->packet_bytes <= NEXT_MTU );
+        next_assert( notify->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -12736,7 +12742,7 @@ void next_server_internal_process_raw_direct_packet( next_server_internal_t * se
         notify->from = *from;
         notify->packet_bytes = packet_bytes;
         next_assert( packet_bytes > 0 );
-        next_assert( packet_bytes <= NEXT_MTU );
+        next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -13891,7 +13897,7 @@ void next_server_update( next_server_t * server )
                 next_server_notify_packet_received_t * packet_received = (next_server_notify_packet_received_t*) notify;
                 next_assert( packet_received->packet_data );
                 next_assert( packet_received->packet_bytes > 0 );
-                next_assert( packet_received->packet_bytes <= NEXT_MTU );
+                next_assert( packet_received->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
                 server->packet_received_callback( server, server->context, &packet_received->from, packet_received->packet_data, packet_received->packet_bytes );
             }
             break;
