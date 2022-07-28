@@ -46,18 +46,14 @@ func (a SDKVersion) Compare(b SDKVersion) int {
 	return SDKVersionOlder
 }
 
-func (v SDKVersion) IsInternal() bool {
-	if (v.Major == 0 && v.Minor == 0 && v.Patch == 0) || (v.Major == 255 && v.Minor == 255 && v.Patch == 255) {
-		return true
-	}
-	return false
-}
-
 func (v SDKVersion) String() string {
-	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	if v.Major == 255 {
+		return "internal"
+	} else {
+		return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	}
 }
 
-// SDK sends 0.0.0 (internal version) in development, so we count that as being "at least" required since it's the latest version
 func (a SDKVersion) AtLeast(b SDKVersion) bool {
-	return a.IsInternal() || a.Compare(b) != SDKVersionOlder
+	return a.Compare(b) != SDKVersionOlder
 }

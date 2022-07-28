@@ -2844,7 +2844,6 @@ func main() {
 					NearRelayAddresses: nearRelayAddresses,
 					NumTokens:          0,
 					Tokens:             nil,
-					HighFrequencyPings: true,
 				}
 
 				sessionData.Route = nil
@@ -2932,7 +2931,6 @@ func main() {
 					Tokens:             tokens,
 					Multipath:          multipath,
 					Committed:          true,
-					HighFrequencyPings: true,
 				}
 
 				sessionData.Route = route
