@@ -36,17 +36,36 @@ func datacenterExists(database *routing.DatabaseBinWrapper, datacenterID uint64)
 }
 
 func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64) bool {
+	// Get all datacenters for buyer
 	datacenterAliases, ok := database.DatacenterMaps[buyerID]
 	if !ok {
 		return false
 	}
-	// todo: this should be a hash look up, not a linear walk!
-	for _, dcMap := range datacenterAliases {
-		if datacenterID == dcMap.DatacenterID {
-			return true
-		}
+
+	// Check if the datacenter in question is linked to the buyer
+	_, ok = datacenterAliases[datacenterID]
+
+	return ok
+}
+
+func accelerateDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64) bool {
+	// Get all datacenters for buyer
+	datacenterAliases, ok := database.DatacenterMaps[buyerID]
+	if !ok {
+		core.Debug("accelerateDatacenter(): datacenter not found")
+		return false
 	}
-	return false
+
+	// Check if the datacenter in question is linked to the buyer
+	dcMap, ok := datacenterAliases[datacenterID]
+	if !ok {
+		core.Debug("accelerateDatacenter(): datacenter map not found")
+		return false
+	}
+
+	core.Debug("accelerateDatacenter(): accelerate DC: %v", dcMap.EnableAcceleration)
+
+	return dcMap.EnableAcceleration
 }
 
 func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) routing.Datacenter {
@@ -558,12 +577,13 @@ type SessionHandlerState struct {
 	PostSessionHandler *PostSessionHandler
 
 	// flags
-	SignatureCheckFailed bool
-	UnknownDatacenter    bool
-	DatacenterNotEnabled bool
-	BuyerNotFound        bool
-	BuyerNotLive         bool
-	StaleRouteMatrix     bool
+	SignatureCheckFailed          bool
+	UnknownDatacenter             bool
+	DatacenterNotEnabled          bool
+	BuyerNotFound                 bool
+	BuyerNotLive                  bool
+	StaleRouteMatrix              bool
+	DatacenterAccelerationEnabled bool
 
 	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
@@ -723,10 +743,14 @@ func SessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
+	state.DatacenterAccelerationEnabled = accelerateDatacenter(state.Database, state.Buyer.ID, state.Packet.DatacenterID)
+
 	state.Datacenter = getDatacenter(state.Database, state.Packet.DatacenterID)
 
+	core.Debug("SessionPre(): Datacenter: %s will be accelerated: %v", state.Datacenter.Name, state.DatacenterAccelerationEnabled)
+
 	destRelayIDs := state.RouteMatrix.GetDatacenterRelayIDs(state.Packet.DatacenterID)
-	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly {
+	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly && state.DatacenterAccelerationEnabled {
 		core.Debug("no relays in datacenter %x", state.Packet.DatacenterID)
 		state.Metrics.NoRelaysInDatacenter.Add(1)
 		return true
@@ -985,10 +1009,18 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 
 		This function is skipped for "Analysis Only" buyers because sessions
 		will always take direct.
+
+		This function is skipped for datacenters that are not enabled for
+		acceleration, forcing all connected clients to go direct.
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
+		return false
+	}
+
+	if !state.DatacenterAccelerationEnabled {
+		core.Debug("datacenter acceleration disabled, not getting near relays")
 		return false
 	}
 
@@ -1030,12 +1062,20 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 		This function is skipped for "Analysis Only" buyers because sessions
 		will always take direct.
+
+		This function is skipped for datacenters that are not enabled for
+		accelerations because sessions will always go direct.
 	*/
 
 	routeShader := &state.Buyer.RouteShader
 
 	if routeShader.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
+		return false
+	}
+
+	if !state.DatacenterAccelerationEnabled {
+		core.Debug("datacenter acceleration disabled, not updating near relay stats")
 		return false
 	}
 
