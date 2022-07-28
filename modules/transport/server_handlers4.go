@@ -56,12 +56,16 @@ func accelerateDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, 
 		return false
 	}
 
+	core.Debug("accelerateDatacenter(): found buyer datacenter maps: %+v\n", datacenterAliases)
+
 	// Check if the datacenter in question is linked to the buyer
 	dcMap, ok := datacenterAliases[datacenterID]
 	if !ok {
 		core.Debug("accelerateDatacenter(): datacenter map not found")
 		return false
 	}
+
+	core.Debug("accelerateDatacenter(): found datacenter map: %+v\n", dcMap)
 
 	core.Debug("accelerateDatacenter(): accelerate DC: %v", dcMap.EnableAcceleration)
 
