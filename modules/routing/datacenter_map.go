@@ -16,6 +16,7 @@ func (dcm DatacenterMap) String() string {
 	dcMap += "\tBuyer ID           : " + fmt.Sprintf("%d", dcm.BuyerID) + "\n"
 	dcMap += "\tdatacenter ID (hex): " + fmt.Sprintf("%016x", dcm.DatacenterID) + "\n"
 	dcMap += "\tdatacenter ID      : " + fmt.Sprintf("%d", dcm.DatacenterID) + "\n"
+	dcMap += "\tAccelerate DC      : " + fmt.Sprintf("%v", dcm.EnableAcceleration) + "\n"
 
 	return dcMap
 }
