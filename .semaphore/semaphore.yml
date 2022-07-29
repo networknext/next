@@ -667,6 +667,11 @@ blocks:
           commands:
             - cd ./dist && ./func_tests5 test_flush_retry
 
+        - name: "test_big_packets"
+          commands:
+            - cd ./dist && ./func_tests5 test_big_packets
+
+
   - name: "Run Functional Tests 5b"
     dependencies: ["Build Functional Tests 5"]
     task:
