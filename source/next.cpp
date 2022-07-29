@@ -49,7 +49,6 @@
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                         		  9.0
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
-#define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -1499,11 +1498,11 @@ namespace next
             @param bytes The number of bytes of bitpacked data to read.
          */
 
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
-    #else // #ifndef NDEBUG
+    #else // #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes )
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         {
             next_assert( data );
             next_assert( ( size_t(data) % 4 ) == 0 );
@@ -1662,9 +1661,9 @@ namespace next
         uint64_t m_scratch;                 ///< The scratch value. New data is read in 32 bits at a top to the left of this buffer, and data is read off to the right.
         int m_numBits;                      ///< Number of bits to read in the buffer. Of course, we can't *really* know this so it's actually m_numBytes * 8.
         int m_numBytes;                     ///< Number of bytes to read in the buffer. We know this, and this is the non-rounded up version.
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         int m_numWords;                     ///< Number of words to read in the buffer. This is rounded up to the next word if necessary.
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         int m_bitsRead;                     ///< Number of bits read from the buffer so far.
         int m_scratchBits;                  ///< Number of bits currently in the scratch value. If the user wants to read more bits than this, we have to go fetch another dword from memory.
         int m_wordIndex;                    ///< Index of the next word to read from memory.

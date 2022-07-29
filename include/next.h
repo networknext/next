@@ -59,6 +59,8 @@
 
 #define NEXT_MTU                                               1300
 
+#define NEXT_MAX_PACKET_BYTES                                  4096
+
 #define NEXT_LOG_LEVEL_NONE                                       0
 #define NEXT_LOG_LEVEL_ERROR                                      1
 #define NEXT_LOG_LEVEL_INFO                                       2
@@ -192,7 +194,15 @@ NEXT_EXPORT_FUNC void next_printf( int level, const char * format, ... );
 
 extern void (*next_assert_function_pointer)( const char * condition, const char * function, const char * file, int line );
 
-#ifndef NDEBUG
+#ifndef NEXT_ASSERTS
+    #ifdef NDEBUG
+        #define NEXT_ASSERTS 0
+    #else
+        #define NEXT_ASSERTS 1
+    #endif
+#endif
+
+#if NEXT_ASSERTS
 #define next_assert( condition )                                                            \
 do                                                                                          \
 {                                                                                           \
