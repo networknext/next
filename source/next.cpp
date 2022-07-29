@@ -15609,7 +15609,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
-    if ( entry && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
+    if ( entry && packet_bytes <= NEXT_MTU )
     {
         bool multipath = false;
         bool committed = false;
