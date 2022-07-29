@@ -12260,9 +12260,6 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    // IMPORTANT: Please call next_server_flush before destroying the server!
-    next_assert( server->state != NEXT_SERVER_STATE_INITIALIZING );
-
     if ( server->socket )
     {
         next_platform_socket_destroy( server->socket );
@@ -14179,7 +14176,11 @@ void next_server_internal_flush( next_server_internal_t * server )
     next_server_internal_verify_sentinels( server );
 
     if ( next_global_config.disable_network_next )
+    {
+        server->flushing = true;
+        server->flushed = true;
         return;
+    }
 
     if ( server->flushing )
     {
@@ -15752,7 +15753,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is too large" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is too large\n" );
         return;
     }
 
