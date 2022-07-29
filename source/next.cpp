@@ -8624,7 +8624,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( client->upgraded && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
+    if ( client->upgraded && packet_bytes <= NEXT_MTU )
     {
         next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
