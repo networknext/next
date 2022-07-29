@@ -13882,11 +13882,10 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
-    next_assert( packet_bytes );
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
+    if ( packet_bytes > 0 && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
     	if ( server->payload_receive_callback )
     	{
