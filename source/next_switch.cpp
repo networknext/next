@@ -398,19 +398,20 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     next_assert( address->type == NEXT_ADDRESS_IPV4 );
 
-    next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
+    next_platform_socket_t * socket = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
 
-    next_assert( s );
+    if ( !socket ) 
+        return NULL;
 
-    s->context = context;
+    socket->context = context;
 
-    if ( next_platform_socket_init( s, address, socket_type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_packet_tagging ) != NEXT_OK )
+    if ( next_platform_socket_init( socket, address, socket_type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_packet_tagging ) != NEXT_OK )
     {
-        next_platform_socket_destroy( s );
+        next_platform_socket_destroy( socket );
         return NULL;
     }
 
-    return s;
+    return socket;
 }
 
 void next_platform_socket_cleanup( next_platform_socket_t * socket )
