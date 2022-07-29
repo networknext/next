@@ -6294,7 +6294,7 @@ struct next_client_notify_packet_received_t : public next_client_notify_t
 {
     bool direct;
     int payload_bytes;
-    uint8_t payload_data[NEXT_MTU];
+    uint8_t payload_data[NEXT_MAX_PACKET_BYTES-1];
 };
 
 struct next_client_notify_upgraded_t : public next_client_notify_t
@@ -7580,12 +7580,14 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    if ( packet_bytes <= NEXT_MTU && from_server_address )
+    if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes;
+        next_assert( notify->payload_bytes >= 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -8597,12 +8599,17 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client can't send packet because no session is open" );
+        return;
+    }
+
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
         return;
     }
 
@@ -8612,24 +8619,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
     }
 
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet bytes are less than zero" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
-        return;
-    }
-
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( client->upgraded )
+    if ( client->upgraded && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
         next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
@@ -8755,8 +8750,7 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
@@ -8770,9 +8764,9 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
         return;
     }
 
-    if ( packet_bytes > NEXT_MTU )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
         return;
     }
 
@@ -8783,6 +8777,18 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH]++;
 
     client->internal->packets_sent++;
+}
+
+void next_client_send_packet_raw( next_client_t * client, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_client_verify_sentinels( client );
+
+    next_assert( client->internal );
+    next_assert( client->internal->socket );
+    next_assert( to_address );
+    next_assert( packet_bytes > 0 );
+
+    next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 void next_client_report_session( next_client_t * client )
@@ -11070,7 +11076,7 @@ struct next_server_notify_packet_received_t : public next_server_notify_t
 {
     next_address_t from;
     int packet_bytes;
-    uint8_t packet_data[NEXT_MTU];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 };
 
 struct next_server_notify_pending_session_cancelled_t : public next_server_notify_t
@@ -13883,7 +13889,7 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes <= NEXT_MTU )
+    if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
     	if ( server->payload_receive_callback )
     	{
@@ -13897,7 +13903,7 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
         notify->from = *from;
         notify->packet_bytes = packet_bytes;
         next_assert( packet_bytes > 0 );
-        next_assert( packet_bytes <= NEXT_MTU );
+        next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -15342,7 +15348,7 @@ void next_server_update( next_server_t * server )
                 next_server_notify_packet_received_t * packet_received = (next_server_notify_packet_received_t*) notify;
                 next_assert( packet_received->packet_data );
                 next_assert( packet_received->packet_bytes > 0 );
-                next_assert( packet_received->packet_bytes <= NEXT_MTU );
+                next_assert( packet_received->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
                 server->packet_received_callback( server, server->context, &packet_received->from, packet_received->packet_data, packet_received->packet_bytes );
             }
             break;
@@ -15584,8 +15590,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     next_assert( to_address );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
 
     if ( next_global_config.disable_network_next )
     {
@@ -15593,15 +15598,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         return;
     }
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is too large" );
         return;
     }
 
@@ -15610,7 +15609,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
-    if ( entry )
+    if ( entry && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
         bool multipath = false;
         bool committed = false;
@@ -15749,18 +15748,11 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_assert( to_address );
     next_assert( to_address->type != NEXT_ADDRESS_NONE );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is too large" );
         return;
     }
 
@@ -15768,6 +15760,17 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
 	next_server_send_packet_to_address( server, to_address, buffer, packet_bytes + 1 );
+}
+
+void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_server_verify_sentinels( server );
+
+    next_assert( to_address );
+    next_assert( packet_data );
+    next_assert( packet_bytes > 0 );
+
+    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )

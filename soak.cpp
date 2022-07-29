@@ -415,9 +415,7 @@ int main( int argc, char ** argv )
 
                 next_address_t server_address = next_server_address( servers[j] );
 
-                // todo: we need raw packets here
-                (void) server_address;
-                //next_client_send_packet_raw( clients[i], &server_address, packet_data, packet_bytes );
+                next_client_send_packet_raw( clients[i], &server_address, packet_data, packet_bytes );
             }
 
         }
@@ -448,9 +446,7 @@ int main( int argc, char ** argv )
                 client_address.data.ipv4[3] = 1;
                 client_address.port = next_client_port( clients[j] );
 
-                // todo
-                (void) client_address;
-                //next_server_send_packet_raw( servers[i], &client_address, packet_data, packet_bytes );
+                next_server_send_packet_raw( servers[i], &client_address, packet_data, packet_bytes );
             }
         }
 

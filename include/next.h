@@ -308,6 +308,8 @@ NEXT_EXPORT_FUNC void next_client_send_packet( struct next_client_t * client, co
 
 NEXT_EXPORT_FUNC void next_client_send_packet_direct( struct next_client_t * client, const uint8_t * packet_data, int packet_bytes );
 
+NEXT_EXPORT_FUNC void next_client_send_packet_raw( struct next_client_t * client, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
+
 NEXT_EXPORT_FUNC void next_client_report_session( struct next_client_t * client );
 
 NEXT_EXPORT_FUNC uint64_t next_client_session_id( struct next_client_t * client );
@@ -383,6 +385,8 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_session_upgraded( struct next_server_t * 
 NEXT_EXPORT_FUNC void next_server_send_packet( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
+
+NEXT_EXPORT_FUNC void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
 
