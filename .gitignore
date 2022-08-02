@@ -13,3 +13,7 @@ visualstudio
 Release
 Debug
 int
+.vs
+*.vcxproj.user
+*_Release
+*_Debug
