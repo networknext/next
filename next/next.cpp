@@ -47,7 +47,6 @@
 
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           10
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                 10
-#define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -293,7 +292,7 @@ static void default_assert_function( const char * condition, const char * functi
     #elif defined(linux) || defined(__linux) || defined(__linux__) || defined(__APPLE__)
         raise(SIGTRAP);
     #else
-        #error "asserts not supported on this platform!"
+        abort();
     #endif
 }
 
@@ -1492,11 +1491,11 @@ namespace next
             @param bytes The number of bytes of bitpacked data to read.
          */
 
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes ), m_numWords( ( bytes + 3 ) / 4)
-    #else // #ifndef NDEBUG
+    #else // #if NEXT_ASSERTS
         BitReader( const void * data, int bytes ) : m_data( (const uint32_t*) data ), m_numBytes( bytes )
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         {
             next_assert( data );
             next_assert( ( size_t(data) % 4 ) == 0 );
@@ -1655,9 +1654,9 @@ namespace next
         uint64_t m_scratch;                 ///< The scratch value. New data is read in 32 bits at a top to the left of this buffer, and data is read off to the right.
         int m_numBits;                      ///< Number of bits to read in the buffer. Of course, we can't *really* know this so it's actually m_numBytes * 8.
         int m_numBytes;                     ///< Number of bytes to read in the buffer. We know this, and this is the non-rounded up version.
-    #ifndef NDEBUG
+    #if NEXT_ASSERTS
         int m_numWords;                     ///< Number of words to read in the buffer. This is rounded up to the next word if necessary.
-    #endif // #ifndef NDEBUG
+    #endif // #if NEXT_ASSERTS
         int m_bitsRead;                     ///< Number of bits read from the buffer so far.
         int m_scratchBits;                  ///< Number of bits currently in the scratch value. If the user wants to read more bits than this, we have to go fetch another dword from memory.
         int m_wordIndex;                    ///< Index of the next word to read from memory.
@@ -5515,7 +5514,7 @@ bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
 
     if ( !route_manager->route_data.current_route )
     {
-    	return false;
+        return false;
     }
 
     next_assert( route_manager->route_data.current_route );
@@ -5757,6 +5756,7 @@ struct next_client_command_report_session_t : public next_client_command_t
 #define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED          0
 #define NEXT_CLIENT_NOTIFY_UPGRADED                 1
 #define NEXT_CLIENT_NOTIFY_STATS_UPDATED            2
+#define NEXT_CLIENT_NOTIFY_READY                    3
 
 struct next_client_notify_t
 {
@@ -5767,7 +5767,7 @@ struct next_client_notify_packet_received_t : public next_client_notify_t
 {
     bool direct;
     int payload_bytes;
-    uint8_t payload_data[NEXT_MTU];
+    uint8_t payload_data[NEXT_MAX_PACKET_BYTES-1];
 };
 
 struct next_client_notify_upgraded_t : public next_client_notify_t
@@ -5784,6 +5784,10 @@ struct next_client_notify_stats_updated_t : public next_client_notify_t
 {
     next_client_stats_t stats;
     bool fallback_to_direct;
+};
+
+struct next_client_notify_ready_t : public next_client_notify_t
+{
 };
 
 // ---------------------------------------------------------------
@@ -5983,9 +5987,22 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     memset( client, 0, sizeof( next_client_internal_t) );
 
-    client->wake_up_callback = wake_up_callback;
-
     next_client_internal_initialize_sentinels( client );
+
+    next_ping_history_clear( &client->next_ping_history );
+    next_ping_history_clear( &client->direct_ping_history );
+
+    next_replay_protection_reset( &client->payload_replay_protection );
+    next_replay_protection_reset( &client->special_replay_protection );
+    next_replay_protection_reset( &client->internal_replay_protection );
+
+    next_packet_loss_tracker_reset( &client->packet_loss_tracker );
+    next_out_of_order_tracker_reset( &client->out_of_order_tracker );
+    next_jitter_tracker_reset( &client->jitter_tracker );
+
+    next_client_internal_verify_sentinels( client );
+
+    client->wake_up_callback = wake_up_callback;
 
     client->context = context;
 
@@ -6074,19 +6091,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         next_client_internal_destroy( client );
         return NULL;
     }
-
-    next_ping_history_clear( &client->next_ping_history );
-    next_ping_history_clear( &client->direct_ping_history );
-
-    next_replay_protection_reset( &client->payload_replay_protection );
-    next_replay_protection_reset( &client->special_replay_protection );
-    next_replay_protection_reset( &client->internal_replay_protection );
-
-    next_packet_loss_tracker_reset( &client->packet_loss_tracker );
-    next_out_of_order_tracker_reset( &client->out_of_order_tracker );
-    next_jitter_tracker_reset( &client->jitter_tracker );
-
-    next_client_internal_verify_sentinels( client );
 
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
@@ -6205,6 +6209,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes - 10;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data + 10, size_t(packet_bytes) - 10 );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -6630,6 +6636,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
         notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -6855,12 +6863,14 @@ void next_client_internal_process_raw_direct_packet( next_client_internal_t * cl
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
-    if ( packet_bytes <= NEXT_MTU && from_server_address )
+    if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes;
+        next_assert( notify->payload_bytes > 0 );
+        next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -6953,6 +6963,15 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_route_manager_reset( client->route_manager );
                 next_route_manager_direct_route( client->route_manager, true );
                 next_platform_mutex_release( &client->route_manager_mutex );
+
+                // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
+                next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+                next_assert( notify );
+                notify->type = NEXT_CLIENT_NOTIFY_READY;
+                {
+                    next_platform_mutex_guard( &client->notify_mutex );
+                    next_queue_push( client->notify_queue, notify );
+                }
             }
             break;
 
@@ -7508,7 +7527,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
 
     while ( !quit )
     {
-    	next_client_internal_block_and_receive_packet( client );
+        next_client_internal_block_and_receive_packet( client );
 
         double current_time = next_time();
 
@@ -7545,6 +7564,7 @@ struct next_client_t
 
     void * context;
     int state;
+    bool ready;
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
@@ -7751,6 +7771,7 @@ void next_client_close_session( next_client_t * client )
         next_queue_push( client->internal->command_queue, command );
     }
 
+    client->ready = false;
     client->upgraded = false;
     client->fallback_to_direct = false;
     client->session_id = 0;    
@@ -7783,6 +7804,9 @@ void next_client_update( next_client_t * client )
             case NEXT_CLIENT_NOTIFY_PACKET_RECEIVED:
             {
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
+
+                next_assert( packet_received->payload_bytes > 0 );
+                next_assert( packet_received->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
                 client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
@@ -7822,6 +7846,12 @@ void next_client_update( next_client_t * client )
             }
             break;
 
+            case NEXT_CLIENT_NOTIFY_READY:
+            {
+                client->ready = true;
+            }
+            break;
+
             default: break;
         }
 
@@ -7835,8 +7865,13 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
+ 
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
+        return;
+    }
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
@@ -7850,24 +7885,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
     }
 
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet bytes are less than zero" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
-        return;
-    }
-
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( client->upgraded )
+    if ( client->upgraded && packet_bytes <= NEXT_MTU )
     {
         next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
@@ -7934,12 +7957,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( result )
             {
-	            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
-	            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+                next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+                client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
             }
             else
             {
-            	send_direct = true;
+                send_direct = true;
             }
         }
 
@@ -7976,8 +7999,8 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
 
     next_assert( client->internal );
     next_assert( client->internal->socket );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
     if ( client->state != NEXT_CLIENT_STATE_OPEN )
     {
@@ -7985,15 +8008,9 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
         return;
     }
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size <= 0" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet size of %d larger than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client can't send packet because packet is too large" );
         return;
     }
 
@@ -8005,6 +8022,18 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT_RAW]++;
 
     client->internal->packets_sent++;
+}
+
+void next_client_send_packet_raw( next_client_t * client, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_client_verify_sentinels( client );
+
+    next_assert( client->internal );
+    next_assert( client->internal->socket );
+    next_assert( to_address );
+    next_assert( packet_bytes > 0 );
+
+    next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 void next_client_report_session( next_client_t * client )
@@ -8044,6 +8073,12 @@ const next_address_t * next_client_server_address( next_client_t * client )
 {
     next_assert( client );
     return &client->server_address;
+}
+
+NEXT_BOOL next_client_ready( next_client_t * client )
+{
+    next_assert( client );
+    return client->ready ? NEXT_TRUE : NEXT_FALSE;
 }
 
 void next_client_counters( next_client_t * client, uint64_t * counters )
@@ -10238,7 +10273,7 @@ struct next_server_notify_packet_received_t : public next_server_notify_t
 {
     next_address_t from;
     int packet_bytes;
-    uint8_t packet_data[NEXT_MTU];
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES-1];
 };
 
 struct next_server_notify_pending_session_cancelled_t : public next_server_notify_t
@@ -10922,41 +10957,41 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     bool have_cached_whois = false;
     char whois_buffer[1024*64];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-	FILE * f = fopen( "whois.txt", "r");
-	if ( f )
-	{
-		fseek( f, 0, SEEK_END );
-		size_t fsize = ftell( f );
-		fseek( f, 0, SEEK_SET );
-		if ( fsize > sizeof(whois_buffer) - 1 )
-		{
-			fsize = sizeof(whois_buffer) - 1;
-		}
-		if ( fread( whois_buffer, fsize, 1, f ) == 1 )
-		{
-			next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
-			have_cached_whois = true;
-		}
-		fclose( f );
-	}
+    FILE * f = fopen( "whois.txt", "r");
+    if ( f )
+    {
+        fseek( f, 0, SEEK_END );
+        size_t fsize = ftell( f );
+        fseek( f, 0, SEEK_SET );
+        if ( fsize > sizeof(whois_buffer) - 1 )
+        {
+            fsize = sizeof(whois_buffer) - 1;
+        }
+        if ( fread( whois_buffer, fsize, 1, f ) == 1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
+            have_cached_whois = true;
+        }
+        fclose( f );
+    }
 
-	// if we couldn't read whois.txt, run whois locally and store the result to whois.txt
+    // if we couldn't read whois.txt, run whois locally and store the result to whois.txt
 
-	if ( !have_cached_whois )
-	{
-		next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
-	    char * whois_output = &whois_buffer[0];
-	    size_t bytes_remaining = sizeof(whois_buffer) - 1;
-	    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
-   		FILE * whois_file = fopen( "whois.txt", "w" );
-   		if ( whois_file )
-   		{
-   			next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
-   			fputs( whois_buffer, whois_file );
-   			fflush( whois_file );
-   			fclose( whois_file );
-   		}
-	}
+    if ( !have_cached_whois )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
+        char * whois_output = &whois_buffer[0];
+        size_t bytes_remaining = sizeof(whois_buffer) - 1;
+        next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+        FILE * whois_file = fopen( "whois.txt", "w" );
+        if ( whois_file )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
+            fputs( whois_buffer, whois_file );
+            fflush( whois_file );
+            fclose( whois_file );
+        }
+    }
 
     // check against multiplay supplier mappings
 
@@ -10995,7 +11030,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
         if ( strstr( whois_buffer, substring ) )
         {
-        	next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
             sprintf( output, "%s.%s", supplier, city );
             found = true;
         }
@@ -11011,8 +11046,8 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         char * line = strtok( whois_buffer, separators );
         while ( line )
         {
-        	next_printf( "%s", line );
-        	line = strtok( NULL, separators );
+            next_printf( "%s", line );
+            line = strtok( NULL, separators );
         }
         return false;
     }
@@ -11143,9 +11178,9 @@ void next_server_internal_initialize( next_server_internal_t * server )
         server->state = NEXT_SERVER_STATE_INITIALIZING;
     }
     
-	next_server_internal_resolve_hostname( server );
+    next_server_internal_resolve_hostname( server );
 
-	next_server_internal_autodetect( server );
+    next_server_internal_autodetect( server );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -11371,15 +11406,15 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     if ( server->resolve_hostname_thread )
     {
-    	next_platform_thread_join( server->resolve_hostname_thread );
+        next_platform_thread_join( server->resolve_hostname_thread );
         next_platform_thread_destroy( server->resolve_hostname_thread );
-	}
+    }
 
     if ( server->autodetect_thread )
     {
-    	next_platform_thread_join( server->autodetect_thread );
+        next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
-	}
+    }
 
     if ( server->command_queue )
     {
@@ -11770,17 +11805,17 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
 void next_server_internal_update_flush( next_server_internal_t * server )
 {
-	if ( !server->flushing )
-		return;
+    if ( !server->flushing )
+        return;
 
-	if ( server->flushed )
-		return;
+    if ( server->flushed )
+        return;
 
     if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
     {
-    	next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
-    	
-    	server->flushed = true;
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
+        
+        server->flushed = true;
 
         next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
@@ -11849,7 +11884,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         notify->from = *from;
         notify->packet_bytes = packet_bytes - 10;
         next_assert( notify->packet_bytes > 0 );
-        next_assert( notify->packet_bytes <= NEXT_MTU );
+        next_assert( notify->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data + 10, size_t(notify->packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -12489,7 +12524,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         notify->from = entry->address;
         notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
         next_assert( notify->packet_bytes > 0 );
-        next_assert( notify->packet_bytes <= NEXT_MTU );
+        next_assert( notify->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -12684,18 +12719,17 @@ void next_server_internal_process_raw_direct_packet( next_server_internal_t * se
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
-    next_assert( packet_bytes );
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes <= NEXT_MTU )
+    if ( packet_bytes > 0 && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
         notify->packet_bytes = packet_bytes;
         next_assert( packet_bytes > 0 );
-        next_assert( packet_bytes <= NEXT_MTU );
+        next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -13027,6 +13061,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 {
     next_assert( context );
 
+    double start_time = next_time();
+
     next_server_internal_t * server = (next_server_internal_t*) context;
 
     const char * hostname = next_global_config.server_backend_hostname;
@@ -13044,27 +13080,38 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool success = false;
 
-    double start_time = next_time();
+    // first try to parse the hostname directly as an address, this is a common case in testbeds and there's no reason to actually run a DNS resolve on it
 
-    for ( int i = 0; i < 10; ++i )
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
-        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+        address.port = uint16_t( atoi(port) );
+        success = true;
+    }    
+    else
+    {
+        // try to resolve the hostname, retry a few times if it doesn't succeed right away
+
+        for ( int i = 0; i < 10; ++i )
         {
-            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-            success = true;
-            break;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+            if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+            {
+                next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+                success = true;
+                break;
+            }
+            else
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+            }
         }
     }
 
     if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
     {
-	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
-	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
-	    NEXT_PLATFORM_THREAD_RETURN();
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
+        NEXT_PLATFORM_THREAD_RETURN();
     }
 
     if ( !success )
@@ -13106,24 +13153,24 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( finished )
     {
-		next_platform_thread_join( server->resolve_hostname_thread );
+        next_platform_thread_join( server->resolve_hostname_thread );
     }
     else
     {
-    	if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
-		}
+        if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+        }
     }
-	
-	next_platform_thread_destroy( server->resolve_hostname_thread );
-	
+    
+    next_platform_thread_destroy( server->resolve_hostname_thread );
+    
     server->resolve_hostname_thread = NULL;
     server->resolving_hostname = false;
     server->backend_address = result;
@@ -13132,10 +13179,10 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( result.type != NEXT_ADDRESS_NONE )
     {
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
-	}
-	else
-	{
+        next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
+    }
+    else
+    {
         next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname. going to direct only mode" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         server->resolving_hostname = false;
@@ -13175,7 +13222,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_address_to_string( &server_address_no_port, autodetect_address );
 
     if ( !next_global_config.disable_autodetect &&
-    	 ( autodetect_input[0] == '\0' 
+         ( autodetect_input[0] == '\0' 
             ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
@@ -13211,9 +13258,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
     {
-	    // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
-	    // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
-	    NEXT_PLATFORM_THREAD_RETURN();
+        // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
+        // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+        NEXT_PLATFORM_THREAD_RETURN();
     }
 
     next_platform_mutex_guard( &server->autodetect_mutex );
@@ -13234,8 +13281,8 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     if ( next_global_config.disable_network_next )
         return true;
 
-    if ( server->resolving_hostname )	// IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
-    	return true;
+    if ( server->resolving_hostname )   // IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
+        return true;
 
     if ( !server->autodetecting )
         return true;
@@ -13248,41 +13295,41 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     if ( finished )
     {
-		next_platform_thread_join( server->autodetect_thread );
+        next_platform_thread_join( server->autodetect_thread );
     }
     else
     {
-    	if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
+        if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
     }
-	
-	next_platform_thread_destroy( server->autodetect_thread );
-	
+    
+    next_platform_thread_destroy( server->autodetect_thread );
+    
     server->autodetect_thread = NULL;
     server->autodetecting = false;
 
     if ( server->autodetect_actually_did_something )
     {
-	    if ( server->autodetect_succeeded )
-	    {
-		    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
-		    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
-		    server->datacenter_id = next_datacenter_id( server->datacenter_name );
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-		else
-		{
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-	}
+        if ( server->autodetect_succeeded )
+        {
+            memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
+            strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->datacenter_id = next_datacenter_id( server->datacenter_name );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+    }
 
     next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
     memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
@@ -13552,9 +13599,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             NextBackendMatchDataRequestPacket packet;
             packet.Reset();
-	        packet.version_major = NEXT_VERSION_MAJOR_INT;
-	        packet.version_minor = NEXT_VERSION_MINOR_INT;
-	        packet.version_patch = NEXT_VERSION_PATCH_INT;
+            packet.version_major = NEXT_VERSION_MAJOR_INT;
+            packet.version_minor = NEXT_VERSION_MINOR_INT;
+            packet.version_patch = NEXT_VERSION_PATCH_INT;
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
@@ -13621,8 +13668,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     while ( !quit )
     {
-    	next_server_internal_block_and_receive_packet( server );
-    	
+        next_server_internal_block_and_receive_packet( server );
+        
         double current_time = next_time();
 
         if ( current_time >= last_update_time + 0.1 )
@@ -13837,7 +13884,7 @@ void next_server_update( next_server_t * server )
                 next_server_notify_packet_received_t * packet_received = (next_server_notify_packet_received_t*) notify;
                 next_assert( packet_received->packet_data );
                 next_assert( packet_received->packet_bytes > 0 );
-                next_assert( packet_received->packet_bytes <= NEXT_MTU );
+                next_assert( packet_received->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
                 server->packet_received_callback( server, server->context, &packet_received->from, packet_received->packet_data, packet_received->packet_bytes );
             }
             break;
@@ -14066,9 +14113,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     next_assert( to_address );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
-
+    next_assert( packet_bytes > 0 );
+ 
     if ( next_global_config.disable_network_next )
     {
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
@@ -14081,15 +14127,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         return;
     }
 
-    if ( packet_bytes <= 0 )
+    if ( packet_bytes > NEXT_MAX_PACKET_BYTES - 1 )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet is too large" );
         return;
     }
 
@@ -14098,7 +14138,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     bool send_over_network_next = false;
     bool send_upgraded_direct = false;
 
-    if ( entry )
+    if ( entry && packet_bytes <= NEXT_MTU )
     {
         bool multipath = false;
         bool committed = false;
@@ -14216,8 +14256,8 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     next_assert( to_address );
     next_assert( packet_data );
-    next_assert( packet_bytes >= 0 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes > 0 );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
 
     if ( server->flushing )
     {
@@ -14225,22 +14265,21 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
         return;
     }
 
-    if ( packet_bytes <= 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
-        return;
-    }
-
-    if ( packet_bytes > NEXT_MTU )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size of %d is greater than MTU (%d)", packet_bytes, NEXT_MTU );
-        return;
-    }
-
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
     buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
+}
+
+void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
+{
+    next_server_verify_sentinels( server );
+
+    next_assert( to_address );
+    next_assert( packet_data );
+    next_assert( packet_bytes > 0 );
+
+    next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 }
 
 NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
