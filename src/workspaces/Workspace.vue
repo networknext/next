@@ -24,7 +24,7 @@ import SessionCounts from '@/components/SessionCounts.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
-import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
+import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import MapPointsModal from '@/components/MapPointsModal.vue'
 

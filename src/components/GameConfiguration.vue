@@ -50,7 +50,7 @@ import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
 import { ErrorTypes } from './types/ErrorTypes'
-import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
+import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 
 /**
  * This component displays all of the necessary information for the game configuration tab

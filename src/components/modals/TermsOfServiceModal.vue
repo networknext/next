@@ -4,7 +4,7 @@
       <div class="row pt-2 pb-2">
         <div class="col"></div>
         <div class="col">
-          <img class="logo-fit" src="../assets/TOS_logo.png" />
+          <img class="logo-fit" src="../../assets/TOS_logo.png" />
         </div>
         <div class="col"></div>
       </div>
