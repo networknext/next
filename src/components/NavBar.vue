@@ -115,7 +115,7 @@
           <a style="cursor: pointer; color: white;" v-if="$store.getters.isAdmin" @click.prevent="toggleDemo(!$store.getters.isDemo)">{{ $store.getters.isDemo ? 'Exit' : 'Start'}} Demo</a>
         </li>
       </ul>
-      <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
+      <ul class="navbar-nav px-2" v-if="$store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
           <font-awesome-icon
             id="notification-bell"

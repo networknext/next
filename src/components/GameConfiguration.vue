@@ -96,14 +96,14 @@ export default class GameConfiguration extends Vue {
       this.pubKey = this.userProfile.pubKey || ''
     }
 
-    this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
+    this.$root.$on('tosSigned', this.signedTOSCallback)
   }
 
   private beforeDestroy () {
-    this.$root.$off('hideTOSModal')
+    this.$root.$off('tosSigned')
   }
 
-  private hideTOSModalCallback (accepted: boolean) {
+  private signedTOSCallback (accepted: boolean) {
     if (accepted) {
       this.updatePubKey()
     }
