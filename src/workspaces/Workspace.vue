@@ -7,7 +7,7 @@
         />
         <router-view />
         <MapPointsModal ref="mapPointsModal" :points="modalPoints" />
-        <NotificationsModal v-show="showNotificationsModal"/>
+        <NotificationsModal ref="notificationsModal" />
         <TermsOfServiceModal ref="tosModal" :deniable="this.$store.getters.userProfile.buyerID === ''" />
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
@@ -19,7 +19,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
-import NotificationsModal from '@/components/NotificationsModal.vue'
+import NotificationsModal from '@/components/modals/NotificationsModal.vue'
 import SessionCounts from '@/components/SessionCounts.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
@@ -52,12 +52,12 @@ export default class Workspace extends Vue {
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
-  private showNotificationsModal: boolean
   private modalPoints: Array<any>
 
   $refs!: {
     tosModal: TermsOfServiceModal;
     mapPointsModal: MapPointsModal;
+    notificationsModal: NotificationsModal;
   }
 
   constructor () {
@@ -117,7 +117,6 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.showNotificationsModal = false
     this.modalPoints = []
   }
 
@@ -141,7 +140,6 @@ export default class Workspace extends Vue {
     this.$root.$on('showMapPointsModal', this.showMapPointsModalCallback)
 
     this.$root.$on('showNotificationsModal', this.showNotificationsModalCallback)
-    this.$root.$on('hideNotificationsModal', this.hideNotificationsModalCallback)
 
     this.$root.$on('showTOSModal', this.showTOSModalCallback)
   }
@@ -152,7 +150,6 @@ export default class Workspace extends Vue {
     this.$root.$off('showMapPointsModal')
 
     this.$root.$off('showNotificationsModal')
-    this.$root.$off('hideNotificationsModal')
 
     this.$root.$off('showTOSModal')
   }
@@ -163,15 +160,7 @@ export default class Workspace extends Vue {
   }
 
   private showNotificationsModalCallback () {
-    if (!this.showNotificationsModal) {
-      this.showNotificationsModal = true
-    }
-  }
-
-  private hideNotificationsModalCallback () {
-    if (this.showNotificationsModal) {
-      this.showNotificationsModal = false
-    }
+    this.$refs.notificationsModal.toggleShowModal()
   }
 
   private showTOSModalCallback () {

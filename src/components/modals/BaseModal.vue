@@ -3,6 +3,9 @@
     <div class="modal-mask">
       <div class="modal-wrapper">
         <div class="card modal-container">
+          <div class="card-header">
+            <slot name="header"></slot>
+          </div>
           <div class="card-body ml-2 mr-2" style="overflow-y: scroll;">
             <slot name="body"></slot>
           </div>

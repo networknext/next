@@ -1,6 +1,6 @@
 import Vuex from 'vuex'
 import { createLocalVue, shallowMount } from '@vue/test-utils'
-import NotificationsModal from '@/components/NotificationsModal.vue'
+import NotificationsModal from '@/components/modals/NotificationsModal.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { faChevronDown, faChevronLeft } from '@fortawesome/free-solid-svg-icons'
