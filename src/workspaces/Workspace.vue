@@ -8,7 +8,7 @@
         <router-view />
         <MapPointsModal v-show="showMapPointsModal" :points="modalPoints" />
         <NotificationsModal v-show="($store.getters.isOwner || $store.getters.isAdmin) && showNotificationsModal"/>
-        <TermsOfServiceModal ref="tosModal" :deniable="$store.getters.currentPage === 'config'" />
+        <TermsOfServiceModal ref="tosModal" :deniable="this.$store.getters.userProfile.buyerID === ''" />
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>

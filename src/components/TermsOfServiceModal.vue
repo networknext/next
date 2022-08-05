@@ -282,8 +282,10 @@ export default class TermsOfServiceModal extends Vue {
       email: this.$store.getters.userProfile.email
     })
       .then(() => {
-        // Tell GameConfiguration component that the user signed TOS
-        this.$root.$emit('tosSigned', true)
+        // If the user is submitting pub key for first time, emit signed event
+        if (this.$store.getters.userProfile.buyerID === '') {
+          this.$root.$emit('tosSigned')
+        }
 
         // Hide TOS modal
         this.toggleHideModal()
@@ -295,9 +297,6 @@ export default class TermsOfServiceModal extends Vue {
   }
 
   private deniedBuyerTOS () {
-    // Tell GameConfiguration component that the user denied TOS
-    this.$root.$emit('tosSigned', false)
-
     // Hide the modal until next time
     this.toggleHideModal()
   }

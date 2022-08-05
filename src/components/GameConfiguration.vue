@@ -76,14 +76,12 @@ export default class GameConfiguration extends Vue {
 
   private companyName: string
   private pubKey: string
-  private showTOS: boolean
   private userProfile: UserProfile
 
   constructor () {
     super()
     this.companyName = ''
     this.pubKey = ''
-    this.showTOS = false
     this.userProfile = newDefaultProfile()
   }
 
@@ -96,27 +94,20 @@ export default class GameConfiguration extends Vue {
       this.pubKey = this.userProfile.pubKey || ''
     }
 
-    this.$root.$on('tosSigned', this.signedTOSCallback)
+    this.$root.$on('tosSigned', this.updatePubKey)
   }
 
   private beforeDestroy () {
     this.$root.$off('tosSigned')
   }
 
-  private signedTOSCallback (accepted: boolean) {
-    if (accepted) {
-      this.updatePubKey()
-    }
-  }
-
   private checkTOS () {
     if (this.$store.getters.userProfile.buyerID === '') {
       // Launch TOS modal
       this.$root.$emit('showTOSModal')
-      return
+    } else {
+      this.updatePubKey()
     }
-
-    this.updatePubKey()
   }
 
   private updatePubKey () {
