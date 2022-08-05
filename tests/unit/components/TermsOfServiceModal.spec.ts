@@ -1,6 +1,6 @@
 import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Vuex from 'vuex'
-import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
+import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'

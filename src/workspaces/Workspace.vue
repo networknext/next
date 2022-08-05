@@ -6,9 +6,9 @@
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
-        <MapPointsModal v-show="showMapPointsModal" :points="modalPoints" />
-        <NotificationsModal v-show="($store.getters.isOwner || $store.getters.isAdmin) && showNotificationsModal"/>
-        <TermsOfServiceModal v-show="showTOSModal" :deniable="$store.getters.currentPage === 'config'" />
+        <MapPointsModal ref="mapPointsModal" :points="modalPoints" />
+        <NotificationsModal ref="notificationsModal" />
+        <TermsOfServiceModal ref="tosModal" :deniable="this.$store.getters.userProfile.buyerID === ''" />
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>
@@ -19,14 +19,14 @@
 import { Component, Vue } from 'vue-property-decorator'
 import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
-import NotificationsModal from '@/components/NotificationsModal.vue'
+import NotificationsModal from '@/components/modals/NotificationsModal.vue'
 import SessionCounts from '@/components/SessionCounts.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
-import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
+import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
-import MapPointsModal from '@/components/MapPointsModal.vue'
+import MapPointsModal from '@/components/modals/MapPointsModal.vue'
 
 /**
  * This component is the base component for all other workspace components
@@ -48,16 +48,16 @@ import MapPointsModal from '@/components/MapPointsModal.vue'
   }
 })
 export default class Workspace extends Vue {
+  private unwatchUserProfile: any
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
-  private showMapPointsModal: boolean
-  private showNotificationsModal: boolean
-  private showTOSModal: boolean
   private modalPoints: Array<any>
 
   $refs!: {
-    drillDownSessions: MapPointsModal;
+    tosModal: TermsOfServiceModal;
+    mapPointsModal: MapPointsModal;
+    notificationsModal: NotificationsModal;
   }
 
   constructor () {
@@ -117,77 +117,68 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.showMapPointsModal = false
-    this.showNotificationsModal = false
-    this.showTOSModal = false
     this.modalPoints = []
   }
 
   private mounted () {
+    this.checkTOSRequired()
+
+    this.unwatchUserProfile = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.userProfile
+      },
+      () => {
+        this.checkTOSRequired()
+      }
+    )
+
     if (this.$store.getters.isTour && this.$route.name === 'map' && this.$tours.mapTour && !this.$tours.mapTour.isRunning) {
       this.$tours.mapTour.start()
     }
 
     // TODO: Make a modal events bus rather than using the root application bus
     this.$root.$on('showMapPointsModal', this.showMapPointsModalCallback)
-    this.$root.$on('hideMapPointsModal', this.hideMapPointsModalCallback)
 
     this.$root.$on('showNotificationsModal', this.showNotificationsModalCallback)
-    this.$root.$on('hideNotificationsModal', this.hideNotificationsModalCallback)
 
     this.$root.$on('showTOSModal', this.showTOSModalCallback)
-    this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
-
-    if (this.$store.getters.isOwner && this.$store.getters.userProfile.buyerID !== '' && !this.$store.getters.userProfile.signedTOS) {
-      this.showTOSModal = true
-    }
   }
 
   private beforeDestroy () {
+    this.unwatchUserProfile()
+
     this.$root.$off('showMapPointsModal')
-    this.$root.$off('hideMapPointsModal')
 
     this.$root.$off('showNotificationsModal')
-    this.$root.$off('hideNotificationsModal')
 
     this.$root.$off('showTOSModal')
-    this.$root.$off('hideTOSModal')
   }
 
   private showMapPointsModalCallback (points: Array<any>) {
-    if (!this.showMapPointsModal) {
-      this.modalPoints = points
-      this.showMapPointsModal = true
-    }
-  }
-
-  private hideMapPointsModalCallback () {
-    if (this.showMapPointsModal) {
-      this.showMapPointsModal = false
-    }
+    this.modalPoints = points || []
+    this.$refs.mapPointsModal.toggleShowModal()
   }
 
   private showNotificationsModalCallback () {
-    if (!this.showNotificationsModal) {
-      this.showNotificationsModal = true
-    }
-  }
-
-  private hideNotificationsModalCallback () {
-    if (this.showNotificationsModal) {
-      this.showNotificationsModal = false
-    }
+    this.$refs.notificationsModal.toggleShowModal()
   }
 
   private showTOSModalCallback () {
-    if (!this.showTOSModal) {
-      this.showTOSModal = true
-    }
+    this.$refs.tosModal.toggleShowModal()
   }
 
-  private hideTOSModalCallback () {
-    if (this.showTOSModal) {
-      this.showTOSModal = false
+  private checkTOSRequired () {
+    if (
+      this.$store.getters.isOwner &&
+      this.$store.getters.userProfile.buyerID !== '' &&
+      !this.$store.getters.userProfile.signedTOS &&
+      !this.$refs.tosModal.isVisible()
+    ) {
+      this.$refs.tosModal.toggleShowModal()
+    } else {
+      if (this.$refs.tosModal.isVisible()) {
+        this.$refs.tosModal.toggleHideModal()
+      }
     }
   }
 }

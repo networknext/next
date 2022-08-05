@@ -1,6 +1,6 @@
 import Vuex from 'vuex'
 import { createLocalVue, shallowMount } from '@vue/test-utils'
-import NotificationsModal from '@/components/NotificationsModal.vue'
+import NotificationsModal from '@/components/modals/NotificationsModal.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { faChevronDown, faChevronLeft } from '@fortawesome/free-solid-svg-icons'
@@ -113,36 +113,11 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notification = wrapper.find('#release-notes-notification-0')
-    expect(notification.exists()).toBeTruthy()
-
-    spy.mockReset()
-    wrapper.destroy()
-  })
-
-  it('checks release notes layout - single', async () => {
-    const spy = fetchNotificationsMock(localVue, true, [
-      {
-        title: 'Test Notification'
-      }
-    ], [], [], [])
-
-    const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(NotificationsModal, { localVue, store })
-    expect(wrapper.exists()).toBeTruthy()
-
-    expect(spy).toBeCalledTimes(1)
-
-    await localVue.nextTick()
-
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(1)
     expect(notificationHeaders.at(0).text()).toBe('Test Notification')
 
-    const notificationBody = notificationPage.find('#release-notes-notification-0')
+    const notificationBody = wrapper.find('#release-notes-notification-0')
     expect(notificationBody.exists()).toBeTruthy()
 
     spy.mockReset()
@@ -172,22 +147,19 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(3)
     expect(notificationHeaders.at(0).text()).toBe('Test Notification')
     expect(notificationHeaders.at(1).text()).toBe('Test Notification 2')
     expect(notificationHeaders.at(2).text()).toBe('Test Notification 3')
 
-    const notificationBody = notificationPage.find('#release-notes-notification-0')
+    const notificationBody = wrapper.find('#release-notes-notification-0')
     expect(notificationBody.exists()).toBeTruthy()
 
-    const notificationBody2 = notificationPage.find('#release-notes-notification-1')
+    const notificationBody2 = wrapper.find('#release-notes-notification-1')
     expect(notificationBody2.exists()).toBeTruthy()
 
-    const notificationBody3 = notificationPage.find('#release-notes-notification-2')
+    const notificationBody3 = wrapper.find('#release-notes-notification-2')
     expect(notificationBody3.exists()).toBeTruthy()
 
     spy.mockReset()
@@ -205,10 +177,7 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(0)
 
     spy.mockReset()
@@ -250,14 +219,11 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(1)
     expect(notificationHeaders.at(0).text()).toBe('Test Notification')
 
-    const notificationBody = notificationPage.find('#analytics-notification-0')
+    const notificationBody = wrapper.find('#analytics-notification-0')
     expect(notificationBody.exists()).toBeTruthy()
 
     const notificationText = notificationBody.findAll('div')
@@ -295,10 +261,7 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(0)
 
     notificationsSpy.mockReset()
@@ -340,14 +303,11 @@ describe('NotificationsModal.vue', () => {
 
     await localVue.nextTick()
 
-    const notificationPage = wrapper.find('#notifications-page')
-    expect(notificationPage.exists()).toBeTruthy()
-
-    const notificationHeaders = notificationPage.findAll('.card-header')
+    const notificationHeaders = wrapper.findAll('.card-header')
     expect(notificationHeaders.length).toBe(1)
     expect(notificationHeaders.at(0).text()).toBe('Test Notification')
 
-    const notificationBody = notificationPage.find('#analytics-notification-0')
+    const notificationBody = wrapper.find('#analytics-notification-0')
     expect(notificationBody.exists()).toBeTruthy()
 
     const notificationText = notificationBody.findAll('div')

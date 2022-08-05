@@ -235,7 +235,7 @@ describe('GameConfiguration.vue', () => {
     // Submit new public key
     await gameConfigButton.trigger('submit')
 
-    wrapper.vm.$root.$emit('hideTOSModal', true)
+    wrapper.vm.$root.$emit('tosSigned')
 
     // Wait for UI to react - send signature and public key submittion, plus one more for reacting to everything
     await localVue.nextTick()

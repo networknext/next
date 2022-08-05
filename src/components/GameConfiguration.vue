@@ -50,7 +50,7 @@ import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
 import { ErrorTypes } from './types/ErrorTypes'
-import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
+import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -76,14 +76,12 @@ export default class GameConfiguration extends Vue {
 
   private companyName: string
   private pubKey: string
-  private showTOS: boolean
   private userProfile: UserProfile
 
   constructor () {
     super()
     this.companyName = ''
     this.pubKey = ''
-    this.showTOS = false
     this.userProfile = newDefaultProfile()
   }
 
@@ -96,27 +94,20 @@ export default class GameConfiguration extends Vue {
       this.pubKey = this.userProfile.pubKey || ''
     }
 
-    this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
+    this.$root.$on('tosSigned', this.updatePubKey)
   }
 
   private beforeDestroy () {
-    this.$root.$off('hideTOSModal')
-  }
-
-  private hideTOSModalCallback (accepted: boolean) {
-    if (accepted) {
-      this.updatePubKey()
-    }
+    this.$root.$off('tosSigned')
   }
 
   private checkTOS () {
     if (this.$store.getters.userProfile.buyerID === '') {
       // Launch TOS modal
       this.$root.$emit('showTOSModal')
-      return
+    } else {
+      this.updatePubKey()
     }
-
-    this.updatePubKey()
   }
 
   private updatePubKey () {
