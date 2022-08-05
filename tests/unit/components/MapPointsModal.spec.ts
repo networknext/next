@@ -29,7 +29,7 @@ describe('MapPointsModal.vue', () => {
     const wrapper = shallowMount(MapPointsModal, { localVue, stubs })
     expect(wrapper.exists()).toBeTruthy()
 
-    const cardTitle = wrapper.find('.card-title')
+    const cardTitle = wrapper.find('.banner-message')
     expect(cardTitle.exists()).toBeTruthy()
     expect(cardTitle.text()).toBe('Session IDs by location')
 
@@ -79,7 +79,7 @@ describe('MapPointsModal.vue', () => {
     })
     expect(wrapper.exists()).toBeTruthy()
 
-    const cardTitle = wrapper.find('.card-title')
+    const cardTitle = wrapper.find('.banner-message')
     expect(cardTitle.exists()).toBeTruthy()
     expect(cardTitle.text()).toBe('Session IDs by location')
 
