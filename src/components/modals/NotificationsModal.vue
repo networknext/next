@@ -1,5 +1,5 @@
 <template>
-  <BaseModal ref="baseModal">
+  <BaseModal ref="baseModal" :showHeader="true">
     <template v-slot:header>
       <div class="banner d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
         <div class="banner-message">
@@ -7,7 +7,7 @@
         </div>
       </div>
     </template>
-    <template v-slot:body id="notifications-page">
+    <template v-slot:body>
       <div class="card" v-for="(notification, index) in releaseNotesNotifications" :key="`release-notes-notification-${index}`" style="margin-top: 20px;text-align: center;">
         <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
           <div class="mb-2 mb-md-0 flex-grow-1"></div>
@@ -272,84 +272,6 @@ export default class NotificationsModal extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  .modal-mask {
-    position: fixed;
-    z-index: 9998;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: table;
-    transition: opacity 0.3s ease;
-  }
-
-  .modal-wrapper {
-    display: table-cell;
-    vertical-align: middle;
-  }
-
-  .modal-container {
-    max-width: 800px;
-    max-height: 600px;
-    margin: 0px auto 10%;
-    background-color: #fff;
-    border-radius: 2px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
-    transition: all 0.3s ease;
-  }
-
-  .modal-header h3 {
-    margin-top: 0;
-    color: #42b983;
-  }
-
-  .modal-body {
-    margin: 20px 0;
-  }
-
-  .modal-default-button {
-    float: right;
-    border-color: #009FDF;
-    background-color: #009FDF;
-  }
-
-  .modal-default-button:hover {
-    border-color: rgb(0, 139, 194);
-    background-color: rgb(0, 139, 194);
-  }
-
-  /*
-  * The following styles are auto-applied to elements with
-  * transition="modal" when their visibility is toggled
-  * by Vue.js.
-  *
-  * You can easily play with the modal transition by editing
-  * these styles.
-  */
-
-  .modal-enter {
-    opacity: 0;
-  }
-
-  .modal-leave-active {
-    opacity: 0;
-  }
-
-  .modal-enter .modal-container,
-  .modal-leave-active .modal-container {
-    -webkit-transform: scale(1.1);
-    transform: scale(1.1);
-  }
-
-  .my-custom-scrollbar {
-    position: relative;
-    height: 300px;
-    overflow: auto;
-  }
-  .table-wrapper-scroll-y {
-    display: block;
-  }
   [aria-expanded=true].fa-chevron-left {
     display: none;
   }

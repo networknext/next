@@ -3,7 +3,7 @@
     <div class="modal-mask">
       <div class="modal-wrapper">
         <div class="card modal-container">
-          <div class="card-header">
+          <div class="card-header" v-if="showHeader">
             <slot name="header"></slot>
           </div>
           <div class="card-body ml-2 mr-2" style="overflow-y: scroll;">
@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Vue, Prop } from 'vue-property-decorator'
 
 // TODO: extend this to allow for different sized modals via props
 
@@ -30,6 +30,8 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class BaseModal extends Vue {
+  @Prop({ default: false }) readonly showHeader!: Array<any>
+
   private showModal: boolean
 
   constructor () {

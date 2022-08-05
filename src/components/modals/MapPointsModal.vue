@@ -1,9 +1,13 @@
 <template>
-  <BaseModal ref="baseModal">
+  <BaseModal ref="baseModal" :showHeader="true">
+    <template v-slot:header>
+      <div class="banner d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
+        <div class="banner-message">
+          Session IDs by location
+        </div>
+      </div>
+    </template>
     <template v-slot:body>
-      <h5 class="card-title">
-        Session IDs by location
-      </h5>
       <div class="table-responsive table-no-top-line table-wrapper-scroll-y my-custom-scrollbar">
         <table class="table table-sm">
           <thead>
@@ -77,7 +81,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop } from 'vue-property-decorator'
-import { NavigationGuardNext, Route } from 'vue-router'
 import BaseModal from './BaseModal.vue'
 
 /**
@@ -129,5 +132,14 @@ export default class MapPointsModal extends Vue {
   .modal-default-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
+  }
+  .banner {
+    width: 100%;
+    height: 40px;
+    font-size: 24px;
+  }
+  .banner-message {
+    min-width: 300px;
+    padding-left: 1rem;
   }
 </style>
