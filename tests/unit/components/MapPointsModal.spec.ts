@@ -1,5 +1,5 @@
 import { createLocalVue, shallowMount } from '@vue/test-utils'
-import MapPointsModal from '@/components/MapPointsModal.vue'
+import MapPointsModal from '@/components/modals/MapPointsModal.vue'
 import { faCircle } from '@fortawesome/free-solid-svg-icons'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'

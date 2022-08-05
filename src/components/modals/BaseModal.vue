@@ -35,11 +35,15 @@ export default class BaseModal extends Vue {
   }
 
   public toggleShowModal () {
-    this.showModal = true
+    if (!this.showModal) {
+      this.showModal = true
+    }
   }
 
   public toggleHideModal () {
-    this.showModal = false
+    if (this.showModal) {
+      this.showModal = false
+    }
   }
 
   public isVisible () {

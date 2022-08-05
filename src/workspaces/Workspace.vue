@@ -6,8 +6,8 @@
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
-        <MapPointsModal v-show="showMapPointsModal" :points="modalPoints" />
-        <NotificationsModal v-show="($store.getters.isOwner || $store.getters.isAdmin) && showNotificationsModal"/>
+        <MapPointsModal ref="mapPointsModal" :points="modalPoints" />
+        <NotificationsModal v-show="showNotificationsModal"/>
         <TermsOfServiceModal ref="tosModal" :deniable="this.$store.getters.userProfile.buyerID === ''" />
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
@@ -26,7 +26,7 @@ import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import TermsOfServiceModal from '@/components/modals/TermsOfServiceModal.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
-import MapPointsModal from '@/components/MapPointsModal.vue'
+import MapPointsModal from '@/components/modals/MapPointsModal.vue'
 
 /**
  * This component is the base component for all other workspace components
@@ -52,13 +52,12 @@ export default class Workspace extends Vue {
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
-  private showMapPointsModal: boolean
   private showNotificationsModal: boolean
-  private showTOSModal: boolean
   private modalPoints: Array<any>
 
   $refs!: {
     tosModal: TermsOfServiceModal;
+    mapPointsModal: MapPointsModal;
   }
 
   constructor () {
@@ -118,9 +117,7 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.showMapPointsModal = false
     this.showNotificationsModal = false
-    this.showTOSModal = false
     this.modalPoints = []
   }
 
@@ -142,7 +139,6 @@ export default class Workspace extends Vue {
 
     // TODO: Make a modal events bus rather than using the root application bus
     this.$root.$on('showMapPointsModal', this.showMapPointsModalCallback)
-    this.$root.$on('hideMapPointsModal', this.hideMapPointsModalCallback)
 
     this.$root.$on('showNotificationsModal', this.showNotificationsModalCallback)
     this.$root.$on('hideNotificationsModal', this.hideNotificationsModalCallback)
@@ -154,7 +150,6 @@ export default class Workspace extends Vue {
     this.unwatchUserProfile()
 
     this.$root.$off('showMapPointsModal')
-    this.$root.$off('hideMapPointsModal')
 
     this.$root.$off('showNotificationsModal')
     this.$root.$off('hideNotificationsModal')
@@ -163,16 +158,8 @@ export default class Workspace extends Vue {
   }
 
   private showMapPointsModalCallback (points: Array<any>) {
-    if (!this.showMapPointsModal) {
-      this.modalPoints = points
-      this.showMapPointsModal = true
-    }
-  }
-
-  private hideMapPointsModalCallback () {
-    if (this.showMapPointsModal) {
-      this.showMapPointsModal = false
-    }
+    this.modalPoints = points || []
+    this.$refs.mapPointsModal.toggleShowModal()
   }
 
   private showNotificationsModalCallback () {
@@ -188,9 +175,7 @@ export default class Workspace extends Vue {
   }
 
   private showTOSModalCallback () {
-    if (!this.$refs.tosModal.isVisible()) {
-      this.$refs.tosModal.toggleShowModal()
-    }
+    this.$refs.tosModal.toggleShowModal()
   }
 
   private checkTOSRequired () {
