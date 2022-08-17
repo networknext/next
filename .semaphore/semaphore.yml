@@ -21,4 +21,4 @@ blocks:
       jobs:
         - name: build
           commands:
-            - ssh -o "StrictHostKeyChecking no" -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
+            - ssh -o StrictHostKeyChecking=accept-new -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
