@@ -29,6 +29,9 @@
 #include <float.h>
 #include <string.h>
 #include <inttypes.h>
+#if defined( _MSC_VER )
+#include <malloc.h>
+#endif // #if defined( _MSC_VER )
 
 #if defined( _MSC_VER )
 #pragma warning(push)
@@ -3948,7 +3951,7 @@ int next_read_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int e
 
     next::ReadStream stream( packet_data, end );
 
-	uint8_t dummy[begin];
+    uint8_t * dummy = (uint8_t*) alloca( begin );
 	serialize_bytes( stream, dummy, begin );
 
     if ( signed_packet && signed_packet[packet_id] )
@@ -10890,7 +10893,7 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
 
     next::ReadStream stream( packet_data, end );
 
-    uint8_t dummy[begin];
+    uint8_t * dummy = (uint8_t*) alloca( begin );
     serialize_bytes( stream, dummy, begin );
 
     if ( signed_packet && signed_packet[packet_id] )
@@ -11362,7 +11365,7 @@ bool next_autodetect_google( char * output )
 
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
-        int length = strlen( buffer );
+        size_t length = strlen( buffer );
         if ( length < 10 )
         {
             continue;
@@ -11382,7 +11385,7 @@ bool next_autodetect_google( char * output )
         }
 
         bool found = false;
-        int index = length - 1;
+        size_t index = length - 1;
         while ( index > 10 && length  )
         {
             if ( buffer[index] == '/' )
@@ -11400,7 +11403,7 @@ bool next_autodetect_google( char * output )
 
         strcpy( zone, buffer + index + 1 );
 
-        int zone_length = strlen(zone);
+        size_t zone_length = strlen(zone);
         index = zone_length - 1;
         while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
         {
@@ -11534,8 +11537,8 @@ bool next_autodetect_amazon( char * output )
 
         strcpy( azid, buffer );
 
-        int azid_length = strlen(azid);
-        int index = azid_length - 1;
+        size_t azid_length = strlen(azid);
+        size_t index = azid_length - 1;
         while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
         {
             azid[index] = '\0';
@@ -17863,7 +17866,7 @@ void test_direct_packet()
 
         uint8_t game_packet_data[NEXT_MTU];
         int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int i = 0; i < game_packet_bytes; i++ ) { game_packet_data[i] = uint8_t( rand() % 256 ); }
+        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
         int packet_bytes = next_write_direct_packet( packet_data, open_session_sequence, send_sequence, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
 
@@ -18142,7 +18145,7 @@ void test_route_request_packet()
 
         uint8_t token_data[1024];
         int token_bytes = rand() % sizeof(token_data);
-        for ( int i = 0; i < token_bytes; i++ ) { token_data[i] = uint8_t( rand() % 256 ); }
+        for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
 
         int packet_bytes = next_write_route_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
 
@@ -18249,7 +18252,7 @@ void test_client_to_server_packet()
 
         uint8_t game_packet_data[NEXT_MTU];
         int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int i = 0; i < game_packet_bytes; i++ ) { game_packet_data[i] = uint8_t( rand() % 256 ); }
+        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
         int packet_bytes = next_write_client_to_server_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
         next_check( packet_bytes > 0 );
@@ -18298,7 +18301,7 @@ void test_server_to_client_packet()
 
         uint8_t game_packet_data[NEXT_MTU];
         int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int i = 0; i < game_packet_bytes; i++ ) { game_packet_data[i] = uint8_t( rand() % 256 ); }
+        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
         int packet_bytes = next_write_server_to_client_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
 
@@ -18435,7 +18438,7 @@ void test_continue_request_packet()
         uint16_t to_port = uint16_t( i + 5000 );
         uint8_t token_data[256];
         int token_bytes = rand() % sizeof(token_data);
-        for ( int i = 0; i < token_bytes; i++ ) { token_data[i] = uint8_t( rand() % 256 ); }
+        for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
         int packet_bytes = next_write_continue_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
         next_check( packet_bytes >= 0 );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
@@ -18525,12 +18528,12 @@ void test_client_stats_packet_with_near_relays()
         in.next_packet_loss = 0.01f;
         in.has_near_relay_pings = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_ids[i] = uint64_t(10000000) + i;
-            in.near_relay_rtt[i] = 5 * i;
-            in.near_relay_jitter[i] = 0.01f * i;
-            in.near_relay_packet_loss[i] = i;
+            in.near_relay_ids[j] = uint64_t(10000000) + j;
+            in.near_relay_rtt[j] = 5 * j;
+            in.near_relay_jitter[j] = 0.01f * j;
+            in.near_relay_packet_loss[j] = j;
         }
         in.packets_lost_server_to_client = 1000;
 
@@ -18567,12 +18570,12 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.next_packet_loss == out.next_packet_loss );
         next_check( in.has_near_relay_pings == out.has_near_relay_pings );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( in.near_relay_rtt[i] == out.near_relay_rtt[i] );
-            next_check( in.near_relay_jitter[i] == out.near_relay_jitter[i] );
-            next_check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
+            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
+            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
         }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
@@ -18614,9 +18617,9 @@ void test_client_stats_packet_without_near_relays()
         in.next_packet_loss = 0.01f;
         in.has_near_relay_pings = false;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_ids[i] = uint64_t(10000000) + i;
+            in.near_relay_ids[j] = uint64_t(10000000) + j;
         }
         in.packets_lost_server_to_client = 1000;
 
@@ -18653,9 +18656,9 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.next_packet_loss == out.next_packet_loss );
         next_check( in.has_near_relay_pings == out.has_near_relay_pings );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
         }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
@@ -18685,14 +18688,14 @@ void test_route_update_packet_direct()
         in.sequence = 100000;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_DIRECT;
         in.packets_sent_server_to_client = 11000;
@@ -18727,10 +18730,10 @@ void test_route_update_packet_direct()
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.update_type == out.update_type );
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
@@ -18769,14 +18772,14 @@ void test_route_update_packet_new_route()
         in.sequence = 100000;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
@@ -18813,10 +18816,10 @@ void test_route_update_packet_new_route()
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
@@ -18857,14 +18860,14 @@ void test_route_update_packet_continue_route()
         in.sequence = 100000;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
@@ -18895,10 +18898,10 @@ void test_route_update_packet_continue_route()
         next_check( in.sequence == out.sequence );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
@@ -19273,12 +19276,12 @@ void test_session_update_packet()
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_ids[i] = i;
-            in.near_relay_rtt[i] = i + 10.0f;
-            in.near_relay_jitter[i] = i + 11.0f;
-            in.near_relay_packet_loss[i] = i + 12.0f;
+            in.near_relay_ids[j] = j;
+            in.near_relay_rtt[j] = j + 10.0f;
+            in.near_relay_jitter[j] = j + 11.0f;
+            in.near_relay_packet_loss[j] = j + 12.0f;
         }
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
@@ -19289,9 +19292,9 @@ void test_session_update_packet()
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
 
         int packet_bytes = 0;
@@ -19315,9 +19318,9 @@ void test_session_update_packet()
         next_check( in.user_hash == out.user_hash );
         next_check( in.platform_id == out.platform_id );
         next_check( in.num_tags == out.num_tags );
-        for ( int i = 0; i < in.num_tags; ++i )
+        for ( int j = 0; j < in.num_tags; ++j )
         {
-            next_check( in.tags[i] == out.tags[i] );
+            next_check( in.tags[j] == out.tags[j] );
         }
         next_check( in.server_events == out.server_events );
         next_check( in.reported == out.reported );
@@ -19333,12 +19336,12 @@ void test_session_update_packet()
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( in.near_relay_rtt[i] == out.near_relay_rtt[i] );
-            next_check( in.near_relay_jitter[i] == out.near_relay_jitter[i] );
-            next_check( in.near_relay_packet_loss[i] == out.near_relay_packet_loss[i] );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
+            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
+            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
         }
         next_check( next_address_equal( &in.client_address, &out.client_address ) );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
@@ -19349,9 +19352,9 @@ void test_session_update_packet()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            next_check( in.session_data[i] == out.session_data[i] );
+            next_check( in.session_data[j] == out.session_data[j] );
         }
     }
 }
@@ -19380,27 +19383,27 @@ void test_session_response_packet_direct_near_relays_changed()
         in.session_id = 1234342431431LL;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
         in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+            in.near_relay_excluded[j] = ( j % 2 ) == 0;
         }
         in.high_frequency_pings = true;
 
@@ -19422,18 +19425,18 @@ void test_session_response_packet_direct_near_relays_changed()
         next_check( in.session_id == out.session_id );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19463,14 +19466,14 @@ void test_session_response_packet_route_near_relays_changed()
         in.session_id = 1234342431431LL;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
@@ -19478,14 +19481,14 @@ void test_session_response_packet_route_near_relays_changed()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+            in.near_relay_excluded[j] = ( j % 2 ) == 0;
         }
         in.high_frequency_pings = true;
 
@@ -19507,10 +19510,10 @@ void test_session_response_packet_route_near_relays_changed()
         next_check( in.session_id == out.session_id );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
@@ -19518,9 +19521,9 @@ void test_session_response_packet_route_near_relays_changed()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19550,14 +19553,14 @@ void test_session_response_packet_continue_near_relays_changed()
         in.session_id = 1234342431431LL;
         in.near_relays_changed = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
-            in.near_relay_ids[i] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[i], relay_address );
+            sprintf( relay_name, "relay%d", j );
+            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            in.near_relay_ids[j] = next_relay_id( relay_name );
+            next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
@@ -19565,14 +19568,14 @@ void test_session_response_packet_continue_near_relays_changed()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+            in.near_relay_excluded[j] = ( j % 2 ) == 0;
         }
         in.high_frequency_pings = true;
 
@@ -19597,18 +19600,18 @@ void test_session_response_packet_continue_near_relays_changed()
         next_check( in.committed == out.committed );
         next_check( in.near_relays_changed == out.near_relays_changed );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
+            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
         }
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19639,9 +19642,9 @@ void test_session_response_packet_direct_near_relays_not_changed()
         in.near_relays_changed = false;
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
@@ -19667,9 +19670,9 @@ void test_session_response_packet_direct_near_relays_not_changed()
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19704,14 +19707,14 @@ void test_session_response_packet_route_near_relays_not_changed()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+            in.near_relay_excluded[j] = ( j % 2 ) == 0;
         }
         in.high_frequency_pings = true;
 
@@ -19738,9 +19741,9 @@ void test_session_response_packet_route_near_relays_not_changed()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19775,14 +19778,14 @@ void test_session_response_packet_continue_near_relays_not_changed()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
+            in.near_relay_excluded[j] = ( j % 2 ) == 0;
         }
         in.high_frequency_pings = true;
 
@@ -19809,9 +19812,9 @@ void test_session_response_packet_continue_near_relays_not_changed()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
         next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
-            next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
+            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19901,9 +19904,9 @@ void test_session_response_packet_route_dont_ping_near_relays()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.high_frequency_pings = true;
 
@@ -19963,9 +19966,9 @@ void test_session_response_packet_continue_dont_ping_near_relays()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
-            in.session_data[i] = uint8_t(i);
+            in.session_data[j] = uint8_t(j);
         }
         in.high_frequency_pings = true;
 
@@ -20027,9 +20030,9 @@ void test_match_data_request_packet()
 	    in.session_id = 1234342431431LL;
 	    in.match_id = 1234342431431LL;
 	    in.num_match_values = NEXT_MAX_MATCH_VALUES;
-	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
 	    {
-	        in.match_values[i] = i + 10.0f;
+	        in.match_values[j] = j + 10.0f;
 	    }
 
         int packet_bytes = 0;
@@ -20056,9 +20059,9 @@ void test_match_data_request_packet()
 	    next_check( in.session_id == out.session_id );
 	    next_check( in.match_id == out.match_id );
 	    next_check( in.num_match_values == out.num_match_values );
-	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
 	    {
-	        next_check( in.match_values[i] = out.match_values[i] );
+	        next_check( in.match_values[j] = out.match_values[j] );
 	    }
 	}
 }
@@ -20095,9 +20098,9 @@ void test_match_data_response_packet()
 	    in.session_id = 1234342431431LL;
 	    in.match_id = 1234342431431LL;
 	    in.num_match_values = NEXT_MAX_MATCH_VALUES;
-	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
 	    {
-	        in.match_values[i] = i + 10.0f;
+	        in.match_values[j] = j + 10.0f;
 	    }
 
         int packet_bytes = 0;
@@ -20124,9 +20127,9 @@ void test_match_data_response_packet()
 	    next_check( in.session_id == out.session_id );
 	    next_check( in.match_id == out.match_id );
 	    next_check( in.num_match_values == out.num_match_values );
-	    for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
 	    {
-	        next_check( in.match_values[i] = out.match_values[i] );
+	        next_check( in.match_values[j] = out.match_values[j] );
 	    }
 	}
 }
