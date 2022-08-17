@@ -11365,7 +11365,7 @@ bool next_autodetect_google( char * output )
 
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
-        int length = strlen( buffer );
+        size_t length = strlen( buffer );
         if ( length < 10 )
         {
             continue;
@@ -11385,7 +11385,7 @@ bool next_autodetect_google( char * output )
         }
 
         bool found = false;
-        int index = length - 1;
+        size_t index = length - 1;
         while ( index > 10 && length  )
         {
             if ( buffer[index] == '/' )
@@ -11403,7 +11403,7 @@ bool next_autodetect_google( char * output )
 
         strcpy( zone, buffer + index + 1 );
 
-        int zone_length = strlen(zone);
+        size_t zone_length = strlen(zone);
         index = zone_length - 1;
         while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
         {
