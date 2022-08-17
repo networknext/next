@@ -29,7 +29,9 @@
 #include <float.h>
 #include <string.h>
 #include <inttypes.h>
+#if defined( _MSC_VER )
 #include <malloc.h>
+#endif // #if defined( _MSC_VER )
 
 #if defined( _MSC_VER )
 #pragma warning(push)
