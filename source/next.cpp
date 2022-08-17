@@ -11537,8 +11537,8 @@ bool next_autodetect_amazon( char * output )
 
         strcpy( azid, buffer );
 
-        int azid_length = strlen(azid);
-        int index = azid_length - 1;
+        size_t azid_length = strlen(azid);
+        size_t index = azid_length - 1;
         while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
         {
             azid[index] = '\0';
