@@ -22,4 +22,4 @@ blocks:
       jobs:
         - name: build
           commands:
-            - ssh -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
+           - ssh -i /home/semaphore/.ssh/id_rsa_build -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
