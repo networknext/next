@@ -92,9 +92,9 @@ blocks:
       jobs:
         - name: build
           matrix:
-           - env_var: CONFIG
-             values: [ "debug win32", "debug x64", "release win32", "release x64" ]
            - env_var: VISUAL_STUDIO
              values: [ "vs2017", "vs2019" ]
+           - env_var: CONFIG
+             values: [ "debug win32", "debug x64", "release win32", "release x64" ]
           commands:
            - ssh -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh sdk5 build next $VISUAL_STUDIO $CONFIG'
