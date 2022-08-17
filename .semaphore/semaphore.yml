@@ -21,4 +21,6 @@ blocks:
       jobs:
         - name: build
           commands:
-            - ssh -o StrictHostKeyChecking=accept-new -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
+            - echo '34.67.51.93 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBF2a+pMAfNl0GxX4JPSDDC5pSJzLYDobVq0nPwx3Qi1AUNmwq25JbmkW6ihK+l2xSHEbXYl0N372CkH2566qrow=
+build ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnnTGxW50AdvqxOPjQI2vLtLJ0y+DCUQS+UFiXle6AU' >> /home/semaphore/known_hosts
+            - ssh -J glenn@34.67.51.93 build@thor -p 2222 'cd /mnt/c/build && ./build.sh'
