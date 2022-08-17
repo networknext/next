@@ -18531,9 +18531,9 @@ void test_client_stats_packet_with_near_relays()
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             in.near_relay_ids[j] = uint64_t(10000000) + j;
-            in.near_relay_rtt[j] = 5 * i;
+            in.near_relay_rtt[j] = 5 * j;
             in.near_relay_jitter[j] = 0.01f * j;
-            in.near_relay_packet_loss[i] = j;
+            in.near_relay_packet_loss[j] = j;
         }
         in.packets_lost_server_to_client = 1000;
 
