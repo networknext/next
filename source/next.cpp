@@ -13205,7 +13205,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool autodetect_result = false;
     bool autodetect_actually_did_something = false;
-    char autodetect_output[1024];
+    char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
     memset( autodetect_output, 0, sizeof(autodetect_output) );
 
     double start_time = next_time();
