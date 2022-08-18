@@ -1,18 +1,20 @@
 version: v1.0
+
 name: Test
+
 agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
-global_job_config:
-  prologue:
-    commands:
-      - checkout
-      - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
-      - chmod +x premake5
+
 blocks:
-  - name: Unit
+
+  - name: "Test on Ubuntu 18.04 LTS"
+    dependencies: []
     task:
+      prologue:
+        commands:
+          - checkout
       jobs:
         - name: test
           matrix:
@@ -21,8 +23,249 @@ blocks:
             - env_var: CONFIG
               values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
           commands:
+            - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
+            - chmod +x premake5
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
             - make -j32 config=$CONFIG
             - ./bin/test
+
+  - name: "Test on Ubuntu 20.04 LTS"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+          - checkout
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      jobs:
+        - name: test
+          matrix:
+            - env_var: CONFIG
+              values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
+          commands:
+            - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
+            - chmod +x premake5
+            - ./premake5 gmake
+            - gcc --version
+            - make -j32 config=$CONFIG
+            - ./bin/test
+
+  - name: "Test on MacOS"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+          - checkout
+      agent:
+        machine:
+          type: a1-standard-4
+          os_image: macos-xcode13
+      jobs:
+        - name: test
+          matrix:
+            - env_var: CONFIG
+              values: [ "debug_portable", "release_portable" ]
+          commands:
+            - brew install premake
+            - premake5 gmake
+            - make -j32 config=$CONFIG
+            - ./bin/test
+
+  - name: "Build Premake Solution on Windows"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017", "vs2019", "vs2022" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+           - env_var: PLATFORM
+             values: [ "win32", "x64" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
+
+  - name: "Build XBoxOne"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build xboxone $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build PS4"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017", "vs2019" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build ps4 $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build PS5"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017", "vs2019" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build ps5 $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build Nintendo Switch (32bit)"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build nx32 $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build Nintendo Switch (64bit)"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2017" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build nx64 $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build Win32"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2019", "vs2022" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - echo VISUAL_STUDIOS=$VISUAL_STUDIO CONFIG=$CONFIG
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win32 $VISUAL_STUDIO $CONFIG"
+
+  - name: "Build Win64"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          matrix:
+           - env_var: VISUAL_STUDIO
+             values: [ "vs2019", "vs2022" ]
+           - env_var: CONFIG
+             values: [ "debug", "release" ]
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG"
