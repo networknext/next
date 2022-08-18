@@ -32,19 +32,32 @@
 #include <time.h>
 #include <map>
 
+#define NEXT_PLATFORM_SOCKET_NON_BLOCKING                               0
+#define NEXT_PLATFORM_SOCKET_BLOCKING                                   1
+
 const int MaxServers = 10;
-const int MaxClients = 100;
+const int MaxClients = 1000;
 
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "127.0.0.1";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
+#define FUZZ_TEST 1
+
+struct next_platform_socket_t;
+
+extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging );
+
+extern void next_platform_socket_destroy( next_platform_socket_t * socket );
+
+extern void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * to, const void * packet_data, int packet_bytes );
+
 // -------------------------------------------
 
 struct AllocatorEntry
 {
-    // ...
+    uint64_t bytes;
 };
 
 class Allocator
@@ -66,6 +79,10 @@ public:
     ~Allocator()
     {
         next_mutex_destroy( &mutex );
+        if ( num_allocations > 0 )
+        {
+            printf( "leaked %d allocations\n", (int) num_allocations );
+        }
         next_assert( num_allocations == 0 );
         next_assert( entries.size() == 0 );
     }
@@ -77,6 +94,7 @@ public:
         next_assert( pointer );
         next_assert( entries[pointer] == NULL );
         AllocatorEntry * entry = new AllocatorEntry();
+        entry->bytes = size;
         entries[pointer] = entry;
         num_allocations++;
         return pointer;
@@ -91,6 +109,9 @@ public:
         next_assert( itor != entries.end() );
         entries.erase( itor );
         num_allocations--;
+        /*
+        printf( "free %d bytes\n", (int)itor->second->bytes );
+        */
         free( pointer );
     }
 };
@@ -99,12 +120,16 @@ void * malloc_function( void * context, size_t bytes )
 {
     next_assert( context );
     Allocator * allocator = (Allocator*) context;
+    /*
+    printf( "allocated %d bytes\n", (int)bytes ); fflush( stdout );
+    */
     return allocator->Alloc( bytes );
 }
 
 void free_function( void * context, void * p )
 {
     next_assert( context );
+
     Allocator * allocator = (Allocator*) context;
     return allocator->Free( p );
 }
@@ -136,6 +161,7 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes )
 
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
+#if !FUZZ_TEST
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
     {
@@ -145,6 +171,10 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
         }
         next_assert( packet_data[i] == (uint8_t) ( ( start + i ) % 256 ) );
     }
+#else
+    (void) packet_data;
+    (void) packet_bytes;
+#endif
 }
 
 void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
@@ -190,6 +220,19 @@ int main( int argc, char ** argv )
         iterations = atoi( argv[1] );
     }
 
+#if FUZZ_TEST
+    Allocator fuzz_allocator;
+    next_address_t fuzz_address;
+    memset( &fuzz_address, 0, sizeof(fuzz_address) );
+    fuzz_address.type = NEXT_ADDRESS_IPV4;
+    next_platform_socket_t * fuzz_socket = next_platform_socket_create( &fuzz_allocator, &fuzz_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 1024*1024, 1024*1024, true );
+    if ( !fuzz_socket )
+    {
+        printf( "error: could not create fuzz socket\n" );
+        exit(1);
+    }
+#endif // FUZZ_TEST
+
     while ( !quit )
     {
         // randomly create clients
@@ -201,8 +244,16 @@ int main( int argc, char ** argv )
                 next_assert( client_allocator[i] == NULL );
                 client_allocator[i] = new Allocator();
                 clients[i] = next_client_create( client_allocator[i], "0.0.0.0:0", client_packet_received, NULL );
-                next_assert( clients[i] );
-                next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
+                if ( clients[i] )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "created client %d", i );
+                }
+                else
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "could not create client %d", i );
+                    delete client_allocator[i];
+                    client_allocator[i] = NULL;
+                }
             }
         }
 
@@ -266,8 +317,16 @@ int main( int argc, char ** argv )
                 sprintf( server_address_string, "127.0.0.1:%d", 20000 + i );
                 sprintf( bind_address_string, "0.0.0.0:%d", 20000 + i );
                 servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received, NULL );
-                next_assert( servers[i] );
-                next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
+                if ( servers[i] )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "created server %d", i );
+                }
+                else
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "colud not create server %d", i );
+                    delete server_allocator[i];
+                    server_allocator[i] = NULL;
+                }
             }
         }
 
@@ -290,6 +349,109 @@ int main( int argc, char ** argv )
                 next_printf( NEXT_LOG_LEVEL_INFO, "destroyed server %d", i );
             }
         }
+
+#if FUZZ_TEST
+
+        // fuzz clients
+
+        for ( int i = 0; i < MaxClients; ++i )
+        {
+            if ( clients[i] )
+            {
+                for ( int j = 0; j < 100; ++j )
+                {
+                    const int max_packet_bytes = NEXT_MAX_PACKET_BYTES * 2;
+                    uint8_t packet_data[max_packet_bytes];
+                    int packet_bytes = 1 + ( rand() % max_packet_bytes );
+                    for ( int k = 0; k < packet_bytes; ++k )
+                        packet_data[k] = rand() % 256;
+                    next_address_t client_address;
+                    client_address.type = NEXT_ADDRESS_IPV4;
+                    client_address.data.ipv4[0] = 127;
+                    client_address.data.ipv4[1] = 0;
+                    client_address.data.ipv4[2] = 0;
+                    client_address.data.ipv4[3] = 1;
+                    client_address.port = next_client_port( clients[i] );
+                    next_platform_socket_send_packet( fuzz_socket, &client_address, packet_data, packet_bytes );
+                }
+            }
+        }
+
+        // fuzz servers
+
+        for ( int i = 0; i < MaxServers; ++i )
+        {
+            if ( servers[i] )
+            {
+                for ( int j = 0; j < 100; ++j )
+                {
+                    const int max_packet_bytes = NEXT_MAX_PACKET_BYTES * 2;
+                    uint8_t packet_data[max_packet_bytes];
+                    int packet_bytes = 1 + ( rand() % max_packet_bytes );
+                    for ( int k = 0; k < packet_bytes; ++k )
+                        packet_data[k] = rand() % 256;
+                    next_address_t server_address = next_server_address( servers[i] );
+                    next_platform_socket_send_packet( fuzz_socket, &server_address, packet_data, packet_bytes );
+                }
+            }
+        }
+
+        // fuzz client -> servers
+
+        for ( int i = 0; i < MaxClients; ++i )
+        {
+            if ( !clients[i] )
+                continue;
+
+            for ( int j = 0; j < MaxServers; ++j )
+            {
+                if ( !servers[j] )
+                    continue;
+
+                const int max_packet_bytes = NEXT_MAX_PACKET_BYTES * 2;
+                uint8_t packet_data[max_packet_bytes];
+                int packet_bytes = 1 + ( rand() % max_packet_bytes );
+                for ( int k = 0; k < packet_bytes; ++k )
+                    packet_data[k] = rand() % 256;
+
+                next_address_t server_address = next_server_address( servers[j] );
+
+                next_client_send_packet_raw( clients[i], &server_address, packet_data, packet_bytes );
+            }
+
+        }
+
+        // fuzz server -> clients
+
+        for ( int i = 0; i < MaxServers; ++i )
+        {
+            if ( !servers[i] )
+                continue;
+
+            for ( int j = 0; j < MaxClients; ++j )
+            {
+                if ( !clients[j] )
+                    continue;
+
+                const int max_packet_bytes = NEXT_MAX_PACKET_BYTES * 2;
+                uint8_t packet_data[max_packet_bytes];
+                int packet_bytes = 1 + ( rand() % max_packet_bytes );
+                for ( int k = 0; k < packet_bytes; ++k )
+                    packet_data[k] = rand() % 256;
+
+                next_address_t client_address;
+                client_address.type = NEXT_ADDRESS_IPV4;
+                client_address.data.ipv4[0] = 127;
+                client_address.data.ipv4[1] = 0;
+                client_address.data.ipv4[2] = 0;
+                client_address.data.ipv4[3] = 1;
+                client_address.port = next_client_port( clients[j] );
+
+                next_server_send_packet_raw( servers[i], &client_address, packet_data, packet_bytes );
+            }
+        }
+
+#endif // #if FUZZ_TEST
 
         // update clients
 
@@ -353,6 +515,10 @@ int main( int argc, char ** argv )
             next_printf( NEXT_LOG_LEVEL_INFO, "destroyed server %d", i );
         }
     }
+
+#if FUZZ_TEST
+    next_platform_socket_destroy( fuzz_socket );
+#endif // #if FUZZ_TEST
 
     next_printf( NEXT_LOG_LEVEL_INFO, "done." );
     
