@@ -93,7 +93,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2017", "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
            - env_var: PLATFORM
@@ -143,7 +143,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2017", "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
@@ -167,7 +167,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2017", "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
@@ -239,7 +239,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2019" ]
+             values: [ "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
@@ -264,7 +264,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2019" ]
+             values: [ "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
