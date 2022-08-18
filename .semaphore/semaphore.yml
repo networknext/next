@@ -239,7 +239,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2019" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
@@ -264,7 +264,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2019" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
