@@ -99,6 +99,7 @@ blocks:
            - env_var: PLATFORM
              values: [ "win32", "x64" ]
           commands:
+           - ls -al /home/semaphore/.ssh
            - cat /home/semaphore/.ssh/known_hosts
            - ssh -v -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh sdk5 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
 
