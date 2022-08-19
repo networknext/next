@@ -99,7 +99,7 @@ blocks:
            - env_var: PLATFORM
              values: [ "win32", "x64" ]
           commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
+           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
 
   - name: "Build XBoxOne"
     dependencies: []
@@ -244,7 +244,7 @@ blocks:
              values: [ "debug", "release" ]
           commands:
            - echo VISUAL_STUDIOS=$VISUAL_STUDIO CONFIG=$CONFIG
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win32 $VISUAL_STUDIO $CONFIG"
+           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win32 $VISUAL_STUDIO $CONFIG"
 
   - name: "Build Win64"
     dependencies: []
@@ -268,4 +268,4 @@ blocks:
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG"
+           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG"
