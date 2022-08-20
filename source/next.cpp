@@ -1292,8 +1292,7 @@ namespace next
         BitWriter( void * data, int bytes ) : m_data( (uint32_t*) data ), m_numWords( bytes / 4 )
         {
             next_assert( data );
-            next_assert( ( size_t(data) % 4 ) == 0 );
-            next_assert( ( bytes % 4 ) == 0 );
+            next_assert( ( bytes % 4 ) == 0 );				// IMPORTANT: buffer length should be a multiple of 4 bytes
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
             m_wordIndex = 0;
@@ -1508,7 +1507,6 @@ namespace next
     #endif // #if NEXT_ASSERTS
         {
             next_assert( data );
-            next_assert( ( size_t(data) % 4 ) == 0 );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_scratch = 0;
@@ -17980,7 +17978,9 @@ void test_direct_pong_packet()
 void test_upgrade_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
     uint64_t iterations = 100;
+    
     for ( uint64_t i = 0; i < iterations; ++i )
     {
         uint8_t magic[8];
