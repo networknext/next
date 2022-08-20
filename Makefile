@@ -615,6 +615,13 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 
 #######################
 
+.PHONY: dev-happy-path
+dev-happy-path: build-all ## runs the happy path
+	@printf "\nRunning happy path...\n\n" ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/happy_path/happy_path.go
+
+#######################
+
 .PHONY: dev-ref-backend4
 dev-ref-backend4: ## runs a local reference backend (sdk4)
 	$(GO) run reference/backend4/backend4.go
