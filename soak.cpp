@@ -214,10 +214,10 @@ int main( int argc, char ** argv )
 
     next_init( &global_allocator, &config );
     
-    int iterations = 0;
+    int duration_seconds = 0;
     if ( argc == 2 ) 
     {
-        iterations = atoi( argv[1] );
+        duration_seconds = atoi( argv[1] );
     }
 
 #if FUZZ_TEST
@@ -477,13 +477,12 @@ int main( int argc, char ** argv )
             }
         }
 
-        // optionally quit after a number of iterations
+        // optionally quit after a number of seconds
 
-        if ( iterations > 0 )
+        if ( duration_seconds > 0 )
         {
-            iterations--;
-            if ( iterations == 0 )
-                quit = true;
+        	if ( (int) next_time() > duration_seconds )
+        		quit = true;
         }
 
         next_sleep( 0.01 );
