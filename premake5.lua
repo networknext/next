@@ -101,6 +101,19 @@ project "soak"
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 
+project "fuzz"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "soak.cpp" }
+	defines { "FUZZ_TEST=1" }
+	includedirs { "include" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
 project "simple_client"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
