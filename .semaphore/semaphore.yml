@@ -284,7 +284,7 @@ blocks:
         - name: test
           matrix:
             - env_var: CONFIG
-              values: [ "debug_portable", s"release_portable" ]
+              values: [ "memorycheck_portable", "memorycheck_portable" ]
           commands:
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
