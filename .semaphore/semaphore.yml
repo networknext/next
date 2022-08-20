@@ -69,7 +69,7 @@ blocks:
             - make test
             - cache store
 
-  - name: "Happy Path"
+  - name: "Happy Path (Linux)"
     dependencies: []
     task:
       agent:
@@ -78,7 +78,7 @@ blocks:
           os_image: ubuntu2004
       jobs:
 
-        - name: "Linux"
+        - name: "make dev-happy-path"
 
           commands:
 
@@ -101,6 +101,29 @@ blocks:
             - cd ~/backend
             - make dev-happy-path
 
+  - name: "Happy Path (Mac)"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      jobs:
+        - name: "make dev-happy-path"
+          commands:
+            - echo "don't worry. be happy."
+
+  - name: "Happy Path (WSL)"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      jobs:
+        - name: "make dev-happy-path"
+          commands:
+            - echo "don't worry. be happy."
 
   - name: "SDK4"
     dependencies: []
