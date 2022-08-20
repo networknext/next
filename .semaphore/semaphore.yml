@@ -53,7 +53,7 @@ blocks:
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j32 config=$CONFIG_$PLATFORM
+            - make -j32 config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on MacOS"
