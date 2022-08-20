@@ -268,4 +268,4 @@ blocks:
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
-           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@captainamerica -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG""
+           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@drstrange -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG""
