@@ -108,10 +108,13 @@ blocks:
         machine:
           type: e1-standard-2
           os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
       jobs:
         - name: "make dev-happy-path"
           commands:
-            - echo "don't worry. be happy."
+           - ssh -J glenn@34.67.51.93 build@aquaman -p 2222 "./build.sh backend happy-path"
 
   - name: "Happy Path (WSL)"
     dependencies: []
