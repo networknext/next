@@ -159,7 +159,7 @@ func mainReturnWithCode() int {
 				if err != nil {
 					frontendClient.RetryCount++
 					frontendMetrics.ErrorMetrics.MasterSelectError.Add(1)
-					core.Error("failed ot update master relay backend (retry counter %d): %v", frontendClient.RetryCount, err)
+					core.Error("failed to update master relay backend (retry counter %d): %v", frontendClient.RetryCount, err)
 					continue
 				}
 				frontendClient.RetryCount = 0

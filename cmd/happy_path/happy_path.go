@@ -42,9 +42,7 @@ func main() {
 	relay_backend_1_cmd, relay_backend_1_stdout := make("dev-relay-backend-1")
 	relay_backend_2_cmd, relay_backend_2_stdout := make("dev-relay-backend-2")
 	relay_frontend_cmd, relay_frontend_stdout := make("dev-relay-frontend")
-	relay_1_cmd, relay_1_stdout := make("dev-relay")
-	relay_2_cmd, relay_2_stdout := make("dev-relay")
-	relay_3_cmd, relay_3_stdout := make("dev-relay")
+	relay_cmd, relay_stdout := make("dev-relay")
 	
 	_ = magic_backend_stdout
 	_ = magic_frontend_stdout
@@ -52,38 +50,33 @@ func main() {
 	_ = relay_backend_1_stdout
 	_ = relay_backend_2_stdout
 	_ = relay_frontend_stdout
-	_ = relay_1_stdout
-	_ = relay_2_stdout
-	_ = relay_3_stdout
+	_ = relay_stdout
 
-	relay_1_initialized := false
-	relay_2_initialized := false
-	relay_3_initialized := false
+	relay_initialized := false
 
 	fmt.Printf("\nwaiting for relays to initialize...\n")
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 
-		if !relay_1_initialized && strings.Contains(relay_1_stdout.String(), "Relay initialized") {
-			fmt.Printf("relay 1 initialized\n")
-			relay_1_initialized = true
+		fmt.Printf("iteration %d\n", i)
+
+		if !relay_initialized && strings.Contains(relay_stdout.String(), "Relay initialized") {
+			fmt.Printf("relay initialized\n")
+			relay_initialized = true
 		}
 
-		if !relay_2_initialized && strings.Contains(relay_2_stdout.String(), "Relay initialized") {
-			fmt.Printf("relay 2 initialized\n")
-			relay_2_initialized = true
-		}
-
-		if !relay_3_initialized && strings.Contains(relay_3_stdout.String(), "Relay initialized") {
-			fmt.Printf("relay 3 initialized\n")
-			relay_3_initialized = true
+		if relay_initialized {
+			break
 		}
 
 		time.Sleep(time.Second)
 	}
 
-	if !relay_1_initialized || !relay_2_initialized || !relay_3_initialized {
+	fmt.Printf("end loop\n")
+
+	if !relay_initialized {
 		fmt.Printf("error: relays failed to initialize\n\n")
+		fmt.Printf("relay frontend: %s\n\n", relay_frontend_stdout)
 		os.Exit(1)
 	}
 
@@ -93,9 +86,7 @@ func main() {
 	relay_backend_1_cmd.Process.Signal(os.Interrupt)
 	relay_backend_2_cmd.Process.Signal(os.Interrupt)
 	relay_frontend_cmd.Process.Signal(os.Interrupt)
-	relay_1_cmd.Process.Signal(os.Interrupt)
-	relay_2_cmd.Process.Signal(os.Interrupt)
-	relay_3_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
 
 	magic_backend_cmd.Wait()
 	magic_frontend_cmd.Wait()
@@ -103,9 +94,7 @@ func main() {
 	relay_backend_1_cmd.Wait()
 	relay_backend_2_cmd.Wait()
 	relay_frontend_cmd.Wait()
-	relay_1_cmd.Wait()
-	relay_2_cmd.Wait()
-	relay_3_cmd.Wait()
+	relay_cmd.Wait()
 
 	fmt.Printf("\nsuccess!\n\n")
 
