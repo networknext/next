@@ -616,9 +616,11 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 #######################
 
 .PHONY: dev-happy-path
-dev-happy-path: build-all ## runs the happy path
-	@printf "\nRunning happy path...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/happy_path/happy_path.go
+dev-happy-path: ## runs the happy path
+	@printf "\ndon't worry. be happy.\n\n" ; \
+	$(GO) build -o ./dist/happy_path ./cmd/happy_path/happy_path.go
+	#@make build-all
+	cd $(DIST_DIR) && ./happy_path
 
 #######################
 
