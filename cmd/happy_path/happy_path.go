@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"time"
 	"bytes"
+	"strings"
 )
 
 func make(action string) (*exec.Cmd, *bytes.Buffer) {
@@ -55,7 +56,36 @@ func main() {
 	_ = relay_2_stdout
 	_ = relay_3_stdout
 
-	time.Sleep(time.Second)
+	relay_1_initialized := false
+	relay_2_initialized := false
+	relay_3_initialized := false
+
+	fmt.Printf("\nwaiting for relays to initialize...\n")
+
+	for i := 0; i < 30; i++ {
+
+		if !relay_1_initialized && strings.Contains(relay_1_stdout.String(), "Relay initialized") {
+			fmt.Printf("relay 1 initialized\n")
+			relay_1_initialized = true
+		}
+
+		if !relay_2_initialized && strings.Contains(relay_2_stdout.String(), "Relay initialized") {
+			fmt.Printf("relay 2 initialized\n")
+			relay_2_initialized = true
+		}
+
+		if !relay_3_initialized && strings.Contains(relay_3_stdout.String(), "Relay initialized") {
+			fmt.Printf("relay 3 initialized\n")
+			relay_3_initialized = true
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	if !relay_1_initialized || !relay_2_initialized || !relay_3_initialized {
+		fmt.Printf("error: relays failed to initialize\n\n")
+		os.Exit(1)
+	}
 
 	magic_backend_cmd.Process.Signal(os.Interrupt)
 	magic_frontend_cmd.Process.Signal(os.Interrupt)
