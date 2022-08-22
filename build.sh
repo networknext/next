@@ -2,6 +2,8 @@
 
 mkdir -p dist
 
+CFLAGS="-fPIC"
+
 LDFLAGS="-lsodium -lcurl -lpthread -lm"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
@@ -9,9 +11,9 @@ if [[ $OSTYPE == 'darwin'* ]]; then
 fi
 
 parallel ::: \
-"cd ./dist && g++ -I../sdk4/include -shared -o sdk4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
-"cd ./dist && g++ -I../sdk5/include -shared -o sdk5.so ../sdk5/source/*.cpp ${LDFLAGS}" \
-"cd ./dist && g++ -o reference_relay ../reference/relay/*.cpp ${LDFLAGS}" \
+"cd ./dist && g++ ${CFLAGS} -I../sdk4/include -shared -o sdk4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
+"cd ./dist && g++ ${CFLAGS} -I../sdk5/include -shared -o sdk5.so ../sdk5/source/*.cpp ${LDFLAGS}" \
+"cd ./dist && g++ ${CFLAGS} -o reference_relay ../reference/relay/*.cpp ${LDFLAGS}" \
 "go build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go" \
 "go build -o ./dist/magic_backend ./cmd/magic_backend/*.go" \
 "go build -o ./dist/magic_frontend ./cmd/magic_frontend/*.go" \
