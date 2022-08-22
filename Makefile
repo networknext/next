@@ -23,6 +23,8 @@ endif
 SDKNAME4 = libnext4
 SDKNAME5 = libnext5
 
+RELAY_PORT ?= "2000"
+
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
 RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
@@ -355,11 +357,7 @@ dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
-	@./scripts/relay-spawner.sh -n 1
-
-.PHONY: dev-relays
-dev-relays: build-reference-relay  ## runs 10 local relays
-	@./scripts/relay-spawner.sh -n 10
+	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) $(DIST_DIR)/reference_relay
 
 .PHONY: dev-magic-backend
 dev-magic-backend: build-magic-backend ## runs a local magic backend
@@ -619,7 +617,6 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
 dev-happy-path: ## runs the happy path
 	@printf "\ndon't worry. be happy.\n\n" ; \
 	$(GO) build -o ./dist/happy_path ./cmd/happy_path/happy_path.go
-	@make build-all
 	./dist/happy_path
 
 #######################
@@ -1197,7 +1194,7 @@ RELAY_MAKEFILE := Makefile
 RELAY_EXE := relay
 
 .PHONY: build-reference-relay
-build-reference-relay:
+build-reference-relay: dist
 	@printf "Building reference relay... "
 	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"

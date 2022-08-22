@@ -7,7 +7,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"time"
 	"bytes"
@@ -18,7 +17,7 @@ func make(action string) (*exec.Cmd, *bytes.Buffer) {
 
 	fmt.Printf("make %s\n", action)
 
-	cmd := exec.Command("make", action)
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("make %s", action))
 	if cmd == nil {
 		panic("could not run make!\n")
 		return nil, nil
@@ -42,37 +41,83 @@ func main() {
 	relay_backend_1_cmd, relay_backend_1_stdout := make("dev-relay-backend-1")
 	relay_backend_2_cmd, relay_backend_2_stdout := make("dev-relay-backend-2")
 	relay_frontend_cmd, relay_frontend_stdout := make("dev-relay-frontend")
-	relay_cmd, relay_stdout := make("dev-relay")
+	relay_1_cmd, relay_1_stdout := make("RELAY_PORT=2000 dev-relay")
+	relay_2_cmd, relay_2_stdout := make("RELAY_PORT=2001 dev-relay")
+	relay_3_cmd, relay_3_stdout := make("RELAY_PORT=2002 dev-relay")
+	relay_4_cmd, relay_4_stdout := make("RELAY_PORT=2003 dev-relay")
+	relay_5_cmd, relay_5_stdout := make("RELAY_PORT=2004 dev-relay")
 	
+	_ = magic_backend_cmd
+	_ = magic_frontend_cmd
+	_ = relay_gateway_cmd
+	_ = relay_backend_1_cmd
+	_ = relay_backend_2_cmd
+	_ = relay_frontend_cmd
+	_ = relay_1_cmd
+	_ = relay_2_cmd
+	_ = relay_3_cmd
+	_ = relay_4_cmd
+	_ = relay_5_cmd
+
 	_ = magic_backend_stdout
 	_ = magic_frontend_stdout
 	_ = relay_gateway_stdout
 	_ = relay_backend_1_stdout
 	_ = relay_backend_2_stdout
 	_ = relay_frontend_stdout
-	_ = relay_stdout
+	_ = relay_1_stdout
+	_ = relay_2_stdout
+	_ = relay_3_stdout
+	_ = relay_4_stdout
+	_ = relay_5_stdout
 
-	relay_initialized := false
+	relay_1_initialized := false
+	relay_2_initialized := false
+	relay_3_initialized := false
+	relay_4_initialized := false
+	relay_5_initialized := false
 
-	fmt.Printf("\nwaiting for relays to initialize...\n")
+	fmt.Printf("\nwaiting for relays to initialize...\n\n")
 
-	for i := 0; i < 10; i++ {
+	const NumIterations = 10
+
+	for i := 0; i < NumIterations; i++ {
 
 		fmt.Printf("iteration %d\n", i)
 
-		if !relay_initialized && strings.Contains(relay_stdout.String(), "Relay initialized") {
-			fmt.Printf("relay initialized\n")
-			relay_initialized = true
+		if !relay_1_initialized && strings.Contains(relay_1_stdout.String(), "Relay initialized") {
+			fmt.Printf("Relay initialized\n")
+			relay_1_initialized = true
 		}
 
-		if relay_initialized {
+		if !relay_2_initialized && strings.Contains(relay_2_stdout.String(), "Relay initialized") {
+			fmt.Printf("Relay initialized\n")
+			relay_2_initialized = true
+		}
+
+		if !relay_3_initialized && strings.Contains(relay_3_stdout.String(), "Relay initialized") {
+			fmt.Printf("Relay initialized\n")
+			relay_3_initialized = true
+		}
+
+		if !relay_4_initialized && strings.Contains(relay_4_stdout.String(), "Relay initialized") {
+			fmt.Printf("Relay initialized\n")
+			relay_2_initialized = true
+		}
+
+		if !relay_5_initialized && strings.Contains(relay_5_stdout.String(), "Relay initialized") {
+			fmt.Printf("Relay initialized\n")
+			relay_5_initialized = true
+		}
+
+		if relay_1_initialized && relay_2_initialized && relay_3_initialized && relay_4_initialized && relay_5_initialized {
 			break
 		}
 
 		time.Sleep(time.Second)
 	}
 
-	fmt.Printf("end loop\n")
+	fmt.Printf("\nend loop\n")
 
 	// todo: don't complain about relays failing to initialize, until we fix this
 	/*
@@ -82,22 +127,6 @@ func main() {
 		os.Exit(1)
 	}
 	*/
-
-	magic_backend_cmd.Process.Signal(os.Interrupt)
-	magic_frontend_cmd.Process.Signal(os.Interrupt)
-	relay_gateway_cmd.Process.Signal(os.Interrupt)
-	relay_backend_1_cmd.Process.Signal(os.Interrupt)
-	relay_backend_2_cmd.Process.Signal(os.Interrupt)
-	relay_frontend_cmd.Process.Signal(os.Interrupt)
-	relay_cmd.Process.Signal(os.Interrupt)
-
-	magic_backend_cmd.Wait()
-	magic_frontend_cmd.Wait()
-	relay_gateway_cmd.Wait()
-	relay_backend_1_cmd.Wait()
-	relay_backend_2_cmd.Wait()
-	relay_frontend_cmd.Wait()
-	relay_cmd.Wait()
 
 	fmt.Printf("\nsuccess!\n\n")
 
