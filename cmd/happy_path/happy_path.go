@@ -17,7 +17,7 @@ func make(action string) (*exec.Cmd, *bytes.Buffer) {
 
 	fmt.Printf("make %s\n", action)
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("make %s", action))
+	cmd := exec.Command("make", action)
 	if cmd == nil {
 		panic("could not run make!\n")
 		return nil, nil

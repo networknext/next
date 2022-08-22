@@ -104,7 +104,7 @@ blocks:
       jobs:
         - name: "make dev-happy-path"
           commands:
-           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "./build.sh backend happy-path"
+           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "cd build && ./build.sh backend happy-path"
 
   - name: "Happy Path (WSL)"
     dependencies: []
