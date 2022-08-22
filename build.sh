@@ -1,4 +1,6 @@
 
+mkdir .dist
+
 parallel ::: \
 'cd ./dist && g++ -I../sdk4/include -shared -o sdk4.so ../sdk4/source/*.cpp -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration' \
 'cd ./dist && g++ -I../sdk5/include -shared -o sdk5.so ../sdk5/source/*.cpp -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration' \
