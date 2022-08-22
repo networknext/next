@@ -543,32 +543,29 @@ build-functional-client4: build-sdk4
 	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional4
-build-functional4: build-functional-client4 build-functional-server4 build-functional-backend4 build-functional-tests4
-
 .PHONY: build-functional-backend4
 build-functional-backend4: dist
 	@printf "Building functional backend 4... " ; \
 	$(GO) build -o ./dist/func_backend4 ./cmd/func_backend4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-functional-tests4
-build-functional-tests4: dist
-	@printf "Building functional tests 4... " ; \
-	$(GO) build -o ./dist/func_tests4 ./cmd/func_tests4/*.go ; \
+.PHONY: build-functional-tests-sdk4
+build-functional-tests-sdk4: dist
+	@printf "Building functional tests sdk4... " ; \
+	$(GO) build -o ./dist/func_tests_sdk4 ./cmd/func_tests_sdk4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-test-func4
-build-test-func4: clean dist build-sdk4 build-reference-relay build-functional-server4 build-functional-client4 build-functional-backend4 build-functional-tests4
+.PHONY: build-test-func-sdk4
+build-test-func-sdk4: clean dist build-sdk4 build-reference-relay build-functional-server4 build-functional-client4 build-functional-backend4 build-functional-tests-sdk4
 
-.PHONY: run-test-func4
-run-test-func4:
-	@printf "\nRunning functional tests 4...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests4/func_tests4.go $(test) ; \
+.PHONY: run-test-func-sdk4
+run-test-func-sdk4:
+	@printf "\nRunning functional tests sdk4...\n\n" ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_sdk4/func_tests_sdk4.go $(test) ; \
 	printf "\ndone\n\n"
 
-.PHONY: test-func4
-test-func4: build-test-func4 run-test-func4 ## runs functional tests (sdk4)
+.PHONY: test-func-sdk4
+test-func-sdk4: build-test-func-sdk4 run-test-func-sdk4 ## runs functional tests (sdk4)
 
 #######################
 
@@ -584,32 +581,29 @@ build-functional-client5: build-sdk5
 	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional5
-build-functional5: build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests5
-
 .PHONY: build-functional-backend5
 build-functional-backend5: dist
 	@printf "Building functional backend 5... " ; \
 	$(GO) build -o ./dist/func_backend5 ./cmd/func_backend5/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-functional-tests5
-build-functional-tests5: dist
-	@printf "Building functional tests 5... " ; \
-	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests5/*.go ; \
+.PHONY: build-functional-tests-sdk5
+build-functional-tests-sdk5: dist
+	@printf "Building functional tests sdk5... " ; \
+	$(GO) build -o ./dist/func_tests_sdk5 ./cmd/func_tests_sdk5/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-test-func5
-build-test-func5: clean dist build-sdk5 build-reference-relay build-functional-server5 build-functional-client5 build-functional-backend5 build-functional-tests5
+.PHONY: build-test-func-sdk5
+build-test-func-sdk5: clean dist build-sdk5 build-reference-relay build-functional-server5 build-functional-client5 build-functional-backend5 build-functional-tests-sdk5
 
-.PHONY: run-test-func5
-run-test-func5:
-	@printf "\nRunning functional tests 5...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests5/func_tests5.go $(test) ; \
+.PHONY: run-test-func-sdk5
+run-test-func-sdk5:
+	@printf "\nRunning functional tests sdk5...\n\n" ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_sdk5/func_tests_sdk5.go $(test) ; \
 	printf "\ndone\n\n"
 
-.PHONY: test-func5
-test-func5: build-test-func5 run-test-func5 ## runs functional tests (sdk5)
+.PHONY: test-func-sdk5
+test-func-sdk5: build-test-func-sdk5 run-test-func-sdk5 ## runs functional tests (sdk5)
 
 #######################
 
@@ -1289,7 +1283,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-test-server4 build-test-server5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

@@ -202,13 +202,13 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-            - make -j32 build-test-func4
+            - make -j32 build-test-func-sdk4
 
             - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
             - artifact push workflow dist/func_server4
             - artifact push workflow dist/func_backend4
-            - artifact push workflow dist/func_tests4
+            - artifact push workflow dist/func_tests_sdk4
             - artifact push workflow dist/reference_relay4
             - artifact push workflow dist/libnext4.so
 
@@ -230,7 +230,7 @@ blocks:
             - artifact pull workflow func_client4
             - artifact pull workflow func_server4
             - artifact pull workflow func_backend4
-            - artifact pull workflow func_tests4
+            - artifact pull workflow func_tests_sdk4
             - artifact pull workflow reference_relay4
             - artifact pull workflow libnext4.so
             - artifact pull workflow libsodium.so
@@ -239,7 +239,7 @@ blocks:
             - chmod +x func_client4
             - chmod +x func_server4
             - chmod +x func_backend4
-            - chmod +x func_tests4
+            - chmod +x func_tests_sdk4
             - chmod +x reference_relay4
             - chmod +x libnext4.so
             - chmod +x libsodium.so
@@ -258,179 +258,179 @@ blocks:
 
         - name: "test_direct_raw"
           commands:
-            - cd ./dist && ./func_tests4 test_direct_raw
+            - cd ./dist && ./func_tests_sdk4 test_direct_raw
 
         - name: "test_direct_upgraded"
           commands:
-            - cd ./dist && ./func_tests4 test_direct_upgraded
+            - cd ./dist && ./func_tests_sdk4 test_direct_upgraded
 
         - name: "test_network_next_route"
           commands:
-            - cd ./dist && ./func_tests4 test_network_next_route
+            - cd ./dist && ./func_tests_sdk4 test_network_next_route
 
         - name: "test_fallback_to_direct_backend"
           commands:
-            - cd ./dist && ./func_tests4 test_fallback_to_direct_backend
+            - cd ./dist && ./func_tests_sdk4 test_fallback_to_direct_backend
 
         - name: "test_fallback_to_direct_client_side"
           commands:
-            - cd ./dist && ./func_tests4 test_fallback_to_direct_client_side
+            - cd ./dist && ./func_tests_sdk4 test_fallback_to_direct_client_side
 
         - name: "test_fallback_to_direct_server_restart"
           commands:
-            - cd ./dist && ./func_tests4 test_fallback_to_direct_server_restart
+            - cd ./dist && ./func_tests_sdk4 test_fallback_to_direct_server_restart
 
         - name: "test_disable_on_server"
           commands:
-            - cd ./dist && ./func_tests4 test_disable_on_server
+            - cd ./dist && ./func_tests_sdk4 test_disable_on_server
 
         - name: "test_disable_on_client"
           commands:
-            - cd ./dist && ./func_tests4 test_disable_on_client
+            - cd ./dist && ./func_tests_sdk4 test_disable_on_client
 
         - name: "test_route_switching"
           commands:
-            - cd ./dist && ./func_tests4 test_route_switching
+            - cd ./dist && ./func_tests_sdk4 test_route_switching
 
         - name: "test_on_off"
           commands:
-            - cd ./dist && ./func_tests4 test_on_off
+            - cd ./dist && ./func_tests_sdk4 test_on_off
 
         - name: "test_on_on_off"
           commands:
-            - cd ./dist && ./func_tests4 test_on_on_off
+            - cd ./dist && ./func_tests_sdk4 test_on_on_off
 
         - name: "test_reconnect_direct"
           commands:
-            - cd ./dist && ./func_tests4 test_reconnect_direct
+            - cd ./dist && ./func_tests_sdk4 test_reconnect_direct
 
         - name: "test_reconnect_direct_no_upgrade"
           commands:
-            - cd ./dist && ./func_tests4 test_reconnect_direct_no_upgrade
+            - cd ./dist && ./func_tests_sdk4 test_reconnect_direct_no_upgrade
 
         - name: "test_reconnect_next"
           commands:
-            - cd ./dist && ./func_tests4 test_reconnect_next
+            - cd ./dist && ./func_tests_sdk4 test_reconnect_next
 
         - name: "test_connect_to_another_server_direct"
           commands:
-            - cd ./dist && ./func_tests4 test_connect_to_another_server_direct
+            - cd ./dist && ./func_tests_sdk4 test_connect_to_another_server_direct
 
         - name: "test_connect_to_another_server_next"
           commands:
-            - cd ./dist && ./func_tests4 test_connect_to_another_server_next
+            - cd ./dist && ./func_tests_sdk4 test_connect_to_another_server_next
 
         - name: "test_multipath"
           commands:
-            - cd ./dist && ./func_tests4 test_multipath
+            - cd ./dist && ./func_tests_sdk4 test_multipath
 
         - name: "test_multipath_next_packet_loss"
           commands:
-            - cd ./dist && ./func_tests4 test_multipath_next_packet_loss
+            - cd ./dist && ./func_tests_sdk4 test_multipath_next_packet_loss
 
         - name: "test_multipath_fallback_to_direct"
           commands:
-            - cd ./dist && ./func_tests4 test_multipath_fallback_to_direct
+            - cd ./dist && ./func_tests_sdk4 test_multipath_fallback_to_direct
 
         - name: "test_uncommitted"
           commands:
-            - cd ./dist && ./func_tests4 test_uncommitted
+            - cd ./dist && ./func_tests_sdk4 test_uncommitted
 
         - name: "test_uncommitted_to_committed"
           commands:
-            - cd ./dist && ./func_tests4 test_uncommitted_to_committed
+            - cd ./dist && ./func_tests_sdk4 test_uncommitted_to_committed
 
         - name: "test_packet_loss_direct"
           commands:
-            - cd ./dist && ./func_tests4 test_packet_loss_direct
+            - cd ./dist && ./func_tests_sdk4 test_packet_loss_direct
 
         - name: "test_packet_loss_next"
           commands:
-            - cd ./dist && ./func_tests4 test_packet_loss_next
+            - cd ./dist && ./func_tests_sdk4 test_packet_loss_next
 
         - name: "test_server_under_load"
           commands:
-            - cd ./dist && ./func_tests4 test_server_under_load
+            - cd ./dist && ./func_tests_sdk4 test_server_under_load
 
         - name: "test_session_update_retry"
           commands:
-            - cd ./dist && ./func_tests4 test_session_update_retry
+            - cd ./dist && ./func_tests_sdk4 test_session_update_retry
 
         - name: "test_bandwidth_over_limit"
           commands:
-            - cd ./dist && ./func_tests4 test_bandwidth_over_limit
+            - cd ./dist && ./func_tests_sdk4 test_bandwidth_over_limit
 
         - name: "test_packet_loss"
           commands:
-            - cd ./dist && ./func_tests4 test_packet_loss
+            - cd ./dist && ./func_tests_sdk4 test_packet_loss
 
         - name: "test_bandwidth"
           commands:
-            - cd ./dist && ./func_tests4 test_bandwidth
+            - cd ./dist && ./func_tests_sdk4 test_bandwidth
 
         - name: "test_jitter"
           commands:
-            - cd ./dist && ./func_tests4 test_jitter
+            - cd ./dist && ./func_tests_sdk4 test_jitter
 
         - name: "test_tags"
           commands:
-            - cd ./dist && ./func_tests4 test_tags
+            - cd ./dist && ./func_tests_sdk4 test_tags
 
         - name: "test_tags_multi"
           commands:
-            - cd ./dist && ./func_tests4 test_tags_multi
+            - cd ./dist && ./func_tests_sdk4 test_tags_multi
 
         - name: "test_direct_stats"
           commands:
-            - cd ./dist && ./func_tests4 test_direct_stats
+            - cd ./dist && ./func_tests_sdk4 test_direct_stats
 
         - name: "test_next_stats"
           commands:
-            - cd ./dist && ./func_tests4 test_next_stats
+            - cd ./dist && ./func_tests_sdk4 test_next_stats
 
         - name: "test_report_session"
           commands:
-            - cd ./dist && ./func_tests4 test_report_session
+            - cd ./dist && ./func_tests_sdk4 test_report_session
 
         - name: "test_client_ping_timed_out"
           commands:
-            - cd ./dist && ./func_tests4 test_client_ping_timed_out
+            - cd ./dist && ./func_tests_sdk4 test_client_ping_timed_out
 
         - name: "test_server_events"
           commands:
-            - cd ./dist && ./func_tests4 test_server_events
+            - cd ./dist && ./func_tests_sdk4 test_server_events
 
         - name: "test_match_id"
           commands:
-            - cd ./dist && ./func_tests4 test_match_id
+            - cd ./dist && ./func_tests_sdk4 test_match_id
 
         - name: "test_match_values"
           commands:
-            - cd ./dist && ./func_tests4 test_match_values
+            - cd ./dist && ./func_tests_sdk4 test_match_values
 
         - name: "test_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests4 test_match_data_retry
+            - cd ./dist && ./func_tests_sdk4 test_match_data_retry
 
         - name: "test_flush"
           commands:
-            - cd ./dist && ./func_tests4 test_flush
+            - cd ./dist && ./func_tests_sdk4 test_flush
 
         - name: "test_flush_retry"
           commands:
-            - cd ./dist && ./func_tests4 test_flush_retry
+            - cd ./dist && ./func_tests_sdk4 test_flush_retry
 
         - name: "test_flush_server_events_and_match_data"
           commands:
-            - cd ./dist && ./func_tests4 test_flush_server_events_and_match_data
+            - cd ./dist && ./func_tests_sdk4 test_flush_server_events_and_match_data
 
         - name: "test_flush_server_events_and_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests4 test_flush_server_events_and_match_data_retry
+            - cd ./dist && ./func_tests_sdk4 test_flush_server_events_and_match_data_retry
 
         - name: "test_big_packets"
           commands:
-            - cd ./dist && ./func_tests4 test_big_packets
+            - cd ./dist && ./func_tests_sdk4 test_big_packets
 
 
   - name: "Build Functional Tests 5"
@@ -459,13 +459,13 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-            - make -j32 build-test-func5
+            - make -j32 build-test-func_sdk5
 
             - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
             - artifact push workflow dist/func_server5
             - artifact push workflow dist/func_backend5
-            - artifact push workflow dist/func_tests5
+            - artifact push workflow dist/func_tests_sdk5
             - artifact push workflow dist/reference_relay5
             - artifact push workflow dist/libnext5.so
 
@@ -488,7 +488,7 @@ blocks:
             - artifact pull workflow func_client5
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
-            - artifact pull workflow func_tests5
+            - artifact pull workflow func_tests_sdk5
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
@@ -497,7 +497,7 @@ blocks:
             - chmod +x func_client5
             - chmod +x func_server5
             - chmod +x func_backend5
-            - chmod +x func_tests5
+            - chmod +x func_tests_sdk5
             - chmod +x reference_relay5
             - chmod +x libnext5.so
             - chmod +x libsodium.so
@@ -516,203 +516,203 @@ blocks:
 
         - name: "test_passthrough"
           commands:
-            - cd ./dist && ./func_tests5 test_passthrough
+            - cd ./dist && ./func_tests_sdk5 test_passthrough
 
         - name: "test_direct_upgraded"
           commands:
-            - cd ./dist && ./func_tests5 test_direct_upgraded
+            - cd ./dist && ./func_tests_sdk5 test_direct_upgraded
 
         - name: "test_network_next_route"
           commands:
-            - cd ./dist && ./func_tests5 test_network_next_route
+            - cd ./dist && ./func_tests_sdk5 test_network_next_route
 
         - name: "test_fallback_to_direct_backend"
           commands:
-            - cd ./dist && ./func_tests5 test_fallback_to_direct_backend
+            - cd ./dist && ./func_tests_sdk5 test_fallback_to_direct_backend
 
         - name: "test_fallback_to_direct_client_side"
           commands:
-            - cd ./dist && ./func_tests5 test_fallback_to_direct_client_side
+            - cd ./dist && ./func_tests_sdk5 test_fallback_to_direct_client_side
 
         - name: "test_fallback_to_direct_server_restart"
           commands:
-            - cd ./dist && ./func_tests5 test_fallback_to_direct_server_restart
+            - cd ./dist && ./func_tests_sdk5 test_fallback_to_direct_server_restart
 
         - name: "test_disable_on_server"
           commands:
-            - cd ./dist && ./func_tests5 test_disable_on_server
+            - cd ./dist && ./func_tests_sdk5 test_disable_on_server
 
         - name: "test_disable_on_client"
           commands:
-            - cd ./dist && ./func_tests5 test_disable_on_client
+            - cd ./dist && ./func_tests_sdk5 test_disable_on_client
 
         - name: "test_route_switching"
           commands:
-            - cd ./dist && ./func_tests5 test_route_switching
+            - cd ./dist && ./func_tests_sdk5 test_route_switching
 
         - name: "test_on_off"
           commands:
-            - cd ./dist && ./func_tests5 test_on_off
+            - cd ./dist && ./func_tests_sdk5 test_on_off
 
         - name: "test_on_on_off"
           commands:
-            - cd ./dist && ./func_tests5 test_on_on_off
+            - cd ./dist && ./func_tests_sdk5 test_on_on_off
 
         - name: "test_reconnect_direct"
           commands:
-            - cd ./dist && ./func_tests5 test_reconnect_direct
+            - cd ./dist && ./func_tests_sdk5 test_reconnect_direct
 
         - name: "test_reconnect_direct_no_upgrade"
           commands:
-            - cd ./dist && ./func_tests5 test_reconnect_direct_no_upgrade
+            - cd ./dist && ./func_tests_sdk5 test_reconnect_direct_no_upgrade
 
         - name: "test_reconnect_next"
           commands:
-            - cd ./dist && ./func_tests5 test_reconnect_next
+            - cd ./dist && ./func_tests_sdk5 test_reconnect_next
 
         - name: "test_connect_to_another_server_direct"
           commands:
-            - cd ./dist && ./func_tests5 test_connect_to_another_server_direct
+            - cd ./dist && ./func_tests_sdk5 test_connect_to_another_server_direct
 
         - name: "test_connect_to_another_server_next"
           commands:
-            - cd ./dist && ./func_tests5 test_connect_to_another_server_next
+            - cd ./dist && ./func_tests_sdk5 test_connect_to_another_server_next
 
         - name: "test_multipath"
           commands:
-            - cd ./dist && ./func_tests5 test_multipath
+            - cd ./dist && ./func_tests_sdk5 test_multipath
 
         - name: "test_multipath_next_packet_loss"
           commands:
-            - cd ./dist && ./func_tests5 test_multipath_next_packet_loss
+            - cd ./dist && ./func_tests_sdk5 test_multipath_next_packet_loss
 
         - name: "test_multipath_fallback_to_direct"
           commands:
-            - cd ./dist && ./func_tests5 test_multipath_fallback_to_direct
+            - cd ./dist && ./func_tests_sdk5 test_multipath_fallback_to_direct
 
         - name: "test_uncommitted"
           commands:
-            - cd ./dist && ./func_tests5 test_uncommitted_to_committed
+            - cd ./dist && ./func_tests_sdk5 test_uncommitted_to_committed
 
         - name: "test_packet_loss_direct"
           commands:
-            - cd ./dist && ./func_tests5 test_packet_loss_direct
+            - cd ./dist && ./func_tests_sdk5 test_packet_loss_direct
 
         - name: "test_packet_loss_next"
           commands:
-            - cd ./dist && ./func_tests5 test_packet_loss_next
+            - cd ./dist && ./func_tests_sdk5 test_packet_loss_next
 
         - name: "test_server_under_load"
           commands:
-            - cd ./dist && ./func_tests5 test_server_under_load
+            - cd ./dist && ./func_tests_sdk5 test_server_under_load
 
         - name: "test_session_update_retry"
           commands:
-            - cd ./dist && ./func_tests5 test_session_update_retry
+            - cd ./dist && ./func_tests_sdk5 test_session_update_retry
 
         - name: "test_bandwidth_over_limit"
           commands:
-            - cd ./dist && ./func_tests5 test_bandwidth_over_limit
+            - cd ./dist && ./func_tests_sdk5 test_bandwidth_over_limit
 
         - name: "test_packet_loss"
           commands:
-            - cd ./dist && ./func_tests5 test_packet_loss
+            - cd ./dist && ./func_tests_sdk5 test_packet_loss
 
         - name: "test_bandwidth"
           commands:
-            - cd ./dist && ./func_tests5 test_bandwidth
+            - cd ./dist && ./func_tests_sdk5 test_bandwidth
 
         - name: "test_jitter"
           commands:
-            - cd ./dist && ./func_tests5 test_jitter
+            - cd ./dist && ./func_tests_sdk5 test_jitter
 
         - name: "test_tags"
           commands:
-            - cd ./dist && ./func_tests5 test_tags
+            - cd ./dist && ./func_tests_sdk5 test_tags
 
         - name: "test_tags_multi"
           commands:
-            - cd ./dist && ./func_tests5 test_tags_multi
+            - cd ./dist && ./func_tests_sdk5 test_tags_multi
 
         - name: "test_direct_stats"
           commands:
-            - cd ./dist && ./func_tests5 test_direct_stats
+            - cd ./dist && ./func_tests_sdk5 test_direct_stats
 
         - name: "test_next_stats"
           commands:
-            - cd ./dist && ./func_tests5 test_next_stats
+            - cd ./dist && ./func_tests_sdk5 test_next_stats
 
         - name: "test_report_session"
           commands:
-            - cd ./dist && ./func_tests5 test_report_session
+            - cd ./dist && ./func_tests_sdk5 test_report_session
 
         - name: "test_client_ping_timed_out"
           commands:
-            - cd ./dist && ./func_tests5 test_client_ping_timed_out
+            - cd ./dist && ./func_tests_sdk5 test_client_ping_timed_out
 
         - name: "test_server_ready_success"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_success
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_success
 
         - name: "test_server_ready_fallback_to_direct"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_fallback_to_direct
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_fallback_to_direct
 
         - name: "test_server_ready_autodetect_cloud"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_autodetect_cloud
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_autodetect_cloud
 
         - name: "test_server_ready_autodetect_multiplay_success"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_autodetect_multiplay_success
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_autodetect_multiplay_success
 
         - name: "test_server_ready_autodetect_multiplay_fail"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_autodetect_multiplay_fail
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_autodetect_multiplay_fail
 
         - name: "test_server_ready_disable_autodetect_cloud"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_disable_autodetect_cloud
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_disable_autodetect_cloud
 
         - name: "test_server_ready_disable_autodetect_multiplay"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_disable_autodetect_multiplay
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_disable_autodetect_multiplay
 
         - name: "test_server_ready_resolve_hostname_timeout"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_resolve_hostname_timeout
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_resolve_hostname_timeout
 
         - name: "test_server_ready_autodetect_timeout"
           commands:
-            - cd ./dist && ./func_tests5 test_server_ready_resolve_hostname_timeout
+            - cd ./dist && ./func_tests_sdk5 test_server_ready_resolve_hostname_timeout
 
         - name: "test_client_connect_before_ready"
           commands:
-            - cd ./dist && ./func_tests5 test_client_connect_before_ready
+            - cd ./dist && ./func_tests_sdk5 test_client_connect_before_ready
 
         - name: "test_server_events"
           commands:
-            - cd ./dist && ./func_tests5 test_server_events
+            - cd ./dist && ./func_tests_sdk5 test_server_events
 
         - name: "test_match_id"
           commands:
-            - cd ./dist && ./func_tests5 test_match_id
+            - cd ./dist && ./func_tests_sdk5 test_match_id
 
         - name: "test_match_values"
           commands:
-            - cd ./dist && ./func_tests5 test_match_values
+            - cd ./dist && ./func_tests_sdk5 test_match_values
 
         - name: "test_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests5 test_match_data_retry
+            - cd ./dist && ./func_tests_sdk5 test_match_data_retry
 
         - name: "test_flush"
           commands:
-            - cd ./dist && ./func_tests5 test_flush
+            - cd ./dist && ./func_tests_sdk5 test_flush
 
         - name: "test_flush_retry"
           commands:
-            - cd ./dist && ./func_tests5 test_flush_retry
+            - cd ./dist && ./func_tests_sdk5 test_flush_retry
 
 
   - name: "Run Functional Tests 5b"
@@ -733,7 +733,7 @@ blocks:
             - artifact pull workflow func_client5
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
-            - artifact pull workflow func_tests5
+            - artifact pull workflow func_tests_sdk5
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
@@ -742,7 +742,7 @@ blocks:
             - chmod +x func_client5
             - chmod +x func_server5
             - chmod +x func_backend5
-            - chmod +x func_tests5
+            - chmod +x func_tests_sdk5
             - chmod +x reference_relay5
             - chmod +x libnext5.so
             - chmod +x libsodium.so
@@ -761,15 +761,15 @@ blocks:
 
         - name: "test_flush_server_events_and_match_data"
           commands:
-            - cd ./dist && ./func_tests5 test_flush_server_events_and_match_data
+            - cd ./dist && ./func_tests_sdk5 test_flush_server_events_and_match_data
 
         - name: "test_flush_server_events_and_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests5 test_flush_server_events_and_match_data_retry
+            - cd ./dist && ./func_tests_sdk5 test_flush_server_events_and_match_data_retry
 
         - name: "test_big_packets"
           commands:
-            - cd ./dist && ./func_tests5 test_big_packets
+            - cd ./dist && ./func_tests_sdk5 test_big_packets
 
 
 promotions:
