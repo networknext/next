@@ -79,9 +79,6 @@ blocks:
           commands:
 
             - sudo apt-get install -y libsodium-dev redis-server
-            - checkout
-            - cp envs/local.env .env
-            - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
 
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
@@ -90,6 +87,7 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
+            - checkout
             - cd ~/backend
             - make dev-happy-path
 
@@ -106,7 +104,7 @@ blocks:
       jobs:
         - name: "make dev-happy-path"
           commands:
-           - ssh -J glenn@34.67.51.93 build@aquaman -p 2222 "./build.sh backend happy-path"
+           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "./build.sh backend happy-path"
 
   - name: "Happy Path (WSL)"
     dependencies: []
