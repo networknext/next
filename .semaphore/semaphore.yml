@@ -241,11 +241,11 @@ blocks:
             - artifact pull workflow func_tests_backend_libnext5.so
             - artifact pull workflow func_tests_backend_reference_relay
 
-            - artifact pull workflow dist/magic_backend
-            - artifact pull workflow dist/magic_frontend
-            - artifact pull workflow dist/relay_gateway
-            - artifact pull workflow dist/relay_backend
-            - artifact pull workflow dist/relay_frontend
+            - artifact pull workflow magic_backend
+            - artifact pull workflow magic_frontend
+            - artifact pull workflow relay_gateway
+            - artifact pull workflow relay_backend
+            - artifact pull workflow relay_frontend
 
             - mv func_tests_backend_libnext4.so libnext4.so
             - mv func_tests_backend_libnext5.so libnext5.so
