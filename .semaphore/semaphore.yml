@@ -572,7 +572,7 @@ blocks:
 
 
   - name: "Run Functional Tests (sdk5) - A"
-    dependencies: ["Build Functional Tests (sdk5)"]
+    dependencies: ["Build Functional Tests (sdk5)", "Dependencies"]
     task:
 
       agent:
@@ -817,7 +817,7 @@ blocks:
 
 
   - name: "Run Functional Tests (sdk5) - B"
-    dependencies: ["Build Functional Tests (sdk5)"]
+    dependencies: ["Build Functional Tests (sdk5)", "Dependencies"]
     task:
 
       agent:
