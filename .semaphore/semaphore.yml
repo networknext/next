@@ -176,7 +176,7 @@ blocks:
             - make -j32 test-relay
             - artifact push workflow ./dist/reference_relay
 
-  - name: "Build Functional Tests backend"
+  - name: "Build Functional Tests (backend)"
     dependencies: []
     task:
 
@@ -206,8 +206,8 @@ blocks:
 
             - artifact push workflow dist/func_tests_backend
 
-  - name: "Run Functional Tests backend"
-    dependencies: ["Build Functional Tests backend", "Build Functional Tests sdk4", "Build Functional Tests sdk5", "Dependencies"]
+  - name: "Run Functional Tests (backend)"
+    dependencies: ["Build Functional Tests (backend)", "Build Functional Tests (sdk4)", "Build Functional Tests (sdk5)", "Dependencies"]
     task:
 
       agent:
@@ -251,7 +251,7 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend hello
 
-  - name: "Build Functional Tests sdk4"
+  - name: "Build Functional Tests (sdk4)"
     dependencies: []
     task:
 
@@ -287,8 +287,8 @@ blocks:
             - artifact push workflow dist/reference_relay4
             - artifact push workflow dist/libnext4.so
 
-  - name: "Run Functional Tests sdk4"
-    dependencies: ["Build Functional Tests sdk4", "Dependencies"]
+  - name: "Run Functional Tests (sdk4)"
+    dependencies: ["Build Functional Tests (sdk4)", "Dependencies"]
     task:
 
       agent:
@@ -508,7 +508,7 @@ blocks:
             - cd ./dist && ./func_tests_sdk4 test_big_packets
 
 
-  - name: "Build Functional Tests sdk5"
+  - name: "Build Functional Tests (sdk5)"
     dependencies: []
     task:
 
@@ -545,8 +545,8 @@ blocks:
             - artifact push workflow dist/libnext5.so
 
 
-  - name: "Run Functional Tests sdk5 (a)"
-    dependencies: ["Build Functional Tests sdk5"]
+  - name: "Run Functional Tests (sdk5) - A"
+    dependencies: ["Build Functional Tests (sdk5)"]
     task:
 
       agent:
@@ -790,8 +790,8 @@ blocks:
             - cd ./dist && ./func_tests_sdk5 test_flush_retry
 
 
-  - name: "Run Functional Tests sdk5 (b)"
-    dependencies: ["Build Functional Tests sdk5"]
+  - name: "Run Functional Tests (sdk5) - B"
+    dependencies: ["Build Functional Tests (sdk5)"]
     task:
 
       agent:
