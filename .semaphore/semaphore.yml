@@ -204,12 +204,12 @@ blocks:
             - cd ~/backend
             - make -j32 build-all
 
-            - mv dist/libnext4.so dist/func_tests_backend_libnext4
-            - mv dist/libnext5.so dist/func_tests_backend_libnext5
+            - mv dist/libnext4.so dist/func_test_backend_libnext4
+            - mv dist/libnext5.so dist/func_test_backend_libnext5
 
-            - artifact push workflow dist/func_tests_backend_libnext4.so
-            - artifact push workflow dist/func_tests_backend_libnext5.so
-            - artifact push workflow dist/func_tests_backend
+            - artifact push workflow dist/func_test_backend_libnext4.so
+            - artifact push workflow dist/func_test_backend_libnext5.so
+            - artifact push workflow dist/func_test_backend
             - artifact push workflow dist/reference_relay
             - artifact push workflow dist/magic_backend
             - artifact push workflow dist/magic_frontend
@@ -232,9 +232,9 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_tests_backend
-            - artifact pull workflow func_tests_backend_libnext4.so
-            - artifact pull workflow func_tests_backend_libnext5.so
+            - artifact pull workflow func_test_backend
+            - artifact pull workflow func_test_backend_libnext4.so
+            - artifact pull workflow func_test_backend_libnext5.so
 
             - artifact pull workflow reference_relay
             - artifact pull workflow libsodium.so
