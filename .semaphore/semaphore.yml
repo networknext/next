@@ -7,10 +7,6 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 
-global_job_config:
-  secrets:
-    - name: sdk5-repo-access
-
 blocks:
 
   - name: "Dependencies"
@@ -83,12 +79,8 @@ blocks:
           commands:
 
             - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - checkout
             - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
             - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
 
             - cd ~/backend/libs/zeromq
@@ -142,12 +134,8 @@ blocks:
         - name: "Unit Tests"
           commands:
             - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - checkout
             - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
             - export LD_LIBRARY_PATH=. && make -j32 test-sdk4
 
   - name: "SDK5"
@@ -161,12 +149,8 @@ blocks:
         - name: "Unit Tests"
           commands:
             - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - checkout
             - cp envs/local.env .env
-            - git submodule init
-            - git submodule update
             - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
 
   - name: "Relay"
@@ -202,10 +186,6 @@ blocks:
 
             - checkout
             - cp envs/local.env .env
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
 
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
@@ -463,10 +443,6 @@ blocks:
 
             - checkout
             - cp envs/local.env .env
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
 
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
