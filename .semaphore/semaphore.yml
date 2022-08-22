@@ -207,7 +207,7 @@ blocks:
             - artifact push workflow dist/func_tests_backend
 
   - name: "Run Functional Tests backend"
-    dependencies: ["Build Functional Tests backend", "Dependencies"]
+    dependencies: ["Build Functional Tests backend", "Build Functional Tests sdk4", "Build Functional Tests sdk5", "Dependencies"]
     task:
 
       agent:
@@ -224,18 +224,21 @@ blocks:
             - artifact pull workflow func_tests_backend
             - artifact pull workflow reference_relay4
             - artifact pull workflow libnext4.so
+            - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
             - artifact pull workflow libzmq.so
 
             - chmod +x func_tests_backend
             - chmod +x reference_relay4
             - chmod +x libnext4.so
+            - chmod +x libnext5.so
             - chmod +x libsodium.so
             - chmod +x libzmq.so
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
+            - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
             - mv reference_relay4 reference_relay
