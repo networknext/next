@@ -254,31 +254,7 @@ Unit tests and functional tests are used in order to test code before it ships.
 
 ## Unit Tests
 
-To run the unit tests, run `make test`. This will run unit tests for all backend components.
-Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set. If the requirements for each of unit tests aren't met, they will be skipped.
-Here are the requirements to run each of the GCP related unit tests:
-
-Stackdriver Metrics:
-Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
-Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
-
-Pub/Sub:
-Install the gcloud pubsub emulator: (Note that the emulator needs a Java Runtime Environment version 1.7 or higher installed and added to PATH)
-`gcloud components install beta`
-`gcloud components install pubsub-emulator`
-or
-`sudo apt install google-cloud-sdk-pubsub-emulator`
-
-    Add the environment variable `PUBSUB_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
-
-Bigtable:
-Install the gcloud bigtable emulator:
-`gcloud components install beta`
-`gcloud components install bigtable`
-or
-`sudo apt install google-cloud-sdk-bigtable-emulator`
-
-    Add the environment variable `BIGTABLE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8086`).
+To run the unit tests, run `make test`. 
 
 ## Functional Tests
 
@@ -288,4 +264,6 @@ To run the functional tests for SDK4, run `make test-func4`.
 
 To run the functional tests for SDK5, run `make test-func5`. 
 
-The functional tests take a long time to run locally, but they are automatically run in || via semaphore on every commit.
+(todo: functional tests for backend...)
+
+The functional tests take a long time to run locally, but they automatically run in || via semaphore on every commit.
