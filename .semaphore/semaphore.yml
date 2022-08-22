@@ -102,6 +102,10 @@ blocks:
       secrets:
         - name: build-machine-access
         - name: build-machine-known-hosts
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
       jobs:
         - name: "make dev-happy-path"
           commands:
@@ -117,6 +121,10 @@ blocks:
       secrets:
         - name: build-machine-access
         - name: build-machine-known-hosts
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
       jobs:
         - name: "make dev-happy-path"
           commands:
