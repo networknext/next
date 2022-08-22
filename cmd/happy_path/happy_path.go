@@ -23,12 +23,11 @@ func make(action string) (*exec.Cmd, *bytes.Buffer) {
 		return nil, nil
 	}
 
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Start()
 
-	return cmd, &output
+	return cmd, &stdout
 }
 
 func main() {
