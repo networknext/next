@@ -459,7 +459,7 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-            - make -j32 build-test-func_sdk5
+            - make -j32 build-test-func-sdk5
 
             - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
