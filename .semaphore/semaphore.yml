@@ -176,6 +176,78 @@ blocks:
             - make -j32 test-relay
             - artifact push workflow ./dist/reference_relay
 
+  - name: "Build Functional Tests backend"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - cd ~/backend/libs/zeromq
+            - ./autogen.sh
+            - ./configure --with-norm=no --with-pgm=no
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
+            - make -j32 build-test-func-backend
+
+            - artifact push workflow dist/func_tests_backend
+
+  - name: "Run Functional Tests backend"
+    dependencies: ["Build Functional Tests backend", "Dependencies"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_tests_sdk4
+            - artifact pull workflow reference_relay4
+            - artifact pull workflow libnext4.so
+            - artifact pull workflow libsodium.so
+            - artifact pull workflow libzmq.so
+
+            - chmod +x func_tests_backend
+            - chmod +x reference_relay4
+            - chmod +x libnext4.so
+            - chmod +x libsodium.so
+            - chmod +x libzmq.so
+
+            - sudo mv libsodium.so /usr/local/lib
+            - sudo mv libzmq.so /usr/local/lib
+            - sudo mv libnext4.so /usr/local/lib
+            - sudo ldconfig
+
+            - mv reference_relay4 reference_relay
+
+            - cd ~
+
+      jobs:
+
+        - name: "hello"
+          commands:
+            - cd ./dist && ./func_tests_backend hello
+
   - name: "Build Functional Tests sdk4"
     dependencies: []
     task:

@@ -531,6 +531,26 @@ endif
 
 ########################
 
+.PHONY: build-functional-tests-backend
+build-functional-tests-backend: dist
+	@printf "Building functional tests backend... " ; \
+	$(GO) build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-test-func-backend
+build-test-func-backend: clean dist build-functional-tests-backend
+
+.PHONY: run-test-func-backend
+run-test-func-backend:
+	@printf "\nRunning functional tests backend...\n\n" ; \
+	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_backend/func_tests_backend.go $(test) ; \
+	printf "\ndone\n\n"
+
+.PHONY: test-func-backend
+test-func-backend: build-test-func-backend run-test-func-backend ## runs functional tests (backend)
+
+########################
+
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
 	@printf "Building functional server 4... "
@@ -1283,7 +1303,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
