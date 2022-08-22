@@ -209,8 +209,8 @@ blocks:
 
             - artifact push workflow dist/func_tests_backend_libnext4.so
             - artifact push workflow dist/func_tests_backend_libnext5.so
+            - artifact push workflow dist/func_tests_backend_reference_relay
             - artifact push workflow dist/func_tests_backend
-            - artifact push workflow dist/reference_relay
             - artifact push workflow dist/magic_backend
             - artifact push workflow dist/magic_frontend
             - artifact push workflow dist/relay_gateway
@@ -232,13 +232,13 @@ blocks:
             - mkdir -p dist
             - cd dist
 
+            - artifact pull workflow libsodium.so
+            - artifact pull workflow libzmq.so
+
             - artifact pull workflow func_tests_backend
             - artifact pull workflow func_tests_backend_libnext4.so
             - artifact pull workflow func_tests_backend_libnext5.so
-
-            - artifact pull workflow reference_relay
-            - artifact pull workflow libsodium.so
-            - artifact pull workflow libzmq.so
+            - artifact push workflow func_tests_backend_reference_relay
 
             - artifact pull workflow dist/magic_backend
             - artifact pull workflow dist/magic_frontend
@@ -248,6 +248,7 @@ blocks:
 
             - mv func_tests_backend_libnext4.so libnext4.so
             - mv func_tests_backend_libnext5.so libnext5.so
+            - mv func_tests_backend_reference_relay reference_relay
 
             - chmod +x reference_relay
             - chmod +x libnext4.so
