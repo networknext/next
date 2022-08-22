@@ -80,6 +80,7 @@ blocks:
 
             - sudo apt-get install -y libsodium-dev redis-server
 
+            - checkout
             - cd ~/backend/libs/zeromq
             - ./autogen.sh
             - ./configure --with-norm=no --with-pgm=no
@@ -87,7 +88,6 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
-            - checkout
             - cd ~/backend
             - make dev-happy-path
 
