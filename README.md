@@ -2,7 +2,7 @@
 
 <br>
 
-This is a monorepo that contains the Network Next backend.
+This repo contains the Network Next backend.
 
 ## Monitoring
 
@@ -61,14 +61,6 @@ This is a monorepo that contains the Network Next backend.
 
 ## Development
 
-IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in [SDK4](https://github.com/networknext/sdk4) and [SDK5](https://github.com/networknext/sdk5/). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
-
-```bash
-git clone git@github.com:networknext/backend.git
-git submodule init
-git submodule update
-```
-
 The tool chain used for development is kept simple to make it easy for any operating system to install and use and work out of the box for POSIX Linux distributions.
 
 - [GCP Cloud SDK](https://cloud.google.com/sdk/docs/quickstarts): needed for the `gsutil` command to publish artifacts
@@ -123,7 +115,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	Linux:
 	`sudo apt install libzmq3-dev`
 	Mac:
-	`brew install zmq`
+	`brew install zeromq`
 
 7. Install RapidJSON
 	Linux:
@@ -160,11 +152,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-12. Init and update git submodules
-	`git submodule init`
-	`git submodule update`
-
-13. Install Google Cloud SDK
+12. Install Google Cloud SDK
 	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
 	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
 
@@ -174,47 +162,14 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`gcloud init`
 	When asked to choose a cloud project, choose `network-next-v3-dev`
 
-14. Install the Bigtable emulator
-	`sudo apt install google-cloud-sdk-bigtable-emulator`
-	`sudo apt install google-cloud-sdk-cbt`
-
-15. Install the Pub/Sub emulator
-	`sudo apt install google-cloud-sdk-pubsub-emulator`
-
-16. Install SQLite3
-	`sudo apt install sqlite3`
-
-	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing.
-
-17. Run tests to confirm everything is working properly
+13. Run tests to confirm everything is working properly
 	`make test`
-	`make test-func-parallel`
 
 ## Running the "Happy Path"
 
-A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
+A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following command:
 
-1. `./next select local`: setup local environment
-2. `make dev-magic-backend`: run the magic backend (requires redis-server)
-3. `make dev-magic-frontend`: run the magic frontend (requires redis-server)
-4. `make dev-relay-gateway`: run the relay gateway
-5. `make dev-relay-backend-1`: run the relay backend 1 (requires redis-server)
-6. `make dev-relay-backend-2`: run the relay backend 2 (requires redis-server)
-7. `make dev-relay-frontend`: run the relay frontend (require redis-server)
-8. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
-9. `make dev-server-backend4` or `make dev-server-backend5`: run the server backend for sdk4 or sdk5
-10. `make dev-server4` or `make dev-server5`: this will run a fake game server for sdk4 or sdk5 and register itself with the server backend
-11. `make dev-client4` or `make dev-client5`: this will run a fake game client for sdk4 or sdk5 and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients4` or `make dev-clients5` to create 10 client sessions.
-12. `make dev-portal-cruncher-1`: run portal cruncher 1
-13. `make dev-portal-cruncher-2`: run portal cruncher 2
-14. `make dev-portal`: this will run the Portal Backend RPC API
-15. You will then need to clone the portal repo, https://github.com/networknext/portal, run through its setup, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
-
-You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
-
-Simultaneously you will see the terminal with the relays logging `session created` indicating traffic is passing through relays.
-
-NOTE: In local testing, network next routes are provided immediately, but in practice it will take 5 minutes of relays sending updates before network next routes are generated.
+	`make dev-happy-path`
 
 ## SQL Storers and the Happy Path
 
@@ -299,34 +254,16 @@ Unit tests and functional tests are used in order to test code before it ships.
 
 ## Unit Tests
 
-To run the unit tests, run `make test`. This will run unit tests for all backend components.
-Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set. If the requirements for each of unit tests aren't met, they will be skipped.
-Here are the requirements to run each of the GCP related unit tests:
-
-Stackdriver Metrics:
-Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
-Add the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to your makefile. Set it to the file path of your credentials file (ex. `$(CURRENT_DIR)/testdata/v3-dev-creds.json`).
-
-Pub/Sub:
-Install the gcloud pubsub emulator: (Note that the emulator needs a Java Runtime Environment version 1.7 or higher installed and added to PATH)
-`gcloud components install beta`
-`gcloud components install pubsub-emulator`
-or
-`sudo apt install google-cloud-sdk-pubsub-emulator`
-
-    Add the environment variable `PUBSUB_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
-
-Bigtable:
-Install the gcloud bigtable emulator:
-`gcloud components install beta`
-`gcloud components install bigtable`
-or
-`sudo apt install google-cloud-sdk-bigtable-emulator`
-
-    Add the environment variable `BIGTABLE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `localhost:8086`).
+To run the unit tests, run `make test`. 
 
 ## Functional Tests
 
 In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
-To run the functional tests for SDK4, run `make test-func4`, or more preferably, `make test-func4-parallel`, since the func tests take a long time to run in series. Functional tests for SDK5 can be run using `make test-func5` and `make test-func5-parallel`.
 
+To run the functional tests for SDK4, run `make test-func4`. 
+
+To run the functional tests for SDK5, run `make test-func5`. 
+
+(todo: functional tests for backend...)
+
+The functional tests take a long time to run locally, but they automatically run in || via semaphore on every commit.
