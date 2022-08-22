@@ -202,12 +202,20 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-            - make -j32 build-test-func-backend
+            - make -j32 build-all
 
+            - artifact push workflow dist/func_tests_backend_libnext4.so
+            - artifact push workflow dist/func_tests_backend_libnext5.so
             - artifact push workflow dist/func_tests_backend
+            - artifact push workflow dist/reference_relay
+            - artifact push workflow dist/magic_backend
+            - artifact push workflow dist/magic_frontend
+            - artifact push workflow dist/relay_gateway
+            - artifact push workflow dist/relay_backend
+            - artifact push workflow dist/relay_frontend
 
   - name: "Run Functional Tests (backend)"
-    dependencies: ["Build Functional Tests (backend)", "Build Functional Tests (sdk4)", "Build Functional Tests (sdk5)", "Dependencies"]
+    dependencies: ["Build Functional Tests (backend)", "Dependencies"]
     task:
 
       agent:
@@ -222,34 +230,49 @@ blocks:
             - cd dist
 
             - artifact pull workflow func_tests_backend
-            - artifact pull workflow reference_relay4
-            - artifact pull workflow libnext4.so
-            - artifact pull workflow libnext5.so
+            - artifact pull workflow func_tests_backend_libnext4.so
+            - artifact pull workflow func_tests_backend_libnext5.so
+
+            - artifact pull workflow reference_relay
             - artifact pull workflow libsodium.so
             - artifact pull workflow libzmq.so
 
-            - chmod +x func_tests_backend
-            - chmod +x reference_relay4
+            - artifact pull workflow dist/magic_backend
+            - artifact pull workflow dist/magic_frontend
+            - artifact pull workflow dist/relay_gateway
+            - artifact pull workflow dist/relay_backend
+            - artifact pull workflow dist/relay_frontend
+
+            - mv func_tests_backend_libnext4.so libnext4.so
+            - mv func_tests_backend_libnext5.so libnext5.so
+
+            - chmod +x reference_relay
             - chmod +x libnext4.so
             - chmod +x libnext5.so
             - chmod +x libsodium.so
             - chmod +x libzmq.so
 
+            - chmod +x func_tests_backend
+            - chmod +x magic_backend
+            - chmod +x magic_frontend
+            - chmod +x relay_gateway
+            - chmod +x relay_backend
+            - chmod +x relay_frontend
+
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
-            - sudo ldconfig
 
-            - mv reference_relay4 reference_relay
+            - sudo ldconfig
 
             - cd ~
 
       jobs:
 
-        - name: "hello"
+        - name: "health_checks"
           commands:
-            - cd ./dist && ./func_tests_backend hello
+            - cd ./dist && ./func_tests_backend health_checks 
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
