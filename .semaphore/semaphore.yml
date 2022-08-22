@@ -176,7 +176,7 @@ blocks:
             - make -j32 test-relay
             - artifact push workflow ./dist/reference_relay
 
-  - name: "Build Functional Tests 4"
+  - name: "Build Functional Tests sdk4"
     dependencies: []
     task:
 
@@ -212,8 +212,8 @@ blocks:
             - artifact push workflow dist/reference_relay4
             - artifact push workflow dist/libnext4.so
 
-  - name: "Run Functional Tests 4"
-    dependencies: ["Build Functional Tests 4", "Dependencies"]
+  - name: "Run Functional Tests sdk4"
+    dependencies: ["Build Functional Tests sdk4", "Dependencies"]
     task:
 
       agent:
@@ -433,7 +433,7 @@ blocks:
             - cd ./dist && ./func_tests_sdk4 test_big_packets
 
 
-  - name: "Build Functional Tests 5"
+  - name: "Build Functional Tests sdk5"
     dependencies: []
     task:
 
@@ -470,8 +470,8 @@ blocks:
             - artifact push workflow dist/libnext5.so
 
 
-  - name: "Run Functional Tests 5a"
-    dependencies: ["Build Functional Tests 5"]
+  - name: "Run Functional Tests sdk5 (a)"
+    dependencies: ["Build Functional Tests sdk5"]
     task:
 
       agent:
@@ -715,8 +715,8 @@ blocks:
             - cd ./dist && ./func_tests_sdk5 test_flush_retry
 
 
-  - name: "Run Functional Tests 5b"
-    dependencies: ["Build Functional Tests 5"]
+  - name: "Run Functional Tests sdk5 (b)"
+    dependencies: ["Build Functional Tests sdk5"]
     task:
 
       agent:
