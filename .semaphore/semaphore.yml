@@ -206,7 +206,7 @@ blocks:
 
             - mv dist/libnext4.so dist/func_tests_backend_libnext4.so
             - mv dist/libnext5.so dist/func_tests_backend_libnext5.so
-            - mv dist/reference_relay dest/func_tests_backend_reference_relay
+            - mv dist/reference_relay dist/func_tests_backend_reference_relay
 
             - artifact push workflow dist/func_tests_backend_libnext4.so
             - artifact push workflow dist/func_tests_backend_libnext5.so
