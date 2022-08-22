@@ -105,31 +105,13 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	Mac:
 	`brew install libsodium`
 
-5. Install libcurl
-	Linux:
-	`sudo apt install libcurl4-openssl-dev`
-	Mac:
-	`brew install openssl`
-
-6. Install libzmq3-dev
+5. Install libzmq3-dev
 	Linux:
 	`sudo apt install libzmq3-dev`
 	Mac:
 	`brew install zeromq`
 
-7. Install RapidJSON
-	Linux:
-  `sudo apt install rapidjson-dev`
-	Mac:
-	`brew install rapidjson`
-
-8. Install g++ version 8
-	Linux:
-  `sudo apt install g++-8`
-	Mac:
-	`brew install gcc@8`
-
-9. Install Go (must be 1.13+)
+6. Install Go (must be 1.13+)
 	`cd /usr/local/`
 	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
 	Add Go to PATH:
@@ -137,10 +119,10 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-10. Install Redis
+7. Install Redis
 	`sudo apt install redis-server`
 
-11. Clone the repo with an SSH key
+8. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -152,17 +134,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-12. Install Google Cloud SDK
-	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
-	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
-
-	`echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list`
-	`curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -`
-	`sudo apt update && sudo apt install google-cloud-sdk`
-	`gcloud init`
-	When asked to choose a cloud project, choose `network-next-v3-dev`
-
-13. Run tests to confirm everything is working properly
+9. Run tests to confirm everything is working properly
 	`make test`
 
 ## Running the "Happy Path"
