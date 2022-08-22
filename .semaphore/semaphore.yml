@@ -239,7 +239,7 @@ blocks:
             - artifact pull workflow func_tests_backend
             - artifact pull workflow func_tests_backend_libnext4.so
             - artifact pull workflow func_tests_backend_libnext5.so
-            - artifact push workflow func_tests_backend_reference_relay
+            - artifact pull workflow func_tests_backend_reference_relay
 
             - artifact pull workflow dist/magic_backend
             - artifact pull workflow dist/magic_frontend
