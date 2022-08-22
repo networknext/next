@@ -221,7 +221,7 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_tests_sdk4
+            - artifact pull workflow func_tests_backend
             - artifact pull workflow reference_relay4
             - artifact pull workflow libnext4.so
             - artifact pull workflow libsodium.so
