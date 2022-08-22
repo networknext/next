@@ -204,8 +204,8 @@ blocks:
             - cd ~/backend
             - ./build.sh
 
-            - mv dist/libnext4.so dist/func_tests_backend_libnext4
-            - mv dist/libnext5.so dist/func_tests_backend_libnext5
+            - mv dist/libnext4.so dist/func_tests_backend_libnext4.so
+            - mv dist/libnext5.so dist/func_tests_backend_libnext5.so
 
             - artifact push workflow dist/func_tests_backend_libnext4.so
             - artifact push workflow dist/func_tests_backend_libnext5.so
