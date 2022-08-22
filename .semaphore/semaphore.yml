@@ -89,6 +89,7 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
+            - cp envs/local.env .env
             - make dev-happy-path
 
   - name: "Happy Path (Mac)"
