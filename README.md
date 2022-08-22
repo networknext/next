@@ -232,10 +232,10 @@ To run the unit tests, run `make test`.
 
 In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
 
-To run the functional tests for SDK4, run `make test-func4`. 
+To run the functional tests for the backend, run `make test-func-backend`. 
 
-To run the functional tests for SDK5, run `make test-func5`. 
+To run the functional tests for SDK4, run `make test-func-sdk4`. 
 
-(todo: functional tests for backend...)
+To run the functional tests for SDK5, run `make test-func-sdk5`. 
 
 The functional tests take a long time to run locally, but they automatically run in || via semaphore on every commit.
