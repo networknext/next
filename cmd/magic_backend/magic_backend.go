@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"expvar"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -37,8 +36,12 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "magic_backend"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	serviceName := "magic_backend";
+
+	fmt.Printf("%s\n", serviceName)
+
+	fmt.Printf("git hash: %s\n", sha)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -55,7 +58,7 @@ func mainReturnWithCode() int {
 	if gcpProjectID != "" {
 		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			core.Error("failed to initialze StackDriver profiler: %v", err)
+			core.Error("failed to initialize stackdriver profiler: %v", err)
 			return 1
 		}
 	}
@@ -69,7 +72,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create magic metrics
 	mbMetrics, err := metrics.NewMagicBackendMetrics(ctx, metricsHandler, serviceName, serviceName, "Magic Backend")
 	if err != nil {
 		core.Error("failed to create magic backend metrics: %v", err)
@@ -96,11 +98,13 @@ func mainReturnWithCode() int {
 
 	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+
 	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
 	if err != nil {
 		core.Error("failed to parse REDIS_MAX_IDLE_CONNS: %v", err)
 		return 1
 	}
+
 	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 	if err != nil {
 		core.Error("failed to parse REDIS_MAX_ACTIVE_CONNS: %v", err)
@@ -109,12 +113,12 @@ func mainReturnWithCode() int {
 
 	instanceID, err := backend.GetInstanceID(env)
 	if err != nil {
-		core.Error("failed to get relay backend instance ID: %v", err)
+		core.Error("failed to get instance ID: %v", err)
 		return 1
 	}
-	core.Debug("VM Instance ID: %s", instanceID)
 
-	// Create the magic service for the magic backend
+	core.Debug("instance id: %s", instanceID)
+
 	magicService, err := magic.NewMagicService(magicInstanceMetadataTimeout, instanceID, time.Now().UTC(), redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns, mbMetrics)
 	if err != nil {
 		core.Error("failed to create magic service: %v", err)
@@ -124,7 +128,6 @@ func mainReturnWithCode() int {
 	errChan := make(chan error, 1)
 	var wg sync.WaitGroup
 
-	// Start the metdata insertion goroutine
 	metadataTicker := time.NewTicker(magicMetadataInsertionFrequency)
 
 	wg.Add(1)
@@ -142,12 +145,13 @@ func mainReturnWithCode() int {
 					errChan <- err
 					return
 				}
+				core.Debug("inserted instance metadata")
 			}
 		}
 	}()
 
-	// Start the magic update goroutine
 	var isOldestInstance bool
+
 	updateMagicTicker := time.NewTicker(magicUpdateFrequency)
 
 	wg.Add(1)
@@ -159,7 +163,6 @@ func mainReturnWithCode() int {
 		// For local testing, initialize redis with magic values
 		if env == "local" {
 			core.Debug("initializing magic values for local testing")
-
 			if err = magicService.UpdateMagicValues(); err != nil {
 				core.Error("failed to update magic values: %v", err)
 				errChan <- err
@@ -180,8 +183,11 @@ func mainReturnWithCode() int {
 				}
 
 				if !isOldestInstance {
+					core.Debug("not the oldest instance")
 					continue
 				}
+
+				core.Debug("we are the oldest instance")
 
 				if err = magicService.UpdateMagicValues(); err != nil {
 					core.Error("failed to update magic values: %v", err)
@@ -189,12 +195,11 @@ func mainReturnWithCode() int {
 					return
 				}
 
-				core.Debug("updated magic values successfully")
+				core.Debug("updated magic values")
 			}
 		}
 	}()
 
-	// Setup the status handler info
 	statusData := &metrics.MagicStatus{}
 	var statusMutex sync.RWMutex
 	{
@@ -241,6 +246,8 @@ func mainReturnWithCode() int {
 				statusData = newStatusData
 				statusMutex.Unlock()
 
+				core.Debug("updated status")
+
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -272,7 +279,6 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
@@ -292,6 +298,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Wait for shutdown signal
+
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 

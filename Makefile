@@ -1,6 +1,6 @@
 #!make
 
-# IMPORTANT: Select environment before you run this makefile, eg. "next select local", "next select dev5"
+# IMPORTANT: Select environment before you run thi¡ makefile, eg. "next select local", "next select dev5"
 include .env
 export $(shell sed 's/=.*//' .env)
 
@@ -31,7 +31,6 @@ RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
 COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 
 CURRENT_DIR = $(shell pwd -P)
-DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
@@ -530,7 +529,7 @@ build-functional-tests-backend: dist
 	printf "done\n" ; \
 
 .PHONY: build-test-func-backend
-build-test-func-backend: clean dist build-functional-tests-backend
+build-test-func-backend: dist build-functional-tests-backend
 
 .PHONY: run-test-func-backend
 run-test-func-backend:

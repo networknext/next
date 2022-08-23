@@ -8,58 +8,67 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"time"
+	"strings"
 )
 
-func run(command string, args ...string) bool {
+func test_magic_backend() {
 
-	cmd := exec.Command(command, args...)
+	fmt.Printf("test_magic_backend\n")
+
+	cmd := exec.Command("./magic_backend")
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	// todo: clear the env and set it up specifically for this test
 
-	fmt.Printf("%s", stdout.String())
-	fmt.Printf("%s", stderr.String())
-
+	err := cmd.Start()
 	if err != nil {
-		fmt.Printf("error: run failed: %v\n", err)
-		return false
-	}
-
-	return true
-}
-
-/*
-func visual_studio_build(compiler string, config string, platform string, solution string) {
-	devenv := ""
-	if compiler == "vs2017" {
-		devenv = "/mnt/c/build/vs2017.sh"
-	} else if compiler == "vs2019" {
-		devenv = "/mnt/c/build/vs2019.sh"
-	} else if compiler == "vs2022" {
-		devenv = "/mnt/c/build/vs2022.sh"
-	} else {
-		fmt.Printf("error: unknown compiler %s\n", compiler)
+		fmt.Printf("\nerror: failed to run magic backend!\n\n")
+		fmt.Printf("%s", stdout.String())
+		fmt.Printf("%s", stderr.String())
 		os.Exit(1)
 	}
-	if platform != "" {
-		if !run("bash", devenv, "/Build", fmt.Sprintf("%s|%s", config, platform), solution) {
-			fmt.Printf("error: failed to build solution\n")
-			os.Exit(1)
-		}
-	} else {
-		if !run("bash", devenv, "/Build", config, solution) {
-			fmt.Printf("error: failed to build solution\n")
-			os.Exit(1)
-		}
+
+	time.Sleep(10*time.Second)
+
+	if !strings.Contains(stdout.String(), "magic_backend") {
+		fmt.Printf("error: missing service name\n")
+		os.Exit(1)
 	}
+
+	if !strings.Contains(stdout.String(), "updated status") {
+		fmt.Printf("error: missing updated status\n")
+		os.Exit(1)
+	}
+
+	if !strings.Contains(stdout.String(), "inserted instance metadata") {
+		fmt.Printf("error: missing metadata insert\n")
+		os.Exit(1)
+	}
+
+	cmd.Process.Signal(os.Interrupt)
+
+	cmd.Wait()
+
+	if !strings.Contains(stdout.String(), "received shutdown signal") ||
+	   !strings.Contains(stdout.String(), "successfully shutdown") {
+		fmt.Printf("error: missing clean shutdown\n")
+		os.Exit(1)
+	}
+
+	/*
+	// todo
+	fmt.Printf("%s", stdout.String())
+	fmt.Printf("%s", stderr.String())
+	*/
 }
-*/
 
 func main() {
-	fmt.Printf("hello world\n")
+	test_magic_backend()
 }
