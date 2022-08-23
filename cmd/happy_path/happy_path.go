@@ -6,11 +6,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
-	"time"
-	"bytes"
 	"strings"
+	"time"
 )
 
 func make(action string) (*exec.Cmd, *bytes.Buffer) {
@@ -31,7 +31,7 @@ func make(action string) (*exec.Cmd, *bytes.Buffer) {
 }
 
 func main() {
-	
+
 	fmt.Printf("\nhappy path\n\n")
 
 	magic_backend_cmd, magic_backend_stdout := make("dev-magic-backend")
@@ -45,7 +45,7 @@ func main() {
 	relay_3_cmd, relay_3_stdout := make("RELAY_PORT=2002 dev-relay")
 	relay_4_cmd, relay_4_stdout := make("RELAY_PORT=2003 dev-relay")
 	relay_5_cmd, relay_5_stdout := make("RELAY_PORT=2004 dev-relay")
-	
+
 	_ = magic_backend_cmd
 	_ = magic_frontend_cmd
 	_ = relay_gateway_cmd
@@ -120,11 +120,11 @@ func main() {
 
 	// todo: don't complain about relays failing to initialize, until we fix this
 	/*
-	if !relay_initialized {
-		fmt.Printf("error: relays failed to initialize\n\n")
-		fmt.Printf("relay frontend: %s\n\n", relay_frontend_stdout)
-		os.Exit(1)
-	}
+		if !relay_initialized {
+			fmt.Printf("error: relays failed to initialize\n\n")
+			fmt.Printf("relay frontend: %s\n\n", relay_frontend_stdout)
+			os.Exit(1)
+		}
 	*/
 
 	fmt.Printf("\nsuccess!\n\n")

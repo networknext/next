@@ -70,12 +70,12 @@ func NewMagicService(instanceMetadataTimeout time.Duration,
 }
 
 /*
-	Determines if this magic instance is the oldest instance.
+Determines if this magic instance is the oldest instance.
 
-	The oldest instance has to have updated its metdata in the
-	last TimeVariance seconds and has to have the earliest init
-	time. In the event of a tie, the larger instance ID is
-	considered older.
+The oldest instance has to have updated its metdata in the
+last TimeVariance seconds and has to have the earliest init
+time. In the event of a tie, the larger instance ID is
+considered older.
 */
 func (ms *MagicService) IsOldestInstance() (bool, error) {
 	conn := ms.redisPool.Get()
@@ -136,7 +136,7 @@ func (ms *MagicService) IsOldestInstance() (bool, error) {
 }
 
 /*
-	Creates this magic instance's metadata for insertion into redis.
+Creates this magic instance's metadata for insertion into redis.
 */
 func (ms *MagicService) CreateInstanceMetadata() MagicInstanceMetadata {
 	return MagicInstanceMetadata{
@@ -147,7 +147,7 @@ func (ms *MagicService) CreateInstanceMetadata() MagicInstanceMetadata {
 }
 
 /*
-	Inserts this magic instance's metadata into redis.
+Inserts this magic instance's metadata into redis.
 */
 func (ms *MagicService) InsertInstanceMetadata(metadata MagicInstanceMetadata) error {
 	metadataBin, err := json.Marshal(metadata)
@@ -174,15 +174,15 @@ func (ms *MagicService) InsertInstanceMetadata(metadata MagicInstanceMetadata) e
 }
 
 /*
-	Updates the magic values in redis by moving "current" to
-	"previous", moving "upcoming" to "current", and inserting
-	a new "upcoming" value.
+Updates the magic values in redis by moving "current" to
+"previous", moving "upcoming" to "current", and inserting
+a new "upcoming" value.
 
-	Failsafe is in place not to touch the magic value if any
-	of the magic values were updated very recently.
+Failsafe is in place not to touch the magic value if any
+of the magic values were updated very recently.
 
-	If the upcoming and previous magic values are missing,
-	this function will repopulate all magic values.
+If the upcoming and previous magic values are missing,
+this function will repopulate all magic values.
 */
 func (ms *MagicService) UpdateMagicValues() error {
 
@@ -251,7 +251,7 @@ func (ms *MagicService) UpdateMagicValues() error {
 }
 
 /*
-	Gets a magic value for a given key.
+Gets a magic value for a given key.
 */
 func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 	conn := ms.redisPool.Get()
@@ -280,7 +280,7 @@ func (ms *MagicService) GetMagicValue(magicKey string) (MagicValue, error) {
 }
 
 /*
-	Sets the magic value for a key.
+Sets the magic value for a key.
 */
 func (ms *MagicService) SetMagicValue(magicKey string, value MagicValue) error {
 	magicBin, err := json.Marshal(value)
@@ -304,7 +304,7 @@ func (ms *MagicService) SetMagicValue(magicKey string, value MagicValue) error {
 }
 
 /*
-	Generates a new magic value.
+Generates a new magic value.
 */
 func (ms *MagicService) GenerateMagicValue() MagicValue {
 	var magic [8]byte

@@ -38,5 +38,5 @@ func main() {
 
 	fmt.Printf("Press ENTER to continue\n")
 
-    fmt.Scanln()
+	fmt.Scanln()
 }

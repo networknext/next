@@ -6,9 +6,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
-	"bytes"
 )
 
 func run(command string, args ...string) bool {
@@ -17,20 +17,20 @@ func run(command string, args ...string) bool {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-    cmd.Stdout = &stdout
-    cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-    err := cmd.Run()
+	err := cmd.Run()
 
-    fmt.Printf("%s", stdout.String())
-    fmt.Printf("%s", stderr.String())
+	fmt.Printf("%s", stdout.String())
+	fmt.Printf("%s", stderr.String())
 
-    if err != nil {
-    	fmt.Printf("error: run failed: %v\n", err)
-    	return false
-    }
+	if err != nil {
+		fmt.Printf("error: run failed: %v\n", err)
+		return false
+	}
 
-    return true
+	return true
 }
 
 /*

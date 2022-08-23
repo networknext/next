@@ -421,10 +421,6 @@ build-test5: build-sdk5
 dev-client4: build-client4  ## runs a local client (sdk4)
 	@cd $(DIST_DIR) && ../scripts/client-spawner4.sh -n 1
 
-.PHONY: dev-clients4
-dev-clients4: build-client4  ## runs 10 local clients (sdk4)
-	@cd $(DIST_DIR) && ../scripts/client-spawner4.sh -n 10
-
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 	@cd $(DIST_DIR) && ./server4
@@ -432,10 +428,6 @@ dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 .PHONY: dev-client5
 dev-client5: build-client5  ## runs a local client (sdk5)
 	@cd $(DIST_DIR) && ../scripts/client-spawner5.sh -n 1
-
-.PHONY: dev-clients5
-dev-clients5: build-client5  ## runs 10 local clients (sdk5)
-	@cd $(DIST_DIR) && ../scripts/client-spawner5.sh -n 10
 
 .PHONY: dev-server5
 dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
