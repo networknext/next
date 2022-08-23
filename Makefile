@@ -1300,14 +1300,6 @@ build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher bu
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
 
-.PHONY: update-sdk4
-update-sdk4:
-	git submodule update --remote --merge sdk4
-
-.PHONY: update-sdk5
-update-sdk5:
-	git submodule update --remote --merge sdk5
-
 .PHONY: clean
 clean: ## cleans everything
 	@rm -rf $(DIST_DIR)
