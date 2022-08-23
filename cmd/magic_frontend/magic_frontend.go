@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"expvar"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -38,8 +37,12 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+
 	serviceName := "magic_frontend"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	fmt.Printf("%s\n", serviceName)
+
+	fmt.Printf("git hash: %s\n", sha)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -52,25 +55,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	fmt.Printf("env: %s\n", env)
+
 	gcpProjectID := backend.GetGCPProjectID()
 	if gcpProjectID != "" {
-		// Stackdriver Profiler
+		fmt.Printf("initializing stackdriver profiler\n")
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			core.Error("failed to initialze StackDriver profiler: %v", err)
+			core.Error("failed to initialze stackdriver profiler: %v", err)
 			return 1
 		}
 	}
 
 	logger := log.NewNopLogger()
 
-	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
-	// Create magic metrics
 	mfMetrics, err := metrics.NewMagicFrontendMetrics(ctx, metricsHandler, serviceName, serviceName, "Magic Frontend")
 	if err != nil {
 		core.Error("failed to create magic backend metrics: %v", err)
@@ -102,15 +105,14 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Create the magic service for the magic frontend
 	magicService, err := magic.NewMagicService(time.Second, "", time.Now().UTC(), redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns, mfMetrics)
 	if err != nil {
 		core.Error("failed to create magic service: %v", err)
 		return 1
 	}
 
-	// Track the most recent magic values
-	// The order of the magic values is always upcoming, current, previous
+	// track the most recent magic values: upcoming, current, previous
+
 	var magicMutex sync.RWMutex
 	var combinedMagic [24]byte
 
@@ -189,12 +191,38 @@ func mainReturnWithCode() int {
 				cachedPreviousMagic = newPreviousMagic.MagicBytes
 
 				mfMetrics.RefreshedMagicValuesSuccess.Add(1)
-				core.Debug("received new magic values")
+
+				core.Debug("received new magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+					cachedUpcomingMagic[0],
+					cachedUpcomingMagic[1],
+					cachedUpcomingMagic[2],
+					cachedUpcomingMagic[3],
+					cachedUpcomingMagic[4],
+					cachedUpcomingMagic[5],
+					cachedUpcomingMagic[6],
+					cachedUpcomingMagic[7],
+					cachedCurrentMagic[0],
+					cachedCurrentMagic[1],
+					cachedCurrentMagic[2],
+					cachedCurrentMagic[3],
+					cachedCurrentMagic[4],
+					cachedCurrentMagic[5],
+					cachedCurrentMagic[6],
+					cachedCurrentMagic[7],
+					cachedPreviousMagic[0],
+					cachedPreviousMagic[1],
+					cachedPreviousMagic[2],
+					cachedPreviousMagic[3],
+					cachedPreviousMagic[4],
+					cachedPreviousMagic[5],
+					cachedPreviousMagic[6],
+					cachedPreviousMagic[7])
 			}
 		}
 	}()
 
-	// Setup the status handler info
+	// status handler
+
 	statusData := &metrics.MagicStatus{}
 	var statusMutex sync.RWMutex
 	{
@@ -234,6 +262,8 @@ func mainReturnWithCode() int {
 				statusMutex.Lock()
 				statusData = newStatusData
 				statusMutex.Unlock()
+
+				core.Debug("updated status")
 
 				time.Sleep(time.Second * 10)
 			}
@@ -280,7 +310,6 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.HandleFunc("/magic", serveCombinedMagicFunc).Methods("GET")
-		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
@@ -299,7 +328,8 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Wait for shutdown signal
+	// wait for shutdown
+
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 

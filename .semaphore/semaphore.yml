@@ -277,9 +277,13 @@ blocks:
 
       jobs:
 
-        - name: "health_checks"
+        - name: "test_magic_backend"
           commands:
-            - cd ./dist && ./func_tests_backend health_checks 
+            - cd ./dist && ./func_tests_backend test_magic_backend
+
+        - name: "test_magic_frontend"
+          commands:
+            - cd ./dist && ./func_tests_backend test_magic_frontend
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
