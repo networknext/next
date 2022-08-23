@@ -269,6 +269,8 @@ blocks:
             - sudo mv libnext4.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
 
+            - sudo apt install -y redis-server
+
             - sudo ldconfig
 
             - cd ~
