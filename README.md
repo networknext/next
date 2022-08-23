@@ -141,7 +141,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following command:
 
-	`make dev-happy-path`
+	make dev-happy-path
 
 ## SQL Storers and the Happy Path
 
