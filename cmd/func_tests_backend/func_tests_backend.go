@@ -13,6 +13,7 @@ import (
 	"time"
 	"strings"
 	"syscall"
+	"net/http"
 )
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
@@ -35,7 +36,7 @@ func test_magic_backend() {
 
 	fmt.Printf("test_magic_backend\n")
 
-	// run the magic backend and make sure it initializes and does things it's expected to do
+	// run the magic backend and make sure it runs and does things it's expected to do
 
 	cmd := exec.Command("./magic_backend")
 
@@ -68,17 +69,32 @@ func test_magic_backend() {
 	check_output("we are the oldest instance", cmd, stdout, stderr)
 	check_output("updated magic values", cmd, stdout, stderr)
 
-	// test the health check works
+	// test the health check
 
-	// ...
+	response, err := http.Get("http://127.0.0.1:40000/health")
+	if err != nil || response.StatusCode != 200 {
+		fmt.Printf("error: health check failed\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
 
-	// test that the status endpoint works
+	// test the status endpoint
 
-	// ...
+	_, err = http.Get("http://127.0.0.1:40000/status")
+	if err != nil || response.StatusCode != 200 {
+		fmt.Printf("error: status endpoint failed\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
 
-	// test that the magic value endpoint works
+	// test the version endpoint
 
-	// ...
+	_, err = http.Get("http://127.0.0.1:40000/version")
+	if err != nil || response.StatusCode != 200 {
+		fmt.Printf("error: version endpoint failed\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
 
 	// test that the service shuts down cleanly
 
@@ -88,12 +104,6 @@ func test_magic_backend() {
 
 	check_output("received shutdown signal", cmd, stdout, stderr)
 	check_output("successfully shutdown", cmd, stdout, stderr)
-
-	/*
-	// todo
-	fmt.Printf("%s", stdout.String())
-	fmt.Printf("%s", stderr.String())
-	*/
 }
 
 func main() {
