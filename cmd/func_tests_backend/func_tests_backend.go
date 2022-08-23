@@ -12,11 +12,30 @@ import (
 	"os/exec"
 	"time"
 	"strings"
+	"syscall"
 )
+
+func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
+	if !strings.Contains(stdout.String(), substring) {
+		fmt.Printf("\nerror: missing output '%s'\n\n", substring)
+		fmt.Printf("--------------------------------------------------\n")
+		fmt.Printf("%s", stdout.String())
+		fmt.Printf("--------------------------------------------------\n")
+		if len(stderr.String()) > 0 {
+			fmt.Printf("%s", stderr.String())
+			fmt.Printf("--------------------------------------------------\n")
+		}
+		fmt.Printf("\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
+}
 
 func test_magic_backend() {
 
 	fmt.Printf("test_magic_backend\n")
+
+	// run the magic backend and make sure it initializes and does things it's expected to do
 
 	cmd := exec.Command("./magic_backend")
 
@@ -25,7 +44,12 @@ func test_magic_backend() {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	// todo: clear the env and set it up specifically for this test
+	cmd.Env = make([]string, 0)
+
+	cmd.Env = append(cmd.Env, "ENV=local")
+	cmd.Env = append(cmd.Env, "PORT=40000")
+	cmd.Env = append(cmd.Env, "NEXT_DEBUG_LOGS=1")
+	cmd.Env = append(cmd.Env, "MAGIC_UPDATE_FREQUENCY=5s")
 
 	err := cmd.Start()
 	if err != nil {
@@ -37,30 +61,33 @@ func test_magic_backend() {
 
 	time.Sleep(10*time.Second)
 
-	if !strings.Contains(stdout.String(), "magic_backend") {
-		fmt.Printf("error: missing service name\n")
-		os.Exit(1)
-	}
+	check_output("magic_backend", cmd, stdout, stderr)
+	check_output("starting http server on port 40000", cmd, stdout, stderr)
+	check_output("updated status", cmd, stdout, stderr)
+	check_output("inserted instance metadata", cmd, stdout, stderr)
+	check_output("we are the oldest instance", cmd, stdout, stderr)
+	check_output("updated magic values", cmd, stdout, stderr)
 
-	if !strings.Contains(stdout.String(), "updated status") {
-		fmt.Printf("error: missing updated status\n")
-		os.Exit(1)
-	}
+	// test the health check works
 
-	if !strings.Contains(stdout.String(), "inserted instance metadata") {
-		fmt.Printf("error: missing metadata insert\n")
-		os.Exit(1)
-	}
+	// ...
+
+	// test that the status endpoint works
+
+	// ...
+
+	// test that the magic value endpoint works
+
+	// ...
+
+	// test that the service shuts down cleanly
 
 	cmd.Process.Signal(os.Interrupt)
 
 	cmd.Wait()
 
-	if !strings.Contains(stdout.String(), "received shutdown signal") ||
-	   !strings.Contains(stdout.String(), "successfully shutdown") {
-		fmt.Printf("error: missing clean shutdown\n")
-		os.Exit(1)
-	}
+	check_output("received shutdown signal", cmd, stdout, stderr)
+	check_output("successfully shutdown", cmd, stdout, stderr)
 
 	/*
 	// todo

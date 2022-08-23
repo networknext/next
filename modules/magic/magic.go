@@ -19,8 +19,8 @@ const (
 	MagicCurrentKey  = "magic_current"
 	MagicPreviousKey = "magic_previous"
 
-	MagicUpdateFailsafeTimeout = 55 * time.Second
-	TimeVariance               = 5 * time.Second
+	MagicUpdateFailsafeTimeout = 55 * time.Second           // todo: this is hardcoded
+	TimeVariance               = 5 * time.Second            // todo: this is hardcoded
 )
 
 type MagicValue struct {

@@ -54,9 +54,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	fmt.Printf("env: %s\n", env)
+
 	gcpProjectID := backend.GetGCPProjectID()
 	if gcpProjectID != "" {
-		// Stackdriver Profiler
+		fmt.Printf("google cloud project id: %s\n", gcpProjectID)
+		fmt.Printf("initializing stackdriver profiler\n")
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
 			core.Error("failed to initialize stackdriver profiler: %v", err)
 			return 1
@@ -298,6 +301,8 @@ func mainReturnWithCode() int {
 	}
 
 	// Wait for shutdown signal
+
+	fmt.Printf("waiting for shutdown signal\n")
 
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
