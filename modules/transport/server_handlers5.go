@@ -1117,18 +1117,18 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 
 			// todo: apparently broken
 			/*
-			if state.Debug != nil {
+				if state.Debug != nil {
 
-				*state.Debug += "route relays: "
+					*state.Debug += "route relays: "
 
-				for i, routeRelay := range routeRelays[:routeNumRelays] {
-					if i != int(routeNumRelays-1) {
-						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
-					} else {
-						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+					for i, routeRelay := range routeRelays[:routeNumRelays] {
+						if i != int(routeNumRelays-1) {
+							*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+						} else {
+							*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+						}
 					}
 				}
-			}
 			*/
 		}
 
