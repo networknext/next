@@ -360,7 +360,7 @@ dev-relay: build-reference-relay  ## runs a local relay
 
 .PHONY: dev-magic-backend
 dev-magic-backend: build-magic-backend ## runs a local magic backend
-	@PORT=41007 ./dist/magic_backend
+	@HTTP_PORT=41007 ./dist/magic_backend
 
 ##############################################
 

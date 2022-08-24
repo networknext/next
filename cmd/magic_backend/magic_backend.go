@@ -18,6 +18,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// ------------------------------------
+
 var magicUpdateSeconds int
 
 var (
@@ -26,6 +28,21 @@ var (
 	sha           string
 	tag           string
 )
+
+func main() {
+
+	service := CreateService("magic_backend")
+
+	magicUpdateSeconds = envvar.GetInt("MAGIC_UPDATE_SECONDS", 60)
+
+	fmt.Printf("magic update seconds: %d\n", magicUpdateSeconds)
+
+	service.router.HandleFunc("/magic", magicHandler).Methods("GET")
+
+	service.StartWebServer()
+
+	service.WaitForShutdown()
+}
 
 func hashCounter(counter int64) []byte {
 	hash := fnv.New64a()
@@ -84,60 +101,53 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(previousMagic[:])
 }
 
-func main() {
+// ---------------------------------------
 
-	serviceName := "magic_backend";
+type Service struct {
+	serviceName string
+	gitHash string
+	router mux.Router
+}
 
-	fmt.Printf("%s\n", serviceName)
+func CreateService(serviceName string) *Service {
 
-	fmt.Printf("git hash: %s\n", sha)
+	service := Service{}
+	service.serviceName = serviceName
+	service.gitHash = sha
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("error getting env: %v", err)
-		os.Exit(1)
-	}
+	fmt.Printf("%s\n", service.serviceName)
 
+	fmt.Printf("git hash: %s\n", service.gitHash)
+
+	env := backend.GetEnv()
+	
 	fmt.Printf("env: %s\n", env)
 
-	magicUpdateSeconds, _ = envvar.GetInt("MAGIC_UPDATE_SECONDS", 60)
+	service.router.HandleFunc("/health", transport.HealthHandlerFunc())
+	service.router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 
-	fmt.Printf("magic update seconds: %d\n", magicUpdateSeconds)
+	return &service
+}
 
-	// Start HTTP server
-	{
-		port := envvar.Get("PORT", "41007")
-		if port == "" {
-			core.Error("PORT not set")
+func (service *Service) StartWebServer() {
+	port := envvar.Get("HTTP_PORT", "80")
+	fmt.Printf("starting http server on port %s\n", port)
+	go func() {
+		err := http.ListenAndServe(":"+port, &service.router)
+		if err != nil {
+			core.Error("error starting http server: %v", err)
 			os.Exit(1)
 		}
+	}()
+}
 
-		fmt.Printf("starting http server on port %s\n", port)
-
-		router := mux.NewRouter()
-		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-		router.HandleFunc("/magic", magicHandler).Methods("GET")
-
-		go func() {
-			err := http.ListenAndServe(":"+port, router)
-			if err != nil {
-				core.Error("error starting http server: %v", err)
-				os.Exit(1)
-			}
-		}()
-	}
-
-	// Wait for shutdown signal
-
+func (service *Service) WaitForShutdown() {
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-
-	select {
-	case <-termChan:
-		core.Debug("received shutdown signal")
-		break
-	}
-
+	<-termChan
+	core.Debug("received shutdown signal")
+	// todo: probably need to wait for some stuff
 	core.Debug("successfully shutdown")
 }
+
+// ---------------------------------

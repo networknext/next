@@ -50,7 +50,7 @@ func test_magic_backend() {
 
 	cmd.Env = make([]string, 0)
 	cmd.Env = append(cmd.Env, "ENV=local")
-	cmd.Env = append(cmd.Env, "PORT=40000")
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40000")
 	cmd.Env = append(cmd.Env, "NEXT_DEBUG_LOGS=1")
 	cmd.Env = append(cmd.Env, "MAGIC_UPDATE_SECONDS=5s")
 
@@ -106,6 +106,9 @@ func test_magic_backend() {
 	time.Sleep(time.Second)
 
 	check_output("served magic values", cmd, stdout, stderr)
+
+	// todo: we really should cycle for like 30 seconds, requesting the data repeatedly
+	// ensuring that magic values move as expected from upcoming -> current -> previous
 
 	// test that the service shuts down cleanly
 
