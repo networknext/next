@@ -23,7 +23,7 @@ SDKNAME5 = libnext5
 RELAY_PORT ?= "2000"
 
 BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr \' \")
+COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
