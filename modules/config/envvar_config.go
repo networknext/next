@@ -9,13 +9,13 @@ type EnvVarConfig struct {
 func NewEnvVarConfig(overrideFeatures []Feature) *EnvVarConfig {
 	features := make([]Feature, NumFeatures)
 	for _, f := range defaultFeatures {
-		newValue, _ := envvar.GetBool(f.Name, f.Value)
+		newValue := envvar.GetBool(f.Name, f.Value)
 		f.Value = newValue
 		features[f.Enum] = f
 	}
 
 	for _, f := range overrideFeatures {
-		newValue, _ := envvar.GetBool(f.Name, f.Value)
+		newValue := envvar.GetBool(f.Name, f.Value)
 		f.Value = newValue
 		features[f.Enum] = f
 	}

@@ -44,11 +44,7 @@ func mainReturnWithCode() int {
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -62,11 +58,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
-	if err != nil {
-		core.Error("failed to parse NEXT_CUSTOMER_PUBLIC_KEY: %v", err)
-		return 1
-	}
+	customerPublicKey := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
 	customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
 
 	if !envvar.Exists("NEXT_CUSTOMER_PRIVATE_KEY") {
@@ -74,11 +66,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	customerPrivateKey, err := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
-	if err != nil {
-		core.Error("failed to parse NEXT_CUSTOMER_PRIVATE_KEY: %v", err)
-		return 1
-	}
+	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 
 	httpPort := envvar.Get("PORT", "50001")
 	if httpPort == "" {
@@ -106,65 +94,38 @@ func mainReturnWithCode() int {
 
 	lc := net.ListenConfig{}
 
-	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
-	if err != nil {
-		core.Error("failed to parse READ_BUFFER: %v", err)
-		return 1
-	}
-
-	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
-	if err != nil {
-		core.Error("failed to parse WRITE_BUFFER: %v", err)
-		return 1
-	}
+	readBuffer := envvar.GetInt("READ_BUFFER", 100000)
+	writeBuffer := envvar.GetInt("WRITE_BUFFER", 100000)
 
 	var serverBackendAddress *net.UDPAddr
 	if !envvar.Exists("SERVER_BACKEND_ADDRESS") {
+		var err error
 		serverBackendAddress, err = net.ResolveUDPAddr("udp", "127.0.0.1:40000")
 		if err != nil {
 			core.Error("failed to resolve default server backend udp address 127.0.0.1:40000: %v", err)
 			return 1
 		}
 	} else {
-		serverBackendAddress, err = envvar.GetAddress("SERVER_BACKEND_ADDRESS", serverBackendAddress)
-		if err != nil {
-			core.Error("failed to get SERVER_BACKEND_ADDRESS: %v", err)
-			return 1
-		}
+		serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", serverBackendAddress)
 	}
 
-	sendBeaconPackets, err := envvar.GetBool("SEND_NEXT_BEACON_PACKETS", false)
-	if err != nil {
-		core.Error("failed to parse SEND_NEXT_BEACON_PACKETS: %v", err)
-		return 1
-	}
+	sendBeaconPackets := envvar.GetBool("SEND_NEXT_BEACON_PACKETS", false)
 
 	var beaconAddress *net.UDPAddr
 	if !envvar.Exists("NEXT_BEACON_ADDRESS") {
+		var err error
 		beaconAddress, err = net.ResolveUDPAddr("udp", "127.0.0.1:35000")
 		if err != nil {
 			core.Error("failed to resolve default beacon udp address 127.0.0.1:35000: %v", err)
 			return 1
 		}
 	} else {
-		beaconAddress, err = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
-		if err != nil {
-			core.Error("failed to get NEXT_BEACON_ADDRESS: %v", err)
-			return 1
-		}
+		beaconAddress = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
 	}
 
-	numClients, err := envvar.GetInt("NUM_CLIENTS", 400)
-	if err != nil {
-		core.Error("failed to parse NUM_CLIENTS: %v", err)
-		return 1
-	}
+	numClients := envvar.GetInt("NUM_CLIENTS", 400)
 
-	maxClientsPerServer, err := envvar.GetInt("MAX_CLIENTS_PER_SERVER", 200)
-	if err != nil {
-		core.Error("failed to parse MAX_CLIENTS_PER_SERVER: %v", err)
-		return 1
-	}
+	maxClientsPerServer := envvar.GetInt("MAX_CLIENTS_PER_SERVER", 200)
 
 	numServers := int(math.Ceil(float64(numClients) / float64(maxClientsPerServer)))
 
