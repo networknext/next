@@ -103,6 +103,8 @@ func test_magic_backend() {
 
 	_ = data
 
+	time.Sleep(time.Second)
+
 	check_output("served magic values", cmd, stdout, stderr)
 
 	// test that the service shuts down cleanly
