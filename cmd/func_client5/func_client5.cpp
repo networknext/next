@@ -38,9 +38,13 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandwidth )
+void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandwidth, bool big_packets )
 {
-    if ( high_bandwidth )
+    if ( big_packets )
+    {
+        packet_bytes = NEXT_MAX_PACKET_BYTES - 1;
+    }
+    else if ( high_bandwidth )
     {
         packet_bytes = NEXT_MTU;
     }
@@ -59,7 +63,7 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes, bool high_bandw
 void verify_packet( const uint8_t * packet_data, int packet_bytes )
 {
     next_assert( packet_bytes >= 32 );
-    next_assert( packet_bytes <= NEXT_MTU );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes - 32; ++i )
     {
@@ -203,6 +207,13 @@ int main()
         high_bandwidth = true;
     }
 
+    bool big_packets = false;
+    const char * big_packets_env = getenv( "CLIENT_BIG_PACKETS" );
+    if ( big_packets_env )
+    {
+        big_packets = true;
+    }
+
     double time = 0.0;
     double delta_time = 1.0 / 60.0;
 
@@ -229,7 +240,7 @@ int main()
             memset( packet_data, 0, sizeof( packet_data ) );
 
             int packet_bytes = 0;
-            generate_packet( packet_data, packet_bytes, high_bandwidth );
+            generate_packet( packet_data, packet_bytes, high_bandwidth, big_packets );
 
             next_client_send_packet( client, packet_data, packet_bytes );
         }

@@ -75,7 +75,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the number of fake relays to produce
-	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 10)
+	numRelays := envvar.GetInt("NUM_FAKE_RELAYS", 10)
 	if err != nil {
 		core.Error("failed to parse NUM_FAKE_RELAYS: %v", err)
 		return 1
@@ -93,11 +93,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the relay update version
-	relayUpdateVersion, err := envvar.GetInt("RELAY_UPDATE_VERSION", 4)
-	if err != nil {
-		core.Error("failed to parse RELAY_UPDATE_VERSION: %v", err)
-		return 1
-	}
+	relayUpdateVersion := envvar.GetInt("RELAY_UPDATE_VERSION", 4)
 
 	// Create all the fake relays
 	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, fakeRelayMetrics)
