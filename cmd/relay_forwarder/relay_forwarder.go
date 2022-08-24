@@ -51,11 +51,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -169,10 +165,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_update", transport.ForwardPostHandlerFunc(forwarderParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
-	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-	if err != nil {
-		core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
-	}
+	enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if enablePProf {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
