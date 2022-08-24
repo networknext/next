@@ -55,11 +55,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("error getting env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
@@ -84,24 +80,11 @@ func mainReturnWithCode() int {
 	}
 
 	// Determine how frequently we should publish ping and relay stats
-	pingStatsPublishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", 1*time.Minute)
-	if err != nil {
-		core.Error("error getting PING_STATS_PUBLISH_INTERVAL: %v", err)
-		return 1
-	}
-
-	relayStatsPublishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", 10*time.Second)
-	if err != nil {
-		core.Error("error getting RELAY_STATS_PUBLISH_INTERVAL: %v", err)
-		return 1
-	}
+	pingStatsPublishInterval := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", 1*time.Minute)
+	relayStatsPublishInterval := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", 10*time.Second)
 
 	// Get HTTP timeout for route matrix
-	httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", 4*time.Second)
-	if err != nil {
-		core.Error("error getting HTTP_TIMEOUT: %v", err)
-		return 1
-	}
+	httpTimeout := envvar.GetDuration("HTTP_TIMEOUT", 4*time.Second)
 
 	// Get route matrix URI
 	routeMatrixURI := envvar.Get("ROUTE_MATRIX_URI", "")
@@ -111,11 +94,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get route matrix stale duration
-	routeMatrixStaleDuration, err := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
-	if err != nil {
-		core.Error("error getting ROUTE_MATRIX_STALE_DURATION: %v", err)
-		return 1
-	}
+	routeMatrixStaleDuration := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
 
 	// Setup ping stats and relay stats publishers
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
@@ -260,10 +239,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
