@@ -52,7 +52,7 @@ func test_magic_backend() {
 	cmd.Env = append(cmd.Env, "ENV=local")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40000")
 	cmd.Env = append(cmd.Env, "NEXT_DEBUG_LOGS=1")
-	cmd.Env = append(cmd.Env, "MAGIC_UPDATE_SECONDS=5s")
+	cmd.Env = append(cmd.Env, "MAGIC_UPDATE_SECONDS=5")
 
 	err := cmd.Start()
 	if err != nil {
@@ -94,21 +94,75 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	data, error := ioutil.ReadAll(response.Body)
+	magicData, error := ioutil.ReadAll(response.Body)
    	if error != nil {
       	fmt.Printf("error: failed to read magic response data\n")
 		cmd.Process.Signal(syscall.SIGTERM)
 		os.Exit(1)
 	}
 
-	_ = data
-
 	time.Sleep(time.Second)
 
 	check_output("served magic values", cmd, stdout, stderr)
 
-	// todo: we really should cycle for like 30 seconds, requesting the data repeatedly
-	// ensuring that magic values move as expected from upcoming -> current -> previous
+	// test that the magic values shuffle from upcoming -> current -> previous over time
+
+	var upcomingMagic [8]byte
+	var currentMagic [8]byte
+	var previousMagic [8]byte
+
+	copy(upcomingMagic[:], magicData[0:8])
+	copy(currentMagic[:], magicData[8:16])
+	copy(previousMagic[:], magicData[16:24])
+
+	magicUpdates := 0
+
+	for i := 0; i < 30; i++ {
+
+		response, err = http.Get("http://127.0.0.1:40000/magic")
+		if err != nil || response.StatusCode != 200 {
+			fmt.Printf("error: magic endpoint failed\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		magicData, error := ioutil.ReadAll(response.Body)
+	   	if error != nil {
+	      	fmt.Printf("error: failed to read magic response data\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		if bytes.Compare(magicData[0:8], upcomingMagic[:]) != 0 {
+
+			magicUpdates++
+
+			if bytes.Compare(magicData[8:16], upcomingMagic[:]) != 0 {
+		      	fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
+				cmd.Process.Signal(syscall.SIGTERM)
+				os.Exit(1)
+			}
+
+			if bytes.Compare(magicData[16:24], currentMagic[:]) != 0 {
+		      	fmt.Printf("error: did not see current magic shuffle to previous magic\n")
+				cmd.Process.Signal(syscall.SIGTERM)
+				os.Exit(1)
+			}
+
+			copy(upcomingMagic[:], magicData[0:8])
+			copy(currentMagic[:], magicData[8:16])
+			copy(previousMagic[:], magicData[16:24])
+		}
+
+		time.Sleep(time.Second)
+
+	}
+
+	// we should see 5 or 6 magic updates (30 seconds with updates once every 5 seconds...)
+
+	if magicUpdates != 5 && magicUpdates != 6 {
+		fmt.Printf("error: did not see magic values update every 5 seconds")		
+	}
 
 	// test that the service shuts down cleanly
 
