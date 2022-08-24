@@ -71,11 +71,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
@@ -116,17 +112,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	dbSyncInterval, err := envvar.GetDuration("DB_SYNC_INTERVAL", time.Minute*1)
-	if err != nil {
-		core.Error("failed to parse DB_SYNC_INTERVAL: %v", err)
-		return 1
-	}
+	dbSyncInterval := envvar.GetDuration("DB_SYNC_INTERVAL", time.Minute*1)
 
 	overlayBinFileName := envvar.Get("OVERLAY_FILE_NAME", "")
-	if overlayBinFileName == "" {
-		core.Error("OVERLAY_FILE_NAME not set")
-		return 1
-	}
 
 	overlayBinFileOutputLocation := envvar.Get("OVERLAY_OUTPUT_LOCATION", "")
 	if overlayBinFileOutputLocation == "" {
@@ -134,11 +122,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	binFileGCPTimeout, err := envvar.GetDuration("BIN_FILE_GCP_TIMEOUT", time.Second*5)
-	if err != nil {
-		core.Error("failed to parse BIN_FILE_GCP_TIMEOUT: %v", err)
-		return 1
-	}
+	binFileGCPTimeout := envvar.GetDuration("BIN_FILE_GCP_TIMEOUT", time.Second*5)
 
 	remoteDBLocations := make([]string, 0)
 
@@ -229,35 +213,11 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup maxmind download and sync go routine
-	maxmindISPDownloadInterval, err := envvar.GetDuration("MAXMIND_ISP_DOWNLOAD_DB_INTERVAL", time.Hour*24)
-	if err != nil {
-		core.Error("failed to parse MAXMIND_ISP_DOWNLOAD_DB_INTERVAL: %v", err)
-		return 1
-	}
-
-	maxmindISPSyncInterval, err := envvar.GetDuration("MAXMIND_ISP_SYNC_DB_INTERVAL", time.Hour*25)
-	if err != nil {
-		core.Error("failed to parse MAXMIND_ISP_SYNC_DB_INTERVAL: %v", err)
-		return 1
-	}
-
-	maxmindCityDownloadInterval, err := envvar.GetDuration("MAXMIND_CITY_DOWNLOAD_DB_INTERVAL", time.Hour*24)
-	if err != nil {
-		core.Error("failed to parse MAXMIND_CITY_DOWNLOAD_DB_INTERVAL: %v", err)
-		return 1
-	}
-
-	maxmindCitySyncInterval, err := envvar.GetDuration("MAXMIND_CITY_SYNC_DB_INTERVAL", time.Hour*25)
-	if err != nil {
-		core.Error("failed to parse MAXMIND_CITY_SYNC_DB_INTERVAL: %v", err)
-		return 1
-	}
-
-	maxmindServerBackendSync, err := envvar.GetBool("MAXMIND_SERVER_BACKEND_SYNC", false)
-	if err != nil {
-		core.Error("failed to parse MAXMIND_SERVER_BACKEND_SYNC: %v", err)
-		return 1
-	}
+	maxmindISPDownloadInterval := envvar.GetDuration("MAXMIND_ISP_DOWNLOAD_DB_INTERVAL", time.Hour*24)
+	maxmindISPSyncInterval := envvar.GetDuration("MAXMIND_ISP_SYNC_DB_INTERVAL", time.Hour*25)
+	maxmindCityDownloadInterval := envvar.GetDuration("MAXMIND_CITY_DOWNLOAD_DB_INTERVAL", time.Hour*24)
+	maxmindCitySyncInterval := envvar.GetDuration("MAXMIND_CITY_SYNC_DB_INTERVAL", time.Hour*25)
+	maxmindServerBackendSync := envvar.GetBool("MAXMIND_SERVER_BACKEND_SYNC", false)
 
 	// Maxmind ISP download goroutine
 	var maxmindISPMutex sync.RWMutex
@@ -846,10 +806,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}

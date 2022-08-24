@@ -60,11 +60,7 @@ func mainReturnWithCode() int {
 	gcpProjectID := backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("error getting env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
@@ -99,13 +95,9 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", md.DefaultBigQueryBatchSize)
-		if err != nil {
-			core.Error("could not parse GOOGLE_BIGQUERY_BATCH_SIZE: %v", err)
-			return 1
-		}
+		batchSize  := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", md.DefaultBigQueryBatchSize)
 
-		batchSizePercent, err := envvar.GetFloat("GOOGLE_BIGQUERY_BATCH_SIZE_PERCENT", 0.80)
+		batchSizePercent := envvar.GetFloat("GOOGLE_BIGQUERY_BATCH_SIZE_PERCENT", 0.80)
 		if err != nil {
 			core.Error("could not parse GOOGLE_BIGQUERY_BATCH_SIZE_PERCENT: %v", err)
 			return 1
@@ -152,30 +144,10 @@ func mainReturnWithCode() int {
 	if gcpOK || emulatorOK {
 		// Google pubsub forwarder
 		{
-			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
-			if err != nil {
-				core.Error("could not parse NUM_RECEIVE_GOROUTINES: %v", err)
-				return 1
-			}
-
-			entryVeto, err := envvar.GetBool("MATCH_DATA_ENTRY_VETO", false)
-			if err != nil {
-				core.Error("could not parse MATCH_DATA_ENTRY_VETO: %v", err)
-				return 1
-			}
-
-			maxRetries, err := envvar.GetInt("MATCH_DATA_MAX_RETRIES", 25)
-			if err != nil {
-				core.Error("could not parse MATCH_DATA_MAX_RETRIES: %v", err)
-				return 1
-			}
-
-			retryTime, err := envvar.GetDuration("MATCH_DATA_RETRY_TIME", time.Second*1)
-			if err != nil {
-				core.Error("could not parse MATCH_DATA_RETRY_TIME: %v", err)
-				return 1
-			}
-
+			numRecvGoroutines := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
+			entryVeto := envvar.GetBool("MATCH_DATA_ENTRY_VETO", false)
+			maxRetries := envvar.GetInt("MATCH_DATA_MAX_RETRIES", 25)
+			retryTime := envvar.GetDuration("MATCH_DATA_RETRY_TIME", time.Second*1)
 			topicName := envvar.Get("MATCH_DATA_TOPIC_NAME", "match_data")
 			subscriptionName := envvar.Get("MATCH_DATA_SUBSCRIPTION_NAME", "match_data")
 
@@ -265,10 +237,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}

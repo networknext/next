@@ -51,23 +51,14 @@ func mainReturnWithCode() int {
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
-	if err != nil {
-		core.Error("could not parse NEXT_DEBUG: %v", err)
-		isDebug = false
-	}
-
+	isDebug := envvar.GetBool("NEXT_DEBUG", false)
 	if isDebug {
 		core.Debug("running as debug")
 	}
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("could not get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	// FUCK THIS LOGGING SYSTEM!!!
 	logger := log.NewNopLogger()
@@ -152,10 +143,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("invalid FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
@@ -185,11 +173,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	estimatedPeakSessionCount, err := envvar.GetInt("GHOST_ARMY_PEAK_SESSION_COUNT", 25000)
-	if err != nil {
-		core.Error("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v", err)
-		return 1
-	}
+	estimatedPeakSessionCount := envvar.GetInt("GHOST_ARMY_PEAK_SESSION_COUNT", 25000)
 
 	infile := envvar.Get("GHOST_ARMY_BIN", "")
 	if infile == "" {
@@ -301,11 +285,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
-		if err != nil {
-			core.Error("could not parse envvar POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v", err)
-			return 1
-		}
+		postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, int(postSessionPortalSendBufferSize))

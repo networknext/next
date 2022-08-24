@@ -114,11 +114,7 @@ func mainReturnWithCode() int {
 	est, _ := time.LoadLocation("EST")
 	startTime = time.Now().In(est)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
-	if err != nil {
-		core.Error("Failed to get debug status")
-		isDebug = false
-	}
+	isDebug := envvar.GetBool("NEXT_DEBUG", false)
 
 	if isDebug {
 		core.Debug("Instance is running as a debug instance")
@@ -134,11 +130,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -196,39 +188,23 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	maxJitter, err := envvar.GetFloat("RELAY_ROUTER_MAX_JITTER", 0)
-	if err != nil {
-		core.Error("failed to parse RELAY_ROUTER_MAX_JITTER %v", err)
-		return 1
-	}
+	maxJitter := envvar.GetFloat("RELAY_ROUTER_MAX_JITTER", 0)
 
 	if !envvar.Exists("RELAY_ROUTER_MAX_PACKET_LOSS") {
 		core.Error("RELAY_ROUTER_MAX_PACKET_LOSS not set")
 		return 1
 	}
 
-	maxPacketLoss, err := envvar.GetFloat("RELAY_ROUTER_MAX_PACKET_LOSS", 0)
-	if err != nil {
-		core.Error("failed to parse RELAY_ROUTER_MAX_PACKET_LOSS: %v", err)
-		return 1
-	}
+	maxPacketLoss := envvar.GetFloat("RELAY_ROUTER_MAX_PACKET_LOSS", 0)
 
 	if !envvar.Exists("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE") {
 		core.Error("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE not set")
 		return 1
 	}
 
-	maxBandwidthPercentage, err := envvar.GetFloat("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE", 0)
-	if err != nil {
-		core.Error("failed to parse RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE: %v", err)
-		return 1
-	}
+	maxBandwidthPercentage := envvar.GetFloat("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE", 0)
 
-	featureRelayFullBandwidth, err := envvar.GetBool("FEATURE_RELAY_FULL_BANDWIDTH", false)
-	if err != nil {
-		core.Error("failed to parse FEATURE_RELAY_FULL_BANDWIDTH: %v", err)
-		return 1
-	}
+	featureRelayFullBandwidth := envvar.GetBool("FEATURE_RELAY_FULL_BANDWIDTH", false)
 
 	instanceID, err := backend.GetInstanceID(env)
 	if err != nil {
@@ -276,12 +252,8 @@ func mainReturnWithCode() int {
 			core.Error("%s does not exist: %v", overlayAbsPath, err)
 		}
 
-		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
-		if err != nil {
-			core.Error("failed to parse BIN_SYNC_INTERVAL: %v", err)
-			return 1
-		}
-
+		binSyncInterval := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		
 		// Setup goroutine to watch for latest database file and update relayArray_internal and relayHash_internal
 		wg.Add(1)
 		go func() {
@@ -411,10 +383,7 @@ func mainReturnWithCode() int {
 	}()
 
 	var gcBucket *gcStorage.BucketHandle
-	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
-	if err != nil {
-		core.Error("failed to parse FEATURE_MATRIX_CLOUDSTORE: %v", err)
-	}
+	gcStoreActive := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
 	if gcStoreActive {
 		gcBucket, err = GCStoreConnect(ctx, gcpProjectID)
 		if err != nil {
@@ -422,17 +391,9 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	syncInterval, err := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
-	if err != nil {
-		core.Error("failed to parse COST_MATRIX_INTERVAL: %v", err)
-		return 1
-	}
+	syncInterval := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 
-	matrixBufferSize, err := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
-	if err != nil {
-		core.Error("failed to parse MATRIX_BUFFER_SIZE: %v", err)
-		return 1
-	}
+	matrixBufferSize := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
 
 	port := envvar.Get("PORT", "30001")
 	if port == "" {
@@ -468,35 +429,15 @@ func mainReturnWithCode() int {
 
 		matrixStorePassword := envvar.Get("MATRIX_STORE_PASSWORD", "")
 
-		maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
-		if err != nil {
-			core.Error("failed to parse MATRIX_STORE_MAX_IDLE_CONNS: %v", err)
-			return 1
-		}
+		maxIdleConnections := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
 
-		maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
-		if err != nil {
-			core.Error("failed to parse MATRIX_STORE_MAX_ACTIVE_CONNS: %v", err)
-			return 1
-		}
+		maxActiveConnections := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
 
-		readTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
-		if err != nil {
-			core.Error("failed to parse MATRIX_STORE_READ_TIMEOUT: %v", err)
-			return 1
-		}
+		readTimeout := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
 
-		writeTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
-		if err != nil {
-			core.Error("failed to parse MATRIX_STORE_WRITE_TIMEOUT: %v", err)
-			return 1
-		}
+		writeTimeout := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 
-		expireTimeout, err := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
-		if err != nil {
-			core.Error("failed to parse MATRIX_STORE_EXPIRE_TIMEOUT: %v", err)
-			return 1
-		}
+		expireTimeout := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
 
 		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, matrixStorePassword, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
 		if err != nil {
@@ -1142,10 +1083,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relays", serveRelaysFunc)
 	router.HandleFunc("/cost_matrix", serveCostMatrixFunc)
 
-	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-	if err != nil {
-		core.Error("failed to parse FEATURE_ENABLE_PPROF: %v", err)
-	}
+	enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if enablePProf {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}

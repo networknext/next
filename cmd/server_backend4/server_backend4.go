@@ -73,12 +73,7 @@ func mainReturnWithCode() int {
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
-	if err != nil {
-		core.Error("could not parse NEXT_DEBUG: %v", err)
-		isDebug = false
-	}
-
+	isDebug := envvar.GetBool("NEXT_DEBUG", false)
 	if isDebug {
 		core.Debug("running as debug")
 	}
@@ -87,11 +82,7 @@ func mainReturnWithCode() int {
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("could not get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	//Get Server Backend MIG name
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
@@ -133,7 +124,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
+	privateKey := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
 		core.Error("invalid SERVER_BACKEND_PRIVATE_KEY: %v", err)
 		return 1
@@ -144,9 +135,9 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if err != nil {
-		core.Error("invalid RELAY_ROUTER_PRIVATE_KEY: %v", err)
+	routerPrivateKeySlice := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+	if routerPrivateKeySlice == nil {
+		core.Error("invalid RELAY_ROUTER_PRIVATE_KEY")
 		return 1
 	}
 
@@ -189,10 +180,7 @@ func mainReturnWithCode() int {
 
 	// Sync mmdb
 	{
-		maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
-		if err != nil {
-			maxmindSyncInterval = time.Minute * 1
-		}
+		maxmindSyncInterval := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute)
 
 		go func() {
 			ticker := time.NewTicker(maxmindSyncInterval)
@@ -277,23 +265,11 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
-		if err != nil {
-			core.Error("invalid ROUTE_MATRIX_SYNC_INTERVAL: %v", err)
-			return 1
-		}
+		syncInterval := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 
-		readTimeout, err := envvar.GetDuration("ROUTE_MATRIX_READ_DURATION", 10*time.Second)
-		if err != nil {
-			core.Error("invaild ROUTE_MATRIX_READ_DURATION: %v", err)
-			return 1
-		}
+		readTimeout := envvar.GetDuration("ROUTE_MATRIX_READ_DURATION", 10*time.Second)
 
-		staleDuration, err = envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
-		if err != nil {
-			core.Error("invalid ROUTE_MATRIX_STALE_DURATION: %v", err)
-			return 1
-		}
+		staleDuration = envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
 
 		go func() {
 			httpClient := &http.Client{
@@ -450,28 +426,12 @@ func mainReturnWithCode() int {
 
 		// Google Pubsub for billing
 		{
-			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
-			if err != nil {
-				core.Error("invalid BILLING_CLIENT_COUNT: %v", err)
-				return 1
-			}
+			clientCount := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 
-			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
-			if err != nil {
-				core.Error("invalid BILLING_BATCHED_MESSAGE_COUNT: %v", err)
-				return 1
-			}
+			countThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
 
-			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
-			if err != nil {
-				core.Error("invalid BILLING_BATCHED_MESSAGE_MIN_BYTES: %v", err)
-				return 1
-			}
+			byteThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
 
-			// todo: why don't we remove our batching, and just use theirs instead? less code = less problems...
-
-			// We do our own batching so don't stack the library's batching on top of ours
-			// Specifically, don't stack the message count thresholds
 			settings := googlepubsub.DefaultPublishSettings
 			settings.CountThreshold = 1
 			settings.ByteThreshold = byteThreshold
@@ -492,28 +452,12 @@ func mainReturnWithCode() int {
 
 		// Google Pubsub for match data
 		{
-			clientCount, err := envvar.GetInt("MATCH_DATA_CLIENT_COUNT", 1)
-			if err != nil {
-				core.Error("invalid MATCH_DATA_CLIENT_COUNT: %v", err)
-				return 1
-			}
+			clientCount := envvar.GetInt("MATCH_DATA_CLIENT_COUNT", 1)
 
-			countThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
-			if err != nil {
-				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_COUNT: %v", err)
-				return 1
-			}
+			countThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
 
-			byteThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
-			if err != nil {
-				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES: %v", err)
-				return 1
-			}
+			byteThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
 
-			// todo: why don't we remove our batching, and just use theirs instead? less code = less problems...
-
-			// We do our own batching so don't stack the library's batching on top of ours
-			// Specifically, don't stack the message count thresholds
 			settings := googlepubsub.DefaultPublishSettings
 			settings.CountThreshold = 1
 			settings.ByteThreshold = byteThreshold
@@ -536,11 +480,7 @@ func mainReturnWithCode() int {
 	{
 		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
-		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
-		if err != nil {
-			core.Error("invalid POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v", err)
-			return 1
-		}
+		postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
@@ -553,19 +493,11 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
-	if err != nil {
-		core.Error("invalid POST_SESSION_THREAD_COUNT: %v", err)
-		return 1
-	}
+	numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 
-	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
-	if err != nil {
-		core.Error("invalid POST_SESSION_BUFFER_SIZE: %v", err)
-		return 1
-	}
+	postSessionBufferSize := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 
-	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
+	postSessionPortalMaxRetries := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
 		core.Error("invalid POST_SESSION_PORTAL_MAX_RETRIES: %v", err)
 		return 1
@@ -591,24 +523,10 @@ func mainReturnWithCode() int {
 	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "")
 	if redisMultipathVetoHost != "" {
 		redisMultipathVetoPassword := envvar.Get("REDIS_PASSWORD_MULTIPATH_VETO", "")
-		redisMultipathVetoMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
-		if err != nil {
-			core.Error("invalid REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO: %v", err)
-			return 1
-		}
-		redisMultipathVetoMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
-		if err != nil {
-			core.Error("invalid REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO: %v", err)
-			return 1
-		}
+		redisMultipathVetoMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
+		redisMultipathVetoMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
 
-		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
-		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
-		if err != nil {
-			core.Error("invalid MULTIPATH_VETO_SYNC_FREQUENCY: %v", err)
-			return 1
-		}
-
+		multipathVetoSyncFrequency := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, redisMultipathVetoPassword, redisMultipathVetoMaxIdleConns, redisMultipathVetoMaxActiveConns, getDatabase)
 		if err != nil {
 			core.Error("could not create redis multipath veto handler: %v", err)
@@ -652,11 +570,7 @@ func mainReturnWithCode() int {
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
-	if err != nil {
-		core.Error("invalid AUTH0_CERT_INTERVAL: %v", err)
-		return 1
-	}
+	fetchAuthCertInterval := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 
 	go func() {
 		ticker := time.NewTicker(fetchAuthCertInterval)
@@ -857,10 +771,7 @@ func mainReturnWithCode() int {
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
 		router.Handle("/servers", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("invalid FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
@@ -882,11 +793,7 @@ func mainReturnWithCode() int {
 		}()
 
 		if gcpProjectID != "" {
-			metadataSyncInterval, err := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
-			if err != nil {
-				core.Error("invalid METADATA_SYNC_INTERVAL: %v", err)
-				return 1
-			}
+			metadataSyncInterval := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
 			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
 
 			// Start a goroutine to shutdown the HTTP server when the metadata changes
@@ -929,24 +836,9 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
-	if err != nil {
-		core.Error("invalid NUM_THREADS: %v", err)
-		return 1
-	}
-
-	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
-	if err != nil {
-		core.Error("invalid READ_BUFFER: %v", err)
-		return 1
-	}
-
-	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
-	if err != nil {
-		core.Error("invalid WRITE_BUFFER: %v", err)
-		return 1
-	}
-
+	numThreads := envvar.GetInt("NUM_THREADS", 1)
+	readBuffer := envvar.GetInt("READ_BUFFER", 100000)
+	writeBuffer := envvar.GetInt("WRITE_BUFFER", 100000)
 	udpPort := envvar.Get("UDP_PORT", "40000")
 
 	var wg sync.WaitGroup
