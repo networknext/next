@@ -58,11 +58,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("could not get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	if gcpOK {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -98,11 +94,7 @@ func mainReturnWithCode() int {
 				return 1
 			}
 
-			pingStatsToPublishAtOnce, err := envvar.GetInt("PING_STATS_TO_PUBLISH_AT_ONCE", 10000)
-			if err != nil {
-				core.Error("could not parse PING_STATS_TO_PUBLISH_AT_ONCE: %v", err)
-				return 1
-			}
+			pingStatsToPublishAtOnce := envvar.GetInt("PING_STATS_TO_PUBLISH_AT_ONCE", 10000)
 
 			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
@@ -262,10 +254,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}

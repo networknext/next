@@ -441,12 +441,13 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 // Returns a slice of Row structs, which is a map of a column family name as the key
 // to a slice of ReadItem structs
 // See: https://godoc.org/cloud.google.com/go/bigtable#Row
-// type ReadItem struct {
-//     Row, Column string
-//     Timestamp   Timestamp
-//     Value       []byte
-//     Labels      []string
-// }
+//
+//	type ReadItem struct {
+//	    Row, Column string
+//	    Timestamp   Timestamp
+//	    Value       []byte
+//	    Labels      []string
+//	}
 func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
 	// Get a range of all rows starting with a prefix
 	prefixRange := bigtable.PrefixRange(prefix)
@@ -475,12 +476,13 @@ func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts .
 // to a slice of ReadItem structs
 // NOTE: Missing rows (or rows that do not exist) return a zero-length map
 // See: https://godoc.org/cloud.google.com/go/bigtable#Row
-// type ReadItem struct {
-//     Row, Column string
-//     Timestamp   Timestamp
-//     Value       []byte
-//     Labels      []string
-// }
+//
+//	type ReadItem struct {
+//	    Row, Column string
+//	    Timestamp   Timestamp
+//	    Value       []byte
+//	    Labels      []string
+//	}
 func (bt *BigTable) GetRowWithRowKey(ctx context.Context, rowKey string, opts ...bigtable.ReadOption) (bigtable.Row, error) {
 
 	r, err := bt.SessionTable.ReadRow(ctx, rowKey, opts...)
