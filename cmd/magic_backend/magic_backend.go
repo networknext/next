@@ -18,8 +18,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// ------------------------------------
-
 var magicUpdateSeconds int
 
 var (
@@ -120,7 +118,7 @@ func CreateService(serviceName string) *Service {
 	fmt.Printf("git hash: %s\n", service.gitHash)
 
 	env := backend.GetEnv()
-	
+
 	fmt.Printf("env: %s\n", env)
 
 	service.router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -146,7 +144,7 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Debug("received shutdown signal")
-	// todo: probably need to wait for some stuff
+	// todo: probably need to wait for some stuff...
 	core.Debug("successfully shutdown")
 }
 

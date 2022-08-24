@@ -107,11 +107,7 @@ func mainReturnWithCode() int {
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
-	if err != nil {
-		core.Error("invalid AUTH0_CERT_INTERVAL: %v", err)
-		return 1
-	}
+	fetchAuthCertInterval := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 
 	go func() {
 		ticker := time.NewTicker(fetchAuthCertInterval)
@@ -129,11 +125,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	matrixSyncInterval, err := envvar.GetDuration("MATRIX_SYNC_INTERVAL", time.Second*1)
-	if err != nil {
-		core.Error("invalid MATRIX_SYNC_INTERVAL: %v", err)
-		return 1
-	}
+	matrixSyncInterval := envvar.GetDuration("MATRIX_SYNC_INTERVAL", time.Second*1)
 
 	// Start a goroutine for updating the master relay backend
 	go func() {
@@ -307,10 +299,7 @@ func mainReturnWithCode() int {
 		jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
 		router.Handle("/relay_dashboard_analysis", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
@@ -347,19 +336,12 @@ func mainReturnWithCode() int {
 
 func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
 	cfg := new(frontend.RelayFrontendConfig)
-	var err error
 
 	cfg.Env = envvar.Get("ENV", "local")
 
-	cfg.MasterTimeVariance, err = envvar.GetDuration("MASTER_TIME_VARIANCE", 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
+	cfg.MasterTimeVariance = envvar.GetDuration("MASTER_TIME_VARIANCE", 5*time.Second)
 
-	cfg.UpdateRetryCount, err = envvar.GetInt("UPDATE_RETRY_COUNT", 5)
-	if err != nil {
-		return nil, err
-	}
+	cfg.UpdateRetryCount = envvar.GetInt("UPDATE_RETRY_COUNT", 5)
 
 	cfg.MatrixStoreAddress = envvar.Get("MATRIX_STORE_ADDRESS", "")
 	if cfg.MatrixStoreAddress == "" {
@@ -368,32 +350,17 @@ func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
 
 	cfg.MatrixStorePassword = envvar.Get("MATRIX_STORE_PASSWORD", "")
 
-	maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
-	if err != nil {
-		return nil, err
-	}
+	maxIdleConnections := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
 	cfg.MSMaxIdleConnections = maxIdleConnections
 
-	maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
-	if err != nil {
-		return nil, err
-	}
+	maxActiveConnections := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
 	cfg.MSMaxActiveConnections = maxActiveConnections
 
-	cfg.MSReadTimeout, err = envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
-	if err != nil {
-		return nil, err
-	}
+	cfg.MSReadTimeout = envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
 
-	cfg.MSWriteTimeout, err = envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
-	if err != nil {
-		return nil, err
-	}
+	cfg.MSWriteTimeout = envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
 
-	cfg.MSMatrixExpireTimeout, err = envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
-	if err != nil {
-		return nil, err
-	}
+	cfg.MSMatrixExpireTimeout = envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
 
 	return cfg, nil
 }
