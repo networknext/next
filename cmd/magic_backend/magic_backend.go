@@ -3,19 +3,13 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"hash/fnv"
 	"encoding/binary"
 	"time"
 
-	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/transport"
-
-	"github.com/gorilla/mux"
+	"github.com/networknext/backend/modules/common"
 )
 
 var magicUpdateSeconds int
@@ -29,13 +23,13 @@ var (
 
 func main() {
 
-	service := CreateService("magic_backend")
+	service := common.CreateService("magic_backend")
 
 	magicUpdateSeconds = envvar.GetInt("MAGIC_UPDATE_SECONDS", 60)
 
 	fmt.Printf("magic update seconds: %d\n", magicUpdateSeconds)
 
-	service.router.HandleFunc("/magic", magicHandler).Methods("GET")
+	service.Router.HandleFunc("/magic", magicHandler).Methods("GET")
 
 	service.StartWebServer()
 
@@ -98,54 +92,3 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(currentMagic[:])
 	w.Write(previousMagic[:])
 }
-
-// ---------------------------------------
-
-type Service struct {
-	serviceName string
-	gitHash string
-	router mux.Router
-}
-
-func CreateService(serviceName string) *Service {
-
-	service := Service{}
-	service.serviceName = serviceName
-	service.gitHash = sha
-
-	fmt.Printf("%s\n", service.serviceName)
-
-	fmt.Printf("git hash: %s\n", service.gitHash)
-
-	env := backend.GetEnv()
-
-	fmt.Printf("env: %s\n", env)
-
-	service.router.HandleFunc("/health", transport.HealthHandlerFunc())
-	service.router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-
-	return &service
-}
-
-func (service *Service) StartWebServer() {
-	port := envvar.Get("HTTP_PORT", "80")
-	fmt.Printf("starting http server on port %s\n", port)
-	go func() {
-		err := http.ListenAndServe(":"+port, &service.router)
-		if err != nil {
-			core.Error("error starting http server: %v", err)
-			os.Exit(1)
-		}
-	}()
-}
-
-func (service *Service) WaitForShutdown() {
-	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-	<-termChan
-	core.Debug("received shutdown signal")
-	// todo: probably need to wait for some stuff...
-	core.Debug("successfully shutdown")
-}
-
-// ---------------------------------
