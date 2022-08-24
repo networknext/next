@@ -1,15 +1,12 @@
 #!make
 
-# IMPORTANT: Select environment before you run thi¡ makefile, eg. "next select local", "next select dev5"
+# IMPORTANT: Select environment before you run this makefile, eg. "next select local", "next select dev5"
 include .env
 export $(shell sed 's/=.*//' .env)
 
 CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1
 GO = go
 GOFMT = gofmt
-TAR = tar
-
-export LD_LIBRARY_PATH=.
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
@@ -26,21 +23,15 @@ SDKNAME5 = libnext5
 RELAY_PORT ?= "2000"
 
 BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B)
-COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
+COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr \' \")
+COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
-CURRENT_DIR = $(shell pwd -P)
-DIST_DIR = ./dist
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://production_artifacts
 ARTIFACT_BUCKET_PROD_DEBUG = gs://prod_debug_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
-SYSTEMD_SERVICE_FILE = app.service
-
-COST_FILE = $(DIST_DIR)/cost.bin
-OPTIMIZE_FILE = $(DIST_DIR)/optimize.bin
 
 ####################
 ##    RELAY ENV   ##
@@ -306,7 +297,7 @@ help:
 
 .PHONY: dist
 dist:
-	@mkdir -p $(DIST_DIR)
+	@mkdir -p dist
 
 #####################
 ##   Happy Path    ##
@@ -356,7 +347,7 @@ dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
-	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) $(DIST_DIR)/reference_relay
+	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
 
 .PHONY: dev-magic-backend
 dev-magic-backend: build-magic-backend ## runs a local magic backend
@@ -367,66 +358,66 @@ dev-magic-backend: build-magic-backend ## runs a local magic backend
 .PHONY: build-test-server4
 build-test-server4: build-sdk4
 	@printf "Building test server 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-server4
 build-server4: build-sdk4
 	@printf "Building server 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-client4
 build-client4: build-sdk4
 	@printf "Building client 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-test4
 build-test4: build-sdk4
 	@printf "Building test 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-test-server5
 build-test-server5: build-sdk5
 	@printf "Building test server 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-server5
 build-server5: build-sdk5
 	@printf "Building server 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-client5
 build-client5: build-sdk5
 	@printf "Building client 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-test5
 build-test5: build-sdk5
 	@printf "Building test 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
-	@cd $(DIST_DIR) && ../scripts/client-spawner4.sh -n 1
+	@cd dist && ../scripts/client-spawner4.sh -n 1
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
-	@cd $(DIST_DIR) && ./server4
+	@cd dist && ./server4
 
 .PHONY: dev-client5
 dev-client5: build-client5  ## runs a local client (sdk5)
-	@cd $(DIST_DIR) && ../scripts/client-spawner5.sh -n 1
+	@cd dist && ../scripts/client-spawner5.sh -n 1
 
 .PHONY: dev-server5
 dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
-	@cd $(DIST_DIR) && ./server5
+	@cd dist && ./server5
 
 ##########################################
 
@@ -472,33 +463,33 @@ test: clean ## runs backend unit tests
 
 .PHONY: test-sdk4
 test-sdk4: dist build-test4 ## runs sdk4 unit tests
-	@cd $(DIST_DIR) && ./test4
+	@cd dist && ./test4
 
 .PHONY: test-sdk5
 test-sdk5: dist build-test5 ## runs sdk5 unit tests
-	@cd $(DIST_DIR) && ./test5
+	@cd dist && ./test5
 
 .PHONY: test-relay
 test-relay: dist build-reference-relay ## runs relay unit tests
-	cd $(DIST_DIR) && ./reference_relay test
+	cd dist && ./reference_relay test
 
 .PHONY: build-analytics
 build-analytics: dist
 	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_server ./cmd/load_test_server/load_test_server.cpp  dist/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -506,13 +497,13 @@ ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_client ./cmd/load_test_client/load_test_client.cpp dist/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -530,7 +521,7 @@ build-test-func-backend: dist build-functional-tests-backend
 .PHONY: run-test-func-backend
 run-test-func-backend:
 	@printf "\nRunning functional tests backend...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_backend/func_tests_backend.go $(test) ; \
+	cd dist && $(GO) run ../cmd/func_tests_backend/func_tests_backend.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func-backend
@@ -541,13 +532,13 @@ test-func-backend: build-test-func-backend run-test-func-backend ## runs functio
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
 	@printf "Building functional server 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client4
 build-functional-client4: build-sdk4
 	@printf "Building functional client 4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-backend4
@@ -568,7 +559,7 @@ build-test-func-sdk4: clean dist build-sdk4 build-reference-relay build-function
 .PHONY: run-test-func-sdk4
 run-test-func-sdk4:
 	@printf "\nRunning functional tests sdk4...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_sdk4/func_tests_sdk4.go $(test) ; \
+	cd dist && $(GO) run ../cmd/func_tests_sdk4/func_tests_sdk4.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func-sdk4
@@ -579,13 +570,13 @@ test-func-sdk4: build-test-func-sdk4 run-test-func-sdk4 ## runs functional tests
 .PHONY: build-functional-server5
 build-functional-server5: build-sdk5
 	@printf "Building functional server 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server5 ../cmd/func_server5/func_server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server5 ../cmd/func_server5/func_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client5
 build-functional-client5: build-sdk5
 	@printf "Building functional client 5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-backend5
@@ -606,7 +597,7 @@ build-test-func-sdk5: clean dist build-sdk5 build-reference-relay build-function
 .PHONY: run-test-func-sdk5
 run-test-func-sdk5:
 	@printf "\nRunning functional tests sdk5...\n\n" ; \
-	cd $(DIST_DIR) && $(GO) run ../cmd/func_tests_sdk5/func_tests_sdk5.go $(test) ; \
+	cd dist && $(GO) run ../cmd/func_tests_sdk5/func_tests_sdk5.go $(test) ; \
 	printf "\ndone\n\n"
 
 .PHONY: test-func-sdk5
@@ -639,26 +630,26 @@ dev-mock-relay: ## runs a local mock relay
 dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
 	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
 
-$(DIST_DIR)/$(SDKNAME4).so: dist
+dist/$(SDKNAME4).so: dist
 	@printf "Building sdk4... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-$(DIST_DIR)/$(SDKNAME5).so: dist
+dist/$(SDKNAME5).so: dist
 	@printf "Building sdk5... "
-	@cd $(DIST_DIR) && $(CXX) $(CXX_FLAGS) -fPIC -DNEXT_COMPILE_WITH_TESTS=1 -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -DNEXT_COMPILE_WITH_TESTS=1 -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk4
-build-sdk4: $(DIST_DIR)/$(SDKNAME4).so
+build-sdk4: dist/$(SDKNAME4).so
 
 .PHONY: build-sdk5
-build-sdk5: $(DIST_DIR)/$(SDKNAME5).so
+build-sdk5: dist/$(SDKNAME5).so
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
 	@printf "Building portal cruncher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ./dist/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
 	@printf "done\n"
 
 .PHONY: build-portal
@@ -668,54 +659,54 @@ build-portal:
 	@printf "SHA: ${SHA}\n"
 	@printf "RELEASE: ${RELEASE}\n"
 	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-server-backend4
 build-server-backend4:
 	@printf "Building server backend 4... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
 .PHONY: build-server-backend5
 build-server-backend5:
 	@printf "Building server backend 5... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
 .PHONY: build-billing
 build-billing:
 	@printf "Building billing... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
 .PHONY: build-analytics-pusher
 build-analytics-pusher:
 	@printf "Building analytics pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
 .PHONY: build-magic-backend
 build-magic-backend:
 	@echo "Building magic backend..."
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/magic_backend ./cmd/magic_backend/magic_backend.go
 
 .PHONY: build-match-data
 build-match-data:
 	@printf "Building match data... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/match_data ./cmd/match_data/match_data.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/match_data ./cmd/match_data/match_data.go
 	@printf "done\n"
 
 .PHONY: build-fake-server
 build-fake-server: dist
 	@printf "Building fake server... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
 .PHONY: build-pingdom
 build-pingdom: dist
 	@printf "Building pingdom... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
 .PHONY: deploy-portal-crunchers-dev
@@ -946,7 +937,7 @@ build-next:
 .PHONY: build-relay-pusher
 build-relay-pusher:
 	@printf "Building relay pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_pusher ./cmd/relay_pusher/relay_pusher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_pusher ./cmd/relay_pusher/relay_pusher.go
 	@printf "done\n"
 
 .PHONY: build-relay-pusher-artifacts-dev
@@ -1052,7 +1043,7 @@ deploy-debug-relay-backend-prod-debug:
 .PHONY: build-relay-backend
 build-relay-backend:
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifacts-dev
@@ -1152,7 +1143,7 @@ dev-fake-relays: build-fake-relays ## runs local fake relays
 .PHONY: build-fake-relays
 build-fake-relays:
 	@printf "Building fake relays... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/fake_relays ./cmd/fake_relays/fake_relays.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/fake_relays ./cmd/fake_relays/fake_relays.go
 	@printf "done\n"
 
 .PHONY: build-fake-relays-artifacts-dev
@@ -1178,7 +1169,7 @@ RELAY_EXE := relay
 .PHONY: build-reference-relay
 build-reference-relay: dist
 	@printf "Building reference relay... "
-	@$(CXX) $(CXX_FLAGS) -o $(DIST_DIR)/reference_relay reference/relay/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 #######################
@@ -1192,7 +1183,7 @@ dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
 .PHONY: build-relay-forwarder
 build-relay-forwarder:
 	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
 	@printf "done\n"
 
 .PHONY: build-relay-forwarder-artifacts-dev
@@ -1226,7 +1217,7 @@ deploy-relay-forwarder-prod:
 .PHONY: build-relay-gateway
 build-relay-gateway:
 	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/relay_gateway.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_gateway ./cmd/relay_gateway/relay_gateway.go
 	@printf "done\n"
 
 .PHONY: build-relay-gateway-artifacts-dev
@@ -1248,7 +1239,7 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 .PHONY: build-relay-frontend
 build-relay-frontend:
 	@printf "Building relay frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_frontend ./cmd/relay_frontend/relay_frontend.go
 	@printf "done\n"
 
 .PHONY: build-relay-frontend-artifacts-dev
@@ -1278,5 +1269,5 @@ rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: clean
 clean: ## cleans everything
-	@rm -rf $(DIST_DIR)
-	@mkdir -p $(DIST_DIR)
+	@rm -rf dist
+	@mkdir -p dist
