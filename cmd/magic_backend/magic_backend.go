@@ -14,13 +14,6 @@ import (
 
 var magicUpdateSeconds int
 
-var (
-	buildtime     string
-	commitMessage string
-	sha           string
-	tag           string
-)
-
 func main() {
 
 	service := common.CreateService("magic_backend")
