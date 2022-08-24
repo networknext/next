@@ -158,20 +158,92 @@ func test_magic_backend() {
 
 	}
 
-	// we should see 5 or 6 magic updates (30 seconds with updates once every 5 seconds...)
+	// we should see 5,6 or 7 magic updates (30 seconds with updates once every 5 seconds...)
 
-	if magicUpdates != 5 && magicUpdates != 6 {
-		fmt.Printf("error: did not see magic values update every 5 seconds")		
+	if magicUpdates != 5 && magicUpdates != 6 && magicUpdates != 7 {
+		fmt.Printf("error: did not see magic values update every ~5 seconds (%d magic updates)", magicUpdates)
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
+
+	// run a second magic backend. it should match the same magic values
+
+	cmd2 := exec.Command("./magic_backend")
+
+	var stdout2 bytes.Buffer
+	var stderr2 bytes.Buffer
+	cmd2.Stdout = &stdout2
+	cmd2.Stderr = &stderr2
+
+	cmd2.Env = make([]string, 0)
+	cmd2.Env = append(cmd2.Env, "ENV=local")
+	cmd2.Env = append(cmd2.Env, "HTTP_PORT=40001")
+	cmd2.Env = append(cmd2.Env, "NEXT_DEBUG_LOGS=1")
+	cmd2.Env = append(cmd2.Env, "MAGIC_UPDATE_SECONDS=5")
+
+	err = cmd2.Start()
+	if err != nil {
+		fmt.Printf("\nerror: failed to run magic backend #2!\n\n")
+		fmt.Printf("%s", stdout2.String())
+		fmt.Printf("%s", stderr2.String())
+		os.Exit(1)
+	}
+
+	time.Sleep(time.Second)
+
+	for i := 0; i < 10; i++ {
+
+		response1, err := http.Get("http://127.0.0.1:40000/magic")
+		if err != nil || response1.StatusCode != 200 {
+			fmt.Printf("error: magic endpoint failed (1)\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		magicData1, error := ioutil.ReadAll(response.Body)
+	   	if error != nil {
+	      	fmt.Printf("error: failed to read magic response data (1)\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		response2, err := http.Get("http://127.0.0.1:40001/magic")
+		if err != nil || response2.StatusCode != 200 {
+			fmt.Printf("error: magic endpoint failed (2)\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		magicData2, error := ioutil.ReadAll(response.Body)
+	   	if error != nil {
+	      	fmt.Printf("error: failed to read magic response data (2)\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		if bytes.Compare(magicData1, magicData2) != 0 && !(bytes.Compare(magicData1[0:16], magicData2[8:24]) == 0 || bytes.Compare(magicData2[0:16], magicData1[8:24]) == 0) {
+	      	fmt.Printf("error: magic data mismatch between two magic backends\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		time.Sleep(time.Second)
+
 	}
 
 	// test that the service shuts down cleanly
 
 	cmd.Process.Signal(os.Interrupt)
+	cmd2.Process.Signal(os.Interrupt)
 
 	cmd.Wait()
+	cmd2.Wait()
 
 	check_output("received shutdown signal", cmd, stdout, stderr)
 	check_output("successfully shutdown", cmd, stdout, stderr)
+
+	check_output("received shutdown signal", cmd2, stdout, stderr)
+	check_output("successfully shutdown", cmd2, stdout, stderr)
 }
 
 type test_function func()
