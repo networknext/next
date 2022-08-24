@@ -24,8 +24,8 @@ import (
 // dichotomy set in concrete, here. Using the routing.Relay
 // type as an example:
 //
-// 	Relay.ID     : Internal-use, calculated from public IP:Port
-//  Relay.RelayID: Database primary key for the relays table
+//		Relay.ID     : Internal-use, calculated from public IP:Port
+//	 Relay.RelayID: Database primary key for the relays table
 //
 // The PK is required to enforce business rules in the DB.
 type SQL struct {
@@ -1527,16 +1527,17 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 // UpdateRelay updates one field (2 for addr) in a relay record - field names
 // are those provided by routing.Relay.
 // value:
-//	addr               : ipaddress:port (string)
-//  bw_billing_rule    : float64 (json number)
-//  machine_type       : float64 (json number)
-//  relay_state        : float64 (json number)
-//  EgressPriceOverride: USD float64 (json number)
-//  MRC                : USD float64 (json number)
-//  Overage            : USD float64 (json number)
-//  StartDate          : string ('January 2, 2006')
-//  EndDate            : string ('January 2, 2006')
-//  all others are bool, float64 or string, based on field type
+//
+//		addr               : ipaddress:port (string)
+//	 bw_billing_rule    : float64 (json number)
+//	 machine_type       : float64 (json number)
+//	 relay_state        : float64 (json number)
+//	 EgressPriceOverride: USD float64 (json number)
+//	 MRC                : USD float64 (json number)
+//	 Overage            : USD float64 (json number)
+//	 StartDate          : string ('January 2, 2006')
+//	 EndDate            : string ('January 2, 2006')
+//	 all others are bool, float64 or string, based on field type
 func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 	var updateSQL bytes.Buffer
 	var args []interface{}
