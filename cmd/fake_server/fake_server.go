@@ -24,10 +24,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -38,7 +37,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "fake_server"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -81,7 +80,7 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 
 		go func() {
 			err := http.ListenAndServe(":"+httpPort, router)

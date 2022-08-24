@@ -32,10 +32,9 @@ const (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 func main() {
@@ -100,7 +99,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 

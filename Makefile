@@ -25,10 +25,10 @@ SDKNAME5 = libnext5
 
 RELAY_PORT ?= "2000"
 
-TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-SHA ?= $(shell git rev-parse --short HEAD)
-RELEASE ?= $(shell git describe --tags --exact-match 2> /dev/null)
-COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
+BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B)
+COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
+MODULE ?= "github.com/networknext/backend/modules/common"
 
 CURRENT_DIR = $(shell pwd -P)
 DIST_DIR = ./dist
@@ -485,7 +485,7 @@ test-relay: dist build-reference-relay ## runs relay unit tests
 .PHONY: build-analytics
 build-analytics: dist
 	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
 ifeq ($(OS),darwin)
@@ -658,7 +658,7 @@ build-sdk5: $(DIST_DIR)/$(SDKNAME5).so
 PHONY: build-portal-cruncher
 build-portal-cruncher:
 	@printf "Building portal cruncher... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
 	@printf "done\n"
 
 .PHONY: build-portal
@@ -668,55 +668,54 @@ build-portal:
 	@printf "SHA: ${SHA}\n"
 	@printf "RELEASE: ${RELEASE}\n"
 	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
 .PHONY: build-server-backend4
 build-server-backend4:
 	@printf "Building server backend 4... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
 .PHONY: build-server-backend5
 build-server-backend5:
 	@printf "Building server backend 5... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
 .PHONY: build-billing
 build-billing:
 	@printf "Building billing... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
 	@printf "done\n"
 
 .PHONY: build-analytics-pusher
 build-analytics-pusher:
 	@printf "Building analytics pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
 .PHONY: build-magic-backend
 build-magic-backend:
 	@echo "Building magic backend..."
-	@echo "timestamp=$(TIMESTAMP), sha=$(SHA), commit=$(COMMITMESSAGE)"
-	@$(GO) build -ldflags "-s -w -X github.com/networknext/backend/modules/common=$(TIMESTAMP) -X github.com/networknext/backend/modules/common.sha=$(SHA) -X common.release=$(RELEASE)) -X github.com/networknext/backend/modules/common.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
 
 .PHONY: build-match-data
 build-match-data:
 	@printf "Building match data... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/match_data ./cmd/match_data/match_data.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/match_data ./cmd/match_data/match_data.go
 	@printf "done\n"
 
 .PHONY: build-fake-server
 build-fake-server: dist
 	@printf "Building fake server... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
 .PHONY: build-pingdom
 build-pingdom: dist
 	@printf "Building pingdom... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
 .PHONY: deploy-portal-crunchers-dev
@@ -947,7 +946,7 @@ build-next:
 .PHONY: build-relay-pusher
 build-relay-pusher:
 	@printf "Building relay pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)" -o ${DIST_DIR}/relay_pusher ./cmd/relay_pusher/relay_pusher.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_pusher ./cmd/relay_pusher/relay_pusher.go
 	@printf "done\n"
 
 .PHONY: build-relay-pusher-artifacts-dev
@@ -1053,7 +1052,7 @@ deploy-debug-relay-backend-prod-debug:
 .PHONY: build-relay-backend
 build-relay-backend:
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifacts-dev
@@ -1153,7 +1152,7 @@ dev-fake-relays: build-fake-relays ## runs local fake relays
 .PHONY: build-fake-relays
 build-fake-relays:
 	@printf "Building fake relays... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_relays ./cmd/fake_relays/fake_relays.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/fake_relays ./cmd/fake_relays/fake_relays.go
 	@printf "done\n"
 
 .PHONY: build-fake-relays-artifacts-dev
@@ -1193,7 +1192,7 @@ dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
 .PHONY: build-relay-forwarder
 build-relay-forwarder:
 	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
 	@printf "done\n"
 
 .PHONY: build-relay-forwarder-artifacts-dev
@@ -1227,7 +1226,7 @@ deploy-relay-forwarder-prod:
 .PHONY: build-relay-gateway
 build-relay-gateway:
 	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/relay_gateway.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/relay_gateway.go
 	@printf "done\n"
 
 .PHONY: build-relay-gateway-artifacts-dev
@@ -1249,7 +1248,7 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 .PHONY: build-relay-frontend
 build-relay-frontend:
 	@printf "Building relay frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
+	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ${DIST_DIR}/relay_frontend ./cmd/relay_frontend/relay_frontend.go
 	@printf "done\n"
 
 .PHONY: build-relay-frontend-artifacts-dev

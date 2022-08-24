@@ -26,10 +26,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 func main() {
@@ -38,7 +37,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "fake_relays"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -129,7 +128,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -181,7 +180,7 @@ func mainReturnWithCode() int {
 	{
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 

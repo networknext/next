@@ -46,10 +46,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 	keys          middleware.JWKS
 )
 
@@ -64,7 +63,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "portal"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -327,8 +326,8 @@ func mainReturnWithCode() int {
 
 	opsService := jsonrpc.OpsService{
 		Env:                  env,
-		Release:              tag,
-		BuildTime:            buildtime,
+		Release:              "",	// todo: no longer passed in. maybe we should use commit message here instead?
+		BuildTime:            buildTime,
 		Storage:              db,
 		LookerClient:         lookerClient,
 		LookerDashboardCache: make([]looker.LookerDashboard, 0),
@@ -564,7 +563,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -744,7 +743,7 @@ func mainReturnWithCode() int {
 
 		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)

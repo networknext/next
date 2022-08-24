@@ -16,15 +16,16 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 type Service struct {
 	ServiceName string
-	GitHash string
+	BuildTime string
+	CommitMessage string
+	CommitHash string
 	Router mux.Router
 }
 
@@ -32,18 +33,20 @@ func CreateService(serviceName string) *Service {
 
 	service := Service{}
 	service.ServiceName = serviceName
-	service.GitHash = sha
+	service.CommitMessage = commitMessage
+	service.CommitHash = commitHash
+	service.BuildTime = buildTime
 
 	fmt.Printf("%s\n", service.ServiceName)
 
-	fmt.Printf("git hash: %s\n", service.GitHash)
+	fmt.Printf("commit: %s [%s] (%s)\n", service.CommitMessage, service.CommitHash, service.BuildTime)
 
 	env := backend.GetEnv()
 
 	fmt.Printf("env: %s\n", env)
 
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
-	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 
 	return &service
 }
