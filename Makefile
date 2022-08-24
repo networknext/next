@@ -697,9 +697,9 @@ build-analytics-pusher:
 
 .PHONY: build-magic-backend
 build-magic-backend:
-	@printf "Building magic backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
-	@printf "done\n"
+	@echo "Building magic backend..."
+	@echo "timestamp=$(TIMESTAMP), sha=$(SHA), commit=$(COMMITMESSAGE)"
+	@$(GO) build -ldflags "-s -w -X github.com/networknext/backend/modules/common=$(TIMESTAMP) -X github.com/networknext/backend/modules/common.sha=$(SHA) -X common.release=$(RELEASE)) -X github.com/networknext/backend/modules/common.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
 
 .PHONY: build-match-data
 build-match-data:
