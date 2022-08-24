@@ -98,7 +98,7 @@ export SERVER_BACKEND_IP = 127.0.0.1:40000
 endif
 
 ifndef MAGIC_URI
-export MAGIC_URI = http://127.0.0.1:41008/magic
+export MAGIC_URI = http://127.0.0.1:41007/magic
 endif
 
 ## Relay routing keys are used to ENCRYPT and SIGN route tokens sent to a relay
@@ -361,10 +361,6 @@ dev-relay: build-reference-relay  ## runs a local relay
 .PHONY: dev-magic-backend
 dev-magic-backend: build-magic-backend ## runs a local magic backend
 	@PORT=41007 ./dist/magic_backend
-
-.PHONY: dev-magic-frontend
-dev-magic-frontend: build-magic-frontend ## runs a local magic frontend
-	@PORT=41008 ./dist/magic_frontend
 
 ##############################################
 
@@ -705,12 +701,6 @@ build-magic-backend:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_backend ./cmd/magic_backend/magic_backend.go
 	@printf "done\n"
 
-.PHONY: build-magic-frontend
-build-magic-frontend:
-	@printf "Building magic frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/magic_frontend ./cmd/magic_frontend/magic_frontend.go
-	@printf "done\n"
-
 .PHONY: build-match-data
 build-match-data:
 	@printf "Building match data... "
@@ -800,10 +790,6 @@ build-analytics-artifacts-dev: build-analytics
 build-magic-backend-artifacts-dev: build-magic-backend
 	./deploy/build-artifacts.sh -e dev -s magic_backend
 
-.PHONY: build-magic-frontend-artifacts-dev
-build-magic-frontend-artifacts-dev: build-magic-frontend
-	./deploy/build-artifacts.sh -e dev -s magic_frontend
-
 .PHONY: build-match-data-artifacts-dev
 build-match-data-artifacts-dev: build-match-data
 	./deploy/build-artifacts.sh -e dev -s match_data
@@ -868,10 +854,6 @@ build-analytics-artifacts-staging: build-analytics
 build-magic-backend-artifacts-staging: build-magic-backend
 	./deploy/build-artifacts.sh -e staging -s magic_backend
 
-.PHONY: build-magic-frontend-artifacts-staging
-build-magic-frontend-artifacts-staging: build-magic-frontend
-	./deploy/build-artifacts.sh -e staging -s magic_frontend
-
 .PHONY: build-match-data-artifacts-staging
 build-match-data-artifacts-staging: build-match-data
 	./deploy/build-artifacts.sh -e staging -s match_data
@@ -919,10 +901,6 @@ build-analytics-artifacts-prod: build-analytics
 .PHONY: build-magic-backend-artifacts-prod
 build-magic-backend-artifacts-prod: build-magic-backend
 	./deploy/build-artifacts.sh -e prod -s magic_backend
-
-.PHONY: build-magic-frontend-artifacts-prod
-build-magic-frontend-artifacts-prod: build-magic-frontend
-	./deploy/build-artifacts.sh -e prod -s magic_frontend
 
 .PHONY: build-match-data-artifacts-prod
 build-match-data-artifacts-prod: build-match-data
@@ -1294,7 +1272,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-magic-frontend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

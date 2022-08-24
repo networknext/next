@@ -213,7 +213,6 @@ blocks:
             - artifact push workflow dist/func_tests_backend_reference_relay
             - artifact push workflow dist/func_tests_backend
             - artifact push workflow dist/magic_backend
-            - artifact push workflow dist/magic_frontend
             - artifact push workflow dist/relay_gateway
             - artifact push workflow dist/relay_backend
             - artifact push workflow dist/relay_frontend
@@ -242,7 +241,6 @@ blocks:
             - artifact pull workflow func_tests_backend_reference_relay
 
             - artifact pull workflow magic_backend
-            - artifact pull workflow magic_frontend
             - artifact pull workflow relay_gateway
             - artifact pull workflow relay_backend
             - artifact pull workflow relay_frontend
@@ -259,7 +257,6 @@ blocks:
 
             - chmod +x func_tests_backend
             - chmod +x magic_backend
-            - chmod +x magic_frontend
             - chmod +x relay_gateway
             - chmod +x relay_backend
             - chmod +x relay_frontend
@@ -280,10 +277,6 @@ blocks:
         - name: "test_magic_backend"
           commands:
             - cd ./dist && ./func_tests_backend test_magic_backend
-
-        - name: "test_magic_frontend"
-          commands:
-            - cd ./dist && ./func_tests_backend test_magic_frontend
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []

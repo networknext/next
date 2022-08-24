@@ -35,7 +35,6 @@ func main() {
 	fmt.Printf("\nhappy path\n\n")
 
 	magic_backend_cmd, magic_backend_stdout := make("dev-magic-backend")
-	magic_frontend_cmd, magic_frontend_stdout := make("dev-magic-frontend")
 	relay_gateway_cmd, relay_gateway_stdout := make("dev-relay-gateway")
 	relay_backend_1_cmd, relay_backend_1_stdout := make("dev-relay-backend-1")
 	relay_backend_2_cmd, relay_backend_2_stdout := make("dev-relay-backend-2")
@@ -47,7 +46,6 @@ func main() {
 	relay_5_cmd, relay_5_stdout := make("RELAY_PORT=2004 dev-relay")
 
 	_ = magic_backend_cmd
-	_ = magic_frontend_cmd
 	_ = relay_gateway_cmd
 	_ = relay_backend_1_cmd
 	_ = relay_backend_2_cmd
@@ -59,7 +57,6 @@ func main() {
 	_ = relay_5_cmd
 
 	_ = magic_backend_stdout
-	_ = magic_frontend_stdout
 	_ = relay_gateway_stdout
 	_ = relay_backend_1_stdout
 	_ = relay_backend_2_stdout
