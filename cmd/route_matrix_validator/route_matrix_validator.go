@@ -35,11 +35,7 @@ func main() {
 		return
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return
-	}
+	env := backend.GetEnv()
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -83,21 +79,14 @@ func main() {
 		return
 	}
 
-	syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return
-	}
+	syncInterval := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 
 	go func() {
 		httpClient := &http.Client{
 			Timeout: time.Second * 2,
 		}
 
-		valveBackend, err := envvar.GetBool("VALVE_SERVER_BACKEND", false)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-		}
+		valveBackend := envvar.GetBool("VALVE_SERVER_BACKEND", false)
 
 		if valveBackend {
 			uri = fmt.Sprintf("%s_%s", uri, "valve")
