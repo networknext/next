@@ -291,7 +291,7 @@ blocks:
       jobs:
         - name: build
           commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 test ps5 vs2022 release""
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 test ps5 vs2022 release"
 
   - name: "Soak Test"
     dependencies: []
