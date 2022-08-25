@@ -205,14 +205,15 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{07557A06-FB1F-400F-879E-FBA6BA863732}</ProjectGuid>
-    <ProjectName>next-ps5-4.20.0</ProjectName>
+    <ProjectName>next</ProjectName>
+    <ProsperoSdkVersion>Default</ProsperoSdkVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <PlatformToolset>v141</PlatformToolset>
@@ -240,20 +241,20 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
     <IncludePath>$(SCE_PROSPERO_SDK_DIR)\host_tools\lib\clang\include;$(SCE_PROSPERO_SDK_DIR)\target\include;$(SCE_PROSPERO_SDK_DIR)\target\include_common;..\..\..\include;..\..\..\sodium</IncludePath>
-    <OutDir>..\..\lib\Playstation5\$(Configuration)\</OutDir>
+    <OutDir>$(Platform)_$(Configuration)\</OutDir>
     <PrxStubOutputDir>
     </PrxStubOutputDir>
     <IgnoreImportLibrary>
     </IgnoreImportLibrary>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
-    <OutDir>..\..\lib\Playstation5\$(Configuration)\</OutDir>
+    <OutDir>$(Platform)_$(Configuration)\</OutDir>
     <PrxStubOutputDir>..\..\lib\Playstation5\Release</PrxStubOutputDir>
     <IgnoreImportLibrary>false</IgnoreImportLibrary>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
     <ClCompile>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;_DEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions);;NEXT_COMPILE_WITH_TESTS=1;NEXT_ASSERTS=1;NEXT_MEMORY_CHECKS=1</PreprocessorDefinitions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>..\..\include;..\..\sodium</AdditionalIncludeDirectories>
@@ -262,10 +263,14 @@
       <AdditionalDependencies>libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>..\..\lib\Playstation5\Debug\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
+    <Lib>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
     <ClCompile>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;NDEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions);NEXT_COMPILE_WITH_TESTS=1;NEXT_ASSERTS=1;NEXT_MEMORY_CHECKS=1</PreprocessorDefinitions>
       <OptimizationLevel>Level2</OptimizationLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>../../include;../../sodium</AdditionalIncludeDirectories>
