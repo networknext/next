@@ -46,10 +46,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 	keys          middleware.JWKS
 )
 
@@ -64,7 +63,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "portal"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -77,25 +76,13 @@ func mainReturnWithCode() int {
 	gcpProjectID := backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("error getting env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	// Get redis connections
 	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.Get("REDIS_PASSWORD", "")
-	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
-	if err != nil {
-		core.Error("failed to parse REDIS_MAX_IDLE_CONNS: %v", err)
-		return 1
-	}
-	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
-	if err != nil {
-		core.Error("failed to parse REDIS_MAX_ACTIVE_CONNS: %v", err)
-		return 1
-	}
+	redisMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
+	redisMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 
 	redisPoolTopSessions := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
@@ -339,8 +326,8 @@ func mainReturnWithCode() int {
 
 	opsService := jsonrpc.OpsService{
 		Env:                  env,
-		Release:              tag,
-		BuildTime:            buildtime,
+		Release:              "",	// todo: no longer passed in. maybe we should use commit message here instead?
+		BuildTime:            buildTime,
 		Storage:              db,
 		LookerClient:         lookerClient,
 		LookerDashboardCache: make([]looker.LookerDashboard, 0),
@@ -392,11 +379,7 @@ func mainReturnWithCode() int {
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
-	if err != nil {
-		core.Error("failed to parse AUTH0_CERT_INTERVAL: %v", err)
-		return 1
-	}
+	fetchAuthCertInterval := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 
 	err = authservice.RefreshAuthRolesCache()
 	if err != nil {
@@ -443,7 +426,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
+	mapGenInterval := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
 	if err != nil {
 		core.Error("failed to parse SESSION_MAP_INTERVAL: %v", err)
 		return 1
@@ -468,11 +451,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
-	if err != nil {
-		core.Error("failed to parse RELEASE_NOTES_INTERVAL: %v", err)
-		return 1
-	}
+	fetchReleaseNotesInterval := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
 
 	wg.Add(1)
 	go func() {
@@ -512,11 +491,7 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	runExplorerRoleCleanUp, err := envvar.GetBool("EXPLORER_ROLE_CLEAN_UP", false)
-	if err != nil {
-		core.Error("failed to parse EXPLORER_ROLE_CLEAN_UP: %v", err)
-		return 1
-	}
+	runExplorerRoleCleanUp := envvar.GetBool("EXPLORER_ROLE_CLEAN_UP", false)
 
 	if runExplorerRoleCleanUp {
 		wg.Add(1)
@@ -545,11 +520,7 @@ func mainReturnWithCode() int {
 	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
 
 	if overlayFilePath != "" {
-		overlaySyncInterval, err := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*5)
-		if err != nil {
-			core.Error("failed to parse OVERLAY_SYNC_INTERVAL: %v", err)
-			return 1
-		}
+		overlaySyncInterval := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*5)
 
 		if err := generateOverlayBinFile(ctx, db, env, overlayFilePath); err != nil {
 			core.Error("failed to generate overlay.bin: %v", err)
@@ -592,7 +563,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -766,23 +737,16 @@ func mainReturnWithCode() int {
 
 		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
 
-		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
-		if err != nil {
-			core.Error("failed to parse HTTP_TIMEOUT: %v", err)
-			return 1
-		}
+		httpTimeout := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
 
 		r := mux.NewRouter()
 
 		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("failed to parse FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
