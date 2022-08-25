@@ -438,8 +438,6 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// #define NEXT_ENABLE_MEMORY_CHECKS 0
-
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -10443,6 +10441,8 @@ void next_session_manager_destroy( next_session_manager_t * session_manager )
 
 bool next_session_manager_expand( next_session_manager_t * session_manager )
 {
+    next_assert( session_manager );
+
     next_session_manager_verify_sentinels( session_manager );
 
     int new_size = session_manager->size * 2;
@@ -10451,11 +10451,11 @@ bool next_session_manager_expand( next_session_manager_t * session_manager )
     next_address_t * new_addresses = (next_address_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_address_t) );
     next_session_entry_t * new_entries = (next_session_entry_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_session_entry_t) );
 
-    next_assert( session_manager->session_ids );
-    next_assert( session_manager->addresses );
-    next_assert( session_manager->entries );
+    next_assert( new_session_ids );
+    next_assert( new_addresses );
+    next_assert( new_entries );
 
-    if ( session_manager->session_ids == NULL || session_manager->addresses == NULL || session_manager->entries == NULL )
+    if ( new_session_ids == NULL || new_addresses == NULL || new_entries == NULL )
     {
         next_free( session_manager->context, new_session_ids );
         next_free( session_manager->context, new_addresses );
@@ -17364,6 +17364,8 @@ static void test_server_packet_received_callback( next_server_t * server, void *
     num_server_packets_received++;
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 void test_server_ipv4()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
@@ -17379,6 +17381,8 @@ void test_server_ipv4()
     next_server_flush( server );
     next_server_destroy( server );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 #if defined(NEXT_PLATFORM_HAS_IPV6)
 
@@ -17396,6 +17400,8 @@ void test_client_ipv6()
     next_client_destroy( client );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 void test_server_ipv6()
 {
     next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
@@ -17411,6 +17417,8 @@ void test_server_ipv6()
     next_server_flush( server );
     next_server_destroy( server );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
@@ -20366,7 +20374,7 @@ void test_proxy_session_manager()
 
 void test_session_manager()
 {
-    const int InitialSize = 32;
+    const int InitialSize = 1;
 
     next_session_manager_t * session_manager = next_session_manager_create( NULL, InitialSize );
 
@@ -21055,10 +21063,14 @@ void next_test()
         RUN_TEST( test_platform_thread );
         RUN_TEST( test_platform_mutex );
         RUN_TEST( test_client_ipv4 );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_server_ipv4 );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_client_ipv6 );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_server_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_header );
         RUN_TEST( test_route_token );
