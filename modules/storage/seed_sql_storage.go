@@ -28,10 +28,7 @@ func SeedSQLStorage(
 	// we can only seed storage once, externally (via SQL file).
 	// TODO: setup "only seed once" checking for PostgreSQL
 
-	pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
-	if err != nil {
-		return fmt.Errorf("could not parse FEATURE_POSTGRESQL boolean: %v", err)
-	}
+	pgsql := envvar.GetBool("FEATURE_POSTGRESQL", false)
 
 	// only seed if we're using sqlite3
 	if !pgsql {
@@ -647,10 +644,7 @@ func SeedSQLStorageStaging(
 	// TODO: setup "only seed once" checking for PostgreSQL
 	var err error
 
-	pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
-	if err != nil {
-		return fmt.Errorf("could not parse FEATURE_POSTGRESQL boolean: %v", err)
-	}
+	pgsql := envvar.GetBool("FEATURE_POSTGRESQL", false)
 
 	// only seed if we're using sqlite3
 	if pgsql {
