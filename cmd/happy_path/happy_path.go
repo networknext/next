@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -72,6 +73,25 @@ func main() {
 	relay_3_initialized := false
 	relay_4_initialized := false
 	relay_5_initialized := false
+
+	fmt.Printf("\nwaiting for the relay gateway to initialize...\n")
+
+	relay_gateway_initialized := false
+
+	for i := 0; i < 10; i++ {
+		if strings.Contains(relay_gateway_stdout.String(), "loaded database.bin") &&
+		   strings.Contains(relay_gateway_stdout.String(), "starting http server on port 30000") &&
+		   strings.Contains(relay_gateway_stdout.String(), "started watchman on ") {
+		   	relay_gateway_initialized = true
+		   	break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if !relay_gateway_initialized {
+		fmt.Printf("error: failed to initialize relay gateway\n")
+		os.Exit(1)
+	}
 
 	fmt.Printf("\nwaiting for relays to initialize...\n\n")
 

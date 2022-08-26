@@ -55,7 +55,8 @@ var (
 	magicMutex sync.RWMutex
 )
 
-func init() {
+func initialize() {
+
 	database := routing.CreateEmptyDatabaseBinWrapper()
 
 	relayHash_internal = make(map[uint64]routing.Relay)
@@ -73,9 +74,12 @@ func init() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("loaded database.bin\n")
+
 	relayArray_internal = database.Relays
 
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal)
+
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the database
@@ -94,11 +98,17 @@ func main() {
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func mainReturnWithCode() int {
+	
 	serviceName := "relay_gateway"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
+
+	fmt.Printf("%s\n", serviceName)
+	fmt.Printf("commit hash: %s\n", commitHash)
+	fmt.Printf("commit message: %s\n", commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
+
+	initialize()
 
 	// Setup the service
 	ctx, cancel := context.WithCancel(context.Background())
@@ -139,6 +149,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// todo: this "file watcher" should be a helper class in a module
+
 	// Setup file watchman on database.bin
 	{
 		// Get absolute path of database.bin
@@ -163,7 +175,7 @@ func mainReturnWithCode() int {
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
-			core.Debug("started watchman on %s", directoryPath)
+			fmt.Printf("started watchman on %s\n", directoryPath)
 			for {
 				select {
 				case <-ctx.Done():
@@ -236,7 +248,7 @@ func mainReturnWithCode() int {
 			}
 
 			magicTicker := time.NewTicker(cfg.MagicPollFrequency)
-			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicFrontendIP)
+			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicBackendIP)
 			for {
 				select {
 				case <-ctx.Done():
@@ -287,7 +299,36 @@ func mainReturnWithCode() int {
 
 					cachedCombinedMagic = buffer
 
-					core.Debug("refreshed magic values")
+					upcomingMagic := buffer[0:8]
+					currentMagic := buffer[8:16]
+					previousMagic := buffer[16:24]
+
+					core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+						upcomingMagic[0],
+						upcomingMagic[1],
+						upcomingMagic[2],
+						upcomingMagic[3],
+						upcomingMagic[4],
+						upcomingMagic[5],
+						upcomingMagic[6],
+						upcomingMagic[7],
+						currentMagic[0],
+						currentMagic[1],
+						currentMagic[2],
+						currentMagic[3],
+						currentMagic[4],
+						currentMagic[5],
+						currentMagic[6],
+						currentMagic[7],
+						previousMagic[0],
+						previousMagic[1],
+						previousMagic[2],
+						previousMagic[3],
+						previousMagic[4],
+						previousMagic[5],
+						previousMagic[6],
+						previousMagic[7])
+
 					gatewayMetrics.RefreshedMagicValues.Add(1)
 				}
 			}
@@ -448,7 +489,8 @@ func mainReturnWithCode() int {
 	}
 
 	port := envvar.Get("PORT", "30000")
-	fmt.Printf("starting http server on :%s\n", port)
+	
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -478,13 +520,13 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
-		fmt.Println("Received shutdown signal.")
+		fmt.Println("received shutdown signal")
 
 		cancel()
 		// Wait for essential goroutines to finish up
 		wg.Wait()
 
-		fmt.Println("Successfully shutdown.")
+		fmt.Println("successfully shutdown")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
 		// Still let essential goroutines finish even though we got an error
@@ -529,9 +571,9 @@ func newConfig() (*gateway.GatewayConfig, error) {
 	magicPollFrequency := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
 	cfg.MagicPollFrequency = magicPollFrequency
 
-	cfg.MagicFrontendIP = envvar.Get("MAGIC_FRONTEND_IP", "127.0.0.1:41008")
-	if cfg.MagicFrontendIP == "" {
-		return nil, fmt.Errorf("MAGIC_FRONTEND_IP not set")
+	cfg.MagicBackendIP = envvar.Get("MAGIC_BACKEND_IP", "127.0.0.1:41007")
+	if cfg.MagicBackendIP == "" {
+		return nil, fmt.Errorf("MAGIC_BACKEND_IP not set")
 	}
 
 	// Decide if we are using HTTP to batch-write to relay backends
@@ -555,20 +597,9 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		batchSize := envvar.GetInt("GATEWAY_BACKEND_BATCH_SIZE", 10)
 		cfg.BatchSize = batchSize
 	} else {
-		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
-		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
-			return nil, fmt.Errorf("PUBLISH_TO_HOSTS not set")
-		}
-		publishToHosts := envvar.GetList("PUBLISH_TO_HOSTS", []string{"tcp://127.0.0.1:5555"})
-		cfg.PublishToHosts = publishToHosts
 
-		// Get publisher send buffer size
-		publisherSendBuffer := envvar.GetInt("PUBLISHER_SEND_BUFFER", 100000)
-		cfg.PublisherSendBuffer = publisherSendBuffer
+		panic("not supported yet!")
 
-		// Get publisher refresh time duration
-		publisherRefresh := envvar.GetDuration("PUBLISHER_REFRESH_TIMER", 60*time.Second)
-		cfg.PublisherRefreshTimer = publisherRefresh
 	}
 
 	return cfg, nil
