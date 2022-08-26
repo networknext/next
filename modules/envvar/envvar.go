@@ -2,7 +2,6 @@ package envvar
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -20,7 +19,6 @@ func Get(name string, defaultValue string) string {
 	if !ok {
 		return defaultValue
 	}
-
 	return value
 }
 
@@ -29,91 +27,78 @@ func GetList(name string, defaultValue []string) []string {
 	if !ok {
 		return defaultValue
 	}
-
 	value := strings.Split(valueStrings, ",")
 	return value
 }
 
-func GetInt(name string, defaultValue int) (int, error) {
+func GetInt(name string, defaultValue int) int {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := strconv.ParseInt(valueString, 10, 64)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as an integer. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return int(value), nil
+	return int(value)
 }
 
-func GetFloat(name string, defaultValue float64) (float64, error) {
+func GetFloat(name string, defaultValue float64) float64 {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := strconv.ParseFloat(valueString, 64)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as a float. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return value, nil
+	return value
 }
 
-func GetBool(name string, defaultValue bool) (bool, error) {
+func GetBool(name string, defaultValue bool) bool {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := strconv.ParseBool(valueString)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as a bool. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return value, nil
+	return value
 }
 
-func GetDuration(name string, defaultValue time.Duration) (time.Duration, error) {
+func GetDuration(name string, defaultValue time.Duration) time.Duration {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := time.ParseDuration(valueString)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as a duration. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return value, nil
+	return value
 }
 
-func GetBase64(name string, defaultValue []byte) ([]byte, error) {
+func GetBase64(name string, defaultValue []byte) []byte {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := base64.StdEncoding.DecodeString(valueString)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as a base64 encoded value. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return value, nil
+	return value
 }
 
-func GetAddress(name string, defaultValue *net.UDPAddr) (*net.UDPAddr, error) {
+func GetAddress(name string, defaultValue *net.UDPAddr) *net.UDPAddr {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
-		return defaultValue, nil
+		return defaultValue
 	}
-
 	value, err := net.ResolveUDPAddr("udp", valueString)
 	if err != nil {
-		return defaultValue, fmt.Errorf("could not parse value of env var %s as an address. Value: %s", name, valueString)
+		return defaultValue
 	}
-
-	return value, nil
+	return value
 }

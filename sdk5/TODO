@@ -1,0 +1,19 @@
+DONE
+
+	Backport race condition on fallback to direct to sdk4.
+
+	Fix session flush in sdk5
+
+	Fix session flush in sdk4
+
+TODO
+
+	----------------------------------------------------
+
+	Update sdk5 docs that you must flush the server.
+
+	----------------------------------------------------
+
+	Update sdk4 docs that you must flush the server.
+
+	----------------------------------------------------

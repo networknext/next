@@ -26,12 +26,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
-func GetEnv() (string, error) {
-	if !envvar.Exists("ENV") {
-		return "", errors.New("ENV not set")
-	}
-
-	return envvar.Get("ENV", ""), nil
+func GetEnv() string {
+	return envvar.Get("ENV", "local")
 }
 
 func GetGCPProjectID() string {
@@ -42,7 +38,6 @@ func GetInstanceID(env string) (string, error) {
 	if env != "local" {
 		return metadata.InstanceID()
 	}
-
 	return "local", nil
 }
 
@@ -54,11 +49,7 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	if gcpProjectID != "" {
-		enableSDLogging, err := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
-		if err != nil {
-			return logger, err
-		}
-
+		enableSDLogging := envvar.GetBool("ENABLE_STACKDRIVER_LOGGING", false)
 		if enableSDLogging {
 			loggingClient, err := gcplogging.NewClient(ctx, gcpProjectID)
 			if err != nil {
@@ -97,11 +88,7 @@ func GetMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID stri
 	var metricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	if gcpProjectID != "" {
-		enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
-		if err != nil {
-			return metricsHandler, err
-		}
-
+		enableSDMetrics := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
 		if enableSDMetrics {
 			sd := metrics.StackDriverHandler{
 				ProjectID:          gcpProjectID,
@@ -113,10 +100,7 @@ func GetMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID stri
 				return metricsHandler, fmt.Errorf("failed to create StackDriver metrics client: %v", err)
 			}
 
-			sdWriteInterval, err := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
-			if err != nil {
-				return metricsHandler, err
-			}
+			sdWriteInterval := envvar.GetDuration("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", time.Minute)
 
 			go func() {
 				metricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
@@ -137,11 +121,7 @@ func GetTSMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID st
 	var tsMetricsHandler metrics.Handler = &metrics.LocalHandler{}
 
 	if gcpProjectID != "" {
-		enableSDMetrics, err := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
-		if err != nil {
-			return tsMetricsHandler, err
-		}
-
+		enableSDMetrics := envvar.GetBool("ENABLE_STACKDRIVER_METRICS", false)
 		if enableSDMetrics {
 			sd := metrics.StackDriverHandler{
 				ProjectID:          gcpProjectID,
@@ -153,10 +133,7 @@ func GetTSMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID st
 				return tsMetricsHandler, fmt.Errorf("failed to create Time Series StackDriver metrics client: %v", err)
 			}
 
-			sdWriteInterval, err := envvar.GetDuration("FEATURE_VANITY_METRIC_WRITE_INTERVAL", time.Second*5)
-			if err != nil {
-				return tsMetricsHandler, err
-			}
+			sdWriteInterval := envvar.GetDuration("FEATURE_VANITY_METRIC_WRITE_INTERVAL", time.Second*5)
 
 			go func() {
 				tsMetricsHandler.WriteLoop(ctx, logger, sdWriteInterval, 200)
@@ -170,10 +147,7 @@ func GetTSMetricsHandler(ctx context.Context, logger log.Logger, gcpProjectID st
 }
 
 func InitStackDriverProfiler(gcpProjectID string, serviceName string, env string) error {
-	enableSDProfiler, err := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
-	if err != nil {
-		return err
-	}
+	enableSDProfiler := envvar.GetBool("ENABLE_STACKDRIVER_PROFILER", false)
 
 	if enableSDProfiler {
 		// Set up StackDriver profiler
@@ -223,37 +197,27 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		//	DB_SYNC_INTERVAL
 		var db storage.Storer
 
-		pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
-		if err != nil {
-			return nil, fmt.Errorf("could not parse FEATURE_POSTGRESQL boolean: %v", err)
-		}
-
+		pgsql := envvar.GetBool("FEATURE_POSTGRESQL", false)
 		if pgsql {
 			pgsqlHostIP := envvar.Get("POSTGRESQL_HOST_IP", "")
-			if pgsqlHostIP == "" {
-				return nil, fmt.Errorf("could not parse FEATURE_POSTGRESQL string: %v", err)
-			}
 			pgsqlUserName := envvar.Get("POSTGRESQL_USER_NAME", "")
-			if pgsqlUserName == "" {
-				return nil, fmt.Errorf("could not parse POSTGRESQL_USER_NAME string: %v", err)
-			}
 			pgsqlPassword := envvar.Get("POSTGRESQL_PASSWORD", "")
-			if pgsqlPassword == "" {
-				return nil, fmt.Errorf("could not parse POSTGRESQL_PASSWORD string: %v", err)
-			}
 
+			var err error
 			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
 		} else if env == "staging" {
+			var err error
 			db, err = storage.NewSQLite3Staging(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLLite3Staging() error loading sqlite3: %w", err)
 				return nil, err
 			}
 		} else {
+			var err error
 			db, err = storage.NewSQLite3(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)
@@ -262,10 +226,14 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		}
 
 		if env == "local" {
-			customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				return nil, err
+
+			if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
+				return nil, errors.New("NEXT_CUSTOMER_PUBLIC_KEY not set")
+			}
+
+			customerPublicKey := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+			if customerPublicKey == nil {
+				return nil, errors.New("RELAY_PUBLIC_KEY not set")
 			}
 			customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
 			customerPublicKey = customerPublicKey[8:]
@@ -274,15 +242,16 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				return nil, errors.New("RELAY_PUBLIC_KEY not set")
 			}
 
-			relayPublicKey, err := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
-			if err != nil {
-				return nil, err
+			relayPublicKey := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+			if relayPublicKey == nil {
+				return nil, errors.New("Invalid RELAY_PUBLIC_KEY")
 			}
 
 			storage.SeedSQLStorage(ctx, db, relayPublicKey, customerID, customerPublicKey)
 		}
 
 		if env == "staging" && !pgsql {
+
 			filePath := envvar.Get("BIN_PATH", "./database.bin")
 			file, err := os.Open(filePath)
 			if err != nil {
@@ -300,6 +269,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			if err = storage.SeedSQLStorageStaging(ctx, db, database); err != nil {
 				return nil, fmt.Errorf("failed to seed sql storage for staging: %v", err)
 			}
+
 		}
 
 		return db, nil
@@ -323,10 +293,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			return storer, fmt.Errorf("could not create firestore: %v", err)
 		}
 
-		fsSyncInterval, err := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
-		if err != nil {
-			return storer, err
-		}
+		fsSyncInterval := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
 
 		// Start a goroutine to sync from Firestore
 		go func() {
@@ -343,10 +310,9 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			return storer, errors.New("NEXT_CUSTOMER_PUBLIC_KEY not set")
 		}
 
-		customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			return storer, err
+		customerPublicKey := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
+		if customerPublicKey != nil {
+			return storer, errors.New("invalid NEXT_CUSTOMER_PUBLIC_KEY")
 		}
 		customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
 		customerPublicKey = customerPublicKey[8:]
@@ -355,9 +321,9 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			return storer, errors.New("RELAY_PUBLIC_KEY not set")
 		}
 
-		relayPublicKey, err := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
-		if err != nil {
-			return storer, err
+		relayPublicKey := envvar.GetBase64("RELAY_PUBLIC_KEY", nil)
+		if relayPublicKey == nil {
+			return storer, errors.New("invalid RELAY_PUBLIC_KEY")
 		}
 
 		// Create dummy buyer and datacenter for local testing

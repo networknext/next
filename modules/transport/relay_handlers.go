@@ -29,9 +29,9 @@ type RelayUpdateHandlerConfig struct {
 }
 
 /*
-	RelayUpdateHandlerFunc() receives batched HTTP relay update requests from the Relay Gateway.
-	It unbatches the requests and processes them individually, recording the relay ping stats
-	and relay data in the StatsDB and relay map.
+RelayUpdateHandlerFunc() receives batched HTTP relay update requests from the Relay Gateway.
+It unbatches the requests and processes them individually, recording the relay ping stats
+and relay data in the StatsDB and relay map.
 */
 func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 
