@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -97,6 +96,7 @@ func main() {
 	}
 
 	// todo: don't complain about this just yet -- we need to generate a database.bin above
+	_ = relay_gateway_initialized
 	/*
 	if !relay_gateway_initialized {
 		fmt.Printf("error: failed to initialize relay gateway\n")
