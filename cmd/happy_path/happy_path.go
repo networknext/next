@@ -90,6 +90,9 @@ func main() {
 
 	if !relay_gateway_initialized {
 		fmt.Printf("error: failed to initialize relay gateway\n")
+		fmt.Printf("-----------------------------------------\n")
+		fmt.Printf("%s", relay_gateway_stdout.String())
+		fmt.Printf("-----------------------------------------\n")
 		os.Exit(1)
 	}
 
