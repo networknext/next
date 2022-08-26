@@ -33,10 +33,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 func main() {
@@ -47,7 +46,7 @@ func main() {
 // to finish before exiting.
 func mainReturnWithCode() int {
 	serviceName := "billing"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -61,12 +60,8 @@ func mainReturnWithCode() int {
 	gcpProjectID := backend.GetGCPProjectID()
 	gcpOK := gcpProjectID != ""
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("error getting env: %v", err)
-		return 1
-	}
-
+	env := backend.GetEnv()
+	
 	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -114,23 +109,11 @@ func mainReturnWithCode() int {
 				return 1
 			}
 
-			batchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", billing.DefaultBigQueryBatchSize)
-			if err != nil {
-				core.Error("could not parse GOOGLE_BIGQUERY_BATCH_SIZE: %v", err)
-				return 1
-			}
+			batchSize := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", billing.DefaultBigQueryBatchSize)
 
-			summaryBatchSize, err := envvar.GetInt("GOOGLE_BIGQUERY_SUMMARY_BATCH_SIZE", int(billing.DefaultBigQueryBatchSize/10))
-			if err != nil {
-				core.Error("could not parse GOOGLE_BIGQUERY_SUMMARY_BATCH_SIZE: %v", err)
-				return 1
-			}
+			summaryBatchSize := envvar.GetInt("GOOGLE_BIGQUERY_SUMMARY_BATCH_SIZE", int(billing.DefaultBigQueryBatchSize/10))
 
-			batchSizePercent, err := envvar.GetFloat("FEATURE_BILLING2_BATCH_SIZE_PERCENT", 0.80)
-			if err != nil {
-				core.Error("could not parse FEATURE_BILLING2_BATCH_SIZE_PERCENT: %v", err)
-				return 1
-			}
+			batchSizePercent := envvar.GetFloat("FEATURE_BILLING2_BATCH_SIZE_PERCENT", 0.80)
 
 			billing2TableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING", "billing2")
 
@@ -182,33 +165,17 @@ func mainReturnWithCode() int {
 	if gcpOK || emulatorOK {
 		// Google pubsub forwarder
 		{
-			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
-			if err != nil {
-				core.Error("could not parse NUM_RECEIVE_GOROUTINES: %v", err)
-				return 1
-			}
+			numRecvGoroutines := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
 
 			if featureBilling2 {
 
 				core.Debug("Billing2 enabled")
 
-				entryVeto, err := envvar.GetBool("BILLING_ENTRY_VETO", false)
-				if err != nil {
-					core.Error("could not parse BILLING_ENTRY_VETO: %v", err)
-					return 1
-				}
+				entryVeto := envvar.GetBool("BILLING_ENTRY_VETO", false)
 
-				maxRetries, err := envvar.GetInt("FEATURE_BILLING2_MAX_RETRIES", 25)
-				if err != nil {
-					core.Error("could not parse FEATURE_BILLING2_MAX_RETRIES: %v", err)
-					return 1
-				}
+				maxRetries := envvar.GetInt("FEATURE_BILLING2_MAX_RETRIES", 25)
 
-				retryTime, err := envvar.GetDuration("FEATURE_BILLING2_RETRY_TIME", time.Second*1)
-				if err != nil {
-					core.Error("could not parse FEATURE_BILLING2_RETRY_TIME: %v", err)
-					return 1
-				}
+				retryTime := envvar.GetDuration("FEATURE_BILLING2_RETRY_TIME", time.Second*1)
 
 				topicName := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
 				subscriptionName := envvar.Get("FEATURE_BILLING2_SUBSCRIPTION_NAME", "billing2")
@@ -248,7 +215,7 @@ func mainReturnWithCode() int {
 				newStatusData := &metrics.BillingStatus{}
 
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -299,14 +266,11 @@ func mainReturnWithCode() int {
 
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if err != nil {
-			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
-		}
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}

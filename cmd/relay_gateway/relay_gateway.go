@@ -35,10 +35,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 
 	binCreator      string
 	binCreationTime string
@@ -56,7 +55,8 @@ var (
 	magicMutex sync.RWMutex
 )
 
-func init() {
+func initialize() {
+
 	database := routing.CreateEmptyDatabaseBinWrapper()
 
 	relayHash_internal = make(map[uint64]routing.Relay)
@@ -74,9 +74,12 @@ func init() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("loaded database.bin\n")
+
 	relayArray_internal = database.Relays
 
 	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal)
+
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the database
@@ -95,11 +98,17 @@ func main() {
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func mainReturnWithCode() int {
+	
 	serviceName := "relay_gateway"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	fmt.Printf("%s\n", serviceName)
+	fmt.Printf("commit hash: %s\n", commitHash)
+	fmt.Printf("commit message: %s\n", commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
+
+	initialize()
 
 	// Setup the service
 	ctx, cancel := context.WithCancel(context.Background())
@@ -112,11 +121,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
@@ -144,6 +149,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// todo: this "file watcher" should be a helper class in a module
+
 	// Setup file watchman on database.bin
 	{
 		// Get absolute path of database.bin
@@ -168,7 +175,7 @@ func mainReturnWithCode() int {
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
-			core.Debug("started watchman on %s", directoryPath)
+			fmt.Printf("started watchman on %s\n", directoryPath)
 			for {
 				select {
 				case <-ctx.Done():
@@ -241,7 +248,7 @@ func mainReturnWithCode() int {
 			}
 
 			magicTicker := time.NewTicker(cfg.MagicPollFrequency)
-			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicFrontendIP)
+			magicURI := fmt.Sprintf("http://%s/magic", cfg.MagicBackendIP)
 			for {
 				select {
 				case <-ctx.Done():
@@ -292,7 +299,36 @@ func mainReturnWithCode() int {
 
 					cachedCombinedMagic = buffer
 
-					core.Debug("refreshed magic values")
+					upcomingMagic := buffer[0:8]
+					currentMagic := buffer[8:16]
+					previousMagic := buffer[16:24]
+
+					core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+						upcomingMagic[0],
+						upcomingMagic[1],
+						upcomingMagic[2],
+						upcomingMagic[3],
+						upcomingMagic[4],
+						upcomingMagic[5],
+						upcomingMagic[6],
+						upcomingMagic[7],
+						currentMagic[0],
+						currentMagic[1],
+						currentMagic[2],
+						currentMagic[3],
+						currentMagic[4],
+						currentMagic[5],
+						currentMagic[6],
+						currentMagic[7],
+						previousMagic[0],
+						previousMagic[1],
+						previousMagic[2],
+						previousMagic[3],
+						previousMagic[4],
+						previousMagic[5],
+						previousMagic[6],
+						previousMagic[7])
+
 					gatewayMetrics.RefreshedMagicValues.Add(1)
 				}
 			}
@@ -396,7 +432,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitHash
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -453,21 +489,19 @@ func mainReturnWithCode() int {
 	}
 
 	port := envvar.Get("PORT", "30000")
-	fmt.Printf("starting http server on :%s\n", port)
+	
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+	router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_init", transport.GatewayRelayInitHandlerFunc()).Methods("POST")
 	router.HandleFunc("/relay_update", transport.GatewayRelayUpdateHandlerFunc(updateParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
-	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-	if err != nil {
-		core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
-	}
+	enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if enablePProf {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
@@ -486,13 +520,13 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
-		fmt.Println("Received shutdown signal.")
+		fmt.Println("received shutdown signal")
 
 		cancel()
 		// Wait for essential goroutines to finish up
 		wg.Wait()
 
-		fmt.Println("Successfully shutdown.")
+		fmt.Println("successfully shutdown")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
 		// Still let essential goroutines finish even though we got an error
@@ -528,34 +562,22 @@ func GetMagicData() ([]byte, []byte, []byte) {
 func newConfig() (*gateway.GatewayConfig, error) {
 	cfg := new(gateway.GatewayConfig)
 	// Get the channel size
-	channelBufferSize, err := envvar.GetInt("GATEWAY_CHANNEL_BUFFER_SIZE", 100000)
-	if err != nil {
-		return nil, err
-	}
+	channelBufferSize := envvar.GetInt("GATEWAY_CHANNEL_BUFFER_SIZE", 100000)
 	cfg.ChannelBufferSize = channelBufferSize
 
-	binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
-	if err != nil {
-		return nil, err
-	}
+	binSyncInterval := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute)
 	cfg.BinSyncInterval = binSyncInterval
 
-	magicPollFrequency, err := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
-	if err != nil {
-		return nil, err
-	}
+	magicPollFrequency := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
 	cfg.MagicPollFrequency = magicPollFrequency
 
-	cfg.MagicFrontendIP = envvar.Get("MAGIC_FRONTEND_IP", "127.0.0.1:41008")
-	if cfg.MagicFrontendIP == "" {
-		return nil, fmt.Errorf("MAGIC_FRONTEND_IP not set")
+	cfg.MagicBackendIP = envvar.Get("MAGIC_BACKEND_IP", "127.0.0.1:41007")
+	if cfg.MagicBackendIP == "" {
+		return nil, fmt.Errorf("MAGIC_BACKEND_IP not set")
 	}
 
 	// Decide if we are using HTTP to batch-write to relay backends
-	useHTTP, err := envvar.GetBool("GATEWAY_USE_HTTP", true)
-	if err != nil {
-		return nil, err
-	}
+	useHTTP := envvar.GetBool("GATEWAY_USE_HTTP", true)
 	cfg.UseHTTP = useHTTP
 
 	// Load env vars depending on relay update delivery method
@@ -568,39 +590,16 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		cfg.RelayBackendAddresses = relayBackendAddresses
 
 		// Get the HTTP timeout duration
-		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second)
-		if err != nil {
-			return nil, err
-		}
+		httpTimeout := envvar.GetDuration("HTTP_TIMEOUT", time.Second)
 		cfg.HTTPTimeout = httpTimeout
 
 		// Get the batch size threshold for sending updates to relay backends
-		batchSize, err := envvar.GetInt("GATEWAY_BACKEND_BATCH_SIZE", 10)
-		if err != nil {
-			return nil, err
-		}
+		batchSize := envvar.GetInt("GATEWAY_BACKEND_BATCH_SIZE", 10)
 		cfg.BatchSize = batchSize
 	} else {
-		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
-		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
-			return nil, fmt.Errorf("PUBLISH_TO_HOSTS not set")
-		}
-		publishToHosts := envvar.GetList("PUBLISH_TO_HOSTS", []string{"tcp://127.0.0.1:5555"})
-		cfg.PublishToHosts = publishToHosts
 
-		// Get publisher send buffer size
-		publisherSendBuffer, err := envvar.GetInt("PUBLISHER_SEND_BUFFER", 100000)
-		if err != nil {
-			return nil, err
-		}
-		cfg.PublisherSendBuffer = publisherSendBuffer
+		panic("not supported yet!")
 
-		// Get publisher refresh time duration
-		publisherRefresh, err := envvar.GetDuration("PUBLISHER_REFRESH_TIMER", 60*time.Second)
-		if err != nil {
-			return nil, err
-		}
-		cfg.PublisherRefreshTimer = publisherRefresh
 	}
 
 	return cfg, nil

@@ -32,10 +32,9 @@ import (
 )
 
 var (
-	buildtime     string
+	buildTime     string
 	commitMessage string
-	sha           string
-	tag           string
+	commitHash    string
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -46,7 +45,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "portal_cruncher"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -64,11 +63,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		core.Error("failed to get env: %v", err)
-		return 1
-	}
+	env := backend.GetEnv()
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -116,11 +111,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
-		if err != nil {
-			core.Error("failed to get CRUNCHER_RECEIVE_BUFFER_SIZE: %v", err)
-			return 1
-		}
+		receiveBufferSize := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
 
 		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
 		if err != nil {
@@ -141,48 +132,20 @@ func mainReturnWithCode() int {
 		portalSubscriber = portalCruncherSubscriber
 	}
 
-	redisPingFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
-	if err != nil {
-		core.Error("failed to parse CRUNCHER_REDIS_PING_FREQUENCY: %v", err)
-		return 1
-	}
+	redisPingFrequency := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
 
-	redisFlushFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_FLUSH_FREQUENCY", time.Second)
-	if err != nil {
-		core.Error("failed to parse CRUNCHER_REDIS_FLUSH_FREQUENCY: %v", err)
-		return 1
-	}
+	redisFlushFrequency := envvar.GetDuration("CRUNCHER_REDIS_FLUSH_FREQUENCY", time.Second)
 
-	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
-	if err != nil {
-		core.Error("failed to parse PORTAL_CRUNCHER_REDIS_FLUSH_COUNT: %v", err)
-		return 1
-	}
+	redisFlushCount := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
 
-	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
-	if err != nil {
-		core.Error("failed to parse CRUNCHER_REDIS_GOROUTINE_COUNT: %v", err)
-		return 1
-	}
+	redisGoroutineCount := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
 
-	messageChanSize, err := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
-	if err != nil {
-		core.Error("failed to parse CRUNCHER_MESSAGE_CHANNEL_SIZE: %v", err)
-		return 1
-	}
+	messageChanSize := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
 
 	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.Get("REDIS_PASSWORD", "")
-	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
-	if err != nil {
-		core.Error("failed to parse REDIS_MAX_IDLE_CONNS: %v", err)
-		return 1
-	}
-	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
-	if err != nil {
-		core.Error("failed to parse REDIS_MAX_ACTIVE_CONNS: %v", err)
-		return 1
-	}
+	redisMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
+	redisMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 
 	// Determine if should insert into Bigtable
 	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE)
@@ -194,11 +157,7 @@ func mainReturnWithCode() int {
 	// Get the column family name
 	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
 
-	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
-	if err != nil {
-		core.Error("failed to parse BIGTABLE_CRUNCHER_GOROUTINE_COUNT: %v", err)
-		return 1
-	}
+	btGoroutineCount := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
 
 	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
 	btHistoricalPath := envvar.Get("BIGTABLE_HISTORICAL_TXT", "./testdata/bigtable_historical.txt")
@@ -259,7 +218,7 @@ func mainReturnWithCode() int {
 
 				// Service Information
 				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = sha
+				newStatusData.GitHash = commitMessage
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
 
@@ -310,11 +269,11 @@ func mainReturnWithCode() int {
 
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
-		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
 			core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
 		}
