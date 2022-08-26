@@ -106,6 +106,7 @@ blocks:
         commands:
          - chmod 600 /home/semaphore/.ssh/id_rsa_build
          - ssh-add /home/semaphore/.ssh/id_rsa_build
+         - brew install parallel
       jobs:
         - name: "make dev-happy-path"
           commands:
