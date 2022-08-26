@@ -596,6 +596,7 @@ test-func-sdk5: build-test-func-sdk5 run-test-func-sdk5 ## runs functional tests
 .PHONY: dev-happy-path
 dev-happy-path: ## runs the happy path
 	@printf "\ndon't worry. be happy.\n\n" ; \
+	./build.sh
 	$(GO) build -o ./dist/happy_path ./cmd/happy_path/happy_path.go
 	./dist/happy_path
 
