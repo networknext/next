@@ -17,7 +17,7 @@ type GatewayConfig struct {
 	ChannelBufferSize     int
 	BinSyncInterval       time.Duration
 	MagicPollFrequency    time.Duration
-	MagicFrontendIP       string
+	MagicBackendIP        string
 	UseHTTP               bool
 	RelayBackendAddresses []string
 	HTTPTimeout           time.Duration
