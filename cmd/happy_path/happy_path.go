@@ -174,6 +174,8 @@ func happy_path() int {
 		time.Sleep(time.Second)
 	}
 
+	// todo: lots of work...
+	/*
 	if !relay_gateway_initialized {
 		fmt.Printf("error: failed to initialize relay gateway\n")
 		fmt.Printf("-----------------------------------------\n")
@@ -181,6 +183,7 @@ func happy_path() int {
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
+	*/
 
 	// initialize relays
 
