@@ -144,14 +144,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	/*
-		routerPrivateKey, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-		if err != nil {
-			level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
-			return 1
-		}
-	*/
-
 	// create metrics
 
 	relayUpdateMetrics, err := metrics.NewRelayUpdateMetrics(ctx, metricsHandler)
@@ -238,17 +230,12 @@ func mainReturnWithCode() int {
 		// Used to watch over file creation and modification
 		databaseDirectoryPath := filepath.Dir(databaseAbsPath)
 
-		// Get absolute path of database.bin
+		// Get absolute path of overlay.bin
 		overlayFilePath := envvar.Get("OVERLAY_PATH", "./overlay.bin")
 		overlayAbsPath, err := filepath.Abs(overlayFilePath)
 		if err != nil {
 			core.Error("error getting overlay absolute path %s: %v", overlayFilePath, err)
 			return 1
-		}
-
-		// Check if file exists
-		if _, err := os.Stat(overlayAbsPath); err != nil {
-			core.Error("%s does not exist: %v", overlayAbsPath, err)
 		}
 
 		binSyncInterval := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
@@ -304,9 +291,7 @@ func mainReturnWithCode() int {
 
 					// File has changed
 					overlayFile, err := os.Open(overlayAbsPath)
-					if err != nil {
-						core.Error("could not load overlay binary at %s: %v", overlayAbsPath, err)
-					} else {
+					if err == nil {
 						if err = backend.DecodeOverlayWrapper(overlayFile, overlayNew); err == io.EOF {
 							// Sometimes we receive an EOF error since the file is still being replaced
 							// so early out here and proceed on the next notification
@@ -901,6 +886,7 @@ func mainReturnWithCode() int {
 					if err != nil {
 						core.Error("failed to set relay backend live data for address %s: %v", backendLiveData.Address, err)
 					}
+					core.Debug("wrote route matrix to redis: %d relays", len(relayIDs))
 				}
 
 				// optionally write route matrix to cloud storage
@@ -1064,7 +1050,7 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
-	fmt.Printf("starting http server on port %s\n\n", port)
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 

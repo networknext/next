@@ -7458,14 +7458,14 @@ int main( int argc, const char ** argv )
 
     printf( "    router public key is '%s'\n", router_public_key_env );
 
-    const char * backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
-    if ( !backend_hostname )
+    const char * relay_gateway = relay_platform_getenv( "RELAY_GATEWAY" );
+    if ( !relay_gateway )
     {
-        printf( "\nerror: RELAY_BACKEND_HOSTNAME not set\n\n" );
+        printf( "\nerror: RELAY_GATEWAY not set\n\n" );
         return 1;
     }
 
-    printf( "    backend hostname is '%s'\n", backend_hostname );
+    printf( "    relay gateway is '%s'\n", relay_gateway );
 
     if ( relay_initialize() != RELAY_OK )
     {
@@ -7586,7 +7586,7 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-        if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+        if ( relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -7625,7 +7625,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }

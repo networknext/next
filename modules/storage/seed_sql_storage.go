@@ -33,6 +33,8 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
+		core.Debug("SeedSQLStorage")
+
 		if err := db.AddAnalyticsDashboardCategory(ctx, 100, "Summary", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
@@ -405,10 +407,10 @@ func SeedSQLStorage(
 				return fmt.Errorf("Error generating relay update key: %v", err)
 			}
 
-			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
+			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2000 + int(i)}
 			rid := crypto.HashID(addr.String())
 
-			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
+			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2000 + int(i)}
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                            rid,
@@ -451,7 +453,7 @@ func SeedSQLStorage(
 			updateKey = make([]byte, crypto.KeySize)
 			_, err = rand.Read(updateKey)
 			if err != nil {
-				return fmt.Errorf("Error generating ghost  relay update key: %v", err)
+				return fmt.Errorf("Error generating ghost relay update key: %v", err)
 			}
 
 			addr = net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
