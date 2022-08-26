@@ -105,9 +105,9 @@ func (r *RelayFrontendSvc) ReachedRetryLimit() bool {
 }
 
 /*
-	ResetCachedMatrix() sets the cached matrix type to an empty struct. This is used
-	when we fail to choose a master relay backend for UpdateRetryCount times so that we
-	do not provide a stale matrix to the server backend.
+ResetCachedMatrix() sets the cached matrix type to an empty struct. This is used
+when we fail to choose a master relay backend for UpdateRetryCount times so that we
+do not provide a stale matrix to the server backend.
 */
 func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
 	switch matrixType {
@@ -135,12 +135,12 @@ func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
 }
 
 /*
-	chooseRelayBackendMaster() selects the oldest relay backend (in terms of uptime) as the master,
-	as long as the it has updated its status in redis in the last timeVariance seconds. In the event
-	that multiple relay backends have the same uptime, the one with a lesser VM instanceID will be chosen
-	as the master.
+chooseRelayBackendMaster() selects the oldest relay backend (in terms of uptime) as the master,
+as long as the it has updated its status in redis in the last timeVariance seconds. In the event
+that multiple relay backends have the same uptime, the one with a lesser VM instanceID will be chosen
+as the master.
 
-	The chosen relay backend produces the cost and route matrix that are cached and provided to the server backend.
+The chosen relay backend produces the cost and route matrix that are cached and provided to the server backend.
 */
 func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance time.Duration) (string, error) {
 	currentTime := time.Now().UTC()
