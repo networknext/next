@@ -20,7 +20,7 @@ endif
 SDKNAME4 = libnext4
 SDKNAME5 = libnext5
 
-RELAY_PORT ?= "2000"
+RELAY_PORT ?= 2000
 
 BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr \' '*')

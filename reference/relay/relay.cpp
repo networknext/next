@@ -160,6 +160,7 @@ void relay_printf( const char * format, ... )
     vsnprintf( buffer, sizeof( buffer ), format, args );
     printf( "%s\n", buffer );
     va_end( args );
+    fflush( stdout );
 }
 
 // -----------------------------------------------------------------------------
@@ -5983,6 +5984,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     if ( relay->initialize_router_timestamp == 0 )
     {
         printf( "Relay initialized\n" );
+        fflush( stdout );
         relay->initialize_router_timestamp = timestamp;
     }
 
@@ -7507,6 +7509,8 @@ int main( int argc, const char ** argv )
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
 
+    fflush( stdout );
+
     CURL * curl = curl_easy_init();
     if ( !curl )
     {
@@ -7633,6 +7637,7 @@ int main( int argc, const char ** argv )
     }
 
     printf( "\n\nCleaning up\n\n" );
+    fflush( stdout );
 
     if ( receive_thread )
     {
