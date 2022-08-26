@@ -962,7 +962,7 @@ func UDPServer() {
 
 	for {
 
-		// very rarely, semaphore won't let us bind to UDP because the port is already in use (?!) 
+		// very rarely, semaphore won't let us bind to UDP because the port is already in use (?!)
 		// be tolerant of this, and retry until we can get it...
 
 		var lp net.PacketConn
@@ -973,7 +973,7 @@ func UDPServer() {
 			if err == nil {
 				break
 			}
-			fmt.Printf( "retrying UDP socket create...\n")
+			fmt.Printf("retrying UDP socket create...\n")
 			time.Sleep(time.Second)
 		}
 
@@ -1032,7 +1032,7 @@ func UDPServer() {
 				}
 			}
 		}
-	}	
+	}
 }
 
 func main() {
