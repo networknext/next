@@ -16,15 +16,19 @@ import (
 	"bufio"
 )
 
-func run_make(action string, log string) (*exec.Cmd, *bytes.Buffer) {
+var processes []*os.Process
+
+func run_make(action string, log string) *bytes.Buffer {
 
 	fmt.Printf("make %s\n", action)
 
 	cmd := exec.Command("make", action)
 	if cmd == nil {
 		panic("could not run make!\n")
-		return nil, nil
+		return nil
 	}
+
+	processes = append(processes, cmd.Process)
 
 	var stdout bytes.Buffer
 
@@ -51,18 +55,20 @@ func run_make(action string, log string) (*exec.Cmd, *bytes.Buffer) {
 	    }
     }(&stdout)
 
-	return cmd, &stdout
+	return &stdout
 }
 
-func run_relay(port int, log string) (*exec.Cmd, *bytes.Buffer) {
+func run_relay(port int, log string) *bytes.Buffer {
 
 	fmt.Printf("PORT=%d make %s\n", port, "dev-relay")
 
 	cmd := exec.Command("./dist/reference_relay")
 	if cmd == nil {
 		panic("could not run relay!\n")
-		return nil, nil
+		return nil
 	}
+
+	processes = append(processes, cmd.Process)
 
 	cmd.Env = make([]string, 0)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_ADDRESS=127.0.0.1:%d", port))
@@ -96,7 +102,7 @@ func run_relay(port int, log string) (*exec.Cmd, *bytes.Buffer) {
 	    }
     }(&stdout)
 
-	return cmd, &stdout
+	return &stdout
 }
 
 func happy_path() int {
@@ -107,53 +113,27 @@ func happy_path() int {
 
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
-	magic_backend_cmd, magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
-	relay_gateway_cmd, relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
-	relay_backend_1_cmd, relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
-	relay_backend_2_cmd, relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
-	relay_frontend_cmd, relay_frontend_stdout := run_make("dev-relay-frontend", "logs/relay_frontend")
+	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
+	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
+	relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
+	relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
+	relay_frontend_stdout := run_make("dev-relay-frontend", "logs/relay_frontend")
 
-	relay_1_cmd, relay_1_stdout := run_make("dev-relay", "logs/relay_1")
-	relay_2_cmd, relay_2_stdout := run_relay(2001, "logs/relay_2")
-	relay_3_cmd, relay_3_stdout := run_relay(2002, "logs/relay_3")
-	relay_4_cmd, relay_4_stdout := run_relay(2003, "logs/relay_4")
-	relay_5_cmd, relay_5_stdout := run_relay(2004, "logs/relay_5")
+	relay_1_stdout := run_make("dev-relay", "logs/relay_1")
+	relay_2_stdout := run_relay(2001, "logs/relay_2")
+	relay_3_stdout := run_relay(2002, "logs/relay_3")
+	relay_4_stdout := run_relay(2003, "logs/relay_4")
+	relay_5_stdout := run_relay(2004, "logs/relay_5")
 
-	server_backend4_cmd, server_backend4_stdout := run_make("dev-server-backend4", "logs/server_backend4")
-	server4_cmd, server4_stdout := run_make("dev-server4", "logs/server4")
-	client4_cmd, client4_stdout := run_make("dev-client4", "logs/client4")
+	server_backend4_stdout := run_make("dev-server-backend4", "logs/server_backend4")
+	server_backend5_stdout := run_make("dev-server-backend5", "logs/server_backend5")
 
-	// make sure everything gets cleaned up
+	// make sure all processes we create get cleaned up
 
 	defer func() {
-
-		magic_backend_cmd.Process.Signal(syscall.SIGTERM)
-		relay_gateway_cmd.Process.Signal(syscall.SIGTERM)
-		relay_backend_1_cmd.Process.Signal(syscall.SIGTERM)
-		relay_backend_2_cmd.Process.Signal(syscall.SIGTERM)
-		relay_frontend_cmd.Process.Signal(syscall.SIGTERM)
-		relay_1_cmd.Process.Signal(syscall.SIGTERM)
-		relay_2_cmd.Process.Signal(syscall.SIGTERM)
-		relay_3_cmd.Process.Signal(syscall.SIGTERM)
-		relay_4_cmd.Process.Signal(syscall.SIGTERM)
-		relay_5_cmd.Process.Signal(syscall.SIGTERM)
-		server_backend4_cmd.Process.Signal(syscall.SIGTERM)
-		server4_cmd.Process.Signal(syscall.SIGTERM)
-		client4_cmd.Process.Signal(syscall.SIGTERM)
-
-		magic_backend_cmd.Wait()
-		relay_gateway_cmd.Wait()
-		relay_backend_1_cmd.Wait()
-		relay_backend_2_cmd.Wait()
-		relay_frontend_cmd.Wait()
-		relay_1_cmd.Wait()
-		relay_2_cmd.Wait()
-		relay_3_cmd.Wait()
-		relay_4_cmd.Wait()
-		relay_5_cmd.Wait()
-		server_backend4_cmd.Wait()
-		server4_cmd.Wait()
-		client4_cmd.Wait()
+		for i := range processes {
+			processes[i].Signal(syscall.SIGTERM)
+		}
 	}()
 
 	// initialize the magic backend
@@ -357,6 +337,39 @@ func happy_path() int {
 		return 1
 	}
 
+	// initialize server backend 5
+
+	fmt.Printf("initializing server backend 5\n")
+
+	server_backend5_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server_backend5_stdout.String(), "started http server on port 45000") &&
+		   strings.Contains(server_backend5_stdout.String(), "started udp server on port 45000") &&
+		   strings.Contains(server_backend5_stdout.String(), "updated route matrix: 5 relays") {
+		   	server_backend5_initialized = true
+		   	break
+		}
+		time.Sleep(100*time.Millisecond)
+	}
+
+	if !server_backend5_initialized {
+		fmt.Printf("\nerror: server backend 5 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server_backend5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// ==================================================================================
+
+	fmt.Printf("\n")
+
+	server4_stdout := run_make("dev-server4", "logs/server4")
+	server5_stdout := run_make("dev-server5", "logs/server5")
+
+	fmt.Printf("\n")
+
 	// initialize server4
 
 	fmt.Printf("initializing server 4\n")
@@ -364,7 +377,8 @@ func happy_path() int {
 	server4_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(server4_stdout.String(), "welcome to network next :)") {
+		if strings.Contains(server5_stdout.String(), "welcome to network next :)") && 
+		   strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
 		   	server4_initialized = true
 		   	break
 		}
@@ -379,13 +393,45 @@ func happy_path() int {
 		return 1
 	}
 
+	// initialize server5
+
+	fmt.Printf("initializing server 5\n")
+
+	server5_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server5_stdout.String(), "welcome to network next :)") && 
+		   strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+		   	server5_initialized = true
+		   	break
+		}
+		time.Sleep(100*time.Millisecond)
+	}
+
+	if !server5_initialized {
+		fmt.Printf("\nerror: server 5 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// ==================================================================================
+
+	fmt.Printf("\n")
+
+	client4_stdout := run_make("dev-client4", "logs/client4")
+	client5_stdout := run_make("dev-client5", "logs/client5")
+
+	fmt.Printf("\n")
+
 	// initialize client4
 
 	fmt.Printf("initializing client 4\n")
 
 	client4_initialized := false
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 30; i++ {
 		if strings.Contains(client4_stdout.String(), "client next route (committed)") {
 		   	client4_initialized = true
 		   	break
@@ -401,7 +447,29 @@ func happy_path() int {
 		return 1
 	}
 
-	// -------------------------------------------
+	// initialize client5
+
+	fmt.Printf("initializing client 5\n")
+
+	client5_initialized := false
+
+	for i := 0; i < 30; i++ {
+		if strings.Contains(client5_stdout.String(), "client next route (committed)") {
+		   	client5_initialized = true
+		   	break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if !client5_initialized {
+		fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", client5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// ==================================================================================
 
 	fmt.Printf("\nsuccess!\n\n")
 

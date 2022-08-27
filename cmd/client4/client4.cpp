@@ -79,7 +79,7 @@ int main()
 
     const char * connect_address = "127.0.0.1:32202";
 
-    const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS" );
+    const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS_SDK4" );
     if ( connect_address_override )
     {
         connect_address = connect_address_override;
@@ -100,6 +100,8 @@ int main()
 	    }
 
         next_sleep( 1.0 / 60.0 );
+
+        fflush( stdout );
     }
 
     next_client_destroy( client );

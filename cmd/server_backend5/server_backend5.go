@@ -1022,8 +1022,6 @@ func mainReturnWithCode() int {
 				{
 					to := backendLoadBalancerIP
 
-					// TODO: eventually server <-> server backend communications will use non-empty magic for
-					// packet types besides server init
 					var emptyMagic [8]byte
 
 					var fromAddressBuffer [32]byte

@@ -332,7 +332,7 @@ dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
 
 .PHONY: dev-server-backend5
 dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend5
+	@HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -394,7 +394,7 @@ build-test5: build-sdk5
 
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
-	@cd dist && ../scripts/client-spawner4.sh -n 1
+	@cd dist && ./client4
 
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
@@ -402,7 +402,7 @@ dev-server4: build-sdk4 build-server4  ## runs a local server (sdk4)
 
 .PHONY: dev-client5
 dev-client5: build-client5  ## runs a local client (sdk5)
-	@cd dist && ../scripts/client-spawner5.sh -n 1
+	@cd dist && ./client5
 
 .PHONY: dev-server5
 dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)

@@ -70,7 +70,7 @@ int main()
 
     next_init( NULL, NULL ); 
     
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:32202", "0.0.0.0:32202", "local", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:35000", "0.0.0.0:35000", "local", server_packet_received );
 
     if ( server == NULL )
     {
@@ -83,6 +83,8 @@ int main()
         next_server_update( server );
 
         next_sleep( 1.0 / 1000.0 );
+
+        fflush( stdout );
     }
 
     next_server_flush( server );
