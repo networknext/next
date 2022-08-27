@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 	"syscall"
+	"bufio"
 )
 
-func run_make(action string) (*exec.Cmd, *bytes.Buffer) {
+func run_make(action string, log string) (*exec.Cmd, *bytes.Buffer) {
 
 	// IMPORTANT: need to install "expect" package, eg. "brew install expect", "sudo apt install -y expect"
 	// without this, the output from make is buffered and we can't read it reliabliy until the process finishes :(
@@ -30,14 +31,36 @@ func run_make(action string) (*exec.Cmd, *bytes.Buffer) {
 	}
 
 	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stdout = &stdout
+
+    stdout_pipe, err := cmd.StdoutPipe()
+    if err != nil {
+        panic(err)
+    }
+
+    cmd.Start()
+
+    go func(output *bytes.Buffer) {
+		file, err := os.Create(log)
+		if err != nil {
+			panic(err)
+		}
+		writer := bufio.NewWriter(file)
+	    buf := bufio.NewReader(stdout_pipe) 
+	    for {
+	        line, _, _ := buf.ReadLine()
+	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
+	        writer.Flush()
+	        output.Write(line)
+	    
+	    }
+    }(&stdout)
+
 	cmd.Start()
 
 	return cmd, &stdout
 }
 
-func run_relay(port int) (*exec.Cmd, *bytes.Buffer) {
+func run_relay(port int, log string) (*exec.Cmd, *bytes.Buffer) {
 
 	fmt.Printf("PORT=%d make %s\n", port, "dev-relay")
 
@@ -55,8 +78,30 @@ func run_relay(port int) (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "RELAY_GATEWAY=http://127.0.0.1:30000")
 
 	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stdout = &stdout
+
+    stdout_pipe, err := cmd.StdoutPipe()
+    if err != nil {
+        panic(err)
+    }
+
+    cmd.Start()
+
+    go func(output *bytes.Buffer) {
+		file, err := os.Create(log)
+		if err != nil {
+			panic(err)
+		}
+		writer := bufio.NewWriter(file)
+	    buf := bufio.NewReader(stdout_pipe) 
+	    for {
+	        line, _, _ := buf.ReadLine()
+	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
+	        writer.Flush()
+	        output.Write(line)
+	    
+	    }
+    }(&stdout)
+
 	cmd.Start()
 
 	return cmd, &stdout
@@ -66,19 +111,21 @@ func happy_path() int {
 
 	fmt.Printf("\nhappy path\n\n")
 
+	os.Mkdir("logs", os.ModePerm)
+
 	// build and run services, as a develop would via "make dev-*"
 
-	magic_backend_cmd, magic_backend_stdout := run_make("dev-magic-backend")
-	relay_gateway_cmd, relay_gateway_stdout := run_make("dev-relay-gateway")
-	relay_backend_1_cmd, relay_backend_1_stdout := run_make("dev-relay-backend-1")
-	relay_backend_2_cmd, relay_backend_2_stdout := run_make("dev-relay-backend-2")
-	relay_frontend_cmd, relay_frontend_stdout := run_make("dev-relay-frontend")
+	magic_backend_cmd, magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
+	relay_gateway_cmd, relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
+	relay_backend_1_cmd, relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
+	relay_backend_2_cmd, relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
+	relay_frontend_cmd, relay_frontend_stdout := run_make("dev-relay-frontend", "logs/relay_frontend")
 
-	relay_1_cmd, relay_1_stdout := run_make("dev-relay")
-	relay_2_cmd, relay_2_stdout := run_relay(2001)
-	relay_3_cmd, relay_3_stdout := run_relay(2002)
-	relay_4_cmd, relay_4_stdout := run_relay(2003)
-	relay_5_cmd, relay_5_stdout := run_relay(2004)
+	relay_1_cmd, relay_1_stdout := run_make("dev-relay", "logs/relay_1")
+	relay_2_cmd, relay_2_stdout := run_relay(2001, "logs/relay_2")
+	relay_3_cmd, relay_3_stdout := run_relay(2002, "logs/relay_3")
+	relay_4_cmd, relay_4_stdout := run_relay(2003, "logs/relay_4")
+	relay_5_cmd, relay_5_stdout := run_relay(2004, "logs/relay_5")
 
 	relay_1_initialized := false
 	relay_2_initialized := false
