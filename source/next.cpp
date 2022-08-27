@@ -13076,6 +13076,10 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
 	    override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
     }
+    if ( !override_port )
+    {
+	    override_port = next_platform_getenv( "NEXT_PORT" );
+    }
     if ( override_port )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override server backend port: '%s'", override_port );
