@@ -66,7 +66,7 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "server_backend"
+	serviceName := "server_backend4"
 	fmt.Printf("%s\n", serviceName)
 
 	est, _ := time.LoadLocation("EST")
