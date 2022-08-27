@@ -33,8 +33,8 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 		return nil, nil
 	}
 
+	cmd.Env = os.Environ()
 	if mode != "" {
-		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, fmt.Sprintf("BACKEND_MODE=%s", mode))
 	}
 
@@ -214,7 +214,7 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = append(cmd.Env, "NEXT_DATACENTER=local")
 	cmd.Env = append(cmd.Env, "NEXT_HOSTNAME=127.0.0.1")
-	cmd.Env = append(cmd.Env, "NEXT_PORT=40000")
+	cmd.Env = append(cmd.Env, "NEXT_PORT=45000")
 	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PRIVATE_KEY=no")
 	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PUBLIC_KEY=no")
 
