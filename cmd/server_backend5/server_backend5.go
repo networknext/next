@@ -65,8 +65,8 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-	serviceName := "server_backend"
-	fmt.Printf("\n%s\n\n", serviceName)
+	serviceName := "server_backend5"
+	fmt.Printf("%s\n", serviceName)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -209,6 +209,9 @@ func mainReturnWithCode() int {
 					// IMPORTANT: Do not close the previous mmdb since it could still be in use
 					mmdb = newMMDB
 					mmdbMutex.Unlock()
+
+					core.Debug("updated maxmind database")
+
 				case <-ctx.Done():
 					return
 				}
@@ -375,7 +378,11 @@ func mainReturnWithCode() int {
 					routeMatrix = &newRouteMatrix
 					database = &newDatabase
 					databaseMutex.Unlock()
+					relays := routeMatrix.RelayNames
 					routeMatrixMutex.Unlock()
+	
+					core.Debug("updated route matrix: %d relays %s", len(relays), relays)
+
 				case <-ctx.Done():
 					return
 				}
@@ -469,7 +476,36 @@ func mainReturnWithCode() int {
 
 					cachedCombinedMagic = buffer
 
-					core.Debug("refreshed magic values")
+					upcomingMagic := buffer[0:8]
+					currentMagic := buffer[8:16]
+					previousMagic := buffer[16:24]
+
+					core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+						upcomingMagic[0],
+						upcomingMagic[1],
+						upcomingMagic[2],
+						upcomingMagic[3],
+						upcomingMagic[4],
+						upcomingMagic[5],
+						upcomingMagic[6],
+						upcomingMagic[7],
+						currentMagic[0],
+						currentMagic[1],
+						currentMagic[2],
+						currentMagic[3],
+						currentMagic[4],
+						currentMagic[5],
+						currentMagic[6],
+						currentMagic[7],
+						previousMagic[0],
+						previousMagic[1],
+						previousMagic[2],
+						previousMagic[3],
+						previousMagic[4],
+						previousMagic[5],
+						previousMagic[6],
+						previousMagic[7])
+
 					backendMetrics.RefreshedMagicValues.Add(1)
 				}
 			}
@@ -820,6 +856,8 @@ func mainReturnWithCode() int {
 				statusData = newStatusData
 				statusMutex.Unlock()
 
+				core.Debug("updated status")
+
 				time.Sleep(time.Second * 10)
 			}
 		}()
@@ -871,7 +909,7 @@ func mainReturnWithCode() int {
 		}
 
 		go func() {
-			fmt.Printf("started http server on port %s\n\n", httpPort)
+			fmt.Printf("started http server on port %s\n", httpPort)
 			err := srv.ListenAndServe()
 			if err != nil {
 				core.Error("failed to start http server: %v", err)
@@ -1035,7 +1073,7 @@ func mainReturnWithCode() int {
 		}(i)
 	}
 
-	fmt.Printf("started udp server on port %s\n\n", udpPort)
+	fmt.Printf("started udp server on port %s\n", udpPort)
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)
