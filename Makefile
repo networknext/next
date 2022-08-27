@@ -1158,9 +1158,8 @@ RELAY_EXE := relay
 
 .PHONY: build-reference-relay
 build-reference-relay: dist
-	@printf "Building reference relay... "
+	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
-	@printf "done\n"
 
 #######################
 #   Relay Forwarder   #

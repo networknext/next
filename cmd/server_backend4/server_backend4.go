@@ -67,7 +67,7 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "server_backend"
-	fmt.Printf("\n%s\n\n", serviceName)
+	fmt.Printf("%s\n", serviceName)
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -209,6 +209,9 @@ func mainReturnWithCode() int {
 					// IMPORTANT: Do not close the previous mmdb since it could still be in use
 					mmdb = newMMDB
 					mmdbMutex.Unlock()
+
+					core.Debug("updated maxmind database")
+
 				case <-ctx.Done():
 					return
 				}
@@ -377,7 +380,11 @@ func mainReturnWithCode() int {
 					routeMatrix = &newRouteMatrix
 					database = &newDatabase
 					databaseMutex.Unlock()
+					relays := routeMatrix.RelayNames
 					routeMatrixMutex.Unlock()
+	
+					core.Debug("updated route matrix: %d relays %s", len(relays), relays)
+
 				case <-ctx.Done():
 					return
 				}
@@ -733,6 +740,8 @@ func mainReturnWithCode() int {
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
+
+				core.Debug("updated metrics")
 			}
 		}()
 	}
@@ -747,6 +756,8 @@ func mainReturnWithCode() int {
 			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
+		core.Debug("served status")
 	}
 
 	// Start HTTP server
@@ -783,7 +794,7 @@ func mainReturnWithCode() int {
 		}
 
 		go func() {
-			fmt.Printf("started http server on port %s\n\n", httpPort)
+			fmt.Printf("started http server on port %s\n", httpPort)
 			err := srv.ListenAndServe()
 			if err != nil {
 				core.Error("failed to start http server: %v", err)
@@ -941,7 +952,7 @@ func mainReturnWithCode() int {
 		}(i)
 	}
 
-	fmt.Printf("started udp server on port %s\n\n", udpPort)
+	fmt.Printf("started udp server on port %s\n", udpPort)
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)
