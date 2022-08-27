@@ -26,3 +26,5 @@ parallel ::: \
 "go build -o ./dist/relay_gateway ./cmd/relay_gateway/*.go" \
 "go build -o ./dist/relay_backend ./cmd/relay_backend/*.go" \
 "go build -o ./dist/relay_frontend ./cmd/relay_frontend/*.go" \
+"go build -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
+"go build -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \

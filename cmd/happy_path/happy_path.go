@@ -18,10 +18,6 @@ import (
 
 func run_make(action string, log string) (*exec.Cmd, *bytes.Buffer) {
 
-	// IMPORTANT: need to install "expect" package, eg. "brew install expect", "sudo apt install -y expect"
-	// without this, the output from make is buffered and we can't read it reliabliy until the process finishes :(
-	// cmd := exec.Command("unbuffer", "make", action)
-
 	fmt.Printf("make %s\n", action)
 
 	cmd := exec.Command("make", action)
@@ -51,11 +47,9 @@ func run_make(action string, log string) (*exec.Cmd, *bytes.Buffer) {
 	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
 	        writer.Flush()
 	        output.Write(line)
-	    
+	        output.Write([]byte("\n"))
 	    }
     }(&stdout)
-
-	cmd.Start()
 
 	return cmd, &stdout
 }
@@ -98,11 +92,9 @@ func run_relay(port int, log string) (*exec.Cmd, *bytes.Buffer) {
 	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
 	        writer.Flush()
 	        output.Write(line)
-	    
+	        output.Write([]byte("\n"))	    
 	    }
     }(&stdout)
-
-	cmd.Start()
 
 	return cmd, &stdout
 }
@@ -113,7 +105,7 @@ func happy_path() int {
 
 	os.Mkdir("logs", os.ModePerm)
 
-	// build and run services, as a develop would via "make dev-*"
+	// build and run services, as a developer would via "make dev-*" as much as possible
 
 	magic_backend_cmd, magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
 	relay_gateway_cmd, relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
@@ -127,11 +119,9 @@ func happy_path() int {
 	relay_4_cmd, relay_4_stdout := run_relay(2003, "logs/relay_4")
 	relay_5_cmd, relay_5_stdout := run_relay(2004, "logs/relay_5")
 
-	relay_1_initialized := false
-	relay_2_initialized := false
-	relay_3_initialized := false
-	relay_4_initialized := false
-	relay_5_initialized := false
+	server_backend4_cmd, server_backend4_stdout := run_make("dev-server-backend4", "logs/server_backend4")
+	server4_cmd, server4_stdout := run_make("dev-server4", "logs/server4")
+	client4_cmd, client4_stdout := run_make("dev-client4", "logs/client4")
 
 	// make sure everything gets cleaned up
 
@@ -143,6 +133,13 @@ func happy_path() int {
 		relay_backend_2_cmd.Process.Signal(syscall.SIGTERM)
 		relay_frontend_cmd.Process.Signal(syscall.SIGTERM)
 		relay_1_cmd.Process.Signal(syscall.SIGTERM)
+		relay_2_cmd.Process.Signal(syscall.SIGTERM)
+		relay_3_cmd.Process.Signal(syscall.SIGTERM)
+		relay_4_cmd.Process.Signal(syscall.SIGTERM)
+		relay_5_cmd.Process.Signal(syscall.SIGTERM)
+		server_backend4_cmd.Process.Signal(syscall.SIGTERM)
+		server4_cmd.Process.Signal(syscall.SIGTERM)
+		client4_cmd.Process.Signal(syscall.SIGTERM)
 
 		magic_backend_cmd.Wait()
 		relay_gateway_cmd.Wait()
@@ -154,6 +151,9 @@ func happy_path() int {
 		relay_3_cmd.Wait()
 		relay_4_cmd.Wait()
 		relay_5_cmd.Wait()
+		server_backend4_cmd.Wait()
+		server4_cmd.Wait()
+		client4_cmd.Wait()
 	}()
 
 	// initialize the magic backend
@@ -172,7 +172,7 @@ func happy_path() int {
 	}
 
 	if !magic_backend_initialized {
-		fmt.Printf("error: failed to initialize magic backend\n")
+		fmt.Printf("\nerror: failed to initialize magic backend\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", magic_backend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
@@ -196,7 +196,7 @@ func happy_path() int {
 	}
 
 	if !relay_gateway_initialized {
-		fmt.Printf("error: failed to initialize relay gateway\n")
+		fmt.Printf("\nerror: failed to initialize relay gateway\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_gateway_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
@@ -220,7 +220,7 @@ func happy_path() int {
 	}
 
 	if !relay_backend_1_initialized {
-		fmt.Printf("error: failed to initialize relay backend 1\n")
+		fmt.Printf("\nerror: failed to initialize relay backend 1\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_backend_1_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
@@ -244,7 +244,7 @@ func happy_path() int {
 	}
 
 	if !relay_backend_2_initialized {
-		fmt.Printf("error: failed to initialize relay backend 2\n")
+		fmt.Printf("\nerror: failed to initialize relay backend 2\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_backend_2_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
@@ -266,7 +266,7 @@ func happy_path() int {
 	}
 
 	if !relay_frontend_initialized {
-		fmt.Printf("error: failed to initialize relay frontend\n")
+		fmt.Printf("\nerror: failed to initialize relay frontend\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_frontend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
@@ -278,6 +278,12 @@ func happy_path() int {
 	fmt.Printf("initializing relays\n")
 
 	relays_initialized := false
+
+	relay_1_initialized := false
+	relay_2_initialized := false
+	relay_3_initialized := false
+	relay_4_initialized := false
+	relay_5_initialized := false
 
 	for i := 0; i < 10; i++ {
 
@@ -310,7 +316,7 @@ func happy_path() int {
 	}
 
 	if !relays_initialized {
-		fmt.Printf("error: relays failed to initialize\n\n")
+		fmt.Printf("\nerror: relays failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_gateway_stdout)
 		fmt.Printf("----------------------------------------------------\n")
@@ -327,10 +333,79 @@ func happy_path() int {
 		return 1
 	}
 
+	// initialize server backend 4
+
+	fmt.Printf("initializing server backend 4\n")
+
+	server_backend4_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server_backend4_stdout.String(), "started http server on port 40000") &&
+		   strings.Contains(server_backend4_stdout.String(), "started udp server on port 40000") &&
+		   strings.Contains(server_backend4_stdout.String(), "updated route matrix: 5 relays") {
+		   	server_backend4_initialized = true
+		   	break
+		}
+		time.Sleep(100*time.Millisecond)
+	}
+
+	if !server_backend4_initialized {
+		fmt.Printf("\nerror: server backend 4 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server_backend4_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// initialize server4
+
+	fmt.Printf("initializing server 4\n")
+
+	server4_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server4_stdout.String(), "welcome to network next :)") {
+		   	server4_initialized = true
+		   	break
+		}
+		time.Sleep(100*time.Millisecond)
+	}
+
+	if !server4_initialized {
+		fmt.Printf("\nerror: server 4 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server4_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// initialize client4
+
+	fmt.Printf("initializing client 4\n")
+
+	client4_initialized := false
+
+	for i := 0; i < 20; i++ {
+		if strings.Contains(client4_stdout.String(), "client next route (committed)") {
+		   	client4_initialized = true
+		   	break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if !client4_initialized {
+		fmt.Printf("\nerror: client 4 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", client4_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// -------------------------------------------
+
 	fmt.Printf("\nsuccess!\n\n")
 
-	// todo
-	time.Sleep(600*time.Second)
+	time.Sleep(time.Hour)
 
 	return 0
 }
