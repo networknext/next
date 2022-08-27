@@ -3932,7 +3932,6 @@ int next_init( void * context, next_config_t * config_in )
 		next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
 	}
 
-    // IMPORTANT: For backwards compatibility
     if ( !next_server_backend_hostname_override )
     {
         next_server_backend_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
