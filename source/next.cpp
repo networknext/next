@@ -3925,7 +3925,12 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME_SDK4" );
+
+    if ( !next_server_backend_hostname_override ) 
+	{
+		next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+	}
 
     // IMPORTANT: For backwards compatibility
     if ( !next_server_backend_hostname_override )
@@ -13067,10 +13072,14 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     const char * hostname = next_global_config.server_backend_hostname;
     const char * port = NEXT_SERVER_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT_SDK4" );
+    if ( !override_port )
+    {
+	    override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    }
     if ( override_port )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        next_printf( NEXT_LOG_LEVEL_INFO, "override server backend port: '%s'", override_port );
         port = override_port;
     }
 
