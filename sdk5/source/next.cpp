@@ -47,7 +47,7 @@
 #define NEXT_SERVER_BACKEND_HOSTNAME                 "dev5.spacecats.net"
 #define NEXT_DISABLE_ADVANCED_PACKET_FILTER                             1
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_PORT                                  "40000"
+#define NEXT_SERVER_BACKEND_PORT                                  "45000"
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                         		  9.0
