@@ -14,6 +14,7 @@ import (
 	"time"
 	"syscall"
 	"bufio"
+	"runtime"
 )
 
 var processes []*os.Process
@@ -22,7 +23,15 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	fmt.Printf("make %s\n", action)
 
-	cmd := exec.Command("make", action)
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "linux" {
+		// IMPORTANT: Gotta unbuffer "make" on linux otherwise we get no output at all, until the program exits
+		cmd = exec.Command("unbuffer", "make", action)
+	} else {
+		cmd = exec.Command("make", action)
+	}
+
 	if cmd == nil {
 		panic("could not run make!\n")
 		return nil
