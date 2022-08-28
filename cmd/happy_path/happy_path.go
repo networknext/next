@@ -22,7 +22,7 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	fmt.Printf("make %s\n", action)
 
-	cmd := exec.Command("make", action)
+	cmd := exec.Command("unbuffer", "make", action)
 	if cmd == nil {
 		panic("could not run make!\n")
 		return nil
