@@ -28,8 +28,6 @@ func run_make(action string, log string) *bytes.Buffer {
 		return nil
 	}
 
-	processes = append(processes, cmd.Process)
-
 	var stdout bytes.Buffer
 
     stdout_pipe, err := cmd.StdoutPipe()
@@ -38,6 +36,8 @@ func run_make(action string, log string) *bytes.Buffer {
     }
 
     cmd.Start()
+
+	processes = append(processes, cmd.Process)
 
     go func(output *bytes.Buffer) {
 		file, err := os.Create(log)
@@ -68,8 +68,6 @@ func run_relay(port int, log string) *bytes.Buffer {
 		return nil
 	}
 
-	processes = append(processes, cmd.Process)
-
 	cmd.Env = make([]string, 0)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_ADDRESS=127.0.0.1:%d", port))
 	cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
@@ -85,6 +83,8 @@ func run_relay(port int, log string) *bytes.Buffer {
     }
 
     cmd.Start()
+
+	processes = append(processes, cmd.Process)
 
     go func(output *bytes.Buffer) {
 		file, err := os.Create(log)
