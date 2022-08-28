@@ -27,7 +27,7 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	if runtime.GOOS == "linux" {
 		// IMPORTANT: Gotta unbuffer "make" on linux otherwise we get no output at all, until the program exits
-		cmd = exec.Command("unbuffer", "make", action)
+		cmd = exec.Command("stdbuf", "-i0", "-o0", "-e0", "command", fmt.Sprintf("make", action))
 	} else {
 		cmd = exec.Command("make", action)
 	}
