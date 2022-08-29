@@ -310,6 +310,10 @@ export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 	@PORT=30000 ./dist/relay_gateway
 
+.PHONY: dev-relay-backend-new
+dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
+	@PORT=30001 ./dist/relay_backend_new
+
 .PHONY: dev-relay-backend-1
 dev-relay-backend-1: build-relay-backend ## runs a local relay backend
 	@PORT=30001 ./dist/relay_backend
@@ -1034,6 +1038,12 @@ deploy-debug-relay-backend-prod-debug:
 build-relay-backend:
 	@printf "Building relay backend... "
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
+	@printf "done\n"
+
+.PHONY: build-relay-backend-new
+build-relay-backend-new:
+	@printf "Building relay backend (new)... "
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_backend_new ./cmd/relay_backend_new/relay_backend_new.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifacts-dev
