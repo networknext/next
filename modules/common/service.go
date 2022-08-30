@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"context"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -27,6 +28,8 @@ type Service struct {
 	CommitMessage string
 	CommitHash string
 	Router mux.Router
+	Context context.Context
+	ContextCancelFunc context.CancelFunc
 }
 
 func CreateService(serviceName string) *Service {
@@ -47,6 +50,8 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+
+	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
 	return &service
 }
