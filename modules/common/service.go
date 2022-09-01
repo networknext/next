@@ -9,6 +9,7 @@ import (
 	"context"
 	"sort"
 	"time"
+	"sync"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -26,13 +27,22 @@ var (
 )
 
 type Service struct {
+
 	ServiceName string
 	BuildTime string
 	CommitMessage string
 	CommitHash string
+	
 	Router mux.Router
+	
 	Context context.Context
 	ContextCancelFunc context.CancelFunc
+
+	databaseMutex sync.RWMutex
+	database *routing.DatabaseBinWrapper
+	databaseOverlay *routing.OverlayBinWrapper
+	databaseRelayHash map[uint64]routing.Relay
+	databaseRelayArray []routing.Relay
 }
 
 func CreateService(serviceName string) *Service {
@@ -64,14 +74,43 @@ func (service *Service) LoadDatabase() {
 	databasePath := envvar.Get("DATABASE_PATH", "database.bin")
 	overlayPath := envvar.Get("OVERLAY_PATH", "overlay.bin")
 
-	database, overlay := loadDatabase(databasePath, overlayPath)
+	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
-	// todo: store database etc.
+	applyOverlay(service.database, service.databaseOverlay)
 
-	_ = database
-	_ = overlay
+	service.databaseRelayHash, service.databaseRelayArray = generateSecondaryValues(service.database)
 
-	watchDatabase(service.Context, databasePath, overlayPath)
+	service.watchDatabase(service.Context, databasePath, overlayPath)
+}
+
+func (service *Service) Database() *routing.DatabaseBinWrapper {
+	service.databaseMutex.RLock()
+	database := service.database
+	service.databaseMutex.RUnlock()
+	return database
+}
+
+func (service *Service) RelayHash() map[uint64]routing.Relay {
+	service.databaseMutex.RLock()
+	relayHash := service.databaseRelayHash
+	service.databaseMutex.RUnlock()
+	return relayHash
+}
+
+func (service *Service) RelayArray() []routing.Relay {
+	service.databaseMutex.RLock()
+	relayArray := service.databaseRelayArray
+	service.databaseMutex.RUnlock()
+	return relayArray
+}
+
+func (service *Service) DatabaseAll() (*routing.DatabaseBinWrapper, map[uint64]routing.Relay, []routing.Relay) {
+	service.databaseMutex.RLock()
+	database := service.database
+	relayHash := service.databaseRelayHash
+	relayArray := service.databaseRelayArray
+	service.databaseMutex.RUnlock()
+	return database, relayHash, relayArray
 }
 
 func (service *Service) StartWebServer() {
@@ -177,7 +216,7 @@ func fileExists(filename string) bool {
     return false
 }
 
-func watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
+func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
 
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Second)//time.Minute)
 
@@ -205,10 +244,12 @@ func watchDatabase(ctx context.Context, databasePath string, overlayPath string)
 
 				applyOverlay(newDatabase, newOverlay)
 
-				_ = relayHashNew
-				_ = relayArrayNew
-
-				// todo: pointer swaps under mutex (don't need to hold on to the overlay)
+				service.databaseMutex.Lock()
+				service.database = newDatabase
+				service.databaseOverlay = newOverlay
+				service.databaseRelayHash = relayHashNew
+				service.databaseRelayArray = relayArrayNew
+				service.databaseMutex.Unlock()
 			}
 		}
 	}()
