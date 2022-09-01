@@ -306,13 +306,17 @@ export RELEASE_NOTES_INTERVAL=30s
 export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
 export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
-.PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-	@PORT=30000 ./dist/relay_gateway
+.PHONY: dev-relay-gateway-new
+dev-relay-gateway-new: build-relay-gateway-new ## runs a local relay gateway (new)
+	@PORT=30000 ./dist/relay_gateway_new
 
 .PHONY: dev-relay-backend-new
 dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
 	@PORT=30001 ./dist/relay_backend_new
+
+.PHONY: dev-relay-gateway
+dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+	@PORT=30000 ./dist/relay_gateway
 
 .PHONY: dev-relay-backend-1
 dev-relay-backend-1: build-relay-backend ## runs a local relay backend
@@ -1212,6 +1216,12 @@ deploy-relay-forwarder-prod:
 #######################
 #    Relay Gateway    #
 #######################
+
+.PHONY: build-relay-gateway-new
+build-relay-gateway-new:
+	@printf "Building relay gateway (new)... "
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_gateway_new ./cmd/relay_gateway_new/relay_gateway_new.go
+	@printf "done\n"
 
 .PHONY: build-relay-gateway
 build-relay-gateway:

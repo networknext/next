@@ -10,6 +10,8 @@ import (
 	"sort"
 	"time"
 	"sync"
+	"runtime"
+	"encoding/json"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -34,15 +36,20 @@ type Service struct {
 	CommitHash string
 	
 	Router mux.Router
-	
+
 	Context context.Context
 	ContextCancelFunc context.CancelFunc
 
+	// ------------------
+	
 	databaseMutex sync.RWMutex
 	database *routing.DatabaseBinWrapper
 	databaseOverlay *routing.OverlayBinWrapper
 	databaseRelayHash map[uint64]routing.Relay
 	databaseRelayArray []routing.Relay
+
+	statusMutex sync.RWMutex
+	statusData *ServiceStatus
 }
 
 func CreateService(serviceName string) *Service {
@@ -63,8 +70,11 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+	service.Router.HandleFunc("/status", service.StatusHandlerFunc())
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
+
+	service.runStatusUpdateLoop()
 
 	return &service
 }
@@ -154,7 +164,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 		return nil, nil
 	}
 
-	fmt.Printf("loaded database: '%s'\n", databasePath)
+	core.Debug("loaded database: '%s'", databasePath)
 
 	// load the overlay if it exists
 
@@ -175,7 +185,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 		return database, nil
 	}
 
-	fmt.Printf("loaded overlay: '%s'\n", overlayPath)
+	core.Debug("loaded overlay: '%s'", overlayPath)
 
 	return database, overlay
 }
@@ -190,7 +200,6 @@ func generateSecondaryValues(database *routing.DatabaseBinWrapper) (map[uint64]r
 	})
 
 	for i := range relayArray {
-		fmt.Printf("loaded relay %s\n", relayArray[i].Name)
 		relayHash[relayArray[i].ID] = relayArray[i]
 	}
 
@@ -218,7 +227,7 @@ func fileExists(filename string) bool {
 
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
 
-	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Second)//time.Minute)
+	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
 	go func() {
 
@@ -253,4 +262,68 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 			}
 		}
 	}()
+}
+
+// -------------------------------------------------------------------------
+
+type ServiceStatus struct {
+	ServiceName 	string  `json:"service_name"`
+	CommitMessage   string  `json:"commit_message"`
+	CommitHash  	string  `json:"commit_hash"`
+	BuildTime       string  `json:"build_time"`
+	Started     	string  `json:"started"`
+	Uptime      	string  `json:"uptime"`
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+}
+
+func (service *Service) updateStatus(startTime time.Time) {
+
+	memoryAllocatedMB := func() float64 {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return float64(m.Alloc) / (1000.0 * 1000.0)
+	}
+	
+	newStatusData := &ServiceStatus{}
+
+	newStatusData.ServiceName = service.ServiceName
+	newStatusData.CommitMessage = commitMessage
+	newStatusData.CommitHash = commitHash
+	newStatusData.BuildTime = buildTime
+	newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+	newStatusData.Uptime = time.Since(startTime).String()
+	newStatusData.Goroutines = int(runtime.NumGoroutine())
+	newStatusData.MemoryAllocated = memoryAllocatedMB()
+
+	service.statusMutex.Lock()
+	service.statusData = newStatusData
+	service.statusMutex.Unlock()
+}
+
+func (service *Service) runStatusUpdateLoop() {
+	startTime := time.Now()
+	service.updateStatus(startTime)
+	go func() {
+		for {
+			service.updateStatus(startTime)
+			time.Sleep(time.Second * 10)
+		}
+	}()
+}
+
+func (service *Service) StatusHandlerFunc() func (w http.ResponseWriter, r *http.Request) {
+
+	return func (w http.ResponseWriter, r *http.Request) {
+		
+		service.statusMutex.RLock()
+		data := service.statusData
+		service.statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(*data); err != nil {
+			core.Error("could not write status data to json: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 }
