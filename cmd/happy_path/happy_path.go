@@ -6,14 +6,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 	"syscall"
-	"bufio"
+	"time"
 )
 
 var processes []*os.Process
@@ -30,30 +30,30 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	var stdout bytes.Buffer
 
-    stdout_pipe, err := cmd.StdoutPipe()
-    if err != nil {
-        panic(err)
-    }
+	stdout_pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
 
-    cmd.Start()
+	cmd.Start()
 
 	processes = append(processes, cmd.Process)
 
-    go func(output *bytes.Buffer) {
+	go func(output *bytes.Buffer) {
 		file, err := os.Create(log)
 		if err != nil {
 			panic(err)
 		}
 		writer := bufio.NewWriter(file)
-	    buf := bufio.NewReader(stdout_pipe) 
-	    for {
-	        line, _, _ := buf.ReadLine()
-	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
-	        writer.Flush()
-	        output.Write(line)
-	        output.Write([]byte("\n"))
-	    }
-    }(&stdout)
+		buf := bufio.NewReader(stdout_pipe)
+		for {
+			line, _, _ := buf.ReadLine()
+			writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
+			writer.Flush()
+			output.Write(line)
+			output.Write([]byte("\n"))
+		}
+	}(&stdout)
 
 	return &stdout
 }
@@ -77,30 +77,30 @@ func run_relay(port int, log string) *bytes.Buffer {
 
 	var stdout bytes.Buffer
 
-    stdout_pipe, err := cmd.StdoutPipe()
-    if err != nil {
-        panic(err)
-    }
+	stdout_pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
 
-    cmd.Start()
+	cmd.Start()
 
 	processes = append(processes, cmd.Process)
 
-    go func(output *bytes.Buffer) {
+	go func(output *bytes.Buffer) {
 		file, err := os.Create(log)
 		if err != nil {
 			panic(err)
 		}
 		writer := bufio.NewWriter(file)
-	    buf := bufio.NewReader(stdout_pipe) 
-	    for {
-	        line, _, _ := buf.ReadLine()
-	        writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
-	        writer.Flush()
-	        output.Write(line)
-	        output.Write([]byte("\n"))	    
-	    }
-    }(&stdout)
+		buf := bufio.NewReader(stdout_pipe)
+		for {
+			line, _, _ := buf.ReadLine()
+			writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
+			writer.Flush()
+			output.Write(line)
+			output.Write([]byte("\n"))
+		}
+	}(&stdout)
 
 	return &stdout
 }
@@ -144,11 +144,11 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(magic_backend_stdout.String(), "starting http server on port 41007") &&
-		   strings.Contains(magic_backend_stdout.String(), "served magic values") {
-		   	magic_backend_initialized = true
-		   	break
+			strings.Contains(magic_backend_stdout.String(), "served magic values") {
+			magic_backend_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !magic_backend_initialized {
@@ -167,10 +167,10 @@ func happy_path() int {
 
 	for i := 0; i < 10; i++ {
 		if strings.Contains(relay_gateway_stdout.String(), "loaded database.bin") &&
-		   strings.Contains(relay_gateway_stdout.String(), "starting http server on port 30000") &&
-		   strings.Contains(relay_gateway_stdout.String(), "started watchman on ") {
-		   	relay_gateway_initialized = true
-		   	break
+			strings.Contains(relay_gateway_stdout.String(), "starting http server on port 30000") &&
+			strings.Contains(relay_gateway_stdout.String(), "started watchman on ") {
+			relay_gateway_initialized = true
+			break
 		}
 		time.Sleep(time.Second)
 	}
@@ -191,12 +191,12 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
-		   strings.Contains(relay_backend_1_stdout.String(), "started watchman on ") && 
-		   strings.Contains(relay_backend_1_stdout.String(), "wrote route matrix to redis") {
-		   	relay_backend_1_initialized = true
-		   	break
+			strings.Contains(relay_backend_1_stdout.String(), "started watchman on ") &&
+			strings.Contains(relay_backend_1_stdout.String(), "wrote route matrix to redis") {
+			relay_backend_1_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !relay_backend_1_initialized {
@@ -215,12 +215,12 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
-		   strings.Contains(relay_backend_2_stdout.String(), "started watchman on ") && 
-		   strings.Contains(relay_backend_2_stdout.String(), "wrote route matrix to redis") {
-		   	relay_backend_2_initialized = true
-		   	break
+			strings.Contains(relay_backend_2_stdout.String(), "started watchman on ") &&
+			strings.Contains(relay_backend_2_stdout.String(), "wrote route matrix to redis") {
+			relay_backend_2_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !relay_backend_2_initialized {
@@ -239,10 +239,10 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(relay_frontend_stdout.String(), "starting http server on port 30005") {
-		   	relay_frontend_initialized = true
-		   	break
+			relay_frontend_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !relay_frontend_initialized {
@@ -321,12 +321,12 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(server_backend4_stdout.String(), "started http server on port 40000") &&
-		   strings.Contains(server_backend4_stdout.String(), "started udp server on port 40000") &&
-		   strings.Contains(server_backend4_stdout.String(), "updated route matrix: 5 relays") {
-		   	server_backend4_initialized = true
-		   	break
+			strings.Contains(server_backend4_stdout.String(), "started udp server on port 40000") &&
+			strings.Contains(server_backend4_stdout.String(), "updated route matrix: 5 relays") {
+			server_backend4_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !server_backend4_initialized {
@@ -345,12 +345,12 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(server_backend5_stdout.String(), "started http server on port 45000") &&
-		   strings.Contains(server_backend5_stdout.String(), "started udp server on port 45000") &&
-		   strings.Contains(server_backend5_stdout.String(), "updated route matrix: 5 relays") {
-		   	server_backend5_initialized = true
-		   	break
+			strings.Contains(server_backend5_stdout.String(), "started udp server on port 45000") &&
+			strings.Contains(server_backend5_stdout.String(), "updated route matrix: 5 relays") {
+			server_backend5_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !server_backend5_initialized {
@@ -377,12 +377,12 @@ func happy_path() int {
 	server4_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(server5_stdout.String(), "welcome to network next :)") && 
-		   strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
-		   	server4_initialized = true
-		   	break
+		if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
+			strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+			server4_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !server4_initialized {
@@ -400,12 +400,12 @@ func happy_path() int {
 	server5_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(server5_stdout.String(), "welcome to network next :)") && 
-		   strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
-		   	server5_initialized = true
-		   	break
+		if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
+			strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+			server5_initialized = true
+			break
 		}
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !server5_initialized {
@@ -433,8 +433,8 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client4_stdout.String(), "client next route (committed)") {
-		   	client4_initialized = true
-		   	break
+			client4_initialized = true
+			break
 		}
 		time.Sleep(time.Second)
 	}
@@ -455,8 +455,8 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client5_stdout.String(), "client next route (committed)") {
-		   	client5_initialized = true
-		   	break
+			client5_initialized = true
+			break
 		}
 		time.Sleep(time.Second)
 	}

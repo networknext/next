@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net/http"
-	"fmt"
-	"time"
 	"context"
+	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
@@ -29,11 +29,11 @@ func UpdateLoop(ctx context.Context) {
 	for {
 		select {
 
-			case <-ctx.Done():
-				return
+		case <-ctx.Done():
+			return
 
-			case <-ticker.C:
-				Update()
+		case <-ticker.C:
+			Update()
 		}
 	}
 

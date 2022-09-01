@@ -1,15 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"hash/fnv"
 	"encoding/binary"
+	"fmt"
+	"hash/fnv"
+	"net/http"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/common"
 )
 
 var magicUpdateSeconds int
@@ -49,9 +49,9 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 
 	counter := timestamp / int64(magicUpdateSeconds)
 
-	upcomingMagic := hashCounter(counter+2)
-	currentMagic := hashCounter(counter+1)
-	previousMagic := hashCounter(counter+0)
+	upcomingMagic := hashCounter(counter + 2)
+	currentMagic := hashCounter(counter + 1)
+	previousMagic := hashCounter(counter + 0)
 
 	core.Debug("served magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
 		upcomingMagic[0],

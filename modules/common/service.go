@@ -1,23 +1,26 @@
 package common
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
-	"context"
-	"sort"
-	"time"
-	"sync"
 	"runtime"
-	"encoding/json"
+	"sort"
+	"sync"
+	"syscall"
+	"time"
+	"bytes"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport"
 
 	"github.com/gorilla/mux"
 )
@@ -29,27 +32,32 @@ var (
 )
 
 type Service struct {
-
-	ServiceName string
-	BuildTime string
+	ServiceName   string
+	BuildTime     string
 	CommitMessage string
-	CommitHash string
-	
+	CommitHash    string
+
 	Router mux.Router
 
-	Context context.Context
+	Context           context.Context
 	ContextCancelFunc context.CancelFunc
 
 	// ------------------
-	
-	databaseMutex sync.RWMutex
-	database *routing.DatabaseBinWrapper
-	databaseOverlay *routing.OverlayBinWrapper
-	databaseRelayHash map[uint64]routing.Relay
+
+	databaseMutex      sync.RWMutex
+	database           *routing.DatabaseBinWrapper
+	databaseOverlay    *routing.OverlayBinWrapper
+	databaseRelayHash  map[uint64]routing.Relay
 	databaseRelayArray []routing.Relay
 
 	statusMutex sync.RWMutex
-	statusData *ServiceStatus
+	statusData  *ServiceStatus
+
+	magicMutex    sync.RWMutex
+	magicData     []byte
+	upcomingMagic []byte
+	currentMagic  []byte
+	previousMagic []byte
 }
 
 func CreateService(serviceName string) *Service {
@@ -70,7 +78,7 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
-	service.Router.HandleFunc("/status", service.StatusHandlerFunc())
+	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
@@ -123,6 +131,19 @@ func (service *Service) DatabaseAll() (*routing.DatabaseBinWrapper, map[uint64]r
 	return database, relayHash, relayArray
 }
 
+func (service *Service) UpdateMagic() {
+	service.updateMagicLoop()
+}
+
+func (service *Service) GetMagic() ([]byte, []byte, []byte) {
+	service.magicMutex.Lock()
+	upcomingMagic := service.upcomingMagic
+	currentMagic := service.currentMagic
+	previousMagic := service.previousMagic
+	service.magicMutex.Unlock()
+	return upcomingMagic, currentMagic, previousMagic
+}
+
 func (service *Service) StartWebServer() {
 	port := envvar.Get("HTTP_PORT", "80")
 	fmt.Printf("starting http server on port %s\n", port)
@@ -158,7 +179,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	defer databaseFile.Close()
 
 	database := routing.CreateEmptyDatabaseBinWrapper()
-	err = backend.DecodeBinWrapper(databaseFile, database); 
+	err = backend.DecodeBinWrapper(databaseFile, database)
 	if err != nil || database.IsEmpty() {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil
@@ -173,7 +194,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 		return database, nil
 	}
 	defer overlayFile.Close()
-	
+
 	overlay := routing.CreateEmptyOverlayBinWrapper()
 	err = backend.DecodeOverlayWrapper(overlayFile, overlay)
 	if err != nil || overlay.IsEmpty() {
@@ -218,11 +239,11 @@ func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.Overlay
 }
 
 func fileExists(filename string) bool {
- 	_, err := os.Stat(filename)
-    if err == nil {
-        return true
-    }
-    return false
+	_, err := os.Stat(filename)
+	if err == nil {
+		return true
+	}
+	return false
 }
 
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
@@ -267,12 +288,12 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 // -------------------------------------------------------------------------
 
 type ServiceStatus struct {
-	ServiceName 	string  `json:"service_name"`
+	ServiceName     string  `json:"service_name"`
 	CommitMessage   string  `json:"commit_message"`
-	CommitHash  	string  `json:"commit_hash"`
+	CommitHash      string  `json:"commit_hash"`
 	BuildTime       string  `json:"build_time"`
-	Started     	string  `json:"started"`
-	Uptime      	string  `json:"uptime"`
+	Started         string  `json:"started"`
+	Uptime          string  `json:"uptime"`
 	Goroutines      int     `json:"goroutines"`
 	MemoryAllocated float64 `json:"mb_allocated"`
 }
@@ -284,7 +305,7 @@ func (service *Service) updateStatus(startTime time.Time) {
 		runtime.ReadMemStats(&m)
 		return float64(m.Alloc) / (1000.0 * 1000.0)
 	}
-	
+
 	newStatusData := &ServiceStatus{}
 
 	newStatusData.ServiceName = service.ServiceName
@@ -312,10 +333,10 @@ func (service *Service) runStatusUpdateLoop() {
 	}()
 }
 
-func (service *Service) StatusHandlerFunc() func (w http.ResponseWriter, r *http.Request) {
+func (service *Service) statusHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 
-	return func (w http.ResponseWriter, r *http.Request) {
-		
+	return func(w http.ResponseWriter, r *http.Request) {
+
 		service.statusMutex.RLock()
 		data := service.statusData
 		service.statusMutex.RUnlock()
@@ -327,3 +348,115 @@ func (service *Service) StatusHandlerFunc() func (w http.ResponseWriter, r *http
 		}
 	}
 }
+
+// ----------------------------------------------------------
+
+func getMagic(httpClient *http.Client, uri string) ([]byte, error) {
+
+	response, err := httpClient.Get(uri)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to http get magic values: %v", err))
+	}
+
+	buffer, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to read magic data: %v", err))
+	}
+
+	response.Body.Close()
+
+	if len(buffer) != 24 {
+		return nil, errors.New(fmt.Sprintf("expected magic data to be 24 bytes, got %d", len(buffer)))
+	}
+
+	return buffer, nil
+}
+
+func (service *Service) updateMagicValues(magicData []byte) {
+
+	if bytes.Equal(magicData, service.magicData) {
+		return
+	}
+
+	service.magicMutex.Lock()
+	service.magicData = magicData
+	service.upcomingMagic = magicData[0:8]
+	service.currentMagic = magicData[8:16]
+	service.previousMagic = magicData[16:24]	
+	service.magicMutex.Unlock()
+
+	core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+		service.upcomingMagic[0],
+		service.upcomingMagic[1],
+		service.upcomingMagic[2],
+		service.upcomingMagic[3],
+		service.upcomingMagic[4],
+		service.upcomingMagic[5],
+		service.upcomingMagic[6],
+		service.upcomingMagic[7],
+		service.currentMagic[0],
+		service.currentMagic[1],
+		service.currentMagic[2],
+		service.currentMagic[3],
+		service.currentMagic[4],
+		service.currentMagic[5],
+		service.currentMagic[6],
+		service.currentMagic[7],
+		service.previousMagic[0],
+		service.previousMagic[1],
+		service.previousMagic[2],
+		service.previousMagic[3],
+		service.previousMagic[4],
+		service.previousMagic[5],
+		service.previousMagic[6],
+		service.previousMagic[7])
+}
+
+func (service *Service) updateMagicLoop() {
+
+	magicURI := envvar.Get("MAGIC_URI", "http://127.0.0.1:41007/magic")
+
+	core.Debug("magic uri: %s", magicURI)
+
+	httpClient := &http.Client{
+		Timeout: time.Second,
+	}
+
+	var magicData []byte
+	for i := 0; i < 10; i++ {
+		var err error
+		magicData, err = getMagic(httpClient, magicURI)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if magicData == nil {
+		core.Error("could not get initial magic values")
+		os.Exit(1)
+	}
+
+	service.updateMagicValues(magicData)
+
+	// start the goroutine to watch and update the magic every n seconds
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case <-ticker.C:
+				magicData, err := getMagic(httpClient, magicURI)
+				if err == nil {
+					service.updateMagicValues(magicData)
+				}
+			}
+		}
+	}()
+}
+
+// ----------------------------------------------------------
