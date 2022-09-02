@@ -419,6 +419,11 @@ func test_redis_pubsub() {
 	// Divide num messages received across all threads by num consumers to make sure everyone got the same num messages
 	totalMessagesReceived = (totalMessagesReceived / consumerThreads)
 
+	fmt.Printf("\nTotal batches sent: %d", totalNumBatchesSent)
+	fmt.Printf("\nTotal batches received: %d", totalNumBatchesReceived)
+	fmt.Printf("\nTotal messages sent: %d", totalMessagesSent)
+	fmt.Printf("\nTotal messages received: %d\n", totalMessagesReceived)
+
 	failed := false
 	if totalNumBatchesReceived == totalNumBatchesSent {
 		fmt.Printf("\nTest Results - Batches Sent: Passed\n")
