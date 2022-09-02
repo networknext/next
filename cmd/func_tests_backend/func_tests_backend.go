@@ -326,8 +326,11 @@ func test_redis_streams() {
 
 				case <-ctx.Done():
 					killThread(producerThreadKiller, threadIndex, &producerWG)
-					return
 				}
+			}
+
+			if err := streamProducer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
 			}
 
 			// If the thread is killed externally, decrement the wg counter
@@ -371,7 +374,7 @@ func test_redis_streams() {
 
 				if err == context.Canceled {
 					killThread(consumerThreadKiller, threadIndex, &consumerWG)
-					return
+					continue
 				}
 
 				// bypass error reading stream when redis client is not done creating
@@ -380,6 +383,10 @@ func test_redis_streams() {
 				}
 
 				core.Error("error reading redis stream: %s", err)
+			}
+
+			if err := streamConsumer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
 			}
 
 			// If the thread is killed externally, decrement the wg counter
