@@ -7,16 +7,25 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
 	"fmt"
+	"io/ioutil"
+	mathRand "math/rand"
+	"net/http"
 	"os"
 	"os/exec"
-	"time"
-	"strings"
-	"syscall"
-	"net/http"
-	"runtime"
 	"reflect"
-	"io/ioutil"
+	"runtime"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
+
+	"github.com/go-redis/redis"
+	"github.com/networknext/backend/modules/common/redis_streams"
+	"github.com/networknext/backend/modules/core"
 )
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
@@ -62,7 +71,7 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
@@ -95,8 +104,8 @@ func test_magic_backend() {
 	}
 
 	magicData, error := ioutil.ReadAll(response.Body)
-   	if error != nil {
-      	fmt.Printf("error: failed to read magic response data\n")
+	if error != nil {
+		fmt.Printf("error: failed to read magic response data\n")
 		cmd.Process.Signal(syscall.SIGTERM)
 		os.Exit(1)
 	}
@@ -127,8 +136,8 @@ func test_magic_backend() {
 		}
 
 		magicData, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
@@ -138,13 +147,13 @@ func test_magic_backend() {
 			magicUpdates++
 
 			if bytes.Compare(magicData[8:16], upcomingMagic[:]) != 0 {
-		      	fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
+				fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
 
 			if bytes.Compare(magicData[16:24], currentMagic[:]) != 0 {
-		      	fmt.Printf("error: did not see current magic shuffle to previous magic\n")
+				fmt.Printf("error: did not see current magic shuffle to previous magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
@@ -201,8 +210,8 @@ func test_magic_backend() {
 		}
 
 		magicData1, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data (1)\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data (1)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
@@ -215,14 +224,14 @@ func test_magic_backend() {
 		}
 
 		magicData2, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data (2)\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data (2)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
 
 		if bytes.Compare(magicData1, magicData2) != 0 && !(bytes.Compare(magicData1[0:16], magicData2[8:24]) == 0 || bytes.Compare(magicData2[0:16], magicData1[8:24]) == 0) {
-	      	fmt.Printf("error: magic data mismatch between two magic backends\n")
+			fmt.Printf("error: magic data mismatch between two magic backends\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
@@ -246,11 +255,210 @@ func test_magic_backend() {
 	check_output("successfully shutdown", cmd2, stdout, stderr)
 }
 
+func test_redis_streams() {
+
+	fmt.Printf("test_redis_streams\n")
+
+	ctx := context.Background()
+
+	producerThreads := 2
+	consumerThreads := 10
+
+	var producerWG sync.WaitGroup
+	var consumerWG sync.WaitGroup
+
+	producerWG.Add(producerThreads)
+	consumerWG.Add(consumerThreads)
+
+	threadMessagesSent := make([]int64, producerThreads)
+	threadMessagesReceived := make([]int64, consumerThreads)
+
+	threadBatchesSent := make([]int64, producerThreads)
+	threadBatchesReceived := make([]int64, consumerThreads)
+
+	producerThreadKiller := make([]int32, producerThreads)
+	consumerThreadKiller := make([]int32, consumerThreads)
+
+	for i := 0; i < producerThreads; i++ {
+		go func(threadIndex int) {
+			streamProducer := redis_streams.NewProducer(redis_streams.ProducerConfig{
+				RedisHostname: "127.0.0.1:6379",
+				RedisPassword: "",
+				StreamName:    "test-stream",
+				BatchSize:     100,
+				BatchBytes:    200000,
+				TimeInterval:  time.Millisecond * 100,
+			})
+
+			connectErr := streamProducer.Connect(ctx)
+			if connectErr != nil {
+				producerWG.Done()
+				return
+			}
+
+			tickRate := time.Duration(1000000000 / 1000)
+
+			ticker := time.NewTicker(tickRate)
+			//create messages batch
+			messagesBatch := make([][]byte, 0)
+			start := time.Now()
+			for producerThreadKiller[threadIndex] == 0 {
+				select {
+				case <-ticker.C:
+					var err error = nil
+
+					messageSize := mathRand.Intn(95) + 5
+					messageData := make([]byte, messageSize)
+
+					rand.Read(messageData)
+
+					messagesBatch = append(messagesBatch, messageData)
+
+					messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
+
+					if err != nil {
+						fmt.Printf("error: message send error: %v\n", err)
+						continue
+					}
+
+					threadBatchesSent[threadIndex] = streamProducer.NumBatchesSent()
+					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
+
+				case <-ctx.Done():
+					killThread(producerThreadKiller, threadIndex)
+				}
+			}
+
+			if err := streamProducer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
+			producerWG.Done()
+		}(i)
+	}
+
+	for i := 0; i < consumerThreads; i++ {
+		go func(threadIndex int) {
+			streamConsumer := redis_streams.NewConsumer(redis_streams.ConsumerConfig{
+				RedisHostname:     "127.0.0.1:6379",
+				RedisPassword:     "",
+				StreamName:        "test-stream",
+				ConsumerGroup:     "test-group",
+				BlockTimeout:      time.Millisecond * 100,
+				ConsumerBatchSize: 10,
+				ConsumerName:      "",
+			})
+
+			connectErr := streamConsumer.Connect(ctx)
+			if connectErr != nil {
+				consumerWG.Done()
+				return
+			}
+
+			err := streamConsumer.CreateConsumerGroup(ctx)
+
+			if err == context.Canceled {
+				consumerWG.Done()
+				return
+			}
+
+			for consumerThreadKiller[threadIndex] == 0 {
+				err := streamConsumer.ReceiveMessages(ctx)
+
+				if err == nil {
+					threadBatchesReceived[threadIndex] = streamConsumer.NumBatchesReceived()
+					threadMessagesReceived[threadIndex] = streamConsumer.NumMessageReceived()
+					continue
+				}
+
+				if err == context.Canceled {
+					killThread(consumerThreadKiller, threadIndex)
+					continue
+				}
+
+				// bypass error reading stream when redis client is not done creating
+				if err.Error() == redis.Nil.Error() { // Not sure why this is necessary. err != redis.Nil even when it does same with error() casting
+					continue
+				}
+
+				core.Error("error reading redis stream: %s", err)
+			}
+
+			if err := streamConsumer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
+			consumerWG.Done()
+		}(i)
+	}
+
+	time.Sleep(time.Second * 30)
+
+	for i := 0; i < producerThreads; i++ {
+		// Loop through producer threads and shut down the message creation loops
+		atomic.StoreInt32(&producerThreadKiller[i], 1)
+	}
+
+	producerWG.Wait()
+
+	time.Sleep(time.Second * 30)
+
+	for i := 0; i < consumerThreads; i++ {
+		// Loop through consumer threads and shut down processing loops
+		atomic.StoreInt32(&consumerThreadKiller[i], 1)
+	}
+
+	consumerWG.Wait()
+
+	totalMessagesSent := 0
+	totalMessagesReceived := 0
+
+	for _, numMessages := range threadMessagesSent {
+		totalMessagesSent = totalMessagesSent + int(numMessages)
+	}
+
+	for _, numMessages := range threadMessagesReceived {
+		totalMessagesReceived = totalMessagesReceived + int(numMessages)
+	}
+
+	totalNumBatchesSent := 0
+	for i := 0; i < producerThreads; i++ {
+		totalNumBatchesSent = totalNumBatchesSent + int(threadBatchesSent[i])
+	}
+
+	totalNumBatchesReceived := 0
+	for i := 0; i < consumerThreads; i++ {
+		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
+	}
+
+	failed := false
+	if totalNumBatchesReceived == totalNumBatchesSent {
+		fmt.Println("Test Results - Batches Sent: Passed")
+	} else {
+		fmt.Println("Test Results - Batches Sent: Failed")
+		failed = true
+	}
+
+	if totalMessagesReceived == totalMessagesSent {
+		fmt.Println("Test Results - Messages Sent: Passed")
+	} else {
+		fmt.Println("Test Results - Messages Sent: Failed")
+		failed = true
+	}
+
+	if failed {
+		os.Exit(1)
+	}
+}
+
 type test_function func()
 
 func main() {
 	allTests := []test_function{
 		test_magic_backend,
+		test_redis_streams,
 	}
 
 	var tests []test_function
@@ -280,4 +488,10 @@ func main() {
 	for i := range tests {
 		tests[i]()
 	}
+}
+
+// Helper function to kill a thread from outside of it
+func killThread(killerArray []int32, threadIndex int) {
+	// Tell the processing loop to shut down
+	atomic.StoreInt32(&killerArray[threadIndex], 1)
 }
