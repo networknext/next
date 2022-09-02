@@ -413,6 +413,9 @@ func test_redis_pubsub() {
 		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
 	}
 
+	fmt.Printf("\nTotal batches received across all consumers: %d", totalNumBatchesReceived)
+	fmt.Printf("\nTotal messages received across all consumers: %d\n", totalMessagesReceived)
+
 	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
 	totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
 
