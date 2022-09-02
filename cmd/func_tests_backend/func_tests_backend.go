@@ -387,21 +387,6 @@ func test_redis_streams() {
 		}(i)
 	}
 
-	streamConsumer := redis_streams.NewConsumer(redis_streams.ConsumerConfig{
-		RedisHostname:     "127.0.0.1:6379",
-		RedisPassword:     "",
-		StreamName:        "test-stream",
-		ConsumerGroup:     "test-group",
-		BlockTimeout:      time.Millisecond * 100,
-		ConsumerBatchSize: 10,
-		ConsumerName:      "",
-	})
-
-	connectErr := streamConsumer.Connect(ctx)
-	if connectErr != nil {
-		panic(connectErr)
-	}
-
 	time.Sleep(time.Second * 30)
 
 	for i := 0; i < producerThreads; i++ {
