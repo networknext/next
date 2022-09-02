@@ -325,7 +325,7 @@ func test_redis_streams() {
 					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
 
 				case <-ctx.Done():
-					killThread(producerThreadKiller, threadIndex)
+					atomic.StoreInt32(&producerThreadKiller[threadIndex], 1)
 				}
 			}
 
@@ -373,7 +373,7 @@ func test_redis_streams() {
 				}
 
 				if err == context.Canceled {
-					killThread(consumerThreadKiller, threadIndex)
+					atomic.StoreInt32(&consumerThreadKiller[threadIndex], 1)
 					continue
 				}
 
@@ -488,10 +488,4 @@ func main() {
 	for i := range tests {
 		tests[i]()
 	}
-}
-
-// Helper function to kill a thread from outside of it
-func killThread(killerArray []int32, threadIndex int) {
-	// Tell the processing loop to shut down
-	atomic.StoreInt32(&killerArray[threadIndex], 1)
 }
