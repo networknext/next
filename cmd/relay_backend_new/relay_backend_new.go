@@ -10,11 +10,23 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 )
 
-func ProcessRelayUpdate(body []byte) {
-	// todo: process relay update	
+func ProcessRelayUpdate(relayStats *common.RelayStats, message []byte) {
+
+	// todo: parse relay update from message
+
+	// todo: process relay update
+
+	sourceRelayId := uint64(0)
+	numSamples := 0
+	var sampleRelayIds []uint64
+	var sampleRTT []float32
+	var sampleJitter []float32
+	var samplePacketLoss []float32
+
+	relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
 }
 
-func ProcessRelayUpdates(ctx context.Context) {
+func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 	// todo: setup redis pubsub consumer
 	
@@ -27,7 +39,9 @@ func ProcessRelayUpdates(ctx context.Context) {
 			default:
 			}
 
-			// todo: process redis pubsub messages, insert into relay database
+			// todo: get relay update message from redis pubsub consumer
+			message := make([]byte, 100)
+			ProcessRelayUpdate(relayStats, message)
 		}
 	}()
 }
@@ -66,9 +80,11 @@ func main() {
 
 	service.LoadDatabase()
 
+	relayStats := common.CreateRelayStats()
+
 	service.StartWebServer()
 
-	ProcessRelayUpdates(service.Context)
+	ProcessRelayUpdates(service.Context, relayStats)
 
 	UpdateRouteMatrix(service.Context)
 
