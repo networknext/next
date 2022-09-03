@@ -53,7 +53,8 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 	currentMagic := hashCounter(counter + 1)
 	previousMagic := hashCounter(counter + 0)
 
-	core.Debug("served magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+	core.Debug("served magic values: %x -> %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+		counter,
 		upcomingMagic[0],
 		upcomingMagic[1],
 		upcomingMagic[2],

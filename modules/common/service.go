@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,7 +15,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"bytes"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -70,7 +70,11 @@ func CreateService(serviceName string) *Service {
 
 	fmt.Printf("%s\n", service.ServiceName)
 
-	fmt.Printf("commit: %s [%s] (%s)\n", service.CommitMessage, service.CommitHash, service.BuildTime)
+	// fmt.Printf("commit: %s [%s] (%s)\n", service.CommitMessage, service.CommitHash, service.BuildTime)
+
+	fmt.Printf("commit message: %s\n", service.CommitMessage)
+	fmt.Printf("commit hash: %s\n", service.CommitHash)
+	fmt.Printf("build time: %s\n", service.BuildTime)
 
 	env := backend.GetEnv()
 
@@ -135,7 +139,7 @@ func (service *Service) UpdateMagic() {
 	service.updateMagicLoop()
 }
 
-func (service *Service) GetMagic() ([]byte, []byte, []byte) {
+func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 	service.magicMutex.Lock()
 	upcomingMagic := service.upcomingMagic
 	currentMagic := service.currentMagic
@@ -382,7 +386,7 @@ func (service *Service) updateMagicValues(magicData []byte) {
 	service.magicData = magicData
 	service.upcomingMagic = magicData[0:8]
 	service.currentMagic = magicData[8:16]
-	service.previousMagic = magicData[16:24]	
+	service.previousMagic = magicData[16:24]
 	service.magicMutex.Unlock()
 
 	core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",

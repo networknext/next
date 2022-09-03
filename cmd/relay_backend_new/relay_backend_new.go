@@ -10,13 +10,29 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 )
 
-func Update() {
-	fmt.Printf("update\n")
+func ProcessRelayUpdate(body []byte) {
+	// todo: process relay update	
 }
 
-// todo: make this an update loop request from the service, with a function to call to say done
+func ProcessRelayUpdates(ctx context.Context) {
 
-func UpdateLoop(ctx context.Context) {
+	// todo: setup redis pubsub consumer
+	
+	go func() {
+		for {
+			// todo: not sure this is the best way to exit on the context...
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			// todo: process redis pubsub messages, insert into relay database
+		}
+	}()
+}
+
+func UpdateRouteMatrix(ctx context.Context) {
 
 	syncInterval := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 
@@ -24,36 +40,37 @@ func UpdateLoop(ctx context.Context) {
 
 	ticker := time.NewTicker(syncInterval)
 
-	// todo: do stuff
+	go func() {
+		for {
+			select {
 
-	for {
-		select {
+			case <-ctx.Done():
+				return
 
-		case <-ctx.Done():
-			return
-
-		case <-ticker.C:
-			Update()
+			case <-ticker.C:
+				fmt.Printf("update route matrix\n")
+				_ = matrixBufferSize
+			}
 		}
-	}
-
-	_ = matrixBufferSize
+	}()
 }
 
 func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
-	// ...
+	// todo: serve up cached route matrix data
 }
 
 func main() {
 
 	service := common.CreateService("relay_backend_new")
 
-	go UpdateLoop(service.Context)
-
 	service.LoadDatabase()
 
 	service.StartWebServer()
+
+	ProcessRelayUpdates(service.Context)
+
+	UpdateRouteMatrix(service.Context)
 
 	service.WaitForShutdown()
 }
