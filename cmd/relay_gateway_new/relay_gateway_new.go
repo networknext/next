@@ -49,6 +49,9 @@ func ProcessRelayUpdates(ctx context.Context, relayUpdateChannel chan []byte) {
 
 func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) ([]routing.RelayPingData) {
 
+	// todo: be absolutely fucking sure that the set of relays being pinged is the set of ENABLED relays in the database !!!
+	// otherwise we are pinging a bunch of relays that have been deleted for a year, and don't exist anymore
+	
 	sellerName := relay.Seller.Name
 
 	relaysToPing := make([]routing.RelayPingData, 0, len(relayArray)-1)
@@ -181,7 +184,7 @@ func RelayUpdateHandler(getRelayData func() (map[uint64]routing.Relay, []routing
 
 func GetRelayData(service *common.Service) func() (map[uint64]routing.Relay, []routing.Relay) {
 	return func() (map[uint64]routing.Relay, []routing.Relay) {
-		_, relayHash, relayArray := service.DatabaseAll()
+		_, _, relayHash, relayArray := service.DatabaseAll()
 		return relayHash, relayArray
 	}
 }
@@ -193,7 +196,7 @@ func GetMagicValues(service *common.Service) func() ([]byte, []byte, []byte) {
 }
 
 func CreateRelayUpdateChannel() chan []byte {
-	relayUpdateChannelSize := envvar.GetInt("RELAY_GATEWAY_CHANNEL_SIZE", 10*1024)
+	relayUpdateChannelSize := envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
 	return make(chan []byte, relayUpdateChannelSize)
 }

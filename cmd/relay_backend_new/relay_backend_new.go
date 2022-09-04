@@ -2,28 +2,41 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
 )
 
-func ProcessRelayUpdate(relayStats *common.RelayStats, message []byte) {
+func main() {
 
-	// todo: parse relay update from message
+	service := common.CreateService("relay_backend_new")
 
-	// todo: process relay update
+	maxRTT := float32(envvar.GetFloat("MAX_RTT", 1000.0))
+	maxJitter := float32(envvar.GetFloat("MAX_JITTER", 1000.0))
+	maxPacketLoss := float32(envvar.GetFloat("MAX_JITTER", 100.0))
+	matrixBufferSize := envvar.GetInt("MATRIX_BUFFER_SIZE", 10*1024*1024)
+	costMatrixInterval := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 
-	sourceRelayId := uint64(0)
-	numSamples := 0
-	var sampleRelayIds []uint64
-	var sampleRTT []float32
-	var sampleJitter []float32
-	var samplePacketLoss []float32
+	core.Debug("max rtt: %.1f", maxRTT)
+	core.Debug("max jitter: %.1f", maxJitter)
+	core.Debug("max packet loss: %.1f", maxPacketLoss)
+	core.Debug("matrix buffer size: %d bytes", matrixBufferSize)
+	core.Debug("cost matrix interval: %s", costMatrixInterval)
 
-	relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
+	service.LoadDatabase()
+
+	relayStats := common.CreateRelayStats()
+
+	service.StartWebServer()
+
+	ProcessRelayUpdates(service.Context, relayStats)
+
+	UpdateRouteMatrix(service, relayStats, maxRTT, maxJitter, maxPacketLoss, matrixBufferSize, costMatrixInterval)
+
+	service.WaitForShutdown()
 }
 
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
@@ -41,29 +54,38 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 			// todo: get relay update message from redis pubsub consumer
 			message := make([]byte, 100)
-			ProcessRelayUpdate(relayStats, message)
+
+			// todo: parse relay update from message
+			_ = message
+
+			sourceRelayId := uint64(0)
+			numSamples := 0
+			var sampleRelayIds []uint64
+			var sampleRTT []float32
+			var sampleJitter []float32
+			var samplePacketLoss []float32
+
+			relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
 		}
 	}()
 }
 
-func UpdateRouteMatrix(ctx context.Context) {
+func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats, maxRTT float32, maxJitter float32, maxPacketLoss float32, matrixBufferSize int, costMatrixInterval time.Duration) {
 
-	syncInterval := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
-
-	matrixBufferSize := envvar.GetInt("MATRIX_BUFFER_SIZE", 100000)
-
-	ticker := time.NewTicker(syncInterval)
-
+	ticker := time.NewTicker(costMatrixInterval)
+	
 	go func() {
 		for {
 			select {
-
-			case <-ctx.Done():
+			case <-service.Context.Done():
 				return
-
 			case <-ticker.C:
-				fmt.Printf("update route matrix\n")
-				_ = matrixBufferSize
+				relayIds := service.RelayIds()
+				core.Debug("%d relays", len(relayIds))
+				costMatrix := relayStats.GetCostMatrix(relayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+				// todo: call optimize to generate route matrix
+				_ = costMatrix
+				core.Debug("updated route matrix: %d relays", len(relayIds))		// todo: print size in MB
 			}
 		}
 	}()
@@ -72,21 +94,4 @@ func UpdateRouteMatrix(ctx context.Context) {
 func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 	// todo: serve up cached route matrix data
-}
-
-func main() {
-
-	service := common.CreateService("relay_backend_new")
-
-	service.LoadDatabase()
-
-	relayStats := common.CreateRelayStats()
-
-	service.StartWebServer()
-
-	ProcessRelayUpdates(service.Context, relayStats)
-
-	UpdateRouteMatrix(service.Context)
-
-	service.WaitForShutdown()
 }

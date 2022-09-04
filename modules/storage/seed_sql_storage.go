@@ -461,11 +461,8 @@ func SeedSQLStorage(
 
 			internalAddr = net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 10000 + int(i)}
 
-			// set ghost-army relays to random states
-			var ghostRelayState routing.RelayState
-			rand.Seed(time.Now().UnixNano())
-			state := rand.Int63n(6)
-			ghostRelayState, _ = routing.GetRelayStateSQL(state)
+			// set ghost-army relays to offline state
+			ghostRelayState := routing.RelayStateOffline
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                            rid,

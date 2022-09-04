@@ -191,7 +191,7 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 					destPacketLoss = destEntry.packetLoss
 				}
 			}
-			sourceEntry.mutex.RLock()
+			sourceEntry.mutex.RUnlock()
 		}
 		relayStats.mutex.RUnlock()
 	}
@@ -223,11 +223,15 @@ func (relayStats *RelayStats) DeleteEntry(relayId uint64) {
 	relayStats.mutex.Unlock()
 }
 
-func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32) []int32 {
+func (relayStats *RelayStats) GetCostMatrix(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 
-	costs := make([]int32, TriMatrixLength(numRelays))
+	costMatrix := make([]int32, TriMatrixLength(numRelays))
+
+	if local {
+		return costMatrix
+	}
 
 	currentTime := time.Now()
 
@@ -249,25 +253,9 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 
 			index := TriMatrixIndex(i, j)
 
-			costs[index] = cost
+			costMatrix[index] = cost
 		}
 	}
 
-	return costs
-}
-
-func (relayStats *RelayStats) GetCostsLocal(relayIds []uint64) []int32 {
-
-	numRelays := len(relayIds)
-
-	costs := make([]int32, TriMatrixLength(numRelays))
-
-	for i := 0; i < numRelays; i++ {
-		for j := 0; j < i; j++ {
-			index := TriMatrixIndex(i, j)
-			costs[index] = 0
-		}
-	}
-
-	return costs
+	return costMatrix
 }

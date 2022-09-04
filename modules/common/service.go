@@ -32,10 +32,12 @@ var (
 )
 
 type Service struct {
+
 	ServiceName   string
 	BuildTime     string
 	CommitMessage string
 	CommitHash    string
+	Local         bool
 
 	Router mux.Router
 
@@ -47,6 +49,7 @@ type Service struct {
 	databaseMutex      sync.RWMutex
 	database           *routing.DatabaseBinWrapper
 	databaseOverlay    *routing.OverlayBinWrapper
+	databaseRelayIds   []uint64
 	databaseRelayHash  map[uint64]routing.Relay
 	databaseRelayArray []routing.Relay
 
@@ -80,6 +83,8 @@ func CreateService(serviceName string) *Service {
 
 	fmt.Printf("env: %s\n", env)
 
+	service.Local = env == "local"
+
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
@@ -98,9 +103,16 @@ func (service *Service) LoadDatabase() {
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
+	if service.database == nil {
+		core.Error("failed to load database: %s", databasePath)
+		os.Exit(1)
+	}
+
 	applyOverlay(service.database, service.databaseOverlay)
 
-	service.databaseRelayHash, service.databaseRelayArray = generateSecondaryValues(service.database)
+	service.databaseRelayIds, service.databaseRelayHash, service.databaseRelayArray = generateSecondaryValues(service.database)
+
+	// todo: check for error on secondary values
 
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
@@ -110,6 +122,13 @@ func (service *Service) Database() *routing.DatabaseBinWrapper {
 	database := service.database
 	service.databaseMutex.RUnlock()
 	return database
+}
+
+func (service *Service) RelayIds() []uint64 {
+	service.databaseMutex.RLock()
+	relayIds := service.databaseRelayIds
+	service.databaseMutex.RUnlock()
+	return relayIds
 }
 
 func (service *Service) RelayHash() map[uint64]routing.Relay {
@@ -126,13 +145,14 @@ func (service *Service) RelayArray() []routing.Relay {
 	return relayArray
 }
 
-func (service *Service) DatabaseAll() (*routing.DatabaseBinWrapper, map[uint64]routing.Relay, []routing.Relay) {
+func (service *Service) DatabaseAll() (*routing.DatabaseBinWrapper, []uint64, map[uint64]routing.Relay, []routing.Relay) {
 	service.databaseMutex.RLock()
 	database := service.database
+	relayIds := service.databaseRelayIds
 	relayHash := service.databaseRelayHash
 	relayArray := service.databaseRelayArray
 	service.databaseMutex.RUnlock()
-	return database, relayHash, relayArray
+	return database, relayIds, relayHash, relayArray
 }
 
 func (service *Service) UpdateMagic() {
@@ -215,8 +235,11 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	return database, overlay
 }
 
-func generateSecondaryValues(database *routing.DatabaseBinWrapper) (map[uint64]routing.Relay, []routing.Relay) {
+func generateSecondaryValues(database *routing.DatabaseBinWrapper) ([]uint64, map[uint64]routing.Relay, []routing.Relay) {
 
+	numRelays := len(database.Relays)
+
+	relayIds := make([]uint64, numRelays)
 	relayHash := make(map[uint64]routing.Relay)
 	relayArray := database.Relays
 
@@ -225,10 +248,14 @@ func generateSecondaryValues(database *routing.DatabaseBinWrapper) (map[uint64]r
 	})
 
 	for i := range relayArray {
+		if relayArray[i].State != routing.RelayStateEnabled {
+			// todo: panic is a bit harsh
+			panic("database.bin must contain only enabled relays!")
+		}		
 		relayHash[relayArray[i].ID] = relayArray[i]
 	}
 
-	return relayHash, relayArray
+	return relayIds, relayHash, relayArray
 }
 
 func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.OverlayBinWrapper) {
@@ -274,13 +301,14 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 					continue
 				}
 
-				relayHashNew, relayArrayNew := generateSecondaryValues(newDatabase)
+				relayIdsNew, relayHashNew, relayArrayNew := generateSecondaryValues(newDatabase)
 
 				applyOverlay(newDatabase, newOverlay)
 
 				service.databaseMutex.Lock()
 				service.database = newDatabase
 				service.databaseOverlay = newOverlay
+				service.databaseRelayIds = relayIdsNew
 				service.databaseRelayHash = relayHashNew
 				service.databaseRelayArray = relayArrayNew
 				service.databaseMutex.Unlock()
