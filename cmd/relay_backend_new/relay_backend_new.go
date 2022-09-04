@@ -1,14 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	// "net"
+	"encoding/json"
 	"net/http"
-	"time"
 	"sync"
+	"time"
+	"fmt"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
 
@@ -45,7 +47,13 @@ func main() {
 
 	relayStats := common.CreateRelayStats()
 
-	// todo: override health function so we only become healthy once we have our own route matrix to serve up
+	// todo: override health function so we only become healthy once we have
+	// our own internal cost/route matrix to serve up, plus cached data from
+	// redis for the leader cost/route matrix
+
+	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
+	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
+	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 
 	service.StartWebServer()
 
@@ -56,10 +64,65 @@ func main() {
 	service.WaitForShutdown()
 }
 
+type RelayJSON struct {
+	RelayIds           []uint64  `json:"relay_ids"`
+	RelayNames         []string  `json:"relay_names"`
+	RelayAddresses     []string  `json:"relay_addresses"`
+	RelayLatitudes     []float32 `json:"relay_latitudes"`
+	RelayLongitudes    []float32 `json:"relay_longitudes"`
+	RelayDatacenterIds []string  `json:"relay_datacenter_ids"`
+	DestRelays         []string  `json:"dest_relays"`
+}
+
+func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		relayData := service.RelayData()
+		relayJSON := RelayJSON{}
+		relayJSON.RelayIds = relayData.RelayIds
+		relayJSON.RelayNames = relayData.RelayNames
+		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
+		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
+		relayJSON.DestRelays = make([]string, relayData.NumRelays)
+		for i := 0; i < relayData.NumRelays; i++ {
+			relayJSON.RelayAddresses[i] = relayData.RelayAddresses[i].String()
+			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
+			if relayData.DestRelays[i] {
+				relayJSON.DestRelays[i] = "1"
+			} else {
+				relayJSON.DestRelays[i] = "0"				
+			}
+		}
+		relayJSON.RelayLatitudes = relayData.RelayLatitudes
+		relayJSON.RelayLongitudes = relayData.RelayLongitudes
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(relayJSON); err != nil {
+			core.Error("could not write relay data json: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
+	costMatrixMutex.RLock()
+	responseData := costMatrixData
+	costMatrixMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
+
+	// todo: serve up cached route matrix data
+}
+
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 	// todo: setup redis pubsub consumer
-	
+
 	go func() {
 		for {
 			// todo: not sure this is the best way to exit on the context...
@@ -90,11 +153,11 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 	ticker := time.NewTicker(routeMatrixInterval)
-	
+
 	go func() {
 		for {
 			select {
-			
+
 			case <-service.Context.Done():
 				return
 
@@ -106,7 +169,7 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
-				costMatrixNew := common.CostMatrix{
+				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,
 					RelayIDs:           relayData.RelayIds,
 					RelayAddresses:     relayData.RelayAddresses,
@@ -118,19 +181,19 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					Costs:              costs,
 				}
 
-				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize); 
+				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize)
 				if err != nil {
 					core.Error("could not write cost matrix: %v", err)
 					continue
 				}
 
+				costMatrixMutex.Lock()
+				costMatrix = costMatrixNew
+				costMatrixData = costMatrixDataNew
+				costMatrixMutex.Unlock()
+
 				core.Debug("updated cost matrix: %d bytes (%d relays)", len(costMatrixDataNew), relayData.NumRelays)
 			}
 		}
 	}()
-}
-
-func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
-
-	// todo: serve up cached route matrix data
 }

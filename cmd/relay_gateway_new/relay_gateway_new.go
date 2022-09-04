@@ -47,11 +47,11 @@ func ProcessRelayUpdates(ctx context.Context, relayUpdateChannel chan []byte) {
 	}()
 }
 
-func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) ([]routing.RelayPingData) {
+func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) []routing.RelayPingData {
 
 	// todo: be absolutely fucking sure that the set of relays being pinged is the set of ENABLED relays in the database !!!
 	// otherwise we are pinging a bunch of relays that have been deleted for a year, and don't exist anymore
-	
+
 	sellerName := relay.Seller.Name
 
 	relaysToPing := make([]routing.RelayPingData, 0, len(relayArray)-1)
@@ -76,7 +76,7 @@ func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay
 }
 
 func WriteRelayUpdateResponse(getMagicValues func() ([]byte, []byte, []byte), relay *routing.Relay, relayUpdateRequest *transport.RelayUpdateRequest, relaysToPing []routing.RelayPingData) ([]byte, error) {
-	
+
 	response := transport.RelayUpdateResponse{}
 
 	response.Version = transport.VersionNumberUpdateResponse

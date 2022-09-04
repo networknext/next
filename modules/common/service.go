@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"net"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -33,20 +33,19 @@ var (
 )
 
 type RelayData struct {
-	NumRelays int
-	RelayIds []uint64
-	RelayHash  map[uint64]routing.Relay
-	RelayArray []routing.Relay
-	RelayAddresses []net.UDPAddr
-	RelayNames []string
-	RelayLatitudes []float32
-	RelayLongitudes []float32
+	NumRelays          int
+	RelayIds           []uint64
+	RelayHash          map[uint64]routing.Relay
+	RelayArray         []routing.Relay
+	RelayAddresses     []net.UDPAddr
+	RelayNames         []string
+	RelayLatitudes     []float32
+	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
-	DestRelays []bool
+	DestRelays         []bool
 }
 
 type Service struct {
-
 	ServiceName   string
 	BuildTime     string
 	CommitMessage string
@@ -60,10 +59,10 @@ type Service struct {
 
 	// ------------------
 
-	databaseMutex      sync.RWMutex
-	database           *routing.DatabaseBinWrapper
-	databaseOverlay    *routing.OverlayBinWrapper
-	databaseRelayData  *RelayData
+	databaseMutex     sync.RWMutex
+	database          *routing.DatabaseBinWrapper
+	databaseOverlay   *routing.OverlayBinWrapper
+	databaseRelayData *RelayData
 
 	statusMutex sync.RWMutex
 	statusData  *ServiceStatus
@@ -244,17 +243,25 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 		if relayData.RelayArray[i].State != routing.RelayStateEnabled {
 			core.Error("generateRelayData: database.bin must contain only enabled relays!")
 			return nil
-		}		
+		}
 		relayData.RelayHash[relayData.RelayArray[i].ID] = relayData.RelayArray[i]
 	}
 
-	// todo: generate the other arrays required for cost matrix
 	relayData.RelayAddresses = make([]net.UDPAddr, numRelays)
 	relayData.RelayNames = make([]string, numRelays)
 	relayData.RelayLatitudes = make([]float32, numRelays)
 	relayData.RelayLongitudes = make([]float32, numRelays)
 	relayData.RelayDatacenterIds = make([]uint64, numRelays)
 	relayData.DestRelays = make([]bool, numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		relayData.RelayAddresses[i] = relayData.RelayArray[i].Addr
+		relayData.RelayNames[i] = relayData.RelayArray[i].Name
+		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Latitude)
+		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Longitude)
+		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.ID
+		// todo: DestRelay bool
+	}
 
 	return relayData
 }
@@ -285,8 +292,6 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 	go func() {
 
 		ticker := time.NewTicker(syncInterval)
-
-		// todo: wg done defer
 
 		for {
 			select {

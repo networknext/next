@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// todo: might want to put a lastUpdateTime in the sourceEntry as well, then we can extract set of active relays easily
+// (relays that have posted an update in the last 10 seconds)
+
 const HistorySize = 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
@@ -35,18 +38,18 @@ type RelayStatsDestEntry struct {
 	jitter            float32
 	packetLoss        float32
 	historyIndex      int32
-	historyRTT		  [HistorySize]float32
-	historyJitter	  [HistorySize]float32
+	historyRTT        [HistorySize]float32
+	historyJitter     [HistorySize]float32
 	historyPacketLoss [HistorySize]float32
 }
 
 type RelayStatsSourceEntry struct {
-	mutex  		sync.RWMutex
+	mutex       sync.RWMutex
 	destEntries map[uint64]*RelayStatsDestEntry
 }
 
 type RelayStats struct {
-	mutex   sync.RWMutex
+	mutex         sync.RWMutex
 	sourceEntries map[uint64]*RelayStatsSourceEntry
 }
 
@@ -62,10 +65,10 @@ func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSample
 		Process Relay Update
 		--------------------
 
-		Our goal is to get stable RTT, Jitter and PL values to feed into our route optimization algorithm, 
+		Our goal is to get stable RTT, Jitter and PL values to feed into our route optimization algorithm,
 		so we can send traffic across stable routes that aren't subject to change.
 
-		To achieve this, this function processes a "relay update" sent from a relay and stores it 
+		To achieve this, this function processes a "relay update" sent from a relay and stores it
 		in a data structure use to generate RTT, Jitter and Packet Loss values per-relay pair (source,dest)
 		to feed into our route optimization algorithm.
 
@@ -125,7 +128,7 @@ func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSample
 		// this is important so that newly created relays, and relays that are stopped and restarted
 		// don't get routed across, until at least 5 minutes has passed!
 
-		if currentTime.Sub(destEntry.lastUpdateTime) > 10 * time.Second {
+		if currentTime.Sub(destEntry.lastUpdateTime) > 10*time.Second {
 			for j := 0; j < HistorySize; j++ {
 				destEntry.historyIndex = 0
 				destEntry.historyRTT[j] = InvalidRouteValue
@@ -166,7 +169,7 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 			sourceEntry.mutex.RLock()
 			destEntry, exists := sourceEntry.destEntries[destRelayId]
 			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10 * time.Second {
+				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
 					sourceRTT = destEntry.rtt
 					sourceJitter = destEntry.jitter
 					sourcePacketLoss = destEntry.packetLoss
@@ -185,7 +188,7 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 			sourceEntry.mutex.RLock()
 			destEntry, exists := sourceEntry.destEntries[sourceRelayId]
 			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10 * time.Second {
+				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
 					destRTT = destEntry.rtt
 					destJitter = destEntry.jitter
 					destPacketLoss = destEntry.packetLoss
