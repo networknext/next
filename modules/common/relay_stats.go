@@ -223,7 +223,7 @@ func (relayStats *RelayStats) DeleteEntry(relayId uint64) {
 	relayStats.mutex.Unlock()
 }
 
-func (relayStats *RelayStats) GetCostMatrix(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
+func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 

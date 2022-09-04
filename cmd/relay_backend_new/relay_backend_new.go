@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/routing"
 )
 
 func main() {
@@ -77,14 +79,53 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats, m
 	go func() {
 		for {
 			select {
+			
 			case <-service.Context.Done():
 				return
+
 			case <-ticker.C:
+
 				relayIds := service.RelayIds()
-				core.Debug("%d relays", len(relayIds))
-				costMatrix := relayStats.GetCostMatrix(relayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
-				// todo: call optimize to generate route matrix
-				_ = costMatrix
+
+				numRelays := len(relayIds)
+
+				core.Debug("%d relays", numRelays)
+
+				costs := relayStats.GetCosts(relayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+
+				// todo: get relay addresses
+
+				// todo: get relay names
+
+				// todo: get relay latitides
+
+				// todo: get relay longitudes
+
+				// todo: get relay datacenter ids
+
+				// todo: get dest relays
+
+				relayAddresses := []net.UDPAddr{}
+				relayNames := []string{}
+				relayLatitudes := []float32{}
+				relayLongitudes := []float32{}
+				relayDatacenterIds := []uint64{}
+				destRelays := make([]bool, numRelays)
+
+				costMatrixNew := routing.CostMatrix{
+					RelayIDs:           relayIds,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIDs: relayDatacenterIds,
+					Costs:              costs,
+					Version:            routing.CostMatrixSerializeVersion,
+					DestRelays:         destRelays,
+				}
+
+				_ = costMatrixNew
+
 				core.Debug("updated route matrix: %d relays", len(relayIds))		// todo: print size in MB
 			}
 		}
