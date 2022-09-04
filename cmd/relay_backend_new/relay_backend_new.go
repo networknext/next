@@ -65,7 +65,7 @@ func main() {
 }
 
 type RelayJSON struct {
-	RelayIds           []uint64  `json:"relay_ids"`
+	RelayIds           []string  `json:"relay_ids"`
 	RelayNames         []string  `json:"relay_names"`
 	RelayAddresses     []string  `json:"relay_addresses"`
 	RelayLatitudes     []float32 `json:"relay_latitudes"`
@@ -78,12 +78,13 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		relayData := service.RelayData()
 		relayJSON := RelayJSON{}
-		relayJSON.RelayIds = relayData.RelayIds
+		relayJSON.RelayIds = make([]string, relayData.NumRelays)
 		relayJSON.RelayNames = relayData.RelayNames
 		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
 		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
+			relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
 			relayJSON.RelayAddresses[i] = relayData.RelayAddresses[i].String()
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {

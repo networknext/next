@@ -255,6 +255,7 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	relayData.DestRelays = make([]bool, numRelays)
 
 	for i := 0; i < numRelays; i++ {
+		relayData.RelayIds[i] = relayData.RelayArray[i].ID
 		relayData.RelayAddresses[i] = relayData.RelayArray[i].Addr
 		relayData.RelayNames[i] = relayData.RelayArray[i].Name
 		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Latitude)
