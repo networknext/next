@@ -105,7 +105,7 @@ func WriteRelayUpdateResponse(getMagicValues func() ([]byte, []byte, []byte), re
 	return responseData, nil
 }
 
-func RelayUpdateHandler(getRelayData func() (map[uint64]routing.Relay, []routing.Relay), getMagicValues func() ([]byte, []byte, []byte), relayUpdateChannel chan []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([]byte, []byte, []byte), relayUpdateChannel chan []byte) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -154,11 +154,11 @@ func RelayUpdateHandler(getRelayData func() (map[uint64]routing.Relay, []routing
 			return
 		}
 
-		relayHash, relayArray := getRelayData()
+		relayData := getRelayData()
 
 		id := crypto.HashID(relayUpdateRequest.Address.String())
 
-		relay, ok := relayHash[id]
+		relay, ok := relayData.RelayHash[id]
 		if !ok {
 			core.Error("%s - could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
 			writer.WriteHeader(http.StatusNotFound) // 404
@@ -167,7 +167,7 @@ func RelayUpdateHandler(getRelayData func() (map[uint64]routing.Relay, []routing
 
 		relayUpdateChannel <- body
 
-		relaysToPing := GetRelaysToPing(id, &relay, relayArray)
+		relaysToPing := GetRelaysToPing(id, &relay, relayData.RelayArray)
 
 		response, err := WriteRelayUpdateResponse(getMagicValues, &relay, &relayUpdateRequest, relaysToPing)
 		if err != nil {
@@ -182,10 +182,9 @@ func RelayUpdateHandler(getRelayData func() (map[uint64]routing.Relay, []routing
 	}
 }
 
-func GetRelayData(service *common.Service) func() (map[uint64]routing.Relay, []routing.Relay) {
-	return func() (map[uint64]routing.Relay, []routing.Relay) {
-		_, _, relayHash, relayArray := service.DatabaseAll()
-		return relayHash, relayArray
+func GetRelayData(service *common.Service) func() *common.RelayData {
+	return func() *common.RelayData {
+		return service.RelayData()
 	}
 }
 

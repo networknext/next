@@ -2,41 +2,56 @@ package main
 
 import (
 	"context"
-	"net"
+	// "net"
 	"net/http"
 	"time"
+	"sync"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/routing"
 )
+
+var maxRTT float32
+var maxJitter float32
+var maxPacketLoss float32
+var costMatrixBufferSize int
+var routeMatrixBufferSize int
+var routeMatrixInterval time.Duration
+
+var costMatrixMutex sync.RWMutex
+var costMatrix *common.CostMatrix
+var costMatrixData []byte
 
 func main() {
 
 	service := common.CreateService("relay_backend_new")
 
-	maxRTT := float32(envvar.GetFloat("MAX_RTT", 1000.0))
-	maxJitter := float32(envvar.GetFloat("MAX_JITTER", 1000.0))
-	maxPacketLoss := float32(envvar.GetFloat("MAX_JITTER", 100.0))
-	matrixBufferSize := envvar.GetInt("MATRIX_BUFFER_SIZE", 10*1024*1024)
-	costMatrixInterval := envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
+	maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
+	maxJitter = float32(envvar.GetFloat("MAX_JITTER", 1000.0))
+	maxPacketLoss = float32(envvar.GetFloat("MAX_JITTER", 100.0))
+	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 1*1024*1024)
+	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 10*1024*1024)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	core.Debug("max rtt: %.1f", maxRTT)
 	core.Debug("max jitter: %.1f", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
-	core.Debug("matrix buffer size: %d bytes", matrixBufferSize)
-	core.Debug("cost matrix interval: %s", costMatrixInterval)
+	core.Debug("cost matrix buffer size: %d bytes", costMatrixBufferSize)
+	core.Debug("route matrix buffer size: %d bytes", routeMatrixBufferSize)
+	core.Debug("route matrix interval: %s", routeMatrixInterval)
 
 	service.LoadDatabase()
 
 	relayStats := common.CreateRelayStats()
 
+	// todo: override health function so we only become healthy once we have our own route matrix to serve up
+
 	service.StartWebServer()
 
 	ProcessRelayUpdates(service.Context, relayStats)
 
-	UpdateRouteMatrix(service, relayStats, maxRTT, maxJitter, maxPacketLoss, matrixBufferSize, costMatrixInterval)
+	UpdateRouteMatrix(service, relayStats)
 
 	service.WaitForShutdown()
 }
@@ -72,9 +87,9 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 	}()
 }
 
-func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats, maxRTT float32, maxJitter float32, maxPacketLoss float32, matrixBufferSize int, costMatrixInterval time.Duration) {
+func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
-	ticker := time.NewTicker(costMatrixInterval)
+	ticker := time.NewTicker(routeMatrixInterval)
 	
 	go func() {
 		for {
@@ -85,48 +100,31 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats, m
 
 			case <-ticker.C:
 
-				relayIds := service.RelayIds()
+				relayData := service.RelayData()
 
-				numRelays := len(relayIds)
+				core.Debug("%d relays", relayData.NumRelays)
 
-				core.Debug("%d relays", numRelays)
+				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
-				costs := relayStats.GetCosts(relayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
-
-				// todo: get relay addresses
-
-				// todo: get relay names
-
-				// todo: get relay latitides
-
-				// todo: get relay longitudes
-
-				// todo: get relay datacenter ids
-
-				// todo: get dest relays
-
-				relayAddresses := []net.UDPAddr{}
-				relayNames := []string{}
-				relayLatitudes := []float32{}
-				relayLongitudes := []float32{}
-				relayDatacenterIds := []uint64{}
-				destRelays := make([]bool, numRelays)
-
-				costMatrixNew := routing.CostMatrix{
-					RelayIDs:           relayIds,
-					RelayAddresses:     relayAddresses,
-					RelayNames:         relayNames,
-					RelayLatitudes:     relayLatitudes,
-					RelayLongitudes:    relayLongitudes,
-					RelayDatacenterIDs: relayDatacenterIds,
+				costMatrixNew := common.CostMatrix{
+					Version:            common.CostMatrixSerializeVersion,
+					RelayIDs:           relayData.RelayIds,
+					RelayAddresses:     relayData.RelayAddresses,
+					RelayNames:         relayData.RelayNames,
+					RelayLatitudes:     relayData.RelayLatitudes,
+					RelayLongitudes:    relayData.RelayLongitudes,
+					RelayDatacenterIDs: relayData.RelayDatacenterIds,
+					DestRelays:         relayData.DestRelays,
 					Costs:              costs,
-					Version:            routing.CostMatrixSerializeVersion,
-					DestRelays:         destRelays,
 				}
 
-				_ = costMatrixNew
+				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize); 
+				if err != nil {
+					core.Error("could not write cost matrix: %v", err)
+					continue
+				}
 
-				core.Debug("updated route matrix: %d relays", len(relayIds))		// todo: print size in MB
+				core.Debug("updated cost matrix: %d bytes (%d relays)", len(costMatrixDataNew), relayData.NumRelays)
 			}
 		}
 	}()

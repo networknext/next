@@ -15,6 +15,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"net"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -30,6 +31,19 @@ var (
 	commitMessage string
 	commitHash    string
 )
+
+type RelayData struct {
+	NumRelays int
+	RelayIds []uint64
+	RelayHash  map[uint64]routing.Relay
+	RelayArray []routing.Relay
+	RelayAddresses []net.UDPAddr
+	RelayNames []string
+	RelayLatitudes []float32
+	RelayLongitudes []float32
+	RelayDatacenterIds []uint64
+	DestRelays []bool
+}
 
 type Service struct {
 
@@ -49,9 +63,7 @@ type Service struct {
 	databaseMutex      sync.RWMutex
 	database           *routing.DatabaseBinWrapper
 	databaseOverlay    *routing.OverlayBinWrapper
-	databaseRelayIds   []uint64
-	databaseRelayHash  map[uint64]routing.Relay
-	databaseRelayArray []routing.Relay
+	databaseRelayData  *RelayData
 
 	statusMutex sync.RWMutex
 	statusData  *ServiceStatus
@@ -104,15 +116,17 @@ func (service *Service) LoadDatabase() {
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
 	if service.database == nil {
-		core.Error("failed to load database: %s", databasePath)
+		core.Error("load database failed: %s", databasePath)
 		os.Exit(1)
 	}
 
 	applyOverlay(service.database, service.databaseOverlay)
 
-	service.databaseRelayIds, service.databaseRelayHash, service.databaseRelayArray = generateSecondaryValues(service.database)
-
-	// todo: check for error on secondary values
+	service.databaseRelayData = generateRelayData(service.database)
+	if service.databaseRelayData == nil {
+		core.Error("generate relay data failed")
+		os.Exit(1)
+	}
 
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
@@ -124,35 +138,11 @@ func (service *Service) Database() *routing.DatabaseBinWrapper {
 	return database
 }
 
-func (service *Service) RelayIds() []uint64 {
+func (service *Service) RelayData() *RelayData {
 	service.databaseMutex.RLock()
-	relayIds := service.databaseRelayIds
+	relayData := service.databaseRelayData
 	service.databaseMutex.RUnlock()
-	return relayIds
-}
-
-func (service *Service) RelayHash() map[uint64]routing.Relay {
-	service.databaseMutex.RLock()
-	relayHash := service.databaseRelayHash
-	service.databaseMutex.RUnlock()
-	return relayHash
-}
-
-func (service *Service) RelayArray() []routing.Relay {
-	service.databaseMutex.RLock()
-	relayArray := service.databaseRelayArray
-	service.databaseMutex.RUnlock()
-	return relayArray
-}
-
-func (service *Service) DatabaseAll() (*routing.DatabaseBinWrapper, []uint64, map[uint64]routing.Relay, []routing.Relay) {
-	service.databaseMutex.RLock()
-	database := service.database
-	relayIds := service.databaseRelayIds
-	relayHash := service.databaseRelayHash
-	relayArray := service.databaseRelayArray
-	service.databaseMutex.RUnlock()
-	return database, relayIds, relayHash, relayArray
+	return relayData
 }
 
 func (service *Service) UpdateMagic() {
@@ -185,7 +175,7 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Debug("received shutdown signal")
-	// todo: probably need to wait for some stuff...
+	// todo: wait for stuff
 	core.Debug("successfully shutdown")
 }
 
@@ -235,27 +225,38 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	return database, overlay
 }
 
-func generateSecondaryValues(database *routing.DatabaseBinWrapper) ([]uint64, map[uint64]routing.Relay, []routing.Relay) {
+func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
+
+	relayData := &RelayData{}
 
 	numRelays := len(database.Relays)
 
-	relayIds := make([]uint64, numRelays)
-	relayHash := make(map[uint64]routing.Relay)
-	relayArray := database.Relays
+	relayData.NumRelays = numRelays
+	relayData.RelayIds = make([]uint64, numRelays)
+	relayData.RelayHash = make(map[uint64]routing.Relay)
+	relayData.RelayArray = database.Relays
 
-	sort.SliceStable(relayArray, func(i, j int) bool {
-		return relayArray[i].Name < relayArray[j].Name
+	sort.SliceStable(relayData.RelayArray, func(i, j int) bool {
+		return relayData.RelayArray[i].Name < relayData.RelayArray[j].Name
 	})
 
-	for i := range relayArray {
-		if relayArray[i].State != routing.RelayStateEnabled {
-			// todo: panic is a bit harsh
-			panic("database.bin must contain only enabled relays!")
+	for i := range relayData.RelayArray {
+		if relayData.RelayArray[i].State != routing.RelayStateEnabled {
+			core.Error("generateRelayData: database.bin must contain only enabled relays!")
+			return nil
 		}		
-		relayHash[relayArray[i].ID] = relayArray[i]
+		relayData.RelayHash[relayData.RelayArray[i].ID] = relayData.RelayArray[i]
 	}
 
-	return relayIds, relayHash, relayArray
+	// todo: generate the other arrays required for cost matrix
+	relayData.RelayAddresses = make([]net.UDPAddr, numRelays)
+	relayData.RelayNames = make([]string, numRelays)
+	relayData.RelayLatitudes = make([]float32, numRelays)
+	relayData.RelayLongitudes = make([]float32, numRelays)
+	relayData.RelayDatacenterIds = make([]uint64, numRelays)
+	relayData.DestRelays = make([]bool, numRelays)
+
+	return relayData
 }
 
 func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.OverlayBinWrapper) {
@@ -301,16 +302,18 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 					continue
 				}
 
-				relayIdsNew, relayHashNew, relayArrayNew := generateSecondaryValues(newDatabase)
+				newRelayData := generateRelayData(newDatabase)
+
+				if newRelayData == nil {
+					continue
+				}
 
 				applyOverlay(newDatabase, newOverlay)
 
 				service.databaseMutex.Lock()
 				service.database = newDatabase
 				service.databaseOverlay = newOverlay
-				service.databaseRelayIds = relayIdsNew
-				service.databaseRelayHash = relayHashNew
-				service.databaseRelayArray = relayArrayNew
+				service.databaseRelayData = newRelayData
 				service.databaseMutex.Unlock()
 			}
 		}

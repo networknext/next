@@ -245,6 +245,9 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 
 			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
 
+			// todo: the jitter average here is only across 1 second samples. I think we need to consider
+			// jitter across a longer time frame to make sure we have a really steady cost here.
+
 			cost := int32(-1)
 
 			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
