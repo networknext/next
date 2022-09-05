@@ -315,8 +315,8 @@ func SeedSQLStorage(
 				ID:   localDCID,
 				Name: dcName,
 				Location: routing.Location{
-					Latitude:  0,
-					Longitude: 0,
+					Latitude:  float32(30),
+					Longitude: float32(40),
 				},
 				SellerID: hpSeller.DatabaseID,
 			}
@@ -332,8 +332,8 @@ func SeedSQLStorage(
 			ID:   localDCID,
 			Name: "local",
 			Location: routing.Location{
-				Latitude:  0,
-				Longitude: 0,
+				Latitude:  10,
+				Longitude: 20,
 			},
 			SellerID: localSeller.DatabaseID,
 		}

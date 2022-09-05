@@ -42,7 +42,10 @@ type RelayData struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
+	RelayIdToIndex     map[uint64]int
+	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
+	DestRelayNames     []string
 }
 
 type Service struct {
@@ -83,8 +86,6 @@ func CreateService(serviceName string) *Service {
 	service.BuildTime = buildTime
 
 	fmt.Printf("%s\n", service.ServiceName)
-
-	// fmt.Printf("commit: %s [%s] (%s)\n", service.CommitMessage, service.CommitHash, service.BuildTime)
 
 	fmt.Printf("commit message: %s\n", service.CommitMessage)
 	fmt.Printf("commit hash: %s\n", service.CommitHash)
@@ -252,7 +253,6 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	relayData.RelayLatitudes = make([]float32, numRelays)
 	relayData.RelayLongitudes = make([]float32, numRelays)
 	relayData.RelayDatacenterIds = make([]uint64, numRelays)
-	relayData.DestRelays = make([]bool, numRelays)
 
 	for i := 0; i < numRelays; i++ {
 		relayData.RelayIds[i] = relayData.RelayArray[i].ID
@@ -261,8 +261,44 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Latitude)
 		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Longitude)
 		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.ID
-		// todo: DestRelay bool
 	}
+
+	// build a mapping from relay id to relay index
+
+	relayData.RelayIdToIndex = make(map[uint64]int)
+	for i := 0; i < numRelays; i++ {
+		relayData.RelayIdToIndex[relayData.RelayIds[i]] = i
+	}
+
+	// build a mapping from datacenter id to the set of relays in that datacenter
+
+	relayData.DatacenterRelays = make(map[uint64][]int)
+
+	for i := 0; i < numRelays; i++ {
+		datacenterId := relayData.RelayDatacenterIds[i]
+		relayData.DatacenterRelays[datacenterId] = append(relayData.DatacenterRelays[datacenterId], i)
+	}
+
+	// determine which relays are dest relays for at least one buyer
+
+	relayData.DestRelays = make([]bool, numRelays)
+	relayData.DestRelayNames = []string{}
+
+	for _, buyer := range database.BuyerMap {
+		if buyer.Live {
+			for _, datacenter := range database.DatacenterMaps[buyer.ID] {
+				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterID]
+				for j := 0; j < len(datacenterRelays); j++ {
+					if !relayData.DestRelays[j] {
+						relayData.DestRelayNames = append(relayData.DestRelayNames, relayData.RelayArray[j].Name)
+						relayData.DestRelays[j] = true
+					}
+				}
+			}
+		}
+	}
+
+	sort.Strings(relayData.DestRelayNames)
 
 	return relayData
 }

@@ -71,7 +71,9 @@ type RelayJSON struct {
 	RelayLatitudes     []float32 `json:"relay_latitudes"`
 	RelayLongitudes    []float32 `json:"relay_longitudes"`
 	RelayDatacenterIds []string  `json:"relay_datacenter_ids"`
+	RelayIdToIndex     []string	 `json:"relay_id_to_index"`
 	DestRelays         []string  `json:"dest_relays"`
+	DestRelayNames     []string	 `json:"dest_relay_names"`
 }
 
 func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +84,12 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		relayJSON.RelayNames = relayData.RelayNames
 		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
 		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
+		relayJSON.RelayLatitudes = relayData.RelayLatitudes
+		relayJSON.RelayLongitudes = relayData.RelayLongitudes
+		relayJSON.RelayIdToIndex = make([]string, relayData.NumRelays)
+		for i := 0; i < relayData.NumRelays; i++ {
+			 relayJSON.RelayIdToIndex[i] = fmt.Sprintf("%016x - %d", relayData.RelayIds[i], i)
+		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
 			relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
@@ -93,8 +101,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 				relayJSON.DestRelays[i] = "0"				
 			}
 		}
-		relayJSON.RelayLatitudes = relayData.RelayLatitudes
-		relayJSON.RelayLongitudes = relayData.RelayLongitudes
+		relayJSON.DestRelayNames = relayData.DestRelayNames
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(relayJSON); err != nil {
 			core.Error("could not write relay data json: %v", err)
@@ -165,8 +172,6 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 			case <-ticker.C:
 
 				relayData := service.RelayData()
-
-				core.Debug("%d relays", relayData.NumRelays)
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
