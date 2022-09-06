@@ -11,21 +11,21 @@ import (
 )
 
 type RedisPubsubConfig struct {
-	RedisHostname string
-	RedisPassword string
-	ChannelName   string
-	BatchSize     int
-	BatchDuration time.Duration
+	RedisHostname     string
+	RedisPassword     string
+	PubsubChannelName string
+	BatchSize         int
+	BatchDuration     time.Duration
 }
 
 type RedisPubsubProducer struct {
-	config                RedisPubsubConfig
-	mutex                 sync.Mutex
-	redisDB               *redis.Client
-	messageBatch          [][]byte
-	batchStartTime        time.Time
-	numMessagesSent       int
-	numBatchesSent        int
+	config          RedisPubsubConfig
+	mutex           sync.Mutex
+	redisDB         *redis.Client
+	messageBatch    [][]byte
+	batchStartTime  time.Time
+	numMessagesSent int
+	numBatchesSent  int
 }
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
@@ -61,7 +61,7 @@ func (producer *RedisPubsubProducer) SendMessage(ctx context.Context, message []
 		// yes. send the current batch of messages to redis as a single coalesced message
 
 		messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
-		_, err := producer.redisDB.Publish(ctx, producer.config.ChannelName, messageToSend).Result()
+		_, err := producer.redisDB.Publish(ctx, producer.config.PubsubChannelName, messageToSend).Result()
 		if err != nil {
 			core.Error("failed to send batched pubsub messages to redis: %v", err)
 			return
@@ -72,7 +72,7 @@ func (producer *RedisPubsubProducer) SendMessage(ctx context.Context, message []
 		batchId := producer.numBatchesSent
 		batchNumMessages := len(producer.messageBatch)
 
-		producer.numBatchesSent ++
+		producer.numBatchesSent++
 		producer.numMessagesSent += batchNumMessages
 
 		producer.messageBatch = [][]byte{}
