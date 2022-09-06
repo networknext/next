@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
-	"time"
 	"os"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -22,17 +21,19 @@ var relayUpdateBatchSize int
 var relayUpdateBatchDuration time.Duration
 var relayUpdateChannelSize int
 
+var producer *common.RedisPubsubProducer
+
 func main() {
 
 	service := common.CreateService("relay_gateway_new")
 
 	redisHostname = envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
- 	redisPassword = envvar.Get("REDIS_PASSWORD", "")
- 	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
- 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
- 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", time.Second / 10)
+	redisPassword = envvar.Get("REDIS_PASSWORD", "")
+	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
+	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
+	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 100*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
-	
+
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis password: %s", redisPassword)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
@@ -40,48 +41,17 @@ func main() {
 	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
 
+	producer = CreatePubsubProducer(service)
+
 	service.UpdateMagic()
 
 	service.LoadDatabase()
 
 	service.StartWebServer()
 
-	relayUpdateChannel := CreateRelayUpdateChannel()
-
-	service.Router.HandleFunc("/relay_update", RelayUpdateHandler(GetRelayData(service), GetMagicValues(service), relayUpdateChannel)).Methods("POST")
-
-	ProcessRelayUpdates(service.Context, relayUpdateChannel)
-
-	// todo: add to status the length of the relay update channel queue
+	service.Router.HandleFunc("/relay_update", RelayUpdateHandler(GetRelayData(service), GetMagicValues(service))).Methods("POST")
 
 	service.WaitForShutdown()
-}
-
-func ProcessRelayUpdates(ctx context.Context, relayUpdateChannel chan []byte) {
-
-	config := common.RedisPubsubConfig{}
-
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
-	config.PubsubChannelName = redisPubsubChannelName
-	config.BatchSize = relayUpdateBatchSize
-	config.BatchDuration = relayUpdateBatchDuration
-
-	producer, err := common.CreateRedisPubsubProducer(ctx, config)
-
-	if err != nil {
-		core.Error("could not create redis pubsub producer")
-		os.Exit(1)
-	}
-
-	go func() {
-		select {
-		case message := <-relayUpdateChannel:
-			producer.SendMessage(ctx, message)
-		case <-ctx.Done():
-			return
-		}
-	}()
 }
 
 func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) []routing.RelayPingData {
@@ -139,7 +109,7 @@ func WriteRelayUpdateResponse(getMagicValues func() ([]byte, []byte, []byte), re
 	return responseData, nil
 }
 
-func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([]byte, []byte, []byte), relayUpdateChannel chan []byte) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([]byte, []byte, []byte)) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -199,7 +169,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
-		relayUpdateChannel <- body
+		producer.MessageChannel <- body
 
 		relaysToPing := GetRelaysToPing(id, &relay, relayData.RelayArray)
 
@@ -228,6 +198,22 @@ func GetMagicValues(service *common.Service) func() ([]byte, []byte, []byte) {
 	}
 }
 
-func CreateRelayUpdateChannel() chan []byte {
-	return make(chan []byte, relayUpdateChannelSize)
+func CreatePubsubProducer(service *common.Service) *common.RedisPubsubProducer {
+
+	config := common.RedisPubsubConfig{}
+
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.PubsubChannelName = redisPubsubChannelName
+	config.BatchSize = relayUpdateBatchSize
+	config.BatchDuration = relayUpdateBatchDuration
+
+	var err error
+	producer, err = common.CreateRedisPubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis pubsub producer")
+		os.Exit(1)
+	}
+
+	return producer
 }
