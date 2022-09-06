@@ -20,7 +20,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v9 v9.0.0-beta.2
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.5.2
@@ -39,13 +38,14 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/cors v1.7.0
 	github.com/russellcardullo/go-pingdom v1.3.0
+	github.com/satori/go.uuid v1.2.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810
 	google.golang.org/api v0.94.0

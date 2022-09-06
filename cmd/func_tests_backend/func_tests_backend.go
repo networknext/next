@@ -22,7 +22,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-redis/redis/v9"
 	"github.com/networknext/backend/modules/common/redis_pubsub"
+	"github.com/networknext/backend/modules/common/redis_streams"
 	"github.com/networknext/backend/modules/core"
 )
 
@@ -259,7 +261,7 @@ func test_redis_pubsub() {
 
 	parentContext := context.Background()
 
-	producerThreads := 1
+	producerThreads := 2
 	consumerThreads := 10
 
 	var producerWG sync.WaitGroup
@@ -304,6 +306,7 @@ func test_redis_pubsub() {
 			//create messages batch
 			messagesBatch := make([][]byte, 0)
 			start := time.Now()
+
 			select {
 			case <-ticker.C:
 				var err error = nil
@@ -318,7 +321,7 @@ func test_redis_pubsub() {
 				messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
 
 				if err != nil {
-					core.Error("Failed to send message: %v", err)
+					fmt.Printf("error: message send error: %v\n", err)
 				} else {
 					threadBatchesSent[threadIndex] = streamProducer.NumBatchesSent()
 					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
@@ -328,6 +331,11 @@ func test_redis_pubsub() {
 				break
 			}
 
+			if err := streamProducer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
 			producerWG.Done()
 		}(i, ctx)
 	}
@@ -440,12 +448,216 @@ func test_redis_pubsub() {
 	}
 }
 
+func test_redis_streams() {
+
+	fmt.Printf("test_redis_streams\n")
+
+	parentContext := context.Background()
+
+	producerThreads := 2
+	consumerThreads := 10
+
+	var producerWG sync.WaitGroup
+	var consumerWG sync.WaitGroup
+
+	producerWG.Add(producerThreads)
+	consumerWG.Add(consumerThreads)
+
+	threadMessagesSent := make([]int64, producerThreads)
+	threadMessagesReceived := make([]int64, consumerThreads)
+
+	threadBatchesSent := make([]int64, producerThreads)
+	threadBatchesReceived := make([]int64, consumerThreads)
+
+	producerThreadQuit := make([]context.CancelFunc, producerThreads)
+	consumerThreadQuit := make([]context.CancelFunc, consumerThreads)
+
+	for i := 0; i < producerThreads; i++ {
+		ctx, cancel := context.WithCancel(parentContext)
+
+		producerThreadQuit[i] = cancel
+
+		go func(threadIndex int, ctx context.Context) {
+			streamProducer := redis_streams.NewProducer(redis_streams.ProducerConfig{
+				RedisHostname: "127.0.0.1:6379",
+				RedisPassword: "",
+				StreamName:    "test-stream",
+				BatchSize:     100,
+				BatchBytes:    200000,
+				TimeInterval:  time.Millisecond * 100,
+			})
+
+			connectErr := streamProducer.Connect(ctx)
+			if connectErr != nil {
+				producerWG.Done()
+				return
+			}
+
+			tickRate := time.Duration(1000000000 / 1000)
+
+			ticker := time.NewTicker(tickRate)
+			//create messages batch
+			messagesBatch := make([][]byte, 0)
+			start := time.Now()
+
+			select {
+			case <-ticker.C:
+				var err error = nil
+
+				messageSize := mathRand.Intn(95) + 5
+				messageData := make([]byte, messageSize)
+
+				rand.Read(messageData)
+
+				messagesBatch = append(messagesBatch, messageData)
+
+				messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
+
+				if err != nil {
+					fmt.Printf("error: message send error: %v\n", err)
+				} else {
+					threadBatchesSent[threadIndex] = streamProducer.NumBatchesSent()
+					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
+				}
+
+			case <-ctx.Done():
+				break
+			}
+
+			if err := streamProducer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
+			producerWG.Done()
+		}(i, ctx)
+	}
+
+	for i := 0; i < consumerThreads; i++ {
+		ctx, cancel := context.WithCancel(parentContext)
+
+		consumerThreadQuit[i] = cancel
+
+		go func(threadIndex int, ctx context.Context) {
+			streamConsumer := redis_streams.NewConsumer(redis_streams.ConsumerConfig{
+				RedisHostname:     "127.0.0.1:6379",
+				RedisPassword:     "",
+				StreamName:        "test-stream",
+				ConsumerGroup:     "test-group",
+				BlockTimeout:      time.Millisecond * 100,
+				ConsumerBatchSize: 10,
+				ConsumerName:      "",
+			})
+
+			connectErr := streamConsumer.Connect(ctx)
+			if connectErr != nil {
+				consumerWG.Done()
+				return
+			}
+
+			err := streamConsumer.CreateConsumerGroup(ctx)
+
+			if err == context.Canceled {
+				consumerWG.Done()
+				return
+			}
+
+			for {
+				err := streamConsumer.ReceiveMessages(ctx)
+
+				if err == nil {
+					threadBatchesReceived[threadIndex] = streamConsumer.NumBatchesReceived()
+					threadMessagesReceived[threadIndex] = streamConsumer.NumMessageReceived()
+					continue
+				}
+
+				if err == context.Canceled {
+					break
+				}
+
+				// bypass error reading stream when redis client is not done creating
+				if err.Error() == redis.Nil.Error() { // Not sure why this is necessary. err != redis.Nil even when it does same with error() casting
+					continue
+				}
+
+				core.Error("error reading redis stream: %s", err)
+			}
+
+			if err := streamConsumer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
+			consumerWG.Done()
+		}(i, ctx)
+	}
+
+	time.Sleep(time.Second * 30)
+
+	for i := 0; i < producerThreads; i++ {
+		// Loop through producer threads and shut down the message creation loops
+		producerThreadQuit[i]()
+	}
+
+	producerWG.Wait()
+
+	time.Sleep(time.Second * 30)
+
+	for i := 0; i < consumerThreads; i++ {
+		// Loop through consumer threads and shut down processing loops
+		consumerThreadQuit[i]()
+	}
+
+	consumerWG.Wait()
+
+	totalMessagesSent := 0
+	totalMessagesReceived := 0
+
+	for _, numMessages := range threadMessagesSent {
+		totalMessagesSent = totalMessagesSent + int(numMessages)
+	}
+
+	for _, numMessages := range threadMessagesReceived {
+		totalMessagesReceived = totalMessagesReceived + int(numMessages)
+	}
+
+	totalNumBatchesSent := 0
+	for i := 0; i < producerThreads; i++ {
+		totalNumBatchesSent = totalNumBatchesSent + int(threadBatchesSent[i])
+	}
+
+	totalNumBatchesReceived := 0
+	for i := 0; i < consumerThreads; i++ {
+		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
+	}
+
+	failed := false
+	if totalNumBatchesReceived == totalNumBatchesSent {
+		fmt.Println("Test Results - Batches Sent: Passed")
+	} else {
+		fmt.Println("Test Results - Batches Sent: Failed")
+		failed = true
+	}
+
+	if totalMessagesReceived == totalMessagesSent {
+		fmt.Println("Test Results - Messages Sent: Passed")
+	} else {
+		fmt.Println("Test Results - Messages Sent: Failed")
+		failed = true
+	}
+
+	if failed {
+		os.Exit(1)
+	}
+}
+
 type test_function func()
 
 func main() {
 	allTests := []test_function{
 		test_magic_backend,
 		test_redis_pubsub,
+		test_redis_streams,
 	}
 
 	var tests []test_function
