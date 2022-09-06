@@ -215,7 +215,6 @@ func GenerateMagic(magic []byte) {
 
 func UpdateMagic() {
 	ticker := time.NewTicker(time.Second * 60)
-
 	for {
 		select {
 		case <-ticker.C:
