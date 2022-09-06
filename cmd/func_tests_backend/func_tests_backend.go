@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -259,7 +258,7 @@ func test_redis_streams() {
 
 	fmt.Printf("test_redis_streams\n")
 
-	ctx := context.Background()
+	parentContext := context.Background()
 
 	producerThreads := 2
 	consumerThreads := 10
@@ -276,11 +275,15 @@ func test_redis_streams() {
 	threadBatchesSent := make([]int64, producerThreads)
 	threadBatchesReceived := make([]int64, consumerThreads)
 
-	producerThreadKiller := make([]int32, producerThreads)
-	consumerThreadKiller := make([]int32, consumerThreads)
+	producerThreadQuit := make([]context.CancelFunc, producerThreads)
+	consumerThreadQuit := make([]context.CancelFunc, consumerThreads)
 
 	for i := 0; i < producerThreads; i++ {
-		go func(threadIndex int) {
+		ctx, cancel := context.WithCancel(parentContext)
+
+		producerThreadQuit[i] = cancel
+
+		go func(threadIndex int, ctx context.Context) {
 			streamProducer := redis_streams.NewProducer(redis_streams.ProducerConfig{
 				RedisHostname: "127.0.0.1:6379",
 				RedisPassword: "",
@@ -302,31 +305,29 @@ func test_redis_streams() {
 			//create messages batch
 			messagesBatch := make([][]byte, 0)
 			start := time.Now()
-			for producerThreadKiller[threadIndex] == 0 {
-				select {
-				case <-ticker.C:
-					var err error = nil
 
-					messageSize := mathRand.Intn(95) + 5
-					messageData := make([]byte, messageSize)
+			select {
+			case <-ticker.C:
+				var err error = nil
 
-					rand.Read(messageData)
+				messageSize := mathRand.Intn(95) + 5
+				messageData := make([]byte, messageSize)
 
-					messagesBatch = append(messagesBatch, messageData)
+				rand.Read(messageData)
 
-					messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
+				messagesBatch = append(messagesBatch, messageData)
 
-					if err != nil {
-						fmt.Printf("error: message send error: %v\n", err)
-						continue
-					}
+				messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
 
+				if err != nil {
+					fmt.Printf("error: message send error: %v\n", err)
+				} else {
 					threadBatchesSent[threadIndex] = streamProducer.NumBatchesSent()
 					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
-
-				case <-ctx.Done():
-					atomic.StoreInt32(&producerThreadKiller[threadIndex], 1)
 				}
+
+			case <-ctx.Done():
+				break
 			}
 
 			if err := streamProducer.RedisDB.Close(); err != nil {
@@ -335,11 +336,15 @@ func test_redis_streams() {
 
 			// If the thread is killed externally, decrement the wg counter
 			producerWG.Done()
-		}(i)
+		}(i, ctx)
 	}
 
 	for i := 0; i < consumerThreads; i++ {
-		go func(threadIndex int) {
+		ctx, cancel := context.WithCancel(parentContext)
+
+		consumerThreadQuit[i] = cancel
+
+		go func(threadIndex int, ctx context.Context) {
 			streamConsumer := redis_streams.NewConsumer(redis_streams.ConsumerConfig{
 				RedisHostname:     "127.0.0.1:6379",
 				RedisPassword:     "",
@@ -363,7 +368,7 @@ func test_redis_streams() {
 				return
 			}
 
-			for consumerThreadKiller[threadIndex] == 0 {
+			for {
 				err := streamConsumer.ReceiveMessages(ctx)
 
 				if err == nil {
@@ -373,8 +378,7 @@ func test_redis_streams() {
 				}
 
 				if err == context.Canceled {
-					atomic.StoreInt32(&consumerThreadKiller[threadIndex], 1)
-					continue
+					break
 				}
 
 				// bypass error reading stream when redis client is not done creating
@@ -391,14 +395,14 @@ func test_redis_streams() {
 
 			// If the thread is killed externally, decrement the wg counter
 			consumerWG.Done()
-		}(i)
+		}(i, ctx)
 	}
 
 	time.Sleep(time.Second * 30)
 
 	for i := 0; i < producerThreads; i++ {
 		// Loop through producer threads and shut down the message creation loops
-		atomic.StoreInt32(&producerThreadKiller[i], 1)
+		producerThreadQuit[i]()
 	}
 
 	producerWG.Wait()
@@ -407,7 +411,7 @@ func test_redis_streams() {
 
 	for i := 0; i < consumerThreads; i++ {
 		// Loop through consumer threads and shut down processing loops
-		atomic.StoreInt32(&consumerThreadKiller[i], 1)
+		consumerThreadQuit[i]()
 	}
 
 	consumerWG.Wait()
