@@ -1,80 +1,78 @@
-package routing
+package common
 
 import (
-	"bytes"
+	// "bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 	"net"
-	"sort"
-	"sync"
+	// "sort"
+	// "sync"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/routing"
 )
 
 const RouteMatrixSerializeVersion = 7
 
 type RouteMatrix struct {
-	RelayIDsToIndices                           map[uint64]int32
-	RelayIDs                                    []uint64
+	RelayIds                                    []uint64
+	RelayIdToIndex                              map[uint64]int32
 	RelayAddresses                              []net.UDPAddr // external IPs only
 	RelayNames                                  []string
 	RelayLatitudes                              []float32
 	RelayLongitudes                             []float32
-	RelayDatacenterIDs                          []uint64
+	RelayDatacenterIds                          []uint64
 	RouteEntries                                []core.RouteEntry
 	BinFileBytes                                int32
 	BinFileData                                 []byte
 	CreatedAt                                   uint64
 	Version                                     uint32
 	DestRelays                                  []bool
+
+	// todo: how is this stored
+	FullRelayIds                                []uint64
+	// todo: what is this?
+
+	// todo: what the fuck? this should just be an array...
+	FullRelayIndexSet                           map[int32]bool
+
+ 	// todo: review below
 	PingStats                                   []analytics.PingStatsEntry
 	RelayStats                                  []analytics.RelayStatsEntry
-	FullRelayIDs                                []uint64
-	FullRelayIndicesSet                         map[int32]bool
-	InternalAddressClientRoutableRelayIDs       []uint64
-	InternalAddressClientRoutableRelayAddresses []net.UDPAddr // internal IPs only
-	InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
-	DestFirstRelayIDs                           []uint64
-	DestFirstRelayIDsSet                        map[uint64]bool
-
-	cachedResponse      []byte
-	cachedResponseMutex sync.RWMutex
-
-	cachedAnalysis      []byte
-	cachedAnalysisMutex sync.RWMutex
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint32(&m.Version)
 
-	numRelays := uint32(len(m.RelayIDs))
+	numRelays := uint32(len(m.RelayIds))
+
 	stream.SerializeUint32(&numRelays)
 
 	if stream.IsReading() {
-		m.RelayIDsToIndices = make(map[uint64]int32)
-		m.RelayIDs = make([]uint64, numRelays)
+		m.RelayIdToIndex = make(map[uint64]int32)
+		m.RelayIds = make([]uint64, numRelays)
 		m.RelayAddresses = make([]net.UDPAddr, numRelays)
 		m.RelayNames = make([]string, numRelays)
 		m.RelayLatitudes = make([]float32, numRelays)
 		m.RelayLongitudes = make([]float32, numRelays)
-		m.RelayDatacenterIDs = make([]uint64, numRelays)
+		m.RelayDatacenterIds = make([]uint64, numRelays)
 	}
 
 	for i := uint32(0); i < numRelays; i++ {
-		stream.SerializeUint64(&m.RelayIDs[i])
+		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
-		stream.SerializeUint64(&m.RelayDatacenterIDs[i])
+		stream.SerializeUint64(&m.RelayDatacenterIds[i])
 
 		if stream.IsReading() {
-			m.RelayIDsToIndices[m.RelayIDs[i]] = int32(i)
+			m.RelayIdToIndex[m.RelayIds[i]] = int32(i)
 		}
 	}
 
@@ -88,11 +86,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numEntries; i++ {
 		entry := &m.RouteEntries[i]
 
-		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
+		stream.SerializeInteger(&entry.DirectCost, -1, routing.InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteCost[i], -1, routing.InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
@@ -101,10 +99,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, routing.MaxDatabaseBinWrapperSize)
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
-			m.BinFileData = make([]byte, MaxDatabaseBinWrapperSize)
+			m.BinFileData = make([]byte, routing.MaxDatabaseBinWrapperSize)
 		}
 		binFileData := m.BinFileData[:m.BinFileBytes]
 		stream.SerializeBytes(binFileData)
@@ -185,58 +183,65 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if m.Version >= 4 {
 
-		numFullRelayIDs := uint32(len(m.FullRelayIDs))
-		stream.SerializeUint32(&numFullRelayIDs)
+		numFullRelayIds := uint32(len(m.FullRelayIds))
+		
+		stream.SerializeUint32(&numFullRelayIds)
 
 		if stream.IsReading() {
-			m.FullRelayIDs = make([]uint64, numFullRelayIDs)
-			m.FullRelayIndicesSet = make(map[int32]bool)
+			m.FullRelayIds = make([]uint64, numFullRelayIds)
+			m.FullRelayIndexSet = make(map[int32]bool)
 		}
 
-		for i := uint32(0); i < numFullRelayIDs; i++ {
-			stream.SerializeUint64(&m.FullRelayIDs[i])
-
+		for i := uint32(0); i < numFullRelayIds; i++ {
+			stream.SerializeUint64(&m.FullRelayIds[i])
 			if stream.IsReading() {
-				relayIndex, _ := m.RelayIDsToIndices[m.FullRelayIDs[i]]
-				m.FullRelayIndicesSet[relayIndex] = true
+				relayIndex, _ := m.RelayIdToIndex[m.FullRelayIds[i]]
+				m.FullRelayIndexSet[relayIndex] = true
 			}
 		}
 	}
 
 	if m.Version == 6 {
 
-		numInternalAddressClientRoutableRelayIDs := uint32(len(m.InternalAddressClientRoutableRelayIDs))
+		// dummy vars because we don't support this feature anymore
+		var InternalAddressClientRoutableRelayIDs       []uint64
+		var InternalAddressClientRoutableRelayAddresses []net.UDPAddr // internal IPs only
+		var InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
+		var DestFirstRelayIDs                           []uint64
+		var DestFirstRelayIDsSet                        map[uint64]bool
+
+		numInternalAddressClientRoutableRelayIDs := uint32(len(InternalAddressClientRoutableRelayIDs))
 		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)
 
 		if stream.IsReading() {
-			m.InternalAddressClientRoutableRelayIDs = make([]uint64, numInternalAddressClientRoutableRelayIDs)
-			m.InternalAddressClientRoutableRelayAddresses = make([]net.UDPAddr, numInternalAddressClientRoutableRelayIDs)
-			m.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+			InternalAddressClientRoutableRelayIDs = make([]uint64, numInternalAddressClientRoutableRelayIDs)
+			InternalAddressClientRoutableRelayAddresses = make([]net.UDPAddr, numInternalAddressClientRoutableRelayIDs)
+			InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
 		}
 
 		for i := uint32(0); i < numInternalAddressClientRoutableRelayIDs; i++ {
-			stream.SerializeUint64(&m.InternalAddressClientRoutableRelayIDs[i])
-			stream.SerializeAddress(&m.InternalAddressClientRoutableRelayAddresses[i])
+			stream.SerializeUint64(&InternalAddressClientRoutableRelayIDs[i])
+			stream.SerializeAddress(&InternalAddressClientRoutableRelayAddresses[i])
 
 			if stream.IsReading() {
-				m.InternalAddressClientRoutableRelayAddrMap[m.InternalAddressClientRoutableRelayIDs[i]] = m.InternalAddressClientRoutableRelayAddresses[i]
+				InternalAddressClientRoutableRelayAddrMap[InternalAddressClientRoutableRelayIDs[i]] = InternalAddressClientRoutableRelayAddresses[i]
 			}
 		}
 
-		numDestFirstRelayIDs := uint32(len(m.DestFirstRelayIDs))
+		numDestFirstRelayIDs := uint32(len(DestFirstRelayIDs))
 
 		stream.SerializeUint32(&numDestFirstRelayIDs)
 
 		if stream.IsReading() {
-			m.DestFirstRelayIDs = make([]uint64, numDestFirstRelayIDs)
-			m.DestFirstRelayIDsSet = make(map[uint64]bool)
+			DestFirstRelayIDs = make([]uint64, numDestFirstRelayIDs)
+			DestFirstRelayIDsSet = make(map[uint64]bool)
 		}
 
 		for i := uint32(0); i < numDestFirstRelayIDs; i++ {
-			stream.SerializeUint64(&m.DestFirstRelayIDs[i])
+			stream.SerializeUint64(&DestFirstRelayIDs[i])
 
 			if stream.IsReading() {
-				m.DestFirstRelayIDsSet[m.DestFirstRelayIDs[i]] = true
+				DestFirstRelayIDsSet[DestFirstRelayIDs[i]] = true
 			}
 		}
 	}
@@ -244,6 +249,8 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
+// todo: I don't think near relays should even really need the route matrix? could work direct from relay data from the database?
+/*
 func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int, destDatacenterID uint64) ([]uint64, []net.UDPAddr) {
 
 	// Quantize to integer values so we don't have noise in low bits
@@ -272,37 +279,20 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		Longitude float64
 	}
 
-	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
+	nearRelayData := make([]NearRelayData, len(m.RelayIds))
 
 	nearRelayIDs := make([]uint64, 0, maxNearRelays)
 	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
 
 	nearRelayIDMap := map[uint64]struct{}{}
 
-	for i, relayID := range m.RelayIDs {
-		nearRelayData[i].ID = relayID
+	for i, relayID := range m.RelayIds {
+		nearRelayData[i].ID= relayId
 		nearRelayData[i].Addr = m.RelayAddresses[i]
 		nearRelayData[i].Name = m.RelayNames[i]
 		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
 		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
 		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
-
-		if _, isDestFirstRelay := m.DestFirstRelayIDsSet[relayID]; isDestFirstRelay && destDatacenterID == m.RelayDatacenterIDs[i] {
-			// Always add "destination first" relays if we have a relay with the flag enabled in the destination datacenter
-			if len(nearRelayIDs) == maxNearRelays {
-				break
-			}
-
-			nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-			nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
-
-			if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-				// Client should ping this relay using its internal address
-				nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-			} else {
-				nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-			}
-		}
 	}
 
 	// If we already have enough relays, stop and return them
@@ -342,12 +332,7 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
 		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
 
-		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-			// Client should ping this relay using its internal address
-			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-		} else {
-			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-		}
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 	}
 
 	// If we already have enough relays, stop and return them
@@ -383,17 +368,37 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
 
-		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-			// Client should ping this relay using its internal address
-			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-		} else {
-			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-		}
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 	}
 
 	return nearRelayIDs, nearRelayAddresses
 }
+*/
 
+func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return 0, err
+	}
+	readStream := encoding.CreateReadStream(data)
+	err = m.Serialize(readStream)
+	return int64(readStream.GetBytesProcessed()), err
+}
+
+func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
+	buffer := make([]byte, bufferSize)
+	ws, err := encoding.CreateWriteStream(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create write stream for route matrix: %v", err)
+	}
+	if err := m.Serialize(ws); err != nil {
+		return nil, fmt.Errorf("failed to serialize route matrix: %v", err)
+	}
+	ws.Flush()
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+/*
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
 	relayIDs := make([]uint64, 0)
 	for i := 0; i < len(m.RelayDatacenterIDs); i++ {
@@ -787,3 +792,4 @@ func (m *RouteMatrix) WriteAnalysisData() {
 	m.cachedAnalysis = buffer.Bytes()
 	m.cachedAnalysisMutex.Unlock()
 }
+*/
