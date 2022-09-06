@@ -3,13 +3,15 @@ module github.com/networknext/backend
 go 1.13
 
 require (
-	cloud.google.com/go v0.65.0
-	cloud.google.com/go/bigquery v1.8.0
+	cloud.google.com/go/bigquery v1.39.0
 	cloud.google.com/go/bigtable v1.6.0
+	cloud.google.com/go/compute v1.7.0
 	cloud.google.com/go/firestore v1.1.1
 	cloud.google.com/go/logging v1.0.0
-	cloud.google.com/go/pubsub v1.3.1
-	cloud.google.com/go/storage v1.10.0
+	cloud.google.com/go/monitoring v1.6.0
+	cloud.google.com/go/profiler v0.3.0
+	cloud.google.com/go/pubsub v1.25.1
+	cloud.google.com/go/storage v1.26.0
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
@@ -39,17 +41,21 @@ require (
 	github.com/russellcardullo/go-pingdom v1.3.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
+	golang.org/x/mod v0.4.0 // indirect
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150
+	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
+	golang.org/x/tools v0.0.0-20201206230334-368bee879bfd // indirect
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200911024640-645f7a48b24f
 	google.golang.org/grpc v1.31.1
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/auth0.v4 v4.3.4
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1

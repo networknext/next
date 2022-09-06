@@ -94,7 +94,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		batchSize  := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", md.DefaultBigQueryBatchSize)
+		batchSize := envvar.GetInt("GOOGLE_BIGQUERY_BATCH_SIZE", md.DefaultBigQueryBatchSize)
 
 		batchSizePercent := envvar.GetFloat("GOOGLE_BIGQUERY_BATCH_SIZE_PERCENT", 0.80)
 		if err != nil {
