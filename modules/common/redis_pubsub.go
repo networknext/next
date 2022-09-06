@@ -132,7 +132,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 		return nil, err
 	}
 
-	pubsubHandler := redisDB.Subscribe(ctx, config.ChannelName)
+	pubsubHandler := redisDB.Subscribe(ctx, config.PubsubChannelName)
 
 	messageChannel := pubsubHandler.Channel()
 
