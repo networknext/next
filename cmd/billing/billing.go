@@ -61,7 +61,7 @@ func mainReturnWithCode() int {
 	gcpOK := gcpProjectID != ""
 
 	env := backend.GetEnv()
-	
+
 	// Get metrics handler
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {

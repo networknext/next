@@ -8,15 +8,15 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
-	"time"
+	"reflect"
+	"runtime"
 	"strings"
 	"syscall"
-	"net/http"
-	"runtime"
-	"reflect"
-	"io/ioutil"
+	"time"
 )
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
@@ -62,7 +62,7 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
@@ -95,8 +95,8 @@ func test_magic_backend() {
 	}
 
 	magicData, error := ioutil.ReadAll(response.Body)
-   	if error != nil {
-      	fmt.Printf("error: failed to read magic response data\n")
+	if error != nil {
+		fmt.Printf("error: failed to read magic response data\n")
 		cmd.Process.Signal(syscall.SIGTERM)
 		os.Exit(1)
 	}
@@ -127,8 +127,8 @@ func test_magic_backend() {
 		}
 
 		magicData, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
@@ -138,13 +138,13 @@ func test_magic_backend() {
 			magicUpdates++
 
 			if bytes.Compare(magicData[8:16], upcomingMagic[:]) != 0 {
-		      	fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
+				fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
 
 			if bytes.Compare(magicData[16:24], currentMagic[:]) != 0 {
-		      	fmt.Printf("error: did not see current magic shuffle to previous magic\n")
+				fmt.Printf("error: did not see current magic shuffle to previous magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
@@ -201,8 +201,8 @@ func test_magic_backend() {
 		}
 
 		magicData1, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data (1)\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data (1)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
@@ -215,14 +215,14 @@ func test_magic_backend() {
 		}
 
 		magicData2, error := ioutil.ReadAll(response.Body)
-	   	if error != nil {
-	      	fmt.Printf("error: failed to read magic response data (2)\n")
+		if error != nil {
+			fmt.Printf("error: failed to read magic response data (2)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}
 
 		if bytes.Compare(magicData1, magicData2) != 0 && !(bytes.Compare(magicData1[0:16], magicData2[8:24]) == 0 || bytes.Compare(magicData2[0:16], magicData1[8:24]) == 0) {
-	      	fmt.Printf("error: magic data mismatch between two magic backends\n")
+			fmt.Printf("error: magic data mismatch between two magic backends\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
 		}

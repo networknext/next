@@ -57,6 +57,7 @@ receive the latest info and produce an accurate route matrix.
 
 Additionally, it responds to each relay with the set of relays to ping, which is derived from the database.
 */
+
 func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		durationStart := time.Now()
@@ -127,7 +128,8 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 			writer.WriteHeader(http.StatusNotFound) // 404
 			return
 		}
-		// TODO: bring back crypto check
+
+		// todo: bring back crypto check
 
 		// Request is valid, insert the body into the channel
 		params.RequestChan <- body
