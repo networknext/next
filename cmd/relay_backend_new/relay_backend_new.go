@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 	"fmt"
+	"runtime"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -24,6 +25,10 @@ var routeMatrixInterval time.Duration
 var costMatrixMutex sync.RWMutex
 var costMatrix *common.CostMatrix
 var costMatrixData []byte
+
+var routeMatrixMutex sync.RWMutex
+var routeMatrix *common.RouteMatrix
+var routeMatrixData []byte
 
 func main() {
 
@@ -52,6 +57,7 @@ func main() {
 	// redis for the leader cost/route matrix
 
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
+	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 
@@ -110,6 +116,12 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	}
 }
 
+func relayStatsHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// todo: relay data handler
+	}
+}
+
 func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	costMatrixMutex.RLock()
 	responseData := costMatrixData
@@ -123,8 +135,15 @@ func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
-
-	// todo: serve up cached route matrix data
+	routeMatrixMutex.RLock()
+	responseData := routeMatrixData
+	routeMatrixMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
@@ -171,18 +190,20 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 			case <-ticker.C:
 
+				timeStart := time.Now()
+
 				relayData := service.RelayData()
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,
-					RelayIDs:           relayData.RelayIds,
+					RelayIds:           relayData.RelayIds,
 					RelayAddresses:     relayData.RelayAddresses,
 					RelayNames:         relayData.RelayNames,
 					RelayLatitudes:     relayData.RelayLatitudes,
 					RelayLongitudes:    relayData.RelayLongitudes,
-					RelayDatacenterIDs: relayData.RelayDatacenterIds,
+					RelayDatacenterIds: relayData.RelayDatacenterIds,
 					DestRelays:         relayData.DestRelays,
 					Costs:              costs,
 				}
@@ -198,7 +219,50 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				costMatrixData = costMatrixDataNew
 				costMatrixMutex.Unlock()
 
-				core.Debug("updated cost matrix: %d bytes (%d relays)", len(costMatrixDataNew), relayData.NumRelays)
+				// todo: full relays
+
+				// optimize cost matrix -> route matrix
+
+				numCPUs := runtime.NumCPU()
+
+				numSegments := relayData.NumRelays
+				if numCPUs < relayData.NumRelays {
+					numSegments = relayData.NumRelays / 5
+					if numSegments == 0 {
+						numSegments = 1
+					}
+				}
+
+				costThreshold := int32(1)
+
+				routeMatrixNew := &common.RouteMatrix{
+					Version:            common.RouteMatrixSerializeVersion,
+					RelayIds:           costMatrix.RelayIds,
+					RelayAddresses:     costMatrix.RelayAddresses,
+					RelayNames:         costMatrix.RelayNames,
+					RelayLatitudes:     costMatrix.RelayLatitudes,
+					RelayLongitudes:    costMatrix.RelayLongitudes,
+					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
+					DestRelays:         costMatrix.DestRelays,
+					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
+				}
+
+				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)
+				if err != nil {
+					core.Error("could not write route matrix: %v", err)
+					continue
+				}
+
+				routeMatrixMutex.Lock()
+				routeMatrix = routeMatrixNew
+				routeMatrixData = routeMatrixDataNew
+				routeMatrixMutex.Unlock()
+
+				timeFinish := time.Now()
+
+				optimizeDuration := timeFinish.Sub(timeStart)
+
+				fmt.Printf("route optimization: %d relays in %s\n", relayData.NumRelays, optimizeDuration)
 			}
 		}
 	}()

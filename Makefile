@@ -39,7 +39,7 @@ ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 ####################
 
 ifndef RELAY_BACKEND_HOSTNAME
-export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30002
+export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30001
 endif
 
 ifndef RELAY_GATEWAY
@@ -47,7 +47,7 @@ export RELAY_GATEWAY = http://127.0.0.1:30000
 endif
 
 ifndef RELAY_FRONTEND
-export RELAY_FRONTEND = http://127.0.0.1:30005
+export RELAY_FRONTEND = http://127.0.0.1:30002
 endif
 
 ## Relay keys are unique to each relay and used to DECRYPT only the segment in the route token indended for itself
@@ -109,7 +109,7 @@ export BACKEND_LOG_LEVEL = warn
 endif
 
 ifndef ROUTE_MATRIX_URI
-export ROUTE_MATRIX_URI = http://127.0.0.1:30005/route_matrix
+export ROUTE_MATRIX_URI = http://127.0.0.1:30001/route_matrix
 endif
 
 ifndef ROUTE_MATRIX_SYNC_INTERVAL
@@ -308,23 +308,32 @@ export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
 .PHONY: dev-relay-gateway-new
 dev-relay-gateway-new: build-relay-gateway-new ## runs a local relay gateway (new)
-	@PORT=30000 ./dist/relay_gateway_new
+	@HTTP_PORT=30000 ./dist/relay_gateway_new
 
 .PHONY: dev-relay-backend-new
 dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
-	@PORT=30001 ./dist/relay_backend_new
+	@HTTP_PORT=30001 ./dist/relay_backend_new
+
+.PHONY: dev-relay-backend-new-1
+dev-relay-backend-new-1: build-relay-backend-new ## runs a local relay backend new (#1)
+	@HTTP_PORT=30001 ./dist/relay_backend_new
+
+.PHONY: dev-relay-backend-new-2
+dev-relay-backend-new-2: build-relay-backend-new ## runs a local relay backend new (#2)
+	@HTTP_PORT=30002 ./dist/relay_backend_new
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 	@PORT=30000 ./dist/relay_gateway
 
 .PHONY: dev-relay-backend-1
-dev-relay-backend-1: build-relay-backend ## runs a local relay backend
+dev-relay-backend-1: build-relay-backend ## runs a local relay backend (#1)
 	@PORT=30001 ./dist/relay_backend
 
 .PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend
+dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
 	@PORT=30002 ./dist/relay_backend
+
 
 .PHONY: dev-debug-relay-backend
 dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend

@@ -24,8 +24,5 @@ parallel ::: \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/magic_backend ./cmd/magic_backend/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/relay_gateway_new ./cmd/relay_gateway_new/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/relay_backend_new ./cmd/relay_backend_new/*.go" \
-"go build -o ./dist/relay_gateway ./cmd/relay_gateway/*.go" \
-"go build -o ./dist/relay_backend ./cmd/relay_backend/*.go" \
-"go build -o ./dist/relay_frontend ./cmd/relay_frontend/*.go" \
 "go build -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
 "go build -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \

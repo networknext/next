@@ -38,7 +38,7 @@ func ProcessRelayUpdates(ctx context.Context, relayUpdateChannel chan []byte) {
 	go func() {
 		select {
 		case message := <-relayUpdateChannel:
-			fmt.Printf("processed relay update")
+			fmt.Printf("todo: process relay update\n")
 			// todo: send message to redis pubsub producer
 			_ = message
 		case <-ctx.Done():

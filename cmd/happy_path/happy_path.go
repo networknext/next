@@ -114,10 +114,9 @@ func happy_path() int {
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
-	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
-	relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
-	relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
-	relay_frontend_stdout := run_make("dev-relay-frontend", "logs/relay_frontend")
+	relay_gateway_stdout := run_make("dev-relay-gateway-new", "logs/relay_gateway")
+	relay_backend_1_stdout := run_make("dev-relay-backend-new-1", "logs/relay_backend_1")
+	relay_backend_2_stdout := run_make("dev-relay-backend-new-2", "logs/relay_backend_2")
 
 	relay_1_stdout := run_make("dev-relay", "logs/relay_1")
 	relay_2_stdout := run_relay(2001, "logs/relay_2")
@@ -166,9 +165,9 @@ func happy_path() int {
 	relay_gateway_initialized := false
 
 	for i := 0; i < 10; i++ {
-		if strings.Contains(relay_gateway_stdout.String(), "loaded database.bin") &&
+		if strings.Contains(relay_gateway_stdout.String(), "loaded database: 'database.bin'") &&
 			strings.Contains(relay_gateway_stdout.String(), "starting http server on port 30000") &&
-			strings.Contains(relay_gateway_stdout.String(), "started watchman on ") {
+			strings.Contains(relay_gateway_stdout.String(), "updated magic values: ") {
 			relay_gateway_initialized = true
 			break
 		}
@@ -191,8 +190,8 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
-			strings.Contains(relay_backend_1_stdout.String(), "started watchman on ") &&
-			strings.Contains(relay_backend_1_stdout.String(), "wrote route matrix to redis") {
+			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") {
 			relay_backend_1_initialized = true
 			break
 		}
@@ -215,8 +214,8 @@ func happy_path() int {
 
 	for i := 0; i < 100; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
-			strings.Contains(relay_backend_2_stdout.String(), "started watchman on ") &&
-			strings.Contains(relay_backend_2_stdout.String(), "wrote route matrix to redis") {
+			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") {
 			relay_backend_2_initialized = true
 			break
 		}
@@ -227,28 +226,6 @@ func happy_path() int {
 		fmt.Printf("\nerror: failed to initialize relay backend 2\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_backend_2_stdout.String())
-		fmt.Printf("-----------------------------------------\n")
-		return 1
-	}
-
-	// initialize relay frontend
-
-	relay_frontend_initialized := false
-
-	fmt.Printf("initializing relay frontend\n")
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(relay_frontend_stdout.String(), "starting http server on port 30005") {
-			relay_frontend_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !relay_frontend_initialized {
-		fmt.Printf("\nerror: failed to initialize relay frontend\n")
-		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", relay_frontend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
@@ -322,7 +299,7 @@ func happy_path() int {
 	for i := 0; i < 100; i++ {
 		if strings.Contains(server_backend4_stdout.String(), "started http server on port 40000") &&
 			strings.Contains(server_backend4_stdout.String(), "started udp server on port 40000") &&
-			strings.Contains(server_backend4_stdout.String(), "updated route matrix: 5 relays") {
+			strings.Contains(server_backend4_stdout.String(), "updated route matrix: 10 relays") {
 			server_backend4_initialized = true
 			break
 		}
@@ -346,7 +323,7 @@ func happy_path() int {
 	for i := 0; i < 100; i++ {
 		if strings.Contains(server_backend5_stdout.String(), "started http server on port 45000") &&
 			strings.Contains(server_backend5_stdout.String(), "started udp server on port 45000") &&
-			strings.Contains(server_backend5_stdout.String(), "updated route matrix: 5 relays") {
+			strings.Contains(server_backend5_stdout.String(), "updated route matrix: 10 relays") {
 			server_backend5_initialized = true
 			break
 		}
