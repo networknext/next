@@ -444,7 +444,7 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		// test_magic_backend,
+		test_magic_backend,
 		test_redis_pubsub,
 	}
 
