@@ -380,7 +380,7 @@ func mainReturnWithCode() int {
 					databaseMutex.Unlock()
 					relays := routeMatrix.RelayNames
 					routeMatrixMutex.Unlock()
-	
+
 					core.Debug("updated route matrix: %d relays %s", len(relays), relays)
 
 				case <-ctx.Done():

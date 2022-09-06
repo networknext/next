@@ -239,7 +239,7 @@ func mainReturnWithCode() int {
 		}
 
 		binSyncInterval := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
-		
+
 		// Setup goroutine to watch for latest database file and update relayArray_internal and relayHash_internal
 		wg.Add(1)
 		go func() {
