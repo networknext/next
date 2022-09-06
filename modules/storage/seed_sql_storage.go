@@ -315,8 +315,8 @@ func SeedSQLStorage(
 				ID:   localDCID,
 				Name: dcName,
 				Location: routing.Location{
-					Latitude:  0,
-					Longitude: 0,
+					Latitude:  float32(30),
+					Longitude: float32(40),
 				},
 				SellerID: hpSeller.DatabaseID,
 			}
@@ -332,8 +332,8 @@ func SeedSQLStorage(
 			ID:   localDCID,
 			Name: "local",
 			Location: routing.Location{
-				Latitude:  0,
-				Longitude: 0,
+				Latitude:  10,
+				Longitude: 20,
 			},
 			SellerID: localSeller.DatabaseID,
 		}
@@ -461,11 +461,8 @@ func SeedSQLStorage(
 
 			internalAddr = net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 10000 + int(i)}
 
-			// set ghost-army relays to random states
-			var ghostRelayState routing.RelayState
-			rand.Seed(time.Now().UnixNano())
-			state := rand.Int63n(6)
-			ghostRelayState, _ = routing.GetRelayStateSQL(state)
+			// set ghost-army relays to offline state
+			ghostRelayState := routing.RelayStateOffline
 
 			if err := db.AddRelay(ctx, routing.Relay{
 				ID:                            rid,
