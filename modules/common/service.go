@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"encoding/gob"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -143,11 +143,11 @@ func (service *Service) Database() *routing.DatabaseBinWrapper {
 func (service *Service) DatabaseBinFile() []byte {
 	service.databaseMutex.RLock()
 	database := service.database
-	service.databaseMutex.RUnlock()	
+	service.databaseMutex.RUnlock()
 	var databaseBuffer bytes.Buffer
 	encoder := gob.NewEncoder(&databaseBuffer)
 	encoder.Encode(database)
-	return databaseBuffer.Bytes()	
+	return databaseBuffer.Bytes()
 }
 
 func (service *Service) RelayData() *RelayData {

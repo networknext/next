@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
-	"fmt"
-	"runtime"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -77,9 +77,9 @@ type RelayJSON struct {
 	RelayLatitudes     []float32 `json:"relay_latitudes"`
 	RelayLongitudes    []float32 `json:"relay_longitudes"`
 	RelayDatacenterIds []string  `json:"relay_datacenter_ids"`
-	RelayIdToIndex     []string	 `json:"relay_id_to_index"`
+	RelayIdToIndex     []string  `json:"relay_id_to_index"`
 	DestRelays         []string  `json:"dest_relays"`
-	DestRelayNames     []string	 `json:"dest_relay_names"`
+	DestRelayNames     []string  `json:"dest_relay_names"`
 }
 
 func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +94,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		relayJSON.RelayLongitudes = relayData.RelayLongitudes
 		relayJSON.RelayIdToIndex = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
-			 relayJSON.RelayIdToIndex[i] = fmt.Sprintf("%016x - %d", relayData.RelayIds[i], i)
+			relayJSON.RelayIdToIndex[i] = fmt.Sprintf("%016x - %d", relayData.RelayIds[i], i)
 		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
@@ -104,7 +104,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			if relayData.DestRelays[i] {
 				relayJSON.DestRelays[i] = "1"
 			} else {
-				relayJSON.DestRelays[i] = "0"				
+				relayJSON.DestRelays[i] = "0"
 			}
 		}
 		relayJSON.DestRelayNames = relayData.DestRelayNames
@@ -246,8 +246,8 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 					DestRelays:         costMatrix.DestRelays,
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
-					BinFileBytes:    	int32(len(relayData.DatabaseBinFile)),
-					BinFileData:     	relayData.DatabaseBinFile,
+					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
+					BinFileData:        relayData.DatabaseBinFile,
 				}
 
 				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)

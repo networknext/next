@@ -19,30 +19,30 @@ import (
 const RouteMatrixSerializeVersion = 7
 
 type RouteMatrix struct {
-	RelayIds                                    []uint64
-	RelayIdToIndex                              map[uint64]int32
-	RelayAddresses                              []net.UDPAddr // external IPs only
-	RelayNames                                  []string
-	RelayLatitudes                              []float32
-	RelayLongitudes                             []float32
-	RelayDatacenterIds                          []uint64
-	RouteEntries                                []core.RouteEntry
-	BinFileBytes                                int32
-	BinFileData                                 []byte
-	CreatedAt                                   uint64
-	Version                                     uint32
-	DestRelays                                  []bool
+	RelayIds           []uint64
+	RelayIdToIndex     map[uint64]int32
+	RelayAddresses     []net.UDPAddr // external IPs only
+	RelayNames         []string
+	RelayLatitudes     []float32
+	RelayLongitudes    []float32
+	RelayDatacenterIds []uint64
+	RouteEntries       []core.RouteEntry
+	BinFileBytes       int32
+	BinFileData        []byte
+	CreatedAt          uint64
+	Version            uint32
+	DestRelays         []bool
 
 	// todo: how is this stored
-	FullRelayIds                                []uint64
+	FullRelayIds []uint64
 	// todo: what is this?
 
 	// todo: what the fuck? this should just be an array...
-	FullRelayIndexSet                           map[int32]bool
+	FullRelayIndexSet map[int32]bool
 
- 	// todo: review below
-	PingStats                                   []analytics.PingStatsEntry
-	RelayStats                                  []analytics.RelayStatsEntry
+	// todo: review below
+	PingStats  []analytics.PingStatsEntry
+	RelayStats []analytics.RelayStatsEntry
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
@@ -184,7 +184,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	if m.Version >= 4 {
 
 		numFullRelayIds := uint32(len(m.FullRelayIds))
-		
+
 		stream.SerializeUint32(&numFullRelayIds)
 
 		if stream.IsReading() {
@@ -204,11 +204,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	if m.Version == 6 {
 
 		// dummy vars because we don't support this feature anymore
-		var InternalAddressClientRoutableRelayIDs       []uint64
+		var InternalAddressClientRoutableRelayIDs []uint64
 		var InternalAddressClientRoutableRelayAddresses []net.UDPAddr // internal IPs only
-		var InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
-		var DestFirstRelayIDs                           []uint64
-		var DestFirstRelayIDsSet                        map[uint64]bool
+		var InternalAddressClientRoutableRelayAddrMap map[uint64]net.UDPAddr
+		var DestFirstRelayIDs []uint64
+		var DestFirstRelayIDsSet map[uint64]bool
 
 		numInternalAddressClientRoutableRelayIDs := uint32(len(InternalAddressClientRoutableRelayIDs))
 		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)
