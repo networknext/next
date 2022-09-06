@@ -210,6 +210,10 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend test_magic_backend
 
+        - name: "test_redis_pubsub"
+          commands:
+            - cd ./dist && ./func_tests_backend test_redis_pubsub
+
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
     task:
