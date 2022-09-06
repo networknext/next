@@ -190,9 +190,8 @@ blocks:
 
             - chmod +x func_tests_backend
             - chmod +x magic_backend
-            - chmod +x relay_gateway
-            - chmod +x relay_backend
-            - chmod +x relay_frontend
+            - chmod +x relay_gateway_new
+            - chmod +x relay_backend_new
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libzmq.so /usr/local/lib
