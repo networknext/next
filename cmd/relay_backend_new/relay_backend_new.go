@@ -246,8 +246,8 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 					DestRelays:         costMatrix.DestRelays,
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
-					// BinFileBytes:    databaseBinFileBytes,
-					// BinFileData:     databaseBinFileData,
+					BinFileBytes:    	int32(len(relayData.DatabaseBinFile)),
+					BinFileData:     	relayData.DatabaseBinFile,
 				}
 
 				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)

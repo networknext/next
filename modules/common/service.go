@@ -16,6 +16,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"encoding/gob"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
@@ -46,6 +47,7 @@ type RelayData struct {
 	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
 	DestRelayNames     []string
+	DatabaseBinFile    []byte
 }
 
 type Service struct {
@@ -136,6 +138,16 @@ func (service *Service) Database() *routing.DatabaseBinWrapper {
 	database := service.database
 	service.databaseMutex.RUnlock()
 	return database
+}
+
+func (service *Service) DatabaseBinFile() []byte {
+	service.databaseMutex.RLock()
+	database := service.database
+	service.databaseMutex.RUnlock()	
+	var databaseBuffer bytes.Buffer
+	encoder := gob.NewEncoder(&databaseBuffer)
+	encoder.Encode(database)
+	return databaseBuffer.Bytes()	
 }
 
 func (service *Service) RelayData() *RelayData {
@@ -299,6 +311,14 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	}
 
 	sort.Strings(relayData.DestRelayNames)
+
+	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
+
+	var databaseBuffer bytes.Buffer
+	encoder := gob.NewEncoder(&databaseBuffer)
+	encoder.Encode(database)
+
+	relayData.DatabaseBinFile = databaseBuffer.Bytes()
 
 	return relayData
 }
