@@ -114,72 +114,35 @@ func batchMessages(batchId int, messages [][]byte) []byte {
 
 // -----------------------------------------------
 
-/*
 type RedisPubsubConsumer struct {
-	Config                   RedisPubsubConfig
-	RedisDB                  *redis.Client
+	config                   RedisPubsubConfig
+	redisDB                  *redis.Client
+	MessageChannel           <-chan *redis.Message
 	numberOfMessagesReceived int64
 	numberOfBatchesReceived  int64
 }
 
-func NewConsumer(config RedisPubsubConsumerConfig) *RedisPubsubConsumer {
-	return &RedisPubsubConsumer{
-		Config:                   config,
-		RedisDB:                  &redis.Client{},
-		numberOfMessagesReceived: 0,
-		numberOfBatchesReceived:  0,
-	}
-}
-
-func (consumer *RedisPubsubConsumer) Connect(ctx context.Context) error {
-	consumer.RedisDB = redis.NewClient(&redis.Options{
-		Addr:        consumer.Config.RedisHostname,
-		Password:    consumer.Config.RedisPassword,
-		ReadTimeout: -1,
+func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
+	redisDB := redis.NewClient(&redis.Options{
+		Addr:     config.RedisHostname,
+		Password: config.RedisPassword,
 	})
-	_, err := consumer.RedisDB.Ping(ctx).Result()
+	_, err := redisDB.Ping(ctx).Result()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
-}
 
-func (consumer *RedisPubsubConsumer) ConsumeMessage(ctx context.Context, message *redis.Message) error {
-	batchMessages := parseMessages([]byte(message.Payload))
-	core.Debug("Received %v messages (%v bytes)", len(batchMessages), len([]byte(message.Payload)))
-	atomic.AddInt64(&consumer.numberOfBatchesReceived, 1)
-	atomic.AddInt64(&consumer.numberOfMessagesReceived, int64(len(batchMessages)))
-	return nil
-}
+	pubsubHandler := redisDB.Subscribe(ctx, config.ChannelName)
 
-func parseMessages(messages []byte) [][]byte {
-	index := 0
-	var batchNum uint32
-	var numMessages uint32
-	if !encoding.ReadUint32(messages, &index, &batchNum) {
-		core.Debug("could not read batch number")
-	}
-	if !encoding.ReadUint32(messages, &index, &numMessages) {
-		core.Debug("could not read number of messages")
-	}
-	messagesData := make([][]byte, numMessages)
-	for i := 0; i < int(numMessages); i++ {
-		var messageLength uint32
-		if !encoding.ReadUint32(messages, &index, &messageLength) {
-			core.Debug("could not read length of the message")
-		}
-		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
-			core.Debug("could not read message data")
-		}
-	}
-	return messagesData
+	messageChannel := pubsubHandler.Channel()
+
+	return &RedisPubsubConsumer{config: config, redisDB: redisDB, MessageChannel: messageChannel}, nil
 }
 
 func (consumer *RedisPubsubConsumer) NumMessageReceived() int64 {
-	return atomic.LoadInt64(&consumer.numberOfMessagesReceived)
+	return consumer.numberOfMessagesReceived
 }
 
 func (consumer *RedisPubsubConsumer) NumBatchesReceived() int64 {
-	return atomic.LoadInt64(&consumer.numberOfBatchesReceived)
+	return consumer.numberOfBatchesReceived
 }
-*/
