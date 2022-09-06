@@ -20,8 +20,8 @@ type RedisPubsubConfig struct {
 
 type RedisPubsubProducer struct {
 	config                RedisPubsubConfig
-	redisDB               *redis.Client
 	mutex                 sync.Mutex
+	redisDB               *redis.Client
 	messageBatch          [][]byte
 	batchStartTime        time.Time
 	numMessagesSent       int
