@@ -148,9 +148,8 @@ blocks:
             - artifact push workflow dist/func_tests_backend_reference_relay
             - artifact push workflow dist/func_tests_backend
             - artifact push workflow dist/magic_backend
-            - artifact push workflow dist/relay_gateway
-            - artifact push workflow dist/relay_backend
-            - artifact push workflow dist/relay_frontend
+            - artifact push workflow dist/relay_gateway_new
+            - artifact push workflow dist/relay_backend_new
 
   - name: "Run Functional Tests (backend)"
     dependencies: ["Build Functional Tests (backend)", "Dependencies"]
