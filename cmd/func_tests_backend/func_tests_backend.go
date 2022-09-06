@@ -22,7 +22,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-redis/redis/v9"
 	"github.com/networknext/backend/modules/common/redis_pubsub"
+	"github.com/networknext/backend/modules/common/redis_streams"
 	"github.com/networknext/backend/modules/core"
 )
 
@@ -446,13 +448,13 @@ func test_redis_pubsub() {
 	}
 }
 
-func test_redis_pubsub() {
+func test_redis_streams() {
 
-	fmt.Printf("test_redis_pubsub\n")
+	fmt.Printf("test_redis_streams\n")
 
 	parentContext := context.Background()
 
-	producerThreads := 1
+	producerThreads := 2
 	consumerThreads := 10
 
 	var producerWG sync.WaitGroup
@@ -476,10 +478,10 @@ func test_redis_pubsub() {
 		producerThreadQuit[i] = cancel
 
 		go func(threadIndex int, ctx context.Context) {
-			streamProducer := redis_pubsub.NewProducer(redis_pubsub.ProducerConfig{
+			streamProducer := redis_streams.NewProducer(redis_streams.ProducerConfig{
 				RedisHostname: "127.0.0.1:6379",
 				RedisPassword: "",
-				ChannelName:   "test-channel",
+				StreamName:    "test-stream",
 				BatchSize:     100,
 				BatchBytes:    200000,
 				TimeInterval:  time.Millisecond * 100,
@@ -497,6 +499,7 @@ func test_redis_pubsub() {
 			//create messages batch
 			messagesBatch := make([][]byte, 0)
 			start := time.Now()
+
 			select {
 			case <-ticker.C:
 				var err error = nil
@@ -511,7 +514,7 @@ func test_redis_pubsub() {
 				messagesBatch, start, err = streamProducer.SendMessages(ctx, messagesBatch, start)
 
 				if err != nil {
-					core.Error("Failed to send message: %v", err)
+					fmt.Printf("error: message send error: %v\n", err)
 				} else {
 					threadBatchesSent[threadIndex] = streamProducer.NumBatchesSent()
 					threadMessagesSent[threadIndex] = streamProducer.NumMessagesSent()
@@ -521,6 +524,11 @@ func test_redis_pubsub() {
 				break
 			}
 
+			if err := streamProducer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
+			}
+
+			// If the thread is killed externally, decrement the wg counter
 			producerWG.Done()
 		}(i, ctx)
 	}
@@ -531,10 +539,14 @@ func test_redis_pubsub() {
 		consumerThreadQuit[i] = cancel
 
 		go func(threadIndex int, ctx context.Context) {
-			streamConsumer := redis_pubsub.NewConsumer(redis_pubsub.ConsumerConfig{
-				RedisHostname: "127.0.0.1:6379",
-				RedisPassword: "",
-				ChannelName:   "test-channel",
+			streamConsumer := redis_streams.NewConsumer(redis_streams.ConsumerConfig{
+				RedisHostname:     "127.0.0.1:6379",
+				RedisPassword:     "",
+				StreamName:        "test-stream",
+				ConsumerGroup:     "test-group",
+				BlockTimeout:      time.Millisecond * 100,
+				ConsumerBatchSize: 10,
+				ConsumerName:      "",
 			})
 
 			connectErr := streamConsumer.Connect(ctx)
@@ -543,27 +555,39 @@ func test_redis_pubsub() {
 				return
 			}
 
-			pubsubHandler := streamConsumer.RedisDB.Subscribe(ctx, streamConsumer.Config.ChannelName)
+			err := streamConsumer.CreateConsumerGroup(ctx)
 
-			messageChannel := pubsubHandler.Channel()
+			if err == context.Canceled {
+				consumerWG.Done()
+				return
+			}
 
-			select {
-			case msg := <-messageChannel:
-				if err := streamConsumer.ConsumeMessage(ctx, msg); err != nil {
-					core.Error("error reading redis pubsub message: %v", err)
+			for {
+				err := streamConsumer.ReceiveMessages(ctx)
+
+				if err == nil {
+					threadBatchesReceived[threadIndex] = streamConsumer.NumBatchesReceived()
+					threadMessagesReceived[threadIndex] = streamConsumer.NumMessageReceived()
+					continue
 				}
-			case <-ctx.Done():
-				break
-			default:
+
+				if err == context.Canceled {
+					break
+				}
+
+				// bypass error reading stream when redis client is not done creating
+				if err.Error() == redis.Nil.Error() { // Not sure why this is necessary. err != redis.Nil even when it does same with error() casting
+					continue
+				}
+
+				core.Error("error reading redis stream: %s", err)
 			}
 
-			threadBatchesReceived[threadIndex] = streamConsumer.NumBatchesReceived()
-			threadMessagesReceived[threadIndex] = streamConsumer.NumMessageReceived()
-
-			if err := pubsubHandler.Close(); err != nil {
-				core.Error("Failed to shut down pubsub handler: %v", err)
+			if err := streamConsumer.RedisDB.Close(); err != nil {
+				core.Error("Failed to close redis connection: %v", err)
 			}
 
+			// If the thread is killed externally, decrement the wg counter
 			consumerWG.Done()
 		}(i, ctx)
 	}
@@ -607,17 +631,11 @@ func test_redis_pubsub() {
 		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
 	}
 
-	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
-	totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
-
-	// Divide num messages received across all threads by num consumers to make sure everyone got the same num messages
-	totalMessagesReceived = (totalMessagesReceived / consumerThreads)
-
 	failed := false
 	if totalNumBatchesReceived == totalNumBatchesSent {
-		fmt.Printf("\nTest Results - Batches Sent: Passed\n")
+		fmt.Println("Test Results - Batches Sent: Passed")
 	} else {
-		fmt.Printf("\nTest Results - Batches Sent: Failed\n")
+		fmt.Println("Test Results - Batches Sent: Failed")
 		failed = true
 	}
 

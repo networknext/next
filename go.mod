@@ -20,7 +20,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
-	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v9 v9.0.0-beta.2
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.5.2
@@ -46,16 +45,12 @@ require (
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
-	golang.org/x/mod v0.4.0 // indirect
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
-	golang.org/x/tools v0.0.0-20201206230334-368bee879bfd // indirect
-	google.golang.org/api v0.31.0
-	google.golang.org/genproto v0.0.0-20200911024640-645f7a48b24f
-	google.golang.org/grpc v1.31.1
-	google.golang.org/protobuf v1.25.0
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094
+	golang.org/x/sys v0.0.0-20220624220833-87e55d714810
+	google.golang.org/api v0.94.0
+	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc
+	google.golang.org/grpc v1.48.0
 	gopkg.in/auth0.v4 v4.3.4
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1
