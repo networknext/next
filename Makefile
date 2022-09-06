@@ -25,7 +25,7 @@ RELAY_PORT ?= 2000
 MODULE ?= "github.com/networknext/backend/modules/common"
 
 BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr -d \"n\")
+COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
 ARTIFACT_BUCKET = gs://development_artifacts
