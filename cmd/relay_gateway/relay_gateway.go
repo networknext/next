@@ -98,7 +98,7 @@ func main() {
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func mainReturnWithCode() int {
-	
+
 	serviceName := "relay_gateway"
 
 	fmt.Printf("%s\n", serviceName)
@@ -489,7 +489,7 @@ func mainReturnWithCode() int {
 	}
 
 	port := envvar.Get("PORT", "30000")
-	
+
 	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
