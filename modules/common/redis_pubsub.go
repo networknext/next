@@ -40,6 +40,14 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	return &RedisPubsubProducer{config: config, redisDB: redisDB}, nil
 }
 
+func (producer *RedisPubsubProducer) ShutdownRedisPubsubProducer(ctx context.Context) error {
+	if err := producer.redisDB.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (producer *RedisPubsubProducer) SendMessage(ctx context.Context, message []byte) {
 
 	producer.mutex.Lock()
@@ -118,8 +126,9 @@ type RedisPubsubConsumer struct {
 	config                   RedisPubsubConfig
 	redisDB                  *redis.Client
 	MessageChannel           <-chan *redis.Message
-	numberOfMessagesReceived int64
-	numberOfBatchesReceived  int64
+	pubsubHandler            *redis.PubSub
+	NumberOfMessagesReceived int64
+	NumberOfBatchesReceived  int64
 }
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
@@ -136,13 +145,17 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 
 	messageChannel := pubsubHandler.Channel()
 
-	return &RedisPubsubConsumer{config: config, redisDB: redisDB, MessageChannel: messageChannel}, nil
+	return &RedisPubsubConsumer{config: config, redisDB: redisDB, MessageChannel: messageChannel, pubsubHandler: pubsubHandler}, nil
 }
 
-func (consumer *RedisPubsubConsumer) NumMessageReceived() int64 {
-	return consumer.numberOfMessagesReceived
-}
+func (consumer *RedisPubsubConsumer) ShutdownRedisPubsubConsumer(ctx context.Context) error {
+	if err := consumer.pubsubHandler.Unsubscribe(ctx, consumer.config.ChannelName); err != nil {
+		return err
+	}
 
-func (consumer *RedisPubsubConsumer) NumBatchesReceived() int64 {
-	return consumer.numberOfBatchesReceived
+	if err := consumer.redisDB.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
