@@ -11,18 +11,19 @@ import (
 )
 
 type RedisPubsubConfig struct {
-	RedisHostname     string
-	RedisPassword     string
-	PubsubChannelName string
-	BatchSize         int
-	BatchDuration     time.Duration
+	RedisHostname      string
+	RedisPassword      string
+	PubsubChannelName  string
+	BatchSize          int
+	BatchDuration      time.Duration
+	MessageChannelSize int
 }
 
 type RedisPubsubProducer struct {
 	MessageChannel  chan []byte
 	config          RedisPubsubConfig
 	mutex           sync.RWMutex
-	redisDB         *redis.Client
+	redisClient         *redis.Client
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	numMessagesSent int
@@ -31,11 +32,11 @@ type RedisPubsubProducer struct {
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
 	
-	redisDB := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
 	})
-	_, err := redisDB.Ping(ctx).Result()
+	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +44,8 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	producer := &RedisPubsubProducer{}
 
 	producer.config = config
-	producer.redisDB = redisDB
-	producer.MessageChannel = make(chan []byte, 10 * 1024)		// todo: make chan length configurable
+	producer.redisClient = redisClient
+	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
 	go producer.updateMessageChannel(ctx)
 
@@ -63,27 +64,27 @@ func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
 
 		case <-ticker.C:
 			if len(producer.messageBatch) > 0 {
-				producer.sendBatchToRedis()
+				producer.sendBatchToRedis(ctx)
 			}
 			break
 
 		case message := <-producer.MessageChannel:
    			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
-				producer.sendBatchToRedis()
+				producer.sendBatchToRedis(ctx)
 			}
 			break
 		}
 	}
 }
 
-func (producer *RedisPubsubProducer) sendBatchToRedis() {
+func (producer *RedisPubsubProducer) sendBatchToRedis(ctx context.Context) {
 
 	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(time.Second))
+	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
-	_, err := producer.redisDB.Publish(ctx, producer.config.PubsubChannelName, messageToSend).Result()
+	_, err := producer.redisClient.Publish(timeoutContext, producer.config.PubsubChannelName, messageToSend).Result()
 	if err != nil {
 		core.Error("failed to send batched pubsub messages to redis: %v", err)
 		return
@@ -138,7 +139,7 @@ func (producer *RedisPubsubProducer) NumBatchesSent() int {
 type RedisPubsubConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisPubsubConfig
-	redisDB             *redis.Client
+	redisClient         *redis.Client
 	pubsubSubscription  *redis.PubSub
 	pubsubChannel       <-chan *redis.Message
 	mutex               sync.RWMutex
@@ -148,11 +149,11 @@ type RedisPubsubConsumer struct {
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
 
-	redisDB := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
 	})
-	_, err := redisDB.Ping(ctx).Result()
+	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -160,10 +161,10 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	consumer := &RedisPubsubConsumer{}
 
 	consumer.config = config
-	consumer.redisDB = redisDB
-	consumer.pubsubSubscription = consumer.redisDB.Subscribe(ctx, config.PubsubChannelName)
+	consumer.redisClient = redisClient
+	consumer.pubsubSubscription = consumer.redisClient.Subscribe(ctx, config.PubsubChannelName)
 	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
-	consumer.MessageChannel = make(chan []byte, 10*1024)
+	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
 	go consumer.processRedisMessages(ctx)
 

@@ -28,6 +28,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/go-github/v36 v36.0.0
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/lib/pq v1.8.0
