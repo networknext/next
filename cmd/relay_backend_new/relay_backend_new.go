@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -32,12 +32,14 @@ var costMatrixData []byte
 
 var routeMatrixMutex sync.RWMutex
 var routeMatrixData []byte
+var routeMatrixHealthy bool
 
 var costMatrixInternalMutex sync.RWMutex
 var costMatrixInternalData []byte
 
 var routeMatrixInternalMutex sync.RWMutex
 var routeMatrixInternalData []byte
+var routeMatrixInternalHealthy bool
 
 func main() {
 
@@ -69,10 +71,7 @@ func main() {
 
 	relayStats := common.CreateRelayStats()
 
-	// todo: override health function so we only become healthy once we have
-	// our own internal cost/route matrix to serve up, plus cached data from
-	// redis for the leader cost/route matrix
-
+	service.Router.HandleFunc("/health", healthHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
@@ -87,6 +86,24 @@ func main() {
 	UpdateRouteMatrix(service, relayStats)
 
 	service.WaitForShutdown()
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	
+	routeMatrixMutex.RLock()
+	routeMatrixInternalMutex.RLock()
+
+	ready := routeMatrixHealthy && routeMatrixInternalHealthy
+
+	routeMatrixMutex.RUnlock()
+	routeMatrixInternalMutex.RUnlock()
+
+	if !ready {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "not ready")
+	} else {
+		fmt.Fprintf(w, "OK")
+	}
 }
 
 type RelayJSON struct {
@@ -212,7 +229,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 			case <-ctx.Done():
 				return
-			
+
 			case message := <-consumer.MessageChannel:
 
 				core.Debug("received relay update")
@@ -265,6 +282,11 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
+				// todo
+				fmt.Printf("-------------------------------------------------\n")
+				fmt.Printf("%v\n", costs)
+				fmt.Printf("-------------------------------------------------\n")
+
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,
 					RelayIds:           relayData.RelayIds,
@@ -277,13 +299,13 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					Costs:              costs,
 				}
 
+				// serve up as internal cost matrix
+
 				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize)
 				if err != nil {
 					core.Error("could not write cost matrix: %v", err)
 					continue
 				}
-
-				// serve up as internal cost matrix
 
 				costMatrixInternalMutex.Lock()
 				costMatrixInternalData = costMatrixDataNew
@@ -320,13 +342,21 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					BinFileData:        relayData.DatabaseBinFile,
 				}
 
+				// is the route matrix healthy?
+
+				analysis := routeMatrixNew.Analyze()
+
+				fmt.Printf("-------------------------------------------\n")
+				fmt.Printf("%+v\n", analysis)
+				fmt.Printf("-------------------------------------------\n")
+
+				// serve up as internal route matrix
+
 				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)
 				if err != nil {
 					core.Error("could not write route matrix: %v", err)
 					continue
 				}
-
-				// serve up as internal cost matrix
 
 				routeMatrixInternalMutex.Lock()
 				routeMatrixInternalData = routeMatrixDataNew

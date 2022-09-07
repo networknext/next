@@ -99,7 +99,6 @@ func CreateService(serviceName string) *Service {
 
 	service.Local = env == "local"
 
-	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 
@@ -173,6 +172,7 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 func (service *Service) StartWebServer() {
 	port := envvar.Get("HTTP_PORT", "80")
 	fmt.Printf("starting http server on port %s\n", port)
+	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	go func() {
 		err := http.ListenAndServe(":"+port, &service.Router)
 		if err != nil {

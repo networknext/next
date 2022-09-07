@@ -9,6 +9,8 @@ import (
 // todo: might want to put a lastUpdateTime in the sourceEntry as well, then we can extract set of active relays easily
 // (relays that have posted an update in the last 10 seconds)
 
+// todo: might want to look at RTT variation across the 5 minutes, in addition to jitter. jitter is only across 1 second of pings (10 samples)
+
 const HistorySize = 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
@@ -220,48 +222,25 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 	return rtt, jitter, packetLoss
 }
 
-func (relayStats *RelayStats) DeleteEntry(relayId uint64) {
-	relayStats.mutex.Lock()
-	delete(relayStats.sourceEntries, relayId)
-	relayStats.mutex.Unlock()
-}
-
 func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 
-	costMatrix := make([]int32, TriMatrixLength(numRelays))
-
-	if local {
-		return costMatrix
-	}
-
 	currentTime := time.Now()
 
+	costs := make([]int32, TriMatrixLength(numRelays))
+
 	for i := 0; i < numRelays; i++ {
-
 		sourceRelayId := uint64(relayIds[i])
-
 		for j := 0; j < i; j++ {
-
-			destRelayId := uint64(relayIds[j])
-
-			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
-
-			// todo: the jitter average here is only across 1 second samples. I think we need to consider
-			// jitter across a longer time frame to make sure we have a really steady cost here.
-
-			cost := int32(-1)
-
-			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
-				cost = int32(math.Ceil(float64(rtt)))
-			}
-
 			index := TriMatrixIndex(i, j)
-
-			costMatrix[index] = cost
+			destRelayId := uint64(relayIds[j])
+			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
+			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
+				costs[index] = int32(math.Ceil(float64(rtt)))
+			}
 		}
 	}
 
-	return costMatrix
+	return costs
 }
