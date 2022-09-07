@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 	"fmt"
+	"sort"
 	"bytes"
 	"encoding/gob"
 	
@@ -28,11 +29,11 @@ type RedisSelector struct {
 }
 
 type InstanceEntry struct {
-	instanceId string
-	uptime uint64
-	timestamp uint64
-	costMatrixKey string
-	routeMatrixKey string
+	InstanceId string
+	Uptime uint64
+	Timestamp uint64
+	CostMatrixKey string
+	RouteMatrixKey string
 }
 
 func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*RedisSelector, error) {
@@ -63,24 +64,27 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 	selector.storeCounter++
 
 	instanceEntry := InstanceEntry{}
-	instanceEntry.instanceId = selector.instanceId
-	instanceEntry.uptime = uint64(time.Since(selector.startTime))
-	instanceEntry.timestamp = uint64(time.Now().Unix())
-	instanceEntry.costMatrixKey = fmt.Sprintf("cost_matrix/%s-%d", selector.instanceId, selector.storeCounter)
-	instanceEntry.routeMatrixKey = fmt.Sprintf("route_matrix/%s-%d", selector.instanceId, selector.storeCounter)
+	instanceEntry.InstanceId = selector.instanceId
+	instanceEntry.Uptime = uint64(time.Since(selector.startTime))
+	instanceEntry.Timestamp = uint64(time.Now().Unix())
+	instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix/%s-%d", selector.instanceId, selector.storeCounter)
+	instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix/%s-%d", selector.instanceId, selector.storeCounter)
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
-	encoder.Encode(instanceEntry)
+	err := encoder.Encode(instanceEntry)
+	if err != nil {
+		core.Error("failed to write instance entry\n")
+	}
 	instanceData := buffer.Bytes()
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
 	pipe := selector.redisClient.TxPipeline()
 	pipe.Set(timeoutContext, fmt.Sprintf("instance/%s", selector.instanceId), instanceData[:], 10*time.Second)
-	pipe.Set(timeoutContext, instanceEntry.costMatrixKey, costMatrixData[:], 10*time.Second)
-	pipe.Set(timeoutContext, instanceEntry.routeMatrixKey, routeMatrixData[:], 10*time.Second)
-	_, err := pipe.Exec(timeoutContext)
+	pipe.Set(timeoutContext, instanceEntry.CostMatrixKey, costMatrixData[:], 10*time.Second)
+	pipe.Set(timeoutContext, instanceEntry.RouteMatrixKey, routeMatrixData[:], 10*time.Second)
+	_, err = pipe.Exec(timeoutContext)
 
 	if err != nil {
 		core.Error("failed to store instance data: %v", err)
@@ -93,6 +97,80 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 }
 
 func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
+
+	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+
+	// get all "instance/*" keys via scan to be safe
+
+	instanceKeys := []string{}
+	itor := selector.redisClient.Scan(timeoutContext, 0, "instance/*", 0).Iterator()
+	for itor.Next(timeoutContext) {
+		instanceKeys = append(instanceKeys, itor.Val())
+	}
+	if err := itor.Err(); err != nil {
+		core.Error("failed to get instance keys: %v", err)
+		return nil, nil
+	}
+
+	// query all instance data
+
+	pipe := selector.redisClient.Pipeline()
+	for i := range instanceKeys {
+		pipe.Get(timeoutContext, instanceKeys[i])
+	}
+	cmds, err := pipe.Exec(timeoutContext)
+
+	if err != nil {
+		core.Error("failed to get instance entries: %v", err)
+		return nil, nil
+	}
+
+	// convert instance data to instance entries
+
+	instanceEntries := []InstanceEntry{}
+
+	for _, cmd := range cmds {
+
+		instanceData := cmd.(*redis.StringCmd).Val()
+		
+		instanceEntry := InstanceEntry{}
+		buffer := bytes.NewBuffer([]byte(instanceData))
+		decoder := gob.NewDecoder(buffer)
+		err := decoder.Decode(&instanceEntry)
+		if err != nil {
+			core.Debug("could not decode instance entry: %v", err)
+			continue
+		}
+
+		// IMPORTANT: ignore any instance entries more than 5 seconds old
+		if instanceEntry.Timestamp >= uint64(time.Now().Unix() - 5) {
+			instanceEntries = append(instanceEntries, instanceEntry)
+		}
+	}
+
+	// no instance entries? we have no route matrix data...
+
+	if len(instanceEntries) == 0 {
+		core.Error("no instance entries found")
+	}
+
+	// select master instance (most uptime, instance id as tie breaker)
+
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
+
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].Uptime > instanceEntries[j].Uptime })
+
+	masterInstance := instanceEntries[0]
+
+	// get cost matrix and route matrix for master instance
+
+	fmt.Printf("------------------------------------\n")
+	fmt.Printf("cost matrix key is %s\n", masterInstance.CostMatrixKey)
+	fmt.Printf("route matrix key is %s\n", masterInstance.RouteMatrixKey)
+	fmt.Printf("------------------------------------\n")
+
+	// ...
+
 	// todo: actually do the redis thing
 	return selector.costMatrixData, selector.routeMatrixData
 }
