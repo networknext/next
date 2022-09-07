@@ -312,15 +312,15 @@ dev-relay-gateway-new: build-relay-gateway-new ## runs a local relay gateway (ne
 
 .PHONY: dev-relay-backend-new
 dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
-	@HTTP_PORT=30001 ./dist/relay_backend_new
+	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend_new
 
 .PHONY: dev-relay-backend-new-1
 dev-relay-backend-new-1: build-relay-backend-new ## runs a local relay backend new (#1)
-	@HTTP_PORT=30001 ./dist/relay_backend_new
+	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend_new
 
 .PHONY: dev-relay-backend-new-2
 dev-relay-backend-new-2: build-relay-backend-new ## runs a local relay backend new (#2)
-	@HTTP_PORT=30002 ./dist/relay_backend_new
+	@HTTP_PORT=30002 READY_DELAY=5s ./dist/relay_backend_new
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway

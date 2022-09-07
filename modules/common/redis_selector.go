@@ -1,21 +1,21 @@
 package common
 
 import (
+	"bytes"
 	"context"
-	"time"
+	"encoding/gob"
 	"fmt"
 	"sort"
-	"bytes"
-	"encoding/gob"
-	
-    "github.com/google/uuid"
+	"time"
+
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	"github.com/networknext/backend/modules/core"
 )
 
 type RedisSelectorConfig struct {
-	RedisHostname      string
-	RedisPassword      string
+	RedisHostname string
+	RedisPassword string
 }
 
 type RedisSelector struct {
@@ -29,15 +29,15 @@ type RedisSelector struct {
 }
 
 type InstanceEntry struct {
-	InstanceId string
-	Uptime uint64
-	Timestamp uint64
-	CostMatrixKey string
+	InstanceId     string
+	Uptime         uint64
+	Timestamp      uint64
+	CostMatrixKey  string
 	RouteMatrixKey string
 }
 
 func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*RedisSelector, error) {
-	
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
@@ -46,7 +46,7 @@ func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*Redi
 	if err != nil {
 		return nil, err
 	}
-	
+
 	selector := &RedisSelector{}
 
 	selector.config = config
@@ -128,7 +128,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 	for _, cmd := range cmds {
 
 		instanceData := cmd.(*redis.StringCmd).Val()
-		
+
 		instanceEntry := InstanceEntry{}
 		buffer := bytes.NewBuffer([]byte(instanceData))
 		decoder := gob.NewDecoder(buffer)
@@ -139,7 +139,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 		}
 
 		// IMPORTANT: ignore any instance entries more than 5 seconds old
-		if instanceEntry.Timestamp >= uint64(time.Now().Unix() - 5) {
+		if instanceEntry.Timestamp >= uint64(time.Now().Unix()-5) {
 			instanceEntries = append(instanceEntries, instanceEntry)
 		}
 	}
