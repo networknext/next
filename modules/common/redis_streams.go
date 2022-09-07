@@ -1,247 +1,242 @@
 package common
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"strings"
-// 	"sync/atomic"
-// 	"time"
+import (
+	"context"
+	"sync"
+	"time"
 
-// 	"github.com/go-redis/redis/v9"
-// 	"github.com/networknext/backend/modules/core"
-// 	"github.com/networknext/backend/modules/encoding"
-// 	uuid "github.com/satori/go.uuid"
-// )
+	"github.com/go-redis/redis/v9"
+	"github.com/networknext/backend/modules/core"
+)
 
-// /**
-// ********     PRODUCER     *********
-// **/
-// type Producer struct {
-// 	config               ProducerConfig
-// 	RedisDB              *redis.Client
-// 	numberOfMessagesSent int64
-// 	numberOfBatchesSent  int64
-// }
+type RedisStreamsConfig struct {
+	RedisHostname      string
+	RedisPassword      string
+	StreamName         string
+	BatchSize          int
+	BatchDuration      time.Duration
+	MessageChannelSize int
+}
 
-// type ProducerConfig struct {
-// 	RedisHostname string
-// 	RedisPassword string
-// 	StreamName    string
-// 	BatchSize     int
-// 	BatchBytes    int
-// 	TimeInterval  time.Duration
-// }
+type RedisStreamsProducer struct {
+	MessageChannel  chan []byte
+	config          RedisStreamsConfig
+	redisClient     *redis.Client
+	messageBatch    [][]byte
+	batchStartTime  time.Time
+	mutex           sync.RWMutex
+	numMessagesSent int
+	numBatchesSent  int
+}
 
-// func NewProducer(
-// 	config ProducerConfig,
-// ) *Producer {
+func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsProducer, error) {
 
-// 	return &Producer{
-// 		config:               config,
-// 		RedisDB:              &redis.Client{},
-// 		numberOfMessagesSent: 0,
-// 		numberOfBatchesSent:  0,
-// 	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     config.RedisHostname,
+		Password: config.RedisPassword,
+	})
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		return nil, err
+	}
 
-// }
+	producer := &RedisStreamsProducer{}
 
-// func (producer *Producer) Connect(ctx context.Context) error {
-// 	producer.RedisDB = redis.NewClient(&redis.Options{
-// 		Addr:     producer.config.RedisHostname,
-// 		Password: producer.config.RedisPassword,
-// 	})
-// 	_, err := producer.RedisDB.Ping(ctx).Result()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+	producer.config = config
+	producer.redisClient = redisClient
+	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
-// func (producer *Producer) SendMessages(
-// 	ctx context.Context,
-// 	messagesBatch [][]byte,
-// 	start time.Time,
-// ) ([][]byte, time.Time, error) {
+	go producer.updateMessageChannel(ctx)
 
-// 	//check if timeout or batchSize reached -> send the messages block
-// 	if time.Since(start) > producer.config.TimeInterval || len(messagesBatch) >= producer.config.BatchSize {
-// 		messageToSend := buildMessages(messagesBatch, producer.config.BatchBytes, uint32(producer.NumBatchesSent()))
+	return producer, nil
+}
 
-// 		if _, err := producer.RedisDB.XAdd(ctx, &redis.XAddArgs{
-// 			Stream:     producer.config.StreamName,
-// 			NoMkStream: false,
-// 			Approx:     false,
-// 			Limit:      0,
-// 			ID:         "",
-// 			Values:     map[string]interface{}{"type": "message", "data": messageToSend},
-// 		}).Result(); err != nil {
-// 			return messagesBatch, start, err
-// 		}
+func (producer *RedisStreamsProducer) updateMessageChannel(ctx context.Context) {
 
-// 		core.Debug("Sent batch of %v messages (%v bytes) with batch ID: %d\n", len(messagesBatch), len(messageToSend), producer.NumBatchesSent())
+	ticker := time.NewTicker(producer.config.BatchDuration)
 
-// 		atomic.AddInt64(&producer.numberOfBatchesSent, 1)
-// 		atomic.AddInt64(&producer.numberOfMessagesSent, int64(len(messagesBatch)))
+	for {
+		select {
 
-// 		messagesBatch = messagesBatch[:0]
-// 		start = time.Now()
+		case <-ctx.Done():
+			return
 
-// 	}
-// 	return messagesBatch, start, nil
+		case <-ticker.C:
+			if len(producer.messageBatch) > 0 {
+				producer.sendBatchToRedis(ctx)
+			}
+			break
 
-// }
+		case message := <-producer.MessageChannel:
+			producer.messageBatch = append(producer.messageBatch, message)
+			if len(producer.messageBatch) >= producer.config.BatchSize {
+				producer.sendBatchToRedis(ctx)
+			}
+			break
+		}
+	}
+}
 
-// func (producer *Producer) NumMessagesSent() int64 {
-// 	return atomic.LoadInt64(&producer.numberOfMessagesSent)
-// }
+func (producer *RedisStreamsProducer) sendBatchToRedis(ctx context.Context) {
 
-// func (producer *Producer) NumBatchesSent() int64 {
-// 	return atomic.LoadInt64(&producer.numberOfBatchesSent)
-// }
+	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
-// func buildMessages(messages [][]byte, batchBytes int, batchNum uint32) []byte {
-// 	data := make([]byte, batchBytes)
-// 	index := 0
-// 	encoding.WriteUint32(data, &index, batchNum)
-// 	encoding.WriteUint32(data, &index, uint32(len(messages)))
-// 	for i := range messages {
-// 		encoding.WriteUint32(data, &index, uint32(len(messages[i])))
-// 		encoding.WriteBytes(data, &index, messages[i], len(messages[i]))
-// 	}
-// 	return data[:index]
-// }
+	args := &redis.XAddArgs{
+		Stream:     producer.config.StreamName,
+		NoMkStream: false,
+		Approx:     false,
+		Limit:      0,
+		ID:         "",
+		Values:     map[string]interface{}{"type": "message", "data": messageToSend},
+	}
 
-// /**
-// ********     CONSUMER     *********
-// **/
+	if _, err := producer.redisClient.XAdd(ctx, args).Result(); err != nil {
+		core.Error("failed to send batch to redis: %v", err)
+		return
+	}
 
-// type Consumer struct {
-// 	Config                   ConsumerConfig
-// 	RedisDB                  *redis.Client
-// 	numberOfMessagesReceived int64
-// 	numberOfBatchesReceived  int64
-// }
+	batchId := producer.numBatchesSent
+	batchNumMessages := len(producer.messageBatch)
 
-// type ConsumerConfig struct {
-// 	RedisHostname     string
-// 	RedisPassword     string
-// 	StreamName        string
-// 	ConsumerGroup     string
-// 	BlockTimeout      time.Duration
-// 	ConsumerBatchSize int
-// 	ConsumerName      string
-// }
+	producer.mutex.Lock()
+	producer.numBatchesSent++
+	producer.numMessagesSent += batchNumMessages
+	producer.mutex.Unlock()
 
-// func NewConsumer(
-// 	config ConsumerConfig,
-// ) *Consumer {
+	producer.messageBatch = [][]byte{}
 
-// 	return &Consumer{
-// 		Config:                   config,
-// 		RedisDB:                  &redis.Client{},
-// 		numberOfMessagesReceived: 0,
-// 		numberOfBatchesReceived:  0,
-// 	}
-// }
+	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
+}
 
-// func (consumer *Consumer) Connect(ctx context.Context) error {
-// 	consumer.RedisDB = redis.NewClient(&redis.Options{
-// 		Addr:     consumer.Config.RedisHostname,
-// 		Password: consumer.Config.RedisPassword,
-// 	})
-// 	_, err := consumer.RedisDB.Ping(ctx).Result()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+/*
+type Consumer struct {
+	Config                   ConsumerConfig
+	RedisDB                  *redis.Client
+	numberOfMessagesReceived int64
+	numberOfBatchesReceived  int64
+}
 
-// func (consumer *Consumer) CreateConsumerGroup(ctx context.Context) error {
-// 	//create consumerGroup with length of if group no created yet, if the group existed, cmd returns BUSYGROUP
-// 	_, err := consumer.RedisDB.XGroupCreateMkStream(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, "0").Result()
+type ConsumerConfig struct {
+	RedisHostname     string
+	RedisPassword     string
+	StreamName        string
+	ConsumerGroup     string
+	BlockTimeout      time.Duration
+	ConsumerBatchSize int
+	ConsumerName      string
+}
 
-// 	if !strings.Contains(fmt.Sprint(err), "BUSYGROUP") {
-// 		//do not need to handle this error
-// 		fmt.Printf("Consumer Group: %v already existed\n", consumer.Config.ConsumerGroup)
-// 	}
+func NewConsumer(
+	config ConsumerConfig,
+) *Consumer {
 
-// 	if err == context.Canceled {
-// 		return err
-// 	}
+	return &Consumer{
+		Config:                   config,
+		RedisDB:                  &redis.Client{},
+		numberOfMessagesReceived: 0,
+		numberOfBatchesReceived:  0,
+	}
+}
 
-// 	consumer.Config.ConsumerName = uuid.NewV4().String()
-// 	fmt.Printf("consumerName = %s\n", consumer.Config.ConsumerName)
-// 	return nil
-// }
+func (consumer *Consumer) Connect(ctx context.Context) error {
+	consumer.RedisDB = redis.NewClient(&redis.Options{
+		Addr:     consumer.Config.RedisHostname,
+		Password: consumer.Config.RedisPassword,
+	})
+	_, err := consumer.RedisDB.Ping(ctx).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-// func (consumer *Consumer) ReceiveMessages(ctx context.Context) error {
+func (consumer *Consumer) CreateConsumerGroup(ctx context.Context) error {
+	//create consumerGroup with length of if group no created yet, if the group existed, cmd returns BUSYGROUP
+	_, err := consumer.RedisDB.XGroupCreateMkStream(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, "0").Result()
 
-// 	start := ">"
+	if !strings.Contains(fmt.Sprint(err), "BUSYGROUP") {
+		//do not need to handle this error
+		fmt.Printf("Consumer Group: %v already existed\n", consumer.Config.ConsumerGroup)
+	}
 
-// 	streamMsgs, err := consumer.RedisDB.XReadGroup(ctx, &redis.XReadGroupArgs{
-// 		Streams:  []string{consumer.Config.StreamName, start},
-// 		Group:    consumer.Config.ConsumerGroup,
-// 		Consumer: consumer.Config.ConsumerName,
-// 		Count:    int64(consumer.Config.ConsumerBatchSize),
-// 		Block:    consumer.Config.BlockTimeout,
-// 		NoAck:    false,
-// 	}).Result()
+	if err == context.Canceled {
+		return err
+	}
 
-// 	if err == context.Canceled {
-// 		return context.Canceled
-// 	}
+	consumer.Config.ConsumerName = uuid.NewV4().String()
+	fmt.Printf("consumerName = %s\n", consumer.Config.ConsumerName)
+	return nil
+}
 
-// 	if err == error(redis.Nil) {
-// 		return err
-// 	}
+func (consumer *Consumer) ReceiveMessages(ctx context.Context) error {
 
-// 	if err != nil {
-// 		core.Error("error reading redis stream: %s", err)
-// 		return err
-// 	}
+	start := ">"
 
-// 	// Consume messages batch
-// 	for _, stream := range streamMsgs[0].Messages {
-// 		// split messages block
-// 		messages := parseMessages([]byte(stream.Values["data"].(string)))
-// 		core.Debug("Received %v messages (%v bytes)", len(messages), len([]byte(stream.Values["data"].(string))))
-// 		consumer.RedisDB.XAck(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, stream.ID)
-// 		// todo: do messages processing here, if it fails "continue"
+	streamMsgs, err := consumer.RedisDB.XReadGroup(ctx, &redis.XReadGroupArgs{
+		Streams:  []string{consumer.Config.StreamName, start},
+		Group:    consumer.Config.ConsumerGroup,
+		Consumer: consumer.Config.ConsumerName,
+		Count:    int64(consumer.Config.ConsumerBatchSize),
+		Block:    consumer.Config.BlockTimeout,
+		NoAck:    false,
+	}).Result()
 
-// 		atomic.AddInt64(&consumer.numberOfBatchesReceived, 1)
-// 		atomic.AddInt64(&consumer.numberOfMessagesReceived, int64(len(messages)))
-// 	}
+	if err == context.Canceled {
+		return context.Canceled
+	}
 
-// 	return nil
+	if err == error(redis.Nil) {
+		return err
+	}
 
-// }
-// func parseMessages(messages []byte) [][]byte {
-// 	index := 0
-// 	var batchNum uint32
-// 	var numMessages uint32
-// 	if !encoding.ReadUint32(messages, &index, &batchNum) {
-// 		core.Debug("could not read batch number")
-// 	}
-// 	if !encoding.ReadUint32(messages, &index, &numMessages) {
-// 		core.Debug("could not read number of messages")
-// 	}
-// 	messagesData := make([][]byte, numMessages)
-// 	for i := 0; i < int(numMessages); i++ {
-// 		var messageLength uint32
-// 		if !encoding.ReadUint32(messages, &index, &messageLength) {
-// 			core.Debug("could not read length of the message")
-// 		}
-// 		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
-// 			core.Debug("could not read message data")
-// 		}
-// 	}
-// 	return messagesData
-// }
+	if err != nil {
+		core.Error("error reading redis stream: %s", err)
+		return err
+	}
 
-// func (consumer *Consumer) NumMessageReceived() int64 {
-// 	return atomic.LoadInt64(&consumer.numberOfMessagesReceived)
-// }
+	// Consume messages batch
+	for _, stream := range streamMsgs[0].Messages {
+		// split messages block
+		messages := parseMessages([]byte(stream.Values["data"].(string)))
+		core.Debug("Received %v messages (%v bytes)", len(messages), len([]byte(stream.Values["data"].(string))))
+		consumer.RedisDB.XAck(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, stream.ID)
+		// todo: do messages processing here, if it fails "continue"
 
-// func (consumer *Consumer) NumBatchesReceived() int64 {
-// 	return atomic.LoadInt64(&consumer.numberOfBatchesReceived)
-// }
+		atomic.AddInt64(&consumer.numberOfBatchesReceived, 1)
+		atomic.AddInt64(&consumer.numberOfMessagesReceived, int64(len(messages)))
+	}
+
+	return nil
+
+}
+func parseMessages(messages []byte) [][]byte {
+	index := 0
+	var batchNum uint32
+	var numMessages uint32
+	if !encoding.ReadUint32(messages, &index, &batchNum) {
+		core.Debug("could not read batch number")
+	}
+	if !encoding.ReadUint32(messages, &index, &numMessages) {
+		core.Debug("could not read number of messages")
+	}
+	messagesData := make([][]byte, numMessages)
+	for i := 0; i < int(numMessages); i++ {
+		var messageLength uint32
+		if !encoding.ReadUint32(messages, &index, &messageLength) {
+			core.Debug("could not read length of the message")
+		}
+		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
+			core.Debug("could not read message data")
+		}
+	}
+	return messagesData
+}
+
+func (consumer *Consumer) NumMessageReceived() int64 {
+	return atomic.LoadInt64(&consumer.numberOfMessagesReceived)
+}
+
+func (consumer *Consumer) NumBatchesReceived() int64 {
+	return atomic.LoadInt64(&consumer.numberOfBatchesReceived)
+}
+*/
