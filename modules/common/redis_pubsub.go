@@ -5,22 +5,24 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v9"
+	"github.com/go-redis/redis/v8"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
 type RedisPubsubConfig struct {
-	RedisHostname string
-	RedisPassword string
-	ChannelName   string
-	BatchSize     int
-	BatchDuration time.Duration
+	RedisHostname     string
+	RedisPassword     string
+	PubsubChannelName string
+	PubsubChannelSize int
+	BatchSize         int
+	BatchDuration     time.Duration
 }
 
 type RedisPubsubProducer struct {
+	MessageChannel  chan []byte
 	config          RedisPubsubConfig
-	mutex           sync.Mutex
+	mutex           sync.RWMutex
 	redisDB         *redis.Client
 	messageBatch    [][]byte
 	batchStartTime  time.Time
@@ -37,56 +39,87 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	if err != nil {
 		return nil, err
 	}
-	return &RedisPubsubProducer{config: config, redisDB: redisDB}, nil
-}
 
-func (producer *RedisPubsubProducer) ShutdownRedisPubsubProducer(ctx context.Context) error {
-	if err := producer.redisDB.Close(); err != nil {
-		return err
+	if config.PubsubChannelSize == 0 {
+		config.PubsubChannelSize = 10 * 1024
 	}
 
-	return nil
+	producer := &RedisPubsubProducer{}
+	producer.config = config
+	producer.redisDB = redisDB
+	producer.MessageChannel = make(chan []byte, config.PubsubChannelSize)
+
+	go producer.updateMessageChannel(ctx)
+
+	return producer, nil
 }
 
-func (producer *RedisPubsubProducer) SendMessage(ctx context.Context, message []byte) {
+func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
+
+	ticker := time.NewTicker(producer.config.BatchDuration)
+
+	for {
+		select {
+
+		case <-ctx.Done():
+			return
+
+		case <-ticker.C:
+			if len(producer.messageBatch) > 0 {
+				producer.sendBatchToRedis()
+			}
+			break
+
+		case message := <-producer.MessageChannel:
+			producer.messageBatch = append(producer.messageBatch, message)
+			if len(producer.messageBatch) >= producer.config.BatchSize {
+				producer.sendBatchToRedis()
+			}
+			break
+		}
+	}
+}
+
+func (producer *RedisPubsubProducer) sendBatchToRedis() {
+
+	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
+
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(time.Second))
+
+	_, err := producer.redisDB.Publish(ctx, producer.config.PubsubChannelName, messageToSend).Result()
+	if err != nil {
+		core.Error("failed to send batched pubsub messages to redis: %v", err)
+		return
+	}
+
+	batchId := producer.numBatchesSent
+	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()
+	producer.numBatchesSent++
+	producer.numMessagesSent += batchNumMessages
+	producer.mutex.Unlock()
 
-	defer producer.mutex.Unlock()
+	producer.messageBatch = [][]byte{}
 
-	// add the message to the batch
+	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
+}
 
-	producer.messageBatch = append(producer.messageBatch, message)
-
-	if len(producer.messageBatch) == 1 {
-		producer.batchStartTime = time.Now()
+func batchMessages(batchId int, messages [][]byte) []byte {
+	numMessages := len(messages)
+	messageBytes := 4 + 4 + numMessages*4
+	for i := range messages {
+		messageBytes += len(messages[i])
 	}
-
-	// should we send the batch now?
-
-	if len(producer.messageBatch) >= producer.config.BatchSize || time.Since(producer.batchStartTime) >= producer.config.BatchDuration {
-
-		// yes. send the current batch of messages to redis as a single coalesced message
-
-		messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
-		_, err := producer.redisDB.Publish(ctx, producer.config.ChannelName, messageToSend).Result()
-		if err != nil {
-			core.Error("failed to send batched pubsub messages to redis: %v", err)
-			return
-		}
-
-		// success!
-
-		batchId := producer.numBatchesSent
-		batchNumMessages := len(producer.messageBatch)
-
-		producer.numBatchesSent++
-		producer.numMessagesSent += batchNumMessages
-
-		producer.messageBatch = [][]byte{}
-
-		core.Debug("sent batch %d containing %d messages (%d bytes)\n", batchId, batchNumMessages, len(messageToSend))
+	messageData := make([]byte, messageBytes)
+	index := 0
+	encoding.WriteUint32(messageData, &index, uint32(batchId))
+	encoding.WriteUint32(messageData, &index, uint32(len(messages)))
+	for i := range messages {
+		encoding.WriteUint32(messageData, &index, uint32(len(messages[i])))
+		encoding.WriteBytes(messageData, &index, messages[i], len(messages[i]))
 	}
+	return messageData
 }
 
 func (producer *RedisPubsubProducer) NumMessagesSent() int {
@@ -103,32 +136,17 @@ func (producer *RedisPubsubProducer) NumBatchesSent() int {
 	return numBatchesSent
 }
 
-func batchMessages(batchId int, messages [][]byte) []byte {
-	numMessages := len(messages)
-	messageBytes := 4 + numMessages*4
-	for i := range messages {
-		messageBytes += len(messages[i])
-	}
-	messageData := make([]byte, messageBytes)
-	index := 0
-	encoding.WriteUint32(messageData, &index, uint32(batchId))
-	encoding.WriteUint32(messageData, &index, uint32(len(messages)))
-	for i := range messages {
-		encoding.WriteUint32(messageData, &index, uint32(len(messages[i])))
-		encoding.WriteBytes(messageData, &index, messages[i], len(messages[i]))
-	}
-	return messageData
-}
-
 // -----------------------------------------------
 
 type RedisPubsubConsumer struct {
-	config                   RedisPubsubConfig
-	redisDB                  *redis.Client
-	MessageChannel           <-chan *redis.Message
-	pubsubHandler            *redis.PubSub
-	NumberOfMessagesReceived int64
-	NumberOfBatchesReceived  int64
+	MessageChannel      chan []byte
+	config              RedisPubsubConfig
+	redisDB             *redis.Client
+	pubsubSubscription  *redis.PubSub
+	pubsubChannel       <-chan *redis.Message
+	mutex               sync.RWMutex
+	numMessagesReceived int
+	numBatchesReceived  int
 }
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
@@ -141,21 +159,73 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 		return nil, err
 	}
 
-	pubsubHandler := redisDB.Subscribe(ctx, config.ChannelName)
+	consumer := &RedisPubsubConsumer{}
 
-	messageChannel := pubsubHandler.Channel()
+	consumer.config = config
+	consumer.redisDB = redisDB
+	consumer.pubsubSubscription = consumer.redisDB.Subscribe(ctx, config.PubsubChannelName)
+	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
+	consumer.MessageChannel = make(chan []byte, 10*1024)
 
-	return &RedisPubsubConsumer{config: config, redisDB: redisDB, MessageChannel: messageChannel, pubsubHandler: pubsubHandler}, nil
+	go consumer.processRedisMessages(ctx)
+
+	return consumer, nil
 }
 
-func (consumer *RedisPubsubConsumer) ShutdownRedisPubsubConsumer(ctx context.Context) error {
-	if err := consumer.pubsubHandler.Unsubscribe(ctx, consumer.config.ChannelName); err != nil {
-		return err
-	}
+func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
+	for {
+		select {
 
-	if err := consumer.redisDB.Close(); err != nil {
-		return err
-	}
+		case <-ctx.Done():
+			return
 
-	return nil
+		case messageBatch := <-consumer.pubsubChannel:
+
+			batchMessages := parseMessages([]byte(messageBatch.Payload))
+
+			core.Debug("received %d messages (%v bytes) from redis", len(batchMessages), len([]byte(messageBatch.Payload)))
+
+			for _, message := range batchMessages {
+				consumer.MessageChannel <- message
+			}
+
+			consumer.numBatchesReceived += 1
+			consumer.numMessagesReceived += len(batchMessages)
+		}
+	}
+}
+
+func parseMessages(messages []byte) [][]byte {
+	index := 0
+	var batchNum uint32
+	var numMessages uint32
+	if !encoding.ReadUint32(messages, &index, &batchNum) {
+		core.Error("redis pubsub consumer: could not read batch number")
+		return [][]byte{}
+	}
+	if !encoding.ReadUint32(messages, &index, &numMessages) {
+		core.Error("redis pubsub consumer: could not read number of messages")
+		return [][]byte{}
+	}
+	messagesData := make([][]byte, numMessages)
+	for i := 0; i < int(numMessages); i++ {
+		var messageLength uint32
+		if !encoding.ReadUint32(messages, &index, &messageLength) {
+			core.Error("redis pubsub consumer: could not read length of the message")
+			return [][]byte{}
+		}
+		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
+			core.Error("redis pubsub consumer: could not read message data")
+			return [][]byte{}
+		}
+	}
+	return messagesData
+}
+
+func (consumer *RedisPubsubConsumer) NumMessageReceived() int {
+	return consumer.numMessagesReceived
+}
+
+func (consumer *RedisPubsubConsumer) NumBatchesReceived() int {
+	return consumer.numBatchesReceived
 }
