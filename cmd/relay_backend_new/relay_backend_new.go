@@ -25,14 +25,19 @@ var routeMatrixInterval time.Duration
 var redisHostname string
 var redisPassword string
 var redisPubsubChannelName string
+var relayUpdateChannelSize int
 
 var costMatrixMutex sync.RWMutex
-var costMatrix *common.CostMatrix
 var costMatrixData []byte
 
 var routeMatrixMutex sync.RWMutex
-var routeMatrix *common.RouteMatrix
 var routeMatrixData []byte
+
+var costMatrixInternalMutex sync.RWMutex
+var costMatrixInternalData []byte
+
+var routeMatrixInternalMutex sync.RWMutex
+var routeMatrixInternalData []byte
 
 func main() {
 
@@ -47,6 +52,7 @@ func main() {
 	redisHostname = envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.Get("REDIS_PASSWORD", "")
 	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
+	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
 
 	core.Debug("max rtt: %.1f", maxRTT)
 	core.Debug("max jitter: %.1f", maxJitter)
@@ -57,6 +63,7 @@ func main() {
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis password: %s", redisPassword)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
+	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
 
 	service.LoadDatabase()
 
@@ -70,6 +77,8 @@ func main() {
 	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
+	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
+	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
 	service.StartWebServer()
 
@@ -156,6 +165,30 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func costMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
+	costMatrixInternalMutex.RLock()
+	responseData := costMatrixInternalData
+	costMatrixInternalMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func routeMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
+	routeMatrixInternalMutex.RLock()
+	responseData := routeMatrixInternalData
+	routeMatrixInternalMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 	config := common.RedisPubsubConfig{}
@@ -163,6 +196,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 	config.RedisHostname = redisHostname
 	config.RedisPassword = redisPassword
 	config.PubsubChannelName = redisPubsubChannelName
+	config.MessageChannelSize = relayUpdateChannelSize
 
 	consumer, err := common.CreateRedisPubsubConsumer(ctx, config)
 
@@ -203,6 +237,17 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
+	config := common.RedisSelectorConfig{}
+
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+
+	redisSelector, err := common.CreateRedisSelector(service.Context, config)
+	if err != nil {
+		core.Error("failed to create redis selector: %v", err)
+		os.Exit(1)
+	}
+
 	go func() {
 		for {
 			select {
@@ -213,6 +258,8 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 			case <-ticker.C:
 
 				timeStart := time.Now()
+
+				// build the cost matrix
 
 				relayData := service.RelayData()
 
@@ -236,10 +283,11 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					continue
 				}
 
-				costMatrixMutex.Lock()
-				costMatrix = costMatrixNew
-				costMatrixData = costMatrixDataNew
-				costMatrixMutex.Unlock()
+				// serve up as internal cost matrix
+
+				costMatrixInternalMutex.Lock()
+				costMatrixInternalData = costMatrixDataNew
+				costMatrixInternalMutex.Unlock()
 
 				// todo: full relays
 
@@ -260,13 +308,13 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
 					Version:            common.RouteMatrixSerializeVersion,
-					RelayIds:           costMatrix.RelayIds,
-					RelayAddresses:     costMatrix.RelayAddresses,
-					RelayNames:         costMatrix.RelayNames,
-					RelayLatitudes:     costMatrix.RelayLatitudes,
-					RelayLongitudes:    costMatrix.RelayLongitudes,
-					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
-					DestRelays:         costMatrix.DestRelays,
+					RelayIds:           costMatrixNew.RelayIds,
+					RelayAddresses:     costMatrixNew.RelayAddresses,
+					RelayNames:         costMatrixNew.RelayNames,
+					RelayLatitudes:     costMatrixNew.RelayLatitudes,
+					RelayLongitudes:    costMatrixNew.RelayLongitudes,
+					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
+					DestRelays:         costMatrixNew.DestRelays,
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
@@ -278,10 +326,41 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					continue
 				}
 
+				// serve up as internal cost matrix
+
+				routeMatrixInternalMutex.Lock()
+				routeMatrixInternalData = routeMatrixDataNew
+				routeMatrixInternalMutex.Unlock()
+
+				// store our most recent cost and route matrix in redis
+
+				redisSelector.Store(service.Context, costMatrixDataNew, routeMatrixDataNew)
+
+				// load the master cost and route matrix from redis (leader election)
+
+				costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
+
+				if costMatrixDataNew == nil {
+					core.Error("failed to get cost matrix from redis selector")
+					continue
+				}
+
+				if routeMatrixDataNew == nil {
+					core.Error("failed to get route matrix from redis selector")
+					continue
+				}
+
+				// serve up as official cost matrix and route matrix
+
+				costMatrixMutex.Lock()
+				costMatrixData = costMatrixDataNew
+				costMatrixMutex.Unlock()
+
 				routeMatrixMutex.Lock()
-				routeMatrix = routeMatrixNew
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
+
+				// we are done
 
 				timeFinish := time.Now()
 
