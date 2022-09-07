@@ -55,7 +55,6 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 }
 
 func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
-
 	ticker := time.NewTicker(producer.config.BatchDuration)
 
 	for {
@@ -68,20 +67,17 @@ func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
 			if len(producer.messageBatch) > 0 {
 				producer.sendBatchToRedis()
 			}
-			break
 
 		case message := <-producer.MessageChannel:
 			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
 				producer.sendBatchToRedis()
 			}
-			break
 		}
 	}
 }
 
 func (producer *RedisPubsubProducer) sendBatchToRedis() {
-
 	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Duration(time.Second))
@@ -159,13 +155,17 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 		return nil, err
 	}
 
+	if config.PubsubChannelSize == 0 {
+		config.PubsubChannelSize = 10 * 1024
+	}
+
 	consumer := &RedisPubsubConsumer{}
 
 	consumer.config = config
 	consumer.redisDB = redisDB
 	consumer.pubsubSubscription = consumer.redisDB.Subscribe(ctx, config.PubsubChannelName)
 	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
-	consumer.MessageChannel = make(chan []byte, 10*1024)
+	consumer.MessageChannel = make(chan []byte, config.PubsubChannelSize)
 
 	go consumer.processRedisMessages(ctx)
 

@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
 	// "github.com/go-redis/redis/v9"
 	// "github.com/networknext/backend/modules/core"
 	// "github.com/networknext/backend/modules/common"
@@ -292,11 +291,12 @@ func test_redis_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamProducer, err := common.CreateRedisPubsubProducer(ctx, common.RedisPubsubConfig{
-				RedisHostname: "127.0.0.1:6379",
-				RedisPassword: "",
-				ChannelName:   "test-channel",
-				BatchSize:     100,
-				BatchDuration: time.Millisecond * 100,
+				RedisHostname:     "127.0.0.1:6379",
+				RedisPassword:     "",
+				PubsubChannelName: "test-channel",
+				PubsubChannelSize: 10 * 1024,
+				BatchSize:         100,
+				BatchDuration:     time.Millisecond * 100,
 			})
 
 			if err != nil {
@@ -308,22 +308,24 @@ func test_redis_pubsub() {
 
 			ticker := time.NewTicker(tickRate)
 
-			select {
-			case <-ticker.C:
-				messageSize := mathRand.Intn(95) + 5
-				messageData := make([]byte, messageSize)
+		producerLoop:
+			for {
+				select {
+				case <-ticker.C:
+					messageSize := mathRand.Intn(95) + 5
+					messageData := make([]byte, messageSize)
 
-				rand.Read(messageData)
+					rand.Read(messageData)
 
-				streamProducer.SendMessage(ctx, messageData)
+					streamProducer.MessageChannel <- messageData
 
-			case <-ctx.Done():
-				break
+				case <-ctx.Done():
+					break producerLoop
+				}
 			}
 
-			if err := streamProducer.ShutdownRedisPubsubProducer(ctx); err != nil {
-				core.Error("Failed to shut down pubsub handler: %v", err)
-			}
+			threadBatchesSent[threadIndex] = int64(streamProducer.NumBatchesSent())
+			threadMessagesSent[threadIndex] = int64(streamProducer.NumMessagesSent())
 
 			// If the thread is killed externally, decrement the wg counter
 			producerWG.Done()
@@ -337,9 +339,10 @@ func test_redis_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamConsumer, err := common.CreateRedisPubsubConsumer(ctx, common.RedisPubsubConfig{
-				RedisHostname: "127.0.0.1:6379",
-				RedisPassword: "",
-				ChannelName:   "test-channel",
+				RedisHostname:     "127.0.0.1:6379",
+				RedisPassword:     "",
+				PubsubChannelName: "test-channel",
+				PubsubChannelSize: 10 * 1024,
 			})
 
 			if err != nil {
@@ -347,21 +350,17 @@ func test_redis_pubsub() {
 				return
 			}
 
-			select {
-			case <-streamConsumer.MessageChannel:
-				streamConsumer.NumberOfBatchesReceived++
-				streamConsumer.NumberOfMessagesReceived++
-			case <-ctx.Done():
-				break
-			default:
+		consumerLoop:
+			for {
+				select {
+				case <-streamConsumer.MessageChannel:
+				case <-ctx.Done():
+					break consumerLoop
+				}
 			}
 
-			threadBatchesReceived[threadIndex] = streamConsumer.NumberOfBatchesReceived
-			threadMessagesReceived[threadIndex] = streamConsumer.NumberOfMessagesReceived
-
-			if err := streamConsumer.ShutdownRedisPubsubConsumer(ctx); err != nil {
-				core.Error("Failed to shut down pubsub handler: %v", err)
-			}
+			threadBatchesReceived[threadIndex] = int64(streamConsumer.NumBatchesReceived())
+			threadMessagesReceived[threadIndex] = int64(streamConsumer.NumMessageReceived())
 
 			consumerWG.Done()
 		}(i, ctx)
