@@ -308,7 +308,7 @@ export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
 .PHONY: dev-relay-gateway-new
 dev-relay-gateway-new: build-relay-gateway-new ## runs a local relay gateway (new)
-	@HTTP_PORT=30000 ./dist/relay_gateway_new
+	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway_new
 
 .PHONY: dev-relay-backend-new
 dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
