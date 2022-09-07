@@ -23,7 +23,7 @@ type RedisPubsubProducer struct {
 	MessageChannel  chan []byte
 	config          RedisPubsubConfig
 	mutex           sync.RWMutex
-	redisClient         *redis.Client
+	redisClient     *redis.Client
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	numMessagesSent int
@@ -31,7 +31,7 @@ type RedisPubsubProducer struct {
 }
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
-	
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
@@ -40,7 +40,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	if err != nil {
 		return nil, err
 	}
-	
+
 	producer := &RedisPubsubProducer{}
 
 	producer.config = config
@@ -69,7 +69,7 @@ func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
 			break
 
 		case message := <-producer.MessageChannel:
-   			producer.messageBatch = append(producer.messageBatch, message)
+			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
 				producer.sendBatchToRedis(ctx)
 			}
@@ -157,7 +157,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	if err != nil {
 		return nil, err
 	}
-	
+
 	consumer := &RedisPubsubConsumer{}
 
 	consumer.config = config
@@ -180,13 +180,13 @@ func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 			return
 
 		case messageBatch := <-consumer.pubsubChannel:
-	
+
 			batchMessages := parseMessages([]byte(messageBatch.Payload))
 
-			core.Debug("received %d messages (%v bytes) from redis", len(batchMessages), len([]byte(messageBatch.Payload)))
+			core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
 
 			for _, message := range batchMessages {
-			    consumer.MessageChannel <- message
+				consumer.MessageChannel <- message
 			}
 
 			consumer.numBatchesReceived += 1
