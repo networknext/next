@@ -11,7 +11,7 @@ import (
 
 // todo: might want to look at RTT variation across the 5 minutes, in addition to jitter. jitter is only across 1 second of pings (10 samples)
 
-const HistorySize = 300 // 5 minutes @ one relay update per-second
+const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
 
@@ -148,6 +148,8 @@ func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSample
 		destEntry.packetLoss = historyMean(destEntry.historyPacketLoss[:])
 
 		destEntry.historyIndex = (destEntry.historyIndex + 1) % HistorySize
+
+		destEntry.lastUpdateTime = currentTime
 	}
 
 	sourceEntry.mutex.Unlock()
@@ -228,10 +230,13 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 
 	costs := make([]int32, TriMatrixLength(numRelays))
 
+	// todo
+	/*
 	// IMPORTANT: special permissive route matrix for local env only
 	if local {
 		return costs
 	}
+	*/
 
 	currentTime := time.Now()
 
