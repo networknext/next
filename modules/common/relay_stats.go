@@ -226,9 +226,14 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 
 	numRelays := len(relayIds)
 
-	currentTime := time.Now()
-
 	costs := make([]int32, TriMatrixLength(numRelays))
+
+	// IMPORTANT: special permissive route matrix for local env only
+	if local {
+		return costs
+	}
+
+	currentTime := time.Now()
 
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
@@ -238,6 +243,8 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
 			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
 				costs[index] = int32(math.Ceil(float64(rtt)))
+			} else {
+				costs[index] = -1
 			}
 		}
 	}

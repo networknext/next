@@ -32,14 +32,17 @@ var costMatrixData []byte
 
 var routeMatrixMutex sync.RWMutex
 var routeMatrixData []byte
-var routeMatrixHealthy bool
 
 var costMatrixInternalMutex sync.RWMutex
 var costMatrixInternalData []byte
 
 var routeMatrixInternalMutex sync.RWMutex
 var routeMatrixInternalData []byte
-var routeMatrixInternalHealthy bool
+
+var readyMutex sync.RWMutex
+var ready bool
+var readyDelay time.Duration
+var startTime time.Time
 
 func main() {
 
@@ -55,6 +58,8 @@ func main() {
 	redisPassword = envvar.Get("REDIS_PASSWORD", "")
 	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	readyDelay = envvar.GetDuration("READY_DELAY", 6 * time.Minute)
+	startTime = time.Now()
 
 	core.Debug("max rtt: %.1f", maxRTT)
 	core.Debug("max jitter: %.1f", maxJitter)
@@ -66,6 +71,8 @@ func main() {
 	core.Debug("redis password: %s", redisPassword)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
+	core.Debug("ready delay: %s", readyDelay.String())
+	core.Debug("start time: %s", startTime.String())
 
 	service.LoadDatabase()
 
@@ -81,6 +88,8 @@ func main() {
 
 	service.StartWebServer()
 
+	UpdateReadyState()
+
 	ProcessRelayUpdates(service.Context, relayStats)
 
 	UpdateRouteMatrix(service, relayStats)
@@ -88,16 +97,35 @@ func main() {
 	service.WaitForShutdown()
 }
 
+func UpdateReadyState() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+
+			routeMatrixMutex.RLock()
+			routeMatrixReady := len(routeMatrixData) > 0
+			routeMatrixMutex.RUnlock()
+
+			routeMatrixInternalMutex.RLock()
+			routeMatrixInternalReady := len(routeMatrixInternalData) > 0
+			routeMatrixInternalMutex.RUnlock()
+
+			delayReady := time.Since(startTime) >= readyDelay
+
+			if routeMatrixReady && routeMatrixInternalReady && delayReady {
+				fmt.Printf("relay backend is ready\n")
+				readyMutex.Lock()
+				ready = true
+				readyMutex.Unlock()
+				break
+			}
+		}
+	}()
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+
 	
-	routeMatrixMutex.RLock()
-	routeMatrixInternalMutex.RLock()
-
-	ready := routeMatrixHealthy && routeMatrixInternalHealthy
-
-	routeMatrixMutex.RUnlock()
-	routeMatrixInternalMutex.RUnlock()
-
 	if !ready {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "not ready")
@@ -341,14 +369,6 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 				}
-
-				// is the route matrix healthy?
-
-				analysis := routeMatrixNew.Analyze()
-
-				fmt.Printf("-------------------------------------------\n")
-				fmt.Printf("%+v\n", analysis)
-				fmt.Printf("-------------------------------------------\n")
 
 				// serve up as internal route matrix
 

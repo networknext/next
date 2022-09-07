@@ -188,10 +188,11 @@ func happy_path() int {
 
 	fmt.Printf("initializing relay backend 1\n")
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
 			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") {
+			strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") &&
+			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
 			relay_backend_1_initialized = true
 			break
 		}
@@ -212,10 +213,11 @@ func happy_path() int {
 
 	fmt.Printf("initializing relay backend 2\n")
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
 			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") {
+			strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") &&
+			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
 			relay_backend_2_initialized = true
 			break
 		}
