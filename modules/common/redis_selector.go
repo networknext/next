@@ -90,10 +90,6 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 		core.Error("failed to store instance data: %v", err)
 		return
 	}
-
-	// todo: remove this once load is implemented
-	selector.costMatrixData = costMatrixData
-	selector.routeMatrixData = routeMatrixData
 }
 
 func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
@@ -152,6 +148,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 
 	if len(instanceEntries) == 0 {
 		core.Error("no instance entries found")
+		return nil, nil
 	}
 
 	// select master instance (most uptime, instance id as tie breaker)
@@ -164,13 +161,18 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 
 	// get cost matrix and route matrix for master instance
 
-	fmt.Printf("------------------------------------\n")
-	fmt.Printf("cost matrix key is %s\n", masterInstance.CostMatrixKey)
-	fmt.Printf("route matrix key is %s\n", masterInstance.RouteMatrixKey)
-	fmt.Printf("------------------------------------\n")
+	pipe = selector.redisClient.Pipeline()
+	pipe.Get(timeoutContext, masterInstance.CostMatrixKey)
+	pipe.Get(timeoutContext, masterInstance.RouteMatrixKey)
+	cmds, err = pipe.Exec(timeoutContext)
 
-	// ...
+	if err != nil {
+		core.Error("failed to get cost and route matrix data: %v", err)
+		return nil, nil
+	}
 
-	// todo: actually do the redis thing
+	selector.costMatrixData = []byte(cmds[0].(*redis.StringCmd).Val())
+	selector.routeMatrixData = []byte(cmds[1].(*redis.StringCmd).Val())
+
 	return selector.costMatrixData, selector.routeMatrixData
 }
