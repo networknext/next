@@ -108,6 +108,74 @@ func (producer *RedisStreamsProducer) sendBatchToRedis(ctx context.Context) {
 	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }
 
+// ----------------------------
+
+type RedisStreamsConsumer struct {
+	MessageChannel      chan []byte
+	config              RedisStreamsConfig
+	redisClient         *redis.Client
+	// ...
+	mutex               sync.RWMutex
+	numMessagesReceived int
+	numBatchesReceived  int
+}
+
+func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsConsumer, error) {
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     config.RedisHostname,
+		Password: config.RedisPassword,
+	})
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	consumer := &RedisStreamsConsumer{}
+
+	consumer.config = config
+	consumer.redisClient = redisClient
+	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
+
+	// ...
+
+	return consumer, nil
+}
+
+/*
+func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
+
+	for {
+		select {
+
+		case <-ctx.Done():
+			return
+
+		case messageBatch := <-consumer.pubsubChannel:
+
+			batchMessages := parseMessages([]byte(messageBatch.Payload))
+
+			core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
+
+			for _, message := range batchMessages {
+				consumer.MessageChannel <- message
+			}
+
+			consumer.numBatchesReceived += 1
+			consumer.numMessagesReceived += len(batchMessages)
+		}
+	}
+}
+*/
+
+func (consumer *RedisStreamsConsumer) NumMessageReceived() int {
+	return consumer.numMessagesReceived
+}
+
+func (consumer *RedisStreamsConsumer) NumBatchesReceived() int {
+	return consumer.numBatchesReceived
+}
+
 /*
 type Consumer struct {
 	Config                   ConsumerConfig
