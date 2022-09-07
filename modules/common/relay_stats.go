@@ -6,11 +6,6 @@ import (
 	"time"
 )
 
-// todo: might want to put a lastUpdateTime in the sourceEntry as well, then we can extract set of active relays easily
-// (relays that have posted an update in the last 10 seconds)
-
-// todo: might want to look at RTT variation across the 5 minutes, in addition to jitter. jitter is only across 1 second of pings (10 samples)
-
 const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
@@ -230,13 +225,10 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 
 	costs := make([]int32, TriMatrixLength(numRelays))
 
-	// todo
-	/*
 	// IMPORTANT: special permissive route matrix for local env only
 	if local {
 		return costs
 	}
-	*/
 
 	currentTime := time.Now()
 

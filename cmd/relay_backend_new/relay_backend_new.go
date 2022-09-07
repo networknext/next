@@ -82,7 +82,6 @@ func main() {
 
 	service.Router.HandleFunc("/health", healthHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
-	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
@@ -182,12 +181,6 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			core.Error("could not write relay data json: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-	}
-}
-
-func relayStatsHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// todo: relay stats handler
 	}
 }
 
@@ -376,8 +369,6 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				costMatrixInternalMutex.Lock()
 				costMatrixInternalData = costMatrixDataNew
 				costMatrixInternalMutex.Unlock()
-
-				// todo: full relays
 
 				// optimize cost matrix -> route matrix
 
