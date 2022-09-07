@@ -181,7 +181,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 			
 			case message := <-consumer.MessageChannel:
 
-				fmt.Printf("received relay update (%d bytes)", len(message))
+				core.Debug("received relay update")
 
 				// todo: parse relay update from message
 				_ = message
