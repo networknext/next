@@ -334,11 +334,11 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				// store our most recent cost and route matrix in redis
 
-				redisSelector.Store(costMatrixDataNew, routeMatrixDataNew)
+				redisSelector.Store(service.Context, costMatrixDataNew, routeMatrixDataNew)
 
 				// load the master cost and route matrix from redis (leader election)
 
-				costMatrixDataNew, routeMatrixDataNew = redisSelector.Load()
+				costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
 
 				if costMatrixDataNew == nil {
 					core.Error("failed to get cost matrix from redis selector")
