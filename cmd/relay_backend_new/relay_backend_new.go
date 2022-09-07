@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/crypto"
 )
 
 var maxRTT float32
@@ -26,6 +27,7 @@ var redisHostname string
 var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateChannelSize int
+var readyDelay time.Duration
 
 var costMatrixMutex sync.RWMutex
 var costMatrixData []byte
@@ -41,7 +43,7 @@ var routeMatrixInternalData []byte
 
 var readyMutex sync.RWMutex
 var ready bool
-var readyDelay time.Duration
+
 var startTime time.Time
 
 func main() {
@@ -80,7 +82,6 @@ func main() {
 
 	service.Router.HandleFunc("/health", healthHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
-	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
@@ -88,11 +89,11 @@ func main() {
 
 	service.StartWebServer()
 
-	UpdateReadyState()
-
-	ProcessRelayUpdates(service.Context, relayStats)
+	ProcessRelayUpdates(service, relayStats)
 
 	UpdateRouteMatrix(service, relayStats)
+
+	UpdateReadyState()
 
 	service.WaitForShutdown()
 }
@@ -124,9 +125,12 @@ func UpdateReadyState() {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-
 	
-	if !ready {
+	readyMutex.RLock()
+	not_ready := !ready
+	readyMutex.RUnlock()
+	
+	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "not ready")
 	} else {
@@ -180,12 +184,6 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	}
 }
 
-func relayStatsHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// todo: relay stats handler
-	}
-}
-
 func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	costMatrixMutex.RLock()
 	responseData := costMatrixData
@@ -234,7 +232,7 @@ func routeMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
+func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats) {
 
 	config := common.RedisPubsubConfig{}
 
@@ -243,7 +241,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 	config.PubsubChannelName = redisPubsubChannelName
 	config.MessageChannelSize = relayUpdateChannelSize
 
-	consumer, err := common.CreateRedisPubsubConsumer(ctx, config)
+	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)
 
 	if err != nil {
 		core.Error("could not create redis pubsub consumer")
@@ -255,24 +253,62 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 		for {
 			select {
 
-			case <-ctx.Done():
+			case <-service.Context.Done():
 				return
 
 			case message := <-consumer.MessageChannel:
 
-				core.Debug("received relay update")
+				var relayUpdate transport.RelayUpdateRequest
+				if err = relayUpdate.UnmarshalBinary(message); err != nil {
+					core.Error("could not read relay update")
+					return
+				}
 
-				// todo: parse relay update from message
-				_ = message
+				relayData := service.RelayData()
 
-				sourceRelayId := uint64(0)
-				numSamples := 0
-				var sampleRelayIds []uint64
-				var sampleRTT []float32
-				var sampleJitter []float32
-				var samplePacketLoss []float32
+				relayId := crypto.HashID(relayUpdate.Address.String())
+				relayIndex, ok := relayData.RelayIdToIndex[relayId]
+				if !ok {
+					core.Error("unknown relay id %016x", relayId)
+					return
+				}
 
-				relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
+				relayName := relayData.RelayNames[relayIndex]
+
+				core.Debug("received relay update for '%s'", relayName)
+
+				/*
+				type RelayUpdateRequest struct {
+					Version           uint32
+					Address           net.UDPAddr
+					Token             []byte
+					PingStats         []routing.RelayStatsPing
+					SessionCount      uint64
+					ShuttingDown      bool
+					RelayVersion      string
+					CPU               uint8
+					EnvelopeUpKbps    uint64
+					EnvelopeDownKbps  uint64
+					BandwidthSentKbps uint64
+					BandwidthRecvKbps uint64
+				}
+				*/
+
+				numSamples := len(relayUpdate.PingStats)
+
+				sampleRelayIds := make([]uint64, numSamples)
+				sampleRTT := make([]float32, numSamples)
+				sampleJitter := make([]float32, numSamples)
+				samplePacketLoss := make([]float32, numSamples)
+
+				for i := 0; i < numSamples; i++ {
+					sampleRelayIds[i] = relayUpdate.PingStats[i].RelayID
+					sampleRTT[i] = relayUpdate.PingStats[i].RTT
+					sampleJitter[i] = relayUpdate.PingStats[i].Jitter
+					samplePacketLoss[i] = relayUpdate.PingStats[i].PacketLoss
+				}
+
+				relayStats.ProcessRelayUpdate(relayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
 			}
 		}
 	}()
@@ -310,11 +346,6 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
-				// todo
-				fmt.Printf("-------------------------------------------------\n")
-				fmt.Printf("%v\n", costs)
-				fmt.Printf("-------------------------------------------------\n")
-
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,
 					RelayIds:           relayData.RelayIds,
@@ -338,8 +369,6 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				costMatrixInternalMutex.Lock()
 				costMatrixInternalData = costMatrixDataNew
 				costMatrixInternalMutex.Unlock()
-
-				// todo: full relays
 
 				// optimize cost matrix -> route matrix
 

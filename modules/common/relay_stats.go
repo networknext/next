@@ -6,12 +6,7 @@ import (
 	"time"
 )
 
-// todo: might want to put a lastUpdateTime in the sourceEntry as well, then we can extract set of active relays easily
-// (relays that have posted an update in the last 10 seconds)
-
-// todo: might want to look at RTT variation across the 5 minutes, in addition to jitter. jitter is only across 1 second of pings (10 samples)
-
-const HistorySize = 300 // 5 minutes @ one relay update per-second
+const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
 
@@ -148,6 +143,8 @@ func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSample
 		destEntry.packetLoss = historyMean(destEntry.historyPacketLoss[:])
 
 		destEntry.historyIndex = (destEntry.historyIndex + 1) % HistorySize
+
+		destEntry.lastUpdateTime = currentTime
 	}
 
 	sourceEntry.mutex.Unlock()
