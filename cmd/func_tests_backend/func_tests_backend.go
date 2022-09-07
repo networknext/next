@@ -8,7 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
+	"encoding/binary"
 	"sync"
 
 	// "context"
@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	// "github.com/go-redis/redis/v9"
 	// "github.com/networknext/backend/modules/core"
 	// "github.com/networknext/backend/modules/common"
@@ -266,8 +267,8 @@ func test_redis_pubsub() {
 
 	parentContext := context.Background()
 
-	producerThreads := 2
-	consumerThreads := 10
+	producerThreads := 1
+	consumerThreads := 1
 
 	var producerWG sync.WaitGroup
 	var consumerWG sync.WaitGroup
@@ -308,16 +309,26 @@ func test_redis_pubsub() {
 
 			ticker := time.NewTicker(tickRate)
 
+			numMessagesSent := 0
+
 		producerLoop:
 			for {
 				select {
 				case <-ticker.C:
-					messageSize := mathRand.Intn(95) + 5
+					messageID := numMessagesSent
+					messageSize := mathRand.Intn(96) + 4
 					messageData := make([]byte, messageSize)
 
-					rand.Read(messageData)
+					binary.LittleEndian.PutUint32(messageData[:4], uint32(messageID))
+
+					start := messageID % 256
+					for i := 0; i < messageSize; i++ {
+						messageData[i] = byte((start + i) % 256)
+					}
 
 					streamProducer.MessageChannel <- messageData
+
+					numMessagesSent++
 
 				case <-ctx.Done():
 					break producerLoop
@@ -353,7 +364,15 @@ func test_redis_pubsub() {
 		consumerLoop:
 			for {
 				select {
-				case <-streamConsumer.MessageChannel:
+				case msg := <-streamConsumer.MessageChannel:
+					messageID := binary.LittleEndian.Uint32(msg[:4])
+
+					start := int(messageID % 256)
+					for i := 0; i < len(msg); i++ {
+						if msg[i] != byte((start+i)%256) {
+							core.Error("Message validation failed!")
+						}
+					}
 				case <-ctx.Done():
 					break consumerLoop
 				}
@@ -427,6 +446,11 @@ func test_redis_pubsub() {
 	}
 
 	if failed {
+		fmt.Printf("Total number of batches sent: %d\n", totalNumBatchesSent)
+		fmt.Printf("Total number of messages sent: %d\n", totalMessagesSent)
+
+		fmt.Printf("Total number of batches received: %d\n", totalNumBatchesReceived)
+		fmt.Printf("Total number of messages received: %d\n", totalMessagesReceived)
 		os.Exit(1)
 	}
 }
@@ -641,9 +665,9 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_magic_backend,
+		// test_magic_backend,
 		test_redis_pubsub,
-		test_redis_streams,
+		// test_redis_streams,
 	}
 
 	var tests []test_function
