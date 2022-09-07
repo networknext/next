@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
-	"fmt"
-	"runtime"
+	"os"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -21,6 +22,9 @@ var maxPacketLoss float32
 var costMatrixBufferSize int
 var routeMatrixBufferSize int
 var routeMatrixInterval time.Duration
+var redisHostname string
+var redisPassword string
+var redisPubsubChannelName string
 
 var costMatrixMutex sync.RWMutex
 var costMatrix *common.CostMatrix
@@ -40,6 +44,9 @@ func main() {
 	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 1*1024*1024)
 	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 10*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+	redisHostname = envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword = envvar.Get("REDIS_PASSWORD", "")
+	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 
 	core.Debug("max rtt: %.1f", maxRTT)
 	core.Debug("max jitter: %.1f", maxJitter)
@@ -47,6 +54,9 @@ func main() {
 	core.Debug("cost matrix buffer size: %d bytes", costMatrixBufferSize)
 	core.Debug("route matrix buffer size: %d bytes", routeMatrixBufferSize)
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
+	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis password: %s", redisPassword)
+	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
 
 	service.LoadDatabase()
 
@@ -77,9 +87,9 @@ type RelayJSON struct {
 	RelayLatitudes     []float32 `json:"relay_latitudes"`
 	RelayLongitudes    []float32 `json:"relay_longitudes"`
 	RelayDatacenterIds []string  `json:"relay_datacenter_ids"`
-	RelayIdToIndex     []string	 `json:"relay_id_to_index"`
+	RelayIdToIndex     []string  `json:"relay_id_to_index"`
 	DestRelays         []string  `json:"dest_relays"`
-	DestRelayNames     []string	 `json:"dest_relay_names"`
+	DestRelayNames     []string  `json:"dest_relay_names"`
 }
 
 func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +104,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		relayJSON.RelayLongitudes = relayData.RelayLongitudes
 		relayJSON.RelayIdToIndex = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
-			 relayJSON.RelayIdToIndex[i] = fmt.Sprintf("%016x - %d", relayData.RelayIds[i], i)
+			relayJSON.RelayIdToIndex[i] = fmt.Sprintf("%016x - %d", relayData.RelayIds[i], i)
 		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
@@ -104,7 +114,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			if relayData.DestRelays[i] {
 				relayJSON.DestRelays[i] = "1"
 			} else {
-				relayJSON.DestRelays[i] = "0"				
+				relayJSON.DestRelays[i] = "0"
 			}
 		}
 		relayJSON.DestRelayNames = relayData.DestRelayNames
@@ -118,7 +128,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 
 func relayStatsHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// todo: relay data handler
+		// todo: relay stats handler
 	}
 }
 
@@ -148,31 +158,43 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
-	// todo: setup redis pubsub consumer
+	config := common.RedisPubsubConfig{}
+
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.PubsubChannelName = redisPubsubChannelName
+
+	consumer, err := common.CreateRedisPubsubConsumer(ctx, config)
+
+	if err != nil {
+		core.Error("could not create redis pubsub consumer")
+		os.Exit(1)
+	}
 
 	go func() {
+
 		for {
-			// todo: not sure this is the best way to exit on the context...
 			select {
+
 			case <-ctx.Done():
 				return
-			default:
+			
+			case message := <-consumer.MessageChannel:
+
+				core.Debug("received relay update")
+
+				// todo: parse relay update from message
+				_ = message
+
+				sourceRelayId := uint64(0)
+				numSamples := 0
+				var sampleRelayIds []uint64
+				var sampleRTT []float32
+				var sampleJitter []float32
+				var samplePacketLoss []float32
+
+				relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
 			}
-
-			// todo: get relay update message from redis pubsub consumer
-			message := make([]byte, 100)
-
-			// todo: parse relay update from message
-			_ = message
-
-			sourceRelayId := uint64(0)
-			numSamples := 0
-			var sampleRelayIds []uint64
-			var sampleRTT []float32
-			var sampleJitter []float32
-			var samplePacketLoss []float32
-
-			relayStats.ProcessRelayUpdate(sourceRelayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
 		}
 	}()
 }
@@ -246,8 +268,8 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 					DestRelays:         costMatrix.DestRelays,
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
-					BinFileBytes:    	int32(len(relayData.DatabaseBinFile)),
-					BinFileData:     	relayData.DatabaseBinFile,
+					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
+					BinFileData:        relayData.DatabaseBinFile,
 				}
 
 				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)
