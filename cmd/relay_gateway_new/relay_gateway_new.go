@@ -207,6 +207,7 @@ func CreatePubsubProducer(service *common.Service) *common.RedisPubsubProducer {
 	config.PubsubChannelName = redisPubsubChannelName
 	config.BatchSize = relayUpdateBatchSize
 	config.BatchDuration = relayUpdateBatchDuration
+	config.MessageChannelSize = relayUpdateChannelSize
 
 	var err error
 	producer, err = common.CreateRedisPubsubProducer(service.Context, config)

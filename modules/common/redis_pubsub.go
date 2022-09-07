@@ -11,11 +11,12 @@ import (
 )
 
 type RedisPubsubConfig struct {
-	RedisHostname     string
-	RedisPassword     string
-	PubsubChannelName string
-	BatchSize         int
-	BatchDuration     time.Duration
+	RedisHostname      string
+	RedisPassword      string
+	PubsubChannelName  string
+	BatchSize          int
+	BatchDuration      time.Duration
+	MessageChannelSize int
 }
 
 type RedisPubsubProducer struct {
@@ -44,7 +45,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 
 	producer.config = config
 	producer.redisDB = redisDB
-	producer.MessageChannel = make(chan []byte, 10 * 1024)		// todo: make chan length configurable
+	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
 	go producer.updateMessageChannel(ctx)
 
@@ -163,7 +164,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	consumer.redisDB = redisDB
 	consumer.pubsubSubscription = consumer.redisDB.Subscribe(ctx, config.PubsubChannelName)
 	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
-	consumer.MessageChannel = make(chan []byte, 10*1024)
+	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
 	go consumer.processRedisMessages(ctx)
 
