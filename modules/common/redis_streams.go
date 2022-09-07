@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/go-redis/redis/v9"
 	"github.com/networknext/backend/modules/core"
 )
@@ -131,13 +132,17 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 		return nil, err
 	}
 
+	consumerId := uuid.New().String()
+
+	core.Debug("redis consumer id: %s", consumerId)
+
+	redisClient.XGroupCreateMkStream(ctx, config.StreamName, consumerId, "0").Result()
+
 	consumer := &RedisStreamsConsumer{}
 
 	consumer.config = config
 	consumer.redisClient = redisClient
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
-
-	// ...
 
 	return consumer, nil
 }
@@ -219,7 +224,7 @@ func (consumer *Consumer) Connect(ctx context.Context) error {
 }
 
 func (consumer *Consumer) CreateConsumerGroup(ctx context.Context) error {
-	//create consumerGroup with length of if group no created yet, if the group existed, cmd returns BUSYGROUP
+	//create consumerGroup with length of 0 if group no created yet, if the group existed, cmd returns BUSYGROUP
 	_, err := consumer.RedisDB.XGroupCreateMkStream(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, "0").Result()
 
 	if !strings.Contains(fmt.Sprint(err), "BUSYGROUP") {
