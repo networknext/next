@@ -160,6 +160,7 @@ void relay_printf( const char * format, ... )
     vsnprintf( buffer, sizeof( buffer ), format, args );
     printf( "%s\n", buffer );
     va_end( args );
+    fflush( stdout );
 }
 
 // -----------------------------------------------------------------------------
@@ -5983,6 +5984,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     if ( relay->initialize_router_timestamp == 0 )
     {
         printf( "Relay initialized\n" );
+        fflush( stdout );
         relay->initialize_router_timestamp = timestamp;
     }
 
@@ -7456,14 +7458,14 @@ int main( int argc, const char ** argv )
 
     printf( "    router public key is '%s'\n", router_public_key_env );
 
-    const char * backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
-    if ( !backend_hostname )
+    const char * relay_gateway = relay_platform_getenv( "RELAY_GATEWAY" );
+    if ( !relay_gateway )
     {
-        printf( "\nerror: RELAY_BACKEND_HOSTNAME not set\n\n" );
+        printf( "\nerror: RELAY_GATEWAY not set\n\n" );
         return 1;
     }
 
-    printf( "    backend hostname is '%s'\n", backend_hostname );
+    printf( "    relay gateway is '%s'\n", relay_gateway );
 
     if ( relay_initialize() != RELAY_OK )
     {
@@ -7506,6 +7508,8 @@ int main( int argc, const char ** argv )
     printf( "\nRelay socket opened on port %d\n\n", relay_address.port );
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
+
+    fflush( stdout );
 
     CURL * curl = curl_easy_init();
     if ( !curl )
@@ -7582,7 +7586,7 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-        if ( relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+        if ( relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -7621,7 +7625,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }
@@ -7633,6 +7637,7 @@ int main( int argc, const char ** argv )
     }
 
     printf( "\n\nCleaning up\n\n" );
+    fflush( stdout );
 
     if ( receive_thread )
     {

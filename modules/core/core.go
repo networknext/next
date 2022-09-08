@@ -46,6 +46,10 @@ func Error(s string, params ...interface{}) {
 	fmt.Printf("error: "+s+"\n", params...)
 }
 
+func Log(s string, params ...interface{}) {
+	fmt.Printf(s+"\n", params...)
+}
+
 func Debug(s string, params ...interface{}) {
 	if debugLogs {
 		fmt.Printf(s+"\n", params...)

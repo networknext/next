@@ -17,9 +17,9 @@ type RelayForwarderParams struct {
 }
 
 /*
-	ForwardPostHandlerFunc() utilizes HTTP reverse proxy to allow Riot relays to communicate
-	with our Relay Backend by forwarding the request and returning the corresponding response
-	to the Relay Gateway.
+ForwardPostHandlerFunc() utilizes HTTP reverse proxy to allow Riot relays to communicate
+with our Relay Backend by forwarding the request and returning the corresponding response
+to the Relay Gateway.
 */
 func ForwardPostHandlerFunc(params *RelayForwarderParams) func(w http.ResponseWriter, r *http.Request) {
 
