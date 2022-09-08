@@ -693,9 +693,9 @@ func mainReturnWithCode() int {
 			// Don't return here because the relay forwarder does not exist in every env
 		}
 
-		relayFrontendURI := envvar.Get("RELAY_FRONTEND_URI", "")
-		if relayFrontendURI == "" {
-			core.Error("RELAY_FRONTEND_URI not set")
+		relayBackendURI := envvar.Get("RELAY_BACKEND_URI", "")
+		if relayBackendURI == "" {
+			core.Error("RELAY_BACKEND_URI not set")
 			return 1
 		}
 
@@ -725,7 +725,7 @@ func mainReturnWithCode() int {
 			PortalBackendMIG:   portalBackendMIG,
 			PortalCruncherURI:  portalCruncherURI,
 			RelayForwarderURI:  relayForwarderURI,
-			RelayFrontendURI:   relayFrontendURI,
+			RelayBackendURI:    relayBackendURI,
 			RelayGatewayURI:    relayGatewayURI,
 			RelayPusherURI:     relayPusherURI,
 			ServerBackendMIG:   serverBackendMIG,

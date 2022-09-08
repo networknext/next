@@ -41,7 +41,7 @@ type RelayFleetService struct {
 	PortalBackendMIG   string
 	PortalCruncherURI  string
 	RelayForwarderURI  string
-	RelayFrontendURI   string
+	RelayBackendURI    string
 	RelayGatewayURI    string
 	RelayPusherURI     string
 	ServerBackendMIG   string
@@ -71,7 +71,7 @@ type RelayFleetReply struct {
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
 	authHeader := r.Header.Get("Authorization")
 
-	uri := "http://" + rfs.RelayFrontendURI + "/relays"
+	uri := "http://" + rfs.RelayBackendURI + "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
@@ -150,7 +150,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	var fullDashboard, filteredDashboard jsonResponse
 	authHeader := r.Header.Get("Authorization")
 
-	uri := "http://" + rfs.RelayFrontendURI + "/relay_dashboard_data"
+	uri := "http://" + rfs.RelayBackendURI + "/relay_dashboard_data"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
@@ -275,14 +275,12 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "PortalCruncher":
 		serviceURI = fmt.Sprintf("http://%s/status", rfs.PortalCruncherURI)
-	case "RelayBackend":
-		serviceURI = fmt.Sprintf("http://%s/master_status", rfs.RelayFrontendURI)
 	case "RelayForwarder":
 		if rfs.RelayForwarderURI != "" {
 			serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayForwarderURI)
 		}
-	case "RelayFrontend":
-		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayFrontendURI)
+	case "RelayBackend":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayBackendURI)
 	case "RelayGateway":
 		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayGatewayURI)
 	case "RelayPusher":
@@ -409,7 +407,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	authHeader := r.Header.Get("Authorization")
 	if args.ServiceName == "" || args.ServiceName == "RelayDashboardAnalysis" {
 
-		uri := "http://" + rfs.RelayFrontendURI + "/relay_dashboard_analysis"
+		uri := "http://" + rfs.RelayBackendURI + "/relay_dashboard_analysis"
 
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", uri, nil)
@@ -797,7 +795,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 
 	authHeader := r.Header.Get("Authorization")
 
-	uri := "http://" + rfs.RelayFrontendURI + "/cost_matrix"
+	uri := "http://" + rfs.RelayBackendURI + "/cost_matrix"
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", uri, nil)
