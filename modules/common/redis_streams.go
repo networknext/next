@@ -64,21 +64,21 @@ func (producer *RedisStreamsProducer) updateMessageChannel(ctx context.Context) 
 
 		case <-ticker.C:
 			if len(producer.messageBatch) > 0 {
-				producer.sendBatchToRedis(ctx)
+				producer.sendBatch(ctx)
 			}
 			break
 
 		case message := <-producer.MessageChannel:
 			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
-				producer.sendBatchToRedis(ctx)
+				producer.sendBatch(ctx)
 			}
 			break
 		}
 	}
 }
 
-func (producer *RedisStreamsProducer) sendBatchToRedis(ctx context.Context) {
+func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 
 	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
