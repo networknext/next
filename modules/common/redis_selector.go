@@ -13,6 +13,8 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
+const RedisSelectorVersion = 0 		// IMPORTANT: bump this anytime you change the redis data structures!
+
 type RedisSelectorConfig struct {
 	RedisHostname string
 	RedisPassword string
@@ -69,9 +71,9 @@ func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, cos
 	instanceEntry.InstanceId = selector.instanceId
 	instanceEntry.Uptime = uint64(time.Since(selector.startTime))
 	instanceEntry.Timestamp = uint64(time.Now().Unix())
-	instanceEntry.RelaysKey = fmt.Sprintf("relays/%s-%d", selector.instanceId, selector.storeCounter)
-	instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix/%s-%d", selector.instanceId, selector.storeCounter)
-	instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix/%s-%d", selector.instanceId, selector.storeCounter)
+	instanceEntry.RelaysKey = fmt.Sprintf("relays-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+	instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+	instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -84,7 +86,7 @@ func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, cos
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
 	pipe := selector.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("instance/%s", selector.instanceId), instanceData[:], 10*time.Second)
+	pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], 10*time.Second)
 	pipe.Set(timeoutContext, instanceEntry.RelaysKey, relaysData[:], 10*time.Second)
 	pipe.Set(timeoutContext, instanceEntry.CostMatrixKey, costMatrixData[:], 10*time.Second)
 	pipe.Set(timeoutContext, instanceEntry.RouteMatrixKey, routeMatrixData[:], 10*time.Second)
@@ -103,7 +105,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
 	// get all "instance/*" keys via scan to be safe
 
 	instanceKeys := []string{}
-	itor := selector.redisClient.Scan(timeoutContext, 0, "instance/*", 0).Iterator()
+	itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
