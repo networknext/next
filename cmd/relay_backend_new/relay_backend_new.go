@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
-	"os"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -25,14 +25,24 @@ var routeMatrixInterval time.Duration
 var redisHostname string
 var redisPassword string
 var redisPubsubChannelName string
+var relayUpdateChannelSize int
 
 var costMatrixMutex sync.RWMutex
-var costMatrix *common.CostMatrix
 var costMatrixData []byte
 
 var routeMatrixMutex sync.RWMutex
-var routeMatrix *common.RouteMatrix
 var routeMatrixData []byte
+
+var costMatrixInternalMutex sync.RWMutex
+var costMatrixInternalData []byte
+
+var routeMatrixInternalMutex sync.RWMutex
+var routeMatrixInternalData []byte
+
+var readyMutex sync.RWMutex
+var ready bool
+var readyDelay time.Duration
+var startTime time.Time
 
 func main() {
 
@@ -47,6 +57,9 @@ func main() {
 	redisHostname = envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.Get("REDIS_PASSWORD", "")
 	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
+	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	readyDelay = envvar.GetDuration("READY_DELAY", 6*time.Minute)
+	startTime = time.Now()
 
 	core.Debug("max rtt: %.1f", maxRTT)
 	core.Debug("max jitter: %.1f", maxJitter)
@@ -57,27 +70,67 @@ func main() {
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis password: %s", redisPassword)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
+	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
+	core.Debug("ready delay: %s", readyDelay.String())
+	core.Debug("start time: %s", startTime.String())
 
 	service.LoadDatabase()
 
 	relayStats := common.CreateRelayStats()
 
-	// todo: override health function so we only become healthy once we have
-	// our own internal cost/route matrix to serve up, plus cached data from
-	// redis for the leader cost/route matrix
-
+	service.Router.HandleFunc("/health", healthHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/relay_stats", relayStatsHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
+	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
+	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
 	service.StartWebServer()
+
+	UpdateReadyState()
 
 	ProcessRelayUpdates(service.Context, relayStats)
 
 	UpdateRouteMatrix(service, relayStats)
 
 	service.WaitForShutdown()
+}
+
+func UpdateReadyState() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+
+			routeMatrixMutex.RLock()
+			routeMatrixReady := len(routeMatrixData) > 0
+			routeMatrixMutex.RUnlock()
+
+			routeMatrixInternalMutex.RLock()
+			routeMatrixInternalReady := len(routeMatrixInternalData) > 0
+			routeMatrixInternalMutex.RUnlock()
+
+			delayReady := time.Since(startTime) >= readyDelay
+
+			if routeMatrixReady && routeMatrixInternalReady && delayReady {
+				fmt.Printf("relay backend is ready\n")
+				readyMutex.Lock()
+				ready = true
+				readyMutex.Unlock()
+				break
+			}
+		}
+	}()
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+
+	if !ready {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "not ready")
+	} else {
+		fmt.Fprintf(w, "OK")
+	}
 }
 
 type RelayJSON struct {
@@ -156,6 +209,30 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func costMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
+	costMatrixInternalMutex.RLock()
+	responseData := costMatrixInternalData
+	costMatrixInternalMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func routeMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
+	routeMatrixInternalMutex.RLock()
+	responseData := routeMatrixInternalData
+	routeMatrixInternalMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
 func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 	config := common.RedisPubsubConfig{}
@@ -163,6 +240,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 	config.RedisHostname = redisHostname
 	config.RedisPassword = redisPassword
 	config.PubsubChannelName = redisPubsubChannelName
+	config.MessageChannelSize = relayUpdateChannelSize
 
 	consumer, err := common.CreateRedisPubsubConsumer(ctx, config)
 
@@ -178,7 +256,7 @@ func ProcessRelayUpdates(ctx context.Context, relayStats *common.RelayStats) {
 
 			case <-ctx.Done():
 				return
-			
+
 			case message := <-consumer.MessageChannel:
 
 				core.Debug("received relay update")
@@ -203,6 +281,17 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
+	config := common.RedisSelectorConfig{}
+
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+
+	redisSelector, err := common.CreateRedisSelector(service.Context, config)
+	if err != nil {
+		core.Error("failed to create redis selector: %v", err)
+		os.Exit(1)
+	}
+
 	go func() {
 		for {
 			select {
@@ -214,9 +303,16 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				timeStart := time.Now()
 
+				// build the cost matrix
+
 				relayData := service.RelayData()
 
 				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+
+				// todo
+				fmt.Printf("-------------------------------------------------\n")
+				fmt.Printf("%v\n", costs)
+				fmt.Printf("-------------------------------------------------\n")
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,
@@ -230,16 +326,17 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					Costs:              costs,
 				}
 
+				// serve up as internal cost matrix
+
 				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize)
 				if err != nil {
 					core.Error("could not write cost matrix: %v", err)
 					continue
 				}
 
-				costMatrixMutex.Lock()
-				costMatrix = costMatrixNew
-				costMatrixData = costMatrixDataNew
-				costMatrixMutex.Unlock()
+				costMatrixInternalMutex.Lock()
+				costMatrixInternalData = costMatrixDataNew
+				costMatrixInternalMutex.Unlock()
 
 				// todo: full relays
 
@@ -260,17 +357,19 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
 					Version:            common.RouteMatrixSerializeVersion,
-					RelayIds:           costMatrix.RelayIds,
-					RelayAddresses:     costMatrix.RelayAddresses,
-					RelayNames:         costMatrix.RelayNames,
-					RelayLatitudes:     costMatrix.RelayLatitudes,
-					RelayLongitudes:    costMatrix.RelayLongitudes,
-					RelayDatacenterIds: costMatrix.RelayDatacenterIds,
-					DestRelays:         costMatrix.DestRelays,
+					RelayIds:           costMatrixNew.RelayIds,
+					RelayAddresses:     costMatrixNew.RelayAddresses,
+					RelayNames:         costMatrixNew.RelayNames,
+					RelayLatitudes:     costMatrixNew.RelayLatitudes,
+					RelayLongitudes:    costMatrixNew.RelayLongitudes,
+					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
+					DestRelays:         costMatrixNew.DestRelays,
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 				}
+
+				// serve up as internal route matrix
 
 				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)
 				if err != nil {
@@ -278,10 +377,39 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					continue
 				}
 
+				routeMatrixInternalMutex.Lock()
+				routeMatrixInternalData = routeMatrixDataNew
+				routeMatrixInternalMutex.Unlock()
+
+				// store our most recent cost and route matrix in redis
+
+				redisSelector.Store(service.Context, costMatrixDataNew, routeMatrixDataNew)
+
+				// load the master cost and route matrix from redis (leader election)
+
+				costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
+
+				if costMatrixDataNew == nil {
+					core.Error("failed to get cost matrix from redis selector")
+					continue
+				}
+
+				if routeMatrixDataNew == nil {
+					core.Error("failed to get route matrix from redis selector")
+					continue
+				}
+
+				// serve up as official cost matrix and route matrix
+
+				costMatrixMutex.Lock()
+				costMatrixData = costMatrixDataNew
+				costMatrixMutex.Unlock()
+
 				routeMatrixMutex.Lock()
-				routeMatrix = routeMatrixNew
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
+
+				// we are done
 
 				timeFinish := time.Now()
 
