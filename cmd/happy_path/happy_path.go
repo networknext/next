@@ -114,9 +114,9 @@ func happy_path() int {
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
-	relay_gateway_stdout := run_make("dev-relay-gateway-new", "logs/relay_gateway")
-	relay_backend_1_stdout := run_make("dev-relay-backend-new-1", "logs/relay_backend_1")
-	relay_backend_2_stdout := run_make("dev-relay-backend-new-2", "logs/relay_backend_2")
+	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
+	relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
+	relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
 
 	relay_1_stdout := run_make("dev-relay", "logs/relay_1")
 	relay_2_stdout := run_relay(2001, "logs/relay_2")

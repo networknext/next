@@ -87,15 +87,15 @@ func CreateService(serviceName string) *Service {
 	service.CommitHash = commitHash
 	service.BuildTime = buildTime
 
-	fmt.Printf("%s\n", service.ServiceName)
+	core.Log("%s", service.ServiceName)
 
-	fmt.Printf("commit message: %s\n", service.CommitMessage)
-	fmt.Printf("commit hash: %s\n", service.CommitHash)
-	fmt.Printf("build time: %s\n", service.BuildTime)
+	core.Log("commit message: %s", service.CommitMessage)
+	core.Log("commit hash: %s", service.CommitHash)
+	core.Log("build time: %s", service.BuildTime)
 
 	env := backend.GetEnv()
 
-	fmt.Printf("env: %s\n", env)
+	core.Log("env: %s", env)
 
 	service.Local = env == "local"
 
@@ -171,7 +171,7 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 
 func (service *Service) StartWebServer() {
 	port := envvar.Get("HTTP_PORT", "80")
-	fmt.Printf("starting http server on port %s\n", port)
+	core.Log("starting http server on port %s", port)
 	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
 	go func() {
 		err := http.ListenAndServe(":"+port, &service.Router)
@@ -186,9 +186,9 @@ func (service *Service) WaitForShutdown() {
 	termChan := make(chan os.Signal, 1)
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
-	core.Debug("received shutdown signal")
+	core.Log("received shutdown signal")
 	// todo: wait group
-	core.Debug("successfully shutdown")
+	core.Log("successfully shutdown")
 }
 
 // -----------------------------------------------------------------------
@@ -513,7 +513,7 @@ func (service *Service) updateMagicLoop() {
 
 	magicURI := envvar.Get("MAGIC_URI", "http://127.0.0.1:41007/magic")
 
-	core.Debug("magic uri: %s", magicURI)
+	core.Log("magic uri: %s", magicURI)
 
 	httpClient := &http.Client{
 		Timeout: time.Second,

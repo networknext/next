@@ -20,7 +20,7 @@ func main() {
 
 	magicUpdateSeconds = envvar.GetInt("MAGIC_UPDATE_SECONDS", 60)
 
-	fmt.Printf("magic update seconds: %d\n", magicUpdateSeconds)
+	core.Debug("magic update seconds: %d", magicUpdateSeconds)
 
 	service.Router.HandleFunc("/magic", magicHandler).Methods("GET")
 

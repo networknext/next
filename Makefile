@@ -306,42 +306,21 @@ export RELEASE_NOTES_INTERVAL=30s
 export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
 export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
-.PHONY: dev-relay-gateway-new
-dev-relay-gateway-new: build-relay-gateway-new ## runs a local relay gateway (new)
-	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway_new
-
-.PHONY: dev-relay-backend-new
-dev-relay-backend-new: build-relay-backend-new ## runs a local relay backend (new)
-	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend_new
-
-.PHONY: dev-relay-backend-new-1
-dev-relay-backend-new-1: build-relay-backend-new ## runs a local relay backend new (#1)
-	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend_new
-
-.PHONY: dev-relay-backend-new-2
-dev-relay-backend-new-2: build-relay-backend-new ## runs a local relay backend new (#2)
-	@HTTP_PORT=30002 READY_DELAY=5s ./dist/relay_backend_new
+.PHONY: dev-magic-backend
+dev-magic-backend: build-magic-backend ## runs a local magic backend
+	@HTTP_PORT=41007 ./dist/magic_backend
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
-	@PORT=30000 ./dist/relay_gateway
+	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway
 
-.PHONY: dev-relay-backend-1
-dev-relay-backend-1: build-relay-backend ## runs a local relay backend (#1)
-	@PORT=30001 ./dist/relay_backend
+.PHONY: dev-relay-backend
+dev-relay-backend: build-relay-backend ## runs a local relay backend
+	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend
 
-.PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
-	@PORT=30002 ./dist/relay_backend
-
-
-.PHONY: dev-debug-relay-backend
-dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
-	@PORT=30003 ./dist/relay_backend
-
-.PHONY: dev-relay-frontend
-dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-	@PORT=30005 ./dist/relay_frontend
+.PHONY: dev-relay
+dev-relay: build-reference-relay  ## runs a local relay
+	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
 
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
@@ -350,14 +329,6 @@ dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
 .PHONY: dev-server-backend5
 dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
 	@HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5
-
-.PHONY: dev-relay
-dev-relay: build-reference-relay  ## runs a local relay
-	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
-
-.PHONY: dev-magic-backend
-dev-magic-backend: build-magic-backend ## runs a local magic backend
-	@HTTP_PORT=41007 ./dist/magic_backend
 
 ##############################################
 
@@ -1050,13 +1021,7 @@ deploy-debug-relay-backend-prod-debug:
 .PHONY: build-relay-backend
 build-relay-backend:
 	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
-	@printf "done\n"
-
-.PHONY: build-relay-backend-new
-build-relay-backend-new:
-	@printf "Building relay backend (new)... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_backend_new ./cmd/relay_backend_new/relay_backend_new.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
 	@printf "done\n"
 
 .PHONY: build-relay-backend-artifacts-dev
@@ -1226,16 +1191,10 @@ deploy-relay-forwarder-prod:
 #    Relay Gateway    #
 #######################
 
-.PHONY: build-relay-gateway-new
-build-relay-gateway-new:
-	@printf "Building relay gateway (new)... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_gateway_new ./cmd/relay_gateway_new/relay_gateway_new.go
-	@printf "done\n"
-
 .PHONY: build-relay-gateway
 build-relay-gateway:
 	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitHash=$(COMMIT_HASH)" -o dist/relay_gateway ./cmd/relay_gateway/relay_gateway.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_gateway ./cmd/relay_gateway/relay_gateway.go
 	@printf "done\n"
 
 .PHONY: build-relay-gateway-artifacts-dev
@@ -1251,28 +1210,6 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
 #######################
-##   Relay Frontend  ##
-#######################
-
-.PHONY: build-relay-frontend
-build-relay-frontend:
-	@printf "Building relay frontend... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_frontend ./cmd/relay_frontend/relay_frontend.go
-	@printf "done\n"
-
-.PHONY: build-relay-frontend-artifacts-dev
-build-relay-frontend-artifacts-dev: build-relay-frontend
-	./deploy/build-artifacts.sh -e dev -s relay_frontend
-
-.PHONY: build-relay-frontend-artifacts-staging
-build-relay-frontend-artifacts-staging: build-relay-frontend
-	./deploy/build-artifacts.sh -e staging -s relay_frontend
-
-.PHONY: build-relay-frontend-artifacts-prod
-build-relay-frontend-artifacts-prod: build-relay-frontend
-	./deploy/build-artifacts.sh -e prod -s relay_frontend
-
-#######################
 
 .PHONY: format
 format:
@@ -1280,7 +1217,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
