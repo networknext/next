@@ -1154,44 +1154,6 @@ build-reference-relay: dist
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 
 #######################
-#   Relay Forwarder   #
-#######################
-
-.PHONY: dev-relay-forwarder
-dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
-	@PORT=30006 ./dist/relay_forwarder
-
-.PHONY: build-relay-forwarder
-build-relay-forwarder:
-	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
-	@printf "done\n"
-
-.PHONY: build-relay-forwarder-artifacts-dev
-build-relay-forwarder-artifacts-dev: build-relay-forwarder
-	./deploy/build-artifacts.sh -e dev -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-staging
-build-relay-forwarder-artifacts-staging: build-relay-forwarder
-	./deploy/build-artifacts.sh -e staging -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-prod
-build-relay-forwarder-artifacts-prod: build-relay-forwarder
-	./deploy/build-artifacts.sh -e prod -s relay_forwarder
-
-.PHONY: deploy-relay-forwarder-dev
-deploy-relay-forwarder-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts
-
-.PHONY: deploy-relay-forwarder-staging
-deploy-relay-forwarder-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-forwarder -n relay_forwarder -b gs://staging_artifacts
-
-.PHONY: deploy-relay-forwarder-prod
-deploy-relay-forwarder-prod:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
-
-#######################
 #    Relay Gateway    #
 #######################
 
@@ -1221,7 +1183,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
