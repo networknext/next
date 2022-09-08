@@ -60,7 +60,7 @@ func main() {
 	redisPassword = envvar.Get("REDIS_PASSWORD", "")
 	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
-	readyDelay = envvar.GetDuration("READY_DELAY", 6 * time.Minute)
+	readyDelay = envvar.GetDuration("READY_DELAY", 6*time.Minute)
 	startTime = time.Now()
 
 	core.Debug("max rtt: %.1f", maxRTT)
@@ -125,8 +125,8 @@ func UpdateReadyState() {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	
-	readyMutex.RLock()
+
+readyMutex.RLock()
 	not_ready := !ready
 	readyMutex.RUnlock()
 	
