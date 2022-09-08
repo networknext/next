@@ -830,7 +830,3 @@ promotions:
     auto_promote:
       when: branch = 'prod' AND result = 'passed'
   
-  - name: "Production Debug Deployment"
-    pipeline_file: production-debug-deploy.yml
-    auto_promote:
-      when: branch = 'prod_debug' AND result = 'passed'
