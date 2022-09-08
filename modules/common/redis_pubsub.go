@@ -189,8 +189,10 @@ func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 				consumer.MessageChannel <- message
 			}
 
+			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1
 			consumer.numMessagesReceived += len(batchMessages)
+			consumer.mutex.Unlock()
 		}
 	}
 }
@@ -223,9 +225,15 @@ func parseMessages(messages []byte) [][]byte {
 }
 
 func (consumer *RedisPubsubConsumer) NumMessageReceived() int {
-	return consumer.numMessagesReceived
+	consumer.mutex.RLock()
+	value := consumer.numMessagesReceived
+	consumer.mutex.RUnlock()
+	return value
 }
 
 func (consumer *RedisPubsubConsumer) NumBatchesReceived() int {
-	return consumer.numBatchesReceived
+	consumer.mutex.RLock()
+	value := consumer.numBatchesReceived
+	consumer.mutex.RUnlock()
+	return value
 }
