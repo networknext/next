@@ -347,7 +347,7 @@ func refreshAuth(env Environment) error {
 		clientID = PROD_AUTH0_CLIENT_ID
 		clientSecret = PROD_AUTH0_CLIENT_SECRET
 		domain = PROD_AUTH0_DOMAIN
-	case "dev4", "dev5":
+	case "dev":
 		audience = DEV_AUTH0_AUDIENCE
 		clientID = DEV_AUTH0_CLIENT_ID
 		clientSecret = DEV_AUTH0_CLIENT_SECRET
@@ -705,7 +705,7 @@ func main() {
 		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev4|dev5|prod4|prod5)"), 0)
+				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod4|prod5)"), 0)
 			}
 
 			env.Name = args[0]
