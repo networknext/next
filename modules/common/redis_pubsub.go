@@ -31,7 +31,6 @@ type RedisPubsubProducer struct {
 }
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
-
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
@@ -41,8 +40,11 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 		return nil, err
 	}
 
-	producer := &RedisPubsubProducer{}
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 10 * 1024
+	}
 
+	producer := &RedisPubsubProducer{}
 	producer.config = config
 	producer.redisClient = redisClient
 	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
@@ -53,7 +55,6 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 }
 
 func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
-
 	ticker := time.NewTicker(producer.config.BatchDuration)
 
 	for {
@@ -66,20 +67,17 @@ func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
 			if len(producer.messageBatch) > 0 {
 				producer.sendBatch(ctx)
 			}
-			break
 
 		case message := <-producer.MessageChannel:
 			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
 				producer.sendBatch(ctx)
 			}
-			break
 		}
 	}
 }
 
 func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
-
 	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
@@ -148,7 +146,6 @@ type RedisPubsubConsumer struct {
 }
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
-
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
@@ -156,6 +153,10 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
+	}
+
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 10 * 1024
 	}
 
 	consumer := &RedisPubsubConsumer{}
@@ -172,7 +173,6 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 }
 
 func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
-
 	for {
 		select {
 
