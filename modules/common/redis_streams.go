@@ -114,8 +114,8 @@ func (producer *RedisStreamsProducer) sendBatchToRedis(ctx context.Context) {
 type RedisStreamsConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisStreamsConfig
+	consumerId          string
 	redisClient         *redis.Client
-	// ...
 	mutex               sync.RWMutex
 	numMessagesReceived int
 	numBatchesReceived  int
@@ -134,182 +134,80 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	consumerId := uuid.New().String()
 
-	core.Debug("redis consumer id: %s", consumerId)
+	core.Debug("redis streams consumer id: %s", consumerId)
 
 	redisClient.XGroupCreateMkStream(ctx, config.StreamName, consumerId, "0").Result()
 
 	consumer := &RedisStreamsConsumer{}
 
 	consumer.config = config
+	consumer.consumerId = consumerId
 	consumer.redisClient = redisClient
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
+
+	go consumer.receiveMessages(ctx)
 
 	return consumer, nil
 }
 
-/*
-func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
+func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 
 	for {
-		select {
 
-		case <-ctx.Done():
-			return
+		start := ">"
 
-		case messageBatch := <-consumer.pubsubChannel:
+		args := &redis.XReadGroupArgs{
+			Streams:  []string{consumer.config.StreamName, start},
+			Group:    consumer.config.StreamName,
+			Consumer: consumer.consumerId,
+			Count:    int64(consumer.config.BatchSize),
+			Block:    time.Second,
+			NoAck:    false,
+		}
 
-			batchMessages := parseMessages([]byte(messageBatch.Payload))
+		streamMessages, err := consumer.redisClient.XReadGroup(ctx, args).Result()
 
-			core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
+		if err == context.Canceled {
+			break
+		}
+
+		if err != nil {
+			core.Error("error reading redis stream: %s", err)
+			continue
+		}
+
+		for _, stream := range streamMessages[0].Messages {
+			
+			batchData := []byte(stream.Values["data"].(string))
+
+			batchMessages := parseMessages(batchData)
+
+			core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
 
 			for _, message := range batchMessages {
 				consumer.MessageChannel <- message
 			}
 
+			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
+
+			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1
 			consumer.numMessagesReceived += len(batchMessages)
+			consumer.mutex.Unlock()
 		}
 	}
 }
-*/
 
 func (consumer *RedisStreamsConsumer) NumMessageReceived() int {
-	return consumer.numMessagesReceived
+	consumer.mutex.RLock()
+	value := consumer.numMessagesReceived
+	consumer.mutex.RUnlock()
+	return value
 }
 
 func (consumer *RedisStreamsConsumer) NumBatchesReceived() int {
-	return consumer.numBatchesReceived
+	consumer.mutex.RLock()
+	value := consumer.numBatchesReceived
+	consumer.mutex.RUnlock()
+	return value
 }
-
-/*
-type Consumer struct {
-	Config                   ConsumerConfig
-	RedisDB                  *redis.Client
-	numberOfMessagesReceived int64
-	numberOfBatchesReceived  int64
-}
-
-type ConsumerConfig struct {
-	RedisHostname     string
-	RedisPassword     string
-	StreamName        string
-	ConsumerGroup     string
-	BlockTimeout      time.Duration
-	ConsumerBatchSize int
-	ConsumerName      string
-}
-
-func NewConsumer(
-	config ConsumerConfig,
-) *Consumer {
-
-	return &Consumer{
-		Config:                   config,
-		RedisDB:                  &redis.Client{},
-		numberOfMessagesReceived: 0,
-		numberOfBatchesReceived:  0,
-	}
-}
-
-func (consumer *Consumer) Connect(ctx context.Context) error {
-	consumer.RedisDB = redis.NewClient(&redis.Options{
-		Addr:     consumer.Config.RedisHostname,
-		Password: consumer.Config.RedisPassword,
-	})
-	_, err := consumer.RedisDB.Ping(ctx).Result()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (consumer *Consumer) CreateConsumerGroup(ctx context.Context) error {
-	//create consumerGroup with length of 0 if group no created yet, if the group existed, cmd returns BUSYGROUP
-	_, err := consumer.RedisDB.XGroupCreateMkStream(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, "0").Result()
-
-	if !strings.Contains(fmt.Sprint(err), "BUSYGROUP") {
-		//do not need to handle this error
-		fmt.Printf("Consumer Group: %v already existed\n", consumer.Config.ConsumerGroup)
-	}
-
-	if err == context.Canceled {
-		return err
-	}
-
-	consumer.Config.ConsumerName = uuid.NewV4().String()
-	fmt.Printf("consumerName = %s\n", consumer.Config.ConsumerName)
-	return nil
-}
-
-func (consumer *Consumer) ReceiveMessages(ctx context.Context) error {
-
-	start := ">"
-
-	streamMsgs, err := consumer.RedisDB.XReadGroup(ctx, &redis.XReadGroupArgs{
-		Streams:  []string{consumer.Config.StreamName, start},
-		Group:    consumer.Config.ConsumerGroup,
-		Consumer: consumer.Config.ConsumerName,
-		Count:    int64(consumer.Config.ConsumerBatchSize),
-		Block:    consumer.Config.BlockTimeout,
-		NoAck:    false,
-	}).Result()
-
-	if err == context.Canceled {
-		return context.Canceled
-	}
-
-	if err == error(redis.Nil) {
-		return err
-	}
-
-	if err != nil {
-		core.Error("error reading redis stream: %s", err)
-		return err
-	}
-
-	// Consume messages batch
-	for _, stream := range streamMsgs[0].Messages {
-		// split messages block
-		messages := parseMessages([]byte(stream.Values["data"].(string)))
-		core.Debug("Received %v messages (%v bytes)", len(messages), len([]byte(stream.Values["data"].(string))))
-		consumer.RedisDB.XAck(ctx, consumer.Config.StreamName, consumer.Config.ConsumerGroup, stream.ID)
-		// todo: do messages processing here, if it fails "continue"
-
-		atomic.AddInt64(&consumer.numberOfBatchesReceived, 1)
-		atomic.AddInt64(&consumer.numberOfMessagesReceived, int64(len(messages)))
-	}
-
-	return nil
-
-}
-func parseMessages(messages []byte) [][]byte {
-	index := 0
-	var batchNum uint32
-	var numMessages uint32
-	if !encoding.ReadUint32(messages, &index, &batchNum) {
-		core.Debug("could not read batch number")
-	}
-	if !encoding.ReadUint32(messages, &index, &numMessages) {
-		core.Debug("could not read number of messages")
-	}
-	messagesData := make([][]byte, numMessages)
-	for i := 0; i < int(numMessages); i++ {
-		var messageLength uint32
-		if !encoding.ReadUint32(messages, &index, &messageLength) {
-			core.Debug("could not read length of the message")
-		}
-		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
-			core.Debug("could not read message data")
-		}
-	}
-	return messagesData
-}
-
-func (consumer *Consumer) NumMessageReceived() int64 {
-	return atomic.LoadInt64(&consumer.numberOfMessagesReceived)
-}
-
-func (consumer *Consumer) NumBatchesReceived() int64 {
-	return atomic.LoadInt64(&consumer.numberOfBatchesReceived)
-}
-*/
