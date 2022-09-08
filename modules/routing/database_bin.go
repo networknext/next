@@ -1,5 +1,12 @@
 package routing
 
+import (
+	"bytes"
+	"encoding/gob"
+	"io/ioutil"
+	"os"
+)
+
 const (
 	MaxDatabaseBinWrapperSize = 100000000
 )
@@ -53,4 +60,30 @@ func (wrapper DatabaseBinWrapper) IsEmpty() bool {
 	}
 
 	return true
+}
+
+func (wrapper DatabaseBinWrapper) WriteDatabaseBinFile(outputPath string) error {
+	var buffer bytes.Buffer
+
+	err := gob.NewEncoder(&buffer).Encode(wrapper)
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// This function is essentially the same as DecodeDatabaseWrapper in modules/backend/helpers.go
+func (wrapper *DatabaseBinWrapper) ReadDatabaseBinFile(databaseFilePath string) error {
+	databaseFile, err := os.Open(databaseFilePath)
+	if err != nil {
+		return err
+	}
+	defer databaseFile.Close()
+
+	return gob.NewDecoder(databaseFile).Decode(wrapper)
 }

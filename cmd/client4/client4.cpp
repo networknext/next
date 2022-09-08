@@ -79,15 +79,13 @@ int main()
 
     const char * connect_address = "127.0.0.1:32202";
 
-    const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS" );
+    const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS_SDK4" );
     if ( connect_address_override )
     {
         connect_address = connect_address_override;
     }
 
     next_client_open_session( client, connect_address );
-
-    double accumulator = 0.0;
 
     while ( !quit )
     {
@@ -103,149 +101,7 @@ int main()
 
         next_sleep( 1.0 / 60.0 );
 
-        accumulator += 1.0 / 60.0;
-
-        if ( accumulator > 10.0 )
-        {
-            accumulator = 0.0;
-
-            printf( "================================================================\n" );
-            
-            const next_client_stats_t * stats = next_client_stats( client );
-
-            const char * platform = "unknown";
-
-            switch ( stats->platform_id )
-            {
-                case NEXT_PLATFORM_WINDOWS:
-                    platform = "windows";
-                    break;
-
-                case NEXT_PLATFORM_MAC:
-                    platform = "mac";
-                    break;
-
-                case NEXT_PLATFORM_LINUX:
-                    platform = "linux";
-                    break;
-
-                case NEXT_PLATFORM_SWITCH:
-                    platform = "nintendo switch";
-                    break;
-
-                case NEXT_PLATFORM_PS4:
-                    platform = "ps4";
-                    break;
-
-                case NEXT_PLATFORM_IOS:
-                    platform = "ios";
-                    break;
-
-                case NEXT_PLATFORM_XBOX_ONE:
-                    platform = "xbox one";
-                    break;
-
-                case NEXT_PLATFORM_XBOX_SERIES_X:
-                    platform = "xbox series x";
-                    break;
-
-                case NEXT_PLATFORM_PS5:
-                    platform = "ps5";
-                    break;
-
-                default:
-                    break;
-            }
-
-            const char * state_string = "???";
-
-            const int state = next_client_state( client );
-            
-            switch ( state )
-            {
-                case NEXT_CLIENT_STATE_CLOSED:
-                    state_string = "closed";
-                    break;
-
-                case NEXT_CLIENT_STATE_OPEN:
-                    state_string = "open";
-                    break;
-
-                case NEXT_CLIENT_STATE_ERROR:
-                    state_string = "error";
-                    break;
-
-                default:
-                    break;
-            }
-
-            printf( "state = %s (%d)\n", state_string, state );
-
-            printf( "session id = %" PRIx64 "\n", next_client_session_id( client ) );
-
-            printf( "platform id = %s (%d)\n", platform, (int) stats->platform_id );
-
-            const char * connection = "unknown";
-            
-            switch ( stats->connection_type )
-            {
-                case NEXT_CONNECTION_TYPE_WIRED:
-                    connection = "wired";
-                    break;
-
-                case NEXT_CONNECTION_TYPE_WIFI:
-                    connection = "wifi";
-                    break;
-
-                case NEXT_CONNECTION_TYPE_CELLULAR:
-                    connection = "cellular";
-                    break;
-
-                default:
-                    break;
-            }
-
-            printf( "connection_type = %s (%d)\n", connection, stats->connection_type );
-
-            if ( !stats->fallback_to_direct )
-            {
-                printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
-                printf( "committed = %s\n", stats->committed ? "true" : "false" );
-                printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
-                printf( "reported = %s\n", stats->reported ? "true" : "false" );
-                printf( "direct min rtt = %.2fms\n", stats->direct_min_rtt );
-                printf( "direct jitter = %.2fms\n", stats->direct_jitter );
-                printf( "direct packet loss = %.1f%%\n", stats->direct_packet_loss );
-            }
-
-            printf( "fallback to direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
-
-            printf( "high frequency pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
-
-            if ( stats->next )
-            {
-                printf( "next rtt = %.2fms\n", stats->next_rtt );
-                printf( "next jitter = %.2fms\n", stats->next_jitter );
-                printf( "next packet loss = %.1f%%\n", stats->next_packet_loss );
-                printf( "next bandwidth up = %.1fkbps\n", stats->next_kbps_up );
-                printf( "next bandwidth down = %.1fkbps\n", stats->next_kbps_down );
-            }
-
-            if ( stats->upgraded && !stats->fallback_to_direct )
-            {
-                printf( "packets sent client to server = %" PRId64 "\n", stats->packets_sent_client_to_server );
-                printf( "packets sent server to client = %" PRId64 "\n", stats->packets_sent_server_to_client );
-                printf( "packets lost client to server = %" PRId64 "\n", stats->packets_lost_client_to_server );
-                printf( "packets lost server to client = %" PRId64 "\n", stats->packets_lost_server_to_client );
-                printf( "packets out of order client to server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
-                printf( "packets out of order server to client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
-                printf( "jitter client to server = %f\n", stats->jitter_client_to_server );
-                printf( "jitter server to client = %f\n", stats->jitter_server_to_client );
-            }
-
-            printf( "================================================================\n" );
-
-        }
+        fflush( stdout );
     }
 
     next_client_destroy( client );

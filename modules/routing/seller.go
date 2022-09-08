@@ -4,7 +4,8 @@ import "fmt"
 
 // Seller
 // TODO: ID, CompanyCode and ShortName all serve the same purpose here, though ID
-//       is assigned as shown in syncSellers(). Clean this up.
+//
+//	is assigned as shown in syncSellers(). Clean this up.
 type Seller struct {
 	ID                       string // internal use, this is assigned to the parent Customer.CompanyCode in syncSellers()
 	Name                     string // TODO: drop - defined by parent customer

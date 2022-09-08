@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 6
+const RouteMatrixSerializeVersion = 7
 
 type RouteMatrix struct {
 	RelayIDsToIndices                           map[uint64]int32
@@ -203,7 +203,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	if m.Version >= 6 {
+	if m.Version == 6 {
 
 		numInternalAddressClientRoutableRelayIDs := uint32(len(m.InternalAddressClientRoutableRelayIDs))
 		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)

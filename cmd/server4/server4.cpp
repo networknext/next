@@ -83,6 +83,8 @@ int main()
         next_server_update( server );
 
         next_sleep( 1.0 / 1000.0 );
+
+        fflush( stdout );
     }
 
     next_server_flush( server );
