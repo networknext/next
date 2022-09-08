@@ -4,6 +4,8 @@ import (
 	"math"
 	"sync"
 	"time"
+	"net"
+	"fmt"
 )
 
 const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
@@ -43,6 +45,9 @@ type RelayStatsDestEntry struct {
 type RelayStatsSourceEntry struct {
 	mutex          sync.RWMutex
 	lastUpdateTime time.Time
+	relayId        uint64
+	relayName      string
+	relayAddress   net.UDPAddr
 	sessions       int
 	relayVersion   string
 	shuttingDown   bool
@@ -60,7 +65,7 @@ func CreateRelayStats() *RelayStats {
 	return relayStats
 }
 
-func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
+func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
 
 	/*
 		Process Relay Update
@@ -117,6 +122,9 @@ func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, sessions int, r
 	sourceEntry.mutex.Lock()
 
 	sourceEntry.lastUpdateTime = currentTime
+	sourceEntry.relayId = relayId
+	sourceEntry.relayName = relayName
+	sourceEntry.relayAddress = relayAddress
 	sourceEntry.sessions = sessions
 	sourceEntry.relayVersion = relayVersion
 	sourceEntry.shuttingDown = shuttingDown
@@ -259,9 +267,89 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 	return costs
 }
 
+const RELAY_STATUS_OFFLINE = 0
+const RELAY_STATUS_ONLINE = 1
+const RELAY_STATUS_SHUTTING_DOWN = 2
+
+var RelayStatusStrings = [3]string{"offline", "online", "shutting down"}
+
+type ActiveRelay struct {
+	Name string
+	Id uint64
+	Address net.UDPAddr
+	Status int
+	Sessions int
+	Version string
+}
+
+func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
+
+	relayStats.mutex.RLock()
+	keys := make([]uint64, len(relayStats.sourceEntries))
+	index := 0
+    for k := range relayStats.sourceEntries {
+        keys[index] = k
+        index++
+    }
+	relayStats.mutex.RUnlock()
+
+	activeRelays := make([]ActiveRelay, 0, len(keys))	
+
+	currentTime := time.Now()
+
+	for i := range keys {
+
+		relayStats.mutex.RLock()
+		sourceEntry, ok := relayStats.sourceEntries[keys[i]]
+		relayStats.mutex.RUnlock()
+
+		if !ok {
+			continue
+		}
+
+		sourceEntry.mutex.RLock()
+
+		activeRelay := ActiveRelay{}
+		
+		activeRelay.Name = sourceEntry.relayName
+		activeRelay.Address = sourceEntry.relayAddress
+		activeRelay.Id = sourceEntry.relayId
+		activeRelay.Sessions = sourceEntry.sessions
+
+		activeRelay.Status = RELAY_STATUS_ONLINE
+		if currentTime.Sub(sourceEntry.lastUpdateTime) > 10 * time.Second {
+			activeRelay.Status = RELAY_STATUS_ONLINE
+		}
+		if sourceEntry.shuttingDown {
+			activeRelay.Status = RELAY_STATUS_SHUTTING_DOWN
+		}
+
+		activeRelay.Version = sourceEntry.relayVersion
+
+		sourceEntry.mutex.RUnlock()
+
+		activeRelays = append(activeRelays, activeRelay)
+	}
+
+	return activeRelays
+}
+
 func (relayStats *RelayStats) GetRelaysCSV() []byte {
 
 	relaysCSV := "name,address,id,status,sessions,version\n"
+
+	activeRelays := relayStats.GetActiveRelays()
+
+	for i := range activeRelays {
+		relay := activeRelays[i]
+		relaysCSV += fmt.Sprintf("%s,%s,%016x,%s,%d,%s\n",
+			relay.Name,
+			relay.Address.String(),
+			relay.Id,
+			RelayStatusStrings[relay.Status],
+			relay.Sessions,
+			relay.Version)
+	}
 
 	return []byte(relaysCSV)
 }

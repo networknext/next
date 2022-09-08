@@ -288,26 +288,11 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 					return
 				}
 
+				// todo: bring back relay crypto check here
+
 				relayName := relayData.RelayNames[relayIndex]
 
 				core.Debug("received relay update for '%s'", relayName)
-
-				/*
-					type RelayUpdateRequest struct {
-						Version           uint32
-						Address           net.UDPAddr
-						Token             []byte
-						PingStats         []routing.RelayStatsPing
-						SessionCount      uint64
-						ShuttingDown      bool
-						RelayVersion      string
-						CPU               uint8
-						EnvelopeUpKbps    uint64
-						EnvelopeDownKbps  uint64
-						BandwidthSentKbps uint64
-						BandwidthRecvKbps uint64
-					}
-				*/
 
 				numSamples := len(relayUpdate.PingStats)
 
@@ -323,14 +308,16 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 					samplePacketLoss[i] = relayUpdate.PingStats[i].PacketLoss
 				}
 
-				relayStats.ProcessRelayUpdate(relayId, 
+				relayStats.ProcessRelayUpdate(relayId,
+					relayName,
+					relayUpdate.Address,
 					int(relayUpdate.SessionCount),
-					relayUpdate.RelayVersion, 
+					relayUpdate.RelayVersion,
 					relayUpdate.ShuttingDown,
 					numSamples,
-					sampleRelayIds, 
-					sampleRTT, 
-					sampleJitter, 
+					sampleRelayIds,
+					sampleRTT,
+					sampleJitter,
 					samplePacketLoss)
 			}
 		}
