@@ -187,7 +187,7 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Debug("received shutdown signal")
-	// todo: wait for stuff
+	// todo: wait group
 	core.Debug("successfully shutdown")
 }
 

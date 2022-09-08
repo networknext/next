@@ -192,7 +192,12 @@ func happy_path() int {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
 			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
 			strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") &&
-			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
+			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.0'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.1'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.2'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.3'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.4'") {
 			relay_backend_1_initialized = true
 			break
 		}
@@ -217,7 +222,12 @@ func happy_path() int {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
 			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
 			strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") &&
-			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
+			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
 			relay_backend_2_initialized = true
 			break
 		}
