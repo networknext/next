@@ -161,7 +161,7 @@ func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsNRB, ifIsStaging, i
 	switch e.Name {
 	case "local":
 		return ifIsLocal, nil
-	case "dev4", "dev5":
+	case "dev":
 		return ifIsDev, nil
 	case "nrb":
 		return ifIsNRB, nil
