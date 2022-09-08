@@ -7,15 +7,15 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"encoding/binary"
-	"sync"
+	// "context"
+	// "encoding/binary"
+	// "sync"
 
 	// "context"
 	// "crypto/rand"
 	"fmt"
 	"io/ioutil"
-	mathRand "math/rand"
+	// mathRand "math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,8 +27,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
+	// "github.com/networknext/backend/modules/common"
+	// "github.com/networknext/backend/modules/core"
 	// "github.com/go-redis/redis/v9"
 	// "github.com/networknext/backend/modules/core"
 	// "github.com/networknext/backend/modules/common"
@@ -265,6 +265,8 @@ func test_redis_pubsub() {
 
 	fmt.Printf("test_redis_pubsub\n")
 
+	// todo: disabling for now
+	/*
 	parentContext := context.Background()
 
 	producerThreads := 2
@@ -453,6 +455,7 @@ func test_redis_pubsub() {
 		fmt.Printf("Total number of messages received: %d\n", totalMessagesReceived)
 		os.Exit(1)
 	}
+	*/
 }
 
 func test_redis_streams() {

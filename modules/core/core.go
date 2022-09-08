@@ -46,6 +46,10 @@ func Error(s string, params ...interface{}) {
 	fmt.Printf("error: "+s+"\n", params...)
 }
 
+func Warn(s string, params ...interface{}) {
+	fmt.Printf("warning: "+s+"\n", params...)
+}
+
 func Log(s string, params ...interface{}) {
 	fmt.Printf(s+"\n", params...)
 }

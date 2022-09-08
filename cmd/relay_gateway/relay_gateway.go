@@ -117,8 +117,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		defer func() {
 			duration := time.Since(startTime)
-			if duration.Milliseconds() > 100 {
-				core.Error("long relay update: %s", duration.String())
+			if duration.Milliseconds() > 1000 {
+				core.Warn("long relay update: %s", duration.String())
 			}
 		}()
 

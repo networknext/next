@@ -102,16 +102,6 @@ blocks:
             - make build-relay-backend-artifacts-dev
             - artifact push workflow dist/relay_backend.dev.tar.gz
         
-        - name: "Relay Frontend"
-          commands:
-            - make build-relay-frontend-artifacts-dev
-            - artifact push workflow dist/relay_frontend.dev.tar.gz
-        
-        - name: "Relay Forwarder"
-          commands:
-            - make build-relay-forwarder-artifacts-dev
-            - artifact push workflow dist/relay_forwarder.dev.tar.gz
-        
         - name: "Server Backend 4"
           commands:
             - make build-server-backend4-artifacts-dev
@@ -121,16 +111,6 @@ blocks:
           commands:
             - make build-server-backend5-artifacts-dev
             - artifact push workflow dist/server_backend5.dev.tar.gz
-        
-        - name: "Debug Server Backend 4"
-          commands:
-            - make build-debug-server-backend4-artifacts-dev
-            - artifact push workflow dist/debug_server_backend4.dev.tar.gz
-        
-        - name: "Debug Relay Backend"
-          commands:
-            - make build-debug-relay-backend-artifacts-dev
-            - artifact push workflow dist/debug_relay_backend.dev.tar.gz
         
         - name: "Ghost Army"
           commands:
@@ -156,11 +136,6 @@ blocks:
           commands:
             - make build-magic-backend-artifacts-dev
             - artifact push workflow dist/magic_backend.dev.tar.gz
-        
-        - name: "Magic Frontend"
-          commands:
-            - make build-magic-frontend-artifacts-dev
-            - artifact push workflow dist/magic_frontend.dev.tar.gz
 
 
   - name: "Build Artifacts (Native)"
@@ -248,16 +223,6 @@ blocks:
             - artifact pull workflow relay_backend.dev.tar.gz
             - gsutil cp relay_backend.dev.tar.gz gs://development_artifacts/
 
-        - name: "Relay Frontend"
-          commands:
-            - artifact pull workflow relay_frontend.dev.tar.gz
-            - gsutil cp relay_frontend.dev.tar.gz gs://development_artifacts/
-
-        - name: "Relay Forwarder"
-          commands:
-            - artifact pull workflow relay_forwarder.dev.tar.gz
-            - gsutil cp relay_forwarder.dev.tar.gz gs://development_artifacts/
-
         - name: "Server Backend 4"
           commands:
             - artifact pull workflow server_backend4.dev.tar.gz
@@ -267,11 +232,6 @@ blocks:
           commands:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
-
-        - name: "Debug Server Backend 4"
-          commands:
-            - artifact pull workflow debug_server_backend4.dev.tar.gz
-            - gsutil cp debug_server_backend4.dev.tar.gz gs://development_artifacts/
 
         - name: "Ghost Army"
           commands:
@@ -297,11 +257,6 @@ blocks:
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
-
-        - name: "Magic Frontend"
-          commands:
-            - artifact pull workflow magic_frontend.dev.tar.gz
-            - gsutil cp magic_frontend.dev.tar.gz gs://development_artifacts/
 
         - name: "Test Server 4"
           commands:
