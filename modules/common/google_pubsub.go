@@ -16,8 +16,8 @@ type GooglePubsubConfig struct {
 }
 
 type GooglePubsubProducer struct {
-	MessageChannel  chan []byte
-	config          GooglePubsubConfig
+	MessageChannel chan []byte
+	config         GooglePubsubConfig
 	// ...
 	messageBatch    [][]byte
 	batchStartTime  time.Time
@@ -87,8 +87,8 @@ func (producer *GooglePubsubProducer) sendBatch(ctx context.Context) {
 // ----------------------------
 
 type GooglePubsubConsumer struct {
-	MessageChannel      chan []byte
-	config              GooglePubsubConfig
+	MessageChannel chan []byte
+	config         GooglePubsubConfig
 	// ...
 	mutex               sync.RWMutex
 	numMessagesReceived int
@@ -118,30 +118,30 @@ func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
 		// todo: read message
 
 		/*
-		if err != nil {
-			core.Error("error reading from google pubsub: %s", err)
-			continue
-		}
-
-		for _, stream := range streamMessages[0].Messages {
-			
-			batchData := []byte(stream.Values["data"].(string))
-
-			batchMessages := parseMessages(batchData)
-
-			core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
-
-			for _, message := range batchMessages {
-				consumer.MessageChannel <- message
+			if err != nil {
+				core.Error("error reading from google pubsub: %s", err)
+				continue
 			}
 
-			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
+			for _, stream := range streamMessages[0].Messages {
 
-			consumer.mutex.Lock()
-			consumer.numBatchesReceived += 1
-			consumer.numMessagesReceived += len(batchMessages)
-			consumer.mutex.Unlock()
-		}
+				batchData := []byte(stream.Values["data"].(string))
+
+				batchMessages := parseMessages(batchData)
+
+				core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
+
+				for _, message := range batchMessages {
+					consumer.MessageChannel <- message
+				}
+
+				consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
+
+				consumer.mutex.Lock()
+				consumer.numBatchesReceived += 1
+				consumer.numMessagesReceived += len(batchMessages)
+				consumer.mutex.Unlock()
+			}
 		*/
 	}
 }

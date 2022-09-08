@@ -41,8 +41,12 @@ type RelayStatsDestEntry struct {
 }
 
 type RelayStatsSourceEntry struct {
-	mutex       sync.RWMutex
-	destEntries map[uint64]*RelayStatsDestEntry
+	mutex          sync.RWMutex
+	lastUpdateTime time.Time
+	sessions       int
+	relayVersion   string
+	shuttingDown   bool
+	destEntries    map[uint64]*RelayStatsDestEntry
 }
 
 type RelayStats struct {
@@ -56,7 +60,7 @@ func CreateRelayStats() *RelayStats {
 	return relayStats
 }
 
-func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
+func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
 
 	/*
 		Process Relay Update
@@ -95,21 +99,27 @@ func (relayStats *RelayStats) ProcessRelayUpdate(sourceRelayId uint64, numSample
 
 	relayStats.mutex.Lock()
 
-	sourceEntry, exists := relayStats.sourceEntries[sourceRelayId]
+	sourceEntry, exists := relayStats.sourceEntries[relayId]
 	if !exists {
 		sourceEntry = &RelayStatsSourceEntry{}
 		sourceEntry.destEntries = make(map[uint64]*RelayStatsDestEntry)
-		relayStats.sourceEntries[sourceRelayId] = sourceEntry
+		relayStats.sourceEntries[relayId] = sourceEntry
 	}
 
 	relayStats.mutex.Unlock()
 
+	// update stats for the source relay, then...
 	// iterate across all samples and insert them into the history buffer
 	// in the dest entry corresponding to their relay pair (source,dest)
 
 	currentTime := time.Now()
 
 	sourceEntry.mutex.Lock()
+
+	sourceEntry.lastUpdateTime = currentTime
+	sourceEntry.sessions = sessions
+	sourceEntry.relayVersion = relayVersion
+	sourceEntry.shuttingDown = shuttingDown
 
 	for i := 0; i < numSamples; i++ {
 
@@ -247,4 +257,11 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 	}
 
 	return costs
+}
+
+func (relayStats *RelayStats) GetRelaysCSV() []byte {
+
+	relaysCSV := "name,address,id,status,sessions,version\n"
+
+	return []byte(relaysCSV)
 }
