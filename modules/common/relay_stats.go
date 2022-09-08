@@ -6,6 +6,7 @@ import (
 	"time"
 	"net"
 	"fmt"
+	"sort"
 )
 
 const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
@@ -330,6 +331,8 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 
 		activeRelays = append(activeRelays, activeRelay)
 	}
+
+	sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })	
 
 	return activeRelays
 }

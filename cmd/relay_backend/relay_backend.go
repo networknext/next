@@ -83,13 +83,14 @@ func main() {
 
 	relayStats := common.CreateRelayStats()
 
-	service.Router.HandleFunc("/health", healthHandler)
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
+
+	service.OverrideHealthHandler(healthHandler)
 
 	service.StartWebServer()
 
@@ -129,15 +130,16 @@ func UpdateReadyState() {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+
 	readyMutex.RLock()
 	not_ready := !ready
 	readyMutex.RUnlock()
 
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "not ready")
 	} else {
-		fmt.Fprintf(w, "OK")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
 }
 
