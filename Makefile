@@ -315,8 +315,12 @@ dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway
 
 .PHONY: dev-relay-backend
-dev-relay-backend: build-relay-backend ## runs a local relay backend
+dev-relay-backend: build-relay-backend ## runs a local relay backend (#1)
 	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend
+
+.PHONY: dev-relay-backend-2
+dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
+	@HTTP_PORT=30002 READY_DELAY=5s ./dist/relay_backend
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay

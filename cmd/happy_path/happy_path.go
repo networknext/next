@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/networknext/backend/modules/core"
 )
 
 var processes []*os.Process
@@ -24,15 +26,60 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	cmd := exec.Command("make", action)
 	if cmd == nil {
-		panic("could not run make!\n")
-		return nil
+		core.Error("could not run make!\n")
+		os.Exit(1)
 	}
 
 	var stdout bytes.Buffer
 
 	stdout_pipe, err := cmd.StdoutPipe()
 	if err != nil {
-		panic(err)
+		core.Error("could not create stdout pipe for make")
+		os.Exit(1)
+	}
+
+	cmd.Start()
+
+	processes = append(processes, cmd.Process)
+
+	go func(output *bytes.Buffer) {
+		file, err := os.Create(log)
+		if err != nil {
+			core.Error("could not create log file: %s", log)
+			os.Exit(1)
+		}
+		writer := bufio.NewWriter(file)
+		buf := bufio.NewReader(stdout_pipe)
+		for {
+			line, _, _ := buf.ReadLine()
+			writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
+			writer.Flush()
+			output.Write(line)
+			output.Write([]byte("\n"))
+		}
+	}(&stdout)
+
+	return &stdout
+}
+
+/*
+func run_relay_backend(port int, log string) *bytes.Buffer {
+
+	fmt.Printf("HTTP_PORT=%d make %s\n", port, "dev-relay-backend")
+
+	cmd := exec.Command("./dist/relay_backend")
+	if cmd == nil {
+		panic("could not run relay!\n")
+		os.Exit(1)
+	}
+
+	cmd.Env = make([]string, 0)
+
+	var stdout bytes.Buffer
+
+	stdout_pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		os.Exit(1)
 	}
 
 	cmd.Start()
@@ -57,10 +104,11 @@ func run_make(action string, log string) *bytes.Buffer {
 
 	return &stdout
 }
+*/
 
 func run_relay(port int, log string) *bytes.Buffer {
 
-	fmt.Printf("PORT=%d make %s\n", port, "dev-relay")
+	fmt.Printf("RELAY_PORT=%d make %s\n", port, "dev-relay")
 
 	cmd := exec.Command("./dist/reference_relay")
 	if cmd == nil {
@@ -115,7 +163,7 @@ func happy_path() int {
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
-	relay_backend_1_stdout := run_make("dev-relay-backend-1", "logs/relay_backend_1")
+	relay_backend_1_stdout := run_make("dev-relay-backend", "logs/relay_backend_1")
 	relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
 
 	relay_1_stdout := run_make("dev-relay", "logs/relay_1")
