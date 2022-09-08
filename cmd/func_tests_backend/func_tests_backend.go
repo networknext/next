@@ -267,8 +267,8 @@ func test_redis_pubsub() {
 
 	parentContext := context.Background()
 
-	producerThreads := 1
-	consumerThreads := 1
+	producerThreads := 2
+	consumerThreads := 10
 
 	var producerWG sync.WaitGroup
 	var consumerWG sync.WaitGroup
