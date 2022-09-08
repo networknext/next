@@ -12,9 +12,9 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/crypto"
 )
 
 var maxRTT float32
@@ -28,6 +28,9 @@ var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateChannelSize int
 var readyDelay time.Duration
+
+var relaysMutex sync.RWMutex
+var relaysData []byte
 
 var costMatrixMutex sync.RWMutex
 var costMatrixData []byte
@@ -81,6 +84,7 @@ func main() {
 	relayStats := common.CreateRelayStats()
 
 	service.Router.HandleFunc("/health", healthHandler)
+	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
@@ -128,12 +132,24 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	readyMutex.RLock()
 	not_ready := !ready
 	readyMutex.RUnlock()
-	
+
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "not ready")
 	} else {
 		fmt.Fprintf(w, "OK")
+	}
+}
+
+func relaysHandler(w http.ResponseWriter, r *http.Request) {
+	relaysMutex.RLock()
+	responseData := relaysData
+	relaysMutex.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	buffer := bytes.NewBuffer(responseData)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
@@ -272,26 +288,11 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 					return
 				}
 
+				// todo: bring back relay crypto check here
+
 				relayName := relayData.RelayNames[relayIndex]
 
 				core.Debug("received relay update for '%s'", relayName)
-
-				/*
-				type RelayUpdateRequest struct {
-					Version           uint32
-					Address           net.UDPAddr
-					Token             []byte
-					PingStats         []routing.RelayStatsPing
-					SessionCount      uint64
-					ShuttingDown      bool
-					RelayVersion      string
-					CPU               uint8
-					EnvelopeUpKbps    uint64
-					EnvelopeDownKbps  uint64
-					BandwidthSentKbps uint64
-					BandwidthRecvKbps uint64
-				}
-				*/
 
 				numSamples := len(relayUpdate.PingStats)
 
@@ -307,7 +308,17 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 					samplePacketLoss[i] = relayUpdate.PingStats[i].PacketLoss
 				}
 
-				relayStats.ProcessRelayUpdate(relayId, numSamples, sampleRelayIds, sampleRTT, sampleJitter, samplePacketLoss)
+				relayStats.ProcessRelayUpdate(relayId,
+					relayName,
+					relayUpdate.Address,
+					int(relayUpdate.SessionCount),
+					relayUpdate.RelayVersion,
+					relayUpdate.ShuttingDown,
+					numSamples,
+					sampleRelayIds,
+					sampleRTT,
+					sampleJitter,
+					samplePacketLoss)
 			}
 		}
 	}()
@@ -338,6 +349,10 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 			case <-ticker.C:
 
 				timeStart := time.Now()
+
+				// build relays data
+
+				relaysDataNew := relayStats.GetRelaysCSV()
 
 				// build the cost matrix
 
@@ -412,11 +427,16 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				// store our most recent cost and route matrix in redis
 
-				redisSelector.Store(service.Context, costMatrixDataNew, routeMatrixDataNew)
+				redisSelector.Store(service.Context, relaysDataNew, costMatrixDataNew, routeMatrixDataNew)
 
 				// load the master cost and route matrix from redis (leader election)
 
-				costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
+				relaysDataNew, costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
+
+				if relaysDataNew == nil {
+					core.Error("failed to get relays from redis selector")
+					continue
+				}
 
 				if costMatrixDataNew == nil {
 					core.Error("failed to get cost matrix from redis selector")
@@ -428,7 +448,11 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 					continue
 				}
 
-				// serve up as official cost matrix and route matrix
+				// serve up as official data
+
+				relaysMutex.Lock()
+				relaysData = relaysDataNew
+				relaysMutex.Unlock()
 
 				costMatrixMutex.Lock()
 				costMatrixData = costMatrixDataNew
@@ -438,13 +462,13 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
 
-				// we are done
+				// we are done!
 
 				timeFinish := time.Now()
 
 				optimizeDuration := timeFinish.Sub(timeStart)
 
-				core.Debug("route optimization: %d relays in %s\n", relayData.NumRelays, optimizeDuration)
+				core.Debug("route optimization: %d relays in %s", relayData.NumRelays, optimizeDuration)
 			}
 		}
 	}()

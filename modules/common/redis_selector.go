@@ -23,6 +23,7 @@ type RedisSelector struct {
 	redisClient     *redis.Client
 	startTime       time.Time
 	instanceId      string
+	relaysData      []byte
 	costMatrixData  []byte
 	routeMatrixData []byte
 	storeCounter    uint64
@@ -32,6 +33,7 @@ type InstanceEntry struct {
 	InstanceId     string
 	Uptime         uint64
 	Timestamp      uint64
+	RelaysKey      string
 	CostMatrixKey  string
 	RouteMatrixKey string
 }
@@ -59,7 +61,7 @@ func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*Redi
 	return selector, nil
 }
 
-func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte, routeMatrixData []byte) {
+func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, costMatrixData []byte, routeMatrixData []byte) {
 
 	selector.storeCounter++
 
@@ -67,6 +69,7 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 	instanceEntry.InstanceId = selector.instanceId
 	instanceEntry.Uptime = uint64(time.Since(selector.startTime))
 	instanceEntry.Timestamp = uint64(time.Now().Unix())
+	instanceEntry.RelaysKey = fmt.Sprintf("relays/%s-%d", selector.instanceId, selector.storeCounter)
 	instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix/%s-%d", selector.instanceId, selector.storeCounter)
 	instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix/%s-%d", selector.instanceId, selector.storeCounter)
 
@@ -82,6 +85,7 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 
 	pipe := selector.redisClient.TxPipeline()
 	pipe.Set(timeoutContext, fmt.Sprintf("instance/%s", selector.instanceId), instanceData[:], 10*time.Second)
+	pipe.Set(timeoutContext, instanceEntry.RelaysKey, relaysData[:], 10*time.Second)
 	pipe.Set(timeoutContext, instanceEntry.CostMatrixKey, costMatrixData[:], 10*time.Second)
 	pipe.Set(timeoutContext, instanceEntry.RouteMatrixKey, routeMatrixData[:], 10*time.Second)
 	_, err = pipe.Exec(timeoutContext)
@@ -92,7 +96,7 @@ func (selector *RedisSelector) Store(ctx context.Context, costMatrixData []byte,
 	}
 }
 
-func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
+func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte) {
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
@@ -105,7 +109,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 	}
 	if err := itor.Err(); err != nil {
 		core.Error("failed to get instance keys: %v", err)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// query all instance data
@@ -118,7 +122,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 
 	if err != nil {
 		core.Error("failed to get instance entries: %v", err)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// convert instance data to instance entries
@@ -148,7 +152,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 
 	if len(instanceEntries) == 0 {
 		core.Error("no instance entries found")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// select master instance (most uptime, instance id as tie breaker)
@@ -162,17 +166,19 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte) {
 	// get cost matrix and route matrix for master instance
 
 	pipe = selector.redisClient.Pipeline()
+	pipe.Get(timeoutContext, masterInstance.RelaysKey)
 	pipe.Get(timeoutContext, masterInstance.CostMatrixKey)
 	pipe.Get(timeoutContext, masterInstance.RouteMatrixKey)
 	cmds, err = pipe.Exec(timeoutContext)
 
 	if err != nil {
-		core.Error("failed to get cost and route matrix data: %v", err)
-		return nil, nil
+		core.Error("failed to get data from redis: %v", err)
+		return nil, nil, nil
 	}
 
-	selector.costMatrixData = []byte(cmds[0].(*redis.StringCmd).Val())
-	selector.routeMatrixData = []byte(cmds[1].(*redis.StringCmd).Val())
+	selector.relaysData = []byte(cmds[0].(*redis.StringCmd).Val())
+	selector.costMatrixData = []byte(cmds[1].(*redis.StringCmd).Val())
+	selector.routeMatrixData = []byte(cmds[2].(*redis.StringCmd).Val())
 
-	return selector.costMatrixData, selector.routeMatrixData
+	return selector.relaysData, selector.costMatrixData, selector.routeMatrixData
 }
