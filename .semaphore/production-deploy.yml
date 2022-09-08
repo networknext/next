@@ -123,16 +123,6 @@ blocks:
             - make build-server-backend5-artifacts-prod
             - artifact push workflow dist/server_backend5.prod.tar.gz
 
-        - name: "Debug Server Backend 4"
-          commands:
-            - make build-debug-server-backend4-artifacts-prod
-            - artifact push workflow dist/debug_server_backend4.prod.tar.gz
-
-        - name: "Debug Relay Backend"
-          commands:
-            - make build-debug-relay-backend-artifacts-prod
-            - artifact push workflow dist/debug_relay_backend.prod.tar.gz
-
         - name: "Ghost Army"
           commands:
             - make build-ghost-army-artifacts-prod
@@ -270,11 +260,6 @@ blocks:
           commands:
             - artifact pull workflow server_backend5.prod.tar.gz
             - gsutil cp server_backend5.prod.tar.gz gs://production_artifacts/
-
-        - name: "Debug Server Backend 4"
-          commands:
-            - artifact pull workflow debug_server_backend4.prod.tar.gz
-            - gsutil cp debug_server_backend4.prod.tar.gz gs://production_artifacts/
 
         - name: "Ghost Army"
           commands:

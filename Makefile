@@ -31,7 +31,6 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://production_artifacts
-ARTIFACT_BUCKET_PROD_DEBUG = gs://prod_debug_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 
 ####################
@@ -858,10 +857,6 @@ build-server-backend5-artifacts-staging: build-server-backend5
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
 
-.PHONY: build-debug-billing-artifacts-prod-debug
-build-debug-billing-artifacts-prod-debug: build-billing
-	./deploy/build-artifacts.sh -e prod -s debug_billing
-
 .PHONY: build-analytics-pusher-artifacts-prod
 build-analytics-pusher-artifacts-prod: build-analytics-pusher
 	./deploy/build-artifacts.sh -e prod -s analytics_pusher
@@ -902,10 +897,6 @@ build-server-backend4-artifacts-prod: build-server-backend4
 build-server-backend5-artifacts-prod: build-server-backend5
 	./deploy/build-artifacts.sh -e prod -s server_backend5
 
-.PHONY: deploy-debug-billing-prod-billing
-deploy-debug-billing-prod-debug:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-billing -n debug_billing -b $(ARTIFACT_BUCKET_PROD_DEBUG)
-
 .PHONY: build-next
 build-next:
 	@printf "Building operator tool... "
@@ -945,78 +936,6 @@ deploy-relay-pusher-staging:
 .PHONY: deploy-relay-pusher-prod
 deploy-relay-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
-
-#############################
-#    Debug Server Backend   #
-#############################
-
-.PHONY: build-debug-server-backend4-artifacts-dev
-build-debug-server-backend4-artifacts-dev: build-server-backend4
-	./deploy/build-artifacts.sh -e dev -s debug_server_backend4
-
-.PHONY: build-debug-server-backend4-artifacts-staging
-build-debug-server-backend4-artifacts-staging: build-server-backend4
-	./deploy/build-artifacts.sh -e staging -s debug_server_backend4
-
-.PHONY: build-debug-server-backend4-artifacts-prod
-build-debug-server-backend4-artifacts-prod: build-server-backend4
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
-
-.PHONY: build-debug-server-backend4-artifacts-prod-debug
-build-debug-server-backend4-artifacts-prod-debug: build-server-backend4
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
-
-.PHONY: deploy-debug-server-backend4-dev
-deploy-debug-server-backend4-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET)
-
-.PHONY: deploy-debug-server-backend4-staging
-deploy-debug-server-backend4-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_STAGING)
-
-.PHONY: deploy-debug-server-backend4-prod
-deploy-debug-server-backend4-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD)
-
-.PHONY: deploy-debug-server-backend4-prod-debug
-deploy-debug-server-backend4-prod-debug:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD_DEBUG)
-
-#############################
-#    Debug Relay Backend   #
-#############################
-
-.PHONY: build-debug-relay-backend-artifacts-dev
-build-debug-relay-backend-artifacts-dev: build-relay-backend
-	./deploy/build-artifacts.sh -e dev -s debug_relay_backend
-
-.PHONY: build-debug-relay-backend-artifacts-staging
-build-debug-relay-backend-artifacts-staging: build-relay-backend
-	./deploy/build-artifacts.sh -e staging -s debug_relay_backend
-
-.PHONY: build-debug-relay-backend-artifacts-prod
-build-debug-relay-backend-artifacts-prod: build-relay-backend
-	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
-
-.PHONY: build-debug-relay-backend-artifacts-prod-debug
-build-debug-relay-backend-artifacts-prod-debug: build-relay-backend
-	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
-
-.PHONY: deploy-debug-relay-backend-dev
-deploy-debug-relay-backend-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET)
-
-.PHONY: deploy-debug-relay-backend-staging
-deploy-debug-relay-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_STAGING)
-
-.PHONY: deploy-debug-relay-backend-prod
-deploy-debug-relay-backend-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_PROD)
-
-.PHONY: deploy-debug-relay-backend-prod-debug
-deploy-debug-relay-backend-prod-debug:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 #######################
 #    Relay Backend    #
@@ -1154,44 +1073,6 @@ build-reference-relay: dist
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 
 #######################
-#   Relay Forwarder   #
-#######################
-
-.PHONY: dev-relay-forwarder
-dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
-	@PORT=30006 ./dist/relay_forwarder
-
-.PHONY: build-relay-forwarder
-build-relay-forwarder:
-	@printf "Building relay forwarder... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
-	@printf "done\n"
-
-.PHONY: build-relay-forwarder-artifacts-dev
-build-relay-forwarder-artifacts-dev: build-relay-forwarder
-	./deploy/build-artifacts.sh -e dev -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-staging
-build-relay-forwarder-artifacts-staging: build-relay-forwarder
-	./deploy/build-artifacts.sh -e staging -s relay_forwarder
-
-.PHONY: build-relay-forwarder-artifacts-prod
-build-relay-forwarder-artifacts-prod: build-relay-forwarder
-	./deploy/build-artifacts.sh -e prod -s relay_forwarder
-
-.PHONY: deploy-relay-forwarder-dev
-deploy-relay-forwarder-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts
-
-.PHONY: deploy-relay-forwarder-staging
-deploy-relay-forwarder-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-forwarder -n relay_forwarder -b gs://staging_artifacts
-
-.PHONY: deploy-relay-forwarder-prod
-deploy-relay-forwarder-prod:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-forwarder -n relay_forwarder -b gs://production_artifacts
-
-#######################
 #    Relay Gateway    #
 #######################
 
@@ -1221,7 +1102,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-forwarder build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
