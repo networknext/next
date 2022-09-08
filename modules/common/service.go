@@ -77,6 +77,8 @@ type Service struct {
 	upcomingMagic []byte
 	currentMagic  []byte
 	previousMagic []byte
+
+	healthHandler func (w http.ResponseWriter, r *http.Request)
 }
 
 func CreateService(serviceName string) *Service {
@@ -101,6 +103,8 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
+
+	service.healthHandler = transport.HealthHandlerFunc()
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
@@ -169,10 +173,14 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 	return upcomingMagic, currentMagic, previousMagic
 }
 
+func (service *Service) OverrideHealthHandler(healthHandler func (w http.ResponseWriter, r *http.Request)) {
+	service.healthHandler = healthHandler
+}
+
 func (service *Service) StartWebServer() {
 	port := envvar.Get("HTTP_PORT", "80")
 	core.Log("starting http server on port %s", port)
-	service.Router.HandleFunc("/health", transport.HealthHandlerFunc())
+	service.Router.HandleFunc("/health", service.healthHandler)
 	go func() {
 		err := http.ListenAndServe(":"+port, &service.Router)
 		if err != nil {
