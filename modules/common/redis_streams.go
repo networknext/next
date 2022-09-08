@@ -2,11 +2,12 @@ package common
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/go-redis/redis/v9"
+	"github.com/google/uuid"
 	"github.com/networknext/backend/modules/core"
 )
 
@@ -14,6 +15,7 @@ type RedisStreamsConfig struct {
 	RedisHostname      string
 	RedisPassword      string
 	StreamName         string
+	ConsumerGroup      string
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
@@ -109,6 +111,20 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }
 
+func (producer *RedisStreamsProducer) NumMessagesSent() int {
+	producer.mutex.Lock()
+	numMessagesSent := producer.numMessagesSent
+	producer.mutex.Unlock()
+	return numMessagesSent
+}
+
+func (producer *RedisStreamsProducer) NumBatchesSent() int {
+	producer.mutex.Lock()
+	numBatchesSent := producer.numBatchesSent
+	producer.mutex.Unlock()
+	return numBatchesSent
+}
+
 // ----------------------------
 
 type RedisStreamsConsumer struct {
@@ -136,7 +152,15 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	core.Debug("redis streams consumer id: %s", consumerId)
 
-	redisClient.XGroupCreateMkStream(ctx, config.StreamName, consumerId, "0").Result()
+	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "0").Result()
+	if err != nil {
+		if strings.Contains(err.Error(), "BUSYGROUP") {
+			//do not need to handle this error
+			core.Debug("Consumer Group: %v already existed", config.ConsumerGroup)
+		} else {
+			core.Error("error creating redis streams group: %v", err)
+		}
+	}
 
 	consumer := &RedisStreamsConsumer{}
 
@@ -158,7 +182,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 
 		args := &redis.XReadGroupArgs{
 			Streams:  []string{consumer.config.StreamName, start},
-			Group:    consumer.config.StreamName,
+			Group:    consumer.config.ConsumerGroup,
 			Consumer: consumer.consumerId,
 			Count:    int64(consumer.config.BatchSize),
 			Block:    time.Second,
@@ -172,12 +196,15 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 		}
 
 		if err != nil {
-			core.Error("error reading redis stream: %s", err)
+			// Not sure why this is necessary. redis.Nil == err but fails the comparison unless a string - issue with types?
+			if err.Error() != redis.Nil.Error() {
+				core.Error("error reading redis stream: %s", err)
+			}
 			continue
 		}
 
 		for _, stream := range streamMessages[0].Messages {
-			
+
 			batchData := []byte(stream.Values["data"].(string))
 
 			batchMessages := parseMessages(batchData)
