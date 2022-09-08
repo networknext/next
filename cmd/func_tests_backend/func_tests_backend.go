@@ -292,12 +292,12 @@ func test_redis_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamProducer, err := common.CreateRedisPubsubProducer(ctx, common.RedisPubsubConfig{
-				RedisHostname:     "127.0.0.1:6379",
-				RedisPassword:     "",
-				PubsubChannelName: "test-channel",
-				PubsubChannelSize: 10 * 1024,
-				BatchSize:         100,
-				BatchDuration:     time.Millisecond * 100,
+				RedisHostname:      "127.0.0.1:6379",
+				RedisPassword:      "",
+				PubsubChannelName:  "test-channel",
+				MessageChannelSize: 10 * 1024,
+				BatchSize:          100,
+				BatchDuration:      time.Millisecond * 100,
 			})
 
 			if err != nil {
@@ -350,10 +350,10 @@ func test_redis_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamConsumer, err := common.CreateRedisPubsubConsumer(ctx, common.RedisPubsubConfig{
-				RedisHostname:     "127.0.0.1:6379",
-				RedisPassword:     "",
-				PubsubChannelName: "test-channel",
-				PubsubChannelSize: 10 * 1024,
+				RedisHostname:      "127.0.0.1:6379",
+				RedisPassword:      "",
+				PubsubChannelName:  "test-channel",
+				MessageChannelSize: 10 * 1024,
 			})
 
 			if err != nil {
