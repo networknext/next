@@ -416,7 +416,7 @@ func mainReturnWithCode() int {
 		}
 		magicPollFrequency := envvar.GetDuration("MAGIC_POLL_FREQUENCY", time.Second)
 
-		readTimeout := envvar.GetDuration("MAGIC_READ_DURATION", 5*time.Second)
+		readTimeout := envvar.GetDuration("MAGIC_READ_DURATION", time.Second)
 
 		go func() {
 			httpClient := &http.Client{
