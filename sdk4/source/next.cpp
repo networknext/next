@@ -5969,6 +5969,8 @@ void next_client_internal_destroy( next_client_internal_t * client );
 
 next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string, void (*wake_up_callback)( void * context ) )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create" );
+
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
@@ -6099,11 +6101,15 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
 
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create (completed)" );
+
     return client;
 }
 
 void next_client_internal_destroy( next_client_internal_t * client )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy" );
+
     next_client_internal_verify_sentinels( client );
 
     if ( client->socket )
@@ -6134,6 +6140,8 @@ void next_client_internal_destroy( next_client_internal_t * client )
     next_platform_mutex_destroy( &client->bandwidth_mutex );
 
     clear_and_free( client->context, client, sizeof(next_client_internal_t) );
+
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy (completed)" );    
 }
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
@@ -6308,7 +6316,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
-        if ( !client->sending_upgrade_response )
+		if ( !client->sending_upgrade_response )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
             return;
@@ -6389,6 +6397,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
+		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response packet" );
+
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
@@ -6514,6 +6524,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
+		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response packet" );
+
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
@@ -6760,6 +6772,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
+		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet" );
+
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -7621,6 +7635,8 @@ void next_client_destroy( next_client_t * client );
 
 next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_create" );
+
     next_assert( bind_address );
     next_assert( packet_received_callback );
 
@@ -7676,6 +7692,8 @@ uint16_t next_client_port( next_client_t * client )
 
 void next_client_destroy( next_client_t * client )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy" );
+
     next_client_verify_sentinels( client );
 
     if ( client->thread )
@@ -7702,10 +7720,14 @@ void next_client_destroy( next_client_t * client )
     }
 
     clear_and_free( client->context, client, sizeof(next_client_t) );
+
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy (completed)" );
 }
 
 void next_client_open_session( next_client_t * client, const char * server_address_string )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_open_session: %s", server_address_string );
+
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
@@ -7757,6 +7779,8 @@ int next_client_state( next_client_t * client )
 
 void next_client_close_session( next_client_t * client )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_close_session" );
+
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
@@ -7852,6 +7876,7 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_READY:
             {
+				next_printf( NEXT_LOG_LEVEL_DEBUG, "client is ready" );
                 client->ready = true;
             }
             break;
@@ -8042,6 +8067,8 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
 
 void next_client_report_session( next_client_t * client )
 {
+	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_report_session" );
+
     next_client_verify_sentinels( client );
 
     next_client_command_report_session_t * command = (next_client_command_report_session_t*) next_malloc( client->context, sizeof( next_client_command_report_session_t ) );
