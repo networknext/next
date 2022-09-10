@@ -1,12 +1,9 @@
 package common
 
 import (
-	// "bytes"
 	"fmt"
 	"math"
 	"net"
-	// "sort"
-	// "sync"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"

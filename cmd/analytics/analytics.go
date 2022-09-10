@@ -5,6 +5,7 @@ import (
 	"time"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
@@ -16,14 +17,16 @@ var routeMatrixURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
 
+var logMutex sync.Mutex
+
 func main() {
 
 	service := common.CreateService("analytics")
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
-	costMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 10 * time.Second)
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 10 * time.Second)
+	costMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1 * time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1 * time.Second)
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
@@ -60,8 +63,6 @@ func ProcessCostMatrix(ctx context.Context) {
 
 			case <-ticker.C:
 
-				core.Debug("get cost matrix")
-
 				response, err := httpClient.Get(costMatrixURI)
 				if err != nil {
 					core.Error("failed to http get cost matrix: %v", err)
@@ -84,8 +85,32 @@ func ProcessCostMatrix(ctx context.Context) {
 					continue
 				}
 
-				// todo: analyze cost matrix and write some useful stuff to bigquery
-				_ = costMatrix
+				costMatrixBytes := len(buffer)
+				costMatrixNumRelays := len(costMatrix.RelayIds)
+
+				costMatrixNumDestRelays := 0
+				for i := range costMatrix.DestRelays {
+					if costMatrix.DestRelays[i] {
+						costMatrixNumDestRelays++
+					}
+				}
+
+				datacenterMap := make(map[uint64]bool)
+				for i := range costMatrix.RelayDatacenterIds {
+					datacenterMap[costMatrix.RelayDatacenterIds[i]] = true
+				}
+				costMatrixNumDatacenters := len(datacenterMap)
+
+				logMutex.Lock()
+
+				core.Debug("---------------------------------------------")
+				core.Debug("cost matrix bytes: %d", costMatrixBytes)
+				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
+				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
+				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
+				core.Debug("---------------------------------------------")
+
+				logMutex.Unlock()
 			}
 		}
 	}()
@@ -107,8 +132,6 @@ func ProcessRouteMatrix(ctx context.Context) {
 				return
 
 			case <-ticker.C:
-
-				core.Debug("get route matrix")
 
 				response, err := httpClient.Get(routeMatrixURI)
 				if err != nil {
@@ -132,8 +155,32 @@ func ProcessRouteMatrix(ctx context.Context) {
 					continue
 				}
 
-				// todo: analyze route matrix and write some useful stuff to bigquery
-				_ = routeMatrix
+				logMutex.Lock()
+
+				routeMatrixBytes := len(buffer)
+				routeMatrixNumRelays := len(routeMatrix.RelayIds)
+
+				routeMatrixNumDestRelays := 0
+				for i := range routeMatrix.DestRelays {
+					if routeMatrix.DestRelays[i] {
+						routeMatrixNumDestRelays++
+					}
+				}
+
+				datacenterMap := make(map[uint64]bool)
+				for i := range routeMatrix.RelayDatacenterIds {
+					datacenterMap[routeMatrix.RelayDatacenterIds[i]] = true
+				}
+				routeMatrixNumDatacenters := len(datacenterMap)
+
+				core.Debug("---------------------------------------------")
+				core.Debug("route matrix bytes: %d", routeMatrixBytes)
+				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
+				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)
+				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
+				core.Debug("---------------------------------------------")
+
+				logMutex.Unlock()
 			}
 		}
 	}()
