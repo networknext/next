@@ -152,8 +152,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
-		if len(relayUpdateRequest.PingStats) > transport.MaxRelays {
-			core.Error("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, transport.MaxRelays)
+		if len(relayUpdateRequest.PingStats) > core.MaxNearRelays {
+			core.Error("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, core.MaxNearRelays)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
