@@ -401,7 +401,7 @@ test-relay: dist build-reference-relay ## runs relay unit tests
 .PHONY: build-analytics
 build-analytics: dist
 	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/analytics ./cmd/analytics/analytics.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
 ifeq ($(OS),darwin)
