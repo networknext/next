@@ -30,17 +30,8 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	Version            uint32
 	DestRelays         []bool
-
-	// todo: how is this stored
-	FullRelayIds []uint64
-	// todo: what is this?
-
-	// todo: what the fuck? this should just be an array...
-	FullRelayIndexSet map[int32]bool
-
-	// todo: review below
-	PingStats  []analytics.PingStatsEntry
-	RelayStats []analytics.RelayStatsEntry
+	FullRelayIds 	   []uint64
+	FullRelayIndexSet  map[int32]bool   // this should just be an array of bools?
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
@@ -117,17 +108,21 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	if m.Version >= 3 {
+	if m.Version >= 3 && m.Version < 7 {
 
-		numRelayEntries := uint32(len(m.RelayStats))
+		numRelayEntries := uint32(0)
+
 		stream.SerializeUint32(&numRelayEntries)
 
+		var relayStats []analytics.RelayStatsEntry
+
 		if stream.IsReading() {
-			m.RelayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
+			relayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
 		}
 
 		for i := uint32(0); i < numRelayEntries; i++ {
-			entry := &m.RelayStats[i]
+
+			entry := &relayStats[i]
 
 			stream.SerializeUint64(&entry.Timestamp)
 			stream.SerializeUint64(&entry.ID)
@@ -157,15 +152,19 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			}
 		}
 
-		numPingEntries := uint32(len(m.PingStats))
+		numPingEntries := uint32(0)
+		
 		stream.SerializeUint32(&numPingEntries)
 
+		var pingStats []analytics.PingStatsEntry
+
 		if stream.IsReading() {
-			m.PingStats = make([]analytics.PingStatsEntry, numPingEntries)
+			pingStats = make([]analytics.PingStatsEntry, numPingEntries)
 		}
 
 		for i := uint32(0); i < numPingEntries; i++ {
-			entry := &m.PingStats[i]
+			
+			entry := &pingStats[i]
 
 			stream.SerializeUint64(&entry.Timestamp)
 			stream.SerializeUint64(&entry.RelayA)
