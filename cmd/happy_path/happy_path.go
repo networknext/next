@@ -156,7 +156,7 @@ func run_relay(port int, log string) *bytes.Buffer {
 
 func happy_path() int {
 
-	if envvar.Get("ENV", "") != "local" {
+	if envvar.GetString("ENV", "") != "local" {
 		core.Error("happy path only works in local env. please run 'next select local' first")
 		return 1
 	}

@@ -115,8 +115,8 @@ func CreateService(serviceName string) *Service {
 
 func (service *Service) LoadDatabase() {
 
-	databasePath := envvar.Get("DATABASE_PATH", "database.bin")
-	overlayPath := envvar.Get("OVERLAY_PATH", "overlay.bin")
+	databasePath := envvar.GetString("DATABASE_PATH", "database.bin")
+	overlayPath := envvar.GetString("OVERLAY_PATH", "overlay.bin")
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
@@ -178,7 +178,7 @@ func (service *Service) OverrideHealthHandler(healthHandler func (w http.Respons
 }
 
 func (service *Service) StartWebServer() {
-	port := envvar.Get("HTTP_PORT", "80")
+	port := envvar.GetString("HTTP_PORT", "80")
 	core.Log("starting http server on port %s", port)
 	service.Router.HandleFunc("/health", service.healthHandler)
 	go func() {
@@ -519,7 +519,7 @@ func (service *Service) updateMagicValues(magicData []byte) {
 
 func (service *Service) updateMagicLoop() {
 
-	magicURI := envvar.Get("MAGIC_URI", "http://127.0.0.1:41007/magic")
+	magicURI := envvar.GetString("MAGIC_URI", "http://127.0.0.1:41007/magic")
 
 	core.Log("magic uri: %s", magicURI)
 

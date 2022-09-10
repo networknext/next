@@ -79,8 +79,8 @@ func mainReturnWithCode() int {
 	env := backend.GetEnv()
 
 	// Get redis connections
-	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
 	redisMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
 	redisMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 
@@ -147,13 +147,13 @@ func mainReturnWithCode() int {
 	var btCfName string
 	if useBigtable {
 		// Get Bigtable instance ID
-		btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
+		btInstanceID := envvar.GetString("BIGTABLE_INSTANCE_ID", "localhost:8086")
 
 		// Get the table name
-		btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+		btTableName := envvar.GetString("BIGTABLE_TABLE_NAME", "")
 
 		// Get the column family
-		btCfName = envvar.Get("BIGTABLE_CF_NAME", "")
+		btCfName = envvar.GetString("BIGTABLE_CF_NAME", "")
 
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
@@ -214,7 +214,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	githubAccessToken := envvar.Get("GITHUB_ACCESS_TOKEN", "")
+	githubAccessToken := envvar.GetString("GITHUB_ACCESS_TOKEN", "")
 	if githubAccessToken == "" {
 		core.Error("GITHUB_ACCESS_TOKEN not set")
 		return 1
@@ -227,13 +227,13 @@ func mainReturnWithCode() int {
 
 	githubClient := github.NewClient(tc)
 
-	webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+	webHookUrl := envvar.GetString("SLACK_WEBHOOK_URL", "")
 	if webHookUrl == "" {
 		core.Error("SLACK_WEBHOOK_URL not set")
 		return 1
 	}
 
-	channel := envvar.Get("SLACK_CHANNEL", "")
+	channel := envvar.GetString("SLACK_CHANNEL", "")
 	if channel == "" {
 		core.Error("SLACK_CHANNEL not set")
 		return 1
@@ -246,29 +246,29 @@ func mainReturnWithCode() int {
 	}
 
 	// If the hubspot API key isn't set, hubspot functionality will be turned off
-	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
+	hubspotAPIKey := envvar.GetString("HUBSPOT_API_KEY", "")
 	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
 
 	// Get Auth0 config
-	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+	auth0Issuer := envvar.GetString("AUTH0_ISSUER", "")
 	if auth0Issuer == "" {
 		core.Error("AUTH0_ISSUER not set")
 		return 1
 	}
 
-	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	auth0Domain := envvar.GetString("AUTH0_DOMAIN", "")
 	if auth0Domain == "" {
 		core.Error("AUTH0_DOMAIN not set")
 		return 1
 	}
 
-	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
+	auth0ClientID := envvar.GetString("AUTH0_CLIENTID", "")
 	if auth0ClientID == "" {
 		core.Error("AUTH0_CLIENTID not set")
 		return 1
 	}
 
-	auth0ClientSecret := envvar.Get("AUTH0_CLIENTSECRET", "")
+	auth0ClientSecret := envvar.GetString("AUTH0_CLIENTSECRET", "")
 
 	manager, err := management.New(
 		auth0Domain,
@@ -294,25 +294,25 @@ func mainReturnWithCode() int {
 		Storage: db,
 	}
 
-	lookerSecret := envvar.Get("LOOKER_SECRET", "")
+	lookerSecret := envvar.GetString("LOOKER_SECRET", "")
 	if lookerSecret == "" {
 		core.Error("LOOKER_SECRET not set")
 		return 1
 	}
 
-	lookerHost := envvar.Get("LOOKER_HOST", "")
+	lookerHost := envvar.GetString("LOOKER_HOST", "")
 	if lookerHost == "" {
 		core.Error("LOOKER_HOST not set")
 		return 1
 	}
 
-	lookerAPIClientID := envvar.Get("LOOKER_API_CLIENT_ID", "")
+	lookerAPIClientID := envvar.GetString("LOOKER_API_CLIENT_ID", "")
 	if lookerAPIClientID == "" {
 		core.Error("LOOKER_API_CLIENT_ID not set")
 		return 1
 	}
 
-	lookerAPIClientSecret := envvar.Get("LOOKER_API_CLIENT_SECRET", "")
+	lookerAPIClientSecret := envvar.GetString("LOOKER_API_CLIENT_SECRET", "")
 	if lookerAPIClientSecret == "" {
 		core.Error("LOOKER_API_CLIENT_SECRET not set")
 		return 1
@@ -517,7 +517,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get absolute path of overlay.bin
-	overlayFilePath := envvar.Get("OVERLAY_PATH", "overlay.bin")
+	overlayFilePath := envvar.GetString("OVERLAY_PATH", "overlay.bin")
 
 	if overlayFilePath != "" {
 		overlaySyncInterval := envvar.GetDuration("OVERLAY_SYNC_INTERVAL", time.Minute*5)
@@ -603,7 +603,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	port := envvar.Get("PORT", "")
+	port := envvar.GetString("PORT", "")
 	if port == "" {
 		core.Error("PORT not set")
 		return 1
@@ -651,67 +651,67 @@ func mainReturnWithCode() int {
 		s.RegisterService(&configService, "")
 		s.RegisterService(authservice, "")
 
-		analyticsMIG := envvar.Get("ANALYTICS_MIG", "")
+		analyticsMIG := envvar.GetString("ANALYTICS_MIG", "")
 		if analyticsMIG == "" {
 			core.Error("ANALYTICS_MIG not set")
 			return 1
 		}
 
-		analyticsPusherURI := envvar.Get("ANALYTICS_PUSHER_URI", "")
+		analyticsPusherURI := envvar.GetString("ANALYTICS_PUSHER_URI", "")
 		if analyticsPusherURI == "" {
 			core.Error("ANALYTICS_PUSHER_URI not set")
 			return 1
 		}
 
-		billingMIG := envvar.Get("BILLING_MIG", "")
+		billingMIG := envvar.GetString("BILLING_MIG", "")
 		if billingMIG == "" {
 			core.Error("BILLING_MIG not set")
 			return 1
 		}
 
-		pingdomURI := envvar.Get("PINGDOM_URI", "")
+		pingdomURI := envvar.GetString("PINGDOM_URI", "")
 		if pingdomURI == "" {
 			core.Error("PINGDOM_URI not set")
 			// Don't return here because the pingdom writer does not exist in every env
 		}
 
-		portalBackendMIG := envvar.Get("PORTAL_BACKEND_MIG", "")
+		portalBackendMIG := envvar.GetString("PORTAL_BACKEND_MIG", "")
 		if portalBackendMIG == "" {
 			core.Error("PORTAL_BACKEND_MIG not set")
 			return 1
 		}
 
-		portalCruncherURI := envvar.Get("PORTAL_CRUNCHER_URI", "")
+		portalCruncherURI := envvar.GetString("PORTAL_CRUNCHER_URI", "")
 		if portalCruncherURI == "" {
 			core.Error("PORTAL_CRUNCHER_URI not set")
 			return 1
 		}
 
-		relayForwarderURI := envvar.Get("RELAY_FORWARDER_URI", "")
+		relayForwarderURI := envvar.GetString("RELAY_FORWARDER_URI", "")
 		if relayForwarderURI == "" {
 			core.Error("RELAY_FORWARDER_URI not set")
 			// Don't return here because the relay forwarder does not exist in every env
 		}
 
-		relayBackendURI := envvar.Get("RELAY_BACKEND_URI", "")
+		relayBackendURI := envvar.GetString("RELAY_BACKEND_URI", "")
 		if relayBackendURI == "" {
 			core.Error("RELAY_BACKEND_URI not set")
 			return 1
 		}
 
-		relayGatewayURI := envvar.Get("RELAY_GATEWAY_URI", "")
+		relayGatewayURI := envvar.GetString("RELAY_GATEWAY_URI", "")
 		if relayGatewayURI == "" {
 			core.Error("RELAY_GATEWAY_URI not set")
 			return 1
 		}
 
-		relayPusherURI := envvar.Get("RELAY_PUSHER_URI", "")
+		relayPusherURI := envvar.GetString("RELAY_PUSHER_URI", "")
 		if relayPusherURI == "" {
 			core.Error("RELAY_PUSHER_URI not set")
 			return 1
 		}
 
-		serverBackendMIG := envvar.Get("SERVER_BACKEND_MIG", "")
+		serverBackendMIG := envvar.GetString("SERVER_BACKEND_MIG", "")
 		if serverBackendMIG == "" {
 			core.Error("SERVER_BACKEND_MIG not set")
 			return 1
@@ -735,7 +735,7 @@ func mainReturnWithCode() int {
 
 		s.RegisterService(&jsonrpc.LiveServerService{}, "")
 
-		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
+		allowedOrigins := envvar.GetString("ALLOWED_ORIGINS", "")
 
 		httpTimeout := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
 

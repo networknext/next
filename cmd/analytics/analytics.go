@@ -2,14 +2,25 @@ package main
 
 import (
 	"context"
+	"time"
 
-	// "github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/envvar"
 )
+
+var routeMatrixURI string
+var routeMatrixInterval time.Duration
 
 func main() {
 
 	service := common.CreateService("analytics")
+
+	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001")
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 10 * time.Second)
+
+	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("route matrix interval: %s", routeMatrixInterval)
 
 	ProcessRelayStats(service.Context)
 
@@ -24,7 +35,16 @@ func main() {
 
 func ProcessRelayStats(ctx context.Context) {
 
-	// todo: grab the route matrix every 10 seconds and publish relay and ping stats (no need for pubsub)
+	ticker := time.NewTicker(routeMatrixInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			core.Debug("get route matrix")
+		}
+	}
 }
 
 func ProcessBilling(ctx context.Context) {
@@ -149,13 +169,13 @@ func mainReturnWithCode() int {
 	if gcpOK {
 		// Google BigQuery
 		{
-			pingStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_PING_STATS", "")
+			pingStatsDataset := envvar.GetString("GOOGLE_BIGQUERY_DATASET_PING_STATS", "")
 			if pingStatsDataset == "" {
 				core.Error("envvar GOOGLE_BIGQUERY_DATASET_PING_STATS not set")
 				return 1
 			}
 
-			pingStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PING_STATS", "")
+			pingStatsTableName := envvar.GetString("GOOGLE_BIGQUERY_TABLE_PING_STATS", "")
 			if pingStatsTableName == "" {
 				core.Error("envvar GOOGLE_BIGQUERY_TABLE_PING_STATS not set")
 				return 1
@@ -176,13 +196,13 @@ func mainReturnWithCode() int {
 		}
 
 		{
-			relayStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_RELAY_STATS", "")
+			relayStatsDataset := envvar.GetString("GOOGLE_BIGQUERY_DATASET_RELAY_STATS", "")
 			if relayStatsDataset == "" {
 				core.Error("envvar GOOGLE_BIGQUERY_DATASET_RELAY_STATS not set")
 				return 1
 			}
 
-			relayStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_RELAY_STATS", "")
+			relayStatsTableName := envvar.GetString("GOOGLE_BIGQUERY_TABLE_RELAY_STATS", "")
 			if relayStatsTableName == "" {
 				core.Error("envvar GOOGLE_BIGQUERY_TABLE_RELAY_STATS not set")
 				return 1
@@ -218,8 +238,8 @@ func mainReturnWithCode() int {
 
 		// Google pubsub forwarder
 		{
-			topicName := envvar.Get("PING_STATS_TOPIC_NAME", "ping_stats")
-			subscriptionName := envvar.Get("PING_STATS_SUBSCRIPTION_NAME", "ping_stats")
+			topicName := envvar.GetString("PING_STATS_TOPIC_NAME", "ping_stats")
+			subscriptionName := envvar.GetString("PING_STATS_SUBSCRIPTION_NAME", "ping_stats")
 
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
@@ -235,8 +255,8 @@ func mainReturnWithCode() int {
 		}
 
 		{
-			topicName := envvar.Get("RELAY_STATS_TOPIC_NAME", "relay_stats")
-			subscriptionName := envvar.Get("RELAY_STATS_SUBSCRIPTION_NAME", "relay_stats")
+			topicName := envvar.GetString("RELAY_STATS_TOPIC_NAME", "relay_stats")
+			subscriptionName := envvar.GetString("RELAY_STATS_SUBSCRIPTION_NAME", "relay_stats")
 
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
@@ -309,7 +329,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "41001")
+		port := envvar.GetString("PORT", "41001")
 		if port == "" {
 			core.Error("envvar PORT not set: %v", err)
 			return 1
@@ -449,7 +469,7 @@ func mainReturnWithCode() int {
 	httpTimeout := envvar.GetDuration("HTTP_TIMEOUT", 4*time.Second)
 
 	// Get route matrix URI
-	routeMatrixURI := envvar.Get("ROUTE_MATRIX_URI", "")
+	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "")
 	if routeMatrixURI == "" {
 		core.Error("ROUTE_MATRIX_URI not set")
 		return 1
@@ -587,7 +607,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP Server
 	{
-		port := envvar.Get("PORT", "41002")
+		port := envvar.GetString("PORT", "41002")
 		if port == "" {
 			core.Error("PORT not set")
 			return 1
@@ -737,7 +757,7 @@ func mainReturnWithCode() int {
 	if gcpOK {
 		// Google BigQuery
 		if featureBilling2 {
-			billingDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BILLING", "")
+			billingDataset := envvar.GetString("GOOGLE_BIGQUERY_DATASET_BILLING", "")
 			if billingDataset == "" {
 				core.Error("GOOGLE_BIGQUERY_DATASET_BILLING not set")
 				return 1
@@ -749,9 +769,9 @@ func mainReturnWithCode() int {
 
 			batchSizePercent := envvar.GetFloat("FEATURE_BILLING2_BATCH_SIZE_PERCENT", 0.80)
 
-			billing2TableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING", "billing2")
+			billing2TableName := envvar.GetString("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING", "billing2")
 
-			billing2SummaryTableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY", "billing2_session_summary")
+			billing2SummaryTableName := envvar.GetString("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY", "billing2_session_summary")
 
 			// Pass context without cancel to ensure writing continues even past reception of shutdown signal
 			bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
@@ -811,8 +831,8 @@ func mainReturnWithCode() int {
 
 				retryTime := envvar.GetDuration("FEATURE_BILLING2_RETRY_TIME", time.Second*1)
 
-				topicName := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
-				subscriptionName := envvar.Get("FEATURE_BILLING2_SUBSCRIPTION_NAME", "billing2")
+				topicName := envvar.GetString("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+				subscriptionName := envvar.GetString("FEATURE_BILLING2_SUBSCRIPTION_NAME", "billing2")
 
 				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 				defer cancelFunc()
@@ -890,7 +910,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "41000")
+		port := envvar.GetString("PORT", "41000")
 		if port == "" {
 			core.Error("PORT not set")
 			return 1
@@ -1027,7 +1047,7 @@ func mainReturnWithCode() int {
 
 	if gcpOK {
 		// Google BigQuery
-		matchDataDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_MATCH_DATA", "")
+		matchDataDataset := envvar.GetString("GOOGLE_BIGQUERY_DATASET_MATCH_DATA", "")
 		if matchDataDataset == "" {
 			core.Error("GOOGLE_BIGQUERY_DATASET_MATCH_DATA not set")
 			return 1
@@ -1041,7 +1061,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		matchDataTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_MATCH_DATA", "match_data")
+		matchDataTableName := envvar.GetString("GOOGLE_BIGQUERY_TABLE_MATCH_DATA", "match_data")
 
 		// Pass context without cancel to ensure writing continues even past reception of shutdown signal
 		bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
@@ -1086,8 +1106,8 @@ func mainReturnWithCode() int {
 			entryVeto := envvar.GetBool("MATCH_DATA_ENTRY_VETO", false)
 			maxRetries := envvar.GetInt("MATCH_DATA_MAX_RETRIES", 25)
 			retryTime := envvar.GetDuration("MATCH_DATA_RETRY_TIME", time.Second*1)
-			topicName := envvar.Get("MATCH_DATA_TOPIC_NAME", "match_data")
-			subscriptionName := envvar.Get("MATCH_DATA_SUBSCRIPTION_NAME", "match_data")
+			topicName := envvar.GetString("MATCH_DATA_TOPIC_NAME", "match_data")
+			subscriptionName := envvar.GetString("MATCH_DATA_SUBSCRIPTION_NAME", "match_data")
 
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
@@ -1161,7 +1181,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "41003")
+		port := envvar.GetString("PORT", "41003")
 		if port == "" {
 			core.Error("PORT not set")
 			return 1

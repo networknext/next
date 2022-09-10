@@ -67,7 +67,7 @@ func mainReturnWithCode() int {
 
 	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 
-	httpPort := envvar.Get("PORT", "50001")
+	httpPort := envvar.GetString("PORT", "50001")
 	if httpPort == "" {
 		core.Error("PORT not set")
 		return 1

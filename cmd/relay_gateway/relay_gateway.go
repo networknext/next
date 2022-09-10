@@ -27,9 +27,9 @@ func main() {
 
 	service := common.CreateService("relay_gateway_new")
 
-	redisHostname = envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.Get("REDIS_PASSWORD", "")
-	redisPubsubChannelName = envvar.Get("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
+	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 100*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
