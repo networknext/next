@@ -2,8 +2,6 @@ package common
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net"
 
 	"github.com/networknext/backend/modules/encoding"
@@ -71,17 +69,6 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *CostMatrix) ReadFrom(reader io.Reader) (int64, error) {
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return 0, err
-	}
-
-	readStream := encoding.CreateReadStream(data)
-	err = m.Serialize(readStream)
-	return int64(readStream.GetBytesProcessed()), err
-}
-
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
 	ws, err := encoding.CreateWriteStream(buffer)
@@ -94,3 +81,9 @@ func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 	ws.Flush()
 	return buffer[:ws.GetBytesProcessed()], nil
 }
+
+func (m *CostMatrix) Read(buffer []byte) error {
+	readStream := encoding.CreateReadStream(buffer)
+	return m.Serialize(readStream)
+}
+

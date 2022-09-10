@@ -46,10 +46,10 @@ func main() {
 func ProcessCostMatrix(ctx context.Context) {
 
 	httpClient := &http.Client{
-		Timeout: routeMatrixInterval,
+		Timeout: costMatrixInterval,
 	}
 
-	ticker := time.NewTicker(routeMatrixInterval)
+	ticker := time.NewTicker(costMatrixInterval)
 
 	go func() {	
 		for {
@@ -62,7 +62,7 @@ func ProcessCostMatrix(ctx context.Context) {
 
 				core.Debug("get cost matrix")
 
-				response, err := httpClient.Get(routeMatrixURI)
+				response, err := httpClient.Get(costMatrixURI)
 				if err != nil {
 					core.Error("failed to http get cost matrix: %v", err)
 					continue
@@ -70,14 +70,22 @@ func ProcessCostMatrix(ctx context.Context) {
 
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err != nil {
-					core.Error("failed to read cost matrix: %v", err)
+					core.Error("failed to read cost matrix data: %v", err)
 					continue
 				}
 
 				response.Body.Close()
 
-				// todo: read in cost matrix
-				_ = buffer
+				costMatrix := common.CostMatrix{}
+				
+				err = costMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read cost matrix: %v", err)
+					continue
+				}
+
+				// todo: analyze cost matrix and write some useful stuff to bigquery
+				_ = costMatrix
 			}
 		}
 	}()
@@ -116,8 +124,16 @@ func ProcessRouteMatrix(ctx context.Context) {
 
 				response.Body.Close()
 
-				// todo: read in route matrix
-				_ = buffer
+				routeMatrix := common.RouteMatrix{}
+				
+				err = routeMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				// todo: analyze route matrix and write some useful stuff to bigquery
+				_ = routeMatrix
 			}
 		}
 	}()
