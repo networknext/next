@@ -27,8 +27,8 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	Version            uint32
 	DestRelays         []bool
-	FullRelayIds 	   []uint64
-	FullRelayIndexSet  map[int32]bool   // this should just be an array of bools?
+	FullRelayIds       []uint64
+	FullRelayIndexSet  map[int32]bool // this should just be an array of bools?
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
@@ -150,7 +150,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 
 		numPingEntries := uint32(0)
-		
+
 		stream.SerializeUint32(&numPingEntries)
 
 		var pingStats []analytics.PingStatsEntry
@@ -160,7 +160,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 
 		for i := uint32(0); i < numPingEntries; i++ {
-			
+
 			entry := &pingStats[i]
 
 			stream.SerializeUint64(&entry.Timestamp)
@@ -259,4 +259,154 @@ func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 func (m *RouteMatrix) Read(buffer []byte) error {
 	readStream := encoding.CreateReadStream(buffer)
 	return m.Serialize(readStream)
+}
+
+type RouteMatrixAnalysis struct {
+	TotalRoutes                          int
+	NumRelayPairs                        int
+	NumValidRelayPairs                   int
+	NumValidRelayPairsWithoutImprovement int
+	AverageNumRoutes                     float32
+	AverageRouteLength                   float32
+}
+
+func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
+
+	analysis := RouteMatrixAnalysis{}
+
+	src := m.RelayIds
+	dest := m.RelayIds
+
+	numRelayPairs := 0.0
+	numValidRelayPairs := 0.0
+
+	numValidRelayPairsWithoutImprovement := 0.0
+
+	buckets := make([]int, 11)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				numRelayPairs++
+				abFlatIndex := TriMatrixIndex(i, j)
+				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
+					numValidRelayPairs++
+					improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
+					if improvement > 0.0 {
+						if improvement <= 5 {
+							buckets[0]++
+						} else if improvement <= 10 {
+							buckets[1]++
+						} else if improvement <= 15 {
+							buckets[2]++
+						} else if improvement <= 20 {
+							buckets[3]++
+						} else if improvement <= 25 {
+							buckets[4]++
+						} else if improvement <= 30 {
+							buckets[5]++
+						} else if improvement <= 35 {
+							buckets[6]++
+						} else if improvement <= 40 {
+							buckets[7]++
+						} else if improvement <= 45 {
+							buckets[8]++
+						} else if improvement <= 50 {
+							buckets[9]++
+						} else {
+							buckets[10]++
+						}
+					} else {
+						numValidRelayPairsWithoutImprovement++
+					}
+				}
+			}
+		}
+	}
+
+	analysis.NumRelayPairs = int(numRelayPairs)
+	analysis.NumValidRelayPairs = int(numValidRelayPairs)
+	analysis.NumValidRelayPairsWithoutImprovement = int(numValidRelayPairsWithoutImprovement)
+
+	/*
+		fmt.Fprintf(writer, "%s Improvement:\n\n", "RTT")
+		fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
+
+		for i := range buckets {
+			if i != len(buckets)-1 {
+				fmt.Fprintf(writer, "    %d-%d%s: %d (%.2f%%)\n", i*5, (i+1)*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
+			} else {
+				fmt.Fprintf(writer, "    %d%s+: %d (%.2f%%)\n", i*5, "ms", buckets[i], float64(buckets[i])/numValidRelayPairs*100.0)
+			}
+		}
+	*/
+
+	totalRoutes := uint64(0)
+	maxRouteLength := int32(0)
+	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
+	relayPairsWithNoRoutes := 0
+	relayPairsWithOneRoute := 0
+	totalRouteLength := uint64(0)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				relayPairs++
+				ijFlatIndex := TriMatrixIndex(i, j)
+				n := m.RouteEntries[ijFlatIndex].NumRoutes
+				if n > maxRoutesPerRelayPair {
+					maxRoutesPerRelayPair = n
+				}
+				totalRoutes += uint64(n)
+				if n == 0 {
+					relayPairsWithNoRoutes++
+				}
+				if n == 1 {
+					relayPairsWithOneRoute++
+				}
+				for k := 0; k < int(n); k++ {
+					numRelays := m.RouteEntries[ijFlatIndex].RouteNumRelays[k]
+					totalRouteLength += uint64(numRelays)
+					if numRelays > maxRouteLength {
+						maxRouteLength = numRelays
+					}
+				}
+			}
+		}
+	}
+
+	numDestRelays := 0
+	for i := range m.DestRelays {
+		if m.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
+	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
+	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
+
+	/*
+		fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
+		fmt.Fprintf(writer, "    %d relays\n", len(m.RelayIDs))
+		fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
+		fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
+		fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
+		fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
+		fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
+		fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
+		fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
+	*/
+
+	analysis.TotalRoutes = int(totalRoutes)
+	analysis.AverageNumRoutes = float32(averageNumRoutes)
+	analysis.AverageRouteLength = float32(averageRouteLength)
+
+	return analysis
 }

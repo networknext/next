@@ -1,12 +1,12 @@
 package common
 
 import (
+	"fmt"
 	"math"
+	"net"
+	"sort"
 	"sync"
 	"time"
-	"net"
-	"fmt"
-	"sort"
 )
 
 const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
@@ -275,12 +275,12 @@ const RELAY_STATUS_SHUTTING_DOWN = 2
 var RelayStatusStrings = [3]string{"offline", "online", "shutting down"}
 
 type ActiveRelay struct {
-	Name string
-	Id uint64
-	Address net.UDPAddr
-	Status int
+	Name     string
+	Id       uint64
+	Address  net.UDPAddr
+	Status   int
 	Sessions int
-	Version string
+	Version  string
 }
 
 func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
@@ -288,13 +288,13 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 	relayStats.mutex.RLock()
 	keys := make([]uint64, len(relayStats.sourceEntries))
 	index := 0
-    for k := range relayStats.sourceEntries {
-        keys[index] = k
-        index++
-    }
+	for k := range relayStats.sourceEntries {
+		keys[index] = k
+		index++
+	}
 	relayStats.mutex.RUnlock()
 
-	activeRelays := make([]ActiveRelay, 0, len(keys))	
+	activeRelays := make([]ActiveRelay, 0, len(keys))
 
 	currentTime := time.Now()
 
@@ -311,14 +311,14 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 		sourceEntry.mutex.RLock()
 
 		activeRelay := ActiveRelay{}
-		
+
 		activeRelay.Name = sourceEntry.relayName
 		activeRelay.Address = sourceEntry.relayAddress
 		activeRelay.Id = sourceEntry.relayId
 		activeRelay.Sessions = sourceEntry.sessions
 
 		activeRelay.Status = RELAY_STATUS_ONLINE
-		if currentTime.Sub(sourceEntry.lastUpdateTime) > 10 * time.Second {
+		if currentTime.Sub(sourceEntry.lastUpdateTime) > 10*time.Second {
 			activeRelay.Status = RELAY_STATUS_ONLINE
 		}
 		if sourceEntry.shuttingDown {
@@ -332,7 +332,7 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 		activeRelays = append(activeRelays, activeRelay)
 	}
 
-	sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })	
+	sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })
 
 	return activeRelays
 }

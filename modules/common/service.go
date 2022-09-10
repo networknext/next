@@ -78,7 +78,7 @@ type Service struct {
 	currentMagic  []byte
 	previousMagic []byte
 
-	healthHandler func (w http.ResponseWriter, r *http.Request)
+	healthHandler func(w http.ResponseWriter, r *http.Request)
 }
 
 func CreateService(serviceName string) *Service {
@@ -173,7 +173,7 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 	return upcomingMagic, currentMagic, previousMagic
 }
 
-func (service *Service) OverrideHealthHandler(healthHandler func (w http.ResponseWriter, r *http.Request)) {
+func (service *Service) OverrideHealthHandler(healthHandler func(w http.ResponseWriter, r *http.Request)) {
 	service.healthHandler = healthHandler
 }
 

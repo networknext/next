@@ -86,4 +86,3 @@ func (m *CostMatrix) Read(buffer []byte) error {
 	readStream := encoding.CreateReadStream(buffer)
 	return m.Serialize(readStream)
 }
-

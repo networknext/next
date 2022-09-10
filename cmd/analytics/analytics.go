@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"time"
 	"io/ioutil"
 	"net/http"
 	"sync"
-	
-	"github.com/networknext/backend/modules/core"
+	"time"
+
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
 
@@ -25,8 +25,8 @@ func main() {
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
-	costMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1 * time.Second)
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1 * time.Second)
+	costMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
@@ -54,7 +54,7 @@ func ProcessCostMatrix(ctx context.Context) {
 
 	ticker := time.NewTicker(costMatrixInterval)
 
-	go func() {	
+	go func() {
 		for {
 			select {
 
@@ -78,7 +78,7 @@ func ProcessCostMatrix(ctx context.Context) {
 				response.Body.Close()
 
 				costMatrix := common.CostMatrix{}
-				
+
 				err = costMatrix.Read(buffer)
 				if err != nil {
 					core.Error("failed to read cost matrix: %v", err)
@@ -124,7 +124,7 @@ func ProcessRouteMatrix(ctx context.Context) {
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
-	go func() {	
+	go func() {
 		for {
 			select {
 
@@ -148,7 +148,7 @@ func ProcessRouteMatrix(ctx context.Context) {
 				response.Body.Close()
 
 				routeMatrix := common.RouteMatrix{}
-				
+
 				err = routeMatrix.Read(buffer)
 				if err != nil {
 					core.Error("failed to read route matrix: %v", err)
@@ -173,11 +173,22 @@ func ProcessRouteMatrix(ctx context.Context) {
 				}
 				routeMatrixNumDatacenters := len(datacenterMap)
 
+				routeMatrixNumFullRelays := len(routeMatrix.FullRelayIds)
+
+				analysis := routeMatrix.Analyze()
+
 				core.Debug("---------------------------------------------")
 				core.Debug("route matrix bytes: %d", routeMatrixBytes)
 				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
 				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)
+				core.Debug("route matrix num full relays: %d", routeMatrixNumFullRelays)
 				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
+				core.Debug("route matrix total routes: %d", analysis.TotalRoutes)
+				core.Debug("route matrix num relay pairs: %d", analysis.NumRelayPairs)
+				core.Debug("route matrix num valid relay pairs: %d", analysis.NumValidRelayPairs)
+				core.Debug("route matrix num valid relay pairs without improvement: %d", analysis.NumValidRelayPairsWithoutImprovement)
+				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
+				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
 				core.Debug("---------------------------------------------")
 
 				logMutex.Unlock()
@@ -191,18 +202,18 @@ func ProcessBilling(ctx context.Context) {
 	// todo: create google pubsub consumer
 
 	/*
-	for {
-		select {
+		for {
+			select {
 
-		case <-service.Context.Done():
-			return
+			case <-service.Context.Done():
+				return
 
-		case message := <-consumer.MessageChannel:
-			// todo: process message
-			core.Debug("received billing message")
-			_ = message
+			case message := <-consumer.MessageChannel:
+				// todo: process message
+				core.Debug("received billing message")
+				_ = message
+			}
 		}
-	}
 	*/
 }
 
@@ -211,17 +222,17 @@ func ProcessMatchData(ctx context.Context) {
 	// todo: create google pubsub consumer
 
 	/*
-	for {
-		select {
+		for {
+			select {
 
-		case <-service.Context.Done():
-			return
+			case <-service.Context.Done():
+				return
 
-		case message := <-consumer.MessageChannel:
-			// todo: process message
-			core.Debug("received match data message")
-			_ = message
+			case message := <-consumer.MessageChannel:
+				// todo: process message
+				core.Debug("received match data message")
+				_ = message
+			}
 		}
-	}
 	*/
 }
