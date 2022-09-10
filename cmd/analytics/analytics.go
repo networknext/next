@@ -187,6 +187,8 @@ func ProcessRouteMatrix(ctx context.Context) {
 				core.Debug("route matrix num relay pairs: %d", analysis.NumRelayPairs)
 				core.Debug("route matrix num valid relay pairs: %d", analysis.NumValidRelayPairs)
 				core.Debug("route matrix num valid relay pairs without improvement: %d", analysis.NumValidRelayPairsWithoutImprovement)
+				core.Debug("route matrix num relay pairs with no routes: %d", analysis.NumRelayPairsWithNoRoutes)
+				core.Debug("route matrix num relay pairs with one route: %d", analysis.NumRelayPairsWithOneRoute)
 				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
 				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
 				core.Debug("---------------------------------------------")

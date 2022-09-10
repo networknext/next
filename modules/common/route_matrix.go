@@ -266,6 +266,8 @@ type RouteMatrixAnalysis struct {
 	NumRelayPairs                        int
 	NumValidRelayPairs                   int
 	NumValidRelayPairsWithoutImprovement int
+	NumRelayPairsWithNoRoutes            int
+	NumRelayPairsWithOneRoute            int
 	AverageNumRoutes                     float32
 	AverageRouteLength                   float32
 }
@@ -331,6 +333,8 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	analysis.NumValidRelayPairs = int(numValidRelayPairs)
 	analysis.NumValidRelayPairsWithoutImprovement = int(numValidRelayPairsWithoutImprovement)
 
+	// todo: formalize the buckets and store them in analysis struct
+
 	/*
 		fmt.Fprintf(writer, "%s Improvement:\n\n", "RTT")
 		fmt.Fprintf(writer, "    None: %d (%.2f%%)\n", int(numValidRelayPairsWithoutImprovement), numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
@@ -392,21 +396,11 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
 	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
-	/*
-		fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
-		fmt.Fprintf(writer, "    %d relays\n", len(m.RelayIDs))
-		fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
-		fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
-		fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
-		fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
-		fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
-		fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)
-		fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
-	*/
-
 	analysis.TotalRoutes = int(totalRoutes)
 	analysis.AverageNumRoutes = float32(averageNumRoutes)
 	analysis.AverageRouteLength = float32(averageRouteLength)
+	analysis.NumRelayPairsWithNoRoutes = relayPairsWithNoRoutes
+	analysis.NumRelayPairsWithOneRoute = relayPairsWithOneRoute
 
 	return analysis
 }
