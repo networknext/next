@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
+const HistorySize = 300 // 5 minutes @ one relay update per-second
 
 const InvalidRouteValue = float32(1000000000.0)
 
@@ -32,7 +32,7 @@ func historyMean(history []float32) float32 {
 	return float32(sum / float64(HistorySize))
 }
 
-type RelayStatsDestEntry struct {
+type RelayManagerDestEntry struct {
 	lastUpdateTime    time.Time
 	rtt               float32
 	jitter            float32
@@ -43,7 +43,7 @@ type RelayStatsDestEntry struct {
 	historyPacketLoss [HistorySize]float32
 }
 
-type RelayStatsSourceEntry struct {
+type RelayManagerSourceEntry struct {
 	mutex          sync.RWMutex
 	lastUpdateTime time.Time
 	relayId        uint64
@@ -52,21 +52,21 @@ type RelayStatsSourceEntry struct {
 	sessions       int
 	relayVersion   string
 	shuttingDown   bool
-	destEntries    map[uint64]*RelayStatsDestEntry
+	destEntries    map[uint64]*RelayManagerDestEntry
 }
 
-type RelayStats struct {
+type RelayManager struct {
 	mutex         sync.RWMutex
-	sourceEntries map[uint64]*RelayStatsSourceEntry
+	sourceEntries map[uint64]*RelayManagerSourceEntry
 }
 
-func CreateRelayStats() *RelayStats {
-	relayStats := &RelayStats{}
-	relayStats.sourceEntries = make(map[uint64]*RelayStatsSourceEntry)
-	return relayStats
+func CreateRelayManager() *RelayManager {
+	relayManager := &RelayManager{}
+	relayManager.sourceEntries = make(map[uint64]*RelayManagerSourceEntry)
+	return relayManager
 }
 
-func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
+func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
 
 	/*
 		Process Relay Update
@@ -103,16 +103,16 @@ func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName strin
 
 	// look up the entry corresponding to the source relay, or create it if it doesn't exist
 
-	relayStats.mutex.Lock()
+	relayManager.mutex.Lock()
 
-	sourceEntry, exists := relayStats.sourceEntries[relayId]
+	sourceEntry, exists := relayManager.sourceEntries[relayId]
 	if !exists {
-		sourceEntry = &RelayStatsSourceEntry{}
-		sourceEntry.destEntries = make(map[uint64]*RelayStatsDestEntry)
-		relayStats.sourceEntries[relayId] = sourceEntry
+		sourceEntry = &RelayManagerSourceEntry{}
+		sourceEntry.destEntries = make(map[uint64]*RelayManagerDestEntry)
+		relayManager.sourceEntries[relayId] = sourceEntry
 	}
 
-	relayStats.mutex.Unlock()
+	relayManager.mutex.Unlock()
 
 	// update stats for the source relay, then...
 	// iterate across all samples and insert them into the history buffer
@@ -136,7 +136,7 @@ func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName strin
 
 		destEntry, exists := sourceEntry.destEntries[destRelayId]
 		if !exists {
-			destEntry = &RelayStatsDestEntry{}
+			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.destEntries[destRelayId] = destEntry
 		}
 
@@ -169,7 +169,7 @@ func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName strin
 	sourceEntry.mutex.Unlock()
 }
 
-func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
+func (relayStats *RelayManager) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
 	sourceRTT := InvalidRouteValue
 	sourceJitter := InvalidRouteValue
@@ -181,8 +181,8 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 
 	// get source ping values
 	{
-		relayStats.mutex.RLock()
-		sourceEntry, exists := relayStats.sourceEntries[sourceRelayId]
+		relayManager.mutex.RLock()
+		sourceEntry, exists := relayManager.sourceEntries[sourceRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
 			destEntry, exists := sourceEntry.destEntries[destRelayId]
@@ -195,13 +195,13 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 			}
 			sourceEntry.mutex.RUnlock()
 		}
-		relayStats.mutex.RUnlock()
+		relayManager.mutex.RUnlock()
 	}
 
 	// get dest ping values
 	{
-		relayStats.mutex.RLock()
-		sourceEntry, exists := relayStats.sourceEntries[destRelayId]
+		relayManager.mutex.RLock()
+		sourceEntry, exists := relayManager.sourceEntries[destRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
 			destEntry, exists := sourceEntry.destEntries[sourceRelayId]
@@ -214,7 +214,7 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 			}
 			sourceEntry.mutex.RUnlock()
 		}
-		relayStats.mutex.RUnlock()
+		relayManager.mutex.RUnlock()
 	}
 
 	// take maximum values in each direction
@@ -238,7 +238,7 @@ func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uin
 	return rtt, jitter, packetLoss
 }
 
-func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
+func (relayStats *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 
@@ -256,7 +256,7 @@ func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJit
 		for j := 0; j < i; j++ {
 			index := TriMatrixIndex(i, j)
 			destRelayId := uint64(relayIds[j])
-			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
+			rtt, jitter, packetLoss := relayManager.GetSample(currentTime, sourceRelayId, destRelayId)
 			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
 				costs[index] = int32(math.Ceil(float64(rtt)))
 			} else {
@@ -283,16 +283,16 @@ type ActiveRelay struct {
 	Version  string
 }
 
-func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
+func (relayStats *RelayManager) GetActiveRelays() []ActiveRelay {
 
-	relayStats.mutex.RLock()
-	keys := make([]uint64, len(relayStats.sourceEntries))
+	relayManager.mutex.RLock()
+	keys := make([]uint64, len(relayManager.sourceEntries))
 	index := 0
-	for k := range relayStats.sourceEntries {
+	for k := range relayManager.sourceEntries {
 		keys[index] = k
 		index++
 	}
-	relayStats.mutex.RUnlock()
+	relayManager.mutex.RUnlock()
 
 	activeRelays := make([]ActiveRelay, 0, len(keys))
 
@@ -300,9 +300,9 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 
 	for i := range keys {
 
-		relayStats.mutex.RLock()
-		sourceEntry, ok := relayStats.sourceEntries[keys[i]]
-		relayStats.mutex.RUnlock()
+		relayManager.mutex.RLock()
+		sourceEntry, ok := relayManager.sourceEntries[keys[i]]
+		relayManager.mutex.RUnlock()
 
 		if !ok {
 			continue
@@ -337,11 +337,11 @@ func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
 	return activeRelays
 }
 
-func (relayStats *RelayStats) GetRelaysCSV() []byte {
+func (relayStats *RelayManager) GetRelaysCSV() []byte {
 
 	relaysCSV := "name,address,id,status,sessions,version\n"
 
-	activeRelays := relayStats.GetActiveRelays()
+	activeRelays := relayManager.GetActiveRelays()
 
 	for i := range activeRelays {
 		relay := activeRelays[i]
