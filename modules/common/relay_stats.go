@@ -210,8 +210,6 @@ func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
 	return entries, true
 }
 
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
 func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 
 	bqEntry := make(map[string]bigquery.Value)
