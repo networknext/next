@@ -981,6 +981,10 @@ dev-pubsub-emulator:
 	@-pkill -f "pubsub-emulator"
 	gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000
 
+.PHONY: dev-bigquery-emulator
+dev-bigquery-emulator:
+	bigquery-emulator --project="local"
+
 .PHONY: format
 format:
 	@$(GOFMT) -s -w .
