@@ -102,11 +102,6 @@ ifndef RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE
 export RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE = 90.0
 endif
 
-## By default we set only error and warning logs for server_backend and relay_backend
-ifndef BACKEND_LOG_LEVEL
-export BACKEND_LOG_LEVEL = warn
-endif
-
 ifndef ROUTE_MATRIX_URI
 export ROUTE_MATRIX_URI = http://127.0.0.1:30001/route_matrix
 endif
@@ -184,34 +179,6 @@ ifndef ALLOWED_ORIGINS
 export ALLOWED_ORIGINS = http://127.0.0.1:8080,http://127.0.0.1:8081
 endif
 
-ifndef BILLING_CLIENT_COUNT
-export BILLING_CLIENT_COUNT = 1
-endif
-
-ifndef BILLING_BATCHED_MESSAGE_COUNT
-export BILLING_BATCHED_MESSAGE_COUNT = 20
-endif
-
-ifndef BILLING_BATCHED_MESSAGE_MIN_BYTES
-export BILLING_BATCHED_MESSAGE_MIN_BYTES = 1024
-endif
-
-ifndef BILLING_ENTRY_VETO
-export BILLING_ENTRY_VETO = true
-endif
-
-ifndef MATCH_DATA_BATCHED_MESSAGE_COUNT
-export MATCH_DATA_BATCHED_MESSAGE_COUNT = 1
-endif
-
-ifndef MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES
-export MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES = 100
-endif
-
-ifndef MATCH_DATA_ENTRY_VETO
-export MATCH_DATA_ENTRY_VETO = true
-endif
-
 ifndef POST_SESSION_THREAD_COUNT
 export POST_SESSION_THREAD_COUNT = 100
 endif
@@ -263,16 +230,6 @@ endif
 
 ifndef BIGTABLE_HISTORICAL_TXT
 export BIGTABLE_HISTORICAL_TXT = ./testdata/bigtable_historical.txt
-endif
-
-## New Relay Backend
-
-ifndef MATRIX_STORE_ADDRESS
-export MATRIX_STORE_ADDRESS = 127.0.0.1:6379
-endif
-
-ifndef RELAY_BACKEND_ADDRESSES
-export RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
 ifndef FEATURE_RELAY_FULL_BANDWIDTH
@@ -405,18 +362,6 @@ dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
 dev-portal: build-portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 ./dist/portal
 
-.PHONY: dev-billing
-dev-billing: build-billing ## runs a local billing service
-	@PORT=41000 ./dist/billing
-
-.PHONY: dev-analytics-pusher
-dev-analytics-pusher: build-analytics-pusher ## runs a local analytics pusher service
-	@PORT=41002 ./dist/analytics_pusher
-
-.PHONY: dev-match-data
-dev-match-data: build-match-data ## runs a local match data service
-	@PORT=41003 ./dist/match_data
-
 .PHONY: dev-analytics
 dev-analytics: build-analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
@@ -456,7 +401,7 @@ test-relay: dist build-reference-relay ## runs relay unit tests
 .PHONY: build-analytics
 build-analytics: dist
 	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/analytics ./cmd/analytics/analytics.go
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/analytics ./cmd/analytics/analytics.go
 	@printf "done\n"
 
 ifeq ($(OS),darwin)
@@ -655,28 +600,10 @@ build-server-backend5:
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
-.PHONY: build-billing
-build-billing:
-	@printf "Building billing... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/billing ./cmd/billing/billing.go
-	@printf "done\n"
-
-.PHONY: build-analytics-pusher
-build-analytics-pusher:
-	@printf "Building analytics pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
-	@printf "done\n"
-
 .PHONY: build-magic-backend
 build-magic-backend:
 	@echo "Building magic backend..."
 	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/magic_backend ./cmd/magic_backend/magic_backend.go
-
-.PHONY: build-match-data
-build-match-data:
-	@printf "Building match data... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/match_data ./cmd/match_data/match_data.go
-	@printf "done\n"
 
 .PHONY: build-fake-server
 build-fake-server: dist
@@ -695,10 +622,6 @@ deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
 
-.PHONY: deploy-analytics-pusher-dev
-deploy-analytics-pusher-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
-
 .PHONY: deploy-pingdom-dev
 deploy-pingdom-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
@@ -710,10 +633,6 @@ deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
 
-.PHONY: deploy-analytics-pusher-staging
-deploy-analytics-pusher-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
-
 .PHONY: deploy-pingdom-staging
 deploy-pingdom-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
@@ -724,10 +643,6 @@ deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
 	./deploy/deploy.sh -e prod -c prod-3-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
 	./deploy/deploy.sh -e prod -c prod-4-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-
-.PHONY: deploy-analytics-pusher-prod
-deploy-analytics-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t analytics-pusher -n analytics_pusher -b gs://production_artifacts
 
 .PHONY: deploy-pingdom-prod
 deploy-pingdom-prod:
@@ -745,14 +660,6 @@ build-load-test-server-artifacts: build-load-test-server
 build-load-test-client-artifacts: build-load-test-client
 	./deploy/build-load-test-artifacts.sh -s load_test_client
 
-.PHONY: build-billing-artifacts-dev
-build-billing-artifacts-dev: build-billing
-	./deploy/build-artifacts.sh -e dev -s billing
-
-.PHONY: build-analytics-pusher-artifacts-dev
-build-analytics-pusher-artifacts-dev: build-analytics-pusher
-	./deploy/build-artifacts.sh -e dev -s analytics_pusher
-
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
@@ -760,10 +667,6 @@ build-analytics-artifacts-dev: build-analytics
 .PHONY: build-magic-backend-artifacts-dev
 build-magic-backend-artifacts-dev: build-magic-backend
 	./deploy/build-artifacts.sh -e dev -s magic_backend
-
-.PHONY: build-match-data-artifacts-dev
-build-match-data-artifacts-dev: build-match-data
-	./deploy/build-artifacts.sh -e dev -s match_data
 
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
@@ -809,14 +712,6 @@ build-test-server4-artifacts-prod: build-test-server4
 build-test-server5-artifacts-prod: build-test-server5
 	./deploy/build-artifacts.sh -e prod -s test_server5
 
-.PHONY: build-billing-artifacts-staging
-build-billing-artifacts-staging: build-billing
-	./deploy/build-artifacts.sh -e staging -s billing
-
-.PHONY: build-analytics-pusher-artifacts-staging
-build-analytics-pusher-artifacts-staging: build-analytics-pusher
-	./deploy/build-artifacts.sh -e staging -s analytics_pusher
-
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
@@ -824,10 +719,6 @@ build-analytics-artifacts-staging: build-analytics
 .PHONY: build-magic-backend-artifacts-staging
 build-magic-backend-artifacts-staging: build-magic-backend
 	./deploy/build-artifacts.sh -e staging -s magic_backend
-
-.PHONY: build-match-data-artifacts-staging
-build-match-data-artifacts-staging: build-match-data
-	./deploy/build-artifacts.sh -e staging -s match_data
 
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
@@ -853,14 +744,6 @@ build-server-backend4-artifacts-staging: build-server-backend4
 build-server-backend5-artifacts-staging: build-server-backend5
 	./deploy/build-artifacts.sh -e staging -s server_backend5
 
-.PHONY: build-billing-artifacts-prod
-build-billing-artifacts-prod: build-billing
-	./deploy/build-artifacts.sh -e prod -s billing
-
-.PHONY: build-analytics-pusher-artifacts-prod
-build-analytics-pusher-artifacts-prod: build-analytics-pusher
-	./deploy/build-artifacts.sh -e prod -s analytics_pusher
-
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
@@ -868,10 +751,6 @@ build-analytics-artifacts-prod: build-analytics
 .PHONY: build-magic-backend-artifacts-prod
 build-magic-backend-artifacts-prod: build-magic-backend
 	./deploy/build-artifacts.sh -e prod -s magic_backend
-
-.PHONY: build-match-data-artifacts-prod
-build-match-data-artifacts-prod: build-match-data
-	./deploy/build-artifacts.sh -e prod -s match_data
 
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
@@ -1096,13 +975,19 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 
 #######################
 
+.PHONY: dev-pubsub-emulator
+dev-pubsub-emulator:
+	@-pkill -f "gcloud.py beta emulators pubsub"
+	@-pkill -f "pubsub-emulator"
+	gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000
+
 .PHONY: format
 format:
 	@$(GOFMT) -s -w .
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-magic-backend build-match-data build-billing build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics build-magic-backend build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

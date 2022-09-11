@@ -63,50 +63,6 @@ func run_make(action string, log string) *bytes.Buffer {
 	return &stdout
 }
 
-/*
-func run_relay_backend(port int, log string) *bytes.Buffer {
-
-	fmt.Printf("HTTP_PORT=%d make %s\n", port, "dev-relay-backend")
-
-	cmd := exec.Command("./dist/relay_backend")
-	if cmd == nil {
-		panic("could not run relay!\n")
-		os.Exit(1)
-	}
-
-	cmd.Env = make([]string, 0)
-
-	var stdout bytes.Buffer
-
-	stdout_pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		os.Exit(1)
-	}
-
-	cmd.Start()
-
-	processes = append(processes, cmd.Process)
-
-	go func(output *bytes.Buffer) {
-		file, err := os.Create(log)
-		if err != nil {
-			panic(err)
-		}
-		writer := bufio.NewWriter(file)
-		buf := bufio.NewReader(stdout_pipe)
-		for {
-			line, _, _ := buf.ReadLine()
-			writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
-			writer.Flush()
-			output.Write(line)
-			output.Write([]byte("\n"))
-		}
-	}(&stdout)
-
-	return &stdout
-}
-*/
-
 func run_relay(port int, log string) *bytes.Buffer {
 
 	fmt.Printf("RELAY_PORT=%d make %s\n", port, "dev-relay")
@@ -156,7 +112,7 @@ func run_relay(port int, log string) *bytes.Buffer {
 
 func happy_path() int {
 
-	if envvar.Get("ENV", "") != "local" {
+	if envvar.GetString("ENV", "") != "local" {
 		core.Error("happy path only works in local env. please run 'next select local' first")
 		return 1
 	}
@@ -166,6 +122,8 @@ func happy_path() int {
 	os.Mkdir("logs", os.ModePerm)
 
 	// build and run services, as a developer would via "make dev-*" as much as possible
+
+	pubsub_emulator_stdout := run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
@@ -180,6 +138,8 @@ func happy_path() int {
 
 	server_backend4_stdout := run_make("dev-server-backend4", "logs/server_backend4")
 	server_backend5_stdout := run_make("dev-server-backend5", "logs/server_backend5")
+
+	analytics_stdout := run_make("dev-analytics", "logs/analytics")
 
 	// make sure all processes we create get cleaned up
 
@@ -400,6 +360,29 @@ func happy_path() int {
 		fmt.Printf("\nerror: server backend 5 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server_backend5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	// initialize analytics
+
+	fmt.Printf("initializing analytics\n")
+
+	analytics_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") && 
+		   	strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
+		   	analytics_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !analytics_initialized {
+		fmt.Printf("\nerror: analytics failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}

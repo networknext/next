@@ -77,7 +77,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	pingdomApiToken := envvar.Get("PINGDOM_API_TOKEN", "")
+	pingdomApiToken := envvar.GetString("PINGDOM_API_TOKEN", "")
 	if pingdomApiToken == "" {
 		core.Error("PINGDOM_API_TOKEN not set")
 		return 1
@@ -89,13 +89,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	bqDatasetName := envvar.Get("GOOGLE_BIGQUERY_DATASET_PINGDOM", "")
+	bqDatasetName := envvar.GetString("GOOGLE_BIGQUERY_DATASET_PINGDOM", "")
 	if bqDatasetName == "" {
 		core.Error("GOOGLE_BIGQUERY_DATASET_PINGDOM not set")
 		return 1
 	}
 
-	bqTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PINGDOM", "")
+	bqTableName := envvar.GetString("GOOGLE_BIGQUERY_TABLE_PINGDOM", "")
 	if bqTableName == "" {
 		core.Error("GOOGLE_BIGQUERY_TABLE_PINGDOM not set")
 		return 1
@@ -109,13 +109,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	portalHostname := envvar.Get("PORTAL_HOSTNAME", "")
+	portalHostname := envvar.GetString("PORTAL_HOSTNAME", "")
 	if portalHostname == "" {
 		core.Error("PORTAL_HOSTNAME not set")
 		return 1
 	}
 
-	serverBackendHostname := envvar.Get("SERVER_BACKEND_HOSTNAME", "")
+	serverBackendHostname := envvar.GetString("SERVER_BACKEND_HOSTNAME", "")
 	if serverBackendHostname == "" {
 		core.Error("SERVER_BACKEND_HOSTNAME not set")
 		return 1
@@ -207,7 +207,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "41006")
+		port := envvar.GetString("PORT", "41006")
 		if port == "" {
 			core.Error("PORT not set")
 			return 1
