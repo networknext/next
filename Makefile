@@ -975,6 +975,12 @@ build-relay-gateway-artifacts-prod: build-relay-gateway
 
 #######################
 
+.PHONY: dev-pubsub-emulator
+dev-pubsub-emulator:
+	@-pkill -f "gcloud.py beta emulators pubsub"
+	@-pkill -f "pubsub-emulator"
+	gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000
+
 .PHONY: format
 format:
 	@$(GOFMT) -s -w .
