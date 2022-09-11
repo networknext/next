@@ -80,7 +80,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
 	pipe := leaderElection.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("%s-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], 10*time.Second)
+	pipe.Set(timeoutContext, fmt.Sprintf("leader-election-%s-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], 10*time.Second)
 	_, err = pipe.Exec(timeoutContext)
 
 	if err != nil {
@@ -92,7 +92,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// get all "instance/*" keys via scan to be safe
 
 	instanceKeys := []string{}
-	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-%d/*", leaderElection.config.ServiceName, RedisSelectorVersion), 0).Iterator()
+	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("leader-election-%s-%d/*", leaderElection.config.ServiceName, RedisSelectorVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
