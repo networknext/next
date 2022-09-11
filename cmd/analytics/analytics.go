@@ -1,290 +1,281 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"expvar"
-	"fmt"
+	"io/ioutil"
 	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
-	"cloud.google.com/go/bigquery"
-	"github.com/go-kit/kit/log"
-	"github.com/gorilla/mux"
-
-	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/transport"
 )
 
-var (
-	buildTime     string
-	commitMessage string
-	commitHash    string
-)
+var costMatrixURI string
+var routeMatrixURI string
+var costMatrixInterval time.Duration
+var routeMatrixInterval time.Duration
+
+var logMutex sync.Mutex
 
 func main() {
-	os.Exit(mainReturnWithCode())
+
+	service := common.CreateService("analytics")
+
+	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
+	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	costMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+
+	core.Log("cost matrix uri: %s", costMatrixURI)
+	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("cost matrix interval: %s", costMatrixInterval)
+	core.Log("route matrix interval: %s", routeMatrixInterval)
+
+	ProcessCostMatrix(service)
+
+	ProcessRouteMatrix(service)
+
+	ProcessBilling(service)
+
+	ProcessMatchData(service)
+
+	service.LeaderElection()
+
+	service.StartWebServer()
+
+	service.WaitForShutdown()
 }
 
-func mainReturnWithCode() int {
-	serviceName := "analytics"
-	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
+func ProcessCostMatrix(service *common.Service) {
 
-	est, _ := time.LoadLocation("EST")
-	startTime := time.Now().In(est)
-
-	ctx, ctxCancelFunc := context.WithCancel(context.Background())
-	wg := &sync.WaitGroup{}
-
-	logger := log.NewNopLogger()
-
-	gcpProjectID := backend.GetGCPProjectID()
-	gcpOK := gcpProjectID != ""
-
-	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
-	if err != nil {
-		core.Error("could not get metrics handler: %v", err)
-		return 1
+	httpClient := &http.Client{
+		Timeout: costMatrixInterval,
 	}
 
-	env := backend.GetEnv()
+	ticker := time.NewTicker(costMatrixInterval)
 
-	if gcpOK {
-		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			core.Error("could not initialize stackdriver profiler: %v", err)
-			return 1
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				if !service.IsLeader() {
+					break
+				}
+
+				response, err := httpClient.Get(costMatrixURI)
+				if err != nil {
+					core.Error("failed to http get cost matrix: %v", err)
+					continue
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read cost matrix data: %v", err)
+					continue
+				}
+
+				response.Body.Close()
+
+				costMatrix := common.CostMatrix{}
+
+				err = costMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read cost matrix: %v", err)
+					continue
+				}
+
+				costMatrixBytes := len(buffer)
+				costMatrixNumRelays := len(costMatrix.RelayIds)
+
+				costMatrixNumDestRelays := 0
+				for i := range costMatrix.DestRelays {
+					if costMatrix.DestRelays[i] {
+						costMatrixNumDestRelays++
+					}
+				}
+
+				datacenterMap := make(map[uint64]bool)
+				for i := range costMatrix.RelayDatacenterIds {
+					datacenterMap[costMatrix.RelayDatacenterIds[i]] = true
+				}
+				costMatrixNumDatacenters := len(datacenterMap)
+
+				logMutex.Lock()
+
+				core.Debug("---------------------------------------------")
+				core.Debug("cost matrix bytes: %d", costMatrixBytes)
+				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
+				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
+				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
+				core.Debug("---------------------------------------------")
+
+				logMutex.Unlock()
+			}
 		}
+	}()
+}
+
+func ProcessRouteMatrix(service *common.Service) {
+
+	httpClient := &http.Client{
+		Timeout: routeMatrixInterval,
 	}
 
-	analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, metricsHandler)
-	if err != nil {
-		core.Error("failed to create analytics metrics: %v", err)
-		return 1
-	}
+	ticker := time.NewTicker(routeMatrixInterval)
 
-	// Create an error chan for exiting from goroutines
-	errChan := make(chan error, 1)
+	go func() {
+		for {
+			select {
 
-	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
-	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
+			case <-service.Context.Done():
+				return
 
-	if gcpOK {
-		// Google BigQuery
-		{
-			pingStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_PING_STATS", "")
-			if pingStatsDataset == "" {
-				core.Error("envvar GOOGLE_BIGQUERY_DATASET_PING_STATS not set")
-				return 1
+			case <-ticker.C:
+
+				if !service.IsLeader() {
+					break
+				}
+
+				response, err := httpClient.Get(routeMatrixURI)
+				if err != nil {
+					core.Error("failed to http get route matrix: %v", err)
+					continue
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				response.Body.Close()
+
+				routeMatrix := common.RouteMatrix{}
+
+				err = routeMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				logMutex.Lock()
+
+				routeMatrixBytes := len(buffer)
+				routeMatrixNumRelays := len(routeMatrix.RelayIds)
+
+				routeMatrixNumDestRelays := 0
+				for i := range routeMatrix.DestRelays {
+					if routeMatrix.DestRelays[i] {
+						routeMatrixNumDestRelays++
+					}
+				}
+
+				datacenterMap := make(map[uint64]bool)
+				for i := range routeMatrix.RelayDatacenterIds {
+					datacenterMap[routeMatrix.RelayDatacenterIds[i]] = true
+				}
+				routeMatrixNumDatacenters := len(datacenterMap)
+
+				routeMatrixNumFullRelays := len(routeMatrix.FullRelayIds)
+
+				analysis := routeMatrix.Analyze()
+
+				core.Debug("---------------------------------------------")
+
+				core.Debug("route matrix bytes: %d", routeMatrixBytes)
+
+				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
+				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)
+				core.Debug("route matrix num full relays: %d", routeMatrixNumFullRelays)
+				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
+
+				core.Debug("route matrix total routes: %d", analysis.TotalRoutes)
+				core.Debug("route matrix num relay pairs: %d", analysis.NumRelayPairs)
+				core.Debug("route matrix num valid relay pairs: %d", analysis.NumValidRelayPairs)
+				core.Debug("route matrix num valid relay pairs without improvement: %d", analysis.NumValidRelayPairsWithoutImprovement)
+				core.Debug("route matrix num relay pairs with no routes: %d", analysis.NumRelayPairsWithNoRoutes)
+				core.Debug("route matrix num relay pairs with one route: %d", analysis.NumRelayPairsWithOneRoute)
+				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
+				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
+
+				core.Debug("route matrix rtt bucket no improvement: %.1f%%", analysis.RTTBucket_NoImprovement)
+				core.Debug("route matrix rtt bucket 0-5ms: %.1f%%", analysis.RTTBucket_0_5ms)
+				core.Debug("route matrix rtt bucket 5-10ms: %.1f%%", analysis.RTTBucket_5_10ms)
+				core.Debug("route matrix rtt bucket 10-15ms: %.1f%%", analysis.RTTBucket_10_15ms)
+				core.Debug("route matrix rtt bucket 15-20ms: %.1f%%", analysis.RTTBucket_15_20ms)
+				core.Debug("route matrix rtt bucket 20-25ms: %.1f%%", analysis.RTTBucket_20_25ms)
+				core.Debug("route matrix rtt bucket 25-30ms: %.1f%%", analysis.RTTBucket_25_30ms)
+				core.Debug("route matrix rtt bucket 30-35ms: %.1f%%", analysis.RTTBucket_30_35ms)
+				core.Debug("route matrix rtt bucket 35-40ms: %.1f%%", analysis.RTTBucket_35_40ms)
+				core.Debug("route matrix rtt bucket 40-45ms: %.1f%%", analysis.RTTBucket_40_45ms)
+				core.Debug("route matrix rtt bucket 45-50ms: %.1f%%", analysis.RTTBucket_45_50ms)
+				core.Debug("route matrix rtt bucket 50ms+: %.1f%%", analysis.RTTBucket_50ms_Plus)
+
+				totalPercent := analysis.RTTBucket_NoImprovement +
+					analysis.RTTBucket_0_5ms +
+					analysis.RTTBucket_5_10ms +
+					analysis.RTTBucket_10_15ms +
+					analysis.RTTBucket_15_20ms +
+					analysis.RTTBucket_20_25ms +
+					analysis.RTTBucket_25_30ms +
+					analysis.RTTBucket_30_35ms +
+					analysis.RTTBucket_35_40ms +
+					analysis.RTTBucket_40_45ms +
+					analysis.RTTBucket_45_50ms +
+					analysis.RTTBucket_50ms_Plus
+
+				core.Debug("route matrix rtt bucket total percent: %.1f%%", totalPercent)
+
+				core.Debug("---------------------------------------------")
+
+				logMutex.Unlock()
 			}
-
-			pingStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PING_STATS", "")
-			if pingStatsTableName == "" {
-				core.Error("envvar GOOGLE_BIGQUERY_TABLE_PING_STATS not set")
-				return 1
-			}
-
-			pingStatsToPublishAtOnce := envvar.GetInt("PING_STATS_TO_PUBLISH_AT_ONCE", 10000)
-
-			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				core.Error("could not create ping stats bigquery client: %v", err)
-				return 1
-			}
-
-			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName, pingStatsToPublishAtOnce)
-			pingStatsWriter = &b
-
-			go b.WriteLoop(wg)
 		}
+	}()
+}
 
-		{
-			relayStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_RELAY_STATS", "")
-			if relayStatsDataset == "" {
-				core.Error("envvar GOOGLE_BIGQUERY_DATASET_RELAY_STATS not set")
-				return 1
+func ProcessBilling(service *common.Service) {
+
+	// todo: create google pubsub consumer
+
+	/*
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case message := <-consumer.MessageChannel:
+				// todo: process message
+				core.Debug("received billing message")
+				_ = message
 			}
+		}
+	*/
+}
 
-			relayStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_RELAY_STATS", "")
-			if relayStatsTableName == "" {
-				core.Error("envvar GOOGLE_BIGQUERY_TABLE_RELAY_STATS not set")
-				return 1
+func ProcessMatchData(service *common.Service) {
+
+	// todo: create google pubsub consumer
+
+	/*
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case message := <-consumer.MessageChannel:
+				// todo: process message
+				core.Debug("received match data message")
+				_ = message
 			}
-
-			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-			if err != nil {
-				core.Error("could not create relay stats bigquery client: %v", err)
-				return 1
-			}
-
-			b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, &analyticsMetrics.RelayStatsMetrics, relayStatsDataset, relayStatsTableName)
-			relayStatsWriter = &b
-
-			go b.WriteLoop(wg)
 		}
-	}
-
-	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-
-	if gcpOK || pubsubEmulatorOK {
-
-		if pubsubEmulatorOK {
-			// Prefer to use the emulator instead of actual Google pubsub
-			gcpProjectID = "local"
-
-			// Use local ping stats and relay stats writer
-			pingStatsWriter = &analytics.LocalPingStatsWriter{Metrics: &analyticsMetrics.PingStatsMetrics}
-			relayStatsWriter = &analytics.LocalRelayStatsWriter{Metrics: &analyticsMetrics.RelayStatsMetrics}
-
-			core.Debug("Detected pubsub emulator")
-		}
-
-		// Google pubsub forwarder
-		{
-			topicName := envvar.Get("PING_STATS_TOPIC_NAME", "ping_stats")
-			subscriptionName := envvar.Get("PING_STATS_SUBSCRIPTION_NAME", "ping_stats")
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
-			if err != nil {
-				core.Error("could not create ping stats pub sub forwarder: %v", err)
-				return 1
-			}
-
-			wg.Add(1)
-			go pubsubForwarder.Forward(ctx, wg)
-		}
-
-		{
-			topicName := envvar.Get("RELAY_STATS_TOPIC_NAME", "relay_stats")
-			subscriptionName := envvar.Get("RELAY_STATS_SUBSCRIPTION_NAME", "relay_stats")
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
-			if err != nil {
-				core.Error("could not create relay stats pub sub forwarder: %v", err)
-				return 1
-			}
-
-			wg.Add(1)
-			go pubsubForwarder.Forward(ctx, wg)
-		}
-	}
-
-	// Setup the status handler info
-	statusData := &metrics.AnalyticsStatus{}
-	var statusMutex sync.RWMutex
-
-	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		go func() {
-			for {
-				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
-
-				newStatusData := &metrics.AnalyticsStatus{}
-
-				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = commitHash
-				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
-				newStatusData.Uptime = time.Since(startTime).String()
-
-				newStatusData.Goroutines = int(analyticsMetrics.Goroutines.Value())
-				newStatusData.MemoryAllocated = analyticsMetrics.MemoryAllocated.Value()
-				newStatusData.PingStatsEntriesReceived = int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value())
-				newStatusData.PingStatsEntriesSubmitted = int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value())
-				newStatusData.PingStatsEntriesQueued = int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value())
-				newStatusData.PingStatsEntriesFlushed = int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value())
-				newStatusData.RelayStatsEntriesReceived = int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value())
-				newStatusData.RelayStatsEntriesSubmitted = int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value())
-				newStatusData.RelayStatsEntriesQueued = int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value())
-				newStatusData.RelayStatsEntriesFlushed = int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value())
-
-				statusMutex.Lock()
-				statusData = newStatusData
-				statusMutex.Unlock()
-
-				time.Sleep(time.Second * 10)
-			}
-		}()
-	}
-
-	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		statusMutex.RLock()
-		data := statusData
-		statusMutex.RUnlock()
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(data); err != nil {
-			core.Error("could not write status data to json: %v\n%+v", err, data)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	// Start HTTP server
-	{
-		port := envvar.Get("PORT", "41001")
-		if port == "" {
-			core.Error("envvar PORT not set: %v", err)
-			return 1
-		}
-
-		router := mux.NewRouter()
-		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
-		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-		router.Handle("/debug/vars", expvar.Handler())
-
-		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if enablePProf {
-			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-		}
-
-		fmt.Printf("starting http server on port %s\n", port)
-
-		go func() {
-			err = http.ListenAndServe(":"+port, router)
-			if err != nil {
-				core.Error("error starting http server: %v", err)
-				errChan <- err
-			}
-		}()
-	}
-
-	// Wait for shutdown signal
-	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-
-	select {
-	case <-termChan:
-		core.Debug("received shutdown signal")
-		ctxCancelFunc()
-
-		// Wait for essential goroutines to finish up
-		wg.Wait()
-
-		core.Debug("successfully shutdown")
-		return 0
-	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
-		ctxCancelFunc()
-		return 1
-	}
+	*/
 }
