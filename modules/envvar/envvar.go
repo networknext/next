@@ -14,7 +14,7 @@ func Exists(name string) bool {
 	return ok
 }
 
-func Get(name string, defaultValue string) string {
+func GetString(name string, defaultValue string) string {
 	value, ok := os.LookupEnv(name)
 	if !ok {
 		return defaultValue

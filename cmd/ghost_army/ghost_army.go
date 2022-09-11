@@ -147,7 +147,7 @@ func mainReturnWithCode() int {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
 
-		httpPort := envvar.Get("HTTP_PORT", "40001")
+		httpPort := envvar.GetString("HTTP_PORT", "40001")
 
 		srv := &http.Server{
 			Addr:    ":" + httpPort,
@@ -174,13 +174,13 @@ func mainReturnWithCode() int {
 
 	estimatedPeakSessionCount := envvar.GetInt("GHOST_ARMY_PEAK_SESSION_COUNT", 25000)
 
-	infile := envvar.Get("GHOST_ARMY_BIN", "")
+	infile := envvar.GetString("GHOST_ARMY_BIN", "")
 	if infile == "" {
 		core.Error("GHOST_ARMY_BIN not set")
 		return 1
 	}
 
-	datacenterCSV := envvar.Get("DATACENTERS_CSV", "")
+	datacenterCSV := envvar.GetString("DATACENTERS_CSV", "")
 	if datacenterCSV == "" {
 		core.Error("DATACENTERS_CSV not set")
 		return 1

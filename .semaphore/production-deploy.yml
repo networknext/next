@@ -68,16 +68,6 @@ blocks:
 
       jobs:
 
-        - name: "Billing"
-          commands:
-            - make build-billing-artifacts-prod
-            - artifact push workflow dist/billing.prod.tar.gz
-
-        - name: "Analytics Pusher"
-          commands:
-            - make build-analytics-pusher-artifacts-prod
-            - artifact push workflow dist/analytics_pusher.prod.tar.gz
-
         - name: "Analytics"
           commands:
             - make build-analytics-artifacts-prod
@@ -102,16 +92,6 @@ blocks:
           commands:
             - make build-relay-backend-artifacts-prod
             - artifact push workflow dist/relay_backend.prod.tar.gz
-
-        - name: "Relay Frontend"
-          commands:
-            - make build-relay-frontend-artifacts-prod
-            - artifact push workflow dist/relay_frontend.prod.tar.gz
-
-        - name: "Relay Forwarder"
-          commands:
-            - make build-relay-forwarder-artifacts-prod
-            - artifact push workflow dist/relay_forwarder.prod.tar.gz
 
         - name: "Server Backend 4"
           commands:
@@ -138,20 +118,10 @@ blocks:
             - make build-pingdom-artifacts-prod
             - artifact push workflow dist/pingdom.prod.tar.gz
 
-        - name: "Match Data"
-          commands:
-            - make build-match-data-artifacts-prod
-            - artifact push workflow dist/match_data.prod.tar.gz
-
         - name: "Magic Backend"
           commands:
             - make build-magic-backend-artifacts-prod
             - artifact push workflow dist/magic_backend.prod.tar.gz
-
-        - name: "Magic Frontend"
-          commands:
-            - make build-magic-frontend-artifacts-prod
-            - artifact push workflow dist/magic_frontend.prod.tar.gz
 
 
   - name: "Build Artifacts (Native)"
@@ -206,16 +176,6 @@ blocks:
             - gsutil cp bootstrap.sh gs://production_artifacts/
             - gsutil cp ghost_army_bootstrap.sh gs://production_artifacts/
 
-        - name: "Billing"
-          commands:
-            - artifact pull workflow billing.prod.tar.gz
-            - gsutil cp billing.prod.tar.gz gs://production_artifacts/
-
-        - name: "Analytics Pusher"
-          commands:
-            - artifact pull workflow analytics_pusher.prod.tar.gz
-            - gsutil cp analytics_pusher.prod.tar.gz gs://production_artifacts/
-
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.prod.tar.gz
@@ -240,16 +200,6 @@ blocks:
           commands:
             - artifact pull workflow relay_backend.prod.tar.gz
             - gsutil cp relay_backend.prod.tar.gz gs://production_artifacts/
-
-        - name: "Relay Frontend"
-          commands:
-            - artifact pull workflow relay_frontend.prod.tar.gz
-            - gsutil cp relay_frontend.prod.tar.gz gs://production_artifacts/
-
-        - name: "Relay Forwarder"
-          commands:
-            - artifact pull workflow relay_forwarder.prod.tar.gz
-            - gsutil cp relay_forwarder.prod.tar.gz gs://production_artifacts/
 
         - name: "Server Backend 4"
           commands:
@@ -276,20 +226,10 @@ blocks:
             - artifact pull workflow pingdom.prod.tar.gz
             - gsutil cp pingdom.prod.tar.gz gs://production_artifacts/
 
-        - name: "Match Data"
-          commands:
-            - artifact pull workflow match_data.prod.tar.gz
-            - gsutil cp match_data.prod.tar.gz gs://production_artifacts/
-
         - name: "Magic Backend"
           commands:
             - artifact pull workflow magic_backend.prod.tar.gz
             - gsutil cp magic_backend.prod.tar.gz gs://production_artifacts/
-
-        - name: "Magic Frontend"
-          commands:
-            - artifact pull workflow magic_frontend.prod.tar.gz
-            - gsutil cp magic_frontend.prod.tar.gz gs://production_artifacts/
 
         - name: "Test Server 4"
           commands:

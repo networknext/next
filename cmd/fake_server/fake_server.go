@@ -67,7 +67,7 @@ func mainReturnWithCode() int {
 
 	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 
-	httpPort := envvar.Get("PORT", "50001")
+	httpPort := envvar.GetString("PORT", "50001")
 	if httpPort == "" {
 		core.Error("PORT not set")
 		return 1
@@ -106,20 +106,6 @@ func mainReturnWithCode() int {
 		}
 	} else {
 		serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", serverBackendAddress)
-	}
-
-	sendBeaconPackets := envvar.GetBool("SEND_NEXT_BEACON_PACKETS", false)
-
-	var beaconAddress *net.UDPAddr
-	if !envvar.Exists("NEXT_BEACON_ADDRESS") {
-		var err error
-		beaconAddress, err = net.ResolveUDPAddr("udp", "127.0.0.1:35000")
-		if err != nil {
-			core.Error("failed to resolve default beacon udp address 127.0.0.1:35000: %v", err)
-			return 1
-		}
-	} else {
-		beaconAddress = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
 	}
 
 	numClients := envvar.GetInt("NUM_CLIENTS", 400)
@@ -186,7 +172,7 @@ func mainReturnWithCode() int {
 				dcName = "local"
 			}
 
-			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, beaconAddress, clients, transport.SDKVersionLatest, customerID, customerPrivateKey, dcName, sendBeaconPackets)
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, clients, transport.SDKVersionLatest, customerID, customerPrivateKey, dcName)
 			if err != nil {
 				core.Error("failed to start fake server: %v", err)
 				errChan <- err
