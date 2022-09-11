@@ -105,7 +105,7 @@ func mainReturnWithCode() int {
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
-		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
+		cruncherPort := envvar.GetString("CRUNCHER_PORT", "5555")
 		if cruncherPort == "" {
 			core.Error("CRUNCHER_PORT not set")
 			return 1
@@ -142,8 +142,8 @@ func mainReturnWithCode() int {
 
 	messageChanSize := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
 
-	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
 	redisMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
 	redisMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 
@@ -151,16 +151,16 @@ func mainReturnWithCode() int {
 	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE)
 
 	// Get Bigtable instance ID
-	btInstanceID := envvar.Get("BIGTABLE_INSTANCE_ID", "localhost:8086")
+	btInstanceID := envvar.GetString("BIGTABLE_INSTANCE_ID", "localhost:8086")
 	// Get the table name
-	btTableName := envvar.Get("BIGTABLE_TABLE_NAME", "")
+	btTableName := envvar.GetString("BIGTABLE_TABLE_NAME", "")
 	// Get the column family name
-	btCfName := envvar.Get("BIGTABLE_CF_NAME", "")
+	btCfName := envvar.GetString("BIGTABLE_CF_NAME", "")
 
 	btGoroutineCount := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
 
 	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
-	btHistoricalPath := envvar.Get("BIGTABLE_HISTORICAL_TXT", "./testdata/bigtable_historical.txt")
+	btHistoricalPath := envvar.GetString("BIGTABLE_HISTORICAL_TXT", "./testdata/bigtable_historical.txt")
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
 		portalSubscriber,
@@ -260,7 +260,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("HTTP_PORT", "30000")
+		port := envvar.GetString("HTTP_PORT", "30000")
 		if port == "" {
 			core.Error("HTTP_PORT not set")
 			return 1

@@ -2,28 +2,28 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"runtime"
+	"io/ioutil"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/common"
 )
 
-func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32) {
+func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
 
-	var costMatrix routing.CostMatrix
-
-	costFile, err := os.Open(costFilename)
+	costMatrixData, err := ioutil.ReadFile(costMatrixFilename)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could open the cost matrix file for reading: %v\n", err), 1)
+		handleRunTimeError(fmt.Sprintf("could not read the cost matrix file: %v\n", err), 1)
 	}
-	defer costFile.Close()
 
-	if _, err := costMatrix.ReadFrom(costFile); err != nil {
+	var costMatrix common.CostMatrix
+
+	err = costMatrix.Read(costMatrixData)
+	if err != nil {
 		handleRunTimeError(fmt.Sprintf("error reading cost matrix: %v\n", err), 1)
 	}
 
-	numRelays := len(costMatrix.RelayIDs)
+	numRelays := len(costMatrix.RelayIds)
 
 	numDestRelays := 0
 	for i := range costMatrix.DestRelays {
@@ -41,25 +41,25 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 		}
 	}
 
-	routeMatrix := &routing.RouteMatrix{
-		Version:            routing.RouteMatrixSerializeVersion,
-		RelayIDs:           costMatrix.RelayIDs,
+	routeMatrix := &common.RouteMatrix{
+		Version:            common.RouteMatrixSerializeVersion,
+		RelayIds:           costMatrix.RelayIds,
 		RelayAddresses:     costMatrix.RelayAddresses,
 		RelayNames:         costMatrix.RelayNames,
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
-		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
+		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 		DestRelays:         costMatrix.DestRelays,
-		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelays),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 	}
 
-	routeFile, err := os.Create(routeFilename)
+	routeMatrixData, err := routeMatrix.Write(100*1024*1024)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not write route matrix: %v", err), 1)
+	}
+
+	err = ioutil.WriteFile(routeMatrixFilename, routeMatrixData, 0)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
-	}
-	defer routeFile.Close()
-
-	if _, err := routeMatrix.WriteTo(routeFile, 100*1000*1000); err != nil {
-		handleRunTimeError(fmt.Sprintf("error writing route matrix: %v\n", err), 1)
 	}
 }

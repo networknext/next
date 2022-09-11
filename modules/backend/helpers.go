@@ -27,11 +27,11 @@ import (
 )
 
 func GetEnv() string {
-	return envvar.Get("ENV", "local")
+	return envvar.GetString("ENV", "local")
 }
 
 func GetGCPProjectID() string {
-	return envvar.Get("GOOGLE_PROJECT_ID", "")
+	return envvar.GetString("GOOGLE_PROJECT_ID", "")
 }
 
 func GetInstanceID(env string) (string, error) {
@@ -60,7 +60,7 @@ func GetLogger(ctx context.Context, gcpProjectID string, serviceName string) (lo
 		}
 	}
 
-	backendLogLevel := envvar.Get("BACKEND_LOG_LEVEL", "none")
+	backendLogLevel := envvar.GetString("BACKEND_LOG_LEVEL", "none")
 	switch backendLogLevel {
 	case "none":
 		logger = level.NewFilter(logger, level.AllowNone())
@@ -199,9 +199,9 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 		pgsql := envvar.GetBool("FEATURE_POSTGRESQL", false)
 		if pgsql {
-			pgsqlHostIP := envvar.Get("POSTGRESQL_HOST_IP", "")
-			pgsqlUserName := envvar.Get("POSTGRESQL_USER_NAME", "")
-			pgsqlPassword := envvar.Get("POSTGRESQL_PASSWORD", "")
+			pgsqlHostIP := envvar.GetString("POSTGRESQL_HOST_IP", "")
+			pgsqlUserName := envvar.GetString("POSTGRESQL_USER_NAME", "")
+			pgsqlPassword := envvar.GetString("POSTGRESQL_PASSWORD", "")
 
 			var err error
 			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
@@ -252,7 +252,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 		if env == "staging" && !pgsql {
 
-			filePath := envvar.Get("BIN_PATH", "./database.bin")
+			filePath := envvar.GetString("BIN_PATH", "./database.bin")
 			file, err := os.Open(filePath)
 			if err != nil {
 				return nil, fmt.Errorf("could not open database file: %v", err)

@@ -1,358 +1,239 @@
 package common
 
 import (
-	"math"
-	"sync"
-	"time"
-	"net"
-	"fmt"
-	"sort"
+	"cloud.google.com/go/bigquery"
+	"github.com/networknext/backend/modules/encoding"
 )
 
-const HistorySize = 10 // 300 // 5 minutes @ one relay update per-second
+const (
+	RelayStatsEntryVersion = uint8(3)
+	MaxRelayStatsEntrySize = 128
+)
 
-const InvalidRouteValue = float32(1000000000.0)
+type RelayStatsEntry struct {
 
-func TriMatrixLength(size int) int {
-	return (size * (size - 1)) / 2
+	Timestamp uint64
+
+	ID uint64
+
+	NumSessions uint32
+	MaxSessions uint32
+
+	NumRoutable   uint32
+	NumUnroutable uint32
+
+	Full bool
+
+	CPUUsage float32
+
+	// percent = (sent||received) / nic speed
+	BandwidthSentPercent     float32
+	BandwidthReceivedPercent float32
+
+	// percent = bandwidth_(sent||received) / envelope_(sent||received)
+	EnvelopeSentPercent     float32
+	EnvelopeReceivedPercent float32
+
+	BandwidthSentMbps     float32
+	BandwidthReceivedMbps float32
+
+	EnvelopeSentMbps     float32
+	EnvelopeReceivedMbps float32
+
+	// all of below are deprecated
+	Tx                        uint64
+	Rx                        uint64
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
+	MemUsage                  float32
 }
 
-func TriMatrixIndex(i, j int) int {
-	if i <= j {
-		i, j = j, i
-	}
-	return i*(i+1)/2 - i + j
-}
+func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
+	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
+	data := make([]byte, length)
 
-func historyMean(history []float32) float32 {
-	var sum float64
-	for i := 0; i < len(history); i++ {
-		sum += float64(history[i])
-	}
-	return float32(sum / float64(HistorySize))
-}
-
-type RelayStatsDestEntry struct {
-	lastUpdateTime    time.Time
-	rtt               float32
-	jitter            float32
-	packetLoss        float32
-	historyIndex      int32
-	historyRTT        [HistorySize]float32
-	historyJitter     [HistorySize]float32
-	historyPacketLoss [HistorySize]float32
-}
-
-type RelayStatsSourceEntry struct {
-	mutex          sync.RWMutex
-	lastUpdateTime time.Time
-	relayId        uint64
-	relayName      string
-	relayAddress   net.UDPAddr
-	sessions       int
-	relayVersion   string
-	shuttingDown   bool
-	destEntries    map[uint64]*RelayStatsDestEntry
-}
-
-type RelayStats struct {
-	mutex         sync.RWMutex
-	sourceEntries map[uint64]*RelayStatsSourceEntry
-}
-
-func CreateRelayStats() *RelayStats {
-	relayStats := &RelayStats{}
-	relayStats.sourceEntries = make(map[uint64]*RelayStatsSourceEntry)
-	return relayStats
-}
-
-func (relayStats *RelayStats) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
-
-	/*
-		Process Relay Update
-		--------------------
-
-		Our goal is to get stable RTT, Jitter and PL values to feed into our route optimization algorithm,
-		so we can send traffic across stable routes that aren't subject to change.
-
-		To achieve this, this function processes a "relay update" sent from a relay and stores it
-		in a data structure use to generate RTT, Jitter and Packet Loss values per-relay pair (source,dest)
-		to feed into our route optimization algorithm.
-
-		The relay update contains samples the relay has derived by pinging n other relays for roughly one second.
-
-		Each sample contains:
-
-			1. The id of the relay being pinged.
-
-			1. RTT (minimum RTT seen over the last second)
-
-			2. Jitter (one standard deviation of jitter, relative to min RTT over one second)
-
-			3. Packet Loss (%)
-
-		To achieve this we have a ~5 minute history buffer per (source,dest) relay pair, and we take the
-		average RTT, Jitter and PL values across this history.
-
-		In addition, we "poison" the history buffer for any newly seen relay pair by setting RTT, Jitter
-		and Packet Loss values very high, so we won't route any traffic across it, until it has proven
-		itself to be stable for at least 5 minutes.
-
-		ps. The data structure used to store relay stats is designed primarily to minimize lock contention.
-	*/
-
-	// look up the entry corresponding to the source relay, or create it if it doesn't exist
-
-	relayStats.mutex.Lock()
-
-	sourceEntry, exists := relayStats.sourceEntries[relayId]
-	if !exists {
-		sourceEntry = &RelayStatsSourceEntry{}
-		sourceEntry.destEntries = make(map[uint64]*RelayStatsDestEntry)
-		relayStats.sourceEntries[relayId] = sourceEntry
-	}
-
-	relayStats.mutex.Unlock()
-
-	// update stats for the source relay, then...
-	// iterate across all samples and insert them into the history buffer
-	// in the dest entry corresponding to their relay pair (source,dest)
-
-	currentTime := time.Now()
-
-	sourceEntry.mutex.Lock()
-
-	sourceEntry.lastUpdateTime = currentTime
-	sourceEntry.relayId = relayId
-	sourceEntry.relayName = relayName
-	sourceEntry.relayAddress = relayAddress
-	sourceEntry.sessions = sessions
-	sourceEntry.relayVersion = relayVersion
-	sourceEntry.shuttingDown = shuttingDown
-
-	for i := 0; i < numSamples; i++ {
-
-		destRelayId := sampleRelayId[i]
-
-		destEntry, exists := sourceEntry.destEntries[destRelayId]
-		if !exists {
-			destEntry = &RelayStatsDestEntry{}
-			sourceEntry.destEntries[destRelayId] = destEntry
-		}
-
-		// IMPORTANT: clear newly created AND timed out dest entry history buffers
-		// this is important so that newly created relays, and relays that are stopped and restarted
-		// don't get routed across, until at least 5 minutes has passed!
-
-		if currentTime.Sub(destEntry.lastUpdateTime) > 10*time.Second {
-			for j := 0; j < HistorySize; j++ {
-				destEntry.historyIndex = 0
-				destEntry.historyRTT[j] = InvalidRouteValue
-				destEntry.historyJitter[j] = InvalidRouteValue
-				destEntry.historyPacketLoss[j] = InvalidRouteValue
-			}
-		}
-
-		destEntry.historyRTT[destEntry.historyIndex] = sampleRTT[i]
-		destEntry.historyJitter[destEntry.historyIndex] = sampleJitter[i]
-		destEntry.historyPacketLoss[destEntry.historyIndex] = samplePacketLoss[i]
-
-		destEntry.rtt = historyMean(destEntry.historyRTT[:])
-		destEntry.jitter = historyMean(destEntry.historyJitter[:])
-		destEntry.packetLoss = historyMean(destEntry.historyPacketLoss[:])
-
-		destEntry.historyIndex = (destEntry.historyIndex + 1) % HistorySize
-
-		destEntry.lastUpdateTime = currentTime
-	}
-
-	sourceEntry.mutex.Unlock()
-}
-
-func (relayStats *RelayStats) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
-
-	sourceRTT := InvalidRouteValue
-	sourceJitter := InvalidRouteValue
-	sourcePacketLoss := InvalidRouteValue
-
-	destRTT := InvalidRouteValue
-	destJitter := InvalidRouteValue
-	destPacketLoss := InvalidRouteValue
-
-	// get source ping values
-	{
-		relayStats.mutex.RLock()
-		sourceEntry, exists := relayStats.sourceEntries[sourceRelayId]
-		if exists {
-			sourceEntry.mutex.RLock()
-			destEntry, exists := sourceEntry.destEntries[destRelayId]
-			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
-					sourceRTT = destEntry.rtt
-					sourceJitter = destEntry.jitter
-					sourcePacketLoss = destEntry.packetLoss
-				}
-			}
-			sourceEntry.mutex.RUnlock()
-		}
-		relayStats.mutex.RUnlock()
-	}
-
-	// get dest ping values
-	{
-		relayStats.mutex.RLock()
-		sourceEntry, exists := relayStats.sourceEntries[destRelayId]
-		if exists {
-			sourceEntry.mutex.RLock()
-			destEntry, exists := sourceEntry.destEntries[sourceRelayId]
-			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
-					destRTT = destEntry.rtt
-					destJitter = destEntry.jitter
-					destPacketLoss = destEntry.packetLoss
-				}
-			}
-			sourceEntry.mutex.RUnlock()
-		}
-		relayStats.mutex.RUnlock()
-	}
-
-	// take maximum values in each direction
-
-	rtt := sourceRTT
-	jitter := sourceJitter
-	packetLoss := sourcePacketLoss
-
-	if destRTT > rtt {
-		rtt = destRTT
-	}
-
-	if destJitter > jitter {
-		jitter = destJitter
-	}
-
-	if destPacketLoss > packetLoss {
-		packetLoss = destPacketLoss
-	}
-
-	return rtt, jitter, packetLoss
-}
-
-func (relayStats *RelayStats) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
-
-	numRelays := len(relayIds)
-
-	costs := make([]int32, TriMatrixLength(numRelays))
-
-	// IMPORTANT: special permissive route matrix for local env only
-	if local {
-		return costs
-	}
-
-	currentTime := time.Now()
-
-	for i := 0; i < numRelays; i++ {
-		sourceRelayId := uint64(relayIds[i])
-		for j := 0; j < i; j++ {
-			index := TriMatrixIndex(i, j)
-			destRelayId := uint64(relayIds[j])
-			rtt, jitter, packetLoss := relayStats.GetSample(currentTime, sourceRelayId, destRelayId)
-			if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
-				costs[index] = int32(math.Ceil(float64(rtt)))
-			} else {
-				costs[index] = -1
-			}
-		}
-	}
-
-	return costs
-}
-
-const RELAY_STATUS_OFFLINE = 0
-const RELAY_STATUS_ONLINE = 1
-const RELAY_STATUS_SHUTTING_DOWN = 2
-
-var RelayStatusStrings = [3]string{"offline", "online", "shutting down"}
-
-type ActiveRelay struct {
-	Name string
-	Id uint64
-	Address net.UDPAddr
-	Status int
-	Sessions int
-	Version string
-}
-
-func (relayStats *RelayStats) GetActiveRelays() []ActiveRelay {
-
-	relayStats.mutex.RLock()
-	keys := make([]uint64, len(relayStats.sourceEntries))
 	index := 0
-    for k := range relayStats.sourceEntries {
-        keys[index] = k
-        index++
-    }
-	relayStats.mutex.RUnlock()
+	encoding.WriteUint8(data, &index, RelayStatsEntryVersion)
+	encoding.WriteUint64(data, &index, uint64(len(entries)))
 
-	activeRelays := make([]ActiveRelay, 0, len(keys))	
-
-	currentTime := time.Now()
-
-	for i := range keys {
-
-		relayStats.mutex.RLock()
-		sourceEntry, ok := relayStats.sourceEntries[keys[i]]
-		relayStats.mutex.RUnlock()
-
-		if !ok {
-			continue
-		}
-
-		sourceEntry.mutex.RLock()
-
-		activeRelay := ActiveRelay{}
-		
-		activeRelay.Name = sourceEntry.relayName
-		activeRelay.Address = sourceEntry.relayAddress
-		activeRelay.Id = sourceEntry.relayId
-		activeRelay.Sessions = sourceEntry.sessions
-
-		activeRelay.Status = RELAY_STATUS_ONLINE
-		if currentTime.Sub(sourceEntry.lastUpdateTime) > 10 * time.Second {
-			activeRelay.Status = RELAY_STATUS_ONLINE
-		}
-		if sourceEntry.shuttingDown {
-			activeRelay.Status = RELAY_STATUS_SHUTTING_DOWN
-		}
-
-		activeRelay.Version = sourceEntry.relayVersion
-
-		sourceEntry.mutex.RUnlock()
-
-		activeRelays = append(activeRelays, activeRelay)
+	for i := range entries {
+		entry := &entries[i]
+		encoding.WriteUint64(data, &index, entry.ID)
+		encoding.WriteFloat32(data, &index, entry.CPUUsage)
+		encoding.WriteFloat32(data, &index, entry.MemUsage)
+		encoding.WriteFloat32(data, &index, entry.BandwidthSentPercent)
+		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedPercent)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeSentPercent)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedPercent)
+		encoding.WriteFloat32(data, &index, entry.BandwidthSentMbps)
+		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedMbps)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeSentMbps)
+		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedMbps)
+		encoding.WriteUint32(data, &index, entry.NumSessions)
+		encoding.WriteUint32(data, &index, entry.MaxSessions)
+		encoding.WriteUint32(data, &index, entry.NumRoutable)
+		encoding.WriteUint32(data, &index, entry.NumUnroutable)
+		encoding.WriteBool(data, &index, entry.Full)
 	}
 
-	sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })	
-
-	return activeRelays
+	return data[:index]
 }
 
-func (relayStats *RelayStats) GetRelaysCSV() []byte {
+func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
+	index := 0
 
-	relaysCSV := "name,address,id,status,sessions,version\n"
-
-	activeRelays := relayStats.GetActiveRelays()
-
-	for i := range activeRelays {
-		relay := activeRelays[i]
-		relaysCSV += fmt.Sprintf("%s,%s,%016x,%s,%d,%s\n",
-			relay.Name,
-			relay.Address.String(),
-			relay.Id,
-			RelayStatusStrings[relay.Status],
-			relay.Sessions,
-			relay.Version)
+	var version uint8
+	if !encoding.ReadUint8(data, &index, &version) {
+		return nil, false
 	}
 
-	return []byte(relaysCSV)
+	var length uint64
+	if !encoding.ReadUint64(data, &index, &length) {
+		return nil, false
+	}
+
+	entries := make([]*RelayStatsEntry, length)
+
+	for i := range entries {
+		entry := new(RelayStatsEntry)
+
+		if version >= 2 {
+			if !encoding.ReadUint64(data, &index, &entry.ID) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentPercent) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedPercent) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentPercent) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedPercent) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint32(data, &index, &entry.NumSessions) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint32(data, &index, &entry.MaxSessions) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint32(data, &index, &entry.NumRoutable) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint32(data, &index, &entry.NumUnroutable) {
+				return nil, false
+			}
+		} else {
+			if !encoding.ReadUint64(data, &index, &entry.ID) {
+				return nil, false
+			}
+
+			var numSessions uint64
+			if !encoding.ReadUint64(data, &index, &numSessions) {
+				return nil, false
+			}
+			entry.NumSessions = uint32(numSessions)
+
+			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.Tx) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.Rx) {
+				return nil, false
+			}
+
+			if !encoding.ReadUint64(data, &index, &entry.PeakSessions) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.PeakSentBandwidthMbps) {
+				return nil, false
+			}
+
+			if !encoding.ReadFloat32(data, &index, &entry.PeakReceivedBandwidthMbps) {
+				return nil, false
+			}
+		}
+
+		if version >= 3 {
+			if !encoding.ReadBool(data, &index, &entry.Full) {
+				return nil, false
+			}
+		}
+
+		entries[i] = entry
+	}
+
+	return entries, true
+}
+
+func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
+
+	bqEntry := make(map[string]bigquery.Value)
+
+	bqEntry["timestamp"] = int(e.Timestamp)
+	bqEntry["relay_id"] = int(e.ID)
+	bqEntry["cpu_percent"] = e.CPUUsage
+	bqEntry["memory_percent"] = e.MemUsage
+	bqEntry["actual_bandwidth_send_percent"] = e.BandwidthSentPercent
+	bqEntry["actual_bandwidth_receive_percent"] = e.BandwidthReceivedPercent
+	bqEntry["envelope_bandwidth_send_percent"] = e.EnvelopeSentPercent
+	bqEntry["envelope_bandwidth_receive_percent"] = e.EnvelopeReceivedPercent
+	bqEntry["actual_bandwidth_send_mbps"] = e.BandwidthSentMbps
+	bqEntry["actual_bandwidth_receive_mbps"] = e.BandwidthReceivedMbps
+	bqEntry["envelope_bandwidth_send_mbps"] = e.EnvelopeSentMbps
+	bqEntry["envelope_bandwidth_receive_mbps"] = e.EnvelopeReceivedMbps
+	bqEntry["num_sessions"] = int(e.NumSessions)
+	bqEntry["max_sessions"] = int(e.MaxSessions)
+	bqEntry["num_routable"] = int(e.NumRoutable)
+	bqEntry["num_unroutable"] = int(e.NumUnroutable)
+
+	if e.Full {
+		bqEntry["full"] = e.Full
+	}
+
+	return bqEntry, "", nil
 }

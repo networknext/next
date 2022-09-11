@@ -66,7 +66,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the public key for the fake relays
-	relayPublicKeyStr := envvar.Get("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
+	relayPublicKeyStr := envvar.GetString("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	relayPublicKey, err := base64.StdEncoding.DecodeString(relayPublicKeyStr)
 	if err != nil {
 		core.Error("failed to decode RELAY_PUBLIC_KEY %s to base64: %v", relayPublicKeyStr, err)
@@ -81,7 +81,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the Relay Gateway's Load Balancer's IP
-	gatewayAddr := envvar.Get("GATEWAY_LOAD_BALANCER_IP", "127.0.0.1:30000")
+	gatewayAddr := envvar.GetString("GATEWAY_LOAD_BALANCER_IP", "127.0.0.1:30000")
 	// Verify the IP is valid if not testing locally
 	if gcpProjectID != "" {
 		ip := net.ParseIP(gatewayAddr)
@@ -169,7 +169,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 
-	port := envvar.Get("PORT", "30007")
+	port := envvar.GetString("PORT", "30007")
 	if port == "" {
 		core.Error("PORT not set")
 		return 1
