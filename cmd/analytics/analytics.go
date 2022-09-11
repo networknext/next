@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -37,11 +36,9 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	/*
 	ProcessBilling(service)
 
 	ProcessMatchData(service)
-	*/
 
 	service.LeaderElection()
 
@@ -243,7 +240,7 @@ func ProcessRouteMatrix(service *common.Service) {
 	}()
 }
 
-func ProcessBilling(ctx context.Context) {
+func ProcessBilling(service *common.Service) {
 
 	// todo: create google pubsub consumer
 
@@ -263,7 +260,7 @@ func ProcessBilling(ctx context.Context) {
 	*/
 }
 
-func ProcessMatchData(ctx context.Context) {
+func ProcessMatchData(service *common.Service) {
 
 	// todo: create google pubsub consumer
 
