@@ -519,21 +519,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)
-			case "RelayForwarder":
-				var status metrics.RelayForwarderStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "RelayFrontend":
-				var status metrics.RelayFrontendStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "RelayGateway":
-				var status metrics.RelayGatewayStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
 			case "RelayPusher":
 				var status metrics.RelayPusherStatus
 				json.Unmarshal(b, &status)

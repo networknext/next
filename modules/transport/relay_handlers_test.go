@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
@@ -203,7 +204,7 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 		RelayVersion:      relay1.Version,
 		Address:           relay1.Addr,
 		Token:             make([]byte, crypto.KeySize),
-		PingStats:         make([]routing.RelayStatsPing, transport.MaxRelays),
+		PingStats:         make([]routing.RelayStatsPing, core.MaxNearRelays),
 		SessionCount:      uint64(5),
 		ShuttingDown:      false,
 		CPU:               uint8(16),
