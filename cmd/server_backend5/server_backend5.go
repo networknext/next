@@ -143,13 +143,13 @@ func mainReturnWithCode() int {
 
 	backendLoadBalancerIP := envvar.GetAddress("SERVER_BACKEND_IP", nil)
 
-	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	maxmindCityFile := envvar.GetString("MAXMIND_CITY_DB_FILE", "")
 	if maxmindCityFile == "" {
 		core.Error("could not get maxmind city file")
 		return 1
 	}
 
-	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
+	maxmindISPFile := envvar.GetString("MAXMIND_ISP_DB_FILE", "")
 	if maxmindISPFile == "" {
 		core.Error("could not get maxmind isp file")
 		return 1
@@ -260,7 +260,7 @@ func mainReturnWithCode() int {
 
 	// Sync route matrix
 	{
-		uri := envvar.Get("ROUTE_MATRIX_URI", "")
+		uri := envvar.GetString("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
 			core.Error("ROUTE_MATRIX_URI not set")
@@ -409,7 +409,7 @@ func mainReturnWithCode() int {
 
 	// Sync magic values
 	{
-		magicURI := envvar.Get("MAGIC_URI", "")
+		magicURI := envvar.GetString("MAGIC_URI", "")
 		if magicURI == "" {
 			core.Error("MAGIC_URI not set")
 			return 1
@@ -562,7 +562,7 @@ func mainReturnWithCode() int {
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
 			if featureBilling2 {
-				billing2TopicID := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+				billing2TopicID := envvar.GetString("FEATURE_BILLING2_TOPIC_NAME", "billing2")
 
 				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
 				if err != nil {
@@ -585,7 +585,7 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			matchDataTopicID := envvar.Get("MATCH_DATA_TOPIC_NAME", "match_data")
+			matchDataTopicID := envvar.GetString("MATCH_DATA_TOPIC_NAME", "match_data")
 
 			pubsub, err := md.NewGooglePubSubMatcher(pubsubCtx, backendMetrics.MatchDataMetrics, gcpProjectID, matchDataTopicID, clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
@@ -636,9 +636,9 @@ func mainReturnWithCode() int {
 	}
 	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
 
-	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "")
+	redisMultipathVetoHost := envvar.GetString("REDIS_HOST_MULTIPATH_VETO", "")
 	if redisMultipathVetoHost != "" {
-		redisMultipathVetoPassword := envvar.Get("REDIS_PASSWORD_MULTIPATH_VETO", "")
+		redisMultipathVetoPassword := envvar.GetString("REDIS_PASSWORD_MULTIPATH_VETO", "")
 		redisMultipathVetoMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
 		redisMultipathVetoMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
 
@@ -672,7 +672,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	auth0Domain := envvar.GetString("AUTH0_DOMAIN", "")
 	if auth0Domain == "" {
 		core.Error("invalid AUTH0_DOMAIN: not set")
 		return 1
@@ -877,12 +877,12 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
+		allowedOrigins := envvar.GetString("ALLOWED_ORIGINS", "")
 		if allowedOrigins == "" {
 			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
-		auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+		auth0Issuer := envvar.GetString("AUTH0_ISSUER", "")
 		if auth0Issuer == "" {
 			core.Debug("unable to parse AUTH0_ISSUER environment variable")
 		}
@@ -901,7 +901,7 @@ func mainReturnWithCode() int {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
 
-		httpPort := envvar.Get("HTTP_PORT", "40001")
+		httpPort := envvar.GetString("HTTP_PORT", "40001")
 
 		srv := &http.Server{
 			Addr:    ":" + httpPort,
@@ -919,7 +919,7 @@ func mainReturnWithCode() int {
 
 		if gcpProjectID != "" {
 			metadataSyncInterval := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
-			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+			connectionDrainMetadata := envvar.GetString("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
 
 			// Start a goroutine to shutdown the HTTP server when the metadata changes
 			go func() {
@@ -951,7 +951,7 @@ func mainReturnWithCode() int {
 	numThreads := envvar.GetInt("NUM_THREADS", 1)
 	readBuffer := envvar.GetInt("READ_BUFFER", 100000)
 	writeBuffer := envvar.GetInt("WRITE_BUFFER", 100000)
-	udpPort := envvar.Get("UDP_PORT", "40000")
+	udpPort := envvar.GetString("UDP_PORT", "40000")
 
 	var wg sync.WaitGroup
 
