@@ -123,7 +123,7 @@ func happy_path() int {
 
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
-	pubsub_emulator_stdout := run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
+	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
