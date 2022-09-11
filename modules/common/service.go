@@ -78,7 +78,9 @@ type Service struct {
 	currentMagic  []byte
 	previousMagic []byte
 
-	healthHandler func (w http.ResponseWriter, r *http.Request)
+	leaderElection *RedisLeaderElection
+
+	healthHandler func(w http.ResponseWriter, r *http.Request)
 }
 
 func CreateService(serviceName string) *Service {
@@ -115,8 +117,8 @@ func CreateService(serviceName string) *Service {
 
 func (service *Service) LoadDatabase() {
 
-	databasePath := envvar.Get("DATABASE_PATH", "database.bin")
-	overlayPath := envvar.Get("OVERLAY_PATH", "overlay.bin")
+	databasePath := envvar.GetString("DATABASE_PATH", "database.bin")
+	overlayPath := envvar.GetString("OVERLAY_PATH", "overlay.bin")
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
@@ -173,12 +175,12 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 	return upcomingMagic, currentMagic, previousMagic
 }
 
-func (service *Service) OverrideHealthHandler(healthHandler func (w http.ResponseWriter, r *http.Request)) {
+func (service *Service) OverrideHealthHandler(healthHandler func(w http.ResponseWriter, r *http.Request)) {
 	service.healthHandler = healthHandler
 }
 
 func (service *Service) StartWebServer() {
-	port := envvar.Get("HTTP_PORT", "80")
+	port := envvar.GetString("HTTP_PORT", "80")
 	core.Log("starting http server on port %s", port)
 	service.Router.HandleFunc("/health", service.healthHandler)
 	go func() {
@@ -188,6 +190,36 @@ func (service *Service) StartWebServer() {
 			os.Exit(1)
 		}
 	}()
+}
+
+func (service *Service) LeaderElection() {
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+	config := RedisLeaderElectionConfig{}
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.ServiceName = service.ServiceName
+	var err error
+	service.leaderElection, err = CreateRedisLeaderElection(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis leader election: %v")
+		os.Exit(1)
+	}
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case <-ticker.C:
+				service.leaderElection.Update(service.Context)
+			}
+		}
+	}()
+}
+
+func (service *Service) IsLeader() bool {
+	return service.leaderElection.IsLeader()
 }
 
 func (service *Service) WaitForShutdown() {
@@ -519,7 +551,7 @@ func (service *Service) updateMagicValues(magicData []byte) {
 
 func (service *Service) updateMagicLoop() {
 
-	magicURI := envvar.Get("MAGIC_URI", "http://127.0.0.1:41007/magic")
+	magicURI := envvar.GetString("MAGIC_URI", "http://127.0.0.1:41007/magic")
 
 	core.Log("magic uri: %s", magicURI)
 

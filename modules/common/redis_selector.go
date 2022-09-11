@@ -13,7 +13,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-const RedisSelectorVersion = 0 		// IMPORTANT: bump this anytime you change the redis data structures!
+const RedisSelectorVersion = 0 // IMPORTANT: bump this anytime you change the redis data structures!
 
 type RedisSelectorConfig struct {
 	RedisHostname string
