@@ -92,7 +92,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// get all "instance/*" keys via scan to be safe
 
 	instanceKeys := []string{}
-	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
+	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-%d/*", leaderElection.config.ServiceName, RedisSelectorVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}

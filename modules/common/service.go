@@ -78,6 +78,8 @@ type Service struct {
 	currentMagic  []byte
 	previousMagic []byte
 
+	leaderElection *RedisLeaderElection
+
 	healthHandler func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -188,6 +190,36 @@ func (service *Service) StartWebServer() {
 			os.Exit(1)
 		}
 	}()
+}
+
+func (service *Service) LeaderElection() {
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+	config := RedisLeaderElectionConfig{}
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.ServiceName = service.ServiceName
+	var err error
+	service.leaderElection, err = CreateRedisLeaderElection(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis leader election: %v")
+		os.Exit(1)
+	}
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case <-ticker.C:
+				service.leaderElection.Update(service.Context)
+			}
+		}
+	}()
+}
+
+func (service *Service) IsLeader() bool {
+	return service.leaderElection.IsLeader()
 }
 
 func (service *Service) WaitForShutdown() {

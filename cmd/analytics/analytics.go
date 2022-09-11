@@ -33,20 +33,24 @@ func main() {
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 
-	ProcessCostMatrix(service.Context)
+	ProcessCostMatrix(service)
 
-	ProcessRouteMatrix(service.Context)
+	ProcessRouteMatrix(service)
 
-	ProcessBilling(service.Context)
+	/*
+	ProcessBilling(service)
 
-	ProcessMatchData(service.Context)
+	ProcessMatchData(service)
+	*/
+
+	service.LeaderElection()
 
 	service.StartWebServer()
 
 	service.WaitForShutdown()
 }
 
-func ProcessCostMatrix(ctx context.Context) {
+func ProcessCostMatrix(service *common.Service) {
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
@@ -58,10 +62,14 @@ func ProcessCostMatrix(ctx context.Context) {
 		for {
 			select {
 
-			case <-ctx.Done():
+			case <-service.Context.Done():
 				return
 
 			case <-ticker.C:
+
+				if !service.IsLeader() {
+					break
+				}
 
 				response, err := httpClient.Get(costMatrixURI)
 				if err != nil {
@@ -116,7 +124,7 @@ func ProcessCostMatrix(ctx context.Context) {
 	}()
 }
 
-func ProcessRouteMatrix(ctx context.Context) {
+func ProcessRouteMatrix(service *common.Service) {
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -128,10 +136,14 @@ func ProcessRouteMatrix(ctx context.Context) {
 		for {
 			select {
 
-			case <-ctx.Done():
+			case <-service.Context.Done():
 				return
 
 			case <-ticker.C:
+
+				if !service.IsLeader() {
+					break
+				}
 
 				response, err := httpClient.Get(routeMatrixURI)
 				if err != nil {
