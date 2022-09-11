@@ -81,7 +81,7 @@ func main() {
 
 	service.LoadDatabase()
 
-	relayStats := common.CreateRelayStats()
+	relayManager := common.CreateRelayManager()
 
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
@@ -94,9 +94,9 @@ func main() {
 
 	service.StartWebServer()
 
-	ProcessRelayUpdates(service, relayStats)
+	ProcessRelayUpdates(service, relayManager)
 
-	UpdateRouteMatrix(service, relayStats)
+	UpdateRouteMatrix(service, relayManager)
 
 	UpdateReadyState()
 
@@ -249,7 +249,7 @@ func routeMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats) {
+func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayManager) {
 
 	config := common.RedisPubsubConfig{}
 
@@ -310,7 +310,7 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 					samplePacketLoss[i] = relayUpdate.PingStats[i].PacketLoss
 				}
 
-				relayStats.ProcessRelayUpdate(relayId,
+				relayManager.ProcessRelayUpdate(relayId,
 					relayName,
 					relayUpdate.Address,
 					int(relayUpdate.SessionCount),
@@ -326,7 +326,7 @@ func ProcessRelayUpdates(service *common.Service, relayStats *common.RelayStats)
 	}()
 }
 
-func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
+func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
@@ -354,13 +354,13 @@ func UpdateRouteMatrix(service *common.Service, relayStats *common.RelayStats) {
 
 				// build relays data
 
-				relaysDataNew := relayStats.GetRelaysCSV()
+				relaysDataNew := relayManager.GetRelaysCSV()
 
 				// build the cost matrix
 
 				relayData := service.RelayData()
 
-				costs := relayStats.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+				costs := relayManager.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixSerializeVersion,

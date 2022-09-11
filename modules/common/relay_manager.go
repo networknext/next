@@ -169,7 +169,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName s
 	sourceEntry.mutex.Unlock()
 }
 
-func (relayStats *RelayManager) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
+func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
 	sourceRTT := InvalidRouteValue
 	sourceJitter := InvalidRouteValue
@@ -238,7 +238,7 @@ func (relayStats *RelayManager) GetSample(currentTime time.Time, sourceRelayId u
 	return rtt, jitter, packetLoss
 }
 
-func (relayStats *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
+func (relayManager *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 
@@ -283,7 +283,7 @@ type ActiveRelay struct {
 	Version  string
 }
 
-func (relayStats *RelayManager) GetActiveRelays() []ActiveRelay {
+func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
 
 	relayManager.mutex.RLock()
 	keys := make([]uint64, len(relayManager.sourceEntries))
@@ -337,7 +337,7 @@ func (relayStats *RelayManager) GetActiveRelays() []ActiveRelay {
 	return activeRelays
 }
 
-func (relayStats *RelayManager) GetRelaysCSV() []byte {
+func (relayManager *RelayManager) GetRelaysCSV() []byte {
 
 	relaysCSV := "name,address,id,status,sessions,version\n"
 
