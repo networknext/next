@@ -11,6 +11,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/messages"
 )
 
 var costMatrixURI string
@@ -38,13 +39,13 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	Process[common.BillingEntry](service, "billing")
-	Process[common.SummaryEntry](service, "summary")
-	Process[common.MatchDataEntry](service, "match_data")
-	Process[common.PingStatsEntry](service, "ping_stats")
-	Process[common.RelayStatsEntry](service, "relay_stats")
-	Process[common.CostMatrixStatsEntry](service, "cost_matrix_stats")
-	Process[common.RouteMatrixStatsEntry](service, "route_matrix_stats")
+	Process[messages.BillingEntry](service, "billing")
+	Process[messages.SummaryEntry](service, "summary")
+	Process[messages.MatchDataEntry](service, "match_data")
+	Process[messages.PingStatsEntry](service, "ping_stats")
+	Process[messages.RelayStatsEntry](service, "relay_stats")
+	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
+	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
 
 	service.LeaderElection()
 
