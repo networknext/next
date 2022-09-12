@@ -37,6 +37,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
+		core.Error("failed to create pubsub client: %v", err)
 		return nil, err
 	}
 

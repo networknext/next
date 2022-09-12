@@ -123,6 +123,9 @@ func happy_path() int {
 
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
+	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
+	os.Setenv("BIGQUERY_EMULATOR_HOST", "127.0.0.1:9050")
+
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
@@ -372,9 +375,9 @@ func happy_path() int {
 	analytics_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") && 
-		   	strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
-		   	analytics_initialized = true
+		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
+			strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
+			analytics_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)

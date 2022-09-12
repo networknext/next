@@ -25,5 +25,8 @@ servers*.json
 parsed*.json
 parsed*.csv
 
+# happy path output
+logs
+
 # volatile sqlite3 db required for unit testing
 network_next.db
