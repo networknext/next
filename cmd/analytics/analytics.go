@@ -1,4 +1,4 @@
-package common
+package main
 
 import (
 	"io/ioutil"
@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 	"os"
+	"strings"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -16,20 +17,6 @@ var costMatrixURI string
 var routeMatrixURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
-
-var billingPubsubTopic string
-var matchDataPubsubTopic string
-var pingStatsPubsubTopic string
-var relayStatsPubsubTopic string
-var costMatrixStatsPubsubTopic string
-var routeMatrixStatsPubsubTopic string
-
-var billingBigQueryTable string
-var matchDataBigQueryTable string
-var pingStatsBigQueryTable string
-var relayStatsBigQueryTable string
-var costMatrixStatsBigQueryTable string
-var routeMatrixStatsBigQueryTable string
 
 var logMutex sync.Mutex
 
@@ -42,54 +29,22 @@ func main() {
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", 1*time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
 
-	billingPubsubTopic = envvar.GetString("BILLING_PUBSUB_TOPIC", "billing")
-	matchDataPubsubTopic = envvar.GetString("MATCH_DATA_PUBSUB_TOPIC", "match_data")
-	pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "ping_stats")
-	relayStatsPubsubTopic = envvar.GetString("RELAY_STATS_PUBSUB_TOPIC", "relay_stats")
-	costMatrixStatsPubsubTopic = envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
-	routeMatrixStatsPubsubTopic = envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_TOPIC", "route_matrix_stats")
-
-	billingBigQueryTable = envvar.GetString("BILLING_BIGQUERY_TABLE", "billing2")
-	matchDataBigQueryTable = envvar.GetString("MATCH_DATA_BIGQUERY_TABLE", "match_data")
-	pingStatsBigQueryTable = envvar.GetString("PING_STATS_BIGQUERY_TABLE", "ping_stats")
-	relayStatsBigQueryTable = envvar.GetString("RELAY_STATS_BIGQUERY_TABLE", "relay_stats")
-	costMatrixStatsBigQueryTable = envvar.GetString("COST_MATRIX_STATS_BIGQUERY_TABLE", "cost_matrix_stats")
-	routeMatrixStatsBigQueryTable = envvar.GetString("ROUTE_MATRIX_STATS_BIGQUERY_TABLE", "route_matrix_stats")
-
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 
-	core.Log("billing pubsub topic: %s", billingPubsubTopic)
-	core.Log("match data pubsub topic: %s", matchDataPubsubTopic)
-	core.Log("ping stats pubsub topic: %s", pingStatsPubsubTopic)
-	core.Log("relay stats pubsub topic: %s", relayStatsPubsubTopic)
-	core.Log("cost matrix stats pubsub topic: %s", costMatrixStatsPubsubTopic)
-	core.Log("route matrix stats pubsub topic: %s", routeMatrixStatsPubsubTopic)
-
-	core.Log("billing bigquery table: %s", billingBigQueryTable)
-	core.Log("match data bigquery table: %s", matchDataBigQueryTable)
-	core.Log("ping stats bigquery table: %s", pingStatsBigQueryTable)
-	core.Log("relay stats bigquery table: %s", relayStatsBigQueryTable)
-	core.Log("cost matrix stats bigquery table: %s", costMatrixStatsBigQueryTable)
-	core.Log("route matrix stats bigquery table: %s", routeMatrixStatsBigQueryTable)
-
 	ProcessCostMatrix(service)
 
 	ProcessRouteMatrix(service)
 
-	ProcessBilling(service)
-
-	ProcessMatchData(service)
-
-	ProcessPingStats(service)
-
-	ProcessRelayStats(service)
-
-	ProcessCostMatrixStats(service)
-
-	ProcessRouteMatrixStats(service)
+	Process[common.BillingEntry](service, "billing")
+	Process[common.SummaryEntry](service, "summary")
+	Process[common.MatchDataEntry](service, "match_data")
+	Process[common.PingStatsEntry](service, "ping_stats")
+	Process[common.RelayStatsEntry](service, "relay_stats")
+	Process[common.CostMatrixStatsEntry](service, "cost_matrix_stats")
+	Process[common.RouteMatrixStatsEntry](service, "route_matrix_stats")
 
 	service.LeaderElection()
 
@@ -97,6 +52,45 @@ func main() {
 
 	service.WaitForShutdown()
 }
+
+// --------------------------------------------------------------------
+
+func Process[T any](service *common.Service, name string) {
+
+	envPrefix := strings.ToUpper(name) + "_"
+
+	pubsubTopic := envvar.GetString(envPrefix + "PUBSUB_TOPIC", name)
+	bigqueryTable := envvar.GetString(envPrefix + "BIGQUERY_TABLE", name)
+
+	core.Debug("%s pubsub topic: %s", name, pubsubTopic)
+	core.Debug("%s bigquery table: %s", name, bigqueryTable)
+
+	config := common.GooglePubsubConfig{Topic: pubsubTopic}
+
+	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	core.Debug("processing %s messages", name)
+
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case message := <-consumer.MessageChannel:
+				core.Debug("received %s message", name)
+				_ = message
+				// todo: parse billing message
+				// todo: publish billing message to bigquery
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
 
 func ProcessCostMatrix(service *common.Service) {
 
@@ -295,160 +289,4 @@ func ProcessRouteMatrix(service *common.Service) {
 	}()
 }
 
-func ProcessBilling(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: billingPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing billing messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received billing message")
-				_ = message
-				// todo: parse billing message
-				// todo: publish billing message to bigquery
-			}
-		}
-	}()
-}
-
-func ProcessMatchData(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: matchDataPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing match data messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received match data message")
-				_ = message
-				// todo: process match data message
-			}
-		}
-	}()
-}
-
-func ProcessPingStats(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: pingStatsPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing ping stats messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received ping stats message")
-				_ = message
-				// todo: process ping stats message
-			}
-		}
-	}()
-}
-
-func ProcessRelayStats(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: relayStatsPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing relay stats messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received relay stats message")
-				_ = message
-				// todo: process relay stats message
-			}
-		}
-	}()
-}
-
-
-func ProcessCostMatrixStats(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: costMatrixStatsPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing cost matrix stats messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received cost matrix stats message")
-				_ = message
-				// todo: process cost matrix stats message
-			}
-		}
-	}()
-}
-
-func ProcessRouteMatrixStats(service *common.Service) {
-
-	config := common.GooglePubsubConfig{Topic: routeMatrixStatsPubsubTopic}
-
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub consumer: %v", err)
-		os.Exit(1)
-	}
-
-	core.Debug("processing route matrix stats messages")
-
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case message := <-consumer.MessageChannel:
-				core.Debug("received route matrix stats message")
-				_ = message
-				// todo: process route matrix stats message
-			}
-		}
-	}()
-}
+// --------------------------------------------------------------------
