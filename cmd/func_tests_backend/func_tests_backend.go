@@ -420,30 +420,28 @@ func test_google_pubsub() {
 		consumerLoop:
 			for {
 				select {
-				case pubsubBatch := <-streamConsumer.MessageChannel:
-					messageBatch := common.ParseMessages(pubsubBatch.Data)
+				case pubsubMessage := <-streamConsumer.MessageChannel:
 
+					msg := pubsubMessage.Data
 					// Process each message in the batch and ACK/NACK
 					success := true
-					for _, msg := range messageBatch {
-						messageID := binary.LittleEndian.Uint32(msg[:4])
+					messageID := binary.LittleEndian.Uint32(msg[:4])
 
-						start := int(messageID % 256)
-						for i := 0; i < len(msg); i++ {
-							if msg[i] != byte((start+i)%256) {
-								core.Error("Message validation failed!")
-								success = false
-								break
-							}
+					start := int(messageID % 256)
+					for i := 0; i < len(msg); i++ {
+						if msg[i] != byte((start+i)%256) {
+							core.Error("Message validation failed!")
+							success = false
+							break
 						}
 					}
 
 					if success {
 						streamConsumer.ACKMessage()
-						pubsubBatch.Ack()
+						pubsubMessage.Ack()
 					} else {
 						streamConsumer.NACKMessage()
-						pubsubBatch.Nack()
+						pubsubMessage.Nack()
 					}
 				case <-ctx.Done():
 					break consumerLoop
@@ -939,11 +937,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_magic_backend,
+		// test_magic_backend,
 		// test_redis_pubsub, // todo: Add this back after fixing context cancelled sem bug
 		test_google_pubsub,
 		// test_google_bigquery,
-		test_redis_streams,
+		// test_redis_streams,
 	}
 
 	var tests []test_function

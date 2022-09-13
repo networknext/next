@@ -186,7 +186,7 @@ func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 
 		case messageBatch := <-consumer.pubsubChannel:
 
-			batchMessages := ParseMessages([]byte(messageBatch.Payload))
+			batchMessages := parseMessages([]byte(messageBatch.Payload))
 
 			core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
 
@@ -202,7 +202,7 @@ func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 	}
 }
 
-func ParseMessages(messages []byte) [][]byte {
+func parseMessages(messages []byte) [][]byte {
 	index := 0
 	var batchNum uint32
 	var numMessages uint32
