@@ -377,7 +377,7 @@ func test_google_pubsub() {
 
 	// receive a bunch of messages via consumers
 
-	const NumConsumers = 1 // 100
+	const NumConsumers = 100
 
 	consumers := [NumConsumers]*common.GooglePubsubConsumer{}
 
