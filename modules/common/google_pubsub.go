@@ -9,6 +9,7 @@ import (
 )
 
 type GooglePubsubConfig struct {
+	Topic              string
 	// ...
 	BatchSize          int
 	BatchDuration      time.Duration

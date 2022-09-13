@@ -1,14 +1,9 @@
 package common
 
 import (
-	// "bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
 	"net"
-	// "sort"
-	// "sync"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
@@ -32,17 +27,8 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	Version            uint32
 	DestRelays         []bool
-
-	// todo: how is this stored
-	FullRelayIds []uint64
-	// todo: what is this?
-
-	// todo: what the fuck? this should just be an array...
-	FullRelayIndexSet map[int32]bool
-
-	// todo: review below
-	PingStats  []analytics.PingStatsEntry
-	RelayStats []analytics.RelayStatsEntry
+	FullRelayIds       []uint64
+	FullRelayIndexSet  map[int32]bool // this should just be an array of bools?
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
@@ -119,17 +105,21 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	if m.Version >= 3 {
+	if m.Version >= 3 && m.Version < 7 {
 
-		numRelayEntries := uint32(len(m.RelayStats))
+		numRelayEntries := uint32(0)
+
 		stream.SerializeUint32(&numRelayEntries)
 
+		var relayStats []analytics.RelayStatsEntry
+
 		if stream.IsReading() {
-			m.RelayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
+			relayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
 		}
 
 		for i := uint32(0); i < numRelayEntries; i++ {
-			entry := &m.RelayStats[i]
+
+			entry := &relayStats[i]
 
 			stream.SerializeUint64(&entry.Timestamp)
 			stream.SerializeUint64(&entry.ID)
@@ -159,15 +149,19 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			}
 		}
 
-		numPingEntries := uint32(len(m.PingStats))
+		numPingEntries := uint32(0)
+
 		stream.SerializeUint32(&numPingEntries)
 
+		var pingStats []analytics.PingStatsEntry
+
 		if stream.IsReading() {
-			m.PingStats = make([]analytics.PingStatsEntry, numPingEntries)
+			pingStats = make([]analytics.PingStatsEntry, numPingEntries)
 		}
 
 		for i := uint32(0); i < numPingEntries; i++ {
-			entry := &m.PingStats[i]
+
+			entry := &pingStats[i]
 
 			stream.SerializeUint64(&entry.Timestamp)
 			stream.SerializeUint64(&entry.RelayA)
@@ -249,16 +243,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return 0, err
-	}
-	readStream := encoding.CreateReadStream(data)
-	err = m.Serialize(readStream)
-	return int64(readStream.GetBytesProcessed()), err
-}
-
 func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
 	ws, err := encoding.CreateWriteStream(buffer)
@@ -270,4 +254,162 @@ func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	}
 	ws.Flush()
 	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func (m *RouteMatrix) Read(buffer []byte) error {
+	readStream := encoding.CreateReadStream(buffer)
+	return m.Serialize(readStream)
+}
+
+type RouteMatrixAnalysis struct {
+	TotalRoutes                          int
+	NumRelayPairs                        int
+	NumValidRelayPairs                   int
+	NumValidRelayPairsWithoutImprovement int
+	NumRelayPairsWithNoRoutes            int
+	NumRelayPairsWithOneRoute            int
+	AverageNumRoutes                     float32
+	AverageRouteLength                   float32
+	RTTBucket_NoImprovement              float32
+	RTTBucket_0_5ms                      float32
+	RTTBucket_5_10ms                     float32
+	RTTBucket_10_15ms                    float32
+	RTTBucket_15_20ms                    float32
+	RTTBucket_20_25ms                    float32
+	RTTBucket_25_30ms                    float32
+	RTTBucket_30_35ms                    float32
+	RTTBucket_35_40ms                    float32
+	RTTBucket_40_45ms                    float32
+	RTTBucket_45_50ms                    float32
+	RTTBucket_50ms_Plus                  float32
+}
+
+func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
+
+	analysis := RouteMatrixAnalysis{}
+
+	src := m.RelayIds
+	dest := m.RelayIds
+
+	numRelayPairs := 0.0
+	numValidRelayPairs := 0.0
+	numValidRelayPairsWithoutImprovement := 0.0
+
+	buckets := make([]int, 11)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				numRelayPairs++
+				abFlatIndex := TriMatrixIndex(i, j)
+				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
+					numValidRelayPairs++
+					improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
+					if improvement > 0.0 {
+						if improvement <= 5 {
+							buckets[0]++
+						} else if improvement <= 10 {
+							buckets[1]++
+						} else if improvement <= 15 {
+							buckets[2]++
+						} else if improvement <= 20 {
+							buckets[3]++
+						} else if improvement <= 25 {
+							buckets[4]++
+						} else if improvement <= 30 {
+							buckets[5]++
+						} else if improvement <= 35 {
+							buckets[6]++
+						} else if improvement <= 40 {
+							buckets[7]++
+						} else if improvement <= 45 {
+							buckets[8]++
+						} else if improvement <= 50 {
+							buckets[9]++
+						} else {
+							buckets[10]++
+						}
+					} else {
+						numValidRelayPairsWithoutImprovement++
+					}
+				}
+			}
+		}
+	}
+
+	analysis.NumRelayPairs = int(numRelayPairs)
+	analysis.NumValidRelayPairs = int(numValidRelayPairs)
+	analysis.NumValidRelayPairsWithoutImprovement = int(numValidRelayPairsWithoutImprovement)
+
+	analysis.RTTBucket_NoImprovement = float32(numValidRelayPairsWithoutImprovement/numValidRelayPairs*100.0)
+	analysis.RTTBucket_0_5ms = float32(float64(buckets[0])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_5_10ms = float32(float64(buckets[1])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_10_15ms = float32(float64(buckets[2])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_15_20ms = float32(float64(buckets[3])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_20_25ms = float32(float64(buckets[4])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_25_30ms = float32(float64(buckets[5])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_30_35ms = float32(float64(buckets[6])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_35_40ms = float32(float64(buckets[7])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_40_45ms = float32(float64(buckets[8])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_45_50ms = float32(float64(buckets[9])/numValidRelayPairs*100.0)
+	analysis.RTTBucket_50ms_Plus = float32(float64(buckets[10])/numValidRelayPairs*100.0)
+
+	totalRoutes := uint64(0)
+	maxRouteLength := int32(0)
+	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
+	relayPairsWithNoRoutes := 0
+	relayPairsWithOneRoute := 0
+	totalRouteLength := uint64(0)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				relayPairs++
+				ijFlatIndex := TriMatrixIndex(i, j)
+				n := m.RouteEntries[ijFlatIndex].NumRoutes
+				if n > maxRoutesPerRelayPair {
+					maxRoutesPerRelayPair = n
+				}
+				totalRoutes += uint64(n)
+				if n == 0 {
+					relayPairsWithNoRoutes++
+				}
+				if n == 1 {
+					relayPairsWithOneRoute++
+				}
+				for k := 0; k < int(n); k++ {
+					numRelays := m.RouteEntries[ijFlatIndex].RouteNumRelays[k]
+					totalRouteLength += uint64(numRelays)
+					if numRelays > maxRouteLength {
+						maxRouteLength = numRelays
+					}
+				}
+			}
+		}
+	}
+
+	numDestRelays := 0
+	for i := range m.DestRelays {
+		if m.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
+	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
+	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
+
+	analysis.TotalRoutes = int(totalRoutes)
+	analysis.AverageNumRoutes = float32(averageNumRoutes)
+	analysis.AverageRouteLength = float32(averageRouteLength)
+	analysis.NumRelayPairsWithNoRoutes = relayPairsWithNoRoutes
+	analysis.NumRelayPairsWithOneRoute = relayPairsWithOneRoute
+
+	return analysis
 }
