@@ -301,7 +301,7 @@ func test_google_pubsub() {
 
 	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
 
-	cancelContext, cancelFunc := context.WithCancel(context.Background())
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second)) // todo
 
 	pubsubSetupClient, err := pubsub.NewClient(cancelContext, "local")
 	if err != nil {
@@ -344,7 +344,7 @@ func test_google_pubsub() {
 
 	waitGroup.Add(NumProducers)
 
-	const NumMessagesPerProducer = 10000
+	const NumMessagesPerProducer = 100000
 
 	for i := 0; i < NumProducers; i++ {
 
@@ -375,9 +375,9 @@ func test_google_pubsub() {
 
 	waitGroup.Wait()
 
-	// receive a bunch of messages via the consumer
+	// receive a bunch of messages via consumers
 
-	const NumConsumers = 100
+	const NumConsumers = 1 // 100
 
 	consumers := [NumConsumers]*common.GooglePubsubConsumer{}
 
@@ -430,15 +430,19 @@ func test_google_pubsub() {
 		}(consumers[i])
 	}
 
-	// wait until we receive all messages, or up to 60 seconds...
+	// wait until we receive all messages, or up to 30 seconds...
 
 	receivedAllMessages := false
 
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 30; i++ {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
-		if messageCount == expectedCount {
+		if messageCount > expectedCount {
+			core.Error("received too many messages!")
+			os.Exit(1)
+		}
+		if i > 10 && messageCount == expectedCount {
 			core.Debug("received all")
 			receivedAllMessages = true
 			break
@@ -457,7 +461,11 @@ func test_google_pubsub() {
 
 	cancelFunc()
 
+	core.Debug("waiting for consumers...")	
+
 	waitGroup.Wait()
+
+	core.Debug("done")
 }
 
 func test_redis_pubsub() {
