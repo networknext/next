@@ -11,7 +11,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/messages"
+	// "github.com/networknext/backend/modules/messages"
 )
 
 var costMatrixURI string
@@ -39,6 +39,8 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
+	// todo: this is eating up CPU so comment out for now...
+	/*
 	Process[messages.BillingEntry](service, "billing")
 	Process[messages.SummaryEntry](service, "summary")
 	Process[messages.MatchDataEntry](service, "match_data")
@@ -46,6 +48,7 @@ func main() {
 	Process[messages.RelayStatsEntry](service, "relay_stats")
 	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
 	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
+	*/
 
 	service.LeaderElection()
 
