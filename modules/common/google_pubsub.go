@@ -23,7 +23,6 @@ type GooglePubsubProducer struct {
 	config             GooglePubsubConfig
 	pubsubClient       *pubsub.Client
 	pubsubTopic        *pubsub.Topic
-	pubsubSubscription *pubsub.Subscription
 	messageBatch       [][]byte
 	batchStartTime     time.Time
 	mutex              sync.RWMutex
@@ -43,14 +42,13 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 
 	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId)
 	if err != nil {
-		core.Error("failed to create pubsub client: %v", err)
+		core.Error("failed to create google pubsub client: %v", err)
 		return nil, err
 	}
 
 	pubsubTopic := pubsubClient.Topic(config.Topic)
-
 	if pubsubTopic == nil {
-		core.Error("failed to create google pubsub consumer: pubsub topic/subscription was not configured correctly")
+		core.Error("failed to create google pubsub topic")
 		return nil, err
 	}
 
@@ -141,7 +139,6 @@ type GooglePubsubConsumer struct {
 	MessageChannel      chan []byte
 	config              GooglePubsubConfig
 	pubsubClient        *pubsub.Client
-	pubsubTopic         *pubsub.Topic
 	pubsubSubscription  *pubsub.Subscription
 	mutex               sync.RWMutex
 	numMessagesReceived int
@@ -160,13 +157,6 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 		return nil, err
 	}
 
-	pubsubTopic := pubsubClient.Topic(config.Topic)
-
-	if pubsubTopic == nil {
-		core.Error("failed to create google pubsub topic")
-		return nil, err
-	}
-
 	pubsubSubscription := pubsubClient.Subscription(config.Subscription)
 	if pubsubSubscription == nil {
 		core.Error("failed to create google pubsub subscription")
@@ -177,7 +167,6 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 
 	consumer.config = config
 	consumer.pubsubClient = pubsubClient
-	consumer.pubsubTopic = pubsubTopic
 	consumer.pubsubSubscription = pubsubSubscription
 
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
