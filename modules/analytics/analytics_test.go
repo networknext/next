@@ -1,5 +1,7 @@
 package analytics_test
 
+// todo: old test. disable
+/*
 import (
 	"context"
 	"os"
@@ -38,6 +40,7 @@ func TestNewGooglePubSubPublisher(t *testing.T) {
 }
 
 func TestGooglePubSubPublisher(t *testing.T) {
+	
 	checkGooglePubsubEmulator(t)
 
 	t.Parallel()
@@ -90,6 +93,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 }
 
 func TestLocalBigQueryWriter(t *testing.T) {
+
 	t.Parallel()
 
 	ctx := context.Background()
@@ -132,6 +136,7 @@ func TestLocalBigQueryWriter(t *testing.T) {
 }
 
 func TestNoOp(t *testing.T) {
+	
 	t.Parallel()
 
 	t.Run("ping stats publisher", func(t *testing.T) {
@@ -158,3 +163,4 @@ func TestNoOp(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+*/
