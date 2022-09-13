@@ -95,6 +95,10 @@ func Process[T any](service *common.Service, name string) {
 
 func ProcessCostMatrix(service *common.Service) {
 
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
+
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
 	}
@@ -163,7 +167,22 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// todo: send cost matrix stats via pubsub
+				// send cost matrix entry via pubsub
+
+				costMatrixStatsEntry := messages.CostMatrixStatsEntry{}
+
+				costMatrixStatsEntry.Version = messages.CostMatrixStatsVersion
+				costMatrixStatsEntry.Bytes = costMatrixBytes
+				costMatrixStatsEntry.NumRelays = costMatrixNumRelays
+				costMatrixStatsEntry.NumDestRelays = costMatrixNumDestRelays
+				costMatrixStatsEntry.NumDatacenters = costMatrixNumDatacenters
+
+				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				// todo: insert message into pubsub
+				_ = message
+
+				core.Debug("cost matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()
@@ -282,7 +301,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// todo: send route matrix stats via pubsub
+				// send route matrix stats via pubsub
+
+				// todo
 			}
 		}
 	}()
