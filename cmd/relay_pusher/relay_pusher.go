@@ -93,19 +93,19 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup GCP storage
-	bucketName := envvar.Get("ARTIFACT_BUCKET", "")
+	bucketName := envvar.GetString("ARTIFACT_BUCKET", "")
 	if bucketName == "" {
 		core.Error("ARTIFACT_BUCKET not set")
 		return 1
 	}
 
-	databaseBinFileName := envvar.Get("DATABASE_FILE_NAME", "")
+	databaseBinFileName := envvar.GetString("DATABASE_FILE_NAME", "")
 	if databaseBinFileName == "" {
 		core.Error("DATABASE_FILE_NAME not set")
 		return 1
 	}
 
-	databaseBinFileOutputLocation := envvar.Get("DB_OUTPUT_LOCATION", "")
+	databaseBinFileOutputLocation := envvar.GetString("DB_OUTPUT_LOCATION", "")
 	if databaseBinFileOutputLocation == "" {
 		core.Error("DB_OUTPUT_LOCATION not set")
 		return 1
@@ -113,9 +113,9 @@ func mainReturnWithCode() int {
 
 	dbSyncInterval := envvar.GetDuration("DB_SYNC_INTERVAL", time.Minute*1)
 
-	overlayBinFileName := envvar.Get("OVERLAY_FILE_NAME", "")
+	overlayBinFileName := envvar.GetString("OVERLAY_FILE_NAME", "")
 
-	overlayBinFileOutputLocation := envvar.Get("OVERLAY_OUTPUT_LOCATION", "")
+	overlayBinFileOutputLocation := envvar.GetString("OVERLAY_OUTPUT_LOCATION", "")
 	if overlayBinFileOutputLocation == "" {
 		core.Error("OVERLAY_OUTPUT_LOCATION not set")
 		return 1
@@ -134,20 +134,20 @@ func mainReturnWithCode() int {
 		remoteDBLocations = append(remoteDBLocations, relayBackendName)
 	}
 
-	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_INSTANCE_NAME", "")
+	debugRelayBackendName := envvar.GetString("DEBUG_RELAY_BACKEND_INSTANCE_NAME", "")
 	if debugRelayBackendName == "" {
 		core.Error("DEBUG_RELAY_BACKEND_INSTANCE_NAME not set. Will not send data to debug instance.")
 	} else {
 		remoteDBLocations = append(remoteDBLocations, debugRelayBackendName)
 	}
 
-	relayGatewayMIGName := envvar.Get("RELAY_GATEWAY_MIG_NAME", "")
+	relayGatewayMIGName := envvar.GetString("RELAY_GATEWAY_MIG_NAME", "")
 	if relayGatewayMIGName == "" {
 		core.Error("RELAY_GATEWAY_MIG_NAME not set")
 		return 1
 	}
 
-	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
+	serverBackendMIGName := envvar.GetString("SERVER_BACKEND_MIG_NAME", "")
 	if serverBackendMIGName == "" {
 		core.Error("SERVER_BACKEND_MIG_NAME not set")
 		return 1
@@ -156,7 +156,7 @@ func mainReturnWithCode() int {
 	serverBackendInstanceNames := make([]string, 0)
 
 	// Check if the debug server backend exists and push files to it as well
-	debugServerBackendName := envvar.Get("DEBUG_SERVER_BACKEND_NAME", "")
+	debugServerBackendName := envvar.GetString("DEBUG_SERVER_BACKEND_NAME", "")
 	if debugServerBackendName == "" {
 		core.Error("DEBUG_SERVER_BACKEND_NAME not set. Will not send data to debug instance.")
 	} else {
@@ -175,37 +175,37 @@ func mainReturnWithCode() int {
 		Timeout: time.Second * 30,
 	}
 
-	ispOutputLocation := envvar.Get("MAXMIND_ISP_OUTPUT_LOCATION", "")
+	ispOutputLocation := envvar.GetString("MAXMIND_ISP_OUTPUT_LOCATION", "")
 	if ispOutputLocation == "" {
 		core.Error("MAXMIND_ISP_OUTPUT_LOCATION not set")
 		return 1
 	}
 
-	cityOutputLocation := envvar.Get("MAXMIND_CITY_OUTPUT_LOCATION", "")
+	cityOutputLocation := envvar.GetString("MAXMIND_CITY_OUTPUT_LOCATION", "")
 	if cityOutputLocation == "" {
 		core.Error("MAXMIND_CITY_OUTPUT_LOCATION not set")
 		return 1
 	}
 
-	ispStorageName := envvar.Get("MAXMIND_ISP_STORAGE_FILE_NAME", "")
+	ispStorageName := envvar.GetString("MAXMIND_ISP_STORAGE_FILE_NAME", "")
 	if ispStorageName == "" {
 		core.Error("MAXMIND_ISP_STORAGE_FILE_NAME not set")
 		return 1
 	}
 
-	cityStorageName := envvar.Get("MAXMIND_CITY_STORAGE_FILE_NAME", "")
+	cityStorageName := envvar.GetString("MAXMIND_CITY_STORAGE_FILE_NAME", "")
 	if cityStorageName == "" {
 		core.Error("MAXMIND_CITY_STORAGE_FILE_NAME not set")
 		return 1
 	}
 
-	ispURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
+	ispURI := envvar.GetString("MAXMIND_ISP_DB_URI", "")
 	if ispURI == "" {
 		core.Error("MAXMIND_ISP_DB_URI not set")
 		return 1
 	}
 
-	cityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
+	cityURI := envvar.GetString("MAXMIND_CITY_DB_URI", "")
 	if cityURI == "" {
 		core.Error("MAXMIND_CITY_DB_URI not set")
 		return 1
@@ -792,7 +792,7 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "")
+		port := envvar.GetString("PORT", "")
 		if port == "" {
 			core.Error("PORT not set")
 			return 1

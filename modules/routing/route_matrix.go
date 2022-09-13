@@ -121,7 +121,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	if m.Version >= 3 {
+	if m.Version >= 3 && m.Version < 7 {
 
 		numRelayEntries := uint32(len(m.RelayStats))
 		stream.SerializeUint32(&numRelayEntries)

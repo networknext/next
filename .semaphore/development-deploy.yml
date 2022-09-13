@@ -67,16 +67,6 @@ blocks:
 
       jobs:
 
-        - name: "Billing"
-          commands:
-            - make build-billing-artifacts-dev
-            - artifact push workflow dist/billing.dev.tar.gz
-        
-        - name: "Analytics Pusher"
-          commands:
-            - make build-analytics-pusher-artifacts-dev
-            - artifact push workflow dist/analytics_pusher.dev.tar.gz
-        
         - name: "Analytics"
           commands:
             - make build-analytics-artifacts-dev
@@ -126,11 +116,6 @@ blocks:
           commands:
             - make build-pingdom-artifacts-dev
             - artifact push workflow dist/pingdom.dev.tar.gz
-        
-        - name: "Match Data"
-          commands:
-            - make build-match-data-artifacts-dev
-            - artifact push workflow dist/match_data.dev.tar.gz
         
         - name: "Magic Backend"
           commands:
@@ -188,16 +173,6 @@ blocks:
             - artifact pull workflow bootstrap.sh
             - gsutil cp bootstrap.sh gs://development_artifacts/
 
-        - name: "Billing"
-          commands:
-            - artifact pull workflow billing.dev.tar.gz
-            - gsutil cp billing.dev.tar.gz gs://development_artifacts/
-
-        - name: "Analytics Pusher"
-          commands:
-            - artifact pull workflow analytics_pusher.dev.tar.gz
-            - gsutil cp analytics_pusher.dev.tar.gz gs://development_artifacts/
-
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.dev.tar.gz
@@ -247,11 +222,6 @@ blocks:
           commands:
             - artifact pull workflow pingdom.dev.tar.gz
             - gsutil cp pingdom.dev.tar.gz gs://development_artifacts/
-
-        - name: "Match Data"
-          commands:
-            - artifact pull workflow match_data.dev.tar.gz
-            - gsutil cp match_data.dev.tar.gz gs://development_artifacts/
 
         - name: "Magic Backend"
           commands:
