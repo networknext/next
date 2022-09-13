@@ -190,6 +190,10 @@ func ProcessCostMatrix(service *common.Service) {
 
 func ProcessRouteMatrix(service *common.Service) {
 
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
+
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
 	}
@@ -303,7 +307,20 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				// send route matrix stats via pubsub
 
-				// todo
+				routeMatrixStatsEntry := messages.RouteMatrixStatsEntry{}
+
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsVersion
+				routeMatrixStatsEntry.Bytes = routeMatrixBytes
+				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
+				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
+				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+
+				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				// todo: insert message into pubsub
+				_ = message
+
+				core.Debug("route matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()

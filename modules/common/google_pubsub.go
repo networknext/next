@@ -19,15 +19,15 @@ type GooglePubsubConfig struct {
 }
 
 type GooglePubsubProducer struct {
-	MessageChannel     chan []byte
-	config             GooglePubsubConfig
-	pubsubClient       *pubsub.Client
-	pubsubTopic        *pubsub.Topic
-	messageBatch       [][]byte
-	batchStartTime     time.Time
-	mutex              sync.RWMutex
-	numMessagesSent    int
-	numBatchesSent     int
+	MessageChannel  chan []byte
+	config          GooglePubsubConfig
+	pubsubClient    *pubsub.Client
+	pubsubTopic     *pubsub.Topic
+	messageBatch    [][]byte
+	batchStartTime  time.Time
+	mutex           sync.RWMutex
+	numMessagesSent int
+	numBatchesSent  int
 }
 
 func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubProducer, error) {
