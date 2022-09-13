@@ -939,11 +939,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		// test_magic_backend,
+		test_magic_backend,
 		// test_redis_pubsub, // todo: Add this back after fixing context cancelled sem bug
 		test_google_pubsub,
 		// test_google_bigquery,
-		// test_redis_streams,
+		test_redis_streams,
 	}
 
 	var tests []test_function
