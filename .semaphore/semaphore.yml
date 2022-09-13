@@ -209,15 +209,19 @@ blocks:
         - name: "test_magic_backend"
           commands:
             - cd ./dist && ./func_tests_backend test_magic_backend
+
         - name: "test_redis_streams"
           commands:
             - cd ./dist && ./func_tests_backend test_redis_streams
+
         # - name: "test_redis_pubsub"
           # commands:
             # - cd ./dist && ./func_tests_backend test_redis_pubsub
+
         - name: "test_google_pubsub"
           commands:
             - cd ./dist && ./func_tests_backend test_google_pubsub
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
