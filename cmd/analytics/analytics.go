@@ -244,13 +244,11 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
 
 				core.Debug("route matrix total routes: %d", analysis.TotalRoutes)
-				core.Debug("route matrix num relay pairs: %d", analysis.NumRelayPairs)
-				core.Debug("route matrix num valid relay pairs: %d", analysis.NumValidRelayPairs)
-				core.Debug("route matrix num valid relay pairs without improvement: %d", analysis.NumValidRelayPairsWithoutImprovement)
-				core.Debug("route matrix num relay pairs with no routes: %d", analysis.NumRelayPairsWithNoRoutes)
-				core.Debug("route matrix num relay pairs with one route: %d", analysis.NumRelayPairsWithOneRoute)
 				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
 				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
+				core.Debug("no route percent: %.1f%%", analysis.NoRoutePercent)
+				core.Debug("one route percent: %.1f%%", analysis.OneRoutePercent)
+				core.Debug("no direct route percent: %.1f%%", analysis.NoDirectRoutePercent)
 
 				core.Debug("route matrix rtt bucket no improvement: %.1f%%", analysis.RTTBucket_NoImprovement)
 				core.Debug("route matrix rtt bucket 0-5ms: %.1f%%", analysis.RTTBucket_0_5ms)

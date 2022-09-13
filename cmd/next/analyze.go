@@ -44,9 +44,9 @@ func analyzeRouteMatrix(inputFile string) {
 
 	fmt.Printf("    %d relays\n", len(routeMatrix.RelayIds))
 	fmt.Printf("    %d total routes\n", analysis.TotalRoutes)
-	fmt.Printf("    %d relay pairs\n", analysis.NumRelayPairs)
 	fmt.Printf("    %.1f routes per-relay pair on average\n", analysis.AverageNumRoutes)
 	fmt.Printf("    %.1f relays per-route on average\n", analysis.AverageRouteLength)
-	fmt.Printf("    %.1f%% of relay pairs have only one route\n", float64(analysis.NumRelayPairsWithOneRoute)/float64(analysis.NumRelayPairs)*100)
-	fmt.Printf("    %.1f%% of relay pairs have no route\n", float64(analysis.NumRelayPairsWithNoRoutes)/float64(analysis.NumRelayPairs)*100)
+	fmt.Printf("    %.1f%% of relay pairs have only one route\n", analysis.OneRoutePercent)
+	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
+	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
 }

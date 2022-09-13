@@ -22,7 +22,6 @@ func (entry *CostMatrixStatsEntry) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, entry.Timestamp)
 	encoding.WriteInt(buffer, &index, entry.Bytes)
 	encoding.WriteInt(buffer, &index, entry.NumRelays)
-	encoding.WriteInt(buffer, &index, entry.NumDestRelays)
 	encoding.WriteInt(buffer, &index, entry.NumDatacenters)
 	return buffer[:index]
 }
