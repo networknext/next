@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/binary"
 	"sync"
+	"sync/atomic"
 
 	// "context"
 	// "encoding/binary"
@@ -270,6 +271,7 @@ func test_magic_backend() {
 }
 
 func test_google_bigquery() {
+
 	fmt.Printf("test_google_bigquery\n")
 
 	action := "dev-bigquery-emulator"
@@ -292,222 +294,170 @@ func test_google_bigquery() {
 }
 
 func test_google_pubsub() {
+
 	fmt.Printf("test_google_pubsub\n")
 
-	// Set this so the pubsub connections default to the emulator - only way to do this unfortunately...
+	// setup the test topic and subscription in pubsub emulator
+
 	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
 
-	parentContext := context.Background()
+	cancelContext, cancelFunc := context.WithCancel(context.Background())
 
-	pubsubSetupHandler, err := pubsub.NewClient(parentContext, "local")
+	pubsubSetupClient, err := pubsub.NewClient(cancelContext, "local")
 	if err != nil {
-		core.Error("failed to create pubsub setup handler: %v", err)
+		core.Error("failed to create pubsub setup client: %v", err)
 		os.Exit(1)
 	}
 
-	pubsubTopics := []string{
-		"test",
-	}
+	topic := "test"
 
-	// Loop through required topics and add them and their subscriptions
-	for _, topic := range pubsubTopics {
-		pubsubSetupHandler.CreateTopic(parentContext, topic)
-		pubsubSetupHandler.CreateSubscription(parentContext, topic, pubsub.SubscriptionConfig{
-			Topic: pubsubSetupHandler.Topic(topic),
+	pubsubSetupClient.CreateTopic(cancelContext, topic)
+	pubsubSetupClient.CreateSubscription(cancelContext, topic, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(topic),
+	})
+
+	pubsubSetupClient.Close()
+
+	// send a bunch of messages via multiple producers
+
+	var waitGroup sync.WaitGroup
+
+	const NumProducers = 10
+
+	producers := [NumProducers]*common.GooglePubsubProducer{}
+
+	for i := 0; i < NumProducers; i++ {
+
+		producers[i], err = common.CreateGooglePubsubProducer(cancelContext, common.GooglePubsubConfig{
+			ProjectId:          "local",
+			Topic:              "test",
+			MessageChannelSize: 10 * 1024,
+			BatchSize:          100,
+			BatchDuration:      time.Millisecond * 100,
 		})
+
+		if err != nil {
+			core.Error("failed to create google pubsub producer: %v", err)
+			os.Exit(1)
+		}
 	}
 
-	pubsubSetupHandler.Close()
+	waitGroup.Add(NumProducers)
 
-	producerThreads := 2
-	consumerThreads := 10
+	const NumMessagesPerProducer = 10000
 
-	var producerWG sync.WaitGroup
-	var consumerWG sync.WaitGroup
+	for i := 0; i < NumProducers; i++ {
 
-	producerWG.Add(producerThreads)
-	consumerWG.Add(consumerThreads)
+		go func(producer *common.GooglePubsubProducer) {
+			
+			for j := 0; j < NumMessagesPerProducer; j++ {
 
-	threadMessagesSent := make([]int64, producerThreads)
-	threadMessagesReceived := make([]int64, consumerThreads)
+				messageId := j
+				messageSize := mathRand.Intn(96) + 4
+				messageData := make([]byte, messageSize)
 
-	threadBatchesSent := make([]int64, producerThreads)
-	threadBatchesReceived := make([]int64, consumerThreads)
+				binary.LittleEndian.PutUint32(messageData[:4], uint32(messageId))
 
-	producerThreadQuit := make([]context.CancelFunc, producerThreads)
-	consumerThreadQuit := make([]context.CancelFunc, consumerThreads)
-
-	for i := 0; i < producerThreads; i++ {
-		ctx, cancel := context.WithCancel(parentContext)
-
-		producerThreadQuit[i] = cancel
-
-		go func(threadIndex int, ctx context.Context) {
-			streamProducer, err := common.CreateGooglePubsubProducer(ctx, common.GooglePubsubConfig{
-				ProjectId:          "local",
-				Topic:              "test",
-				MessageChannelSize: 10 * 1024,
-				BatchSize:          100,
-				BatchDuration:      time.Millisecond * 100,
-			})
-
-			if err != nil {
-				producerWG.Done()
-				return
-			}
-
-			tickRate := time.Duration(1000000000 / 1000)
-
-			ticker := time.NewTicker(tickRate)
-
-			numMessagesSent := 0
-
-		producerLoop:
-			for {
-				select {
-				case <-ticker.C:
-					messageID := numMessagesSent
-					messageSize := mathRand.Intn(96) + 4
-					messageData := make([]byte, messageSize)
-
-					binary.LittleEndian.PutUint32(messageData[:4], uint32(messageID))
-
-					start := messageID % 256
-					for i := 0; i < messageSize; i++ {
-						messageData[i] = byte((start + i) % 256)
-					}
-
-					streamProducer.MessageChannel <- messageData
-
-					numMessagesSent++
-
-				case <-ctx.Done():
-					break producerLoop
+				start := messageId % 256
+				for k := 0; k < messageSize; k++ {
+					messageData[k] = byte((start + k) % 256)
 				}
+
+				producer.MessageChannel <- messageData
 			}
 
-			threadBatchesSent[threadIndex] = int64(streamProducer.NumBatchesSent())
-			threadMessagesSent[threadIndex] = int64(streamProducer.NumMessagesSent())
+			waitGroup.Done()
 
-			streamProducer.Close(ctx)
-
-			// If the thread is killed externally, decrement the wg counter
-			producerWG.Done()
-		}(i, ctx)
+		}(producers[i])
 	}
 
-	for i := 0; i < consumerThreads; i++ {
-		ctx, cancel := context.WithCancel(parentContext)
+	fmt.Printf("waiting for producers...\n")
 
-		consumerThreadQuit[i] = cancel
+	waitGroup.Wait()
 
-		go func(threadIndex int, ctx context.Context) {
-			streamConsumer, err := common.CreateGooglePubsubConsumer(ctx, common.GooglePubsubConfig{
-				ProjectId:          "local",
-				Topic:              "test",
-				Subscription:       "test",
-				MessageChannelSize: 10 * 1024,
-			})
+	// receive a bunch of messages via the consumer
 
-			if err != nil {
-				consumerWG.Done()
-				return
-			}
+	const NumConsumers = 100
 
-		consumerLoop:
+	consumers := [NumConsumers]*common.GooglePubsubConsumer{}
+
+	for i := 0; i < NumConsumers; i++ {
+
+		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
+			ProjectId:          "local",
+			Topic:              "test",
+			Subscription:       "test",
+			MessageChannelSize: 10 * 1024,
+		})
+
+		if err != nil {
+			core.Error("failed to create google pubsub consumer: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	waitGroup.Add(NumConsumers)
+
+	var numMessagesReceived uint64
+
+	for i := 0; i < NumConsumers; i++ {
+
+		go func(consumer *common.GooglePubsubConsumer) {
+			
 			for {
 				select {
-				case msg := <-streamConsumer.MessageChannel:
-					messageID := binary.LittleEndian.Uint32(msg[:4])
 
-					start := int(messageID % 256)
-					for i := 0; i < len(msg); i++ {
-						if msg[i] != byte((start+i)%256) {
-							core.Error("Message validation failed!")
+				case <-cancelContext.Done():
+					break
+
+				case msg := <-consumer.MessageChannel:
+					messageId := binary.LittleEndian.Uint32(msg[:4])
+					start := int(messageId % 256)
+					for j := 0; j < len(msg); j++ {
+						if msg[j] != byte((start+j)%256) {
+							core.Error("message validation failed. expected %d, got %d", byte((start+j)%256), msg[j])
+							os.Exit(1)
 						}
 					}
-				case <-ctx.Done():
-					break consumerLoop
+					atomic.AddUint64(&numMessagesReceived, 1)
 				}
 			}
 
-			threadBatchesReceived[threadIndex] = int64(streamConsumer.NumBatchesReceived())
-			threadMessagesReceived[threadIndex] = int64(streamConsumer.NumMessageReceived())
+			core.Debug("consumer done")
 
-			streamConsumer.Close(ctx)
+			waitGroup.Done()
 
-			consumerWG.Done()
-		}(i, ctx)
+		}(consumers[i])
 	}
 
-	time.Sleep(time.Second * 30)
+	// wait until we receive all messages, or up to 60 seconds...
 
-	for i := 0; i < producerThreads; i++ {
-		// Loop through producer threads and shut down the message creation loops
-		producerThreadQuit[i]()
+	receivedAllMessages := false
+
+	for i := 0; i < 60; i++ {
+		messageCount := atomic.LoadUint64(&numMessagesReceived)
+		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
+		core.Debug("received %d/%d messages", messageCount, expectedCount)
+		if messageCount == expectedCount {
+			core.Debug("received all")
+			receivedAllMessages = true
+			break
+		}
+		time.Sleep(time.Second)
 	}
 
-	producerWG.Wait()
-
-	time.Sleep(time.Second * 30)
-
-	for i := 0; i < consumerThreads; i++ {
-		// Loop through consumer threads and shut down processing loops
-		consumerThreadQuit[i]()
-	}
-
-	consumerWG.Wait()
-
-	totalMessagesSent := 0
-	totalMessagesReceived := 0
-
-	for _, numMessages := range threadMessagesSent {
-		totalMessagesSent = totalMessagesSent + int(numMessages)
-	}
-
-	for _, numMessages := range threadMessagesReceived {
-		totalMessagesReceived = totalMessagesReceived + int(numMessages)
-	}
-
-	totalNumBatchesSent := 0
-	for i := 0; i < producerThreads; i++ {
-		totalNumBatchesSent = totalNumBatchesSent + int(threadBatchesSent[i])
-	}
-
-	totalNumBatchesReceived := 0
-	for i := 0; i < consumerThreads; i++ {
-		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
-	}
-
-	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
-	// totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
-
-	// Divide num messages received across all threads by num consumers to make sure everyone got the same num messages
-	// totalMessagesReceived = (totalMessagesReceived / consumerThreads)
-
-	failed := false
-	if totalNumBatchesReceived == totalNumBatchesSent {
-		fmt.Printf("\nTest Results - Batches Sent: Passed\n")
-	} else {
-		fmt.Printf("\nTest Results - Batches Sent: Failed\n")
-		failed = true
-	}
-
-	if totalMessagesReceived == totalMessagesSent {
-		fmt.Println("Test Results - Messages Sent: Passed")
-	} else {
-		fmt.Println("Test Results - Messages Sent: Failed")
-		failed = true
-	}
-
-	if failed {
-		fmt.Printf("Total number of batches sent: %d\n", totalNumBatchesSent)
-		fmt.Printf("Total number of messages sent: %d\n", totalMessagesSent)
-
-		fmt.Printf("Total number of batches received: %d\n", totalNumBatchesReceived)
-		fmt.Printf("Total number of messages received: %d\n", totalMessagesReceived)
+	if !receivedAllMessages {
+		core.Error("did not receive all messages sent")
 		os.Exit(1)
 	}
+
+	// clean shutdown the consumer threads
+
+	core.Debug("cancelling context")
+
+	cancelFunc()
+
+	waitGroup.Wait()
 }
 
 func test_redis_pubsub() {
@@ -894,11 +844,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_magic_backend,
-		// test_redis_pubsub, // todo: Add this back after fixing context cancelled sem bug
+		// test_magic_backend,
+		// test_redis_pubsub,
+		// test_redis_streams,
 		test_google_pubsub,
 		// test_google_bigquery,
-		test_redis_streams,
 	}
 
 	var tests []test_function

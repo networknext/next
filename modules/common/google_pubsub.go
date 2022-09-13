@@ -182,7 +182,7 @@ func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
 
 		batchMessages := parseMessages(m.Data)
 
-		core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len(m.Data))
+		core.Debug("received %d messages (%v bytes) from google pubsub", len(batchMessages), len(m.Data))
 
 		for _, message := range batchMessages {
 			consumer.MessageChannel <- message
