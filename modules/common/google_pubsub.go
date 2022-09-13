@@ -31,6 +31,14 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 
 	producer := &GooglePubsubProducer{}
 
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 10 * 1024
+	}
+
+	if config.BatchDuration == 0 {
+		config.BatchDuration = time.Second
+	}
+
 	producer.config = config
 	// ...
 	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
@@ -100,6 +108,10 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 
 	consumer := &GooglePubsubConsumer{}
 
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 10 * 1024
+	}
+
 	consumer.config = config
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
@@ -112,39 +124,39 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 
 func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
 
+	/*
 	for {
 
 		// todo: quit if context is done
 
 		// todo: read message
 
-		/*
-			if err != nil {
-				core.Error("error reading from google pubsub: %s", err)
-				continue
+		if err != nil {
+			core.Error("error reading from google pubsub: %s", err)
+			continue
+		}
+
+		for _, stream := range streamMessages[0].Messages {
+
+			batchData := []byte(stream.Values["data"].(string))
+
+			batchMessages := parseMessages(batchData)
+
+			core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
+
+			for _, message := range batchMessages {
+				consumer.MessageChannel <- message
 			}
 
-			for _, stream := range streamMessages[0].Messages {
+			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
 
-				batchData := []byte(stream.Values["data"].(string))
-
-				batchMessages := parseMessages(batchData)
-
-				core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
-
-				for _, message := range batchMessages {
-					consumer.MessageChannel <- message
-				}
-
-				consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
-
-				consumer.mutex.Lock()
-				consumer.numBatchesReceived += 1
-				consumer.numMessagesReceived += len(batchMessages)
-				consumer.mutex.Unlock()
-			}
-		*/
+			consumer.mutex.Lock()
+			consumer.numBatchesReceived += 1
+			consumer.numMessagesReceived += len(batchMessages)
+			consumer.mutex.Unlock()
+		}
 	}
+	*/
 }
 
 func (consumer *GooglePubsubConsumer) NumMessageReceived() int {
