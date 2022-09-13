@@ -301,7 +301,7 @@ func test_google_pubsub() {
 
 	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
 
-	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second)) // todo
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	pubsubSetupClient, err := pubsub.NewClient(cancelContext, "local")
 	if err != nil {
@@ -408,7 +408,9 @@ func test_google_pubsub() {
 				select {
 
 				case <-cancelContext.Done():
-					break
+					core.Debug("consumer done")
+					waitGroup.Done()
+					return
 
 				case msg := <-consumer.MessageChannel:
 					messageId := binary.LittleEndian.Uint32(msg[:4])
@@ -422,10 +424,6 @@ func test_google_pubsub() {
 					atomic.AddUint64(&numMessagesReceived, 1)
 				}
 			}
-
-			core.Debug("consumer done")
-
-			waitGroup.Done()
 
 		}(consumers[i])
 	}
@@ -852,9 +850,9 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		// test_magic_backend,
+		test_magic_backend,
 		// test_redis_pubsub,
-		// test_redis_streams,
+		test_redis_streams,
 		test_google_pubsub,
 		// test_google_bigquery,
 	}
