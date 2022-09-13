@@ -3,10 +3,10 @@ package main
 import (
 	"io/ioutil"
 	"net/http"
-	"sync"
-	"time"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -47,9 +47,9 @@ func main() {
 	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
 	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
 
-	service.LeaderElection()
-
 	service.StartWebServer()
+
+	service.LeaderElection()
 
 	service.WaitForShutdown()
 }
@@ -60,13 +60,13 @@ func Process[T any](service *common.Service, name string) {
 
 	envPrefix := strings.ToUpper(name) + "_"
 
-	pubsubTopic := envvar.GetString(envPrefix + "PUBSUB_TOPIC", name)
-	bigqueryTable := envvar.GetString(envPrefix + "BIGQUERY_TABLE", name)
+	pubsubTopic := envvar.GetString(envPrefix+"PUBSUB_TOPIC", name)
+	bigqueryTable := envvar.GetString(envPrefix+"BIGQUERY_TABLE", name)
 
 	core.Debug("%s pubsub topic: %s", name, pubsubTopic)
 	core.Debug("%s bigquery table: %s", name, bigqueryTable)
 
-	config := common.GooglePubsubConfig{Topic: pubsubTopic}
+	config := common.GooglePubsubConfig{Topic: pubsubTopic, BatchDuration: 10 * time.Second}
 
 	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
 	if err != nil {
@@ -94,6 +94,10 @@ func Process[T any](service *common.Service, name string) {
 // --------------------------------------------------------------------
 
 func ProcessCostMatrix(service *common.Service) {
+
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
@@ -163,7 +167,22 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// todo: send cost matrix stats via pubsub
+				// send cost matrix entry via pubsub
+
+				costMatrixStatsEntry := messages.CostMatrixStatsEntry{}
+
+				costMatrixStatsEntry.Version = messages.CostMatrixStatsVersion
+				costMatrixStatsEntry.Bytes = costMatrixBytes
+				costMatrixStatsEntry.NumRelays = costMatrixNumRelays
+				costMatrixStatsEntry.NumDestRelays = costMatrixNumDestRelays
+				costMatrixStatsEntry.NumDatacenters = costMatrixNumDatacenters
+
+				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				// todo: insert message into pubsub
+				_ = message
+
+				core.Debug("cost matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()
@@ -244,13 +263,11 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
 
 				core.Debug("route matrix total routes: %d", analysis.TotalRoutes)
-				core.Debug("route matrix num relay pairs: %d", analysis.NumRelayPairs)
-				core.Debug("route matrix num valid relay pairs: %d", analysis.NumValidRelayPairs)
-				core.Debug("route matrix num valid relay pairs without improvement: %d", analysis.NumValidRelayPairsWithoutImprovement)
-				core.Debug("route matrix num relay pairs with no routes: %d", analysis.NumRelayPairsWithNoRoutes)
-				core.Debug("route matrix num relay pairs with one route: %d", analysis.NumRelayPairsWithOneRoute)
 				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
 				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
+				core.Debug("no route percent: %.1f%%", analysis.NoRoutePercent)
+				core.Debug("one route percent: %.1f%%", analysis.OneRoutePercent)
+				core.Debug("no direct route percent: %.1f%%", analysis.NoDirectRoutePercent)
 
 				core.Debug("route matrix rtt bucket no improvement: %.1f%%", analysis.RTTBucket_NoImprovement)
 				core.Debug("route matrix rtt bucket 0-5ms: %.1f%%", analysis.RTTBucket_0_5ms)
@@ -284,7 +301,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// todo: send route matrix stats via pubsub
+				// send route matrix stats via pubsub
+
+				// todo
 			}
 		}
 	}()

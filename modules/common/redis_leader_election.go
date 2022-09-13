@@ -22,17 +22,17 @@ type RedisLeaderElectionConfig struct {
 }
 
 type RedisLeaderElection struct {
-	config          RedisLeaderElectionConfig
-	redisClient     *redis.Client
-	startTime       time.Time
-	instanceId      string
-	isLeader        bool
+	config      RedisLeaderElectionConfig
+	redisClient *redis.Client
+	startTime   time.Time
+	instanceId  string
+	isLeader    bool
 }
 
 type RedisLeaderElectionEntry struct {
-	InstanceId     string
-	Uptime         uint64
-	Timestamp      uint64
+	InstanceId string
+	Uptime     uint64
+	Timestamp  uint64
 }
 
 func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
@@ -92,7 +92,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// get all "instance/*" keys via scan to be safe
 
 	instanceKeys := []string{}
-	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("leader-election-%s-%d/*", leaderElection.config.ServiceName, RedisSelectorVersion), 0).Iterator()
+	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("leader-election-%s-%d/*", leaderElection.config.ServiceName, RedisLeaderElectionVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
@@ -155,7 +155,17 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	masterInstance := instanceEntries[0]
 
-	leaderElection.isLeader = (masterInstance.InstanceId == leaderElection.instanceId)
+	newLeader := (masterInstance.InstanceId == leaderElection.instanceId)
+
+	if newLeader && !leaderElection.isLeader {
+		core.Log("we are the leader")
+	}
+
+	if !newLeader && leaderElection.isLeader {
+		core.Log("we are no longer the leader")
+	}
+
+	leaderElection.isLeader = newLeader
 }
 
 func (leaderElection *RedisLeaderElection) IsLeader() bool {

@@ -45,6 +45,10 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 		config.MessageChannelSize = 10 * 1024
 	}
 
+	if config.BatchDuration == 0 {
+		config.BatchDuration = time.Second
+	}
+
 	producer := &RedisPubsubProducer{}
 	producer.config = config
 	producer.redisClient = redisClient

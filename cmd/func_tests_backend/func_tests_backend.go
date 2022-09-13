@@ -344,7 +344,7 @@ func test_google_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamProducer, err := common.CreateGooglePubsubProducer(ctx, common.GooglePubsubConfig{
-				ProjectID:          "local",
+				ProjectId:          "local",
 				Topic:              "test",
 				MessageChannelSize: 10 * 1024,
 				BatchSize:          100,
@@ -403,7 +403,7 @@ func test_google_pubsub() {
 
 		go func(threadIndex int, ctx context.Context) {
 			streamConsumer, err := common.CreateGooglePubsubConsumer(ctx, common.GooglePubsubConfig{
-				ProjectID:          "local",
+				ProjectId:          "local",
 				Topic:              "test",
 				Subscription:       "test",
 				MessageChannelSize: 10 * 1024,

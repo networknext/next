@@ -11,7 +11,6 @@ const (
 )
 
 type RelayStatsEntry struct {
-
 	Timestamp uint64
 
 	ID uint64

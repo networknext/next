@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	PingStatsEntryVersion  = uint8(4)
-	MaxPingStatsEntrySize  = 128
-	MaxInstanceIDLength    = 64        // todo: remove
+	PingStatsEntryVersion = uint8(4)
+	MaxPingStatsEntrySize = 128
+	MaxInstanceIDLength   = 64 // todo: remove
 )
 
 type PingStatsEntry struct {
@@ -22,9 +22,9 @@ type PingStatsEntry struct {
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	
+
 	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
-	
+
 	data := make([]byte, length)
 
 	index := 0
@@ -45,7 +45,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 }
 
 func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
-	
+
 	index := 0
 
 	var version uint8

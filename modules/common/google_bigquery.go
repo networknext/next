@@ -33,7 +33,15 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 
 	publisher := &GoogleBigQueryPublisher{}
 
+	if config.PublishChannelSize == 0 {
+		config.PublishChannelSize = 10 * 1024
+	}
+
 	publisher.config = config
+	if publisher.config.BatchDuration == 0 {
+		publisher.config.BatchDuration = time.Second
+	}
+
 	publisher.PublishChannel = make(chan *bigquery.ValueSaver, config.PublishChannelSize)
 
 	go publisher.updatePublishChannel(ctx)

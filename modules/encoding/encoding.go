@@ -43,6 +43,11 @@ func WriteUint64(data []byte, index *int, value uint64) {
 	*index += 8
 }
 
+func WriteInt(data []byte, index *int, value int) {
+	binary.LittleEndian.PutUint64(data[*index:], uint64(value))
+	*index += 8
+}
+
 func WriteFloat32(data []byte, index *int, value float32) {
 	uintValue := math.Float32bits(value)
 	WriteUint32(data, index, uintValue)
@@ -143,6 +148,15 @@ func ReadUint64(data []byte, index *int, value *uint64) bool {
 		return false
 	}
 	*value = binary.LittleEndian.Uint64(data[*index:])
+	*index += 8
+	return true
+}
+
+func ReadInt(data []byte, index *int, value *int) bool {
+	if *index+8 > len(data) {
+		return false
+	}
+	*value = int(binary.LittleEndian.Uint64(data[*index:]))
 	*index += 8
 	return true
 }
