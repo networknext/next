@@ -207,6 +207,28 @@ func ProcessCostMatrix(service *common.Service) {
 }
 
 func ProcessRouteMatrix(service *common.Service) {
+	/* todo
+	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "route_matrix_stats")
+	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "route_matrix_stats")
+
+	core.Log("route matrix stats entry google project id: %s", googleProjectID)
+	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
+	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
+
+	config := common.GooglePubsubConfig{
+		ProjectId:          googleProjectID,
+		Topic:              pubsubTopic,
+		Subscription:       pubsubSubscription,
+		MessageChannelSize: 10 * 1024,
+	}
+
+	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
+		os.Exit(1)
+	}
+	*/
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -322,6 +344,8 @@ func ProcessRouteMatrix(service *common.Service) {
 				// send route matrix stats via pubsub
 
 				// todo
+				// statsPubsubProducer.MessageChannel <- message
+
 			}
 		}
 	}()
