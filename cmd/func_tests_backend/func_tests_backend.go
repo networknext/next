@@ -334,6 +334,9 @@ func test_google_pubsub() {
 	threadBatchesSent := make([]int64, producerThreads)
 	threadBatchesReceived := make([]int64, consumerThreads)
 
+	threadBatchesACKd := make([]int64, consumerThreads)
+	threadBatchesNACKd := make([]int64, consumerThreads)
+
 	producerThreadQuit := make([]context.CancelFunc, producerThreads)
 	consumerThreadQuit := make([]context.CancelFunc, consumerThreads)
 
@@ -417,14 +420,30 @@ func test_google_pubsub() {
 		consumerLoop:
 			for {
 				select {
-				case msg := <-streamConsumer.MessageChannel:
-					messageID := binary.LittleEndian.Uint32(msg[:4])
+				case pubsubBatch := <-streamConsumer.MessageChannel:
+					messageBatch := common.ParseMessages(pubsubBatch.Data)
 
-					start := int(messageID % 256)
-					for i := 0; i < len(msg); i++ {
-						if msg[i] != byte((start+i)%256) {
-							core.Error("Message validation failed!")
+					// Process each message in the batch and ACK/NACK
+					success := true
+					for _, msg := range messageBatch {
+						messageID := binary.LittleEndian.Uint32(msg[:4])
+
+						start := int(messageID % 256)
+						for i := 0; i < len(msg); i++ {
+							if msg[i] != byte((start+i)%256) {
+								core.Error("Message validation failed!")
+								success = false
+								break
+							}
 						}
+					}
+
+					if success {
+						streamConsumer.ACKMessage()
+						pubsubBatch.Ack()
+					} else {
+						streamConsumer.NACKMessage()
+						pubsubBatch.Nack()
 					}
 				case <-ctx.Done():
 					break consumerLoop
@@ -433,6 +452,8 @@ func test_google_pubsub() {
 
 			threadBatchesReceived[threadIndex] = int64(streamConsumer.NumBatchesReceived())
 			threadMessagesReceived[threadIndex] = int64(streamConsumer.NumMessageReceived())
+			threadBatchesACKd[threadIndex] = int64(streamConsumer.NumBatchesACKd())
+			threadBatchesNACKd[threadIndex] = int64(streamConsumer.NumBatchesNACKd())
 
 			streamConsumer.Close(ctx)
 
@@ -479,6 +500,16 @@ func test_google_pubsub() {
 		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
 	}
 
+	totalBatchesACKd := 0
+	for i := 0; i < consumerThreads; i++ {
+		totalBatchesACKd = totalBatchesACKd + int(threadBatchesACKd[i])
+	}
+
+	totalBatchesNACKd := 0
+	for i := 0; i < consumerThreads; i++ {
+		totalBatchesNACKd = totalBatchesNACKd + int(threadBatchesNACKd[i])
+	}
+
 	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
 	// totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
 
@@ -497,6 +528,20 @@ func test_google_pubsub() {
 		fmt.Println("Test Results - Messages Sent: Passed")
 	} else {
 		fmt.Println("Test Results - Messages Sent: Failed")
+		failed = true
+	}
+
+	if totalBatchesACKd == totalNumBatchesSent {
+		fmt.Println("Test Results - Messages ACK'd: Passed")
+	} else {
+		fmt.Println("Test Results - Messages ACK'd: Failed")
+		failed = true
+	}
+
+	if totalBatchesNACKd == 0 {
+		fmt.Println("Test Results - Messages NACK'd: Passed")
+	} else {
+		fmt.Println("Test Results - Messages NACK'd: Failed")
 		failed = true
 	}
 
@@ -894,11 +939,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_magic_backend,
+		// test_magic_backend,
 		// test_redis_pubsub, // todo: Add this back after fixing context cancelled sem bug
 		test_google_pubsub,
 		// test_google_bigquery,
-		test_redis_streams,
+		// test_redis_streams,
 	}
 
 	var tests []test_function
