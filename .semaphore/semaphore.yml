@@ -217,10 +217,11 @@ blocks:
         # - name: "test_redis_pubsub"
           # commands:
             # - cd ./dist && ./func_tests_backend test_redis_pubsub
-            
+
         - name: "test_google_pubsub"
           commands:
             - cd ./dist && ./func_tests_backend test_google_pubsub
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
@@ -257,6 +258,7 @@ blocks:
             - artifact push workflow dist/func_tests_sdk4
             - artifact push workflow dist/reference_relay4
             - artifact push workflow dist/libnext4.so
+
 
   - name: "Run Functional Tests (sdk4)"
     dependencies: ["Build Functional Tests (sdk4)", "Dependencies"]
