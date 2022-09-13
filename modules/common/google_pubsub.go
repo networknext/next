@@ -136,13 +136,15 @@ func (producer *GooglePubsubProducer) Close(ctx context.Context) {
 // ----------------------------
 
 type GooglePubsubConsumer struct {
-	MessageChannel      chan []byte
+	MessageChannel      chan *pubsub.Message
 	config              GooglePubsubConfig
 	pubsubClient        *pubsub.Client
 	pubsubSubscription  *pubsub.Subscription
 	mutex               sync.RWMutex
 	numMessagesReceived int
 	numBatchesReceived  int
+	numBatchesACKd      int
+	numBatchesNACKd     int
 }
 
 func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubConsumer, error) {
@@ -169,7 +171,7 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 	consumer.pubsubClient = pubsubClient
 	consumer.pubsubSubscription = pubsubSubscription
 
-	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
+	consumer.MessageChannel = make(chan *pubsub.Message, config.MessageChannelSize)
 
 	go consumer.receiveMessages(ctx)
 
@@ -180,21 +182,29 @@ func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
 
 	consumer.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 
-		batchMessages := parseMessages(m.Data)
+		batchMessages := ParseMessages(m.Data)
 
-		core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len(m.Data))
+		core.Debug("received %d messages (%v bytes) from google pubsub", len(batchMessages), len(m.Data))
 
-		for _, message := range batchMessages {
-			consumer.MessageChannel <- message
-		}
+		consumer.MessageChannel <- m
 
 		consumer.mutex.Lock()
 		consumer.numBatchesReceived += 1
 		consumer.numMessagesReceived += len(batchMessages)
 		consumer.mutex.Unlock()
-
-		m.Ack()
 	})
+}
+
+func (consumer *GooglePubsubConsumer) ACKMessage() {
+	consumer.mutex.Lock()
+	consumer.numBatchesACKd++
+	consumer.mutex.Unlock()
+}
+
+func (consumer *GooglePubsubConsumer) NACKMessage() {
+	consumer.mutex.Lock()
+	consumer.numBatchesNACKd++
+	consumer.mutex.Unlock()
 }
 
 func (consumer *GooglePubsubConsumer) NumMessageReceived() int {
@@ -207,6 +217,20 @@ func (consumer *GooglePubsubConsumer) NumMessageReceived() int {
 func (consumer *GooglePubsubConsumer) NumBatchesReceived() int {
 	consumer.mutex.RLock()
 	value := consumer.numBatchesReceived
+	consumer.mutex.RUnlock()
+	return value
+}
+
+func (consumer *GooglePubsubConsumer) NumBatchesACKd() int {
+	consumer.mutex.RLock()
+	value := consumer.numBatchesACKd
+	consumer.mutex.RUnlock()
+	return value
+}
+
+func (consumer *GooglePubsubConsumer) NumBatchesNACKd() int {
+	consumer.mutex.RLock()
+	value := consumer.numBatchesNACKd
 	consumer.mutex.RUnlock()
 	return value
 }

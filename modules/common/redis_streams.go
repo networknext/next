@@ -215,7 +215,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 
 			batchData := []byte(stream.Values["data"].(string))
 
-			batchMessages := parseMessages(batchData)
+			batchMessages := ParseMessages(batchData)
 
 			core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
 
