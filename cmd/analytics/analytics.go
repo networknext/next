@@ -207,7 +207,6 @@ func ProcessCostMatrix(service *common.Service) {
 }
 
 func ProcessRouteMatrix(service *common.Service) {
-	/* todo
 	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "route_matrix_stats")
 	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "route_matrix_stats")
@@ -228,7 +227,10 @@ func ProcessRouteMatrix(service *common.Service) {
 		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
 		os.Exit(1)
 	}
-	*/
+
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -342,10 +344,20 @@ func ProcessRouteMatrix(service *common.Service) {
 				logMutex.Unlock()
 
 				// send route matrix stats via pubsub
+				routeMatrixStatsEntry := messages.RouteMatrixStatsEntry{}
 
-				// todo
-				// statsPubsubProducer.MessageChannel <- message
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsVersion
+				routeMatrixStatsEntry.Bytes = routeMatrixBytes
+				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
+				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
+				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
 
+				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				statsPubsubProducer.MessageChannel <- message
+				_ = message
+
+				core.Debug("route matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()
