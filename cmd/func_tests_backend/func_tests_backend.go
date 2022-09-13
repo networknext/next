@@ -344,7 +344,7 @@ func test_google_pubsub() {
 
 	waitGroup.Add(NumProducers)
 
-	const NumMessagesPerProducer = 10000
+	const NumMessagesPerProducer = 100000
 
 	for i := 0; i < NumProducers; i++ {
 
