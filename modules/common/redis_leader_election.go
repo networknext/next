@@ -155,7 +155,17 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	masterInstance := instanceEntries[0]
 
-	leaderElection.isLeader = (masterInstance.InstanceId == leaderElection.instanceId)
+	newLeader := (masterInstance.InstanceId == leaderElection.instanceId)
+
+	if newLeader && !leaderElection.isLeader {
+		core.Log("we are the leader")
+	}
+
+	if !newLeader && leaderElection.isLeader {
+		core.Log("we are no longer the leader")
+	}
+
+	leaderElection.isLeader = newLeader
 }
 
 func (leaderElection *RedisLeaderElection) IsLeader() bool {

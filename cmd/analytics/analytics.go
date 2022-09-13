@@ -47,9 +47,9 @@ func main() {
 	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
 	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
 	
-	service.LeaderElection()
-
 	service.StartWebServer()
+
+	service.LeaderElection()
 
 	service.WaitForShutdown()
 }
