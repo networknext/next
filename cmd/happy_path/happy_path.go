@@ -8,6 +8,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
@@ -121,12 +123,35 @@ func happy_path() int {
 
 	os.Mkdir("logs", os.ModePerm)
 
+	ctx := context.Background()
+
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
-	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
-	os.Setenv("BIGQUERY_EMULATOR_HOST", "127.0.0.1:9050")
-
+	// set up pubsub emulator
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
+
+	pubsubSetupHandler, err := pubsub.NewClient(ctx, envvar.GetString("PUBSUB_PROJECT_ID", "local"))
+	if err != nil {
+		core.Error("failed to create pubsub setup handler: %v", err)
+		return 1
+	}
+
+	time.Sleep(time.Second * 5)
+
+	pubsubTopics := envvar.GetList("PUBSUB_TOPICS", []string{"local"})
+
+	// Loop through required topics and add them and their subscriptions
+	for _, topic := range pubsubTopics {
+		pubsubSetupHandler.CreateTopic(ctx, topic)
+
+		pubsubSetupHandler.CreateSubscription(ctx, topic, pubsub.SubscriptionConfig{
+			Topic: pubsubSetupHandler.Topic(topic),
+		})
+	}
+
+	pubsubSetupHandler.Close()
+
+	// set up bigquery emulator
 	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")

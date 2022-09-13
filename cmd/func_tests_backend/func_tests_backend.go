@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	// "github.com/networknext/backend/modules/common"
@@ -293,12 +294,33 @@ func test_google_bigquery() {
 func test_google_pubsub() {
 	fmt.Printf("test_google_pubsub\n")
 
+	// Set this so the pubsub connections default to the emulator - only way to do this unfortunately...
 	os.Setenv("PUBSUB_EMULATOR_HOST", "127.0.0.1:9000")
 
 	parentContext := context.Background()
 
-	producerThreads := 1
-	consumerThreads := 1
+	pubsubSetupHandler, err := pubsub.NewClient(parentContext, "local")
+	if err != nil {
+		core.Error("failed to create pubsub setup handler: %v", err)
+		os.Exit(1)
+	}
+
+	pubsubTopics := []string{
+		"test",
+	}
+
+	// Loop through required topics and add them and their subscriptions
+	for _, topic := range pubsubTopics {
+		pubsubSetupHandler.CreateTopic(parentContext, topic)
+		pubsubSetupHandler.CreateSubscription(parentContext, topic, pubsub.SubscriptionConfig{
+			Topic: pubsubSetupHandler.Topic(topic),
+		})
+	}
+
+	pubsubSetupHandler.Close()
+
+	producerThreads := 2
+	consumerThreads := 10
 
 	var producerWG sync.WaitGroup
 	var consumerWG sync.WaitGroup
@@ -367,6 +389,8 @@ func test_google_pubsub() {
 			threadBatchesSent[threadIndex] = int64(streamProducer.NumBatchesSent())
 			threadMessagesSent[threadIndex] = int64(streamProducer.NumMessagesSent())
 
+			streamProducer.Close(ctx)
+
 			// If the thread is killed externally, decrement the wg counter
 			producerWG.Done()
 		}(i, ctx)
@@ -409,6 +433,8 @@ func test_google_pubsub() {
 
 			threadBatchesReceived[threadIndex] = int64(streamConsumer.NumBatchesReceived())
 			threadMessagesReceived[threadIndex] = int64(streamConsumer.NumMessageReceived())
+
+			streamConsumer.Close(ctx)
 
 			consumerWG.Done()
 		}(i, ctx)
@@ -454,10 +480,10 @@ func test_google_pubsub() {
 	}
 
 	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
-	totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
+	// totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
 
 	// Divide num messages received across all threads by num consumers to make sure everyone got the same num messages
-	totalMessagesReceived = (totalMessagesReceived / consumerThreads)
+	// totalMessagesReceived = (totalMessagesReceived / consumerThreads)
 
 	failed := false
 	if totalNumBatchesReceived == totalNumBatchesSent {
@@ -868,11 +894,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		// test_magic_backend,
-		// test_redis_pubsub, todo: Add this back after fixing context cancelled sem bug
+		test_magic_backend,
+		// test_redis_pubsub, // todo: Add this back after fixing context cancelled sem bug
 		test_google_pubsub,
 		// test_google_bigquery,
-		// test_redis_streams,
+		test_redis_streams,
 	}
 
 	var tests []test_function

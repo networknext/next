@@ -45,25 +45,14 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 		return nil, err
 	}
 
-	if config.ProjectID == "local" {
-		pubsubTopic, err := pubsubClient.CreateTopic(ctx, config.Topic)
-		// Not the best, but the underlying error type is internal so we can't check for it
-		if err != nil {
-			if err.Error() == "rpc error: code = AlreadyExists desc = Topic already exists" {
-				core.Debug("pubsub topic already exists")
-				config.pubsubTopic = pubsubClient.Topic(config.Topic)
-			} else {
-				core.Error("failed to create or lookup topic: %v", err)
-				return nil, err
-			}
-		} else {
-			config.pubsubTopic = pubsubTopic
-		}
-	} else {
-		config.pubsubTopic = pubsubClient.Topic(config.Topic)
+	config.pubsubClient = pubsubClient
+	config.pubsubTopic = pubsubClient.Topic(config.Topic)
+
+	if config.pubsubTopic == nil {
+		core.Error("failed to create google pubsub consumer: pubsub topic/subscription was not configured correctly")
+		return nil, err
 	}
 
-	config.pubsubClient = pubsubClient
 	producer.config = config
 
 	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
@@ -138,13 +127,15 @@ func (producer *GooglePubsubProducer) NumBatchesSent() int {
 	return value
 }
 
+func (producer *GooglePubsubProducer) Close(ctx context.Context) {
+	producer.config.pubsubClient.Close()
+}
+
 // ----------------------------
 
 type GooglePubsubConsumer struct {
-	MessageChannel     chan []byte
-	config             GooglePubsubConfig
-	pubsubClient       *pubsub.Client
-	pubsubSubscription *pubsub.Subscription
+	MessageChannel chan []byte
+	config         GooglePubsubConfig
 	// ...
 	mutex               sync.RWMutex
 	numMessagesReceived int
@@ -163,13 +154,10 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 
 	config.pubsubClient = pubsubClient
 	config.pubsubTopic = pubsubClient.Topic(config.Topic)
+	config.pubsubSubscription = pubsubClient.Subscription(config.Subscription)
 
-	consumer.pubsubSubscription, err = pubsubClient.CreateSubscription(ctx, config.Subscription, pubsub.SubscriptionConfig{
-		Topic: config.pubsubTopic,
-	})
-
-	if err != nil {
-		core.Error("failed to subscribe google pubsub topic: %v", err)
+	if config.pubsubTopic == nil || config.pubsubSubscription == nil {
+		core.Error("failed to create google pubsub consumer: pubsub topic/subscription was not configured correctly")
 		return nil, err
 	}
 
@@ -182,7 +170,7 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 }
 
 func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
-	consumer.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+	consumer.config.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		batchMessages := parseMessages(m.Data)
 
 		core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len(m.Data))
@@ -212,4 +200,8 @@ func (consumer *GooglePubsubConsumer) NumBatchesReceived() int {
 	value := consumer.numBatchesReceived
 	consumer.mutex.RUnlock()
 	return value
+}
+
+func (consumer *GooglePubsubConsumer) Close(ctx context.Context) {
+	consumer.config.pubsubClient.Close()
 }
