@@ -23,9 +23,11 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"google.golang.org/api/option"
 )
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
@@ -257,9 +259,89 @@ func test_magic_backend() {
 
 func test_google_bigquery() {
 
-	fmt.Printf("test_google_bigquery")
+	fmt.Printf("test_google_bigquery\n")
 
-	os.Setenv("BIGQUERY_EMULATOR", "127.0.0.1:9050")
+	dataset := "local"
+	tableName := "test"
+
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
+
+	clientOptions := []option.ClientOption{
+		option.WithEndpoint("http://127.0.0.1:9050"),
+		option.WithoutAuthentication(),
+	}
+
+	bigquerySetupClient, err := bigquery.NewClient(cancelContext, googleProjectID, clientOptions...)
+	if err != nil {
+		core.Error("failed to create bigquery setup client: %v", err)
+		os.Exit(1)
+	}
+
+	// Create local table under the local dataset
+	tableReference := bigquerySetupClient.Dataset(dataset).Table(tableName)
+
+	tableReference.Create(cancelContext, &bigquery.TableMetadata{
+		Schema: bigquery.Schema{
+			{
+				Type: bigquery.IntegerFieldType,
+				Name: "timestamp",
+			},
+		},
+	})
+
+	core.Debug("successfully set up bigquery emulator")
+
+	bigquerySetupClient.Close()
+
+	const NumPublishers = 10
+
+	publishers := [NumPublishers]*common.GoogleBigQueryPublisher{}
+
+	for i := 0; i < NumPublishers; i++ {
+		publishers[i], err = common.CreateGoogleBigQueryPublisher(cancelContext, common.GoogleBigQueryConfig{
+			ProjectId:          googleProjectID,
+			Dataset:            dataset,
+			TableName:          tableName,
+			BatchSize:          100,
+			BatchDuration:      time.Millisecond * 100,
+			PublishChannelSize: 10 * 1024,
+			ClientOptions:      clientOptions,
+		})
+		if err != nil {
+			core.Error("failed to create google bigquery publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	const NumEntriesPerPublisher = 10000
+
+	for i := 0; i < NumPublishers; i++ {
+		go func(publisher *common.GoogleBigQueryPublisher) {
+			for j := 0; j < NumEntriesPerPublisher; j++ {
+				var entry bigquery.ValueSaver = &common.TestEntry{
+					Timestamp: uint32(time.Now().Unix()),
+				}
+
+				publisher.PublishChannel <- entry
+			}
+		}(publishers[i])
+	}
+
+	time.Sleep(time.Second * 30)
+
+	for i := 0; i < NumPublishers; i++ {
+		core.Debug("entries recieved by publisher %d: %d", i, publishers[i].NumEntriesRecieved)
+		core.Debug("entries published by publisher %d: %d", i, publishers[i].NumEntriesPublished)
+		core.Debug("batches published by publisher %d: %d", i, publishers[i].NumBatchesPublished)
+	}
+
+	// clean shutdown the publishing threads
+
+	core.Debug("cancelling context")
+
+	cancelFunc()
+
+	core.Debug("done")
 }
 
 func test_google_pubsub() {
@@ -779,8 +861,8 @@ func main() {
 	allTests := []test_function{
 		// test_magic_backend,
 		// test_redis_pubsub,
-		//test_redis_streams,
-		//test_google_pubsub,
+		// test_redis_streams,
+		// test_google_pubsub,
 		test_google_bigquery,
 	}
 
