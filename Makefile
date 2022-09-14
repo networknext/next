@@ -21,6 +21,7 @@ SDKNAME4 = libnext4
 SDKNAME5 = libnext5
 
 RELAY_PORT ?= 2000
+RELAY_DEBUG = 1
 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
