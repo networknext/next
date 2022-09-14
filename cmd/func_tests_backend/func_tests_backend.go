@@ -11,36 +11,21 @@ import (
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
-
-	// "context"
-	// "encoding/binary"
-	// "sync"
-
-	// "context"
-	// "crypto/rand"
 	"fmt"
 	"io/ioutil"
-
-	mathRand "math/rand"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
-
-	// "sync"
 	"syscall"
 	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
-	// "github.com/networknext/backend/modules/common"
-	// "github.com/networknext/backend/modules/core"
-	// "github.com/go-redis/redis/v9"
-	// "github.com/networknext/backend/modules/core"
-	// "github.com/networknext/backend/modules/common"
 )
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
@@ -353,7 +338,7 @@ func test_google_pubsub() {
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
-				messageSize := mathRand.Intn(96) + 4
+				messageSize := rand.Intn(96) + 4
 				messageData := make([]byte, messageSize)
 
 				binary.LittleEndian.PutUint32(messageData[:4], uint32(messageId))
@@ -533,7 +518,7 @@ func test_redis_pubsub() {
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
-				messageSize := mathRand.Intn(96) + 4
+				messageSize := rand.Intn(96) + 4
 				messageData := make([]byte, messageSize)
 
 				binary.LittleEndian.PutUint32(messageData[:4], uint32(messageId))
@@ -700,7 +685,7 @@ func test_redis_streams() {
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
-				messageSize := mathRand.Intn(96) + 4
+				messageSize := rand.Intn(96) + 4
 				messageData := make([]byte, messageSize)
 
 				binary.LittleEndian.PutUint32(messageData[:4], uint32(messageId))
