@@ -312,7 +312,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
+			ProjectId:          googleProjectID,
 			Topic:              "test",
 			Subscription:       "test",
 			MessageChannelSize: 10 * 1024,
