@@ -130,7 +130,7 @@ func happy_path() int {
 	// set up pubsub emulator
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
-	pubsubSetupHandler, err := pubsub.NewClient(ctx, envvar.GetString("PUBSUB_PROJECT_ID", "local"))
+	pubsubSetupHandler, err := pubsub.NewClient(ctx, googleProjectID)
 	if err != nil {
 		core.Error("failed to create pubsub setup handler: %v", err)
 		return 1
@@ -533,7 +533,12 @@ func happy_path() int {
 	return 0
 }
 
+var googleProjectID string
+
 func main() {
+
+	googleProjectID = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
 	if happy_path() != 0 {
 		os.Exit(1)
 	}

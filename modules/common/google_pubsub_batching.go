@@ -65,6 +65,7 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 	producer.pubsubClient = pubsubClient
 	producer.pubsubTopic = pubsubTopic
 	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
+	producer.resultChannel = make(chan *pubsub.PublishResult, config.MessageChannelSize)
 
 	go producer.monitorResults(ctx)
 
@@ -82,13 +83,11 @@ func (producer *GooglePubsubProducer) monitorResults(ctx context.Context) {
 			return
 
 		case result := <-producer.resultChannel:
-			batchId, err := result.Get(ctx)
+			_, err := result.Get(ctx)
 			if err != nil {
 				core.Error("failed to send message batch: %v", err)
 				break
 			}
-
-			core.Debug("sent batch %d", batchId)
 
 			producer.mutex.Lock()
 			producer.numBatchesSent++
@@ -189,8 +188,6 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
 
 	consumer.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-
-		core.Debug("received message (%v bytes) from google pubsub", len(m.Data))
 
 		consumer.MessageChannel <- m
 
