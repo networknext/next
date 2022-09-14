@@ -28,8 +28,8 @@ func main() {
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
-	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", 1*time.Second)
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
