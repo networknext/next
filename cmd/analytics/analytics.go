@@ -12,13 +12,13 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
-	"cloud.google.com/go/bigquery"
 )
 
 var costMatrixURI string
 var routeMatrixURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
+var googleProjectId string
 
 var logMutex sync.Mutex
 
@@ -30,11 +30,13 @@ func main() {
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", 1*time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
+	core.Log("google project id: %s", googleProjectId)
 
 	ProcessCostMatrix(service)
 
@@ -61,13 +63,7 @@ func main() {
 
 // --------------------------------------------------------------------
 
-type Message interface {
-	Write(buffer []byte) []byte
-	Read(buffer []byte) error
-	Save() (map[string]bigquery.Value, string, error)
-}
-
-func Process[T Message](service *common.Service, name string) {
+func Process[T messages.Message](service *common.Service, name string) {
 
 	envPrefix := strings.ToUpper(name) + "_"
 
@@ -124,12 +120,10 @@ func Process[T Message](service *common.Service, name string) {
 func ProcessCostMatrix(service *common.Service) {
 
 	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
-	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "cost_matrix_stats")
 	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
 
 	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
-	core.Log("cost matrix stats entry google project id: %s", googleProjectID)
 	core.Log("cost matrix stats entry pubsub topic: %s", pubsubTopic)
 	core.Log("cost matrix stats entry pubsub subscription: %s", pubsubSubscription)
 
@@ -138,7 +132,7 @@ func ProcessCostMatrix(service *common.Service) {
 	}
 
 	config := common.GooglePubsubConfig{
-		ProjectId:          googleProjectID,
+		ProjectId:          googleProjectId,
 		Topic:              pubsubTopic,
 		Subscription:       pubsubSubscription,
 		MessageChannelSize: 10 * 1024,
@@ -235,16 +229,16 @@ func ProcessCostMatrix(service *common.Service) {
 }
 
 func ProcessRouteMatrix(service *common.Service) {
-	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
 	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "route_matrix_stats")
 	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "route_matrix_stats")
 
-	core.Log("route matrix stats entry google project id: %s", googleProjectID)
+	core.Log("route matrix stats entry google project id: %s", googleProjectId)
 	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
 	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
 
 	config := common.GooglePubsubConfig{
-		ProjectId:          googleProjectID,
+		ProjectId:          googleProjectId,
 		Topic:              pubsubTopic,
 		Subscription:       pubsubSubscription,
 		MessageChannelSize: 10 * 1024,
