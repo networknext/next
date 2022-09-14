@@ -9,8 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"sync"
-	"sync/atomic"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -20,6 +18,8 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -288,7 +288,7 @@ func test_google_pubsub() {
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
-	pubsubSetupClient, err := pubsub.NewClient(cancelContext, "local")
+	pubsubSetupClient, err := pubsub.NewClient(cancelContext, googleProjectID)
 	if err != nil {
 		core.Error("failed to create pubsub setup client: %v", err)
 		os.Exit(1)
@@ -312,7 +312,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
+			ProjectId:          googleProjectID,
 			Topic:              "test",
 			Subscription:       "test",
 			MessageChannelSize: 10 * 1024,
@@ -335,7 +335,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumProducers; i++ {
 
 		producers[i], err = common.CreateGooglePubsubProducer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
+			ProjectId:          googleProjectID,
 			Topic:              "test",
 			MessageChannelSize: 10 * 1024,
 			BatchSize:          100,
@@ -350,12 +350,12 @@ func test_google_pubsub() {
 
 	waitGroup.Add(NumProducers)
 
-	const NumMessagesPerProducer = 100000
+	const NumMessagesPerProducer = 10000
 
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.GooglePubsubProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -370,6 +370,7 @@ func test_google_pubsub() {
 				}
 
 				producer.MessageChannel <- messageData
+
 			}
 
 			waitGroup.Done()
@@ -390,7 +391,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.GooglePubsubConsumer) {
-			
+
 			for {
 				select {
 
@@ -399,7 +400,8 @@ func test_google_pubsub() {
 					waitGroup.Done()
 					return
 
-				case msg := <-consumer.MessageChannel:
+				case pubsubMessage := <-consumer.MessageChannel:
+					msg := pubsubMessage.Data
 					messageId := binary.LittleEndian.Uint32(msg[:4])
 					start := int(messageId % 256)
 					for j := 0; j < len(msg); j++ {
@@ -409,6 +411,7 @@ func test_google_pubsub() {
 						}
 					}
 					atomic.AddUint64(&numMessagesReceived, 1)
+					pubsubMessage.Ack()
 				}
 			}
 
@@ -446,7 +449,7 @@ func test_google_pubsub() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -516,7 +519,7 @@ func test_redis_pubsub() {
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.RedisPubsubProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -551,7 +554,7 @@ func test_redis_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.RedisPubsubConsumer) {
-			
+
 			for {
 				select {
 
@@ -578,7 +581,7 @@ func test_redis_pubsub() {
 
 	// wait until we receive all messages, or up to 30 seconds...
 
-	// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers. 
+	// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.
 	// this is different to streams and google pubsub where messages are load balanced across consumers
 
 	receivedAllMessages := false
@@ -610,7 +613,7 @@ func test_redis_pubsub() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -683,7 +686,7 @@ func test_redis_streams() {
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.RedisStreamsProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -718,7 +721,7 @@ func test_redis_streams() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.RedisStreamsConsumer) {
-			
+
 			for {
 				select {
 
@@ -774,7 +777,7 @@ func test_redis_streams() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -783,7 +786,12 @@ func test_redis_streams() {
 
 type test_function func()
 
+var googleProjectID string
+
 func main() {
+
+	googleProjectID = "local"
+
 	allTests := []test_function{
 		test_magic_backend,
 		test_redis_pubsub,
