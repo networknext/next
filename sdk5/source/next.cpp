@@ -20533,7 +20533,10 @@ void test_relay_manager()
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
-        }
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
+       }
     }
 
     // remove all relays
