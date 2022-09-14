@@ -461,7 +461,11 @@ bool next_platform_getenv_bool(const char * name )
 
 double next_time()
 {
+#if NEXT_DEVELOPMENT
+    return next_platform_time() + 100000.0;
+#else // #if NEXT_DEVELOPMENT
     return next_platform_time();
+#endif // #if NEXT_DEVELOPMENT
 }
 
 void next_sleep( double time_seconds )
