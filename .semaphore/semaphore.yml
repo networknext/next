@@ -163,6 +163,8 @@ blocks:
       prologue:
         commands:
 
+            - sudo apt-get install -y google-cloud-sdk-pubsub-emulator
+
             - mkdir -p dist
             - cd dist
 
@@ -220,6 +222,7 @@ blocks:
 
         - name: "test_google_pubsub"
           commands:
+            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
             - cd ./dist && ./func_tests_backend test_google_pubsub
 
 
