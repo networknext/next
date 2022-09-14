@@ -7490,13 +7490,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
