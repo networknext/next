@@ -96,11 +96,30 @@ func Process[T any](service *common.Service, name string) {
 func ProcessCostMatrix(service *common.Service) {
 
 	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "cost_matrix_stats")
+	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
 
 	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
+	core.Log("cost matrix stats entry google project id: %s", googleProjectID)
+	core.Log("cost matrix stats entry pubsub topic: %s", pubsubTopic)
+	core.Log("cost matrix stats entry pubsub subscription: %s", pubsubSubscription)
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
+	}
+
+	config := common.GooglePubsubConfig{
+		ProjectId:          googleProjectID,
+		Topic:              pubsubTopic,
+		Subscription:       pubsubSubscription,
+		MessageChannelSize: 10 * 1024,
+	}
+
+	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub producer for processing cost matrix: %v", err)
+		os.Exit(1)
 	}
 
 	ticker := time.NewTicker(costMatrixInterval)
@@ -179,8 +198,7 @@ func ProcessCostMatrix(service *common.Service) {
 
 				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
 
-				// todo: insert message into pubsub
-				_ = message
+				statsPubsubProducer.MessageChannel <- message
 
 				core.Debug("cost matrix stats message is %d bytes", len(message))
 			}
@@ -189,6 +207,26 @@ func ProcessCostMatrix(service *common.Service) {
 }
 
 func ProcessRouteMatrix(service *common.Service) {
+	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "route_matrix_stats")
+	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "route_matrix_stats")
+
+	core.Log("route matrix stats entry google project id: %s", googleProjectID)
+	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
+	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
+
+	config := common.GooglePubsubConfig{
+		ProjectId:          googleProjectID,
+		Topic:              pubsubTopic,
+		Subscription:       pubsubSubscription,
+		MessageChannelSize: 10 * 1024,
+	}
+
+	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
+		os.Exit(1)
+	}
 
 	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
 
@@ -306,7 +344,6 @@ func ProcessRouteMatrix(service *common.Service) {
 				logMutex.Unlock()
 
 				// send route matrix stats via pubsub
-
 				routeMatrixStatsEntry := messages.RouteMatrixStatsEntry{}
 
 				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsVersion
@@ -317,7 +354,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
 
-				// todo: insert message into pubsub
+				statsPubsubProducer.MessageChannel <- message
 				_ = message
 
 				core.Debug("route matrix stats message is %d bytes", len(message))
