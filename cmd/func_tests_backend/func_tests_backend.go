@@ -470,194 +470,164 @@ func test_redis_pubsub() {
 
 	fmt.Printf("test_redis_pubsub\n")
 
-	parentContext := context.Background()
+	// create the consumers first, because otherwise the consumers won't receive messages
 
-	producerThreads := 2
-	consumerThreads := 10
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
-	var producerWG sync.WaitGroup
-	var consumerWG sync.WaitGroup
+	const NumConsumers = 10
 
-	producerWG.Add(producerThreads)
-	consumerWG.Add(consumerThreads)
+	consumers := [NumConsumers]*common.RedisPubsubConsumer{}
 
-	threadMessagesSent := make([]int64, producerThreads)
-	threadMessagesReceived := make([]int64, consumerThreads)
+	for i := 0; i < NumConsumers; i++ {
 
-	threadBatchesSent := make([]int64, producerThreads)
-	threadBatchesReceived := make([]int64, consumerThreads)
+		var err error
 
-	producerThreadQuit := make([]context.CancelFunc, producerThreads)
-	consumerThreadQuit := make([]context.CancelFunc, consumerThreads)
+		consumers[i], err = common.CreateRedisPubsubConsumer(cancelContext, common.RedisPubsubConfig{
+			RedisHostname:      "127.0.0.1:6379",
+			RedisPassword:      "",
+			PubsubChannelName:  "test-channel",
+			MessageChannelSize: 10 * 1024,
+		})
 
-	for i := 0; i < producerThreads; i++ {
-		ctx, cancel := context.WithCancel(parentContext)
-
-		producerThreadQuit[i] = cancel
-
-		go func(threadIndex int, ctx context.Context) {
-			streamProducer, err := common.CreateRedisPubsubProducer(ctx, common.RedisPubsubConfig{
-				RedisHostname:      "127.0.0.1:6379",
-				RedisPassword:      "",
-				PubsubChannelName:  "test-channel",
-				MessageChannelSize: 10 * 1024,
-				BatchSize:          100,
-				BatchDuration:      time.Millisecond * 100,
-			})
-
-			if err != nil {
-				producerWG.Done()
-				return
-			}
-
-			tickRate := time.Duration(1000000000 / 1000)
-
-			ticker := time.NewTicker(tickRate)
-
-			numMessagesSent := 0
-
-		producerLoop:
-			for {
-				select {
-				case <-ticker.C:
-					messageID := numMessagesSent
-					messageSize := mathRand.Intn(96) + 4
-					messageData := make([]byte, messageSize)
-
-					binary.LittleEndian.PutUint32(messageData[:4], uint32(messageID))
-
-					start := messageID % 256
-					for i := 0; i < messageSize; i++ {
-						messageData[i] = byte((start + i) % 256)
-					}
-
-					streamProducer.MessageChannel <- messageData
-
-					numMessagesSent++
-
-				case <-ctx.Done():
-					break producerLoop
-				}
-			}
-
-			threadBatchesSent[threadIndex] = int64(streamProducer.NumBatchesSent())
-			threadMessagesSent[threadIndex] = int64(streamProducer.NumMessagesSent())
-
-			// If the thread is killed externally, decrement the wg counter
-			producerWG.Done()
-		}(i, ctx)
+		if err != nil {
+			core.Error("failed to create redis pubsub consumer: %v", err)
+			os.Exit(1)
+		}
 	}
 
-	for i := 0; i < consumerThreads; i++ {
-		ctx, cancel := context.WithCancel(parentContext)
+	// send a bunch of messages via multiple producers
 
-		consumerThreadQuit[i] = cancel
+	var waitGroup sync.WaitGroup
 
-		go func(threadIndex int, ctx context.Context) {
-			streamConsumer, err := common.CreateRedisPubsubConsumer(ctx, common.RedisPubsubConfig{
-				RedisHostname:      "127.0.0.1:6379",
-				RedisPassword:      "",
-				PubsubChannelName:  "test-channel",
-				MessageChannelSize: 10 * 1024,
-			})
+	const NumProducers = 3
 
-			if err != nil {
-				consumerWG.Done()
-				return
+	producers := [NumProducers]*common.RedisPubsubProducer{}
+
+	for i := 0; i < NumProducers; i++ {
+
+		var err error
+
+		producers[i], err = common.CreateRedisPubsubProducer(cancelContext, common.RedisPubsubConfig{
+			RedisHostname:      "127.0.0.1:6379",
+			RedisPassword:      "",
+			PubsubChannelName:  "test-channel",
+			MessageChannelSize: 10 * 1024,
+			BatchSize:          1000,
+			BatchDuration:      time.Second,
+		})
+
+		if err != nil {
+			core.Error("failed to create redis pubsub producer: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	waitGroup.Add(NumProducers)
+
+	const NumMessagesPerProducer = 100000
+
+	for i := 0; i < NumProducers; i++ {
+
+		go func(producer *common.RedisPubsubProducer) {
+			
+			for j := 0; j < NumMessagesPerProducer; j++ {
+
+				messageId := j
+				messageSize := mathRand.Intn(96) + 4
+				messageData := make([]byte, messageSize)
+
+				binary.LittleEndian.PutUint32(messageData[:4], uint32(messageId))
+
+				start := messageId % 256
+				for k := 0; k < messageSize; k++ {
+					messageData[k] = byte((start + k) % 256)
+				}
+
+				producer.MessageChannel <- messageData
 			}
 
-		consumerLoop:
+			waitGroup.Done()
+
+		}(producers[i])
+	}
+
+	fmt.Printf("waiting for producers...\n")
+
+	waitGroup.Wait()
+
+	// receive a bunch of messages via consumers
+
+	waitGroup.Add(NumConsumers)
+
+	var numMessagesReceived uint64
+
+	for i := 0; i < NumConsumers; i++ {
+
+		go func(consumer *common.RedisPubsubConsumer) {
+			
 			for {
 				select {
-				case msg := <-streamConsumer.MessageChannel:
-					messageID := binary.LittleEndian.Uint32(msg[:4])
 
-					start := int(messageID % 256)
-					for i := 0; i < len(msg); i++ {
-						if msg[i] != byte((start+i)%256) {
-							core.Error("Message validation failed!")
+				case <-cancelContext.Done():
+					core.Debug("consumer done")
+					waitGroup.Done()
+					return
+
+				case msg := <-consumer.MessageChannel:
+					messageId := binary.LittleEndian.Uint32(msg[:4])
+					start := int(messageId % 256)
+					for j := 0; j < len(msg); j++ {
+						if msg[j] != byte((start+j)%256) {
+							core.Error("message validation failed. expected %d, got %d", byte((start+j)%256), msg[j])
+							os.Exit(1)
 						}
 					}
-				case <-ctx.Done():
-					break consumerLoop
+					atomic.AddUint64(&numMessagesReceived, 1)
 				}
 			}
 
-			threadBatchesReceived[threadIndex] = int64(streamConsumer.NumBatchesReceived())
-			threadMessagesReceived[threadIndex] = int64(streamConsumer.NumMessageReceived())
-
-			consumerWG.Done()
-		}(i, ctx)
+		}(consumers[i])
 	}
 
-	time.Sleep(time.Second * 30)
+	// wait until we receive all messages, or up to 30 seconds...
 
-	for i := 0; i < producerThreads; i++ {
-		// Loop through producer threads and shut down the message creation loops
-		producerThreadQuit[i]()
+	// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers. 
+	// this is different to streams and google pubsub where messages are load balanced across consumers
+
+	receivedAllMessages := false
+
+	for i := 0; i < 30; i++ {
+		messageCount := atomic.LoadUint64(&numMessagesReceived)
+		expectedCount := uint64(NumProducers * NumMessagesPerProducer * NumConsumers)
+		core.Debug("received %d/%d messages", messageCount, expectedCount)
+		if messageCount > expectedCount {
+			core.Error("received too many messages!")
+			os.Exit(1)
+		}
+		if i > 10 && messageCount == expectedCount {
+			core.Debug("received all")
+			receivedAllMessages = true
+			break
+		}
+		time.Sleep(time.Second)
 	}
 
-	producerWG.Wait()
-
-	time.Sleep(time.Second * 30)
-
-	for i := 0; i < consumerThreads; i++ {
-		// Loop through consumer threads and shut down processing loops
-		consumerThreadQuit[i]()
-	}
-
-	consumerWG.Wait()
-
-	totalMessagesSent := 0
-	totalMessagesReceived := 0
-
-	for _, numMessages := range threadMessagesSent {
-		totalMessagesSent = totalMessagesSent + int(numMessages)
-	}
-
-	for _, numMessages := range threadMessagesReceived {
-		totalMessagesReceived = totalMessagesReceived + int(numMessages)
-	}
-
-	totalNumBatchesSent := 0
-	for i := 0; i < producerThreads; i++ {
-		totalNumBatchesSent = totalNumBatchesSent + int(threadBatchesSent[i])
-	}
-
-	totalNumBatchesReceived := 0
-	for i := 0; i < consumerThreads; i++ {
-		totalNumBatchesReceived = totalNumBatchesReceived + int(threadBatchesReceived[i])
-	}
-
-	// Divide num batches received across all threads by num consumers to make sure everyone got the same num batches
-	totalNumBatchesReceived = (totalNumBatchesReceived / consumerThreads)
-
-	// Divide num messages received across all threads by num consumers to make sure everyone got the same num messages
-	totalMessagesReceived = (totalMessagesReceived / consumerThreads)
-
-	failed := false
-	if totalNumBatchesReceived == totalNumBatchesSent {
-		fmt.Printf("\nTest Results - Batches Sent: Passed\n")
-	} else {
-		fmt.Printf("\nTest Results - Batches Sent: Failed\n")
-		failed = true
-	}
-
-	if totalMessagesReceived == totalMessagesSent {
-		fmt.Println("Test Results - Messages Sent: Passed")
-	} else {
-		fmt.Println("Test Results - Messages Sent: Failed")
-		failed = true
-	}
-
-	if failed {
-		fmt.Printf("Total number of batches sent: %d\n", totalNumBatchesSent)
-		fmt.Printf("Total number of messages sent: %d\n", totalMessagesSent)
-
-		fmt.Printf("Total number of batches received: %d\n", totalNumBatchesReceived)
-		fmt.Printf("Total number of messages received: %d\n", totalMessagesReceived)
+	if !receivedAllMessages {
+		core.Error("did not receive all messages sent")
 		os.Exit(1)
 	}
+
+	// clean shutdown the consumer threads
+
+	core.Debug("cancelling context")
+
+	cancelFunc()
+
+	core.Debug("waiting for consumers...")	
+
+	waitGroup.Wait()
+
+	core.Debug("done")
 }
 
 func test_redis_streams() {
@@ -851,7 +821,7 @@ type test_function func()
 func main() {
 	allTests := []test_function{
 		test_magic_backend,
-		// test_redis_pubsub,
+		test_redis_pubsub,
 		test_redis_streams,
 		test_google_pubsub,
 		// test_google_bigquery,
