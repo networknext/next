@@ -9,8 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"sync"
-	"sync/atomic"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -20,6 +18,8 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -257,25 +257,9 @@ func test_magic_backend() {
 
 func test_google_bigquery() {
 
-	fmt.Printf("test_google_bigquery\n")
+	fmt.Printf("test_google_bigquery")
 
-	action := "dev-bigquery-emulator"
-
-	fmt.Printf("make %s\n", action)
-
-	cmd := exec.Command("make", action)
-	if cmd == nil {
-		core.Error("could not run make!\n")
-		os.Exit(1)
-	}
-
-	stdout_pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		core.Error("could not create stdout pipe for make")
-		os.Exit(1)
-	}
-
-	defer stdout_pipe.Close()
+	os.Setenv("BIGQUERY_EMULATOR", "127.0.0.1:9050")
 }
 
 func test_google_pubsub() {
@@ -355,7 +339,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.GooglePubsubProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -390,7 +374,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.GooglePubsubConsumer) {
-			
+
 			for {
 				select {
 
@@ -446,7 +430,7 @@ func test_google_pubsub() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -516,7 +500,7 @@ func test_redis_pubsub() {
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.RedisPubsubProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -551,7 +535,7 @@ func test_redis_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.RedisPubsubConsumer) {
-			
+
 			for {
 				select {
 
@@ -578,7 +562,7 @@ func test_redis_pubsub() {
 
 	// wait until we receive all messages, or up to 30 seconds...
 
-	// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers. 
+	// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.
 	// this is different to streams and google pubsub where messages are load balanced across consumers
 
 	receivedAllMessages := false
@@ -610,7 +594,7 @@ func test_redis_pubsub() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -683,7 +667,7 @@ func test_redis_streams() {
 	for i := 0; i < NumProducers; i++ {
 
 		go func(producer *common.RedisStreamsProducer) {
-			
+
 			for j := 0; j < NumMessagesPerProducer; j++ {
 
 				messageId := j
@@ -718,7 +702,7 @@ func test_redis_streams() {
 	for i := 0; i < NumConsumers; i++ {
 
 		go func(consumer *common.RedisStreamsConsumer) {
-			
+
 			for {
 				select {
 
@@ -774,7 +758,7 @@ func test_redis_streams() {
 
 	cancelFunc()
 
-	core.Debug("waiting for consumers...")	
+	core.Debug("waiting for consumers...")
 
 	waitGroup.Wait()
 
@@ -785,11 +769,11 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		test_magic_backend,
-		test_redis_pubsub,
-		test_redis_streams,
-		test_google_pubsub,
-		// test_google_bigquery,
+		// test_magic_backend,
+		// test_redis_pubsub,
+		//test_redis_streams,
+		//test_google_pubsub,
+		test_google_bigquery,
 	}
 
 	var tests []test_function

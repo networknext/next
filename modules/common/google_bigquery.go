@@ -10,19 +10,19 @@ import (
 )
 
 type GoogleBigQueryConfig struct {
-	ProjectId string
-	// todo: bigquery specific config here
+	ProjectId          string
+	Dataset            string
+	TableName          string
 	BatchSize          int
 	BatchDuration      time.Duration
 	PublishChannelSize int
 }
 
 type GoogleBigQueryPublisher struct {
-	PublishChannel chan *bigquery.ValueSaver
-	config         GoogleBigQueryConfig
-	bigqueryClient *bigquery.Client
-	TableInserter  *bigquery.Inserter
-	// todo: bigquery specific variables here
+	PublishChannel  chan *bigquery.ValueSaver
+	config          GoogleBigQueryConfig
+	bigqueryClient  *bigquery.Client
+	TableInserter   *bigquery.Inserter
 	messageBatch    []*bigquery.ValueSaver
 	batchStartTime  time.Time
 	mutex           sync.RWMutex
@@ -37,7 +37,6 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 		core.Error("failed to create google bigquery client: %v", err)
 		return nil, err
 	}
-	// todo: create bigquery stuff
 
 	publisher := &GoogleBigQueryPublisher{}
 
@@ -50,7 +49,10 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 		publisher.config.BatchDuration = time.Second
 	}
 
+	tableInserter := publisher.bigqueryClient.Dataset(config.Dataset).Table(config.TableName).Inserter()
+
 	publisher.bigqueryClient = bigqueryClient
+	publisher.TableInserter = tableInserter
 	publisher.PublishChannel = make(chan *bigquery.ValueSaver, config.PublishChannelSize)
 
 	go publisher.updatePublishChannel(ctx)
