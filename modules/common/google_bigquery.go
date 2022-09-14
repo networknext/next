@@ -10,6 +10,7 @@ import (
 )
 
 type GoogleBigQueryConfig struct {
+	ProjectId string
 	// todo: bigquery specific config here
 	BatchSize          int
 	BatchDuration      time.Duration
@@ -19,6 +20,8 @@ type GoogleBigQueryConfig struct {
 type GoogleBigQueryPublisher struct {
 	PublishChannel chan *bigquery.ValueSaver
 	config         GoogleBigQueryConfig
+	bigqueryClient *bigquery.Client
+	TableInserter  *bigquery.Inserter
 	// todo: bigquery specific variables here
 	messageBatch    []*bigquery.ValueSaver
 	batchStartTime  time.Time
@@ -29,6 +32,11 @@ type GoogleBigQueryPublisher struct {
 
 func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryPublisher, error) {
 
+	bigqueryClient, err := bigquery.NewClient(ctx, config.ProjectId)
+	if err != nil {
+		core.Error("failed to create google bigquery client: %v", err)
+		return nil, err
+	}
 	// todo: create bigquery stuff
 
 	publisher := &GoogleBigQueryPublisher{}
@@ -42,6 +50,7 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 		publisher.config.BatchDuration = time.Second
 	}
 
+	publisher.bigqueryClient = bigqueryClient
 	publisher.PublishChannel = make(chan *bigquery.ValueSaver, config.PublishChannelSize)
 
 	go publisher.updatePublishChannel(ctx)
@@ -77,7 +86,15 @@ func (publisher *GoogleBigQueryPublisher) updatePublishChannel(ctx context.Conte
 
 func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 
-	// todo: publish batch to bigquery
+	publisher.mutex.RLock()
+	entriesToSend := publisher.messageBatch
+	publisher.mutex.RUnlock()
+
+	err := publisher.TableInserter.Put(ctx, entriesToSend)
+	if err != nil {
+		core.Error("failed to publish bigquery entry: %v", err) // todo: update this failure case to something applicable to billing
+		return
+	}
 
 	batchId := publisher.numBatchesSent
 	batchNumMessages := len(publisher.messageBatch)
