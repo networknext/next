@@ -216,9 +216,9 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend test_redis_streams
 
-        # - name: "test_redis_pubsub"
-          # commands:
-            # - cd ./dist && ./func_tests_backend test_redis_pubsub
+        - name: "test_redis_pubsub"
+          commands:
+            - cd ./dist && ./func_tests_backend test_redis_pubsub
 
         - name: "test_google_pubsub"
           commands:
