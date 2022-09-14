@@ -220,8 +220,6 @@ func ProcessCostMatrix(service *common.Service) {
 				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
 
 				statsPubsubProducer.MessageChannel <- message
-
-				core.Debug("cost matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()
@@ -365,6 +363,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				logMutex.Unlock()
 
 				// send route matrix stats via pubsub
+
 				routeMatrixStatsEntry := messages.RouteMatrixStatsEntry{}
 
 				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsVersion
@@ -376,9 +375,6 @@ func ProcessRouteMatrix(service *common.Service) {
 				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
 
 				statsPubsubProducer.MessageChannel <- message
-				_ = message
-
-				core.Debug("route matrix stats message is %d bytes", len(message))
 			}
 		}
 	}()
