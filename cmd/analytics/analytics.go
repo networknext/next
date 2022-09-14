@@ -103,7 +103,6 @@ func Process[T messages.Message](service *common.Service, name string) {
 				}
 				
 				// todo: insert into bigquery
-				
 				insert_ok := true
 				if insert_ok {
 					pubsubMessage.Ack()
