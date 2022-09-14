@@ -5962,7 +5962,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( ret != 0 )
     {
-        relay_printf( "error: could not post relay update" );
+        relay_printf( "warning: could not post relay update" );
         return RELAY_ERROR;
     }
 
