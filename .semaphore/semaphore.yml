@@ -222,7 +222,7 @@ blocks:
 
         - name: "test_google_pubsub"
           commands:
-            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000
+            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
             - cd ./dist && ./func_tests_backend test_google_pubsub
 
 
