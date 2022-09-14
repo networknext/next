@@ -272,7 +272,7 @@ func test_google_pubsub() {
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
-	pubsubSetupClient, err := pubsub.NewClient(cancelContext, "local")
+	pubsubSetupClient, err := pubsub.NewClient(cancelContext, googleProjectID)
 	if err != nil {
 		core.Error("failed to create pubsub setup client: %v", err)
 		os.Exit(1)
@@ -296,7 +296,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumConsumers; i++ {
 
 		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
+			ProjectId:          googleProjectID,
 			Topic:              "test",
 			Subscription:       "test",
 			MessageChannelSize: 10 * 1024,
@@ -319,7 +319,7 @@ func test_google_pubsub() {
 	for i := 0; i < NumProducers; i++ {
 
 		producers[i], err = common.CreateGooglePubsubProducer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
+			ProjectId:          googleProjectID,
 			Topic:              "test",
 			MessageChannelSize: 10 * 1024,
 			BatchSize:          100,
@@ -334,7 +334,7 @@ func test_google_pubsub() {
 
 	waitGroup.Add(NumProducers)
 
-	const NumMessagesPerProducer = 100000
+	const NumMessagesPerProducer = 10000
 
 	for i := 0; i < NumProducers; i++ {
 
@@ -354,6 +354,7 @@ func test_google_pubsub() {
 				}
 
 				producer.MessageChannel <- messageData
+
 			}
 
 			waitGroup.Done()
@@ -383,7 +384,8 @@ func test_google_pubsub() {
 					waitGroup.Done()
 					return
 
-				case msg := <-consumer.MessageChannel:
+				case pubsubMessage := <-consumer.MessageChannel:
+					msg := pubsubMessage.Data
 					messageId := binary.LittleEndian.Uint32(msg[:4])
 					start := int(messageId % 256)
 					for j := 0; j < len(msg); j++ {
@@ -393,6 +395,7 @@ func test_google_pubsub() {
 						}
 					}
 					atomic.AddUint64(&numMessagesReceived, 1)
+					pubsubMessage.Ack()
 				}
 			}
 
@@ -767,7 +770,12 @@ func test_redis_streams() {
 
 type test_function func()
 
+var googleProjectID string
+
 func main() {
+
+	googleProjectID = "local"
+
 	allTests := []test_function{
 		// test_magic_backend,
 		// test_redis_pubsub,
