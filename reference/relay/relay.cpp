@@ -152,7 +152,7 @@ static int relay_debug = 1;
 
 void relay_printf( const char * format, ... )
 {
-    if ( relay_debug )
+    if ( !relay_debug )
         return;
     va_list args;
     va_start( args, format );
@@ -169,13 +169,13 @@ int relay_initialize()
 {
     if ( relay_platform_init() != RELAY_OK )
     {
-        relay_printf( "failed to initialize platform" );
+        printf( "error: failed to initialize platform" );
         return RELAY_ERROR;
     }
 
     if ( sodium_init() == -1 )
     {
-        relay_printf( "failed to initialize sodium" );
+        printf( "error: failed to initialize sodium" );
         return RELAY_ERROR;
     }
 
@@ -183,6 +183,14 @@ int relay_initialize()
     if ( relay_debug_env )
     {
         relay_debug = atoi( relay_debug_env );
+        if ( relay_debug )
+        {
+        	printf( "    relay debug is on\n" );
+        }
+        else
+        {
+        	printf( "    relay debug is off\n" );
+        }
     }
 
     return RELAY_OK;
@@ -5954,7 +5962,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( ret != 0 )
     {
-        // relay_printf( "\nerror: could not post relay update\n\n" );
+        relay_printf( "error: could not post relay update" );
         return RELAY_ERROR;
     }
 
@@ -5962,7 +5970,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
-        // relay_printf( "\nerror: relay update response was %d, expected 200\n\n", int(code) );
+        relay_printf( "error: relay update response was %d, expected 200", int(code) );
         return RELAY_ERROR;
     }
 
@@ -5976,7 +5984,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( version > update_response_version )
     {
-        // relay_printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
+        relay_printf( "error: bad relay update response version. expected %d, got %d", update_response_version, version );
         return RELAY_ERROR;
     }
 
@@ -6020,7 +6028,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( error )
     {
-        // relay_printf( "\nerror: error while reading set of relays to ping in update response\n\n" );
+        relay_printf( "error: error while reading set of relays to ping in update response" );
         return RELAY_ERROR;
     }
 
@@ -6053,7 +6061,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
         if ( error )
         {
-            // relay_printf( "\nerror: error while reading set of relay internal ips in update response\n\n" );
+            relay_printf( "error: error while reading set of relay internal ips in update response" );
             return RELAY_ERROR;
         }
     }

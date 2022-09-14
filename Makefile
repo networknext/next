@@ -21,7 +21,6 @@ SDKNAME4 = libnext4
 SDKNAME5 = libnext5
 
 RELAY_PORT ?= 2000
-RELAY_DEBUG = 1
 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
@@ -281,7 +280,7 @@ dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
-	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
+	@RELAY_DEBUG=1 RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
 
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
