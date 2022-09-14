@@ -149,9 +149,6 @@ type GooglePubsubConsumer struct {
 	pubsubSubscription  *pubsub.Subscription
 	mutex               sync.RWMutex
 	numMessagesReceived int
-	numBatchesReceived  int
-	numBatchesAcked     int
-	numBatchesNacked    int
 }
 
 func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubConsumer, error) {
@@ -186,53 +183,17 @@ func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) 
 }
 
 func (consumer *GooglePubsubConsumer) receiveMessages(ctx context.Context) {
-
 	consumer.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-
 		consumer.MessageChannel <- m
-
 		consumer.mutex.Lock()
 		consumer.numMessagesReceived++
 		consumer.mutex.Unlock()
 	})
 }
 
-func (consumer *GooglePubsubConsumer) AckMessage() {
-	consumer.mutex.Lock()
-	consumer.numBatchesAcked++
-	consumer.mutex.Unlock()
-}
-
-func (consumer *GooglePubsubConsumer) NackMessage() {
-	consumer.mutex.Lock()
-	consumer.numBatchesNacked++
-	consumer.mutex.Unlock()
-}
-
 func (consumer *GooglePubsubConsumer) NumMessageReceived() int {
 	consumer.mutex.RLock()
 	value := consumer.numMessagesReceived
-	consumer.mutex.RUnlock()
-	return value
-}
-
-func (consumer *GooglePubsubConsumer) NumBatchesReceived() int {
-	consumer.mutex.RLock()
-	value := consumer.numBatchesReceived
-	consumer.mutex.RUnlock()
-	return value
-}
-
-func (consumer *GooglePubsubConsumer) NumBatchesAcked() int {
-	consumer.mutex.RLock()
-	value := consumer.numBatchesAcked
-	consumer.mutex.RUnlock()
-	return value
-}
-
-func (consumer *GooglePubsubConsumer) NumBatchesNacked() int {
-	consumer.mutex.RLock()
-	value := consumer.numBatchesNacked
 	consumer.mutex.RUnlock()
 	return value
 }
