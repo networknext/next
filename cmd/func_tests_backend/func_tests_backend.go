@@ -303,6 +303,27 @@ func test_google_pubsub() {
 
 	pubsubSetupClient.Close()
 
+	// create the consumers first so there is no race condition
+
+	const NumConsumers = 100
+
+	consumers := [NumConsumers]*common.GooglePubsubConsumer{}
+
+	for i := 0; i < NumConsumers; i++ {
+
+		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
+			ProjectId:          "local",
+			Topic:              "test",
+			Subscription:       "test",
+			MessageChannelSize: 10 * 1024,
+		})
+
+		if err != nil {
+			core.Error("failed to create google pubsub consumer: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	// send a bunch of messages via multiple producers
 
 	var waitGroup sync.WaitGroup
@@ -361,25 +382,6 @@ func test_google_pubsub() {
 	waitGroup.Wait()
 
 	// receive a bunch of messages via consumers
-
-	const NumConsumers = 100
-
-	consumers := [NumConsumers]*common.GooglePubsubConsumer{}
-
-	for i := 0; i < NumConsumers; i++ {
-
-		consumers[i], err = common.CreateGooglePubsubConsumer(cancelContext, common.GooglePubsubConfig{
-			ProjectId:          "local",
-			Topic:              "test",
-			Subscription:       "test",
-			MessageChannelSize: 10 * 1024,
-		})
-
-		if err != nil {
-			core.Error("failed to create google pubsub consumer: %v", err)
-			os.Exit(1)
-		}
-	}
 
 	waitGroup.Add(NumConsumers)
 
