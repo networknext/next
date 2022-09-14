@@ -12,6 +12,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
+	"cloud.google.com/go/bigquery"
 )
 
 var costMatrixURI string
@@ -39,13 +40,17 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
+	// todo
+	/*
 	Process[messages.BillingEntry](service, "billing")
 	Process[messages.SummaryEntry](service, "summary")
 	Process[messages.MatchDataEntry](service, "match_data")
 	Process[messages.PingStatsEntry](service, "ping_stats")
 	Process[messages.RelayStatsEntry](service, "relay_stats")
-	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
-	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
+	*/
+
+	Process[*messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
+	Process[*messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
 
 	service.StartWebServer()
 
@@ -56,7 +61,13 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T any](service *common.Service, name string) {
+type Message interface {
+	Write(buffer []byte) []byte
+	Read(buffer []byte) error
+	Save() (map[string]bigquery.Value, string, error)
+}
+
+func Process[T Message](service *common.Service, name string) {
 
 	envPrefix := strings.ToUpper(name) + "_"
 
@@ -79,13 +90,30 @@ func Process[T any](service *common.Service, name string) {
 	go func() {
 		for {
 			select {
+
 			case <-service.Context.Done():
 				return
-			case message := <-consumer.MessageChannel:
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
 				core.Debug("received %s message", name)
-				_ = message
-				// todo: parse billing message
-				// todo: publish billing message to bigquery
+				
+				messageData := pubsubMessage.Data
+				var message T
+				err := message.Read(messageData)
+				if err != nil {
+					core.Error("could not read %s message", name)
+					break
+				}
+				
+				// todo: insert into bigquery
+				
+				insert_ok := true
+				if insert_ok {
+					pubsubMessage.Ack()
+				} else {
+					pubsubMessage.Nack()
+				}
 			}
 		}
 	}()
