@@ -17211,7 +17211,6 @@ static void test_relay_manager()
         }
     }
 
-    /*
     // remove all relays
 
     next_relay_manager_update( manager, 0, relay_ids, relay_addresses, false );
@@ -17258,8 +17257,6 @@ static void test_relay_manager()
         next_relay_manager_get_stats( manager, &stats );
         next_check( stats.num_relays == 0 );
     }
-
-    */
 
     // add max relays and exclude odd near relays, verify odd near relays don't have stats
     
