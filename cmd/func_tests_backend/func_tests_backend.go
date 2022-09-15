@@ -313,33 +313,80 @@ func test_google_bigquery() {
 		}
 	}
 
-	const NumEntriesPerPublisher = 10000
+	messageChannel := make(chan bigquery.ValueSaver, 10*1024)
 
-	for i := 0; i < NumPublishers; i++ {
-		go func(publisher *common.GoogleBigQueryPublisher) {
-			for j := 0; j < NumEntriesPerPublisher; j++ {
+	const NumProducers = 10
+
+	const NumEntriesPerProducer = 1000
+
+	var waitGroup sync.WaitGroup
+
+	waitGroup.Add(NumProducers)
+
+	for i := 0; i < NumProducers; i++ {
+		go func() {
+			for j := 0; j < NumEntriesPerProducer; j++ {
 				var entry bigquery.ValueSaver = &common.TestEntry{
 					Timestamp: uint32(time.Now().Unix()),
 				}
 
-				publisher.PublishChannel <- entry
+				messageChannel <- entry
 			}
+
+			waitGroup.Done()
+		}()
+	}
+
+	waitGroup.Wait()
+
+	core.Debug("done generating entries")
+
+	waitGroup.Add(NumPublishers)
+
+	for i := 0; i < NumPublishers; i++ {
+
+		go func(publisher *common.GoogleBigQueryPublisher) {
+
+			for {
+				select {
+
+				case <-cancelContext.Done():
+					core.Debug("publisher done")
+					waitGroup.Done()
+					return
+
+				case entry := <-messageChannel:
+					publisher.PublishChannel <- entry
+				}
+			}
+
 		}(publishers[i])
 	}
 
 	time.Sleep(time.Second * 30)
-
-	for i := 0; i < NumPublishers; i++ {
-		core.Debug("entries recieved by publisher %d: %d", i, publishers[i].NumEntriesRecieved)
-		core.Debug("entries published by publisher %d: %d", i, publishers[i].NumEntriesPublished)
-		core.Debug("batches published by publisher %d: %d", i, publishers[i].NumBatchesPublished)
-	}
 
 	// clean shutdown the publishing threads
 
 	core.Debug("cancelling context")
 
 	cancelFunc()
+
+	core.Debug("waiting for publishers...")
+
+	waitGroup.Wait()
+
+	totalEntriesPublished := 0
+
+	for i := 0; i < NumPublishers; i++ {
+		core.Debug("\nentries recieved by publisher %d: %d", i, publishers[i].NumEntriesRecieved)
+		core.Debug("entries published by publisher %d: %d", i, publishers[i].NumEntriesPublished)
+		core.Debug("batches published by publisher %d: %d", i, publishers[i].NumBatchesPublished)
+
+		totalEntriesPublished = totalEntriesPublished + int(publishers[i].NumEntriesPublished)
+	}
+
+	core.Debug("\n\nTotal entries published: %d", totalEntriesPublished)
+	core.Debug("\n\nTotal entries expected: %d", NumProducers*NumEntriesPerProducer)
 
 	core.Debug("done")
 }
