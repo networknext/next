@@ -51,8 +51,8 @@ func main() {
 	Process[messages.RelayStatsEntry](service, "relay_stats")
 	*/
 
-	Process[*messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
-	Process[*messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
+	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
+	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
 
 	service.StartWebServer()
 
@@ -118,13 +118,13 @@ func Process[T messages.Message](service *common.Service, name string) {
 
 func ProcessCostMatrix(service *common.Service) {
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
-	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "cost_matrix_stats")
-	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+	pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
+	pubsubSubscription := envvar.GetString("COST_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
 
-	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
-	core.Log("cost matrix stats entry pubsub topic: %s", pubsubTopic)
-	core.Log("cost matrix stats entry pubsub subscription: %s", pubsubSubscription)
+	core.Log("cost matrix stats message max bytes: %d", maxBytes)
+	core.Log("cost matrix stats message pubsub topic: %s", pubsubTopic)
+	core.Log("cost matrix stats message pubsub subscription: %s", pubsubSubscription)
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
@@ -207,17 +207,17 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// send cost matrix entry via pubsub
+				// send cost matrix message via pubsub
 
-				costMatrixStatsEntry := messages.CostMatrixStatsEntry{}
+				costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
 
-				costMatrixStatsEntry.Version = messages.CostMatrixStatsVersion
-				costMatrixStatsEntry.Bytes = costMatrixBytes
-				costMatrixStatsEntry.NumRelays = costMatrixNumRelays
-				costMatrixStatsEntry.NumDestRelays = costMatrixNumDestRelays
-				costMatrixStatsEntry.NumDatacenters = costMatrixNumDatacenters
+				costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion
+				costMatrixStatsMessage.Bytes = costMatrixBytes
+				costMatrixStatsMessage.NumRelays = costMatrixNumRelays
+				costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
+				costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
 
-				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
+				message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
 
 				statsPubsubProducer.MessageChannel <- message
 			}
@@ -227,10 +227,9 @@ func ProcessCostMatrix(service *common.Service) {
 
 func ProcessRouteMatrix(service *common.Service) {
 
-	pubsubTopic := envvar.GetString("PUBSUB_TOPIC", "route_matrix_stats")
-	pubsubSubscription := envvar.GetString("PUBSUB_SUBSCRIPTION", "route_matrix_stats")
+	pubsubTopic := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_TOPIC", "route_matrix_stats")
+	pubsubSubscription := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "route_matrix_stats")
 
-	core.Log("route matrix stats entry google project id: %s", googleProjectId)
 	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
 	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
 
@@ -247,9 +246,9 @@ func ProcessRouteMatrix(service *common.Service) {
 		os.Exit(1)
 	}
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
 
-	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
+	core.Log("cost matrix stats message max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -364,9 +363,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				// send route matrix stats via pubsub
 
-				routeMatrixStatsEntry := messages.RouteMatrixStatsEntry{}
+				routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
 
-				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsVersion
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion
 				routeMatrixStatsEntry.Bytes = routeMatrixBytes
 				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
 				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays

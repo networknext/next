@@ -2,15 +2,15 @@ package messages
 
 import (
 	"cloud.google.com/go/bigquery"
-	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	RelayStatsEntryVersion = uint8(3)
-	MaxRelayStatsEntrySize = 128
+	RelayStatsMessageVersion = uint8(3)
+	MaxRelayStatsMessageSize = 128
 )
 
-type RelayStatsEntry struct {
+type RelayStatsMessage struct {
+
 	Timestamp uint64
 
 	ID uint64
@@ -48,6 +48,7 @@ type RelayStatsEntry struct {
 	MemUsage                  float32
 }
 
+/*
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
 	data := make([]byte, length)
@@ -208,31 +209,32 @@ func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
 
 	return entries, true
 }
+*/
 
-func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
+func (message *RelayStatsMessage) Save() (map[string]bigquery.Value, string, error) {
 
-	bqEntry := make(map[string]bigquery.Value)
+	bigquery_message := make(map[string]bigquery.Value)
 
-	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["relay_id"] = int(e.ID)
-	bqEntry["cpu_percent"] = e.CPUUsage
-	bqEntry["memory_percent"] = e.MemUsage
-	bqEntry["actual_bandwidth_send_percent"] = e.BandwidthSentPercent
-	bqEntry["actual_bandwidth_receive_percent"] = e.BandwidthReceivedPercent
-	bqEntry["envelope_bandwidth_send_percent"] = e.EnvelopeSentPercent
-	bqEntry["envelope_bandwidth_receive_percent"] = e.EnvelopeReceivedPercent
-	bqEntry["actual_bandwidth_send_mbps"] = e.BandwidthSentMbps
-	bqEntry["actual_bandwidth_receive_mbps"] = e.BandwidthReceivedMbps
-	bqEntry["envelope_bandwidth_send_mbps"] = e.EnvelopeSentMbps
-	bqEntry["envelope_bandwidth_receive_mbps"] = e.EnvelopeReceivedMbps
-	bqEntry["num_sessions"] = int(e.NumSessions)
-	bqEntry["max_sessions"] = int(e.MaxSessions)
-	bqEntry["num_routable"] = int(e.NumRoutable)
-	bqEntry["num_unroutable"] = int(e.NumUnroutable)
+	bigquery_message["timestamp"] = int(message.Timestamp)
+	bigquery_message["relay_id"] = int(message.ID)
+	bigquery_message["cpu_percent"] = message.CPUUsage
+	bigquery_message["memory_percent"] = message.MemUsage
+	bigquery_message["actual_bandwidth_send_percent"] = message.BandwidthSentPercent
+	bigquery_message["actual_bandwidth_receive_percent"] = message.BandwidthReceivedPercent
+	bigquery_message["envelope_bandwidth_send_percent"] = message.EnvelopeSentPercent
+	bigquery_message["envelope_bandwidth_receive_percent"] = message.EnvelopeReceivedPercent
+	bigquery_message["actual_bandwidth_send_mbps"] = message.BandwidthSentMbps
+	bigquery_message["actual_bandwidth_receive_mbps"] = message.BandwidthReceivedMbps
+	bigquery_message["envelope_bandwidth_send_mbps"] = message.EnvelopeSentMbps
+	bigquery_message["envelope_bandwidth_receive_mbps"] = message.EnvelopeReceivedMbps
+	bigquery_message["num_sessions"] = int(message.NumSessions)
+	bigquery_message["max_sessions"] = int(message.MaxSessions)
+	bigquery_message["num_routable"] = int(message.NumRoutable)
+	bigquery_message["num_unroutable"] = int(message.NumUnroutable)
 
-	if e.Full {
-		bqEntry["full"] = e.Full
+	if message.Full {
+		bigquery_message["full"] = message.Full
 	}
 
-	return bqEntry, "", nil
+	return bigquery_message, "", nil
 }

@@ -15,7 +15,7 @@ type ServerInitRequestPacket struct {
 	DatacenterName string
 }
 
-func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
+func (packet *ServerInitRequestPacket) Serialize[type T common.Stream](stream T) error {
 
 	// todo: version
 	/*
