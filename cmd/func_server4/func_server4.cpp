@@ -221,11 +221,13 @@ int main()
 
     bool restarted = false;
 
+    double base_time = next_time();
+
     while ( !quit )
     {
         next_server_update( server );
 
-        if ( restart_time > 0.0 && next_time() > restart_time && !restarted )
+        if ( restart_time > 0.0 && ( next_time() - base_time ) > restart_time && !restarted )
         {
             printf( "restarting server\n" );
             next_server_destroy( server );

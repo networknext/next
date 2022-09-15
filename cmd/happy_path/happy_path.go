@@ -81,6 +81,7 @@ func run_relay(port int, log string) *bytes.Buffer {
 	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
 	cmd.Env = append(cmd.Env, "RELAY_GATEWAY=http://127.0.0.1:30000")
+	cmd.Env = append(cmd.Env, "RELAY_DEBUG=1")
 
 	var stdout bytes.Buffer
 
@@ -487,7 +488,8 @@ func happy_path() int {
 	client4_initialized := false
 
 	for i := 0; i < 30; i++ {
-		if strings.Contains(client4_stdout.String(), "client next route (committed)") {
+		if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
+		    strings.Contains(client4_stdout.String(), "client continues route (committed)") {
 			client4_initialized = true
 			break
 		}
@@ -509,7 +511,8 @@ func happy_path() int {
 	client5_initialized := false
 
 	for i := 0; i < 30; i++ {
-		if strings.Contains(client5_stdout.String(), "client next route (committed)") {
+		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+		    strings.Contains(client5_stdout.String(), "client continues route (committed)") {
 			client5_initialized = true
 			break
 		}
