@@ -489,7 +489,7 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
-		    strings.Contains(client4_stdout.String(), "client continues route (committed)") {
+			strings.Contains(client4_stdout.String(), "client continues route (committed)") {
 			client4_initialized = true
 			break
 		}
@@ -512,7 +512,7 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-		    strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
 			client5_initialized = true
 			break
 		}

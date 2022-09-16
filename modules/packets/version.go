@@ -2,7 +2,7 @@ package packets
 
 import (
 	"fmt"
-	"github.com/networknext/backend/modules/common"	
+	"github.com/networknext/backend/modules/common"
 )
 
 const (
@@ -25,25 +25,25 @@ func (version *SDKVersion) Serialize(stream common.Stream) error {
 }
 
 func (a SDKVersion) Compare(b SDKVersion) int {
-	
+
 	if a.Major > b.Major {
 		return SDKVersionNewer
 	} else if a.Major < b.Major {
 		return SDKVersionOlder
 	}
-	
+
 	if a.Minor > b.Minor {
 		return SDKVersionNewer
 	} else if a.Minor < b.Minor {
 		return SDKVersionOlder
 	}
-	
+
 	if a.Patch > b.Patch {
 		return SDKVersionNewer
 	} else if a.Patch < b.Patch {
 		return SDKVersionOlder
 	}
-	
+
 	return SDKVersionEqual
 }
 

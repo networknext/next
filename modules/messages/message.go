@@ -5,10 +5,9 @@ import (
 )
 
 type Message interface {
-
 	Write(buffer []byte) []byte
 
-  	Read(buffer []byte) error
+	Read(buffer []byte) error
 
-  	Save() (map[string]bigquery.Value, string, error)
+	Save() (map[string]bigquery.Value, string, error)
 }

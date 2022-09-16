@@ -10,7 +10,6 @@ const (
 )
 
 type RelayStatsMessage struct {
-
 	Timestamp uint64
 
 	ID uint64

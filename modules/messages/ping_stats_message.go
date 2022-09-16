@@ -8,7 +8,7 @@ import (
 const (
 	PingStatsMessageVersion = uint8(4)
 	MaxPingStatsMessageSize = 128
-	MaxInstanceIDLength   = 64 // todo: remove
+	MaxInstanceIDLength     = 64 // todo: remove
 )
 
 type PingStatsMessage struct {

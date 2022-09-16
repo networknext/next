@@ -1,15 +1,15 @@
 package packets
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/modules/common"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // ------------------------------------------------------------------------
 
 func TestVersionCompare(t *testing.T) {
-	
+
 	t.Parallel()
 
 	t.Run("equal", func(t *testing.T) {
@@ -55,26 +55,26 @@ func TestVersionCompare(t *testing.T) {
 }
 
 func TestVersionAtLeast(t *testing.T) {
-	
+
 	t.Parallel()
 
 	t.Run("equal", func(t *testing.T) {
-		a := SDKVersion{0,0,0}
-		b := SDKVersion{0,0,0}
+		a := SDKVersion{0, 0, 0}
+		b := SDKVersion{0, 0, 0}
 
 		assert.True(t, a.AtLeast(b))
 	})
 
 	t.Run("newer", func(t *testing.T) {
-		a := SDKVersion{0,0,1}
-		b := SDKVersion{0,0,0}
+		a := SDKVersion{0, 0, 1}
+		b := SDKVersion{0, 0, 0}
 
 		assert.True(t, a.AtLeast(b))
 	})
 
 	t.Run("older", func(t *testing.T) {
-		a := SDKVersion{0,0,0}
-		b := SDKVersion{0,0,1}
+		a := SDKVersion{0, 0, 0}
+		b := SDKVersion{0, 0, 1}
 
 		assert.False(t, a.AtLeast(b))
 	})
@@ -107,9 +107,9 @@ func PacketSerializationTest[P Packet](writePacket Packet, readPacket Packet, t 
 func Test_SDK4_ServerInitRequestPacket(t *testing.T) {
 
 	writePacket := SDK4_ServerInitRequestPacket{
-		BuyerId: 1234567,
-		DatacenterId: 5124111,
-		RequestId: 234198347,
+		BuyerId:        1234567,
+		DatacenterId:   5124111,
+		RequestId:      234198347,
 		DatacenterName: "test",
 	}
 
@@ -125,9 +125,9 @@ func Test_SDK4_ServerInitRequestPacket(t *testing.T) {
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
 	writePacket := SDK5_ServerInitRequestPacket{
-		BuyerId: 1234567,
-		DatacenterId: 5124111,
-		RequestId: 234198347,
+		BuyerId:        1234567,
+		DatacenterId:   5124111,
+		RequestId:      234198347,
 		DatacenterName: "test",
 	}
 

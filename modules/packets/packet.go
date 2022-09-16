@@ -5,6 +5,5 @@ import (
 )
 
 type Packet interface {
-
 	Serialize(stream common.Stream) error
 }
