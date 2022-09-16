@@ -25,7 +25,7 @@ func MessageReadWriteTest[M Message](writeMessage Message, readMessage Message, 
 func TestCostMatrixStatsMessage(t *testing.T) {
 
 	writeMessage := CostMatrixStatsMessage{
-		Version:        1,
+		Version:        CostMatrixStatsMessageVersion,
 		Timestamp:      uint64(time.Now().Unix()),
 		Bytes:          257,
 		NumRelays:      23,
@@ -41,7 +41,7 @@ func TestCostMatrixStatsMessage(t *testing.T) {
 func TestRouteMatrixStatsMessage(t *testing.T) {
 
 	writeMessage := RouteMatrixStatsMessage{
-		Version:                 1,
+		Version:                 RouteMatrixStatsMessageVersion,
 		Timestamp:               uint64(time.Now().Unix()),
 		Bytes:                   257,
 		NumRelays:               23,
