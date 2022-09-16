@@ -183,7 +183,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 
 	for {
-	
+
 		select {
 
 		case <-ctx.Done():
