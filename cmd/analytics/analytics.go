@@ -44,11 +44,11 @@ func main() {
 
 	// todo
 	/*
-	Process[messages.BillingEntry](service, "billing")
-	Process[messages.SummaryEntry](service, "summary")
-	Process[messages.MatchDataEntry](service, "match_data")
-	Process[messages.PingStatsEntry](service, "ping_stats")
-	Process[messages.RelayStatsEntry](service, "relay_stats")
+		Process[messages.BillingEntry](service, "billing")
+		Process[messages.SummaryEntry](service, "summary")
+		Process[messages.MatchDataEntry](service, "match_data")
+		Process[messages.PingStatsEntry](service, "ping_stats")
+		Process[messages.RelayStatsEntry](service, "relay_stats")
 	*/
 
 	Process[*messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
@@ -93,7 +93,7 @@ func Process[T messages.Message](service *common.Service, name string) {
 			case pubsubMessage := <-consumer.MessageChannel:
 
 				core.Debug("received %s message", name)
-				
+
 				messageData := pubsubMessage.Data
 				var message T
 				err := message.Read(messageData)
@@ -101,7 +101,7 @@ func Process[T messages.Message](service *common.Service, name string) {
 					core.Error("could not read %s message", name)
 					break
 				}
-				
+
 				// todo: insert into bigquery
 				insert_ok := true
 				if insert_ok {

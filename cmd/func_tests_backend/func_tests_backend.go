@@ -293,7 +293,7 @@ func test_google_bigquery() {
 
 	bigquerySetupClient.Close()
 
-	const NumPublishers = 10
+	const NumPublishers = 2
 
 	publishers := [NumPublishers]*common.GoogleBigQueryPublisher{}
 

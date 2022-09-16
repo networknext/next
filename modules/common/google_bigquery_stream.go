@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-type GoogleBigQueryConfig struct {
+type GoogleBigQueryStreamConfig struct {
 	ProjectId          string
 	Dataset            string
 	TableName          string
@@ -19,7 +19,7 @@ type GoogleBigQueryConfig struct {
 	ClientOptions      []option.ClientOption
 }
 
-type GoogleBigQueryPublisher struct {
+type GoogleBigQueryStreamPublisher struct {
 	PublishChannel      chan bigquery.ValueSaver
 	config              GoogleBigQueryConfig
 	bigqueryClient      *bigquery.Client
@@ -31,7 +31,7 @@ type GoogleBigQueryPublisher struct {
 	NumBatchesPublished uint64
 }
 
-func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryPublisher, error) {
+func CreateGoogleBigQueryStreamPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryStreamPublisher, error) {
 
 	bigqueryClient, err := bigquery.NewClient(ctx, config.ProjectId, config.ClientOptions...)
 	if err != nil {
@@ -39,7 +39,7 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 		return nil, err
 	}
 
-	publisher := &GoogleBigQueryPublisher{}
+	publisher := &GoogleBigQueryStreamPublisher{}
 
 	publisher.config = config
 
@@ -62,7 +62,7 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 	return publisher, nil
 }
 
-func (publisher *GoogleBigQueryPublisher) updatePublishChannel(ctx context.Context) {
+func (publisher *GoogleBigQueryStreamPublisher) updatePublishChannel(ctx context.Context) {
 
 	ticker := time.NewTicker(publisher.config.BatchDuration)
 
@@ -92,7 +92,7 @@ func (publisher *GoogleBigQueryPublisher) updatePublishChannel(ctx context.Conte
 	}
 }
 
-func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
+func (publisher *GoogleBigQueryStreamPublisher) publishBatch(ctx context.Context) {
 
 	err := publisher.TableInserter.Put(ctx, publisher.messageBatch)
 	if err != nil {
@@ -109,17 +109,4 @@ func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 	publisher.messageBatch = []bigquery.ValueSaver{}
 
 	core.Debug("published batch %d containing %d messages", batchId, batchNumMessages)
-}
-
-// Test entry for making func testing easier
-type TestEntry struct {
-	Timestamp uint32
-}
-
-func (entry *TestEntry) Save() (map[string]bigquery.Value, string, error) {
-
-	e := make(map[string]bigquery.Value)
-
-	e["timestamp"] = int(entry.Timestamp)
-	return e, "", nil
 }
