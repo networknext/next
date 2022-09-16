@@ -709,13 +709,105 @@ func main() {
 	})
 
 	pingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
-		// TODO: Copy over schema
-		Schema: bigquery.Schema{},
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_a",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_b",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rtt",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "jitter",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "packet_loss",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "routable",
+				Type: bigquery.BooleanFieldType,
+			},
+		},
 	})
 
 	relayStatsTableRef.Create(ctx, &bigquery.TableMetadata{
-		// TODO: Copy over schema
-		Schema: bigquery.Schema{},
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_id",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "cpu_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "memory_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_send_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_receive_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_send_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_receive_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_send_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_receive_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_send_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_receive_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "num_sessions",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "max_sessions",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "num_routable",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "num_unroutable",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
 	})
 
 	billingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
