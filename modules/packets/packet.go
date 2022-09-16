@@ -1,10 +1,10 @@
 package packets
 
 import (
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/common"
 )
 
 type Packet interface {
 
-	Serialize(stream encoding.Stream) error	
+	Serialize(stream common.Stream) error
 }

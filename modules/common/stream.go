@@ -5,7 +5,6 @@ import (
 )
 
 type Stream interface {
-
 	IsWriting() bool
 	IsReading() bool
 	SerializeInteger(value *int32, min int32, max int32)
