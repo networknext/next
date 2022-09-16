@@ -231,7 +231,7 @@ blocks:
 
         - name: "test_google_bigquery"
           commands:
-            - bigquery-emulator --project="local" --dataset="local"
+            - bigquery-emulator --project="local" --dataset="local" &
             - cd ./dist && ./func_test_backend test_google_bigquery
 
 
