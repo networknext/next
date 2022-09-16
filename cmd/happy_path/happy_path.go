@@ -540,11 +540,29 @@ func happy_path() int {
 
 var googleProjectID string
 var bigqueryDataset string
+
+var costMatrixPubsubTopic string
+var costMatrixPubsubSubscription string
 var costMatrixStatsTable string
+
+var routeMatrixPubsubTopic string
+var routeMatrixPubsubSubscription string
 var routeMatrixStatsTable string
+
+var billingPubsubTopic string
+var billingPubsubSubscription string
 var billingTable string
+
+var summaryPubsubTopic string
+var summaryPubsubSubscription string
 var summaryTable string
+
+var pingStatsPubsubTopic string
+var pingStatsPubsubSubscription string
 var pingStatsTable string
+
+var relayStatsPubsubTopic string
+var relayStatsPubsubSubscription string
 var relayStatsTable string
 
 func main() {
@@ -552,12 +570,69 @@ func main() {
 	ctx := context.Background()
 
 	googleProjectID = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
+	pubsubSetupClient, err := pubsub.NewClient(ctx, googleProjectID)
+	if err != nil {
+		core.Error("failed to create pubsub setup client: %v", err)
+		os.Exit(1)
+	}
+
+	costMatrixPubsubTopic = envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "local")
+	costMatrixPubsubSubscription = envvar.GetString("COST_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, costMatrixPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, costMatrixPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(costMatrixPubsubTopic),
+	})
+
+	routeMatrixPubsubTopic = envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_TOPIC", "local")
+	routeMatrixPubsubSubscription = envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, routeMatrixPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, routeMatrixPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(routeMatrixPubsubTopic),
+	})
+
+	pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "local")
+	pingStatsPubsubSubscription = envvar.GetString("PING_STATS_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, pingStatsPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, pingStatsPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(pingStatsPubsubTopic),
+	})
+
+	relayStatsPubsubTopic = envvar.GetString("RELAY_STATS_PUBSUB_TOPIC", "local")
+	relayStatsPubsubSubscription = envvar.GetString("RELAY_STATS_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, relayStatsPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, relayStatsPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(relayStatsPubsubTopic),
+	})
+
+	billingPubsubTopic = envvar.GetString("BILLING_PUBSUB_TOPIC", "local")
+	billingPubsubSubscription = envvar.GetString("BILLING_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, billingPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, billingPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(billingPubsubTopic),
+	})
+
+	summaryPubsubTopic = envvar.GetString("SUMMARY_PUBSUB_TOPIC", "local")
+	summaryPubsubSubscription = envvar.GetString("SUMMARY_PUBSUB_SUBSCRIPTION", "local")
+
+	pubsubSetupClient.CreateTopic(ctx, summaryPubsubTopic)
+	pubsubSetupClient.CreateSubscription(ctx, summaryPubsubSubscription, pubsub.SubscriptionConfig{
+		Topic: pubsubSetupClient.Topic(summaryPubsubTopic),
+	})
+
+	pubsubSetupClient.Close()
+
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "local")
 
 	costMatrixStatsTable = envvar.GetString("COST_MATRIX_STATS_BIGQUERY_TABLE", "cost_matrix_stats")
 	routeMatrixStatsTable = envvar.GetString("ROUTE_MATRIX_STATS_BIGQUERY_TABLE", "route_matrix_stats")
-	routeMatrixStatsTable = envvar.GetString("RELAY_STATS_BIGQUERY_TABLE", "relay_stats")
-	routeMatrixStatsTable = envvar.GetString("PING_STATS_BIGQUERY_TABLE", "ping_stats")
+	relayStatsTable = envvar.GetString("RELAY_STATS_BIGQUERY_TABLE", "relay_stats")
+	pingStatsTable = envvar.GetString("PING_STATS_BIGQUERY_TABLE", "ping_stats")
 	billingTable = envvar.GetString("BILLING_BIGQUERY_TABLE", "billing")
 	summaryTable = envvar.GetString("SUMMARY_BIGQUERY_TABLE", "summary")
 
