@@ -19,7 +19,7 @@ blocks:
       jobs:
         - name: "Build Sodium and ZeroMQ"
           commands:
-            
+
             - checkout
 
             - cd ~/backend/libs/sodium
@@ -165,6 +165,10 @@ blocks:
 
             - sudo apt-get install -y google-cloud-sdk-pubsub-emulator
 
+            - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
+            - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
+            - sudo chmod +x /usr/local/bin/bigquery-emulator
+
             - mkdir -p dist
             - cd dist
 
@@ -224,6 +228,11 @@ blocks:
           commands:
             - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
             - cd ./dist && ./func_tests_backend test_google_pubsub
+
+        - name: "test_google_bigquery"
+          commands:
+            - bigquery-emulator --project="local" --dataset="local" &
+            - cd ./dist && ./func_tests_backend test_google_bigquery
 
 
   - name: "Build Functional Tests (sdk4)"
