@@ -16,9 +16,11 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"google.golang.org/api/option"
 )
 
 var processes []*os.Process
@@ -489,7 +491,7 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
-		    strings.Contains(client4_stdout.String(), "client continues route (committed)") {
+			strings.Contains(client4_stdout.String(), "client continues route (committed)") {
 			client4_initialized = true
 			break
 		}
@@ -512,7 +514,7 @@ func happy_path() int {
 
 	for i := 0; i < 30; i++ {
 		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-		    strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
 			client5_initialized = true
 			break
 		}
@@ -537,10 +539,80 @@ func happy_path() int {
 }
 
 var googleProjectID string
+var bigqueryDataset string
+var costMatrixStatsTable string
+var routeMatrixStatsTable string
+var billingTable string
+var summaryTable string
+var pingStatsTable string
+var relayStatsTable string
 
 func main() {
 
+	ctx := context.Background()
+
 	googleProjectID = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "local")
+
+	costMatrixStatsTable = envvar.GetString("COST_MATRIX_STATS_BIGQUERY_TABLE", "cost_matrix_stats")
+	routeMatrixStatsTable = envvar.GetString("ROUTE_MATRIX_STATS_BIGQUERY_TABLE", "route_matrix_stats")
+	routeMatrixStatsTable = envvar.GetString("RELAY_STATS_BIGQUERY_TABLE", "relay_stats")
+	routeMatrixStatsTable = envvar.GetString("PING_STATS_BIGQUERY_TABLE", "ping_stats")
+	billingTable = envvar.GetString("BILLING_BIGQUERY_TABLE", "billing")
+	summaryTable = envvar.GetString("SUMMARY_BIGQUERY_TABLE", "summary")
+
+	clientOptions := []option.ClientOption{
+		option.WithEndpoint("http://127.0.0.1:9050"),
+		option.WithoutAuthentication(),
+	}
+
+	bigquerySetupClient, err := bigquery.NewClient(ctx, googleProjectID, clientOptions...)
+	if err != nil {
+		core.Error("failed to create bigquery setup client: %v", err)
+		os.Exit(1)
+	}
+
+	// Create local tables under the local dataset
+	costMatrixStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(costMatrixStatsTable)
+	routeMatrixStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(routeMatrixStatsTable)
+	pingStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(pingStatsTable)
+	relayStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(relayStatsTable)
+	billingStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(billingTable)
+	summaryTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(summaryTable)
+
+	costMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	routeMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	pingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	relayStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	billingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	summaryTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	core.Debug("successfully set up bigquery emulator")
+
+	bigquerySetupClient.Close()
 
 	if happy_path() != 0 {
 		os.Exit(1)
