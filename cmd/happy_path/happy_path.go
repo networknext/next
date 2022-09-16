@@ -16,9 +16,11 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"google.golang.org/api/option"
 )
 
 var processes []*os.Process
@@ -537,10 +539,290 @@ func happy_path() int {
 }
 
 var googleProjectID string
+var bigqueryDataset string
+var costMatrixStatsTable string
+var routeMatrixStatsTable string
+var billingTable string
+var summaryTable string
+var pingStatsTable string
+var relayStatsTable string
 
 func main() {
 
+	ctx := context.Background()
+
 	googleProjectID = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "local")
+
+	costMatrixStatsTable = envvar.GetString("COST_MATRIX_STATS_BIGQUERY_TABLE", "cost_matrix_stats")
+	routeMatrixStatsTable = envvar.GetString("ROUTE_MATRIX_STATS_BIGQUERY_TABLE", "route_matrix_stats")
+	routeMatrixStatsTable = envvar.GetString("RELAY_STATS_BIGQUERY_TABLE", "relay_stats")
+	routeMatrixStatsTable = envvar.GetString("PING_STATS_BIGQUERY_TABLE", "ping_stats")
+	billingTable = envvar.GetString("BILLING_BIGQUERY_TABLE", "billing")
+	summaryTable = envvar.GetString("SUMMARY_BIGQUERY_TABLE", "summary")
+
+	clientOptions := []option.ClientOption{
+		option.WithEndpoint("http://127.0.0.1:9050"),
+		option.WithoutAuthentication(),
+	}
+
+	bigquerySetupClient, err := bigquery.NewClient(ctx, googleProjectID, clientOptions...)
+	if err != nil {
+		core.Error("failed to create bigquery setup client: %v", err)
+		os.Exit(1)
+	}
+
+	// Create local tables under the local dataset
+	costMatrixStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(costMatrixStatsTable)
+	routeMatrixStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(routeMatrixStatsTable)
+	pingStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(pingStatsTable)
+	relayStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(relayStatsTable)
+	billingStatsTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(billingTable)
+	summaryTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(summaryTable)
+
+	costMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "bytes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDestRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDatacenters",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
+	})
+
+	routeMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		Schema: bigquery.Schema{
+			/*
+			 */
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "bytes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDestRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numFullRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDatacenters",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "totalRoutes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "averageNumRoutes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "averageRouteLength",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "noRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "oneRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "noDirectRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_NoImprovement",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_0_5ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_5_10ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_10_15ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_15_20ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_20_25ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_25_30ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_30_35ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_35_40ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_40_45ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_45_50ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_50ms_Plus",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
+	})
+
+	pingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_a",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_b",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rtt",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "jitter",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "packet_loss",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "routable",
+				Type: bigquery.BooleanFieldType,
+			},
+		},
+	})
+
+	relayStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "relay_id",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "cpu_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "memory_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_send_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_receive_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_send_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_receive_percent",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_send_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "actual_bandwidth_receive_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_send_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "envelope_bandwidth_receive_mbps",
+				Type: bigquery.FloatFieldType,
+			},
+			{
+				Name: "num_sessions",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "max_sessions",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "num_routable",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "num_unroutable",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
+	})
+
+	billingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	summaryTableRef.Create(ctx, &bigquery.TableMetadata{
+		// TODO: Copy over schema
+		Schema: bigquery.Schema{},
+	})
+
+	core.Debug("successfully set up bigquery emulator")
+
+	bigquerySetupClient.Close()
 
 	if happy_path() != 0 {
 		os.Exit(1)
