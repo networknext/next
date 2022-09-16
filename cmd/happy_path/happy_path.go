@@ -581,13 +581,131 @@ func main() {
 	summaryTableRef := bigquerySetupClient.Dataset(bigqueryDataset).Table(summaryTable)
 
 	costMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
-		// TODO: Copy over schema
-		Schema: bigquery.Schema{},
+		Schema: bigquery.Schema{
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "bytes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDestRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDatacenters",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
 	})
 
 	routeMatrixStatsTableRef.Create(ctx, &bigquery.TableMetadata{
-		// TODO: Copy over schema
-		Schema: bigquery.Schema{},
+		Schema: bigquery.Schema{
+			/*
+			 */
+			{
+				Name: "timestamp",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "bytes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDestRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numFullRelays",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "numDatacenters",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "totalRoutes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "averageNumRoutes",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "averageRouteLength",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "noRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "oneRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "noDirectRoutePercent",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_NoImprovement",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_0_5ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_5_10ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_10_15ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_15_20ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_20_25ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_25_30ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_30_35ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_35_40ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_40_45ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_45_50ms",
+				Type: bigquery.IntegerFieldType,
+			},
+			{
+				Name: "rttBucket_50ms_Plus",
+				Type: bigquery.IntegerFieldType,
+			},
+		},
 	})
 
 	pingStatsTableRef.Create(ctx, &bigquery.TableMetadata{
