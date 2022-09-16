@@ -19,7 +19,7 @@ blocks:
       jobs:
         - name: "Build Sodium and ZeroMQ"
           commands:
-            
+
             - checkout
 
             - cd ~/backend/libs/sodium
@@ -224,6 +224,11 @@ blocks:
           commands:
             - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
             - cd ./dist && ./func_tests_backend test_google_pubsub
+
+        - name: "test_google_bigquery"
+          commands:
+            - bigquery-emulator --project="local" --dataset="local"
+            - cd ./dist && ./func_test_backend test_google_bigquery
 
 
   - name: "Build Functional Tests (sdk4)"

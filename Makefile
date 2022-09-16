@@ -983,7 +983,7 @@ dev-pubsub-emulator:
 
 .PHONY: dev-bigquery-emulator
 dev-bigquery-emulator:
-	bigquery-emulator --project="local"
+	bigquery-emulator --project="local" --dataset="local"
 
 .PHONY: format
 format:
