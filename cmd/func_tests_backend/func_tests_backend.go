@@ -264,7 +264,7 @@ func test_google_bigquery() {
 	dataset := "local"
 	tableName := "test"
 
-	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	clientOptions := []option.ClientOption{
 		option.WithEndpoint("http://127.0.0.1:9050"),
@@ -293,7 +293,7 @@ func test_google_bigquery() {
 
 	bigquerySetupClient.Close()
 
-	const NumPublishers = 2
+	const NumPublishers = 1 // Emulator doesn't like multiple threads talking to the same table
 
 	publishers := [NumPublishers]*common.GoogleBigQueryPublisher{}
 
@@ -323,6 +323,7 @@ func test_google_bigquery() {
 
 	waitGroup.Add(NumProducers)
 
+	// Generate entries and throw them into a channel (fake pubsub functionality)
 	for i := 0; i < NumProducers; i++ {
 		go func() {
 			for j := 0; j < NumEntriesPerProducer; j++ {
@@ -339,10 +340,9 @@ func test_google_bigquery() {
 
 	waitGroup.Wait()
 
-	core.Debug("done generating entries")
-
 	waitGroup.Add(NumPublishers)
 
+	// For each publisher, run a goroutine to publish entries off channel
 	for i := 0; i < NumPublishers; i++ {
 
 		go func(publisher *common.GoogleBigQueryPublisher) {
@@ -351,7 +351,6 @@ func test_google_bigquery() {
 				select {
 
 				case <-cancelContext.Done():
-					core.Debug("publisher done")
 					waitGroup.Done()
 					return
 
@@ -378,15 +377,13 @@ func test_google_bigquery() {
 	totalEntriesPublished := 0
 
 	for i := 0; i < NumPublishers; i++ {
-		core.Debug("\nentries recieved by publisher %d: %d", i, publishers[i].NumEntriesRecieved)
-		core.Debug("entries published by publisher %d: %d", i, publishers[i].NumEntriesPublished)
-		core.Debug("batches published by publisher %d: %d", i, publishers[i].NumBatchesPublished)
-
 		totalEntriesPublished = totalEntriesPublished + int(publishers[i].NumEntriesPublished)
 	}
 
-	core.Debug("\n\nTotal entries published: %d", totalEntriesPublished)
-	core.Debug("\n\nTotal entries expected: %d", NumProducers*NumEntriesPerProducer)
+	if totalEntriesPublished != (NumProducers * NumEntriesPerProducer) {
+		core.Error("did not receive all messages sent")
+		os.Exit(1)
+	}
 
 	core.Debug("done")
 }
@@ -906,10 +903,10 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		// test_magic_backend,
-		// test_redis_pubsub,
-		// test_redis_streams,
-		// test_google_pubsub,
+		test_magic_backend,
+		test_redis_pubsub,
+		test_redis_streams,
+		test_google_pubsub,
 		test_google_bigquery,
 	}
 

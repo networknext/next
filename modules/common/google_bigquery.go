@@ -13,17 +13,17 @@ type GoogleBigQueryConfig struct {
 	ProjectId          string
 	Dataset            string
 	TableName          string
+	ClientOptions      []option.ClientOption
 	BatchSize          int
 	BatchDuration      time.Duration
 	PublishChannelSize int
-	ClientOptions      []option.ClientOption
 }
 
 type GoogleBigQueryPublisher struct {
 	PublishChannel      chan bigquery.ValueSaver
 	config              GoogleBigQueryConfig
 	bigqueryClient      *bigquery.Client
-	TableInserter       *bigquery.Inserter
+	tableInserter       *bigquery.Inserter
 	messageBatch        []bigquery.ValueSaver
 	batchStartTime      time.Time
 	NumEntriesRecieved  uint64
@@ -54,7 +54,7 @@ func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryCon
 	tableInserter := bigqueryClient.Dataset(config.Dataset).Table(config.TableName).Inserter()
 
 	publisher.bigqueryClient = bigqueryClient
-	publisher.TableInserter = tableInserter
+	publisher.tableInserter = tableInserter
 	publisher.PublishChannel = make(chan bigquery.ValueSaver, config.PublishChannelSize)
 
 	go publisher.updatePublishChannel(ctx)
@@ -94,21 +94,18 @@ func (publisher *GoogleBigQueryPublisher) updatePublishChannel(ctx context.Conte
 
 func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 
-	err := publisher.TableInserter.Put(ctx, publisher.messageBatch)
+	err := publisher.tableInserter.Put(ctx, publisher.messageBatch)
 	if err != nil {
 		core.Error("failed to publish bigquery entry: %v", err)
 		return
 	}
 
-	batchId := publisher.NumBatchesPublished
 	batchNumMessages := len(publisher.messageBatch)
 
 	publisher.NumBatchesPublished++
 	publisher.NumEntriesPublished += uint64(batchNumMessages)
 
 	publisher.messageBatch = []bigquery.ValueSaver{}
-
-	core.Debug("published batch %d containing %d messages", batchId, batchNumMessages)
 }
 
 // Test entry for making func testing easier
