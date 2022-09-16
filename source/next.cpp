@@ -14495,7 +14495,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
     {
-        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 2 );
+        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 1.25 );
     }
 #endif // #if NEXT_DEVELOPMENT
 
