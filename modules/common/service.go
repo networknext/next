@@ -51,6 +51,7 @@ type RelayData struct {
 }
 
 type Service struct {
+	Env           string
 	ServiceName   string
 	BuildTime     string
 	CommitMessage string
@@ -102,6 +103,8 @@ func CreateService(serviceName string) *Service {
 	core.Log("env: %s", env)
 
 	service.Local = env == "local"
+
+	service.Env = env
 
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
