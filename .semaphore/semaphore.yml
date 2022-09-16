@@ -232,7 +232,7 @@ blocks:
         - name: "test_google_bigquery"
           commands:
             - bigquery-emulator --project="local" --dataset="local" &
-            - cd ./dist && ./func_test_backend test_google_bigquery
+            - cd ./dist && ./func_tests_backend test_google_bigquery
 
 
   - name: "Build Functional Tests (sdk4)"
