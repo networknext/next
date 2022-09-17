@@ -26,6 +26,8 @@ This repo includes PC, Mac, Linux and console support (PS4, PS5, XBox One, XBox 
         CustomerPrivateKey="M/NxwbhSaPiXITC+B4jYjdo1ahjj5NEmLaBZPPCIKL4b7c1KeQ8hq9QcRL6R49NYP1MUDRuBrWS5sb7e+DStPH/exCgWAwHX"
         NetConnectionClassName="/Script/NetworkNext.NetworkNextConnection"
 
+Be careful to scan all ini files in case somewhere else is clobbering the NetDriver setting, otherwise the Network Next plugin will not work.
+
 3. Run **keygen.exe** to generate your own customer keypair.
 
 4. Replace the keypair values in **DefaultEngine.ini** with your own keys.
