@@ -26,17 +26,17 @@ This repo includes PC, Mac, Linux and console support (PS4, PS5, XBox One, XBox 
         CustomerPrivateKey="M/NxwbhSaPiXITC+B4jYjdo1ahjj5NEmLaBZPPCIKL4b7c1KeQ8hq9QcRL6R49NYP1MUDRuBrWS5sb7e+DStPH/exCgWAwHX"
         NetConnectionClassName="/Script/NetworkNext.NetworkNextConnection"
 
-Be careful to scan all ini files in case somewhere else is clobbering the NetDriver setting, otherwise the Network Next plugin will not work.
+3. Scan all ini files in your game project in case somewhere else is clobbering the NetDriver setting. If this is the case the Network Next plugin will not work. This is a common failure point during integration for our UE4 customers.
 
-3. Run **keygen.exe** to generate your own customer keypair.
+4. Run **keygen.exe** to generate your own customer keypair.
 
-4. Replace the keypair values in **DefaultEngine.ini** with your own keys.
+5. Replace the keypair values in **DefaultEngine.ini** with your own keys.
 
-5. Edit your game mode blueprint to exec **UpgradePlayer** in response to the **OnPostLogin**
+6. Edit your game mode blueprint to exec **UpgradePlayer** in response to the **OnPostLogin**
 
 <img src="https://storage.googleapis.com/network-next-ue4/blueprint.jpg" alt="Network Next" width="600"/>
 
-6. Set environment variables on the server, so Network Next knows where your server is running.
+7. Set environment variables on the server, so Network Next knows where your server is running.
 
         export NEXT_SERVER_ADDRESS=10.2.100.23:7777        # change to the public IP:port of your server
         export NEXT_DATACENTER=cloud                       # autodetects datacenter in GCP or AWS
