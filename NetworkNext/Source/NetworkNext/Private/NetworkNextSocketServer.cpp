@@ -28,6 +28,7 @@ FNetworkNextSocketServer::FNetworkNextSocketServer(const FString& InSocketDescri
 {
     UE_LOG(LogNetworkNext, Display, TEXT("Server socket created"));
     NetworkNextServer = NULL;
+    bUpdatedThisFrame = false;
 }
 
 FNetworkNextSocketServer::~FNetworkNextSocketServer()
@@ -36,12 +37,9 @@ FNetworkNextSocketServer::~FNetworkNextSocketServer()
     UE_LOG(LogNetworkNext, Display, TEXT("Server socket destroyed"));
 }
 
-void FNetworkNextSocketServer::UpdateNetworkNextSocket()
+void FNetworkNextSocketServer::Update()
 {
-    if (NetworkNextServer)
-    {
-        next_server_update(NetworkNextServer);
-    }
+	// ...
 }
 
 bool FNetworkNextSocketServer::Close()
@@ -130,6 +128,8 @@ bool FNetworkNextSocketServer::SendTo(const uint8* Data, int32 Count, int32& Byt
 
 void FNetworkNextSocketServer::OnPacketReceived(next_server_t* server, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
+	// IMPORTANT: This is called from main thread inside next_server_update
+
     FNetworkNextSocketServer* self = (FNetworkNextSocketServer*)context;
 
     uint8_t* packet_data_copy = (uint8_t*)malloc(packet_bytes);
@@ -151,9 +151,20 @@ bool FNetworkNextSocketServer::RecvFrom(uint8* Data, int32 BufferSize, int32& By
     if (Flags != ESocketReceiveFlags::None)
         return false;
 
+	if (!UpdatedThisFrame)
+	{
+		// make sure we update the server prior to receiving any packets this frame
+        next_server_update(NetworkNextServer);
+		bUpdatedThisFrame = true;
+	}
+
     PacketData NextPacket;
     if (!PacketQueue.Dequeue(NextPacket))
+    {
+    	// we have finished receiving packets for this frame
+    	bUpdatedThisFrame = false;
         return false;
+    }
 
     int CopySize = BufferSize;
     if (NextPacket.packet_bytes < CopySize)
@@ -213,7 +224,6 @@ int32 FNetworkNextSocketServer::GetPortNo()
     // Return the port number that the server socket is listening on
     return NetworkNextServer ? next_server_port(NetworkNextServer) : 0;
 }
-
 
 void FNetworkNextSocketServer::UpgradeClient(TSharedPtr<const FInternetAddr> RemoteAddr, const FString& UserId)
 {

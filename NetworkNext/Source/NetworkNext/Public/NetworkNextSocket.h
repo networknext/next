@@ -28,11 +28,10 @@
 #include "NetworkNext.h"
 
 /*
-	There are three types of Next sockets in the Network Next UE4 plugin:
+	There are two types of Next sockets in the Network Next UE4 plugin:
 
 		1. Network Next Client
 		2. Network Next Server
-		3. Passthrough
 
 	Each socket implements *only* UDP datagram support. All TCP style socket support is stubbed out.
 
@@ -40,11 +39,7 @@
 
 	The server socket is used by a listen server.
 
-	The passthrough socket is used for platforms that don't have the Network Next SDK.
-
-	This makes it possible to use the Network Next UE4 plugin, even if some of your platforms aren't supported (yet).
-
-	All other socket use is directed towards the regular platform socket interface and socket types. We do not get in the way of those!
+	All other socket use is directed towards the regular platform socket interface and socket types. 
 */
 
 enum class ENetworkNextSocketType : uint8
@@ -52,7 +47,6 @@ enum class ENetworkNextSocketType : uint8
 	TYPE_None,
 	TYPE_Client,
 	TYPE_Server,
-    TYPE_Passthrough
 };
 
 class FNetworkNextSocket : public FSocket
@@ -65,7 +59,7 @@ public:
 
 	FNetworkNextSocket(ENetworkNextSocketType InNetworkNextType, const FString& InSocketDescription, FName InProtocol);
 
-    virtual void UpdateNetworkNextSocket() = 0;
+    virtual void Update() = 0;
 
 	// IMPORTANT: All methods below are stubbed out. Please don't use them :)
 

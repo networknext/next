@@ -47,6 +47,7 @@ private:
     int32 ServerPort;
 
     bool bConnected;
+    bool bUpdatedThisFrame;
 
     struct PacketData {
         const uint8_t* packet_data;
@@ -61,7 +62,7 @@ public:
 
     virtual ~FNetworkNextSocketClient();
 
-    virtual void UpdateNetworkNextSocket() override;
+    virtual void Update() override;
 
     /**
      * Closes the socket

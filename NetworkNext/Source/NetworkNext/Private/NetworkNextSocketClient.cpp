@@ -30,6 +30,7 @@ FNetworkNextSocketClient::FNetworkNextSocketClient(const FString& InSocketDescri
     NetworkNextClient = NULL;
     ServerPort = 0;
     bConnected = false;
+    bUpdatedThisFrame = false;
 }
 
 FNetworkNextSocketClient::~FNetworkNextSocketClient()
@@ -38,12 +39,9 @@ FNetworkNextSocketClient::~FNetworkNextSocketClient()
     UE_LOG(LogNetworkNext, Display, TEXT("Client socket destroyed"));
 }
 
-void FNetworkNextSocketClient::UpdateNetworkNextSocket()
+void FNetworkNextSocketClient::Update()
 {
-    if (NetworkNextClient)
-    {
-        next_client_update(NetworkNextClient);
-    }
+	// ...
 }
 
 bool FNetworkNextSocketClient::Close()
@@ -150,6 +148,8 @@ bool FNetworkNextSocketClient::SendTo(const uint8* Data, int32 Count, int32& Byt
 
 void FNetworkNextSocketClient::OnPacketReceived(next_client_t* client, void* context, const next_address_t * from, const uint8_t* packet_data, int packet_bytes)
 {
+	// this callback is pumped on main thread from inside next_client_update
+
     FNetworkNextSocketClient* self = (FNetworkNextSocketClient*)context;
 
     uint8_t* packet_data_copy = (uint8_t*)malloc(packet_bytes);
@@ -173,9 +173,20 @@ bool FNetworkNextSocketClient::RecvFrom(uint8* Data, int32 BufferSize, int32& By
     if (Flags != ESocketReceiveFlags::None)
         return false;
 
+	if (!bUpdatedThisFrame)
+	{
+		// make sure we update the client prior to receiving any packets this frame
+        next_client_update(NetworkNextClient);
+		bUpdatedThisFrame = true;
+	}
+
     PacketData NextPacket;
     if (!PacketQueue.Dequeue(NextPacket))
+    {
+    	// we have finished receiving packets for this frame
+    	bUpdatedThisFrame = false;
         return false;
+    }
 
     int CopySize = BufferSize;
     if (NextPacket.packet_bytes < CopySize)

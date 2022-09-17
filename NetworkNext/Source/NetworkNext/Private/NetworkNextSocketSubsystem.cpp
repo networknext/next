@@ -197,10 +197,9 @@ ESocketErrors FNetworkNextSocketSubsystem::TranslateErrorCode(int32 Code)
 
 bool FNetworkNextSocketSubsystem::Tick(float DeltaTime)
 {
-    // todo: make sure this system ticks *before* the system that is processing packets for this frame
     for (auto Socket : NetworkNextSockets)
     {
-        Socket->UpdateNetworkNextSocket();
+        Socket->Update();
     }
     return true;
 }

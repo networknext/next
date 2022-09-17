@@ -44,6 +44,8 @@ private:
 
     FString ServerAddress;
 
+    bool bUpdatedThisFrame;
+
     struct PacketData {
         next_address_t from;
         const uint8_t* packet_data;
@@ -58,7 +60,7 @@ public:
 
     virtual ~FNetworkNextSocketServer();
 
-    virtual void UpdateNetworkNextSocket() override;
+    virtual void Update() override;
 
     /**
      * Closes the socket
