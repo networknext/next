@@ -126,41 +126,14 @@ func happy_path() int {
 
 	os.Mkdir("logs", os.ModePerm)
 
-	ctx := context.Background()
-
 	// build and run services, as a developer would via "make dev-*" as much as possible
-
-	// set up pubsub emulator
-	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
-
-	pubsubSetupHandler, err := pubsub.NewClient(ctx, googleProjectID)
-	if err != nil {
-		core.Error("failed to create pubsub setup handler: %v", err)
-		return 1
-	}
-
-	time.Sleep(time.Second * 5)
-
-	pubsubTopics := envvar.GetList("PUBSUB_TOPICS", []string{"local"})
-
-	// Loop through required topics and add them and their subscriptions
-	for _, topic := range pubsubTopics {
-		pubsubSetupHandler.CreateTopic(ctx, topic)
-
-		pubsubSetupHandler.CreateSubscription(ctx, topic, pubsub.SubscriptionConfig{
-			Topic: pubsubSetupHandler.Topic(topic),
-		})
-	}
-
-	pubsubSetupHandler.Close()
-
-	// set up bigquery emulator
-	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
 	relay_backend_1_stdout := run_make("dev-relay-backend", "logs/relay_backend_1")
 	relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
+
+	time.Sleep(time.Second * 5)
 
 	relay_1_stdout := run_make("dev-relay", "logs/relay_1")
 	relay_2_stdout := run_relay(2001, "logs/relay_2")
@@ -566,6 +539,14 @@ var relayStatsPubsubSubscription string
 var relayStatsTable string
 
 func main() {
+
+	// set up pubsub emulator
+	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
+
+	// set up bigquery emulator
+	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
+
+	time.Sleep(time.Second * 5)
 
 	ctx := context.Background()
 
