@@ -3,6 +3,7 @@ package packets
 import (
 	"errors"
 	"net"
+	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -311,6 +312,57 @@ func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error 
 
 // ------------------------------------------------------------
 
+type SDK4_LocationData struct {
+	Latitude    float32
+	Longitude   float32
+	ISP         string
+	ASN         uint32
+}
+
+func (location *SDK4_LocationData) Read(data []byte) error {
+	
+	index := 0
+
+	var version uint32
+	if !common.ReadUint32(data, &index, &version) {
+		return errors.New("invalid read at version number")
+	}
+
+	if version > SDK4_LocationVersion {
+		return fmt.Errorf("unknown location version: %d", version)
+	}
+
+	if !common.ReadFloat32(data, &index, &location.Latitude) {
+		return errors.New("invalid read at latitude")
+	}
+
+	if !common.ReadFloat32(data, &index, &location.Longitude) {
+		return errors.New("invalid read at longitude")
+	}
+
+	if !common.ReadString(data, &index, &location.ISP, SDK4_MaxISPNameLength) {
+		return errors.New("invalid read at ISP")
+	}
+
+	if !common.ReadUint32(data, &index, &location.ASN) {
+		return errors.New("invalid read at ASN")
+	}
+
+	return nil
+}
+
+func (location *SDK4_LocationData) Write(buffer []byte) ([]byte, error) {
+	index := 0
+	common.WriteUint32(buffer, &index, SDK4_LocationVersion)
+	common.WriteFloat32(buffer, &index, location.Latitude)
+	common.WriteFloat32(buffer, &index, location.Longitude)
+	common.WriteString(buffer, &index, location.ISP, SDK4_MaxISPNameLength)
+	common.WriteUint32(buffer, &index, location.ASN)
+	return buffer[:index], nil
+}
+
+// ------------------------------------------------------------
+
 type SDK4_SessionData struct {
 	Version         uint32
 	SessionId       uint64
@@ -318,7 +370,6 @@ type SDK4_SessionData struct {
 	SliceNumber     uint32
 	ExpireTimestamp uint64
 	Initial         bool
-	// todo: gross
 	// Location                      routing.Location
 	RouteChanged                  bool
 	RouteNumRelays                int32
@@ -381,10 +432,10 @@ func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 	stream.SerializeBool(&sessionData.RouteChanged)
 
 	hasRoute := sessionData.RouteNumRelays > 0
+
 	stream.SerializeBool(&hasRoute)
 
-	// todo
-	// stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+	stream.SerializeInteger(&sessionData.RouteCost, 0, SDK4_InvalidRouteValue)
 
 	if hasRoute {
 		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, SDK4_MaxTokens)
@@ -480,7 +531,7 @@ func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 
 	// IMPORTANT: DO NOT CHANGE CODE IN THIS FUNCTION ABOVE HERE
 
-	// ADD NEW FIELDS HERE ONLY. ONCE COMPLETED MOVE THE COMMENT ABOVE DOWN BELOW THE NEW FIELDS
+	// ADD NEW FIELDS HERE ONLY. ONCE COMPLETED MOVE THIS COMMENT SECTION BELOW THE NEW FIELDS
 
 	// FAILING TO FOLLOW THIS WILL BREAK PRODUCTION!!!
 

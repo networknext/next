@@ -71,6 +71,19 @@ const (
 	SDK4_SessionDataVersion = 15
 
 	SDK4_MaxMatchValues = 64
+
+	SDK4_InvalidRouteValue = 10000
+
+	SDK4_LocationVersion = 1
+
+	SDK4_MaxContinentLength   = 16
+	SDK4_MaxCountryLength     = 64
+	SDK4_MaxCountryCodeLength = 16
+	SDK4_MaxRegionLength      = 64
+	SDK4_MaxCityLength        = 128
+	SDK4_MaxISPNameLength     = 64
+
+	SDK4_MaxLocationSize = 128
 )
 
 // -------------------------------------------------
