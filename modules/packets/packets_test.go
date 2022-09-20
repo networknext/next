@@ -1,11 +1,13 @@
 package packets
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // ------------------------------------------------------------------------
@@ -201,6 +203,117 @@ func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 	readPacket := SDK4_SessionUpdatePacket{}
 
 	PacketSerializationTest[*SDK4_SessionUpdatePacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_SessionResponsePacket_Direct(t *testing.T) {
+
+	writePacket := SDK4_SessionResponsePacket{
+		Version:                  SDKVersion{1, 2, 3},
+		SessionId:                123412341243,
+		SliceNumber:              10234,
+		SessionDataBytes:         100,
+		RouteType:                SDK4_RouteTypeDirect,
+		NearRelaysChanged:        true,
+		NumNearRelays:            10,
+		HasDebug:                 true,
+		Debug:                    "I am a debug string",
+		ExcludeNearRelays:        true,
+		HighFrequencyPings:       true,
+	}
+
+	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
+		writePacket.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	for i := 0; i < int(writePacket.NumNearRelays); i++ {
+		writePacket.NearRelayIds[i] = uint64(i * 32)
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
+		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+	}
+
+	readPacket := SDK4_SessionResponsePacket{}
+
+	PacketSerializationTest[*SDK4_SessionResponsePacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_SessionResponsePacket_NewRoute(t *testing.T) {
+
+	writePacket := SDK4_SessionResponsePacket{
+		Version:                  SDKVersion{1, 2, 3},
+		SessionId:                123412341243,
+		SliceNumber:              10234,
+		SessionDataBytes:         100,
+		RouteType:                SDK4_RouteTypeNew,
+		Multipath:                true,
+		Committed:                true,
+		NumTokens:                5,
+		NearRelaysChanged:        true,
+		NumNearRelays:            10,
+		HasDebug:                 true,
+		Debug:                    "I am a debug string",
+		ExcludeNearRelays:        true,
+		HighFrequencyPings:       true,
+	}
+
+	tokenBytes := writePacket.NumTokens*SDK4_EncryptedNextRouteTokenSize
+	writePacket.Tokens = make([]byte, tokenBytes)
+	for i := 0; i < int(tokenBytes); i++ {
+		writePacket.Tokens[i] = uint8(i+3)
+	}
+
+	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
+		writePacket.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	for i := 0; i < int(writePacket.NumNearRelays); i++ {
+		writePacket.NearRelayIds[i] = uint64(i * 32)
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
+		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+	}
+
+	readPacket := SDK4_SessionResponsePacket{}
+
+	PacketSerializationTest[*SDK4_SessionResponsePacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
+
+	writePacket := SDK4_SessionResponsePacket{
+		Version:                  SDKVersion{1, 2, 3},
+		SessionId:                123412341243,
+		SliceNumber:              10234,
+		SessionDataBytes:         100,
+		RouteType:                SDK4_RouteTypeContinue,
+		Multipath:                true,
+		Committed:                true,
+		NumTokens:                5,
+		NearRelaysChanged:        true,
+		NumNearRelays:            10,
+		HasDebug:                 true,
+		Debug:                    "I am a debug string",
+		ExcludeNearRelays:        true,
+		HighFrequencyPings:       true,
+	}
+
+	tokenBytes := writePacket.NumTokens*SDK4_EncryptedContinueRouteTokenSize
+	writePacket.Tokens = make([]byte, tokenBytes)
+	for i := 0; i < int(tokenBytes); i++ {
+		writePacket.Tokens[i] = uint8(i+3)
+	}
+
+	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
+		writePacket.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	for i := 0; i < int(writePacket.NumNearRelays); i++ {
+		writePacket.NearRelayIds[i] = uint64(i * 32)
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
+		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+	}
+
+	readPacket := SDK4_SessionResponsePacket{}
+
+	PacketSerializationTest[*SDK4_SessionResponsePacket](&writePacket, &readPacket, t)
 }
 
 // ------------------------------------------------------------------------

@@ -223,7 +223,7 @@ func (packet *SDK4_SessionUpdatePacket) Serialize(stream common.Stream) error {
 
 // ------------------------------------------------------------
 
-type SessionResponsePacket struct {
+type SDK4_SessionResponsePacket struct {
 	Version            SDKVersion
 	SessionId          uint64
 	SliceNumber        uint32
@@ -245,7 +245,9 @@ type SessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *SessionResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error {
+
+	packet.Version.Serialize(stream)
 
 	stream.SerializeUint64(&packet.SessionId)
 
