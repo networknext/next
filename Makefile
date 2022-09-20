@@ -392,7 +392,7 @@ dev-server5: build-sdk5 build-server5  ## runs a local server (sdk5)
 ##########################################
 
 .PHONY: dev-portal
-dev-portal: build-portal ## runs a local portal
+dev-portal: dist/portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 ./dist/portal
 
 .PHONY: dev-analytics
@@ -400,15 +400,15 @@ dev-analytics: dist/analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
 .PHONY: dev-portal-cruncher-1
-dev-portal-cruncher-1: build-portal-cruncher ## runs a local portal cruncher
+dev-portal-cruncher-1: dist/portal_cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42000 CRUNCHER_PORT=5555 ./dist/portal_cruncher
 
 .PHONY: dev-portal-cruncher-2
-dev-portal-cruncher-2: build-portal-cruncher ## runs a local portal cruncher
+dev-portal-cruncher-2: dist/portal_cruncher ## runs a local portal cruncher
 	@HTTP_PORT=42001 CRUNCHER_PORT=5556 ./dist/portal_cruncher
 
 .PHONY: dev-pingdom
-dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
+dev-pingdom: dist/pingdom ## runs the pulling and publishing of pingdom uptime
 	@PORT=41006 ./dist/pingdom
 
 #####################
@@ -555,16 +555,12 @@ run-test-func-sdk5:
 .PHONY: test-func-sdk5
 test-func-sdk5: build-test-func-sdk5 run-test-func-sdk5 ## runs functional tests (sdk5)
 
-#######################
-
 .PHONY: dev-happy-path
 dev-happy-path: ## runs the happy path
 	@printf "\ndon't worry. be happy.\n\n" ; \
 	./build.sh
 	$(GO) build -o ./dist/happy_path ./cmd/happy_path/happy_path.go
 	./dist/happy_path
-
-#######################
 
 .PHONY: dev-ref-backend4
 dev-ref-backend4: ## runs a local reference backend (sdk4)
@@ -575,12 +571,11 @@ dev-ref-backend5: ## runs a local reference backend (sdk5)
 	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
-dev-mock-relay: ## runs a local mock relay
-	$(GO) build -o ./dist/mock_relay ./cmd/mock_relay/mock_relay.go
+dev-mock-relay: dist/mock_relay ## runs a local mock relay
 	./dist/mock_relay
 
 .PHONY: dev-fake-server
-dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
+dev-fake-server: dist/fake_server ## runs a fake server that simulates 2 servers and 400 clients locally
 	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
 
 dist/$(SDKNAME4).so: dist
@@ -599,100 +594,18 @@ build-sdk4: dist/$(SDKNAME4).so
 .PHONY: build-sdk5
 build-sdk5: dist/$(SDKNAME5).so
 
-PHONY: build-portal-cruncher
-build-portal-cruncher:
-	@printf "Building portal cruncher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o ./dist/portal_cruncher ./cmd/portal_cruncher/portal_cruncher.go
-	@printf "done\n"
-
-.PHONY: build-portal
-build-portal:
-	@printf "Building portal... \n"
-	@printf "TIMESTAMP: ${TIMESTAMP}\n"
-	@printf "SHA: ${SHA}\n"
-	@printf "RELEASE: ${RELEASE}\n"
-	@printf "COMMITMESSAGE: ${COMMITMESSAGE}\n"
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/portal ./cmd/portal/portal.go
-	@printf "done\n"
-
-.PHONY: build-fake-server
-build-fake-server: dist
-	@printf "Building fake server... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/fake_server ./cmd/fake_server/fake_server.go
-	@printf "done\n"
-
-.PHONY: build-pingdom
-build-pingdom: dist
-	@printf "Building pingdom... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/pingdom ./cmd/pingdom/pingdom.go
-	@printf "done\n"
-
-.PHONY: build-next
-build-next:
-	@printf "Building operator tool... "
-	@$(GO) build -o ./dist/next ./cmd/next/*.go
-	@printf "done\n"
-
-#######################
-#    Relay Pusher    #
-#######################
-
-.PHONY: build-relay-pusher
-build-relay-pusher:
-	@printf "Building relay pusher... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_pusher ./cmd/relay_pusher/relay_pusher.go
-	@printf "done\n"
-
-#######################
-#     Ghost Army      #
-#######################
-
-.PHONY: dev-ghost-army
-dev-ghost-army: build-ghost-army ## runs a local ghost army
+.PHONY:
+dev-ghost-army: dist/ghost_army ## runs a local ghost army
 	@./dist/ghost_army
 
-.PHONY: build-ghost-army
-build-ghost-army:
-	@printf "Building ghost army... "
-	@$(GO) build -o ./dist/ghost_army ./cmd/ghost_army/*.go
-	@printf "done\n"
-
-.PHONY: build-ghost-army-generator
-build-ghost-army-generator:
-	@printf "Building ghost army generator... "
-	@$(GO) build -o ./dist/ghost_army_generator ./cmd/ghost_army_generator/*.go
-	@printf "done\n"
-
-.PHONY: build-ghost-army-analyzer
-build-ghost-army-analyzer:
-	@printf "Building ghost army analyzer... "
-	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
-	@printf "done\n"
-
-#######################
-#     Fake Relay      #
-#######################
-
 .PHONY: dev-fake-relays
-dev-fake-relays: build-fake-relays ## runs local fake relays
+dev-fake-relays: dist/fake_relays ## runs local fake relays
 	@PORT=30007 ./dist/fake_relays
-
-.PHONY: build-fake-relays
-build-fake-relays:
-	@printf "Building fake relays... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/fake_relays ./cmd/fake_relays/fake_relays.go
-	@printf "done\n"
-
-#########
-# Relay #
-#########
 
 .PHONY: build-reference-relay
 build-reference-relay: dist
 	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
-
-#######################
 
 .PHONY: dev-pubsub-emulator
 dev-pubsub-emulator:
