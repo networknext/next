@@ -316,6 +316,41 @@ func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
 	PacketSerializationTest[*SDK4_SessionResponsePacket](&writePacket, &readPacket, t)
 }
 
+func Test_SDK4_SessionData(t *testing.T) {
+
+	writePacket := SDK4_SessionData{
+		Version: SDK4_SessionDataVersion,
+		// todo
+	}
+
+	readPacket := SDK4_SessionData{}
+
+	PacketSerializationTest[*SDK4_SessionData](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_MatchDataRequestPacket(t *testing.T) {
+
+	writePacket := SDK4_MatchDataRequestPacket{
+		Version: SDKVersion{1,2,3},
+		// todo
+	}
+
+	readPacket := SDK4_MatchDataRequestPacket{}
+
+	PacketSerializationTest[*SDK4_MatchDataRequestPacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_MatchDataResponsePacket(t *testing.T) {
+
+	writePacket := SDK4_MatchDataResponsePacket{
+		// todo
+	}
+
+	readPacket := SDK4_MatchDataResponsePacket{}
+
+	PacketSerializationTest[*SDK4_MatchDataResponsePacket](&writePacket, &readPacket, t)
+}
+
 // ------------------------------------------------------------------------
 
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {

@@ -1,9 +1,12 @@
 package packets
 
 import (
+	"net"
+	"errors"
+
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/crypto"
-	"net"
 )
 
 // ------------------------------------------------------------
@@ -303,6 +306,240 @@ func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error 
 
 	stream.SerializeBool(&packet.HighFrequencyPings)
 	
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK4_SessionData struct {
+	Version                       uint32
+	SessionId                     uint64
+	SessionVersion                uint32
+	SliceNumber                   uint32
+	ExpireTimestamp               uint64
+	Initial                       bool
+	// todo: gross
+	// Location                      routing.Location
+	RouteChanged                  bool
+	RouteNumRelays                int32
+	RouteCost                     int32
+	RouteRelayIds                 [SDK4_MaxRelaysPerRoute]uint64
+	RouteState                    core.RouteState
+	EverOnNext                    bool
+	FellBackToDirect              bool
+	PrevPacketsSentClientToServer uint64
+	PrevPacketsSentServerToClient uint64
+	PrevPacketsLostClientToServer uint64
+	PrevPacketsLostServerToClient uint64
+	HoldNearRelays                bool
+	HoldNearRelayRTT              [SDK4_MaxNearRelays]int32
+	WroteSummary                  bool
+	TotalPriceSum                 uint64
+	NextEnvelopeBytesUpSum        uint64
+	NextEnvelopeBytesDownSum      uint64
+	DurationOnNext                uint32
+}
+
+func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
+
+	// IMPORTANT: DO NOT CHANGE CODE IN THIS FUNCTION BELOW HERE.
+
+	stream.SerializeBits(&sessionData.Version, 8)
+
+	if sessionData.Version < 8 {
+		return errors.New("session data is too old")
+	}
+
+	stream.SerializeUint64(&sessionData.SessionId)
+	stream.SerializeBits(&sessionData.SessionVersion, 8)
+
+	stream.SerializeUint32(&sessionData.SliceNumber)
+
+	stream.SerializeUint64(&sessionData.ExpireTimestamp)
+
+	stream.SerializeBool(&sessionData.Initial)
+
+	// todo
+	/*
+	locationSize := uint32(sessionData.Location.Size())
+	stream.SerializeUint32(&locationSize)
+	if stream.IsReading() {
+		locationBytes := make([]byte, locationSize)
+		stream.SerializeBytes(locationBytes)
+		if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
+			return err
+		}
+	} else {
+		locationBytes, err := sessionData.Location.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		stream.SerializeBytes(locationBytes)
+	}
+	*/
+
+	stream.SerializeBool(&sessionData.RouteChanged)
+
+	hasRoute := sessionData.RouteNumRelays > 0
+	stream.SerializeBool(&hasRoute)
+
+	// todo
+	// stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+
+	if hasRoute {
+		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, SDK4_MaxTokens)
+		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+			stream.SerializeUint64(&sessionData.RouteRelayIds[i])
+		}
+	}
+
+	stream.SerializeUint64(&sessionData.RouteState.UserID)
+	stream.SerializeBool(&sessionData.RouteState.Next)
+	stream.SerializeBool(&sessionData.RouteState.Veto)
+	stream.SerializeBool(&sessionData.RouteState.Banned)
+	stream.SerializeBool(&sessionData.RouteState.Disabled)
+	stream.SerializeBool(&sessionData.RouteState.NotSelected)
+	stream.SerializeBool(&sessionData.RouteState.ABTest)
+	stream.SerializeBool(&sessionData.RouteState.A)
+	stream.SerializeBool(&sessionData.RouteState.B)
+	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
+	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
+	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
+	stream.SerializeBool(&sessionData.RouteState.ProMode)
+	stream.SerializeBool(&sessionData.RouteState.Multipath)
+	stream.SerializeBool(&sessionData.RouteState.Committed)
+	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
+	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
+	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
+	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
+	stream.SerializeBool(&sessionData.RouteState.NoRoute)
+	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
+	stream.SerializeBool(&sessionData.RouteState.Mispredict)
+	stream.SerializeBool(&sessionData.EverOnNext)
+	stream.SerializeBool(&sessionData.FellBackToDirect)
+
+	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
+
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
+		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
+		nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
+		stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
+		sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
+	}
+
+	directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
+	stream.SerializeInteger(&directPLHistory, 0, 255)
+	sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
+
+	stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+	stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
+
+	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
+	stream.SerializeBool(&sessionData.RouteState.RouteLost)
+	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
+
+	stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+		stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
+	}
+
+	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+
+	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
+
+	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+
+	stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+
+	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
+	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
+	stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
+	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
+
+	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
+
+	stream.SerializeBool(&sessionData.HoldNearRelays)
+	if sessionData.HoldNearRelays {
+		for i := 0; i < core.MaxNearRelays; i++ {
+			stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
+		}
+	}
+
+	stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
+
+	stream.SerializeBool(&sessionData.WroteSummary)
+
+	stream.SerializeUint64(&sessionData.TotalPriceSum)
+
+	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
+	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
+
+	stream.SerializeUint32(&sessionData.DurationOnNext)
+
+	// IMPORTANT: DO NOT CHANGE CODE IN THIS FUNCTION ABOVE HERE
+
+	// ADD NEW FIELDS HERE ONLY. ONCE COMPLETED MOVE THE COMMENT ABOVE DOWN BELOW THE NEW FIELDS
+
+	// FAILING TO FOLLOW THIS WILL BREAK PRODUCTION!!!
+
+	// >>> NEW FIELDS GO HERE <<<
+
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK4_MatchDataRequestPacket struct {
+	Version        SDKVersion
+	BuyerId        uint64
+	ServerAddress  net.UDPAddr
+	DatacenterId   uint64
+	UserHash       uint64
+	SessionId      uint64
+	RetryNumber    uint32
+	MatchId        uint64
+	NumMatchValues int32
+	MatchValues    [SDK4_MaxMatchValues]float64
+}
+
+func (packet *SDK4_MatchDataRequestPacket) Serialize(stream common.Stream) error {
+
+	packet.Version.Serialize(stream)
+
+	stream.SerializeUint64(&packet.BuyerId)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeUint32(&packet.RetryNumber)
+	stream.SerializeUint64(&packet.MatchId)
+
+	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
+
+	stream.SerializeBool(&hasMatchValues)
+
+	if hasMatchValues {
+		stream.SerializeInteger(&packet.NumMatchValues, 0, SDK4_MaxMatchValues)
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			stream.SerializeFloat64(&packet.MatchValues[i])
+		}
+	}
+
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK4_MatchDataResponsePacket struct {
+	SessionId uint64
+	Response  uint32
+}
+
+func (packet *SDK4_MatchDataResponsePacket) Serialize(stream common.Stream) error {
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }
 

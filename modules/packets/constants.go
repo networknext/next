@@ -21,6 +21,7 @@ const (
 	SDK4_MaxSessionDataSize      = 511
 	SDK4_MaxTags                 = 8
 	SDK4_MaxTokens               = core.NEXT_MAX_NODES
+	SDK4_MaxRelaysPerRoute       = core.NEXT_MAX_NODES
 	SDK4_MaxNearRelays           = core.MaxNearRelays
 	SDK4_MaxSessionUpdateRetries = 10
 	SDK4_MaxSessionDebug         = 1024
@@ -67,6 +68,10 @@ const (
 
 	SDK4_ContinueRouteTokenSize          = 41
 	SDK4_EncryptedContinueRouteTokenSize = SDK4_ContinueRouteTokenSize + crypto.MACSize
+
+	SDK4_SessionDataVersion = 15
+
+	SDK4_MaxMatchValues = 64
 )
 
 // -------------------------------------------------
