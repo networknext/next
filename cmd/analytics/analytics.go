@@ -3,10 +3,10 @@ package main
 import (
 	"io/ioutil"
 	"net/http"
-	"sync"
-	"time"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -18,6 +18,7 @@ var costMatrixURI string
 var routeMatrixURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
+var googleProjectId string
 
 var logMutex sync.Mutex
 
@@ -27,26 +28,32 @@ func main() {
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
-	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", 1*time.Second)
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
+	core.Log("google project id: %s", googleProjectId)
 
 	ProcessCostMatrix(service)
 
 	ProcessRouteMatrix(service)
 
-	Process[messages.BillingEntry](service, "billing")
-	Process[messages.SummaryEntry](service, "summary")
-	Process[messages.MatchDataEntry](service, "match_data")
-	Process[messages.PingStatsEntry](service, "ping_stats")
-	Process[messages.RelayStatsEntry](service, "relay_stats")
-	Process[messages.CostMatrixStatsEntry](service, "cost_matrix_stats")
-	Process[messages.RouteMatrixStatsEntry](service, "route_matrix_stats")
-	
+	// todo
+	/*
+		Process[messages.BillingEntry](service, "billing")
+		Process[messages.SummaryEntry](service, "summary")
+		Process[messages.MatchDataEntry](service, "match_data")
+		Process[messages.PingStatsEntry](service, "ping_stats")
+		Process[messages.RelayStatsEntry](service, "relay_stats")
+	*/
+
+	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
+	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
+
 	service.StartWebServer()
 
 	service.LeaderElection()
@@ -56,17 +63,17 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T any](service *common.Service, name string) {
+func Process[T messages.Message](service *common.Service, name string) {
 
 	envPrefix := strings.ToUpper(name) + "_"
 
-	pubsubTopic := envvar.GetString(envPrefix + "PUBSUB_TOPIC", name)
-	bigqueryTable := envvar.GetString(envPrefix + "BIGQUERY_TABLE", name)
+	pubsubTopic := envvar.GetString(envPrefix+"PUBSUB_TOPIC", name)
+	bigqueryTable := envvar.GetString(envPrefix+"BIGQUERY_TABLE", name)
 
 	core.Debug("%s pubsub topic: %s", name, pubsubTopic)
 	core.Debug("%s bigquery table: %s", name, bigqueryTable)
 
-	config := common.GooglePubsubConfig{Topic: pubsubTopic, BatchDuration: 10*time.Second}
+	config := common.GooglePubsubConfig{Topic: pubsubTopic, BatchDuration: 10 * time.Second}
 
 	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
 	if err != nil {
@@ -79,13 +86,29 @@ func Process[T any](service *common.Service, name string) {
 	go func() {
 		for {
 			select {
+
 			case <-service.Context.Done():
 				return
-			case message := <-consumer.MessageChannel:
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
 				core.Debug("received %s message", name)
-				_ = message
-				// todo: parse billing message
-				// todo: publish billing message to bigquery
+
+				messageData := pubsubMessage.Data
+				var message T
+				err := message.Read(messageData)
+				if err != nil {
+					core.Error("could not read %s message", name)
+					break
+				}
+
+				// todo: insert into bigquery
+				insert_ok := true
+				if insert_ok {
+					pubsubMessage.Ack()
+				} else {
+					pubsubMessage.Nack()
+				}
 			}
 		}
 	}()
@@ -95,12 +118,29 @@ func Process[T any](service *common.Service, name string) {
 
 func ProcessCostMatrix(service *common.Service) {
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_ENTRY_MAX_BYTES", 1024)
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+	pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
+	pubsubSubscription := envvar.GetString("COST_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
 
-	core.Log("cost matrix stats entry max bytes: %d", maxBytes)
+	core.Log("cost matrix stats message max bytes: %d", maxBytes)
+	core.Log("cost matrix stats message pubsub topic: %s", pubsubTopic)
+	core.Log("cost matrix stats message pubsub subscription: %s", pubsubSubscription)
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
+	}
+
+	config := common.GooglePubsubConfig{
+		ProjectId:          googleProjectId,
+		Topic:              pubsubTopic,
+		Subscription:       pubsubSubscription,
+		MessageChannelSize: 10 * 1024,
+	}
+
+	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub producer for processing cost matrix: %v", err)
+		os.Exit(1)
 	}
 
 	ticker := time.NewTicker(costMatrixInterval)
@@ -167,28 +207,48 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// send cost matrix entry via pubsub
+				// send cost matrix message via pubsub
 
-				costMatrixStatsEntry := messages.CostMatrixStatsEntry{}
+				costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
 
-				costMatrixStatsEntry.Version = messages.CostMatrixStatsVersion
-				costMatrixStatsEntry.Bytes = costMatrixBytes
-				costMatrixStatsEntry.NumRelays = costMatrixNumRelays
-				costMatrixStatsEntry.NumDestRelays = costMatrixNumDestRelays
-				costMatrixStatsEntry.NumDatacenters = costMatrixNumDatacenters
+				costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion
+				costMatrixStatsMessage.Bytes = costMatrixBytes
+				costMatrixStatsMessage.NumRelays = costMatrixNumRelays
+				costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
+				costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
 
-				message := costMatrixStatsEntry.Write(make([]byte, maxBytes))
+				message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
 
-				// todo: insert message into pubsub
-				_ = message
-
-				core.Debug("cost matrix stats message is %d bytes", len(message))
+				statsPubsubProducer.MessageChannel <- message
 			}
 		}
 	}()
 }
 
 func ProcessRouteMatrix(service *common.Service) {
+
+	pubsubTopic := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_TOPIC", "route_matrix_stats")
+	pubsubSubscription := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "route_matrix_stats")
+
+	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
+	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
+
+	config := common.GooglePubsubConfig{
+		ProjectId:          googleProjectId,
+		Topic:              pubsubTopic,
+		Subscription:       pubsubSubscription,
+		MessageChannelSize: 10 * 1024,
+	}
+
+	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	if err != nil {
+		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
+		os.Exit(1)
+	}
+
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats message max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -303,7 +363,17 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				// send route matrix stats via pubsub
 
-				// todo
+				routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
+
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion
+				routeMatrixStatsEntry.Bytes = routeMatrixBytes
+				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
+				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
+				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+
+				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				statsPubsubProducer.MessageChannel <- message
 			}
 		}
 	}()

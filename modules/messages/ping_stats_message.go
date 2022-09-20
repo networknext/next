@@ -2,16 +2,16 @@ package messages
 
 import (
 	"cloud.google.com/go/bigquery"
-	"github.com/networknext/backend/modules/encoding"
+	// "github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	PingStatsEntryVersion  = uint8(4)
-	MaxPingStatsEntrySize  = 128
-	MaxInstanceIDLength    = 64        // todo: remove
+	PingStatsMessageVersion = uint8(4)
+	MaxPingStatsMessageSize = 128
+	MaxInstanceIDLength     = 64 // todo: remove
 )
 
-type PingStatsEntry struct {
+type PingStatsMessage struct {
 	Timestamp  uint64
 	RelayA     uint64
 	RelayB     uint64
@@ -21,10 +21,11 @@ type PingStatsEntry struct {
 	Routable   bool
 }
 
+/*
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	
-	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
-	
+
+	length := 1 + 8 + len(entries)*int(MaxRelayStatsMessageSize)
+
 	data := make([]byte, length)
 
 	index := 0
@@ -45,7 +46,7 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 }
 
 func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
-	
+
 	index := 0
 
 	var version uint8
@@ -106,18 +107,19 @@ func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 
 	return entries, true
 }
+*/
 
-func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
+func (message *PingStatsMessage) Save() (map[string]bigquery.Value, string, error) {
 
-	bqEntry := make(map[string]bigquery.Value)
+	bigquery_message := make(map[string]bigquery.Value)
 
-	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["relay_a"] = int(e.RelayA)
-	bqEntry["relay_b"] = int(e.RelayB)
-	bqEntry["rtt"] = e.RTT
-	bqEntry["jitter"] = e.Jitter
-	bqEntry["packet_loss"] = e.PacketLoss
-	bqEntry["routable"] = e.Routable
+	bigquery_message["timestamp"] = int(message.Timestamp)
+	bigquery_message["relay_a"] = int(message.RelayA)
+	bigquery_message["relay_b"] = int(message.RelayB)
+	bigquery_message["rtt"] = message.RTT
+	bigquery_message["jitter"] = message.Jitter
+	bigquery_message["packet_loss"] = message.PacketLoss
+	bigquery_message["routable"] = message.Routable
 
-	return bqEntry, "", nil
+	return bigquery_message, "", nil
 }

@@ -2,47 +2,60 @@ package common
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/core"
+	"google.golang.org/api/option"
 )
 
 type GoogleBigQueryConfig struct {
-	// todo: bigquery specific config here
+	ProjectId          string
+	Dataset            string
+	TableName          string
+	ClientOptions      []option.ClientOption
 	BatchSize          int
 	BatchDuration      time.Duration
 	PublishChannelSize int
 }
 
 type GoogleBigQueryPublisher struct {
-	PublishChannel chan *bigquery.ValueSaver
-	config         GoogleBigQueryConfig
-	// todo: bigquery specific variables here
-	messageBatch    []*bigquery.ValueSaver
-	batchStartTime  time.Time
-	mutex           sync.RWMutex
-	numMessagesSent int
-	numBatchesSent  int
+	PublishChannel      chan bigquery.ValueSaver
+	config              GoogleBigQueryConfig
+	bigqueryClient      *bigquery.Client
+	tableInserter       *bigquery.Inserter
+	messageBatch        []bigquery.ValueSaver
+	batchStartTime      time.Time
+	NumEntriesRecieved  uint64
+	NumEntriesPublished uint64
+	NumBatchesPublished uint64
 }
 
 func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryPublisher, error) {
 
-	// todo: create bigquery stuff
+	bigqueryClient, err := bigquery.NewClient(ctx, config.ProjectId, config.ClientOptions...)
+	if err != nil {
+		core.Error("failed to create google bigquery client: %v", err)
+		return nil, err
+	}
 
 	publisher := &GoogleBigQueryPublisher{}
 
-	if config.PublishChannelSize == 0 {
-		config.PublishChannelSize = 10 * 1024
+	publisher.config = config
+
+	if publisher.config.PublishChannelSize == 0 {
+		publisher.config.PublishChannelSize = 10 * 1024
 	}
 
-	publisher.config = config
 	if publisher.config.BatchDuration == 0 {
 		publisher.config.BatchDuration = time.Second
 	}
 
-	publisher.PublishChannel = make(chan *bigquery.ValueSaver, config.PublishChannelSize)
+	tableInserter := bigqueryClient.Dataset(config.Dataset).Table(config.TableName).Inserter()
+
+	publisher.bigqueryClient = bigqueryClient
+	publisher.tableInserter = tableInserter
+	publisher.PublishChannel = make(chan bigquery.ValueSaver, config.PublishChannelSize)
 
 	go publisher.updatePublishChannel(ctx)
 
@@ -54,40 +67,56 @@ func (publisher *GoogleBigQueryPublisher) updatePublishChannel(ctx context.Conte
 	ticker := time.NewTicker(publisher.config.BatchDuration)
 
 	for {
+
 		select {
 
 		case <-ctx.Done():
 			return
 
 		case <-ticker.C:
+			// Took too long to fill the batch
 			if len(publisher.messageBatch) > 0 {
 				publisher.publishBatch(ctx)
 			}
 			break
 
 		case message := <-publisher.PublishChannel:
+
 			publisher.messageBatch = append(publisher.messageBatch, message)
+			publisher.NumEntriesRecieved++
+
 			if len(publisher.messageBatch) >= publisher.config.BatchSize {
 				publisher.publishBatch(ctx)
 			}
-			break
 		}
 	}
 }
 
 func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 
-	// todo: publish batch to bigquery
+	err := publisher.tableInserter.Put(ctx, publisher.messageBatch)
+	if err != nil {
+		core.Error("failed to publish bigquery entry: %v", err)
+		return
+	}
 
-	batchId := publisher.numBatchesSent
 	batchNumMessages := len(publisher.messageBatch)
 
-	publisher.mutex.Lock()
-	publisher.numBatchesSent++
-	publisher.numMessagesSent += batchNumMessages
-	publisher.mutex.Unlock()
+	publisher.NumBatchesPublished++
+	publisher.NumEntriesPublished += uint64(batchNumMessages)
 
-	publisher.messageBatch = []*bigquery.ValueSaver{}
+	publisher.messageBatch = []bigquery.ValueSaver{}
+}
 
-	core.Debug("published batch %d containing %d messages", batchId, batchNumMessages)
+// Test entry for making func testing easier
+type TestEntry struct {
+	Timestamp uint32
+}
+
+func (entry *TestEntry) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	e["timestamp"] = int(entry.Timestamp)
+	return e, "", nil
 }

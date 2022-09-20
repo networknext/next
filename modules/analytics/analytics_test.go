@@ -40,7 +40,7 @@ func TestNewGooglePubSubPublisher(t *testing.T) {
 }
 
 func TestGooglePubSubPublisher(t *testing.T) {
-	
+
 	checkGooglePubsubEmulator(t)
 
 	t.Parallel()
@@ -136,7 +136,7 @@ func TestLocalBigQueryWriter(t *testing.T) {
 }
 
 func TestNoOp(t *testing.T) {
-	
+
 	t.Parallel()
 
 	t.Run("ping stats publisher", func(t *testing.T) {

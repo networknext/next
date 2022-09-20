@@ -37,6 +37,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
+		core.Error("failed to create pubsub client: %v", err)
 		return nil, err
 	}
 
@@ -82,6 +83,7 @@ func (producer *RedisPubsubProducer) updateMessageChannel(ctx context.Context) {
 }
 
 func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
+
 	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
@@ -150,10 +152,12 @@ type RedisPubsubConsumer struct {
 }
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
 		Password: config.RedisPassword,
 	})
+
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
 		return nil, err
@@ -177,7 +181,9 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 }
 
 func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
+
 	for {
+
 		select {
 
 		case <-ctx.Done():

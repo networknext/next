@@ -31,7 +31,6 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://production_artifacts
-ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 
 ####################
 ##    RELAY ENV   ##
@@ -244,6 +243,40 @@ help:
 dist:
 	@mkdir -p dist
 
+# Build most golang services
+
+dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
+	@echo "Building $(@F)"
+	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
+
+# Build most artifacts
+
+dist/%.dev.tar.gz: dist/%
+	@go run scripts/build_artifact/build_artifact.go $@ dev
+
+dist/%.prod.tar.gz: dist/%
+	@go run scripts/build_artifact/build_artifact.go $@ prod
+
+# Format golang code
+
+.PHONY: format
+format:
+	@$(GOFMT) -s -w .
+	@printf "\n"
+
+# Clean, build all, rebuild all
+
+.PHONY: clean
+clean: ## cleans everything
+	@rm -rf dist
+	@mkdir -p dist
+
+.PHONY: build-all
+build-all: build-sdk4 build-sdk5 $(shell ./scripts/all_commands.sh) ## builds everything
+
+.PHONY: rebuild-all
+rebuild-all: clean build-all ## rebuilds everything
+
 #####################
 ##   Happy Path    ##
 #####################
@@ -262,25 +295,29 @@ export RELEASE_NOTES_INTERVAL=30s
 export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
 export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
+.PHONY: dev-redis-monitor
+dev-redis-monitor: dist/redis_monitor ## runs a local redis monitor
+	@HTTP_PORT=41008 ./dist/redis_monitor
+
 .PHONY: dev-magic-backend
-dev-magic-backend: build-magic-backend ## runs a local magic backend
+dev-magic-backend: dist/magic_backend ## runs a local magic backend
 	@HTTP_PORT=41007 ./dist/magic_backend
 
 .PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+dev-relay-gateway: ./dist/relay_gateway ## runs a local relay gateway
 	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway
 
 .PHONY: dev-relay-backend
-dev-relay-backend: build-relay-backend ## runs a local relay backend (#1)
+dev-relay-backend: ./dist/relay_backend ## runs a local relay backend (#1)
 	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend
 
 .PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
+dev-relay-backend-2: ./dist/relay_backend ## runs a local relay backend (#2)
 	@HTTP_PORT=30002 READY_DELAY=5s ./dist/relay_backend
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
-	@RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
+	@RELAY_DEBUG=1 RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
 
 .PHONY: dev-server-backend4
 dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
@@ -363,7 +400,7 @@ dev-portal: build-portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 ./dist/portal
 
 .PHONY: dev-analytics
-dev-analytics: build-analytics ## runs a local analytics service
+dev-analytics: dist/analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
 .PHONY: dev-portal-cruncher-1
@@ -397,12 +434,6 @@ test-sdk5: dist build-test5 ## runs sdk5 unit tests
 .PHONY: test-relay
 test-relay: dist build-reference-relay ## runs relay unit tests
 	cd dist && ./reference_relay test
-
-.PHONY: build-analytics
-build-analytics: dist
-	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/analytics ./cmd/analytics/analytics.go
-	@printf "done\n"
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
@@ -588,23 +619,6 @@ build-portal:
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: build-server-backend4
-build-server-backend4:
-	@printf "Building server backend 4... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend4 ./cmd/server_backend4/server_backend4.go
-	@printf "done\n"
-
-.PHONY: build-server-backend5
-build-server-backend5:
-	@printf "Building server backend 5... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
-	@printf "done\n"
-
-.PHONY: build-magic-backend
-build-magic-backend:
-	@echo "Building magic backend..."
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/magic_backend ./cmd/magic_backend/magic_backend.go
-
 .PHONY: build-fake-server
 build-fake-server: dist
 	@printf "Building fake server... "
@@ -626,52 +640,6 @@ deploy-portal-crunchers-dev:
 deploy-pingdom-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
 
-.PHONY: deploy-portal-crunchers-staging
-deploy-portal-crunchers-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-2 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-
-.PHONY: deploy-pingdom-staging
-deploy-pingdom-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
-
-.PHONY: deploy-portal-crunchers-prod
-deploy-portal-crunchers-prod:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-3-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-4-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-
-.PHONY: deploy-pingdom-prod
-deploy-pingdom-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://production_artifacts
-
-.PHONY: build-fake-server-artifacts-staging
-build-fake-server-artifacts-staging: build-fake-server
-	./deploy/build-artifacts.sh -e staging -s fake_server
-
-.PHONY: build-load-test-server-artifacts
-build-load-test-server-artifacts: build-load-test-server
-	./deploy/build-load-test-artifacts.sh -s load_test_server
-
-.PHONY: build-load-test-client-artifacts
-build-load-test-client-artifacts: build-load-test-client
-	./deploy/build-load-test-artifacts.sh -s load_test_client
-
-.PHONY: build-analytics-artifacts-dev
-build-analytics-artifacts-dev: build-analytics
-	./deploy/build-artifacts.sh -e dev -s analytics
-
-.PHONY: build-magic-backend-artifacts-dev
-build-magic-backend-artifacts-dev: build-magic-backend
-	./deploy/build-artifacts.sh -e dev -s magic_backend
-
-.PHONY: build-relay-artifacts-dev
-build-relay-artifacts-dev: build-relay
-	./deploy/build-artifacts.sh -e dev -s relay
-
 .PHONY: build-pingdom-artifacts-dev
 build-pingdom-artifacts-dev: build-pingdom
 	./deploy/build-artifacts.sh -e dev -s pingdom
@@ -688,14 +656,6 @@ build-portal-artifacts-dev-old: build-portal
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
-.PHONY: build-server-backend4-artifacts-dev
-build-server-backend4-artifacts-dev: build-server-backend4
-	./deploy/build-artifacts.sh -e dev -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-dev
-build-server-backend5-artifacts-dev: build-server-backend5
-	./deploy/build-artifacts.sh -e dev -s server_backend5
-
 .PHONY: build-test-server4-artifacts-dev
 build-test-server4-artifacts-dev: build-test-server4
 	./deploy/build-artifacts.sh -e dev -s test_server4
@@ -703,78 +663,6 @@ build-test-server4-artifacts-dev: build-test-server4
 .PHONY: build-test-server5-artifacts-dev
 build-test-server5-artifacts-dev: build-test-server5
 	./deploy/build-artifacts.sh -e dev -s test_server5
-
-.PHONY: build-test-server4-artifacts-prod
-build-test-server4-artifacts-prod: build-test-server4
-	./deploy/build-artifacts.sh -e prod -s test_server4
-
-.PHONY: build-test-server5-artifacts-prod
-build-test-server5-artifacts-prod: build-test-server5
-	./deploy/build-artifacts.sh -e prod -s test_server5
-
-.PHONY: build-analytics-artifacts-staging
-build-analytics-artifacts-staging: build-analytics
-	./deploy/build-artifacts.sh -e staging -s analytics
-
-.PHONY: build-magic-backend-artifacts-staging
-build-magic-backend-artifacts-staging: build-magic-backend
-	./deploy/build-artifacts.sh -e staging -s magic_backend
-
-.PHONY: build-relay-artifacts-staging
-build-relay-artifacts-staging: build-relay
-	./deploy/build-artifacts.sh -e staging -s relay
-
-.PHONY: build-pingdom-artifacts-staging
-build-pingdom-artifacts-staging: build-pingdom
-	./deploy/build-artifacts.sh -e staging -s pingdom
-
-.PHONY: build-portal-artifacts-staging
-build-portal-artifacts-staging: build-portal
-	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
-
-.PHONY: build-portal-cruncher-artifacts-staging
-build-portal-cruncher-artifacts-staging: build-portal-cruncher
-	./deploy/build-artifacts.sh -e staging -s portal_cruncher
-
-.PHONY: build-server-backend4-artifacts-staging
-build-server-backend4-artifacts-staging: build-server-backend4
-	./deploy/build-artifacts.sh -e staging -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-staging
-build-server-backend5-artifacts-staging: build-server-backend5
-	./deploy/build-artifacts.sh -e staging -s server_backend5
-
-.PHONY: build-analytics-artifacts-prod
-build-analytics-artifacts-prod: build-analytics
-	./deploy/build-artifacts.sh -e prod -s analytics
-
-.PHONY: build-magic-backend-artifacts-prod
-build-magic-backend-artifacts-prod: build-magic-backend
-	./deploy/build-artifacts.sh -e prod -s magic_backend
-
-.PHONY: build-relay-artifacts-prod
-build-relay-artifacts-prod: build-relay
-	./deploy/build-artifacts.sh -e prod -s relay
-
-.PHONY: build-pingdom-artifacts-prod
-build-pingdom-artifacts-prod: build-pingdom
-	./deploy/build-artifacts.sh -e prod -s pingdom
-
-.PHONY: build-portal-artifacts-prod
-build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
-
-.PHONY: build-portal-cruncher-artifacts-prod
-build-portal-cruncher-artifacts-prod: build-portal-cruncher
-	./deploy/build-artifacts.sh -e prod -s portal_cruncher
-
-.PHONY: build-server-backend4-artifacts-prod
-build-server-backend4-artifacts-prod: build-server-backend4
-	./deploy/build-artifacts.sh -e prod -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-prod
-build-server-backend5-artifacts-prod: build-server-backend5
-	./deploy/build-artifacts.sh -e prod -s server_backend5
 
 .PHONY: build-next
 build-next:
@@ -796,71 +684,9 @@ build-relay-pusher:
 build-relay-pusher-artifacts-dev: build-relay-pusher
 	./deploy/build-artifacts.sh -e dev -s relay_pusher
 
-.PHONY: build-relay-pusher-artifacts-staging
-build-relay-pusher-artifacts-staging: build-relay-pusher
-	./deploy/build-artifacts.sh -e staging -s relay_pusher
-
-.PHONY: build-relay-pusher-artifacts-prod
-build-relay-pusher-artifacts-prod: build-relay-pusher
-	./deploy/build-artifacts.sh -e prod -s relay_pusher
-
 .PHONY: deploy-relay-pusher-dev
 deploy-relay-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-pusher -n relay_pusher -b gs://development_artifacts
-
-.PHONY: deploy-relay-pusher-staging
-deploy-relay-pusher-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-pusher -n relay_pusher -b gs://staging_artifacts
-
-.PHONY: deploy-relay-pusher-prod
-deploy-relay-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
-
-#######################
-#    Relay Backend    #
-#######################
-
-.PHONY: build-relay-backend
-build-relay-backend:
-	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
-	@printf "done\n"
-
-.PHONY: build-relay-backend-artifacts-dev
-build-relay-backend-artifacts-dev: build-relay-backend
-	./deploy/build-artifacts.sh -e dev -s relay_backend
-
-.PHONY: build-relay-backend-artifacts-staging
-build-relay-backend-artifacts-staging: build-relay-backend
-	./deploy/build-artifacts.sh -e staging -s relay_backend
-
-.PHONY: build-relay-backend-artifacts-prod
-build-relay-backend-artifacts-prod: build-relay-backend
-	./deploy/build-artifacts.sh -e prod -s relay_backend
-
-.PHONY: deploy-relay-backend-dev-1
-deploy-relay-backend-dev-1:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-dev-2
-deploy-relay-backend-dev-2:
-	./deploy/deploy.sh -e dev -c dev-2 -t relay-backend -n relay_backend -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-staging-1
-deploy-relay-backend-staging-1:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
-
-.PHONY: deploy-relay-backend-staging-2
-deploy-relay-backend-staging-2:
-	./deploy/deploy.sh -e staging -c staging-2 -t relay-backend -n relay_backend -b gs://staging_artifacts
-
-.PHONY: deploy-relay-backend-prod-1
-deploy-relay-backend-prod-1:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
-
-.PHONY: deploy-relay-backend-prod-2
-deploy-relay-backend-prod-2:
-	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -892,25 +718,9 @@ build-ghost-army-analyzer:
 build-ghost-army-artifacts-dev: build-ghost-army
 	./deploy/build-artifacts.sh -e dev -s ghost_army
 
-.PHONY: build-ghost-army-artifacts-staging
-build-ghost-army-artifacts-staging: build-ghost-army
-	./deploy/build-artifacts.sh -e staging -s ghost_army
-
-.PHONY: build-ghost-army-artifacts-prod
-build-ghost-army-artifacts-prod: build-ghost-army
-	./deploy/build-artifacts.sh -e prod -s ghost_army
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
-
-.PHONY: deploy-ghost-army-staging
-deploy-ghost-army-staging:
-	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
-
-.PHONY: deploy-ghost-army-prod
-deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1-ubuntu20 -t ghost-army -n ghost_army -b gs://production_artifacts
 
 #######################
 #     Fake Relay      #
@@ -930,48 +740,14 @@ build-fake-relays:
 build-fake-relays-artifacts-dev: build-fake-relays
 	./deploy/build-artifacts.sh -e dev -s fake_relays
 
-.PHONY: build-fake-relays-artifacts-staging
-build-fake-relays-artifacts-staging: build-fake-relays
-	./deploy/build-artifacts.sh -e staging -s fake_relays
-
-.PHONY: build-fake-relays-artifacts-prod
-build-fake-relays-artifacts-prod: build-fake-relays
-	./deploy/build-artifacts.sh -e prod -s fake_relays
-
-#######################
-# Relay Build Process #
-#######################
-
-RELAY_DIR := ./relay
-RELAY_MAKEFILE := Makefile
-RELAY_EXE := relay
+#########
+# Relay #
+#########
 
 .PHONY: build-reference-relay
 build-reference-relay: dist
 	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
-
-#######################
-#    Relay Gateway    #
-#######################
-
-.PHONY: build-relay-gateway
-build-relay-gateway:
-	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_gateway ./cmd/relay_gateway/relay_gateway.go
-	@printf "done\n"
-
-.PHONY: build-relay-gateway-artifacts-dev
-build-relay-gateway-artifacts-dev: build-relay-gateway
-	./deploy/build-artifacts.sh -e dev -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-staging
-build-relay-gateway-artifacts-staging: build-relay-gateway
-	./deploy/build-artifacts.sh -e staging -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-prod
-build-relay-gateway-artifacts-prod: build-relay-gateway
-	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
 #######################
 
@@ -983,20 +759,4 @@ dev-pubsub-emulator:
 
 .PHONY: dev-bigquery-emulator
 dev-bigquery-emulator:
-	bigquery-emulator --project="local"
-
-.PHONY: format
-format:
-	@$(GOFMT) -s -w .
-	@printf "\n"
-
-.PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics build-magic-backend build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
-
-.PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds everything
-
-.PHONY: clean
-clean: ## cleans everything
-	@rm -rf dist
-	@mkdir -p dist
+	bigquery-emulator --project="local" --dataset="local"
