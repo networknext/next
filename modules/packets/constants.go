@@ -8,7 +8,6 @@ import (
 // -------------------------------------------------
 
 const (
-
 	SDK4_PACKET_TYPE_ServerUpdate       = 220
 	SDK4_PACKET_TYPE_SessionUpdate      = 221
 	SDK4_PACKET_TYPE_SessionResponse    = 222

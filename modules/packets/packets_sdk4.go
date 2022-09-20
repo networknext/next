@@ -1,11 +1,11 @@
 package packets
 
 import (
-	"net"
 	"errors"
+	"net"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 )
 
@@ -305,19 +305,19 @@ func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error 
 	}
 
 	stream.SerializeBool(&packet.HighFrequencyPings)
-	
+
 	return stream.Error()
 }
 
 // ------------------------------------------------------------
 
 type SDK4_SessionData struct {
-	Version                       uint32
-	SessionId                     uint64
-	SessionVersion                uint32
-	SliceNumber                   uint32
-	ExpireTimestamp               uint64
-	Initial                       bool
+	Version         uint32
+	SessionId       uint64
+	SessionVersion  uint32
+	SliceNumber     uint32
+	ExpireTimestamp uint64
+	Initial         bool
 	// todo: gross
 	// Location                      routing.Location
 	RouteChanged                  bool
@@ -361,21 +361,21 @@ func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 
 	// todo
 	/*
-	locationSize := uint32(sessionData.Location.Size())
-	stream.SerializeUint32(&locationSize)
-	if stream.IsReading() {
-		locationBytes := make([]byte, locationSize)
-		stream.SerializeBytes(locationBytes)
-		if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
-			return err
+		locationSize := uint32(sessionData.Location.Size())
+		stream.SerializeUint32(&locationSize)
+		if stream.IsReading() {
+			locationBytes := make([]byte, locationSize)
+			stream.SerializeBytes(locationBytes)
+			if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
+				return err
+			}
+		} else {
+			locationBytes, err := sessionData.Location.MarshalBinary()
+			if err != nil {
+				return err
+			}
+			stream.SerializeBytes(locationBytes)
 		}
-	} else {
-		locationBytes, err := sessionData.Location.MarshalBinary()
-		if err != nil {
-			return err
-		}
-		stream.SerializeBytes(locationBytes)
-	}
 	*/
 
 	stream.SerializeBool(&sessionData.RouteChanged)

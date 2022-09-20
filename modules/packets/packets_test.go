@@ -138,47 +138,47 @@ func Test_SDK4_ServerInitResponsePacket(t *testing.T) {
 func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 
 	writePacket := SDK4_SessionUpdatePacket{
-		Version:                  SDKVersion{1, 2, 3},
-		BuyerId:                  123414,
-		DatacenterId:             1234123491,
-		SessionId:                120394810984109,
-		SliceNumber:              5,
-		RetryNumber:              1,
-		SessionDataBytes:         100,
-		ClientAddress:            *core.ParseAddress("127.0.0.1:50000"),
-		ServerAddress:            *core.ParseAddress("127.0.0.1:40000"),
-		UserHash:                 12341298742,
-		PlatformType:             SDK4_PlatformTypePS4,
-		ConnectionType:           SDK4_ConnectionTypeWired,
-		Next:                     true,
-		Committed:                true,
-		Reported:                 false,
-		FallbackToDirect:         false,
-		ClientBandwidthOverLimit: false,
-		ServerBandwidthOverLimit: false,
-		ClientPingTimedOut:       false,
-		NumTags:                  2,
-		Flags:                    122,
-		UserFlags:                3152384721,
-		DirectMinRTT:             10.0,
-		DirectMaxRTT:             20.0,
-		DirectPrimeRTT:           19.0,
-		DirectJitter:             5.2,
-		DirectPacketLoss:         0.1,
-		NextRTT:                  5.0,
-		NextJitter:               0.5,
-		NextPacketLoss:           0.01,
-		NumNearRelays:            10,
-		NextKbpsUp:               100,
-		NextKbpsDown:             256,
-		PacketsSentClientToServer: 10000,
-		PacketsSentServerToClient: 10500,
-		PacketsLostClientToServer: 5,
-		PacketsLostServerToClient: 10,
+		Version:                         SDKVersion{1, 2, 3},
+		BuyerId:                         123414,
+		DatacenterId:                    1234123491,
+		SessionId:                       120394810984109,
+		SliceNumber:                     5,
+		RetryNumber:                     1,
+		SessionDataBytes:                100,
+		ClientAddress:                   *core.ParseAddress("127.0.0.1:50000"),
+		ServerAddress:                   *core.ParseAddress("127.0.0.1:40000"),
+		UserHash:                        12341298742,
+		PlatformType:                    SDK4_PlatformTypePS4,
+		ConnectionType:                  SDK4_ConnectionTypeWired,
+		Next:                            true,
+		Committed:                       true,
+		Reported:                        false,
+		FallbackToDirect:                false,
+		ClientBandwidthOverLimit:        false,
+		ServerBandwidthOverLimit:        false,
+		ClientPingTimedOut:              false,
+		NumTags:                         2,
+		Flags:                           122,
+		UserFlags:                       3152384721,
+		DirectMinRTT:                    10.0,
+		DirectMaxRTT:                    20.0,
+		DirectPrimeRTT:                  19.0,
+		DirectJitter:                    5.2,
+		DirectPacketLoss:                0.1,
+		NextRTT:                         5.0,
+		NextJitter:                      0.5,
+		NextPacketLoss:                  0.01,
+		NumNearRelays:                   10,
+		NextKbpsUp:                      100,
+		NextKbpsDown:                    256,
+		PacketsSentClientToServer:       10000,
+		PacketsSentServerToClient:       10500,
+		PacketsLostClientToServer:       5,
+		PacketsLostServerToClient:       10,
 		PacketsOutOfOrderClientToServer: 8,
 		PacketsOutOfOrderServerToClient: 9,
-		JitterClientToServer: 8.2,
-		JitterServerToClient: 9.6,
+		JitterClientToServer:            8.2,
+		JitterServerToClient:            9.6,
 	}
 
 	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
@@ -196,8 +196,8 @@ func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 	for i := 0; i < int(writePacket.NumNearRelays); i++ {
 		writePacket.NearRelayIds[i] = uint64(i * 32)
 		writePacket.NearRelayRTT[i] = int32(i)
-		writePacket.NearRelayJitter[i] = int32(i+1)
-		writePacket.NearRelayPacketLoss[i] = int32(i+2)
+		writePacket.NearRelayJitter[i] = int32(i + 1)
+		writePacket.NearRelayPacketLoss[i] = int32(i + 2)
 	}
 
 	readPacket := SDK4_SessionUpdatePacket{}
@@ -208,17 +208,17 @@ func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 func Test_SDK4_SessionResponsePacket_Direct(t *testing.T) {
 
 	writePacket := SDK4_SessionResponsePacket{
-		Version:                  SDKVersion{1, 2, 3},
-		SessionId:                123412341243,
-		SliceNumber:              10234,
-		SessionDataBytes:         100,
-		RouteType:                SDK4_RouteTypeDirect,
-		NearRelaysChanged:        true,
-		NumNearRelays:            10,
-		HasDebug:                 true,
-		Debug:                    "I am a debug string",
-		ExcludeNearRelays:        true,
-		HighFrequencyPings:       true,
+		Version:            SDKVersion{1, 2, 3},
+		SessionId:          123412341243,
+		SliceNumber:        10234,
+		SessionDataBytes:   100,
+		RouteType:          SDK4_RouteTypeDirect,
+		NearRelaysChanged:  true,
+		NumNearRelays:      10,
+		HasDebug:           true,
+		Debug:              "I am a debug string",
+		ExcludeNearRelays:  true,
+		HighFrequencyPings: true,
 	}
 
 	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
@@ -227,8 +227,8 @@ func Test_SDK4_SessionResponsePacket_Direct(t *testing.T) {
 
 	for i := 0; i < int(writePacket.NumNearRelays); i++ {
 		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
-		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
+		writePacket.NearRelayExcluded[i] = (i % 2) == 0
 	}
 
 	readPacket := SDK4_SessionResponsePacket{}
@@ -239,26 +239,26 @@ func Test_SDK4_SessionResponsePacket_Direct(t *testing.T) {
 func Test_SDK4_SessionResponsePacket_NewRoute(t *testing.T) {
 
 	writePacket := SDK4_SessionResponsePacket{
-		Version:                  SDKVersion{1, 2, 3},
-		SessionId:                123412341243,
-		SliceNumber:              10234,
-		SessionDataBytes:         100,
-		RouteType:                SDK4_RouteTypeNew,
-		Multipath:                true,
-		Committed:                true,
-		NumTokens:                5,
-		NearRelaysChanged:        true,
-		NumNearRelays:            10,
-		HasDebug:                 true,
-		Debug:                    "I am a debug string",
-		ExcludeNearRelays:        true,
-		HighFrequencyPings:       true,
+		Version:            SDKVersion{1, 2, 3},
+		SessionId:          123412341243,
+		SliceNumber:        10234,
+		SessionDataBytes:   100,
+		RouteType:          SDK4_RouteTypeNew,
+		Multipath:          true,
+		Committed:          true,
+		NumTokens:          5,
+		NearRelaysChanged:  true,
+		NumNearRelays:      10,
+		HasDebug:           true,
+		Debug:              "I am a debug string",
+		ExcludeNearRelays:  true,
+		HighFrequencyPings: true,
 	}
 
-	tokenBytes := writePacket.NumTokens*SDK4_EncryptedNextRouteTokenSize
+	tokenBytes := writePacket.NumTokens * SDK4_EncryptedNextRouteTokenSize
 	writePacket.Tokens = make([]byte, tokenBytes)
 	for i := 0; i < int(tokenBytes); i++ {
-		writePacket.Tokens[i] = uint8(i+3)
+		writePacket.Tokens[i] = uint8(i + 3)
 	}
 
 	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
@@ -267,8 +267,8 @@ func Test_SDK4_SessionResponsePacket_NewRoute(t *testing.T) {
 
 	for i := 0; i < int(writePacket.NumNearRelays); i++ {
 		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
-		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
+		writePacket.NearRelayExcluded[i] = (i % 2) == 0
 	}
 
 	readPacket := SDK4_SessionResponsePacket{}
@@ -279,26 +279,26 @@ func Test_SDK4_SessionResponsePacket_NewRoute(t *testing.T) {
 func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
 
 	writePacket := SDK4_SessionResponsePacket{
-		Version:                  SDKVersion{1, 2, 3},
-		SessionId:                123412341243,
-		SliceNumber:              10234,
-		SessionDataBytes:         100,
-		RouteType:                SDK4_RouteTypeContinue,
-		Multipath:                true,
-		Committed:                true,
-		NumTokens:                5,
-		NearRelaysChanged:        true,
-		NumNearRelays:            10,
-		HasDebug:                 true,
-		Debug:                    "I am a debug string",
-		ExcludeNearRelays:        true,
-		HighFrequencyPings:       true,
+		Version:            SDKVersion{1, 2, 3},
+		SessionId:          123412341243,
+		SliceNumber:        10234,
+		SessionDataBytes:   100,
+		RouteType:          SDK4_RouteTypeContinue,
+		Multipath:          true,
+		Committed:          true,
+		NumTokens:          5,
+		NearRelaysChanged:  true,
+		NumNearRelays:      10,
+		HasDebug:           true,
+		Debug:              "I am a debug string",
+		ExcludeNearRelays:  true,
+		HighFrequencyPings: true,
 	}
 
-	tokenBytes := writePacket.NumTokens*SDK4_EncryptedContinueRouteTokenSize
+	tokenBytes := writePacket.NumTokens * SDK4_EncryptedContinueRouteTokenSize
 	writePacket.Tokens = make([]byte, tokenBytes)
 	for i := 0; i < int(tokenBytes); i++ {
-		writePacket.Tokens[i] = uint8(i+3)
+		writePacket.Tokens[i] = uint8(i + 3)
 	}
 
 	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
@@ -307,8 +307,8 @@ func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
 
 	for i := 0; i < int(writePacket.NumNearRelays); i++ {
 		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i + 5000))
-		writePacket.NearRelayExcluded[i] = ( i % 2 ) == 0
+		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
+		writePacket.NearRelayExcluded[i] = (i % 2) == 0
 	}
 
 	readPacket := SDK4_SessionResponsePacket{}
@@ -331,8 +331,19 @@ func Test_SDK4_SessionData(t *testing.T) {
 func Test_SDK4_MatchDataRequestPacket(t *testing.T) {
 
 	writePacket := SDK4_MatchDataRequestPacket{
-		Version: SDKVersion{1,2,3},
-		// todo
+		Version:        SDKVersion{1, 2, 3},
+		BuyerId:        12341241,
+		ServerAddress:  *core.ParseAddress("127.0.0.1:44444"),
+		DatacenterId:   184283418,
+		UserHash:       210987451,
+		SessionId:      987249128471,
+		RetryNumber:    4,
+		MatchId:        1234209487198,
+		NumMatchValues: 10,
+	}
+
+	for i := 0; i < int(writePacket.NumMatchValues); i++ {
+		writePacket.MatchValues[i] = float64(i) * 34852.0
 	}
 
 	readPacket := SDK4_MatchDataRequestPacket{}
@@ -343,7 +354,8 @@ func Test_SDK4_MatchDataRequestPacket(t *testing.T) {
 func Test_SDK4_MatchDataResponsePacket(t *testing.T) {
 
 	writePacket := SDK4_MatchDataResponsePacket{
-		// todo
+		SessionId: 1234141,
+		Response:  1,
 	}
 
 	readPacket := SDK4_MatchDataResponsePacket{}
