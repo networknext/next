@@ -152,6 +152,15 @@ func (message *MatchDataMessage) ClampMessage() {
 }
 */
 
+func (message *MatchDataMessage) Read(buffer []byte) error {
+	return nil
+}
+
+func (message *MatchDataMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
+
 func (message *MatchDataMessage) Save() (map[string]bigquery.Value, string, error) {
 
 	bigquery_message := make(map[string]bigquery.Value)

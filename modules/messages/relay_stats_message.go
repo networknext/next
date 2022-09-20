@@ -10,6 +10,8 @@ const (
 )
 
 type RelayStatsMessage struct {
+	Version byte
+
 	Timestamp uint64
 
 	ID uint64
@@ -209,6 +211,15 @@ func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
 	return entries, true
 }
 */
+
+func (message *RelayStatsMessage) Read(buffer []byte) error {
+	return nil
+}
+
+func (message *RelayStatsMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
 
 func (message *RelayStatsMessage) Save() (map[string]bigquery.Value, string, error) {
 

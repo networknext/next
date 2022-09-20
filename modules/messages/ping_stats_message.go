@@ -12,6 +12,7 @@ const (
 )
 
 type PingStatsMessage struct {
+	Version    byte
 	Timestamp  uint64
 	RelayA     uint64
 	RelayB     uint64
@@ -108,6 +109,15 @@ func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 	return entries, true
 }
 */
+
+func (message *PingStatsMessage) Read(buffer []byte) error {
+	return nil
+}
+
+func (message *PingStatsMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
 
 func (message *PingStatsMessage) Save() (map[string]bigquery.Value, string, error) {
 
