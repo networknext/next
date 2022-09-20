@@ -246,7 +246,7 @@ dist:
 
 # Build most golang services
 
-dist/%: cmd/%/*.go $(shell find modules -name '*.go')
+dist/%: dist cmd/%/*.go $(shell find modules -name '*.go')
 	@echo "Building $(@F)"
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 
@@ -267,18 +267,18 @@ format:
 	@$(GOFMT) -s -w .
 	@printf "\n"
 
-# Build all, rebuild all and clean
+# Clean, build all, rebuild all
+
+.PHONY: clean
+clean: ## cleans everything
+	@rm -rf dist
+	@mkdir -p dist
 
 .PHONY: build-all
 build-all: build-sdk4 build-sdk5 $(shell ./scripts/all_commands.sh) ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
-
-.PHONY: clean
-clean: ## cleans everything
-	@rm -rf dist
-	@mkdir -p dist
 
 #####################
 ##   Happy Path    ##
