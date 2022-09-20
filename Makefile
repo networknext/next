@@ -254,11 +254,11 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
 
 dist/%.dev.tar.gz: dist/%
 	@echo "Building $@ (dev)"
-	@go run scripts/build_artifact.go $@
+	@go run scripts/build_artifact/build_artifact.go $@
 
 dist/%.prod.tar.gz: dist/%
 	@echo "Building $@ (prod)"
-	@go run scripts/build_artifact.go $@
+	@go run scripts/build_artifact/build_artifact.go $@
 
 # Format golang code
 
