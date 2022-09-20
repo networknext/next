@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
 	"google.golang.org/api/option"
 )
 
@@ -32,6 +33,13 @@ type GoogleBigQueryPublisher struct {
 }
 
 func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryPublisher, error) {
+
+	if config.ProjectId == "local" {
+		config.ClientOptions = []option.ClientOption{
+			option.WithEndpoint(envvar.GetString("BIGQUERY_EMULATOR_HOST", "http://127.0.0.1:9050")),
+			option.WithoutAuthentication(),
+		}
+	}
 
 	bigqueryClient, err := bigquery.NewClient(ctx, config.ProjectId, config.ClientOptions...)
 	if err != nil {
