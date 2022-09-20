@@ -31,7 +31,6 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://production_artifacts
-ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 
 ####################
 ##    RELAY ENV   ##
@@ -641,44 +640,6 @@ deploy-portal-crunchers-dev:
 deploy-pingdom-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
 
-.PHONY: deploy-portal-crunchers-staging
-deploy-portal-crunchers-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-2 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-3 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-	./deploy/deploy.sh -e staging -c staging-4 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
-
-.PHONY: deploy-pingdom-staging
-deploy-pingdom-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
-
-.PHONY: deploy-portal-crunchers-prod
-deploy-portal-crunchers-prod:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-3-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-	./deploy/deploy.sh -e prod -c prod-4-ubuntu20 -t portal-cruncher -n portal_cruncher -b gs://production_artifacts
-
-.PHONY: deploy-pingdom-prod
-deploy-pingdom-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://production_artifacts
-
-.PHONY: build-fake-server-artifacts-staging
-build-fake-server-artifacts-staging: build-fake-server
-	./deploy/build-artifacts.sh -e staging -s fake_server
-
-.PHONY: build-load-test-server-artifacts
-build-load-test-server-artifacts: build-load-test-server
-	./deploy/build-load-test-artifacts.sh -s load_test_server
-
-.PHONY: build-load-test-client-artifacts
-build-load-test-client-artifacts: build-load-test-client
-	./deploy/build-load-test-artifacts.sh -s load_test_client
-
-.PHONY: build-relay-artifacts-dev
-build-relay-artifacts-dev: build-relay
-	./deploy/build-artifacts.sh -e dev -s relay
-
 .PHONY: build-pingdom-artifacts-dev
 build-pingdom-artifacts-dev: build-pingdom
 	./deploy/build-artifacts.sh -e dev -s pingdom
@@ -703,46 +664,6 @@ build-test-server4-artifacts-dev: build-test-server4
 build-test-server5-artifacts-dev: build-test-server5
 	./deploy/build-artifacts.sh -e dev -s test_server5
 
-.PHONY: build-test-server4-artifacts-prod
-build-test-server4-artifacts-prod: build-test-server4
-	./deploy/build-artifacts.sh -e prod -s test_server4
-
-.PHONY: build-test-server5-artifacts-prod
-build-test-server5-artifacts-prod: build-test-server5
-	./deploy/build-artifacts.sh -e prod -s test_server5
-
-.PHONY: build-relay-artifacts-staging
-build-relay-artifacts-staging: build-relay
-	./deploy/build-artifacts.sh -e staging -s relay
-
-.PHONY: build-pingdom-artifacts-staging
-build-pingdom-artifacts-staging: build-pingdom
-	./deploy/build-artifacts.sh -e staging -s pingdom
-
-.PHONY: build-portal-artifacts-staging
-build-portal-artifacts-staging: build-portal
-	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
-
-.PHONY: build-portal-cruncher-artifacts-staging
-build-portal-cruncher-artifacts-staging: build-portal-cruncher
-	./deploy/build-artifacts.sh -e staging -s portal_cruncher
-
-.PHONY: build-relay-artifacts-prod
-build-relay-artifacts-prod: build-relay
-	./deploy/build-artifacts.sh -e prod -s relay
-
-.PHONY: build-pingdom-artifacts-prod
-build-pingdom-artifacts-prod: build-pingdom
-	./deploy/build-artifacts.sh -e prod -s pingdom
-
-.PHONY: build-portal-artifacts-prod
-build-portal-artifacts-prod: build-portal
-	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
-
-.PHONY: build-portal-cruncher-artifacts-prod
-build-portal-cruncher-artifacts-prod: build-portal-cruncher
-	./deploy/build-artifacts.sh -e prod -s portal_cruncher
-
 .PHONY: build-next
 build-next:
 	@printf "Building operator tool... "
@@ -763,25 +684,9 @@ build-relay-pusher:
 build-relay-pusher-artifacts-dev: build-relay-pusher
 	./deploy/build-artifacts.sh -e dev -s relay_pusher
 
-.PHONY: build-relay-pusher-artifacts-staging
-build-relay-pusher-artifacts-staging: build-relay-pusher
-	./deploy/build-artifacts.sh -e staging -s relay_pusher
-
-.PHONY: build-relay-pusher-artifacts-prod
-build-relay-pusher-artifacts-prod: build-relay-pusher
-	./deploy/build-artifacts.sh -e prod -s relay_pusher
-
 .PHONY: deploy-relay-pusher-dev
 deploy-relay-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-pusher -n relay_pusher -b gs://development_artifacts
-
-.PHONY: deploy-relay-pusher-staging
-deploy-relay-pusher-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-pusher -n relay_pusher -b gs://staging_artifacts
-
-.PHONY: deploy-relay-pusher-prod
-deploy-relay-pusher-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -813,25 +718,9 @@ build-ghost-army-analyzer:
 build-ghost-army-artifacts-dev: build-ghost-army
 	./deploy/build-artifacts.sh -e dev -s ghost_army
 
-.PHONY: build-ghost-army-artifacts-staging
-build-ghost-army-artifacts-staging: build-ghost-army
-	./deploy/build-artifacts.sh -e staging -s ghost_army
-
-.PHONY: build-ghost-army-artifacts-prod
-build-ghost-army-artifacts-prod: build-ghost-army
-	./deploy/build-artifacts.sh -e prod -s ghost_army
-
 .PHONY: deploy-ghost-army-dev
 deploy-ghost-army-dev:
 	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
-
-.PHONY: deploy-ghost-army-staging
-deploy-ghost-army-staging:
-	./deploy/deploy.sh -e staging -c 1 -t ghost-army -n ghost_army -b gs://staging_artifacts
-
-.PHONY: deploy-ghost-army-prod
-deploy-ghost-army-prod:
-	./deploy/deploy.sh -e prod -c 1-ubuntu20 -t ghost-army -n ghost_army -b gs://production_artifacts
 
 #######################
 #     Fake Relay      #
@@ -851,21 +740,9 @@ build-fake-relays:
 build-fake-relays-artifacts-dev: build-fake-relays
 	./deploy/build-artifacts.sh -e dev -s fake_relays
 
-.PHONY: build-fake-relays-artifacts-staging
-build-fake-relays-artifacts-staging: build-fake-relays
-	./deploy/build-artifacts.sh -e staging -s fake_relays
-
-.PHONY: build-fake-relays-artifacts-prod
-build-fake-relays-artifacts-prod: build-fake-relays
-	./deploy/build-artifacts.sh -e prod -s fake_relays
-
-#######################
-# Relay Build Process #
-#######################
-
-RELAY_DIR := ./relay
-RELAY_MAKEFILE := Makefile
-RELAY_EXE := relay
+#########
+# Relay #
+#########
 
 .PHONY: build-reference-relay
 build-reference-relay: dist
