@@ -23,24 +23,6 @@ build-artifacts() {
 		cp ${DIR}/${SERVICE}/${SERVICE}.service ${DIST_DIR}/artifact/${SERVICE}/${SERVICE}.service
 		cp ${DIR}/${SERVICE}/install.sh ${DIST_DIR}/artifact/${SERVICE}/install.sh
 
-  elif [ "$SERVICE" = "debug_server_backend" ]; then
-
-		cp ${DIST_DIR}/server_backend ${DIST_DIR}/artifact/${SERVICE}/app
-		cp ${DIR}/../cmd/server_backend/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
-		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-
-  elif [ "$SERVICE" = "debug_relay_backend" ]; then
-
-		cp ${DIST_DIR}/relay_backend ${DIST_DIR}/artifact/${SERVICE}/app
-		cp ${DIR}/../cmd/relay_backend/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
-		cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-
-  elif [ "$SERVICE" = "debug_billing" ]; then
-
-        cp ${DIST_DIR}/billing ${DIST_DIR}/artifact/${SERVICE}/app
-        cp ${DIR}/../cmd/billing/${ENV}_debug.env ${DIST_DIR}/artifact/${SERVICE}/app.env
-        cp ${DIR}/${SYSTEMD_SERVICE_FILE} ${DIST_DIR}/artifact/${SERVICE}/${SYSTEMD_SERVICE_FILE}
-
   else
 
 		cp ${DIST_DIR}/${SERVICE} ${DIST_DIR}/artifact/${SERVICE}/app

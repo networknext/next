@@ -244,6 +244,42 @@ help:
 dist:
 	@mkdir -p dist
 
+# Build most golang services
+
+dist/%: cmd/%/*.go $(shell find modules -name '*.go')
+	@echo "Building $(@F)"
+	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
+
+# Build most artifacts
+
+dist/%.dev.tar.gz: dist/%
+	@echo "Building $@ (dev)"
+	@go run scripts/build_artifact.go $@
+
+dist/%.prod.tar.gz: dist/%
+	@echo "Building $@ (prod)"
+	@go run scripts/build_artifact.go $@
+
+# Format golang code
+
+.PHONY: format
+format:
+	@$(GOFMT) -s -w .
+	@printf "\n"
+
+# Build all, rebuild all and clean
+
+.PHONY: build-all
+build-all: build-sdk4 build-sdk5 $(shell ./scripts/all_commands.sh) ## builds everything
+
+.PHONY: rebuild-all
+rebuild-all: clean build-all ## rebuilds everything
+
+.PHONY: clean
+clean: ## cleans everything
+	@rm -rf dist
+	@mkdir -p dist
+
 #####################
 ##   Happy Path    ##
 #####################
@@ -263,23 +299,23 @@ export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
 export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
 .PHONY: dev-redis-monitor
-dev-redis-monitor: build-redis-monitor ## runs a local redis monitor
+dev-redis-monitor: dist/redis_monitor ## runs a local redis monitor
 	@HTTP_PORT=41008 ./dist/redis_monitor
 
 .PHONY: dev-magic-backend
-dev-magic-backend: build-magic-backend ## runs a local magic backend
+dev-magic-backend: dist/magic_backend ## runs a local magic backend
 	@HTTP_PORT=41007 ./dist/magic_backend
 
 .PHONY: dev-relay-gateway
-dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
+dev-relay-gateway: ./dist/relay_gateway ## runs a local relay gateway
 	@HTTP_PORT=30000 RELAY_UPDATE_BATCH_DURATION=1s ./dist/relay_gateway
 
 .PHONY: dev-relay-backend
-dev-relay-backend: build-relay-backend ## runs a local relay backend (#1)
+dev-relay-backend: ./dist/relay_backend ## runs a local relay backend (#1)
 	@HTTP_PORT=30001 READY_DELAY=5s ./dist/relay_backend
 
 .PHONY: dev-relay-backend-2
-dev-relay-backend-2: build-relay-backend ## runs a local relay backend (#2)
+dev-relay-backend-2: ./dist/relay_backend ## runs a local relay backend (#2)
 	@HTTP_PORT=30002 READY_DELAY=5s ./dist/relay_backend
 
 .PHONY: dev-relay
@@ -367,7 +403,7 @@ dev-portal: build-portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 ./dist/portal
 
 .PHONY: dev-analytics
-dev-analytics: build-analytics ## runs a local analytics service
+dev-analytics: dist/analytics ## runs a local analytics service
 	@PORT=41001 ./dist/analytics
 
 .PHONY: dev-portal-cruncher-1
@@ -401,12 +437,6 @@ test-sdk5: dist build-test5 ## runs sdk5 unit tests
 .PHONY: test-relay
 test-relay: dist build-reference-relay ## runs relay unit tests
 	cd dist && ./reference_relay test
-
-.PHONY: build-analytics
-build-analytics: dist
-	@printf "Building analytics... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/analytics ./cmd/analytics/analytics.go
-	@printf "done\n"
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
@@ -603,16 +633,6 @@ build-server-backend5:
 	@printf "Building server backend 5... "
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
-
-.PHONY: build-redis-monitor
-build-redis-monitor:
-	@echo "Building redis monitor..."
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/redis_monitor ./cmd/redis_monitor/redis_monitor.go
-
-.PHONY: build-magic-backend
-build-magic-backend:
-	@echo "Building magic backend..."
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/magic_backend ./cmd/magic_backend/magic_backend.go
 
 .PHONY: build-fake-server
 build-fake-server: dist
@@ -997,19 +1017,3 @@ dev-pubsub-emulator:
 .PHONY: dev-bigquery-emulator
 dev-bigquery-emulator:
 	bigquery-emulator --project="local" --dataset="local"
-
-.PHONY: format
-format:
-	@$(GOFMT) -s -w .
-	@printf "\n"
-
-.PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics build-magic-backend build-relay-gateway build-relay-backend build-relay-pusher build-server-backend4 build-server-backend5 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional-client4 build-functional-server4 build-functional-tests-sdk4 build-functional-backend4 build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests-sdk5 build-test-server4 build-test-server5 build-functional-tests-backend build-next ## builds everything
-
-.PHONY: rebuild-all
-rebuild-all: clean build-all ## rebuilds everything
-
-.PHONY: clean
-clean: ## cleans everything
-	@rm -rf dist
-	@mkdir -p dist
