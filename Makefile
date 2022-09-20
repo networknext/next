@@ -262,6 +262,10 @@ export RELEASE_NOTES_INTERVAL=30s
 export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
 export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
+.PHONY: dev-redis-monitor
+dev-redis-monitor: build-redis-monitor ## runs a local redis monitor
+	@HTTP_PORT=41008 ./dist/redis_monitor
+
 .PHONY: dev-magic-backend
 dev-magic-backend: build-magic-backend ## runs a local magic backend
 	@HTTP_PORT=41007 ./dist/magic_backend
@@ -600,6 +604,11 @@ build-server-backend5:
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
 	@printf "done\n"
 
+.PHONY: build-redis-monitor
+build-redis-monitor:
+	@echo "Building redis monitor..."
+	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o ./dist/redis_monitor ./cmd/redis_monitor/redis_monitor.go
+
 .PHONY: build-magic-backend
 build-magic-backend:
 	@echo "Building magic backend..."
@@ -667,6 +676,10 @@ build-analytics-artifacts-dev: build-analytics
 .PHONY: build-magic-backend-artifacts-dev
 build-magic-backend-artifacts-dev: build-magic-backend
 	./deploy/build-artifacts.sh -e dev -s magic_backend
+
+.PHONY: build-redis-monitor-artifacts-dev
+build-redis-monitor-artifacts-dev: build-redis-monitor
+	./deploy/build-artifacts.sh -e dev -s redis_monitor
 
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay

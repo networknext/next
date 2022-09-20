@@ -122,6 +122,11 @@ blocks:
             - make build-magic-backend-artifacts-dev
             - artifact push workflow dist/magic_backend.dev.tar.gz
 
+        - name: "Redis Monitor"
+          commands:
+            - make build-redis-monitor-artifacts-dev
+            - artifact push workflow dist/redis_monitor.dev.tar.gz
+
 
   - name: "Build Artifacts (Native)"
 
@@ -227,6 +232,11 @@ blocks:
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
+
+        - name: "Redis Monitor"
+          commands:
+            - artifact pull workflow redis_monitor.dev.tar.gz
+            - gsutil cp redis_monitor.dev.tar.gz gs://development_artifacts/
 
         - name: "Test Server 4"
           commands:
