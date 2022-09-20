@@ -22,17 +22,17 @@ type RedisLeaderElectionConfig struct {
 }
 
 type RedisLeaderElection struct {
-	config          RedisLeaderElectionConfig
-	redisClient     *redis.Client
-	startTime       time.Time
-	instanceId      string
-	isLeader        bool
+	config      RedisLeaderElectionConfig
+	redisClient *redis.Client
+	startTime   time.Time
+	instanceId  string
+	isLeader    bool
 }
 
 type RedisLeaderElectionEntry struct {
-	InstanceId     string
-	Uptime         uint64
-	Timestamp      uint64
+	InstanceId string
+	Uptime     uint64
+	Timestamp  uint64
 }
 
 func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {

@@ -240,16 +240,42 @@ func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId
 
 func (relayManager *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
+	currentTime := time.Now()
+
 	numRelays := len(relayIds)
 
 	costs := make([]int32, TriMatrixLength(numRelays))
 
-	// IMPORTANT: special permissive route matrix for local env only
+	// special permissive cost matrix for local
+
 	if local {
+		for i := range costs {
+			costs[i] = -1
+		}
+		activeRelayHash := relayManager.GetActiveRelayHash()
+		for i := 0; i < numRelays; i++ {
+			sourceRelayId := uint64(relayIds[i])
+			_, sourceActive := activeRelayHash[sourceRelayId]
+			if !sourceActive {
+				continue
+			}
+			for j := 0; j < i; j++ {
+				index := TriMatrixIndex(i, j)
+				destRelayId := uint64(relayIds[j])
+				_, destActive := activeRelayHash[destRelayId]
+				if destActive {
+					costs[index] = 0
+				}
+			}
+		}
+
+		// todo
+		fmt.Printf("costs: %v\n", costs)
+
 		return costs
 	}
 
-	currentTime := time.Now()
+	// real cost matrix for dev and prod
 
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
@@ -335,6 +361,15 @@ func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
 	sort.SliceStable(activeRelays, func(i, j int) bool { return activeRelays[i].Name < activeRelays[j].Name })
 
 	return activeRelays
+}
+
+func (relayManager *RelayManager) GetActiveRelayHash() map[uint64]ActiveRelay {
+	activeRelays := relayManager.GetActiveRelays()
+	activeRelayHash := make(map[uint64]ActiveRelay)
+	for i := range activeRelays {
+		activeRelayHash[activeRelays[i].Id] = activeRelays[i]
+	}
+	return activeRelayHash
 }
 
 func (relayManager *RelayManager) GetRelaysCSV() []byte {

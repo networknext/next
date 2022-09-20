@@ -19,7 +19,7 @@ blocks:
       jobs:
         - name: "Build Sodium and ZeroMQ"
           commands:
-            
+
             - checkout
 
             - cd ~/backend/libs/sodium
@@ -163,6 +163,12 @@ blocks:
       prologue:
         commands:
 
+            - sudo apt-get install -y google-cloud-sdk-pubsub-emulator
+
+            - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
+            - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
+            - sudo chmod +x /usr/local/bin/bigquery-emulator
+
             - mkdir -p dist
             - cd dist
 
@@ -209,6 +215,7 @@ blocks:
         - name: "test_magic_backend"
           commands:
             - cd ./dist && ./func_tests_backend test_magic_backend
+
         - name: "test_redis_streams"
           commands:
             - cd ./dist && ./func_tests_backend test_redis_streams
@@ -216,6 +223,17 @@ blocks:
         - name: "test_redis_pubsub"
           commands:
             - cd ./dist && ./func_tests_backend test_redis_pubsub
+
+        - name: "test_google_pubsub"
+          commands:
+            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
+            - cd ./dist && ./func_tests_backend test_google_pubsub
+
+        - name: "test_google_bigquery"
+          commands:
+            - bigquery-emulator --project="local" --dataset="local" &
+            - cd ./dist && ./func_tests_backend test_google_bigquery
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
@@ -252,6 +270,7 @@ blocks:
             - artifact push workflow dist/func_tests_sdk4
             - artifact push workflow dist/reference_relay4
             - artifact push workflow dist/libnext4.so
+
 
   - name: "Run Functional Tests (sdk4)"
     dependencies: ["Build Functional Tests (sdk4)", "Dependencies"]

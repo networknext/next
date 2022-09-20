@@ -57,7 +57,7 @@ func (stream *WriteStream) IsReading() bool {
 	return false
 }
 
-// todo: lame function name
+// todo: lame function name. also, should handle printf formatting. simpler
 func (stream *WriteStream) error(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))

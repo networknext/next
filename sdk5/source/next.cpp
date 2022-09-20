@@ -469,7 +469,11 @@ bool next_platform_getenv_bool(const char *name)
 
 double next_time()
 {
+#if NEXT_DEVELOPMENT
+    return next_platform_time() + 100000.0;
+#else // #if NEXT_DEVELOPMENT
     return next_platform_time();
+#endif // #if NEXT_DEVELOPMENT
 }
 
 void next_sleep( double time_seconds )
@@ -8190,13 +8194,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
@@ -14489,7 +14495,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
     {
-        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 2 );
+        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 1.25 );
     }
 #endif // #if NEXT_DEVELOPMENT
 
@@ -20527,7 +20533,10 @@ void test_relay_manager()
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
-        }
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
+       }
     }
 
     // remove all relays

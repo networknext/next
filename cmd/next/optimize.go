@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"io/ioutil"
+	"runtime"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 )
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
@@ -53,7 +53,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 	}
 
-	routeMatrixData, err := routeMatrix.Write(100*1024*1024)
+	routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not write route matrix: %v", err), 1)
 	}

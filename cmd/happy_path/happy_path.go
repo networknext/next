@@ -8,6 +8,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
@@ -79,6 +81,7 @@ func run_relay(port int, log string) *bytes.Buffer {
 	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
 	cmd.Env = append(cmd.Env, "RELAY_GATEWAY=http://127.0.0.1:30000")
+	cmd.Env = append(cmd.Env, "RELAY_DEBUG=1")
 
 	var stdout bytes.Buffer
 
@@ -121,9 +124,35 @@ func happy_path() int {
 
 	os.Mkdir("logs", os.ModePerm)
 
+	ctx := context.Background()
+
 	// build and run services, as a developer would via "make dev-*" as much as possible
 
+	// set up pubsub emulator
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
+
+	pubsubSetupHandler, err := pubsub.NewClient(ctx, googleProjectID)
+	if err != nil {
+		core.Error("failed to create pubsub setup handler: %v", err)
+		return 1
+	}
+
+	time.Sleep(time.Second * 5)
+
+	pubsubTopics := envvar.GetList("PUBSUB_TOPICS", []string{"local"})
+
+	// Loop through required topics and add them and their subscriptions
+	for _, topic := range pubsubTopics {
+		pubsubSetupHandler.CreateTopic(ctx, topic)
+
+		pubsubSetupHandler.CreateSubscription(ctx, topic, pubsub.SubscriptionConfig{
+			Topic: pubsubSetupHandler.Topic(topic),
+		})
+	}
+
+	pubsubSetupHandler.Close()
+
+	// set up bigquery emulator
 	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
 	magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
@@ -372,9 +401,9 @@ func happy_path() int {
 	analytics_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") && 
-		   	strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
-		   	analytics_initialized = true
+		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
+			strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
+			analytics_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -459,7 +488,8 @@ func happy_path() int {
 	client4_initialized := false
 
 	for i := 0; i < 30; i++ {
-		if strings.Contains(client4_stdout.String(), "client next route (committed)") {
+		if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
+			strings.Contains(client4_stdout.String(), "client continues route (committed)") {
 			client4_initialized = true
 			break
 		}
@@ -481,7 +511,8 @@ func happy_path() int {
 	client5_initialized := false
 
 	for i := 0; i < 30; i++ {
-		if strings.Contains(client5_stdout.String(), "client next route (committed)") {
+		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
 			client5_initialized = true
 			break
 		}
@@ -505,7 +536,12 @@ func happy_path() int {
 	return 0
 }
 
+var googleProjectID string
+
 func main() {
+
+	googleProjectID = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
 	if happy_path() != 0 {
 		os.Exit(1)
 	}

@@ -69,58 +69,63 @@ blocks:
 
         - name: "Analytics"
           commands:
-            - make build-analytics-artifacts-dev
+            - make dist/analytics.dev.tar.gz
             - artifact push workflow dist/analytics.dev.tar.gz
         
         - name: "Portal"
           commands:
-            - make build-portal-artifacts-dev
+            - make dist/portal.dev.tar.gz
             - artifact push workflow dist/portal.dev.tar.gz
         
         - name: "Portal Cruncher"
           commands:
-            - make build-portal-cruncher-artifacts-dev
+            - make dist/portal_cruncher.dev.tar.gz
             - artifact push workflow dist/portal_cruncher.dev.tar.gz
         
         - name: "Relay Gateway"
           commands:
-            - make build-relay-gateway-artifacts-dev
+            - make dist/relay_gateway.dev.tar.gz
             - artifact push workflow dist/relay_gateway.dev.tar.gz
         
         - name: "Relay Backend"
           commands:
-            - make build-relay-backend-artifacts-dev
+            - make dist/relay_backend.dev.tar.gz
             - artifact push workflow dist/relay_backend.dev.tar.gz
         
         - name: "Server Backend 4"
           commands:
-            - make build-server-backend4-artifacts-dev
+            - make dist/server_backend4.dev.tar.gz
             - artifact push workflow dist/server_backend4.dev.tar.gz
         
         - name: "Server Backend 5"
           commands:
-            - make build-server-backend5-artifacts-dev
+            - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
         
         - name: "Ghost Army"
           commands:
-            - make build-ghost-army-artifacts-dev
+            - make dist/ghost_army.dev.tar.gz
             - artifact push workflow dist/ghost_army.dev.tar.gz
         
         - name: "Relay Pusher"
           commands:
-            - make build-relay-pusher-artifacts-dev
+            - make dist/relay_pusher.dev.tar.gz
             - artifact push workflow dist/relay_pusher.dev.tar.gz
         
         - name: "Pingdom"
           commands:
-            - make build-pingdom-artifacts-dev
+            - make dist/pingdom.dev.tar.gz
             - artifact push workflow dist/pingdom.dev.tar.gz
         
         - name: "Magic Backend"
           commands:
-            - make build-magic-backend-artifacts-dev
+            - make dist/magic_backend.dev.tar.gz
             - artifact push workflow dist/magic_backend.dev.tar.gz
+
+        - name: "Redis Monitor"
+          commands:
+            - make dist/redis_monitor.dev.tar.gz
+            - artifact push workflow dist/redis_monitor.dev.tar.gz
 
 
   - name: "Build Artifacts (Native)"
@@ -227,6 +232,11 @@ blocks:
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
+
+        - name: "Redis Monitor"
+          commands:
+            - artifact pull workflow redis_monitor.dev.tar.gz
+            - gsutil cp redis_monitor.dev.tar.gz gs://development_artifacts/
 
         - name: "Test Server 4"
           commands:

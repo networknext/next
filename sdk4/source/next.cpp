@@ -461,7 +461,11 @@ bool next_platform_getenv_bool(const char * name )
 
 double next_time()
 {
+#if NEXT_DEVELOPMENT
+    return next_platform_time() + 100000.0;
+#else // #if NEXT_DEVELOPMENT
     return next_platform_time();
+#endif // #if NEXT_DEVELOPMENT
 }
 
 void next_sleep( double time_seconds )
@@ -4246,7 +4250,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     stats->max_rtt = 0.0f;
     stats->prime_rtt = 0.0f;
     stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
+    stats->packet_loss = 100.0f;
 
     // IMPORTANT: Instead of searching across the whole range then considering any ping with a pong older than ping safety 
     // (typically one second) to be lost, look for the time of the most recent ping that has received a pong, subtract ping
@@ -4291,6 +4295,10 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     if ( num_pings_sent > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+    else
+    {
+    	stats->packet_loss = 100.0f;
     }
 
     // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
@@ -4338,10 +4346,10 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         }
     }
 
-    if ( num_pongs == 0 )
+    if ( num_pings == 0 || min_rtt == FLT_MAX )
     {
-        stats->packet_loss = num_pings > 0 ? 100.0f : 0.0f;
-        return;
+    	// no data
+    	return;
     }
 
     next_assert( min_rtt >= 0.0 );
@@ -4697,7 +4705,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
         if ( !manager->relay_excluded[i] && stats->has_pings )
         {
             next_route_stats_t route_stats;
-            
+
             next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
             
             stats->relay_ids[i] = manager->relay_ids[i];
@@ -7486,13 +7494,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay" );
+    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
@@ -15147,7 +15157,7 @@ static void test_replay_protection()
 
 static void test_ping_stats()
 {
-    // default ping history should have -1 rtt, indicating "no data"
+    // default ping history should have 100% packet loss, indicating, do not route!
     {
         const double ping_safety = 1.0;
 
@@ -15157,11 +15167,11 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
         
-        next_check( route_stats.min_rtt == 0.0f );
+        next_check( route_stats.min_rtt == -0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
+        next_check( route_stats.packet_loss == 100.0f );
     }
 
     // add some pings without pong response, packet loss should be 100%
@@ -17178,6 +17188,7 @@ static void test_relay_manager()
     next_relay_manager_t * manager = next_relay_manager_create( NULL );
 
     // should be no relays when manager is first created
+    
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -17194,6 +17205,9 @@ static void test_relay_manager()
         for ( int i = 0; i < NumRelays; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
         }
     }
 
