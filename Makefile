@@ -316,11 +316,11 @@ dev-relay: build-reference-relay  ## runs a local relay
 	@RELAY_DEBUG=1 RELAY_ADDRESS=127.0.0.1:$(RELAY_PORT) ./dist/reference_relay
 
 .PHONY: dev-server-backend4
-dev-server-backend4: build-server-backend4 ## runs a local server backend (sdk4)
+dev-server-backend4: dist/server_backend4 ## runs a local server backend (sdk4)
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
 
 .PHONY: dev-server-backend5
-dev-server-backend5: build-server-backend5 ## runs a local server backend (sdk5)
+dev-server-backend5: dist/server_backend5 ## runs a local server backend (sdk5)
 	@HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5
 
 ##############################################
