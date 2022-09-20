@@ -253,12 +253,10 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
 # Build most artifacts
 
 dist/%.dev.tar.gz: dist/%
-	@echo "Building $@ (dev)"
-	@go run scripts/build_artifact/build_artifact.go $@
+	@go run scripts/build_artifact/build_artifact.go $@ dev
 
 dist/%.prod.tar.gz: dist/%
-	@echo "Building $@ (prod)"
-	@go run scripts/build_artifact/build_artifact.go $@
+	@go run scripts/build_artifact/build_artifact.go $@ prod
 
 # Format golang code
 
@@ -622,18 +620,6 @@ build-portal:
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: build-server-backend4
-build-server-backend4:
-	@printf "Building server backend 4... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend4 ./cmd/server_backend4/server_backend4.go
-	@printf "done\n"
-
-.PHONY: build-server-backend5
-build-server-backend5:
-	@printf "Building server backend 5... "
-	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/server_backend5 ./cmd/server_backend5/server_backend5.go
-	@printf "done\n"
-
 .PHONY: build-fake-server
 build-fake-server: dist
 	@printf "Building fake server... "
@@ -689,18 +675,6 @@ build-load-test-server-artifacts: build-load-test-server
 build-load-test-client-artifacts: build-load-test-client
 	./deploy/build-load-test-artifacts.sh -s load_test_client
 
-.PHONY: build-analytics-artifacts-dev
-build-analytics-artifacts-dev: build-analytics
-	./deploy/build-artifacts.sh -e dev -s analytics
-
-.PHONY: build-magic-backend-artifacts-dev
-build-magic-backend-artifacts-dev: build-magic-backend
-	./deploy/build-artifacts.sh -e dev -s magic_backend
-
-.PHONY: build-redis-monitor-artifacts-dev
-build-redis-monitor-artifacts-dev: build-redis-monitor
-	./deploy/build-artifacts.sh -e dev -s redis_monitor
-
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
@@ -721,14 +695,6 @@ build-portal-artifacts-dev-old: build-portal
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
-.PHONY: build-server-backend4-artifacts-dev
-build-server-backend4-artifacts-dev: build-server-backend4
-	./deploy/build-artifacts.sh -e dev -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-dev
-build-server-backend5-artifacts-dev: build-server-backend5
-	./deploy/build-artifacts.sh -e dev -s server_backend5
-
 .PHONY: build-test-server4-artifacts-dev
 build-test-server4-artifacts-dev: build-test-server4
 	./deploy/build-artifacts.sh -e dev -s test_server4
@@ -744,14 +710,6 @@ build-test-server4-artifacts-prod: build-test-server4
 .PHONY: build-test-server5-artifacts-prod
 build-test-server5-artifacts-prod: build-test-server5
 	./deploy/build-artifacts.sh -e prod -s test_server5
-
-.PHONY: build-analytics-artifacts-staging
-build-analytics-artifacts-staging: build-analytics
-	./deploy/build-artifacts.sh -e staging -s analytics
-
-.PHONY: build-magic-backend-artifacts-staging
-build-magic-backend-artifacts-staging: build-magic-backend
-	./deploy/build-artifacts.sh -e staging -s magic_backend
 
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
@@ -769,22 +727,6 @@ build-portal-artifacts-staging: build-portal
 build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-server-backend4-artifacts-staging
-build-server-backend4-artifacts-staging: build-server-backend4
-	./deploy/build-artifacts.sh -e staging -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-staging
-build-server-backend5-artifacts-staging: build-server-backend5
-	./deploy/build-artifacts.sh -e staging -s server_backend5
-
-.PHONY: build-analytics-artifacts-prod
-build-analytics-artifacts-prod: build-analytics
-	./deploy/build-artifacts.sh -e prod -s analytics
-
-.PHONY: build-magic-backend-artifacts-prod
-build-magic-backend-artifacts-prod: build-magic-backend
-	./deploy/build-artifacts.sh -e prod -s magic_backend
-
 .PHONY: build-relay-artifacts-prod
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
@@ -800,14 +742,6 @@ build-portal-artifacts-prod: build-portal
 .PHONY: build-portal-cruncher-artifacts-prod
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
-
-.PHONY: build-server-backend4-artifacts-prod
-build-server-backend4-artifacts-prod: build-server-backend4
-	./deploy/build-artifacts.sh -e prod -s server_backend4
-
-.PHONY: build-server-backend5-artifacts-prod
-build-server-backend5-artifacts-prod: build-server-backend5
-	./deploy/build-artifacts.sh -e prod -s server_backend5
 
 .PHONY: build-next
 build-next:
@@ -848,52 +782,6 @@ deploy-relay-pusher-staging:
 .PHONY: deploy-relay-pusher-prod
 deploy-relay-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t relay-pusher -n relay_pusher -b gs://production_artifacts
-
-#######################
-#    Relay Backend    #
-#######################
-
-.PHONY: build-relay-backend
-build-relay-backend:
-	@printf "Building relay backend... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_backend ./cmd/relay_backend/relay_backend.go
-	@printf "done\n"
-
-.PHONY: build-relay-backend-artifacts-dev
-build-relay-backend-artifacts-dev: build-relay-backend
-	./deploy/build-artifacts.sh -e dev -s relay_backend
-
-.PHONY: build-relay-backend-artifacts-staging
-build-relay-backend-artifacts-staging: build-relay-backend
-	./deploy/build-artifacts.sh -e staging -s relay_backend
-
-.PHONY: build-relay-backend-artifacts-prod
-build-relay-backend-artifacts-prod: build-relay-backend
-	./deploy/build-artifacts.sh -e prod -s relay_backend
-
-.PHONY: deploy-relay-backend-dev-1
-deploy-relay-backend-dev-1:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-backend -n relay_backend -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-dev-2
-deploy-relay-backend-dev-2:
-	./deploy/deploy.sh -e dev -c dev-2 -t relay-backend -n relay_backend -b gs://development_artifacts
-
-.PHONY: deploy-relay-backend-staging-1
-deploy-relay-backend-staging-1:
-	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
-
-.PHONY: deploy-relay-backend-staging-2
-deploy-relay-backend-staging-2:
-	./deploy/deploy.sh -e staging -c staging-2 -t relay-backend -n relay_backend -b gs://staging_artifacts
-
-.PHONY: deploy-relay-backend-prod-1
-deploy-relay-backend-prod-1:
-	./deploy/deploy.sh -e prod -c prod-1-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
-
-.PHONY: deploy-relay-backend-prod-2
-deploy-relay-backend-prod-2:
-	./deploy/deploy.sh -e prod -c prod-2-ubuntu20 -t relay-backend -n relay_backend -b gs://production_artifacts
 
 #######################
 #     Ghost Army      #
@@ -983,28 +871,6 @@ RELAY_EXE := relay
 build-reference-relay: dist
 	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
-
-#######################
-#    Relay Gateway    #
-#######################
-
-.PHONY: build-relay-gateway
-build-relay-gateway:
-	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X '$(MODULE).commitMessage=$(COMMIT_MESSAGE)' -X $(MODULE).commitHash=$(COMMIT_HASH)" -o dist/relay_gateway ./cmd/relay_gateway/relay_gateway.go
-	@printf "done\n"
-
-.PHONY: build-relay-gateway-artifacts-dev
-build-relay-gateway-artifacts-dev: build-relay-gateway
-	./deploy/build-artifacts.sh -e dev -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-staging
-build-relay-gateway-artifacts-staging: build-relay-gateway
-	./deploy/build-artifacts.sh -e staging -s relay_gateway
-
-.PHONY: build-relay-gateway-artifacts-prod
-build-relay-gateway-artifacts-prod: build-relay-gateway
-	./deploy/build-artifacts.sh -e prod -s relay_gateway
 
 #######################
 
