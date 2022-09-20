@@ -631,39 +631,6 @@ build-pingdom: dist
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
-.PHONY: deploy-portal-crunchers-dev
-deploy-portal-crunchers-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
-	./deploy/deploy.sh -e dev -c dev-2 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
-
-.PHONY: deploy-pingdom-dev
-deploy-pingdom-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
-
-.PHONY: build-pingdom-artifacts-dev
-build-pingdom-artifacts-dev: build-pingdom
-	./deploy/build-artifacts.sh -e dev -s pingdom
-
-.PHONY: build-portal-artifacts-dev
-build-portal-artifacts-dev: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
-
-.PHONY: build-portal-artifacts-dev-old
-build-portal-artifacts-dev-old: build-portal
-	./deploy/build-artifacts.sh -e dev -s portal-old -b $(ARTIFACT_BUCKET)
-
-.PHONY: build-portal-cruncher-artifacts-dev
-build-portal-cruncher-artifacts-dev: build-portal-cruncher
-	./deploy/build-artifacts.sh -e dev -s portal_cruncher
-
-.PHONY: build-test-server4-artifacts-dev
-build-test-server4-artifacts-dev: build-test-server4
-	./deploy/build-artifacts.sh -e dev -s test_server4
-
-.PHONY: build-test-server5-artifacts-dev
-build-test-server5-artifacts-dev: build-test-server5
-	./deploy/build-artifacts.sh -e dev -s test_server5
-
 .PHONY: build-next
 build-next:
 	@printf "Building operator tool... "
