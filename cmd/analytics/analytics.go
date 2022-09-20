@@ -12,7 +12,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
-	"google.golang.org/api/option"
 )
 
 var costMatrixURI string
@@ -85,24 +84,12 @@ func Process[T messages.Message](service *common.Service, name string) {
 		BatchDuration: 10 * time.Second,
 	}
 
-	clientOptions := []option.ClientOption{}
-
-	// If we are running locally, tell the client to talk to the emulator
-	// - bigquery lib doesn't do this by default
-	if service.Local {
-		clientOptions = []option.ClientOption{
-			option.WithEndpoint("http://127.0.0.1:9050"),
-			option.WithoutAuthentication(),
-		}
-	}
-
 	publisherConfig := common.GoogleBigQueryConfig{
 		ProjectId:     googleProjectId,
 		Dataset:       bigqueryDataset,
 		TableName:     bigqueryTable,
 		BatchSize:     100,
 		BatchDuration: 10 * time.Second,
-		ClientOptions: clientOptions,
 	}
 
 	consumer, err := common.CreateGooglePubsubConsumer(service.Context, consumerConfig)

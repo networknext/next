@@ -305,7 +305,6 @@ func test_google_bigquery() {
 			BatchSize:          100,
 			BatchDuration:      time.Millisecond * 100,
 			PublishChannelSize: 10 * 1024,
-			ClientOptions:      clientOptions,
 		})
 		if err != nil {
 			core.Error("failed to create google bigquery publisher: %v", err)
