@@ -3,10 +3,9 @@ package packets
 // -------------------------------------------------
 
 const (
-
 	SDK4_MaxDatacenterNameLength = 256
-	SDK4_MaxSessionDataSize = 511
-	SDK4_MaxTags = 8
+	SDK4_MaxSessionDataSize      = 511
+	SDK4_MaxTags                 = 8
 	SDK4_MaxSessionUpdateRetries = 10
 
 	SDK4_PlatformTypeUnknown     = 0
