@@ -3,6 +3,7 @@ package packets
 import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -135,18 +136,15 @@ func Test_SDK4_ServerInitResponsePacket(t *testing.T) {
 func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 
 	writePacket := SDK4_SessionUpdatePacket{
-		Version:          SDKVersion{1, 2, 3},
-		BuyerId:          123414,
-		DatacenterId:     1234123491,
-		SessionId:        120394810984109,
-		SliceNumber:      5,
-		RetryNumber:      1,
-		SessionDataBytes: 100,
-		// todo: copy in session data
-		ClientAddress: *core.ParseAddress("127.0.0.1:50000"),
-		ServerAddress: *core.ParseAddress("127.0.0.1:40000"),
-		// todo: ClientRoutePublicKey
-		// todo: ServerRoutePublicKey
+		Version:                  SDKVersion{1, 2, 3},
+		BuyerId:                  123414,
+		DatacenterId:             1234123491,
+		SessionId:                120394810984109,
+		SliceNumber:              5,
+		RetryNumber:              1,
+		SessionDataBytes:         100,
+		ClientAddress:            *core.ParseAddress("127.0.0.1:50000"),
+		ServerAddress:            *core.ParseAddress("127.0.0.1:40000"),
 		UserHash:                 12341298742,
 		PlatformType:             SDK4_PlatformTypePS4,
 		ConnectionType:           SDK4_ConnectionTypeWired,
@@ -158,7 +156,6 @@ func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 		ServerBandwidthOverLimit: false,
 		ClientPingTimedOut:       false,
 		NumTags:                  2,
-		// todo: Tags
 		Flags:                    122,
 		UserFlags:                3152384721,
 		DirectMinRTT:             10.0,
@@ -169,26 +166,38 @@ func Test_SDK4_SessionUpdatePacket(t *testing.T) {
 		NextRTT:                  5.0,
 		NextJitter:               0.5,
 		NextPacketLoss:           0.01,
+		NumNearRelays:            10,
+		NextKbpsUp:               100,
+		NextKbpsDown:             256,
+		PacketsSentClientToServer: 10000,
+		PacketsSentServerToClient: 10500,
+		PacketsLostClientToServer: 5,
+		PacketsLostServerToClient: 10,
+		PacketsOutOfOrderClientToServer: 8,
+		PacketsOutOfOrderServerToClient: 9,
+		JitterClientToServer: 8.2,
+		JitterServerToClient: 9.6,
 	}
 
-	/*
-		NumNearRelays                   int32
-		NearRelayIds                    [core.MaxNearRelays]uint64
-		NearRelayRTT                    [core.MaxNearRelays]int32
-		NearRelayJitter                 [core.MaxNearRelays]int32
-		NearRelayPacketLoss             [core.MaxNearRelays]int32
-		NextKbpsUp                      uint32
-		NextKbpsDown                    uint32
-		PacketsSentClientToServer       uint64
-		PacketsSentServerToClient       uint64
-		PacketsLostClientToServer       uint64
-		PacketsLostServerToClient       uint64
-		PacketsOutOfOrderClientToServer uint64
-		PacketsOutOfOrderServerToClient uint64
-		JitterClientToServer            float32
-		JitterServerToClient            float32
-	*/
-	
+	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
+		writePacket.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	for i := 0; i < int(crypto.KeySize); i++ {
+		writePacket.ClientRoutePublicKey[i] = uint8((i + 7) % 256)
+		writePacket.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
+	}
+
+	writePacket.Tags[0] = 12342151
+	writePacket.Tags[1] = 134614111111
+
+	for i := 0; i < int(writePacket.NumNearRelays); i++ {
+		writePacket.NearRelayIds[i] = uint64(i * 32)
+		writePacket.NearRelayRTT[i] = int32(i)
+		writePacket.NearRelayJitter[i] = int32(i+1)
+		writePacket.NearRelayPacketLoss[i] = int32(i+2)
+	}
+
 	readPacket := SDK4_SessionUpdatePacket{}
 
 	PacketSerializationTest[*SDK4_SessionUpdatePacket](&writePacket, &readPacket, t)
