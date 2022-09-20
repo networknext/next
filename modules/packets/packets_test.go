@@ -107,6 +107,7 @@ func PacketSerializationTest[P Packet](writePacket Packet, readPacket Packet, t 
 func Test_SDK4_ServerInitRequestPacket(t *testing.T) {
 
 	writePacket := SDK4_ServerInitRequestPacket{
+		Version:        SDKVersion{1,2,3},
 		BuyerId:        1234567,
 		DatacenterId:   5124111,
 		RequestId:      234198347,
@@ -118,7 +119,29 @@ func Test_SDK4_ServerInitRequestPacket(t *testing.T) {
 	PacketSerializationTest[*SDK4_ServerInitRequestPacket](&writePacket, &readPacket, t)
 }
 
-// ...
+func Test_SDK4_ServerInitResponsePacket(t *testing.T) {
+
+	writePacket := SDK4_ServerInitResponsePacket{
+		RequestId:      234198347,
+		Response:       1,
+	}
+
+	readPacket := SDK4_ServerInitResponsePacket{}
+
+	PacketSerializationTest[*SDK4_ServerInitResponsePacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK4_SessionUpdatePacket(t *testing.T) {
+
+	writePacket := SDK4_SessionUpdatePacket{
+		Version:        SDKVersion{1,2,3},
+		// todo
+	}
+
+	readPacket := SDK4_SessionUpdatePacket{}
+
+	PacketSerializationTest[*SDK4_SessionUpdatePacket](&writePacket, &readPacket, t)
+}
 
 // ------------------------------------------------------------------------
 
