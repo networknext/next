@@ -28,10 +28,6 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
-ARTIFACT_BUCKET = gs://development_artifacts
-ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
-ARTIFACT_BUCKET_PROD = gs://production_artifacts
-
 ####################
 ##    RELAY ENV   ##
 ####################
@@ -647,14 +643,6 @@ build-relay-pusher:
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/relay_pusher ./cmd/relay_pusher/relay_pusher.go
 	@printf "done\n"
 
-.PHONY: build-relay-pusher-artifacts-dev
-build-relay-pusher-artifacts-dev: build-relay-pusher
-	./deploy/build-artifacts.sh -e dev -s relay_pusher
-
-.PHONY: deploy-relay-pusher-dev
-deploy-relay-pusher-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t relay-pusher -n relay_pusher -b gs://development_artifacts
-
 #######################
 #     Ghost Army      #
 #######################
@@ -681,14 +669,6 @@ build-ghost-army-analyzer:
 	@$(GO) build -o ./dist/ghost_army_analyzer ./cmd/ghost_army_analyzer/*.go
 	@printf "done\n"
 
-.PHONY: build-ghost-army-artifacts-dev
-build-ghost-army-artifacts-dev: build-ghost-army
-	./deploy/build-artifacts.sh -e dev -s ghost_army
-
-.PHONY: deploy-ghost-army-dev
-deploy-ghost-army-dev:
-	./deploy/deploy.sh -e dev -c 1 -t ghost-army -n ghost_army -b gs://development_artifacts
-
 #######################
 #     Fake Relay      #
 #######################
@@ -702,10 +682,6 @@ build-fake-relays:
 	@printf "Building fake relays... "
 	@$(GO) build -ldflags "-s -w -X main.buildTime=$(BUILD_TIME) -X 'main.commitMessage=$(COMMIT_MESSAGE)' -X main.commitMessage=$(COMMIT_HASH)" -o dist/fake_relays ./cmd/fake_relays/fake_relays.go
 	@printf "done\n"
-
-.PHONY: build-fake-relays-artifacts-dev
-build-fake-relays-artifacts-dev: build-fake-relays
-	./deploy/build-artifacts.sh -e dev -s fake_relays
 
 #########
 # Relay #
