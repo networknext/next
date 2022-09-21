@@ -353,8 +353,11 @@ func Test_SDK4_SessionData(t *testing.T) {
 		PLSustainedCounter: 0,
 	}
 
-	// todo: NearRelayRTT
-	// todo: NearRelayJitter
+	for i := 0; i < SDK4_MaxNearRelays; i++ {
+		routeState.NearRelayRTT[i] = int32(i + 10)
+		routeState.NearRelayJitter[i] = int32(i + 5)
+	}
+
 	// todo: NearRelayPLHistory
 	// todo: NearRelayPLCount
 	// todo: DirectPLHistory
