@@ -319,8 +319,37 @@ func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
 func Test_SDK4_SessionData(t *testing.T) {
 
 	writePacket := SDK4_SessionData{
-		Version: SDK4_SessionDataVersion,
-		// todo
+		Version:         SDK4_SessionDataVersion,
+		SessionId:       123123131,
+		SessionVersion:  5,
+		SliceNumber:     10001,
+		ExpireTimestamp: 3249823948198,
+		Initial:         false,
+		Location:        SDK4_LocationData{Latitude: 100.2, Longitude: 95.0, ISP: "Comcast", ASN: 12313},
+		RouteChanged:    true,
+		RouteNumRelays:  5,
+		RouteCost: 105,
+		// todo: RouteState
+		EverOnNext: true,
+		FellBackToDirect: false,
+		PrevPacketsSentClientToServer: 100000,
+		PrevPacketsSentServerToClient: 100234,
+		PrevPacketsLostClientToServer: 100021,
+		PrevPacketsLostServerToClient: 100005,
+		HoldNearRelays: true,
+		WroteSummary: false,
+		TotalPriceSum: 123213111,
+		NextEnvelopeBytesUpSum: 12313123,
+		NextEnvelopeBytesDownSum: 238129381,
+		DurationOnNext: 5000,
+	}
+
+	for i := 0; i < int(writePacket.RouteNumRelays); i++ {
+		writePacket.RouteRelayIds[i] = uint64(i + 1000)
+	}
+
+	for i := 0; i < SDK4_MaxNearRelays; i++ {
+		writePacket.HoldNearRelayRTT[i] = int32(i + 100)
 	}
 
 	readPacket := SDK4_SessionData{}
@@ -378,7 +407,5 @@ func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
 	PacketSerializationTest[*SDK5_ServerInitRequestPacket](&writePacket, &readPacket, t)
 }
-
-// ...
 
 // ------------------------------------------------------------------------

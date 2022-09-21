@@ -2,8 +2,8 @@ package packets
 
 import (
 	"errors"
-	"net"
 	"fmt"
+	"net"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -313,14 +313,14 @@ func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error 
 // ------------------------------------------------------------
 
 type SDK4_LocationData struct {
-	Latitude    float32
-	Longitude   float32
-	ISP         string
-	ASN         uint32
+	Latitude  float32
+	Longitude float32
+	ISP       string
+	ASN       uint32
 }
 
 func (location *SDK4_LocationData) Read(data []byte) error {
-	
+
 	index := 0
 
 	var version uint32
@@ -364,12 +364,12 @@ func (location *SDK4_LocationData) Write(buffer []byte) ([]byte, error) {
 // ------------------------------------------------------------
 
 type SDK4_SessionData struct {
-	Version         uint32
-	SessionId       uint64
-	SessionVersion  uint32
-	SliceNumber     uint32
-	ExpireTimestamp uint64
-	Initial         bool
+	Version                       uint32
+	SessionId                     uint64
+	SessionVersion                uint32
+	SliceNumber                   uint32
+	ExpireTimestamp               uint64
+	Initial                       bool
 	Location                      SDK4_LocationData
 	RouteChanged                  bool
 	RouteNumRelays                int32
