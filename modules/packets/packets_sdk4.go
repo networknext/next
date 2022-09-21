@@ -393,8 +393,6 @@ type SDK4_SessionData struct {
 
 func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 
-	// IMPORTANT: DO NOT CHANGE CODE IN THIS FUNCTION BELOW HERE.
-
 	stream.SerializeBits(&sessionData.Version, 8)
 
 	if sessionData.Version < 8 {
@@ -533,14 +531,6 @@ func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 
 	stream.SerializeUint32(&sessionData.DurationOnNext)
-
-	// IMPORTANT: DO NOT CHANGE CODE IN THIS FUNCTION ABOVE HERE
-
-	// ADD NEW FIELDS HERE ONLY. ONCE COMPLETED MOVE THIS COMMENT SECTION BELOW THE NEW FIELDS
-
-	// FAILING TO FOLLOW THIS WILL BREAK PRODUCTION!!!
-
-	// >>> NEW FIELDS GO HERE <<<
 
 	return stream.Error()
 }

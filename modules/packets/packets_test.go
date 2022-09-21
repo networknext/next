@@ -318,6 +318,50 @@ func Test_SDK4_SessionResponsePacket_ContinueRoute(t *testing.T) {
 
 func Test_SDK4_SessionData(t *testing.T) {
 
+	routeState := core.RouteState{
+		UserID: 123213131,
+		Next: true,
+		Veto: false,
+		Banned: false,
+		Disabled: false,
+		NotSelected: false,
+		ABTest: true,
+		A: true,
+		B: false,
+		ForcedNext: false,
+		ReduceLatency: true,
+		ReducePacketLoss: true,
+		ProMode: false,
+		Multipath: true,
+		Committed: true,
+		CommitVeto: false,
+		CommitCounter: 0,
+		LatencyWorse: false,
+		LocationVeto: false,
+		MultipathOverload: false,
+		NoRoute: false,
+		NextLatencyTooHigh: false,
+		NumNearRelays: 32,
+		RelayWentAway: false,
+		RouteLost: false,
+		DirectJitter: 5,
+		Mispredict: false,
+		LackOfDiversity: false,
+		MispredictCounter: 0,
+		LatencyWorseCounter: 0,
+		MultipathRestricted: false,
+		PLSustainedCounter: 0,
+	}
+
+	// todo: NearRelayRTT
+	// todo: NearRelayJitter
+	// todo: NearRelayPLHistory
+	// todo: NearRelayPLCount
+	// todo: DirectPLHistory
+	// todo: DirectPLCount
+	// todo: PLHistoryIndex
+	// todo: PLHIstorySamples
+
 	writePacket := SDK4_SessionData{
 		Version:         SDK4_SessionDataVersion,
 		SessionId:       123123131,
@@ -329,7 +373,7 @@ func Test_SDK4_SessionData(t *testing.T) {
 		RouteChanged:    true,
 		RouteNumRelays:  5,
 		RouteCost: 105,
-		// todo: RouteState
+		RouteState: routeState,
 		EverOnNext: true,
 		FellBackToDirect: false,
 		PrevPacketsSentClientToServer: 100000,
