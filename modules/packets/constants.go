@@ -8,13 +8,16 @@ import (
 // -------------------------------------------------
 
 const (
-	SDK4_PACKET_TYPE_ServerUpdate       = 220
-	SDK4_PACKET_TYPE_SessionUpdate      = 221
-	SDK4_PACKET_TYPE_SessionResponse    = 222
-	SDK4_PACKET_TYPE_ServerInitRequest  = 223
-	SDK4_PACKET_TYPE_ServerInitResponse = 224
-	SDK4_PACKET_TYPE_MatchDataRequest   = 225
-	SDK4_PACKET_TYPE_MatchDataResponse  = 226
+	// todo: clean up as per sdk5 below
+	/*
+		SDK4_PACKET_TYPE_ServerUpdate       = 220
+		SDK4_PACKET_TYPE_SessionUpdate      = 221
+		SDK4_PACKET_TYPE_SessionResponse    = 222
+		SDK4_PACKET_TYPE_ServerInitRequest  = 223
+		SDK4_PACKET_TYPE_ServerInitResponse = 224
+		SDK4_PACKET_TYPE_MatchDataRequest   = 225
+		SDK4_PACKET_TYPE_MatchDataResponse  = 226
+	*/
 
 	SDK4_MaxDatacenterNameLength = 256
 	SDK4_MaxSessionDataSize      = 511
@@ -88,6 +91,18 @@ const (
 
 // -------------------------------------------------
 
-const SDK5_MaxDatacenterNameLength = 256
+const (
+
+	SDK5_SERVER_INIT_REQUEST_PACKET = 50
+	SDK5_SERVER_INIT_RESPONSE_PACKET = 51
+	SDK5_SERVER_UPDATE_REQUEST_PACKET = 52
+	SDK5_SERVER_UPDATE_RESPONSE_PACKET = 53
+	SDK5_SESSION_UPDATE_REQUEST_PACKET = 54
+	SDK5_SESSION_UPDATE_RESPONSE_PACKET = 55
+	SDK5_MATCH_DATA_REQUEST_PACKET = 56
+	SDK5_MATCH_DATA_RESPONSE_PACKET = 57
+
+	SDK5_MaxDatacenterNameLength = 256
+)
 
 // -------------------------------------------------

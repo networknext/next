@@ -1,25 +1,25 @@
 package common
 
 import (
-	"net"
 	"context"
-	"syscall"
 	"fmt"
+	"net"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
 
 type UDPServerConfig struct {
-	Port int
-	NumThreads int
-	SocketReadBuffer int
+	Port              int
+	NumThreads        int
+	SocketReadBuffer  int
 	SocketWriteBuffer int
-	MaxPacketSize int
+	MaxPacketSize     int
 }
 
 type UDPServer struct {
 	config UDPServerConfig
-	conn []*net.UDPConn
+	conn   []*net.UDPConn
 }
 
 func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler func(conn *net.UDPConn, from *net.UDPAddr, packet []byte)) *UDPServer {

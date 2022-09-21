@@ -3,8 +3,8 @@ package main
 import (
 	"net"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 )
 
 func main() {
