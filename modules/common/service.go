@@ -82,6 +82,8 @@ type Service struct {
 	leaderElection *RedisLeaderElection
 
 	healthHandler func(w http.ResponseWriter, r *http.Request)
+
+	udpServer *UDPServer
 }
 
 func CreateService(serviceName string) *Service {
@@ -193,6 +195,22 @@ func (service *Service) StartWebServer() {
 			os.Exit(1)
 		}
 	}()
+}
+
+func (service *Service) StartUDPServer() {
+	config := UDPServerConfig{}
+	config.Port = envvar.GetInt("UDP_PORT", 40000)
+	config.NumThreads = envvar.GetInt("UDP_NUM_THREADS", 16)
+	config.SocketReadBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 10*1024*1024)
+	config.SocketWriteBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 10*1024*1024)
+	config.MaxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
+	core.Log("udp port: %d", config.Port)
+	core.Log("udp num threads: %d", config.NumThreads)
+	core.Log("udp socket read buffer: %d", config.SocketReadBuffer)
+	core.Log("udp socket write buffer: %d", config.SocketWriteBuffer)
+	core.Log("udp max packet size: %d", config.MaxPacketSize)
+	core.Log("starting udp server on port %s", config.Port)
+	service.udpServer = CreateUDPServer(service.Context, config)
 }
 
 func (service *Service) LeaderElection() {

@@ -7,29 +7,7 @@ import (
 	"fmt"
 
 	"golang.org/x/sys/unix"
-
-	/*
-	"fmt"
-	"bytes"
-	"time"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"sync"
-
-	"github.com/gafferongames/glenn/modules/core"
-
-	"github.com/gorilla/mux"
-	*/
 )
-
-// UDP_PORT
-// UDP_THREADS
-// UDP_SOCKET_READ_BUFFER
-// UDP_SOCKET_WRITE_BUFFER
 
 type UDPServerConfig struct {
 	Port int
