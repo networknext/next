@@ -201,15 +201,15 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	config := UDPServerConfig{}
 	config.Port = envvar.GetInt("UDP_PORT", 40000)
 	config.NumThreads = envvar.GetInt("UDP_NUM_THREADS", 16)
-	config.SocketReadBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 10*1024*1024)
-	config.SocketWriteBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 10*1024*1024)
+	config.SocketReadBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
+	config.SocketWriteBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
 	config.MaxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	core.Log("udp port: %d", config.Port)
 	core.Log("udp num threads: %d", config.NumThreads)
 	core.Log("udp socket read buffer: %d", config.SocketReadBuffer)
 	core.Log("udp socket write buffer: %d", config.SocketWriteBuffer)
 	core.Log("udp max packet size: %d", config.MaxPacketSize)
-	core.Log("starting udp server on port %s", config.Port)
+	core.Log("starting udp server on port %d", config.Port)
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
