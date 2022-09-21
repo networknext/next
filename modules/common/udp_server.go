@@ -1,0 +1,111 @@
+package common
+
+import (
+	"net"
+	"context"
+	"syscall"
+	"fmt"
+
+	"golang.org/x/sys/unix"
+
+	/*
+	"fmt"
+	"bytes"
+	"time"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+
+	"github.com/gafferongames/glenn/modules/core"
+
+	"github.com/gorilla/mux"
+	*/
+)
+
+// UDP_PORT
+// UDP_THREADS
+// UDP_SOCKET_READ_BUFFER
+// UDP_SOCKET_WRITE_BUFFER
+
+type UDPServerConfig struct {
+	Port int
+	NumThreads int
+	SocketReadBuffer int
+	SocketWriteBuffer int
+	MaxPacketSize int
+}
+
+type UDPServer struct {
+	config UDPServerConfig
+	conn []*net.UDPConn
+}
+
+func CreateUDPServer(ctx context.Context, config UDPServerConfig) *UDPServer {
+
+	udpServer := UDPServer{}
+	udpServer.config = config
+	udpServer.conn = make([]*net.UDPConn, config.NumThreads)
+
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+				}
+
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+				}
+			})
+
+			return err
+		},
+	}
+
+	for i := 0; i < config.NumThreads; i++ {
+
+		lp, err := lc.ListenPacket(ctx, "udp", fmt.Sprintf("0.0.0.0:%d", config.Port))
+		if err != nil {
+			panic(fmt.Sprintf("could not bind socket: %v", err))
+		}
+
+		udpServer.conn[i] = lp.(*net.UDPConn)
+		defer udpServer.conn[i].Close()
+
+		if err := udpServer.conn[i].SetReadBuffer(config.SocketReadBuffer); err != nil {
+			panic(fmt.Sprintf("could not set socket read buffer size: %v", err))
+		}
+
+		if err := udpServer.conn[i].SetWriteBuffer(config.SocketWriteBuffer); err != nil {
+			panic(fmt.Sprintf("could not set socket write buffer size: %v", err))
+		}
+
+		go func(thread int) {
+
+			for {
+
+				// read packet
+
+				receiveBuffer := make([]byte, config.MaxPacketSize)
+
+				receivePacketBytes, from, err := udpServer.conn[thread].ReadFromUDP(receiveBuffer[:])
+				if err != nil {
+					break
+				}
+
+				// todo: call out to handler
+				_ = receivePacketBytes
+				_ = from
+			}
+
+		}(i)
+	}
+
+	return &udpServer
+}
