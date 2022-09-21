@@ -356,14 +356,14 @@ func Test_SDK4_SessionData(t *testing.T) {
 	for i := 0; i < SDK4_MaxNearRelays; i++ {
 		routeState.NearRelayRTT[i] = int32(i + 10)
 		routeState.NearRelayJitter[i] = int32(i + 5)
+		routeState.NearRelayPLHistory[i] = (uint32(1123414100) >> i) & 0xFF
+		routeState.NearRelayPLCount[i] = uint32(500) + uint32(i)
 	}
 
-	// todo: NearRelayPLHistory
-	// todo: NearRelayPLCount
-	// todo: DirectPLHistory
-	// todo: DirectPLCount
-	// todo: PLHistoryIndex
-	// todo: PLHIstorySamples
+	routeState.DirectPLHistory = 127
+	routeState.DirectPLCount = 5
+	routeState.PLHistoryIndex = 3
+	routeState.PLHistorySamples = 5
 
 	writePacket := SDK4_SessionData{
 		Version:         SDK4_SessionDataVersion,
