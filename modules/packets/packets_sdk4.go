@@ -370,7 +370,7 @@ type SDK4_SessionData struct {
 	SliceNumber     uint32
 	ExpireTimestamp uint64
 	Initial         bool
-	// Location                      routing.Location
+	Location                      SDK4_LocationData
 	RouteChanged                  bool
 	RouteNumRelays                int32
 	RouteCost                     int32
@@ -410,24 +410,29 @@ func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
 
 	stream.SerializeBool(&sessionData.Initial)
 
-	// todo
-	/*
-		locationSize := uint32(sessionData.Location.Size())
-		stream.SerializeUint32(&locationSize)
-		if stream.IsReading() {
-			locationBytes := make([]byte, locationSize)
-			stream.SerializeBytes(locationBytes)
-			if err := sessionData.Location.UnmarshalBinary(locationBytes); err != nil {
-				return err
-			}
-		} else {
-			locationBytes, err := sessionData.Location.MarshalBinary()
-			if err != nil {
-				return err
-			}
-			stream.SerializeBytes(locationBytes)
+	buffer := [SDK4_MaxLocationSize]byte{}
+
+	if stream.IsWriting() {
+
+		locationData, err := sessionData.Location.Write(buffer[:])
+		if err != nil {
+			return err
 		}
-	*/
+		locationBytes := uint32(len(locationData))
+		stream.SerializeUint32(&locationBytes)
+		stream.SerializeBytes(locationData)
+
+	} else {
+
+		var locationBytes uint32
+		stream.SerializeUint32(&locationBytes)
+		stream.SerializeBytes(buffer[:locationBytes])
+		err := sessionData.Location.Read(buffer[:locationBytes])
+		if err != nil {
+			return err
+		}
+
+	}
 
 	stream.SerializeBool(&sessionData.RouteChanged)
 
