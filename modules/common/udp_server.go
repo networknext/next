@@ -54,7 +54,6 @@ func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler 
 		}
 
 		udpServer.conn[i] = lp.(*net.UDPConn)
-		defer udpServer.conn[i].Close()
 
 		if err := udpServer.conn[i].SetReadBuffer(config.SocketReadBuffer); err != nil {
 			panic(fmt.Sprintf("could not set socket read buffer size: %v", err))
@@ -74,11 +73,14 @@ func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler 
 
 				receivePacketBytes, from, err := udpServer.conn[thread].ReadFromUDP(receiveBuffer[:])
 				if err != nil {
+					fmt.Printf("udp receive error: %v\n", err)
 					break
 				}
 
 				packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
 			}
+
+			udpServer.conn[thread].Close()
 
 		}(i)
 	}
