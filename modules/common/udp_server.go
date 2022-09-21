@@ -22,7 +22,7 @@ type UDPServer struct {
 	conn []*net.UDPConn
 }
 
-func CreateUDPServer(ctx context.Context, config UDPServerConfig) *UDPServer {
+func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler func(conn *net.UDPConn, from *net.UDPAddr, packet []byte)) *UDPServer {
 
 	udpServer := UDPServer{}
 	udpServer.config = config
@@ -77,9 +77,7 @@ func CreateUDPServer(ctx context.Context, config UDPServerConfig) *UDPServer {
 					break
 				}
 
-				// todo: call out to handler
-				_ = receivePacketBytes
-				_ = from
+				packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
 			}
 
 		}(i)
