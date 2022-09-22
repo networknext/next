@@ -1,6 +1,8 @@
 package messages
 
 import (
+	"fmt"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -66,32 +68,109 @@ func (message *RouteMatrixStatsMessage) Write(buffer []byte) []byte {
 }
 
 func (message *RouteMatrixStatsMessage) Read(buffer []byte) error {
+
 	index := 0
-	encoding.ReadUint8(buffer, &index, &message.Version)
-	encoding.ReadUint64(buffer, &index, &message.Timestamp)
-	encoding.ReadInt(buffer, &index, &message.Bytes)
-	encoding.ReadInt(buffer, &index, &message.NumRelays)
-	encoding.ReadInt(buffer, &index, &message.NumDestRelays)
-	encoding.ReadInt(buffer, &index, &message.NumFullRelays)
-	encoding.ReadInt(buffer, &index, &message.NumDatacenters)
-	encoding.ReadInt(buffer, &index, &message.TotalRoutes)
-	encoding.ReadFloat32(buffer, &index, &message.AverageNumRoutes)
-	encoding.ReadFloat32(buffer, &index, &message.AverageRouteLength)
-	encoding.ReadFloat32(buffer, &index, &message.NoRoutePercent)
-	encoding.ReadFloat32(buffer, &index, &message.OneRoutePercent)
-	encoding.ReadFloat32(buffer, &index, &message.NoDirectRoutePercent)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_NoImprovement)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_0_5ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_5_10ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_10_15ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_15_20ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_20_25ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_25_30ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_30_35ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_35_40ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_40_45ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_45_50ms)
-	encoding.ReadFloat32(buffer, &index, &message.RTTBucket_50ms_Plus)
+
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read route matrix stats Version")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read route matrix stats Timestamp")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.Bytes) {
+		return fmt.Errorf("failed to read route matrix stats Bytes")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumRelays) {
+		return fmt.Errorf("failed to read route matrix stats NumRelays")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumDestRelays) {
+		return fmt.Errorf("failed to read route matrix stats NumDestRelays")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumFullRelays) {
+		return fmt.Errorf("failed to read route matrix stats NumFullRelays")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumDatacenters) {
+		return fmt.Errorf("failed to read route matrix stats NumDatacenters")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.TotalRoutes) {
+		return fmt.Errorf("failed to read route matrix stats TotalRoutes")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.AverageNumRoutes) {
+		return fmt.Errorf("failed to read route matrix stats AverageNumRoutes")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.AverageRouteLength) {
+		return fmt.Errorf("failed to read route matrix stats AverageRouteLength")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.NoRoutePercent) {
+		return fmt.Errorf("failed to read route matrix stats NoRoutePercent")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.OneRoutePercent) {
+		return fmt.Errorf("failed to read route matrix stats OneRoutePercent")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.NoDirectRoutePercent) {
+		return fmt.Errorf("failed to read route matrix stats NoDirectRoutePercent")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_NoImprovement) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_NoImprovement")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_0_5ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_0_5ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_5_10ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_5_10ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_10_15ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_10_15ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_15_20ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_15_20ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_20_25ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_20_25ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_25_30ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_25_30ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_30_35ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_30_35ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_35_40ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_35_40ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_40_45ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_40_45ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_45_50ms) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_45_50ms")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_50ms_Plus) {
+		return fmt.Errorf("failed to read route matrix stats RTTBucket_50ms_Plus")
+	}
+
 	return nil
 }
 
