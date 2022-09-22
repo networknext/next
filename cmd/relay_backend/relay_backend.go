@@ -49,6 +49,8 @@ var ready bool
 
 var startTime time.Time
 
+var redisSelector *common.RedisSelector
+
 func main() {
 
 	service := common.CreateService("relay_backend_new")
@@ -335,7 +337,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 	config.RedisHostname = redisHostname
 	config.RedisPassword = redisPassword
 
-	redisSelector, err := common.CreateRedisSelector(service.Context, config)
+	var err error
+	redisSelector, err = common.CreateRedisSelector(service.Context, config)
 	if err != nil {
 		core.Error("failed to create redis selector: %v", err)
 		os.Exit(1)
@@ -464,18 +467,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
 
-				// update relay stats
-
-				if redisSelector.IsLeader() {
-					// ...
-				}
-
-				// update ping stats
-
-				if redisSelector.IsLeader() {
-					// ...
-				}
-
 				// we are done!
 
 				timeFinish := time.Now()
@@ -486,4 +477,12 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 			}
 		}
 	}()
+}
+
+func IsLeader() bool {
+	if redisSelector != nil {
+		return redisSelector.IsLeader()
+	} else {
+		return false
+	}
 }
