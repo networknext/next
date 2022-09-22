@@ -9668,8 +9668,8 @@ struct NextBackendServerInitRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t request_id;
     uint64_t customer_id;
+    uint64_t request_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
@@ -9678,8 +9678,8 @@ struct NextBackendServerInitRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        request_id = 0;
         customer_id = 0;
+        request_id = 0;
         datacenter_id = 0;
         datacenter_name[0] = '\0';
     }
@@ -9689,8 +9689,8 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
@@ -9730,8 +9730,8 @@ struct NextBackendServerUpdateRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t request_id;
     uint64_t customer_id;
+    uint64_t request_id;
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
@@ -9741,8 +9741,8 @@ struct NextBackendServerUpdateRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        request_id = 0;
         customer_id = 0;
+        request_id = 0;
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
@@ -9753,8 +9753,8 @@ struct NextBackendServerUpdateRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
