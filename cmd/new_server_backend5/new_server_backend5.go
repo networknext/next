@@ -2,6 +2,7 @@ package main
 
 import (
 	"net"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -10,18 +11,26 @@ import (
 )
 
 var serverBackendAddress net.UDPAddr
+var routeMatrixURI string
+var routeMatrixInterval time.Duration
 
 func main() {
 
 	service := common.CreateService("new_server_backend5")
 
 	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000"))
+	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	core.Log("server backend address: %s", serverBackendAddress.String())
+	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("route matrix interval: %s", routeMatrixInterval.String())
 
 	service.StartUDPServer(packetHandler)
 
 	service.StartWebServer()
+
+	service.UpdateMagic()
 
 	service.WaitForShutdown()
 }
