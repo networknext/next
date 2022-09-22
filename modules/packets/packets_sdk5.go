@@ -25,6 +25,78 @@ func (packet *SDK5_ServerInitRequestPacket) Serialize(stream common.Stream) erro
 
 // ------------------------------------------------------------
 
-// ...
+type SDK5_ServerInitResponsePacket struct {
+	// ...
+}
+
+func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_ServerUpdateRequestPacket struct {
+	// ...
+}
+
+func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_ServerUpdateResponsePacket struct {
+	// ...
+}
+
+func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_SessionUpdateRequestPacket struct {
+	// ...
+}
+
+func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_SessionUpdateResponsePacket struct {
+	// ...
+}
+
+func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_MatchDataRequestPacket struct {
+	// ...
+}
+
+func (packet *SDK5_MatchDataRequestPacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK5_MatchDataResponsePacket struct {
+}
+
+func (packet *SDK5_MatchDataResponsePacket) Serialize(stream common.Stream) error {
+	// ...
+	return stream.Error()
+}
 
 // ------------------------------------------------------------

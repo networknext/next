@@ -8,6 +8,12 @@ import (
 // -------------------------------------------------
 
 const (
+	NEXT_CRYPTO_SIGN_BYTES = 64
+)
+
+// -------------------------------------------------
+
+const (
 	// todo: clean up as per sdk5 below
 	/*
 		SDK4_PACKET_TYPE_ServerUpdate       = 220
