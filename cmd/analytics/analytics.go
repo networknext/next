@@ -125,6 +125,17 @@ func Process[T messages.Message](service *common.Service, name string) {
 					break
 				}
 
+				if name == "relay_stats" {
+					relayStats := messages.RelayStatsMessage{}
+					relayStats.Read(messageData)
+
+					// Catch all old deprecated relay stats messages and drop them
+					if relayStats.Version < 2 {
+						pubsubMessage.Ack()
+						break
+					}
+				}
+
 				publisher.PublishChannel <- message
 
 				pubsubMessage.Ack()
