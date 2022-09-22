@@ -28,6 +28,22 @@ func main() {
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
+	// ignore packets that are too small
+
+	if len(packetData) < 16 + 3 + 4 + packets.NEXT_CRYPTO_SIGN_BYTES + 2 {
+		core.Debug("packet is too small")
+		return
+	}
+
+	// ignore packet types we don't support
+
+	packetType := packetData[0]
+
+	if packetType != packets.SDK5_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK5_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_MATCH_DATA_REQUEST_PACKET {
+		core.Debug("unsupported packet type %d", packetType)
+		return
+	}
+
 	// make sure the basic packet filter passes
 
 	if !core.BasicPacketFilter(packetData[:], len(packetData)) {
@@ -54,11 +70,12 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// check packet signature
 
-	// ...
+	if !CheckPacketSignature(packetData) {
+		core.Debug("packet signature check failed")
+		return
+	}
 
 	// process the packet according to type
-
-	packetType := packetData[0]
 
 	packetData = packetData[16:len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
 
@@ -103,6 +120,23 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	default:
 		core.Debug("received unknown packet type %d from %s", packetType, from.String())
 	}
+}
+
+func CheckPacketSignature(packetData []byte) bool {
+
+	var buyerId uint64
+	index := 16 + 3
+	common.ReadUint64(packetData, &index, &buyerId)
+
+	core.Debug("signature buyer id is %016x", buyerId)
+
+	// todo: look up buyer in database
+
+	// todo: get buyer public key
+
+	// todo: run signature check on packet with buyer public key
+
+	return true
 }
 
 func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_ServerInitRequestPacket) {
