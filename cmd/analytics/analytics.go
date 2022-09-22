@@ -49,13 +49,13 @@ func main() {
 	/*
 		Process[messages.BillingEntry](service, "billing")
 		Process[messages.SummaryEntry](service, "summary")
-		Process[messages.MatchDataEntry](service, "match_data")
-		Process[messages.PingStatsEntry](service, "ping_stats")
-		Process[messages.RelayStatsEntry](service, "relay_stats")
 	*/
 
 	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
 	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
+	Process[*messages.PingStatsMessage](service, "ping_stats")
+	Process[*messages.RelayStatsMessage](service, "relay_stats")
+	Process[*messages.MatchDataMessage](service, "match_data")
 
 	service.StartWebServer()
 
