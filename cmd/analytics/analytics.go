@@ -16,12 +16,8 @@ import (
 
 var costMatrixURI string
 var routeMatrixURI string
-var relayStatsURI string
-var pingStatsURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
-var relayStatsInterval time.Duration
-var pingStatsInterval time.Duration
 var googleProjectId string
 var bigqueryDataset string
 
