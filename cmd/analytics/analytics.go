@@ -33,8 +33,6 @@ func main() {
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
-	relayStatsURI = envvar.GetString("RELAY_STATS_URI", "http://127.0.0.1:30001/relay_stats")
-	pingStatsURI = envvar.GetString("PING_STATS_URI", "http://127.0.0.1:30001/ping_stats")
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	relayStatsInterval = envvar.GetDuration("RELAY_STATS_INTERVAL", time.Second)
@@ -56,12 +54,6 @@ func main() {
 	ProcessCostMatrix(service)
 
 	ProcessRouteMatrix(service)
-
-	ProcessPingStats(service)
-
-	// ProcessRelayStats(service)
-
-	// ProcessMatchData(service)
 
 	// todo
 	/*
@@ -409,9 +401,5 @@ func ProcessRouteMatrix(service *common.Service) {
 		}
 	}()
 }
-
-func ProcessRelayStats(service *common.Service) {}
-
-func ProcessPingStats(service *common.Service) {}
 
 // --------------------------------------------------------------------
