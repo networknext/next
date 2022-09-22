@@ -105,9 +105,23 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		return
 	}
 
+	// get route matrix and database (under same lock)
+
+	routeMatrix, database := GetRouteMatrixAndDatabase()
+
+	if routeMatrix == nil {
+		core.Debug("ignoring packet because we don't have a route matrix")
+		return
+	}
+
+	if database == nil {
+		core.Debug("ignoring packet because we don't have a database")
+		return
+	}
+
 	// check packet signature
 
-	if !CheckPacketSignature(packetData) {
+	if !CheckPacketSignature(packetData, routeMatrix, database) {
 		core.Debug("packet signature check failed")
 		return
 	}
@@ -159,25 +173,13 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	}
 }
 
-func CheckPacketSignature(packetData []byte) bool {
+func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
 
 	var buyerId uint64
 	index := 16 + 3
 	common.ReadUint64(packetData, &index, &buyerId)
 
 	core.Debug("signature buyer id is %016x", buyerId)
-
-	routeMatrix, database := GetRouteMatrixAndDatabase()
-
-	if routeMatrix == nil {
-		core.Debug("ignoring packet because we don't have a route matrix")
-		return false
-	}
-
-	if database == nil {
-		core.Debug("ignoring packet because we don't have a database")
-		return false
-	}
 
 	// BuyerMap
 
