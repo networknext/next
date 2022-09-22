@@ -241,7 +241,11 @@ func (service *Service) LeaderElection() {
 }
 
 func (service *Service) IsLeader() bool {
-	return service.leaderElection.IsLeader()
+	if service.leaderElection != nil {
+		return service.leaderElection.IsLeader()
+	} else {
+		return false
+	}
 }
 
 func (service *Service) WaitForShutdown() {
