@@ -928,6 +928,15 @@ func (entry *BillingEntry) ClampEntry() {
 }
 */
 
+func (message *BillingMessage) Read(buffer []byte) error {
+	return nil
+}
+
+func (message *BillingMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
+
 func (message *BillingMessage) Save() (map[string]bigquery.Value, string, error) {
 
 	e := make(map[string]bigquery.Value)
