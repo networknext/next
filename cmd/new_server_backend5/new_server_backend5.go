@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"io/ioutil"
 	"sync"
+	"bytes"
+	"encoding/gob"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/routing"
 )
 
 var serverBackendAddress net.UDPAddr
@@ -19,6 +22,7 @@ var routeMatrixInterval time.Duration
 
 var routeMatrixMutex sync.RWMutex
 var routeMatrix *common.RouteMatrix
+var database *routing.DatabaseBinWrapper
 
 func main() {
 
@@ -163,6 +167,20 @@ func CheckPacketSignature(packetData []byte) bool {
 
 	core.Debug("signature buyer id is %016x", buyerId)
 
+	routeMatrix, database := GetRouteMatrixAndDatabase()
+
+	if routeMatrix == nil {
+		core.Debug("ignoring packet because we don't have a route matrix")
+		return false
+	}
+
+	if database == nil {
+		core.Debug("ignoring packet because we don't have a database")
+		return false
+	}
+
+	// BuyerMap
+
 	// todo: look up buyer in database
 
 	// todo: get buyer public key
@@ -253,12 +271,31 @@ func UpdateRouteMatrix(service *common.Service) {
 					continue
 				}
 
+				var newDatabase routing.DatabaseBinWrapper
+
+				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+				decoder := gob.NewDecoder(databaseBuffer)
+				err = decoder.Decode(&newDatabase)
+				if err != nil {
+					core.Error("failed to read database: %v", err)
+					continue
+				}
+
 				routeMatrixMutex.Lock()
 				routeMatrix = &newRouteMatrix
+				database = &newDatabase
 				routeMatrixMutex.Unlock()
 
 				core.Debug("updated route matrix: %d relays", len(routeMatrix.RelayIds))
 			}
 		}
 	}()	
+}
+
+func GetRouteMatrixAndDatabase() (*common.RouteMatrix, *routing.DatabaseBinWrapper) {
+	routeMatrixMutex.Lock()
+	a := routeMatrix
+	b := database
+	routeMatrixMutex.Unlock()
+	return a,b
 }

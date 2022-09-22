@@ -269,9 +269,6 @@ func (relayManager *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, ma
 			}
 		}
 
-		// todo
-		fmt.Printf("costs: %v\n", costs)
-
 		return costs
 	}
 
