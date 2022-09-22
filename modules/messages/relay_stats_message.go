@@ -1,7 +1,10 @@
 package messages
 
 import (
+	"fmt"
+
 	"cloud.google.com/go/bigquery"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -49,175 +52,148 @@ type RelayStatsMessage struct {
 	MemUsage                  float32
 }
 
-/*
-func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
-	data := make([]byte, length)
-
-	index := 0
-	encoding.WriteUint8(data, &index, RelayStatsEntryVersion)
-	encoding.WriteUint64(data, &index, uint64(len(entries)))
-
-	for i := range entries {
-		entry := &entries[i]
-		encoding.WriteUint64(data, &index, entry.ID)
-		encoding.WriteFloat32(data, &index, entry.CPUUsage)
-		encoding.WriteFloat32(data, &index, entry.MemUsage)
-		encoding.WriteFloat32(data, &index, entry.BandwidthSentPercent)
-		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedPercent)
-		encoding.WriteFloat32(data, &index, entry.EnvelopeSentPercent)
-		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedPercent)
-		encoding.WriteFloat32(data, &index, entry.BandwidthSentMbps)
-		encoding.WriteFloat32(data, &index, entry.BandwidthReceivedMbps)
-		encoding.WriteFloat32(data, &index, entry.EnvelopeSentMbps)
-		encoding.WriteFloat32(data, &index, entry.EnvelopeReceivedMbps)
-		encoding.WriteUint32(data, &index, entry.NumSessions)
-		encoding.WriteUint32(data, &index, entry.MaxSessions)
-		encoding.WriteUint32(data, &index, entry.NumRoutable)
-		encoding.WriteUint32(data, &index, entry.NumUnroutable)
-		encoding.WriteBool(data, &index, entry.Full)
-	}
-
-	return data[:index]
-}
-
-func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
-	index := 0
-
-	var version uint8
-	if !encoding.ReadUint8(data, &index, &version) {
-		return nil, false
-	}
-
-	var length uint64
-	if !encoding.ReadUint64(data, &index, &length) {
-		return nil, false
-	}
-
-	entries := make([]*RelayStatsEntry, length)
-
-	for i := range entries {
-		entry := new(RelayStatsEntry)
-
-		if version >= 2 {
-			if !encoding.ReadUint64(data, &index, &entry.ID) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentPercent) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedPercent) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentPercent) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedPercent) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.BandwidthSentMbps) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.BandwidthReceivedMbps) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeSentMbps) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.EnvelopeReceivedMbps) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint32(data, &index, &entry.NumSessions) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint32(data, &index, &entry.MaxSessions) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint32(data, &index, &entry.NumRoutable) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint32(data, &index, &entry.NumUnroutable) {
-				return nil, false
-			}
-		} else {
-			if !encoding.ReadUint64(data, &index, &entry.ID) {
-				return nil, false
-			}
-
-			var numSessions uint64
-			if !encoding.ReadUint64(data, &index, &numSessions) {
-				return nil, false
-			}
-			entry.NumSessions = uint32(numSessions)
-
-			if !encoding.ReadFloat32(data, &index, &entry.CPUUsage) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.MemUsage) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint64(data, &index, &entry.Tx) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint64(data, &index, &entry.Rx) {
-				return nil, false
-			}
-
-			if !encoding.ReadUint64(data, &index, &entry.PeakSessions) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.PeakSentBandwidthMbps) {
-				return nil, false
-			}
-
-			if !encoding.ReadFloat32(data, &index, &entry.PeakReceivedBandwidthMbps) {
-				return nil, false
-			}
-		}
-
-		if version >= 3 {
-			if !encoding.ReadBool(data, &index, &entry.Full) {
-				return nil, false
-			}
-		}
-
-		entries[i] = entry
-	}
-
-	return entries, true
-}
-*/
-
 func (message *RelayStatsMessage) Read(buffer []byte) error {
+
+	index := 0
+
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read relay stat Version")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read relay stat Version")
+	}
+
+	if message.Version >= 2 {
+		if !encoding.ReadUint64(buffer, &index, &message.ID) {
+			return fmt.Errorf("failed to read relay stat ID")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
+			return fmt.Errorf("failed to read relay stat CPUUsage")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
+			return fmt.Errorf("failed to read relay stat MemUsage")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentPercent) {
+			return fmt.Errorf("failed to read relay stat BandwidthSentPercent")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedPercent) {
+			return fmt.Errorf("failed to read relay stat BandwidthReceivedPercent")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentPercent) {
+			return fmt.Errorf("failed to read relay stat EnvelopeSentPercent")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedPercent) {
+			return fmt.Errorf("failed to read relay stat EnvelopeReceivedPercent")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentMbps) {
+			return fmt.Errorf("failed to read relay stat BandwidthSentMbps")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedMbps) {
+			return fmt.Errorf("failed to read relay stat BandwidthReceivedMbps")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentMbps) {
+			return fmt.Errorf("failed to read relay stat EnvelopeSentMbps")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedMbps) {
+			return fmt.Errorf("failed to read relay stat EnvelopeReceivedMbps")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
+			return fmt.Errorf("failed to read relay stat NumSessions")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.MaxSessions) {
+			return fmt.Errorf("failed to read relay stat MaxSessions")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NumRoutable) {
+			return fmt.Errorf("failed to read relay stat NumRoutable")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
+			return fmt.Errorf("failed to read relay stat NumUnroutable")
+		}
+	} else {
+		if !encoding.ReadUint64(buffer, &index, &message.ID) {
+			return fmt.Errorf("failed to read relay stat ID")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
+			return fmt.Errorf("failed to read relay stat numSessions")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
+			return fmt.Errorf("failed to read relay stat CPUUsage")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
+			return fmt.Errorf("failed to read relay stat MemUsage")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.Tx) {
+			return fmt.Errorf("failed to read relay stat Tx")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.Rx) {
+			return fmt.Errorf("failed to read relay stat Rx")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.PeakSessions) {
+			return fmt.Errorf("failed to read relay stat PeakSessions")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.PeakSentBandwidthMbps) {
+			return fmt.Errorf("failed to read relay stat PeakSentBandwidthMbps")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.PeakReceivedBandwidthMbps) {
+			return fmt.Errorf("failed to read relay stat PeakReceivedBandwidthMbps")
+		}
+	}
+
+	if message.Version >= 3 {
+		if !encoding.ReadBool(buffer, &index, &message.Full) {
+			return fmt.Errorf("failed to read relay stat Full")
+		}
+	}
+
 	return nil
 }
 
 func (message *RelayStatsMessage) Write(buffer []byte) []byte {
+
 	index := 0
+
+	encoding.WriteUint8(buffer, &index, RelayStatsMessageVersion)
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	encoding.WriteUint64(buffer, &index, message.ID)
+	encoding.WriteFloat32(buffer, &index, message.CPUUsage)
+	encoding.WriteFloat32(buffer, &index, message.MemUsage)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthSentPercent)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthReceivedPercent)
+	encoding.WriteFloat32(buffer, &index, message.EnvelopeSentPercent)
+	encoding.WriteFloat32(buffer, &index, message.EnvelopeReceivedPercent)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthSentMbps)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthReceivedMbps)
+	encoding.WriteFloat32(buffer, &index, message.EnvelopeSentMbps)
+	encoding.WriteFloat32(buffer, &index, message.EnvelopeReceivedMbps)
+	encoding.WriteUint32(buffer, &index, message.NumSessions)
+	encoding.WriteUint32(buffer, &index, message.MaxSessions)
+	encoding.WriteUint32(buffer, &index, message.NumRoutable)
+	encoding.WriteUint32(buffer, &index, message.NumUnroutable)
+	encoding.WriteBool(buffer, &index, message.Full)
+
 	return buffer[:index]
 }
 

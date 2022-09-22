@@ -1,14 +1,15 @@
 package messages
 
 import (
+	"fmt"
+
 	"cloud.google.com/go/bigquery"
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
 	PingStatsMessageVersion = uint8(4)
 	MaxPingStatsMessageSize = 128
-	MaxInstanceIDLength     = 64 // todo: remove
 )
 
 type PingStatsMessage struct {
@@ -22,100 +23,60 @@ type PingStatsMessage struct {
 	Routable   bool
 }
 
-/*
-func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-
-	length := 1 + 8 + len(entries)*int(MaxRelayStatsMessageSize)
-
-	data := make([]byte, length)
-
-	index := 0
-	encoding.WriteUint8(data, &index, PingStatsEntryVersion)
-	encoding.WriteUint64(data, &index, uint64(len(entries)))
-
-	for i := range entries {
-		entry := &entries[i]
-		encoding.WriteUint64(data, &index, entry.RelayA)
-		encoding.WriteUint64(data, &index, entry.RelayB)
-		encoding.WriteFloat32(data, &index, entry.RTT)
-		encoding.WriteFloat32(data, &index, entry.Jitter)
-		encoding.WriteFloat32(data, &index, entry.PacketLoss)
-		encoding.WriteBool(data, &index, entry.Routable)
-	}
-
-	return data[:index]
-}
-
-func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
-
-	index := 0
-
-	var version uint8
-	if !encoding.ReadUint8(data, &index, &version) {
-		return nil, false
-	}
-
-	var length uint64
-	if !encoding.ReadUint64(data, &index, &length) {
-		return nil, false
-	}
-
-	entries := make([]*PingStatsEntry, length)
-
-	for i := range entries {
-		entry := new(PingStatsEntry)
-
-		if !encoding.ReadUint64(data, &index, &entry.RelayA) {
-			return nil, false
-		}
-
-		if !encoding.ReadUint64(data, &index, &entry.RelayB) {
-			return nil, false
-		}
-
-		if !encoding.ReadFloat32(data, &index, &entry.RTT) {
-			return nil, false
-		}
-
-		if !encoding.ReadFloat32(data, &index, &entry.Jitter) {
-			return nil, false
-		}
-
-		if !encoding.ReadFloat32(data, &index, &entry.PacketLoss) {
-			return nil, false
-		}
-
-		if version >= 2 {
-			if !encoding.ReadBool(data, &index, &entry.Routable) {
-				return nil, false
-			}
-		}
-
-		if version == 3 {
-			// we don't support these anymore
-			var InstanceID string
-			var Debug bool
-			if !encoding.ReadString(data, &index, &InstanceID, uint32(MaxInstanceIDLength)) {
-				return nil, false
-			}
-			if !encoding.ReadBool(data, &index, &Debug) {
-				return nil, false
-			}
-		}
-
-		entries[i] = entry
-	}
-
-	return entries, true
-}
-*/
-
 func (message *PingStatsMessage) Read(buffer []byte) error {
+
+	index := 0
+
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read ping stats Version")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read ping stats Timestamp")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.RelayA) {
+		return fmt.Errorf("failed to read ping stats RelayA")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.RelayB) {
+		return fmt.Errorf("failed to read ping stats RelayB")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RTT) {
+		return fmt.Errorf("failed to read ping stats RTT")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.Jitter) {
+		return fmt.Errorf("failed to read ping stats Jitter")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.PacketLoss) {
+		return fmt.Errorf("failed to read ping stats PacketLoss")
+	}
+
+	if message.Version >= 2 {
+		if !encoding.ReadBool(buffer, &index, &message.Routable) {
+			return fmt.Errorf("failed to read ping stats Routable")
+		}
+	}
+
 	return nil
 }
 
 func (message *PingStatsMessage) Write(buffer []byte) []byte {
+
 	index := 0
+
+	encoding.WriteUint8(buffer, &index, message.Version)
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	encoding.WriteUint64(buffer, &index, message.RelayA)
+	encoding.WriteUint64(buffer, &index, message.RelayB)
+	encoding.WriteFloat32(buffer, &index, message.RTT)
+	encoding.WriteFloat32(buffer, &index, message.Jitter)
+	encoding.WriteFloat32(buffer, &index, message.PacketLoss)
+	encoding.WriteBool(buffer, &index, message.Routable)
+
 	return buffer[:index]
 }
 

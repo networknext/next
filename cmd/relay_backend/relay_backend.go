@@ -14,6 +14,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 )
 
@@ -302,13 +303,55 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				sampleRTT := make([]float32, numSamples)
 				sampleJitter := make([]float32, numSamples)
 				samplePacketLoss := make([]float32, numSamples)
+				sampleRoutable := make([]bool, numSamples)
+
+				numRoutable := 0
 
 				for i := 0; i < numSamples; i++ {
+
+					rtt := relayUpdate.PingStats[i].RTT
+					jitter := relayUpdate.PingStats[i].Jitter
+					pl := relayUpdate.PingStats[i].PacketLoss
+
 					sampleRelayIds[i] = relayUpdate.PingStats[i].RelayID
-					sampleRTT[i] = relayUpdate.PingStats[i].RTT
-					sampleJitter[i] = relayUpdate.PingStats[i].Jitter
-					samplePacketLoss[i] = relayUpdate.PingStats[i].PacketLoss
+					sampleRTT[i] = rtt
+					sampleJitter[i] = jitter
+					samplePacketLoss[i] = pl
+
+					// todo: routability can be done in the relay manager - less things to pass into function
+					if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+						if jitter <= maxJitter && pl <= maxPacketLoss {
+							numRoutable++
+							sampleRoutable[i] = true
+						}
+					}
 				}
+
+				// Build missing relay stats
+				/* todo: figure out how to get these to analytics
+
+				numUnroutable := numSamples - numRoutable
+
+				var bwSentPercent float32
+				var bwRecvPercent float32
+
+				bwSentPercent = float32(relayUpdate.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+				bwRecvPercent = float32(relayUpdate.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+
+				var envSentPercent float32
+				var envRecvPercent float32
+
+				envSentPercent = float32(relayUpdate.BandwidthSentKbps/relayUpdate.EnvelopeUpKbps) * 100.0
+				envRecvPercent = float32(relayUpdate.BandwidthRecvKbps/relayUpdate.EnvelopeDownKbps) * 100.0
+
+				cpuUsage := relayUpdate.CPU
+
+				maxSessions := relayData.RelayArray[relayIndex].MaxSessions
+				numSessions := relayUpdate.SessionCount
+
+				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
+
+				*/
 
 				relayManager.ProcessRelayUpdate(relayId,
 					relayName,

@@ -16,8 +16,12 @@ import (
 
 var costMatrixURI string
 var routeMatrixURI string
+var relayStatsURI string
+var pingStatsURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
+var relayStatsInterval time.Duration
+var pingStatsInterval time.Duration
 var googleProjectId string
 var bigqueryDataset string
 
@@ -29,15 +33,23 @@ func main() {
 
 	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	relayStatsURI = envvar.GetString("RELAY_STATS_URI", "http://127.0.0.1:30001/relay_stats")
+	pingStatsURI = envvar.GetString("PING_STATS_URI", "http://127.0.0.1:30001/ping_stats")
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+	relayStatsInterval = envvar.GetDuration("RELAY_STATS_INTERVAL", time.Second)
+	pingStatsInterval = envvar.GetDuration("PING_STATS_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", service.Env)
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("relay stats uri: %s", relayStatsURI)
+	core.Log("ping stats uri: %s", pingStatsURI)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
+	core.Log("relay stats interval: %s", relayStatsInterval)
+	core.Log("ping stats interval: %s", pingStatsInterval)
 	core.Log("google project id: %s", googleProjectId)
 	core.Log("bigquery dataset: %s", bigqueryDataset)
 
@@ -45,17 +57,23 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
+	ProcessPingStats(service)
+
+	// ProcessRelayStats(service)
+
+	// ProcessMatchData(service)
+
 	// todo
 	/*
 		Process[messages.BillingEntry](service, "billing")
 		Process[messages.SummaryEntry](service, "summary")
-		Process[messages.MatchDataEntry](service, "match_data")
-		Process[messages.PingStatsEntry](service, "ping_stats")
-		Process[messages.RelayStatsEntry](service, "relay_stats")
 	*/
 
 	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
 	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
+	Process[*messages.PingStatsMessage](service, "ping_stats")
+	Process[*messages.RelayStatsMessage](service, "relay_stats")
+	Process[*messages.MatchDataMessage](service, "match_data")
 
 	service.StartWebServer()
 
@@ -391,5 +409,9 @@ func ProcessRouteMatrix(service *common.Service) {
 		}
 	}()
 }
+
+func ProcessRelayStats(service *common.Service) {}
+
+func ProcessPingStats(service *common.Service) {}
 
 // --------------------------------------------------------------------
