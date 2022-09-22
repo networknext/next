@@ -383,17 +383,24 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numUnroutable := numSamples - numRoutable
 
-				var bwSentPercent float32
-				var bwRecvPercent float32
+				bwSentPercent := float32(0)
+				bwRecvPercent := float32(0)
 
-				bwSentPercent = float32(relayUpdate.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
-				bwRecvPercent = float32(relayUpdate.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+				if relayData.RelayArray[relayIndex].NICSpeedMbps > 0 {
+					bwSentPercent = float32(relayUpdate.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+					bwRecvPercent = float32(relayUpdate.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+				}
 
-				var envSentPercent float32
-				var envRecvPercent float32
+				envSentPercent := float32(0)
+				envRecvPercent := float32(0)
 
-				envSentPercent = float32(relayUpdate.BandwidthSentKbps/relayUpdate.EnvelopeUpKbps) * 100.0
-				envRecvPercent = float32(relayUpdate.BandwidthRecvKbps/relayUpdate.EnvelopeDownKbps) * 100.0
+				if relayUpdate.EnvelopeUpKbps > 0 {
+					envSentPercent = float32(relayUpdate.BandwidthSentKbps/relayUpdate.EnvelopeUpKbps) * 100.0
+				}
+
+				if relayUpdate.EnvelopeUpKbps > 0 {
+					envRecvPercent = float32(relayUpdate.BandwidthRecvKbps/relayUpdate.EnvelopeDownKbps) * 100.0
+				}
 
 				cpuUsage := relayUpdate.CPU
 
