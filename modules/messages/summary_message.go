@@ -89,6 +89,15 @@ func (message *BillingMessage) GetSummary() *SummaryMessage {
 	}
 }
 
+func (message *SummaryMessage) Read(buffer []byte) error {
+	return nil
+}
+
+func (message *SummaryMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
+
 // todo: WHY
 func (message *SummaryMessage) Save() (map[string]bigquery.Value, string, error) {
 
