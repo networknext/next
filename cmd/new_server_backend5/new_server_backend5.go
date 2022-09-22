@@ -178,3 +178,138 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet 
 	// ...
 	core.Debug("---------------------------------------------------------------------------")
 }
+
+func UpdateRouteMatrix(service *common.Service) {
+
+	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+
+	core.Log("cost matrix stats message max bytes: %d", maxBytes)
+
+	httpClient := &http.Client{
+		Timeout: routeMatrixInterval,
+	}
+
+	ticker := time.NewTicker(routeMatrixInterval)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				if !service.IsLeader() {
+					break
+				}
+
+				response, err := httpClient.Get(routeMatrixURI)
+				if err != nil {
+					core.Error("failed to http get route matrix: %v", err)
+					continue
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				response.Body.Close()
+
+				routeMatrix := common.RouteMatrix{}
+
+				err = routeMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				logMutex.Lock()
+
+				routeMatrixBytes := len(buffer)
+				routeMatrixNumRelays := len(routeMatrix.RelayIds)
+
+				routeMatrixNumDestRelays := 0
+				for i := range routeMatrix.DestRelays {
+					if routeMatrix.DestRelays[i] {
+						routeMatrixNumDestRelays++
+					}
+				}
+
+				datacenterMap := make(map[uint64]bool)
+				for i := range routeMatrix.RelayDatacenterIds {
+					datacenterMap[routeMatrix.RelayDatacenterIds[i]] = true
+				}
+				routeMatrixNumDatacenters := len(datacenterMap)
+
+				routeMatrixNumFullRelays := len(routeMatrix.FullRelayIds)
+
+				analysis := routeMatrix.Analyze()
+
+				core.Debug("---------------------------------------------")
+
+				core.Debug("route matrix bytes: %d", routeMatrixBytes)
+
+				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
+				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)
+				core.Debug("route matrix num full relays: %d", routeMatrixNumFullRelays)
+				core.Debug("route matrix num datacenters: %d", routeMatrixNumDatacenters)
+
+				core.Debug("route matrix total routes: %d", analysis.TotalRoutes)
+				core.Debug("route matrix average num routes: %.1f", analysis.AverageNumRoutes)
+				core.Debug("route matrix average route length: %.1f", analysis.AverageRouteLength)
+				core.Debug("no route percent: %.1f%%", analysis.NoRoutePercent)
+				core.Debug("one route percent: %.1f%%", analysis.OneRoutePercent)
+				core.Debug("no direct route percent: %.1f%%", analysis.NoDirectRoutePercent)
+
+				core.Debug("route matrix rtt bucket no improvement: %.1f%%", analysis.RTTBucket_NoImprovement)
+				core.Debug("route matrix rtt bucket 0-5ms: %.1f%%", analysis.RTTBucket_0_5ms)
+				core.Debug("route matrix rtt bucket 5-10ms: %.1f%%", analysis.RTTBucket_5_10ms)
+				core.Debug("route matrix rtt bucket 10-15ms: %.1f%%", analysis.RTTBucket_10_15ms)
+				core.Debug("route matrix rtt bucket 15-20ms: %.1f%%", analysis.RTTBucket_15_20ms)
+				core.Debug("route matrix rtt bucket 20-25ms: %.1f%%", analysis.RTTBucket_20_25ms)
+				core.Debug("route matrix rtt bucket 25-30ms: %.1f%%", analysis.RTTBucket_25_30ms)
+				core.Debug("route matrix rtt bucket 30-35ms: %.1f%%", analysis.RTTBucket_30_35ms)
+				core.Debug("route matrix rtt bucket 35-40ms: %.1f%%", analysis.RTTBucket_35_40ms)
+				core.Debug("route matrix rtt bucket 40-45ms: %.1f%%", analysis.RTTBucket_40_45ms)
+				core.Debug("route matrix rtt bucket 45-50ms: %.1f%%", analysis.RTTBucket_45_50ms)
+				core.Debug("route matrix rtt bucket 50ms+: %.1f%%", analysis.RTTBucket_50ms_Plus)
+
+				totalPercent := analysis.RTTBucket_NoImprovement +
+					analysis.RTTBucket_0_5ms +
+					analysis.RTTBucket_5_10ms +
+					analysis.RTTBucket_10_15ms +
+					analysis.RTTBucket_15_20ms +
+					analysis.RTTBucket_20_25ms +
+					analysis.RTTBucket_25_30ms +
+					analysis.RTTBucket_30_35ms +
+					analysis.RTTBucket_35_40ms +
+					analysis.RTTBucket_40_45ms +
+					analysis.RTTBucket_45_50ms +
+					analysis.RTTBucket_50ms_Plus
+
+				core.Debug("route matrix rtt bucket total percent: %.1f%%", totalPercent)
+
+				core.Debug("---------------------------------------------")
+
+				logMutex.Unlock()
+
+				// send route matrix stats via pubsub
+
+				routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
+
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion
+				routeMatrixStatsEntry.Bytes = routeMatrixBytes
+				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
+				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
+				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+
+				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+
+				statsPubsubProducer.MessageChannel <- message
+			}
+		}
+	}()	
+}

@@ -265,9 +265,9 @@ func ProcessRouteMatrix(service *common.Service) {
 		os.Exit(1)
 	}
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+	maxBytes := envvar.GetInt("ROUTE_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
 
-	core.Log("cost matrix stats message max bytes: %d", maxBytes)
+	core.Log("route matrix stats message max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
