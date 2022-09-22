@@ -5,6 +5,7 @@ import (
 	"time"
 	"net/http"
 	"io/ioutil"
+	"sync"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -15,6 +16,9 @@ import (
 var serverBackendAddress net.UDPAddr
 var routeMatrixURI string
 var routeMatrixInterval time.Duration
+
+var routeMatrixMutex sync.RWMutex
+var routeMatrix *common.RouteMatrix
 
 func main() {
 
@@ -30,6 +34,8 @@ func main() {
 
 	UpdateRouteMatrix(service)
 
+	service.OverrideHealthHandler(healthHandler)
+
 	service.StartUDPServer(packetHandler)
 
 	service.UpdateMagic()
@@ -37,6 +43,20 @@ func main() {
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+
+	routeMatrixMutex.RLock()
+	not_ready := routeMatrix == nil
+	routeMatrixMutex.RUnlock()
+
+	if not_ready {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
 }
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -200,6 +220,17 @@ func UpdateRouteMatrix(service *common.Service) {
 
 			case <-ticker.C:
 
+				routeMatrixMutex.Lock()
+				currentRouteMatrix := routeMatrix
+				routeMatrixMutex.Unlock()
+
+				if currentRouteMatrix != nil && time.Now().Unix() - int64(currentRouteMatrix.CreatedAt) > 30 {
+					core.Error("route matrix is stale")
+					routeMatrixMutex.Lock()
+					routeMatrix = nil
+					routeMatrixMutex.Unlock()
+				}
+
 				response, err := httpClient.Get(routeMatrixURI)
 				if err != nil {
 					core.Error("failed to http get route matrix: %v", err)
@@ -214,17 +245,19 @@ func UpdateRouteMatrix(service *common.Service) {
 
 				response.Body.Close()
 
-				routeMatrix := common.RouteMatrix{}
+				newRouteMatrix := common.RouteMatrix{}
 
-				err = routeMatrix.Read(buffer)
+				err = newRouteMatrix.Read(buffer)
 				if err != nil {
 					core.Error("failed to read route matrix: %v", err)
 					continue
 				}
 
-				core.Debug("updated route matrix: %d relays", len(routeMatrix.RelayIds))
+				routeMatrixMutex.Lock()
+				routeMatrix = &newRouteMatrix
+				routeMatrixMutex.Unlock()
 
-				_ = routeMatrix
+				core.Debug("updated route matrix: %d relays", len(routeMatrix.RelayIds))
 			}
 		}
 	}()	
