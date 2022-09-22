@@ -60,106 +60,72 @@ func (message *RelayStatsMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read relay stat Version")
 	}
 
+	if message.Version < 2 {
+		return fmt.Errorf("deprecated version")
+	}
+
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
 		return fmt.Errorf("failed to read relay stat Version")
 	}
 
-	if message.Version >= 2 {
-		if !encoding.ReadUint64(buffer, &index, &message.ID) {
-			return fmt.Errorf("failed to read relay stat ID")
-		}
+	if !encoding.ReadUint64(buffer, &index, &message.ID) {
+		return fmt.Errorf("failed to read relay stat ID")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
-			return fmt.Errorf("failed to read relay stat CPUUsage")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
+		return fmt.Errorf("failed to read relay stat CPUUsage")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
-			return fmt.Errorf("failed to read relay stat MemUsage")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
+		return fmt.Errorf("failed to read relay stat MemUsage")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentPercent) {
-			return fmt.Errorf("failed to read relay stat BandwidthSentPercent")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentPercent) {
+		return fmt.Errorf("failed to read relay stat BandwidthSentPercent")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedPercent) {
-			return fmt.Errorf("failed to read relay stat BandwidthReceivedPercent")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedPercent) {
+		return fmt.Errorf("failed to read relay stat BandwidthReceivedPercent")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentPercent) {
-			return fmt.Errorf("failed to read relay stat EnvelopeSentPercent")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentPercent) {
+		return fmt.Errorf("failed to read relay stat EnvelopeSentPercent")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedPercent) {
-			return fmt.Errorf("failed to read relay stat EnvelopeReceivedPercent")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedPercent) {
+		return fmt.Errorf("failed to read relay stat EnvelopeReceivedPercent")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentMbps) {
-			return fmt.Errorf("failed to read relay stat BandwidthSentMbps")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentMbps) {
+		return fmt.Errorf("failed to read relay stat BandwidthSentMbps")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedMbps) {
-			return fmt.Errorf("failed to read relay stat BandwidthReceivedMbps")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedMbps) {
+		return fmt.Errorf("failed to read relay stat BandwidthReceivedMbps")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentMbps) {
-			return fmt.Errorf("failed to read relay stat EnvelopeSentMbps")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentMbps) {
+		return fmt.Errorf("failed to read relay stat EnvelopeSentMbps")
+	}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedMbps) {
-			return fmt.Errorf("failed to read relay stat EnvelopeReceivedMbps")
-		}
+	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedMbps) {
+		return fmt.Errorf("failed to read relay stat EnvelopeReceivedMbps")
+	}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
-			return fmt.Errorf("failed to read relay stat NumSessions")
-		}
+	if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
+		return fmt.Errorf("failed to read relay stat NumSessions")
+	}
 
-		if !encoding.ReadUint32(buffer, &index, &message.MaxSessions) {
-			return fmt.Errorf("failed to read relay stat MaxSessions")
-		}
+	if !encoding.ReadUint32(buffer, &index, &message.MaxSessions) {
+		return fmt.Errorf("failed to read relay stat MaxSessions")
+	}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NumRoutable) {
-			return fmt.Errorf("failed to read relay stat NumRoutable")
-		}
+	if !encoding.ReadUint32(buffer, &index, &message.NumRoutable) {
+		return fmt.Errorf("failed to read relay stat NumRoutable")
+	}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
-			return fmt.Errorf("failed to read relay stat NumUnroutable")
-		}
-	} else {
-		if !encoding.ReadUint64(buffer, &index, &message.ID) {
-			return fmt.Errorf("failed to read relay stat ID")
-		}
-
-		if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
-			return fmt.Errorf("failed to read relay stat numSessions")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
-			return fmt.Errorf("failed to read relay stat CPUUsage")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
-			return fmt.Errorf("failed to read relay stat MemUsage")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.Tx) {
-			return fmt.Errorf("failed to read relay stat Tx")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.Rx) {
-			return fmt.Errorf("failed to read relay stat Rx")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.PeakSessions) {
-			return fmt.Errorf("failed to read relay stat PeakSessions")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.PeakSentBandwidthMbps) {
-			return fmt.Errorf("failed to read relay stat PeakSentBandwidthMbps")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.PeakReceivedBandwidthMbps) {
-			return fmt.Errorf("failed to read relay stat PeakReceivedBandwidthMbps")
-		}
+	if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
+		return fmt.Errorf("failed to read relay stat NumUnroutable")
 	}
 
 	if message.Version >= 3 {

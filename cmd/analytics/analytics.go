@@ -47,15 +47,15 @@ func main() {
 
 	// todo
 	/*
-		Process[messages.BillingEntry](service, "billing")
-		Process[messages.SummaryEntry](service, "summary")
+		Process[messages.BillingEntry](service, "billing", true)
+		Process[messages.SummaryEntry](service, "summary", true)
 	*/
 
-	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
-	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
-	Process[*messages.PingStatsMessage](service, "ping_stats")
-	Process[*messages.RelayStatsMessage](service, "relay_stats")
-	Process[*messages.MatchDataMessage](service, "match_data")
+	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", false)
+	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", false)
+	Process[*messages.PingStatsMessage](service, "ping_stats", false)
+	Process[*messages.RelayStatsMessage](service, "relay_stats", false)
+	Process[*messages.MatchDataMessage](service, "match_data", false)
 
 	service.StartWebServer()
 
@@ -66,7 +66,7 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T messages.Message](service *common.Service, name string) {
+func Process[T messages.Message](service *common.Service, name string, important bool) {
 
 	namePrefix := strings.ToUpper(name) + "_"
 
@@ -120,20 +120,15 @@ func Process[T messages.Message](service *common.Service, name string) {
 				var message T
 				err := message.Read(messageData)
 				if err != nil {
-					pubsubMessage.Nack()
-					core.Error("could not read %s message", name)
-					break
-				}
-
-				if name == "relay_stats" {
-					relayStats := messages.RelayStatsMessage{}
-					relayStats.Read(messageData)
-
-					// Catch all old deprecated relay stats messages and drop them
-					if relayStats.Version < 2 {
+					if !important {
+						core.Error("could not read %s message - dropping", name)
 						pubsubMessage.Ack()
 						break
 					}
+
+					core.Error("could not read %s message", name)
+					pubsubMessage.Nack()
+					break
 				}
 
 				publisher.PublishChannel <- message
