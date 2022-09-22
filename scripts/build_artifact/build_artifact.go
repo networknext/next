@@ -1,30 +1,30 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
-    "os/exec"
-    "bytes"
 )
 
 func bash(command string) (string, string) {
-    var stdout bytes.Buffer
-    var stderr bytes.Buffer
-    cmd := exec.Command("bash", "-c", command)
-    cmd.Stdout = &stdout
-    cmd.Stderr = &stderr
-    err := cmd.Run()
-    if err != nil {
-    	panic(err)
-    }
-    return stdout.String(), stderr.String()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := exec.Command("bash", "-c", command)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+	return stdout.String(), stderr.String()
 }
 
 func main() {
-    
-    artifact := os.Args[1]
-    env := os.Args[2]
+
+	artifact := os.Args[1]
+	env := os.Args[2]
 
 	r, _ := regexp.Compile("^dist/(.*).dev.tar.gz$")
 	matches := r.FindStringSubmatch(artifact)

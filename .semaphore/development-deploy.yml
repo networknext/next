@@ -102,6 +102,17 @@ blocks:
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
         
+        - name: "New Server Backend 4"
+          commands:
+            - make dist/new_server_backend4.dev.tar.gz
+            - artifact push workflow dist/new_server_backend4.dev.tar.gz
+        
+        - name: "New Server Backend 5"
+          commands:
+            - make dist/new_server_backend5.dev.tar.gz
+            - artifact push workflow dist/new_server_backend5.dev.tar.gz
+        
+
         - name: "Ghost Army"
           commands:
             - make dist/ghost_army.dev.tar.gz
@@ -212,6 +223,17 @@ blocks:
           commands:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
+
+        - name: "New Server Backend 4"
+          commands:
+            - artifact pull workflow new_server_backend4.dev.tar.gz
+            - gsutil cp new_server_backend4.dev.tar.gz gs://development_artifacts/
+
+        - name: "New Server Backend 5"
+          commands:
+            - artifact pull workflow new_server_backend5.dev.tar.gz
+            - gsutil cp new_server_backend5.dev.tar.gz gs://development_artifacts/
+
 
         - name: "Ghost Army"
           commands:

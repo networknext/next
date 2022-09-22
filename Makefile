@@ -323,6 +323,14 @@ dev-server-backend4: dist/server_backend4 ## runs a local server backend (sdk4)
 dev-server-backend5: dist/server_backend5 ## runs a local server backend (sdk5)
 	@HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5
 
+.PHONY: dev-new-server-backend4
+dev-new-server-backend4: dist/new_server_backend4 ## runs a local new server backend (sdk4)
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/new_server_backend4
+
+.PHONY: dev-new-server-backend5
+dev-new-server-backend5: dist/new_server_backend5 ## runs a local new server backend (sdk5)
+	@HTTP_PORT=45000 UDP_PORT=45000 ./dist/new_server_backend5
+
 ##############################################
 
 .PHONY: build-test-server4
