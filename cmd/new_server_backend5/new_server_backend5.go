@@ -179,13 +179,14 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 	index := 16 + 3
 	common.ReadUint64(packetData, &index, &buyerId)
 
-	core.Debug("signature buyer id is %016x", buyerId)
-
-	// BuyerMap
-
-	// todo: look up buyer in database
+	buyer, ok := database.BuyerMap[buyerId]
+	if !ok {
+		core.Error("unknown buyer id: %016x", buyerId)
+		return false;
+	}
 
 	// todo: get buyer public key
+	_ = buyer
 
 	// todo: run signature check on packet with buyer public key
 
