@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -29,6 +30,9 @@ type RedisSelector struct {
 	costMatrixData  []byte
 	routeMatrixData []byte
 	storeCounter    uint64
+
+	leaderMutex sync.RWMutex
+	isLeader    bool
 }
 
 type InstanceEntry struct {
@@ -165,7 +169,21 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
 
 	masterInstance := instanceEntries[0]
 
-	// get cost matrix and route matrix for master instance
+	// are we the leader?
+
+	selector.leaderMutex.Lock()
+	previousValue := selector.isLeader
+	currentValue := masterInstance.InstanceId == selector.instanceId
+	selector.isLeader = currentValue
+	selector.leaderMutex.Unlock()
+
+	if !previousValue && currentValue {
+		core.Log("we became the leader")
+	} else if previousValue && !currentValue {
+		core.Log("we are no longer the leader")
+	}
+
+	// get data for master instance
 
 	pipe = selector.redisClient.Pipeline()
 	pipe.Get(timeoutContext, masterInstance.RelaysKey)
@@ -183,4 +201,11 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
 	selector.routeMatrixData = []byte(cmds[2].(*redis.StringCmd).Val())
 
 	return selector.relaysData, selector.costMatrixData, selector.routeMatrixData
+}
+
+func (selector *RedisSelector) IsLeader() bool {
+	selector.leaderMutex.RLock()
+	value := selector.isLeader
+	selector.leaderMutex.RUnlock()
+	return value
 }

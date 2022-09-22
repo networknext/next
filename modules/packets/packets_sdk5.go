@@ -37,8 +37,8 @@ func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) err
 // ------------------------------------------------------------
 
 type SDK5_ServerUpdateRequestPacket struct {
-	Version        SDKVersion
-	BuyerId        uint64
+	Version SDKVersion
+	BuyerId uint64
 	// ...
 }
 
@@ -52,8 +52,8 @@ func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream common.Stream) er
 // ------------------------------------------------------------
 
 type SDK5_ServerUpdateResponsePacket struct {
-	Version        SDKVersion
-	BuyerId        uint64
+	Version SDKVersion
+	BuyerId uint64
 	// ...
 }
 
@@ -65,8 +65,8 @@ func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream common.Stream) e
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateRequestPacket struct {
-	Version        SDKVersion
-	BuyerId        uint64
+	Version SDKVersion
+	BuyerId uint64
 	// ...
 }
 
@@ -91,8 +91,8 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream common.Stream) 
 // ------------------------------------------------------------
 
 type SDK5_MatchDataRequestPacket struct {
-	Version        SDKVersion
-	BuyerId        uint64
+	Version SDKVersion
+	BuyerId uint64
 	// ...
 }
 

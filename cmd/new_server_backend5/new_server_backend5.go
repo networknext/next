@@ -30,7 +30,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// ignore packets that are too small
 
-	if len(packetData) < 16 + 3 + 4 + packets.NEXT_CRYPTO_SIGN_BYTES + 2 {
+	if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
 		core.Debug("packet is too small")
 		return
 	}
@@ -77,7 +77,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// process the packet according to type
 
-	packetData = packetData[16:len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+	packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
 
 	switch packetType {
 
@@ -85,7 +85,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		packet := packets.SDK5_ServerInitRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server init request packet from %s", from.String())
-			return;
+			return
 		}
 		ProcessServerInitRequestPacket(conn, from, &packet)
 		break
@@ -94,7 +94,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		packet := packets.SDK5_ServerUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server update request packet from %s", from.String())
-			return;
+			return
 		}
 		ProcessServerUpdateRequestPacket(conn, from, &packet)
 		break
@@ -103,7 +103,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		packet := packets.SDK5_SessionUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read session update request packet from %s", from.String())
-			return;
+			return
 		}
 		ProcessSessionUpdateRequestPacket(conn, from, &packet)
 		break
@@ -112,7 +112,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		packet := packets.SDK5_MatchDataRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read match data request packet from %s", from.String())
-			return;
+			return
 		}
 		ProcessMatchDataRequestPacket(conn, from, &packet)
 		break
