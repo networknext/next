@@ -17,8 +17,8 @@
 	path = sdk4
 	stage = sync
 	type = extract module
-[map "114cf333-4bb0-372a-beb4-36c80ece3531"]
-	object = 56eee45c70df009c0f0f7fe266a1ac89280a45c7
+[map "6e85651c-1f1a-3ea8-959e-4bbef6748353"]
+	object = 80eb89f21307328723d9acfe5e77954326613d98
 	path = sdk5
 	stage = sync
 	type = extract module
