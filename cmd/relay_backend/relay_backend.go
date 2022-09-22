@@ -464,6 +464,18 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
 
+				// update relay stats
+
+				if redisSelector.IsLeader() {
+					// ...
+				}
+
+				// update ping stats
+
+				if redisSelector.IsLeader() {
+					// ...
+				}
+
 				// we are done!
 
 				timeFinish := time.Now()
