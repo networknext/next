@@ -70,8 +70,8 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, magic []byte, from *
 
 type ServerInitRequestPacketSDK5 struct {
 	Version      SDKVersion
-	RequestID    uint64
 	BuyerID      uint64
+	RequestID    uint64
 	DatacenterID uint64
 }
 
@@ -83,8 +83,8 @@ func (packet *ServerInitRequestPacketSDK5) Serialize(stream encoding.Stream) err
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeUint64(&packet.BuyerID)
+	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	return stream.Error()
 }
@@ -108,8 +108,8 @@ func (packet *ServerInitResponsePacketSDK5) Serialize(stream encoding.Stream) er
 
 type ServerUpdatePacketSDK5 struct {
 	Version       SDKVersion
-	RequestID     uint64
 	BuyerID       uint64
+	RequestID     uint64
 	DatacenterID  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
@@ -123,8 +123,8 @@ func (packet *ServerUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeUint64(&packet.BuyerID)
+	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
