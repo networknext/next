@@ -13,14 +13,10 @@ type WriteStream struct {
 	err    error
 }
 
-func CreateWriteStream(buffer []byte) (*WriteStream, error) {
-	writer, err := CreateBitWriter(buffer)
-	if err != nil {
-		return nil, err
-	}
+func CreateWriteStream(buffer []byte) *WriteStream {
 	return &WriteStream{
-		writer: writer,
-	}, nil
+		writer: CreateBitWriter(buffer),
+	}
 }
 
 func (stream *WriteStream) IsWriting() bool {

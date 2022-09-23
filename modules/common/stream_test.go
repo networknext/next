@@ -125,11 +125,10 @@ func TestStream(t *testing.T) {
 
 	buffer := [BufferSize]byte{}
 
-	writeStream, err := CreateWriteStream(buffer[:])
-	assert.Nil(t, err)
+	writeStream := CreateWriteStream(buffer[:])
 
 	writeObject := createTestObject()
-	err = writeObject.Serialize(writeStream)
+	err := writeObject.Serialize(writeStream)
 	assert.Nil(t, err)
 
 	writeStream.Flush()

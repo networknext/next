@@ -20,6 +20,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
+var maxPacketSize int
 var serverBackendAddress net.UDPAddr
 var routeMatrixURI string
 var routeMatrixInterval time.Duration
@@ -32,10 +33,12 @@ func main() {
 
 	service := common.CreateService("new_server_backend5")
 
+	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000"))
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
+	core.Log("max packet size: %d bytes", maxPacketSize)
 	core.Log("server backend address: %s", serverBackendAddress.String())
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("route matrix interval: %s", routeMatrixInterval.String())
@@ -203,6 +206,29 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 	}
 
 	return true
+}
+
+func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packet P) {
+
+	buffer := make([]byte, maxPacketSize)
+
+	writeStream := common.CreateWriteStream(buffer[:])
+
+	err := packet.Serialize(writeStream)
+	if err != nil {
+		core.Error("failed to write response packet: %v", err)
+	}
+
+	writeStream.Flush()
+
+	packetBytes := writeStream.GetBytesProcessed()
+	packetData := buffer[:packetBytes]
+
+	// todo: [packet type][chonkle](packet data)[signature](pittle)
+
+	if _, err := conn.WriteToUDP(packetData, to); err != nil {
+		core.Error("failed to send response packet: %v", err)
+	}
 }
 
 func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_ServerInitRequestPacket) {

@@ -92,14 +92,14 @@ func PacketSerializationTest[P Packet](writePacket Packet, readPacket Packet, t 
 
 	buffer := [BufferSize]byte{}
 
-	writeStream, err := common.CreateWriteStream(buffer[:])
-	assert.Nil(t, err)
+	writeStream := common.CreateWriteStream(buffer[:])
 
-	err = writePacket.Serialize(writeStream)
+	err := writePacket.Serialize(writeStream)
 	assert.Nil(t, err)
 	writeStream.Flush()
+	packetBytes := writeStream.GetBytesProcessed()
 
-	readStream := common.CreateReadStream(buffer[:])
+	readStream := common.CreateReadStream(buffer[:packetBytes])
 	err = readPacket.Serialize(readStream)
 	assert.Nil(t, err)
 
@@ -444,6 +444,7 @@ func Test_SDK4_MatchDataResponsePacket(t *testing.T) {
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
 	writePacket := SDK5_ServerInitRequestPacket{
+		Version:        SDKVersion{1,2,3},
 		BuyerId:        1234567,
 		DatacenterId:   5124111,
 		RequestId:      234198347,
@@ -453,6 +454,18 @@ func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 	readPacket := SDK5_ServerInitRequestPacket{}
 
 	PacketSerializationTest[*SDK5_ServerInitRequestPacket](&writePacket, &readPacket, t)
+}
+
+func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
+
+	writePacket := SDK5_ServerInitResponsePacket{
+		RequestId: 234198347,
+		Response:  1,
+	}
+
+	readPacket := SDK5_ServerInitResponsePacket{}
+
+	PacketSerializationTest[*SDK5_ServerInitResponsePacket](&writePacket, &readPacket, t)
 }
 
 // ------------------------------------------------------------------------

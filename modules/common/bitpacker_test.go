@@ -13,8 +13,7 @@ func TestBitpacker(t *testing.T) {
 
 	buffer := [BufferSize]byte{}
 
-	writer, err := CreateBitWriter(buffer[:])
-	assert.Nil(t, err)
+	writer := CreateBitWriter(buffer[:])
 
 	assert.Equal(t, 0, writer.GetBitsWritten())
 	assert.Equal(t, 0, writer.GetBytesWritten())
