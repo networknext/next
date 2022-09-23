@@ -1,5 +1,9 @@
 package main
 
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
 import (
 	"net"
 	"time"
@@ -185,10 +189,18 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 		return false;
 	}
 
-	// todo: get buyer public key
-	_ = buyer
+	publicKey := buyer.PublicKey
 
-	// todo: run signature check on packet with buyer public key
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+
+	if result != 0 {
+		core.Error("signed packet did not verify")
+		return false
+	}
 
 	return true
 }
