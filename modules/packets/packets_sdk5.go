@@ -1,6 +1,8 @@
 package packets
 
 import (
+	"net"
+
 	"github.com/networknext/backend/modules/common"
 )
 
@@ -45,28 +47,38 @@ func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) err
 // ------------------------------------------------------------
 
 type SDK5_ServerUpdateRequestPacket struct {
-	Version SDKVersion
-	BuyerId uint64
-	// ...
+	Version       SDKVersion
+	BuyerId       uint64
+	RequestId      uint64
+	DatacenterId  uint64
+	NumSessions   uint32
+	ServerAddress net.UDPAddr
 }
 
 func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream common.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
-	// ...
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint32(&packet.NumSessions)
+	stream.SerializeAddress(&packet.ServerAddress)
 	return stream.Error()
 }
 
 // ------------------------------------------------------------
 
 type SDK5_ServerUpdateResponsePacket struct {
-	Version SDKVersion
-	BuyerId uint64
-	// ...
+	RequestId     uint64
+	UpcomingMagic [8]byte
+	CurrentMagic  [8]byte
+	PreviousMagic [8]byte
 }
 
 func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream common.Stream) error {
-	// ...
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 
