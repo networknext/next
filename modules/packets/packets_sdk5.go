@@ -26,13 +26,19 @@ func (packet *SDK5_ServerInitRequestPacket) Serialize(stream common.Stream) erro
 // ------------------------------------------------------------
 
 type SDK5_ServerInitResponsePacket struct {
-	RequestId uint64
-	Response  uint32
+	RequestId     uint64
+	Response      uint32
+	UpcomingMagic [8]byte
+	CurrentMagic  [8]byte
+	PreviousMagic [8]byte
 }
 
 func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 

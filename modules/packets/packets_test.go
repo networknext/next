@@ -444,7 +444,7 @@ func Test_SDK4_MatchDataResponsePacket(t *testing.T) {
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
 	writePacket := SDK5_ServerInitRequestPacket{
-		Version:        SDKVersion{1,2,3},
+		Version:        SDKVersion{1, 2, 3},
 		BuyerId:        1234567,
 		DatacenterId:   5124111,
 		RequestId:      234198347,
@@ -461,6 +461,9 @@ func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
 	writePacket := SDK5_ServerInitResponsePacket{
 		RequestId: 234198347,
 		Response:  1,
+		UpcomingMagic:  []byte{1, 2, 3, 4, 5, 6, 7, 8},
+		CurrentMagic:   []byte{2, 3, 4, 5, 6, 7, 8, 9},
+		PreviousMagic:  []byte{3, 4, 5, 6, 7, 8, 9, 10},
 	}
 
 	readPacket := SDK5_ServerInitResponsePacket{}

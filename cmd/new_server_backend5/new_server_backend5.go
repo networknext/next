@@ -5,13 +5,13 @@ package main
 import "C"
 
 import (
-	"net"
-	"time"
-	"net/http"
-	"io/ioutil"
-	"sync"
 	"bytes"
 	"encoding/gob"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -193,7 +193,7 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 	buyer, ok := database.BuyerMap[buyerId]
 	if !ok {
 		core.Error("unknown buyer id: %016x", buyerId)
-		return false;
+		return false
 	}
 
 	publicKey := buyer.PublicKey
@@ -264,7 +264,7 @@ func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, pa
 }
 
 func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
-	
+
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server init request packet from %s", from.String())
 	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
@@ -274,7 +274,7 @@ func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, reques
 	core.Debug("---------------------------------------------------------------------------")
 
 	// todo: properly check and handle the server init request
-	
+
 	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
 	responsePacket.Response = 0
@@ -324,7 +324,7 @@ func UpdateRouteMatrix() {
 				currentRouteMatrix := routeMatrix
 				routeMatrixMutex.Unlock()
 
-				if currentRouteMatrix != nil && time.Now().Unix() - int64(currentRouteMatrix.CreatedAt) > 30 {
+				if currentRouteMatrix != nil && time.Now().Unix()-int64(currentRouteMatrix.CreatedAt) > 30 {
 					core.Error("route matrix is stale")
 					routeMatrixMutex.Lock()
 					routeMatrix = nil
@@ -371,7 +371,7 @@ func UpdateRouteMatrix() {
 				core.Debug("updated route matrix: %d relays", len(routeMatrix.RelayIds))
 			}
 		}
-	}()	
+	}()
 }
 
 func GetRouteMatrixAndDatabase() (*common.RouteMatrix, *routing.DatabaseBinWrapper) {
@@ -379,5 +379,5 @@ func GetRouteMatrixAndDatabase() (*common.RouteMatrix, *routing.DatabaseBinWrapp
 	a := routeMatrix
 	b := database
 	routeMatrixMutex.Unlock()
-	return a,b
+	return a, b
 }
