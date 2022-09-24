@@ -98,6 +98,7 @@ const (
 // -------------------------------------------------
 
 const (
+
 	SDK5_SERVER_INIT_REQUEST_PACKET     = 50
 	SDK5_SERVER_INIT_RESPONSE_PACKET    = 51
 	SDK5_SERVER_UPDATE_REQUEST_PACKET   = 52
@@ -108,6 +109,14 @@ const (
 	SDK5_MATCH_DATA_RESPONSE_PACKET     = 57
 
 	SDK5_MaxDatacenterNameLength = 256
+
+	SDK5_ServerInitResponseOK                   = 0
+	SDK5_ServerInitResponseUnknownBuyer         = 1
+	SDK5_ServerInitResponseUnknownDatacenter    = 2
+	SDK5_ServerInitResponseOldSDKVersion        = 3
+	SDK5_ServerInitResponseSignatureCheckFailed = 4
+	SDK5_ServerInitResponseBuyerNotActive       = 5
+	SDK5_ServerInitResponseDatacenterNotEnabled = 6
 )
 
 // -------------------------------------------------

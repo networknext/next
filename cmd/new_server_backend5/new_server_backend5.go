@@ -149,7 +149,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 			core.Error("could not read server init request packet from %s", from.String())
 			return
 		}
-		ProcessServerInitRequestPacket(conn, from, &packet)
+		ProcessServerInitRequestPacket(conn, from, &packet, database)
 		break
 
 	case packets.SDK5_SERVER_UPDATE_REQUEST_PACKET:
@@ -263,7 +263,7 @@ func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, pa
 	}
 }
 
-func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket, database *routing.DatabaseBinWrapper) {
 
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server init request packet from %s", from.String())
@@ -273,34 +273,100 @@ func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, reques
 	core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
-	// todo: properly check and handle the server init request
+	upcomingMagic, currentMagic, previousMagic := service.GetMagicValues()
 
 	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
-	responsePacket.Response = 0
+	responsePacket.Response = packets.SDK5_ServerInitResponseOK
+	copy(responsePacket.UpcomingMagic[:], upcomingMagic[:])
+	copy(responsePacket.CurrentMagic[:], currentMagic[:])
+	copy(responsePacket.PreviousMagic[:], previousMagic[:])
+
+	buyer, exists := database.BuyerMap[requestPacket.BuyerId]
+	if !exists {
+		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		responsePacket.Response = packets.SDK5_ServerInitResponseUnknownBuyer
+	}
+
+	if !buyer.Live {
+		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		responsePacket.Response = packets.SDK5_ServerInitResponseBuyerNotActive
+	}
+
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
+		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
+	}
+
+	_, exists = database.DatacenterMap[requestPacket.DatacenterId]
+	if !exists {
+		core.Debug("unknown datacenter %s [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
+	}
 
 	SendResponsePacket(conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_ServerUpdateRequestPacket) {
+func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
+	
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server update request packet from %s", from.String())
-	// ...
+	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+	core.Debug("buyer id: %016x", requestPacket.BuyerId)
+	core.Debug("request id: %016x", requestPacket.RequestId)
+	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
+
+	upcomingMagic, currentMagic, previousMagic := service.GetMagicValues()
+
+	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
+	responsePacket.RequestId = requestPacket.RequestId
+	copy(responsePacket.UpcomingMagic[:], upcomingMagic[:])
+	copy(responsePacket.CurrentMagic[:], currentMagic[:])
+	copy(responsePacket.PreviousMagic[:], previousMagic[:])
+
+	buyer, exists := database.BuyerMap[requestPacket.BuyerId]
+	if !exists {
+		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		return
+	}
+
+	if !buyer.Live {
+		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		responsePacket.Response = packets.SDK5_ServerInitResponseBuyerNotActive
+		return
+	}
+
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
+		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
+		return
+	}
+
+	_, exists = database.DatacenterMap[requestPacket.DatacenterId]
+	if !exists {
+		core.Debug("unknown datacenter %016x", requestPacket.DatacenterId)
+	}
+
+	// todo: send server update message to bigquery via google pubsub
+
+	SendResponsePacket(conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_SessionUpdateRequestPacket) {
+func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+	
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received session update request packet from %s", from.String())
-	// ...
 	core.Debug("---------------------------------------------------------------------------")
+
+	// ...
 }
 
-func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_MatchDataRequestPacket) {
+func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received match data request packet from %s", from.String())
-	// ...
 	core.Debug("---------------------------------------------------------------------------")
+
+	// ...
 }
 
 func UpdateRouteMatrix() {
