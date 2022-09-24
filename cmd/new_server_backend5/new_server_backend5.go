@@ -20,10 +20,13 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
+var service *common.Service
+
 var maxPacketSize int
 var serverBackendAddress net.UDPAddr
 var routeMatrixURI string
 var routeMatrixInterval time.Duration
+var privateKey []byte
 
 var routeMatrixMutex sync.RWMutex
 var routeMatrix *common.RouteMatrix
@@ -31,19 +34,20 @@ var database *routing.DatabaseBinWrapper
 
 func main() {
 
-	service := common.CreateService("new_server_backend5")
+	service = common.CreateService("new_server_backend5")
 
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000"))
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+	privateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("max packet size: %d bytes", maxPacketSize)
 	core.Log("server backend address: %s", serverBackendAddress.String())
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("route matrix interval: %s", routeMatrixInterval.String())
 
-	UpdateRouteMatrix(service)
+	UpdateRouteMatrix()
 
 	service.OverrideHealthHandler(healthHandler)
 
@@ -208,37 +212,74 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 	return true
 }
 
-func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packet P) {
+func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
 	buffer := make([]byte, maxPacketSize)
 
 	writeStream := common.CreateWriteStream(buffer[:])
 
+	var dummy [16]byte
+	writeStream.SerializeBytes(dummy[:])
+
 	err := packet.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
+		return
 	}
 
 	writeStream.Flush()
 
-	packetBytes := writeStream.GetBytesProcessed()
+	packetBytes := writeStream.GetBytesProcessed() + packets.NEXT_CRYPTO_SIGN_BYTES + 2
+
 	packetData := buffer[:packetBytes]
 
-	// todo: [packet type][chonkle](packet data)[signature](pittle)
+	packetData[0] = uint8(packetType)
+
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+
+	if result != 0 {
+		core.Error("failed to sign response packet")
+		return
+	}
+
+	var magic [8]byte
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+
+	fromAddressData, fromAddressPort := core.GetAddressData(&serverBackendAddress, fromAddressBuffer[:])
+	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+
+	core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
 
 	if _, err := conn.WriteToUDP(packetData, to); err != nil {
 		core.Error("failed to send response packet: %v", err)
+		return
 	}
 }
 
-func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_ServerInitRequestPacket) {
+func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+	
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server init request packet from %s", from.String())
-	core.Debug("version: %d.%d.%d", packet.Version.Major, packet.Version.Minor, packet.Version.Patch)
-	core.Debug("buyer id: %016x", packet.BuyerId)
-	core.Debug("request id: %016x", packet.RequestId)
-	core.Debug("datacenter: \"%s\" [%016x]", packet.DatacenterName, packet.DatacenterId)
+	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+	core.Debug("buyer id: %016x", requestPacket.BuyerId)
+	core.Debug("request id: %016x", requestPacket.RequestId)
+	core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
+
+	// todo: properly check and handle the server init request
+	
+	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
+	responsePacket.RequestId = requestPacket.RequestId
+	responsePacket.Response = 0
+
+	SendResponsePacket(conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
 func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet *packets.SDK5_ServerUpdateRequestPacket) {
@@ -262,7 +303,7 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, packet 
 	core.Debug("---------------------------------------------------------------------------")
 }
 
-func UpdateRouteMatrix(service *common.Service) {
+func UpdateRouteMatrix() {
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
