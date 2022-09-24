@@ -461,9 +461,9 @@ func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
 	writePacket := SDK5_ServerInitResponsePacket{
 		RequestId: 234198347,
 		Response:  1,
-		UpcomingMagic:  []byte{1, 2, 3, 4, 5, 6, 7, 8},
-		CurrentMagic:   []byte{2, 3, 4, 5, 6, 7, 8, 9},
-		PreviousMagic:  []byte{3, 4, 5, 6, 7, 8, 9, 10},
+		UpcomingMagic:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		CurrentMagic:   [8]byte{2, 3, 4, 5, 6, 7, 8, 9},
+		PreviousMagic:  [8]byte{3, 4, 5, 6, 7, 8, 9, 10},
 	}
 
 	readPacket := SDK5_ServerInitResponsePacket{}
