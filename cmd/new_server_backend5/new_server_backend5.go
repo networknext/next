@@ -76,7 +76,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
-	handler := handlers.SDK5_HandlerData{}
+	handler := handlers.SDK5_Handler{}
 
 	routeMatrixMutex.Lock()
 	handler.Database = database

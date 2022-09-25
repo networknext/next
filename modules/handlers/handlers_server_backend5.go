@@ -18,19 +18,35 @@ const (
 	SDK5_HandlerEvent_UnsupportedPacketType                  = 1
 	SDK5_HandlerEvent_BasicPacketFilterFailed                = 2
 	SDK5_HandlerEvent_AdvancedPacketFilterFailed             = 3
-	SDK5_HandlerEvent_PacketSignatureCheckFailed             = 4
-	SDK5_HandlerEvent_NoRouteMatrix                          = 5
-	SDK5_HandlerEvent_NoDatabase                             = 6
-	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 7
-	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 8
-	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 9
-	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 10
-	SDK5_HandlerEvent_UnknownPacketType                      = 11
+	SDK5_HandlerEvent_NoRouteMatrix                          = 4
+	SDK5_HandlerEvent_NoDatabase                             = 5
 
-	SDK5_HandlerEvent_NumEvents = 12
+	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 6
+	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 7
+	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 8
+	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 9
+	SDK5_HandlerEvent_UnknownPacketType                      = 10
+
+	SDK5_HandlerEvent_ProcessServerInitRequestPacket         = 11
+	SDK5_HandlerEvent_ProcessServerUpdateRequestPacket       = 12
+	SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket      = 13
+	SDK5_HandlerEvent_ProcessMatchDataRequestPacket          = 14
+
+	SDK5_HandlerEvent_SignatureCheckFailed                   = 15
+	SDK5_HandlerEvent_UnknownBuyer                           = 16
+	SDK5_HandlerEvent_BuyerNotLive                           = 17
+	SDK5_HandlerEvent_SDKTooOld                              = 18
+	SDK5_HandlerEvent_UnknownDatacenter                      = 19
+
+	SDK5_HandlerEvent_SentServerInitResponsePacket           = 20
+	SDK5_HandlerEvent_SentServerUpdateResponsePacket         = 21
+	SDK5_HandlerEvent_SentSessionUpdateResponsePacket        = 22
+	SDK5_HandlerEvent_SentMatchDataResponsePacket            = 23
+
+	SDK5_HandlerEvent_NumEvents = 24
 )
 
-type SDK5_HandlerData struct {
+type SDK5_Handler struct {
 	Database             *routing.DatabaseBinWrapper
 	RouteMatrix          *common.RouteMatrix
 	MaxPacketSize        int
@@ -40,7 +56,7 @@ type SDK5_HandlerData struct {
 	Events               [SDK5_HandlerEvent_NumEvents]bool
 }
 
-func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
+func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// ignore packets that are too small
 
@@ -102,9 +118,8 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	// check packet signature
 
-	if !CheckPacketSignature(packetData, handler.RouteMatrix, handler.Database) {
+	if !CheckPacketSignature(handler, packetData, handler.RouteMatrix, handler.Database) {
 		core.Debug("packet signature check failed")
-		handler.Events[SDK5_HandlerEvent_PacketSignatureCheckFailed] = true
 		return
 	}
 
@@ -160,7 +175,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 	}
 }
 
-func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
+func CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
 
 	var buyerId uint64
 	index := 16 + 3
@@ -169,6 +184,7 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 	buyer, ok := database.BuyerMap[buyerId]
 	if !ok {
 		core.Error("unknown buyer id: %016x", buyerId)
+		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
 		return false
 	}
 
@@ -182,13 +198,14 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 
 	if result != 0 {
 		core.Error("signed packet did not verify")
+		handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
 		return false
 	}
 
 	return true
 }
 
-func SendResponsePacket[P packets.Packet](handler *SDK5_HandlerData, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
+func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
 	buffer := make([]byte, handler.MaxPacketSize)
 
@@ -237,9 +254,33 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_HandlerData, conn *net.U
 		core.Error("failed to send response packet: %v", err)
 		return
 	}
+
+	switch packetType {
+
+	case packets.SDK5_SERVER_INIT_RESPONSE_PACKET:
+		handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket] = true
+		break
+
+	case packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET:
+		handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket] = true
+		break
+
+	case packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET:
+		handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket] = true
+		break
+
+	case packets.SDK5_MATCH_DATA_RESPONSE_PACKET:
+		handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket] = true
+		break
+
+	default:
+		panic("unknown response packet type")
+	}
 }
 
-func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+func ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+
+	handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket] = true
 
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server init request packet from %s", from.String())
@@ -262,27 +303,34 @@ func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK5_ServerInitResponseUnknownBuyer
+		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
 	}
 
 	if !buyer.Live {
 		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK5_ServerInitResponseBuyerNotActive
+		handler.Events[SDK5_HandlerEvent_BuyerNotLive] = true
 	}
 
 	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
 		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
 		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
+		handler.Events[SDK5_HandlerEvent_SDKTooOld] = true
 	}
 
 	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
+		// IMPORTANT: Let the server init succeed even if the datacenter is unknown!
 		core.Debug("unknown datacenter %s [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
+		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
 	SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
+func ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
+
+	handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket] = true
 
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server update request packet from %s", from.String())
@@ -303,24 +351,29 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
 		return
 	}
 
 	if !buyer.Live {
 		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK5_ServerInitResponseBuyerNotActive
+		handler.Events[SDK5_HandlerEvent_BuyerNotLive] = true
 		return
 	}
 
 	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
 		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
 		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
+		handler.Events[SDK5_HandlerEvent_SDKTooOld] = true
 		return
 	}
 
 	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
+		// IMPORTANT: Let the server update succeed, even if the datacenter is unknown
 		core.Debug("unknown datacenter %016x", requestPacket.DatacenterId)
+		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
 	// todo: send server update message to bigquery via google pubsub
@@ -328,7 +381,9 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 	SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessSessionUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+func ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+
+	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
 
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received session update request packet from %s", from.String())
@@ -337,7 +392,10 @@ func ProcessSessionUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPC
 	// ...
 }
 
-func ProcessMatchDataRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
+func ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
+
+	handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket] = true
+
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received match data request packet from %s", from.String())
 	core.Debug("---------------------------------------------------------------------------")
