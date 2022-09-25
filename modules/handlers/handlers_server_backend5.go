@@ -13,13 +13,31 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
+const (
+	SDK5_HandlerEvent_PacketTooSmall                         = 0
+	SDK5_HandlerEvent_UnsupportedPacketType                  = 1
+	SDK5_HandlerEvent_BasicPacketFilterFailed                = 2
+	SDK5_HandlerEvent_AdvancedPacketFilterFailed             = 3
+	SDK5_HandlerEvent_PacketSignatureCheckFailed             = 4
+	SDK5_HandlerEvent_NoRouteMatrix                          = 5
+	SDK5_HandlerEvent_NoDatabase                             = 6
+	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 7
+	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 8
+	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 9
+	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 10
+	SDK5_HandlerEvent_UnknownPacketType                      = 11
+
+	SDK5_HandlerEvent_NumEvents = 12
+)
+
 type SDK5_HandlerData struct {
-	Database *routing.DatabaseBinWrapper
-	RouteMatrix *common.RouteMatrix
-	MaxPacketSize int
+	Database             *routing.DatabaseBinWrapper
+	RouteMatrix          *common.RouteMatrix
+	MaxPacketSize        int
 	ServerBackendAddress net.UDPAddr
-	PrivateKey []byte
-	GetMagicValues func() ([]byte, []byte, []byte)
+	PrivateKey           []byte
+	GetMagicValues       func() ([]byte, []byte, []byte)
+	Events               [SDK5_HandlerEvent_NumEvents]bool
 }
 
 func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -28,6 +46,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
 		core.Debug("packet is too small")
+		handler.Events[SDK5_HandlerEvent_PacketTooSmall] = true
 		return
 	}
 
@@ -37,6 +56,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if packetType != packets.SDK5_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK5_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_MATCH_DATA_REQUEST_PACKET {
 		core.Debug("unsupported packet type %d", packetType)
+		handler.Events[SDK5_HandlerEvent_UnsupportedPacketType] = true
 		return
 	}
 
@@ -44,6 +64,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if !core.BasicPacketFilter(packetData[:], len(packetData)) {
 		core.Debug("basic packet filter failed for %d byte packet from %s", len(packetData), from.String())
+		handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed] = true
 		return
 	}
 
@@ -61,6 +82,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
 		core.Debug("advanced packet filter failed for %d byte packet from %s to %s", len(packetData), from.String(), to.String())
+		handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed] = true
 		return
 	}
 
@@ -68,11 +90,13 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if handler.RouteMatrix == nil {
 		core.Debug("ignoring packet because we don't have a route matrix")
+		handler.Events[SDK5_HandlerEvent_NoRouteMatrix] = true
 		return
 	}
 
 	if handler.Database == nil {
 		core.Debug("ignoring packet because we don't have a database")
+		handler.Events[SDK5_HandlerEvent_NoDatabase] = true
 		return
 	}
 
@@ -80,6 +104,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	if !CheckPacketSignature(packetData, handler.RouteMatrix, handler.Database) {
 		core.Debug("packet signature check failed")
+		handler.Events[SDK5_HandlerEvent_PacketSignatureCheckFailed] = true
 		return
 	}
 
@@ -93,6 +118,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 		packet := packets.SDK5_ServerInitRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server init request packet from %s", from.String())
+			handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket] = true
 			return
 		}
 		ProcessServerInitRequestPacket(handler, conn, from, &packet)
@@ -102,6 +128,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 		packet := packets.SDK5_ServerUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server update request packet from %s", from.String())
+			handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket] = true
 			return
 		}
 		ProcessServerUpdateRequestPacket(handler, conn, from, &packet)
@@ -111,6 +138,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 		packet := packets.SDK5_SessionUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read session update request packet from %s", from.String())
+			handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket] = true
 			return
 		}
 		ProcessSessionUpdateRequestPacket(handler, conn, from, &packet)
@@ -120,6 +148,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 		packet := packets.SDK5_MatchDataRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read match data request packet from %s", from.String())
+			handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket] = true
 			return
 		}
 		ProcessMatchDataRequestPacket(handler, conn, from, &packet)
@@ -127,6 +156,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	default:
 		core.Debug("received unknown packet type %d from %s", packetType, from.String())
+		handler.Events[SDK5_HandlerEvent_UnknownPacketType] = true
 	}
 }
 
@@ -253,7 +283,7 @@ func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn
 }
 
 func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
-	
+
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received server update request packet from %s", from.String())
 	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
@@ -299,7 +329,7 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 }
 
 func ProcessSessionUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
-	
+
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received session update request packet from %s", from.String())
 	core.Debug("---------------------------------------------------------------------------")

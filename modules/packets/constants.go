@@ -98,7 +98,6 @@ const (
 // -------------------------------------------------
 
 const (
-
 	SDK5_SERVER_INIT_REQUEST_PACKET     = 50
 	SDK5_SERVER_INIT_RESPONSE_PACKET    = 51
 	SDK5_SERVER_UPDATE_REQUEST_PACKET   = 52

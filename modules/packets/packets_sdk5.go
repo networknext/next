@@ -49,7 +49,7 @@ func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) err
 type SDK5_ServerUpdateRequestPacket struct {
 	Version       SDKVersion
 	BuyerId       uint64
-	RequestId      uint64
+	RequestId     uint64
 	DatacenterId  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
