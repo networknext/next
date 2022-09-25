@@ -1,4 +1,4 @@
-package main
+package handlers
 
 // #cgo pkg-config: libsodium
 // #include <sodium.h>
@@ -14,12 +14,12 @@ import (
 )
 
 type SDK5_HandlerData struct {
-	database *routing.DatabaseBinWrapper
-	routeMatrix *common.RouteMatrix
-	maxPacketSize int
-	serverBackendAddress net.UDPAddr
-	privateKey []byte
-	getMagicValues func() ([]byte, []byte, []byte)
+	Database *routing.DatabaseBinWrapper
+	RouteMatrix *common.RouteMatrix
+	MaxPacketSize int
+	ServerBackendAddress net.UDPAddr
+	PrivateKey []byte
+	GetMagicValues func() ([]byte, []byte, []byte)
 }
 
 func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -49,7 +49,7 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	// make sure the advanced packet filter passes
 
-	to := &handler.serverBackendAddress
+	to := &handler.ServerBackendAddress
 
 	var emptyMagic [8]byte
 
@@ -66,19 +66,19 @@ func SDK5_PacketHandler(handler *SDK5_HandlerData, conn *net.UDPConn, from *net.
 
 	// we can't process any packets without these
 
-	if handler.routeMatrix == nil {
+	if handler.RouteMatrix == nil {
 		core.Debug("ignoring packet because we don't have a route matrix")
 		return
 	}
 
-	if handler.database == nil {
+	if handler.Database == nil {
 		core.Debug("ignoring packet because we don't have a database")
 		return
 	}
 
 	// check packet signature
 
-	if !CheckPacketSignature(packetData, handler.routeMatrix, handler.database) {
+	if !CheckPacketSignature(packetData, handler.RouteMatrix, handler.Database) {
 		core.Debug("packet signature check failed")
 		return
 	}
@@ -160,7 +160,7 @@ func CheckPacketSignature(packetData []byte, routeMatrix *common.RouteMatrix, da
 
 func SendResponsePacket[P packets.Packet](handler *SDK5_HandlerData, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	buffer := make([]byte, handler.maxPacketSize)
+	buffer := make([]byte, handler.MaxPacketSize)
 
 	writeStream := common.CreateWriteStream(buffer[:])
 
@@ -185,7 +185,7 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_HandlerData, conn *net.U
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&handler.privateKey[0]))
+	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&handler.PrivateKey[0]))
 
 	if result != 0 {
 		core.Error("failed to sign response packet")
@@ -196,7 +196,7 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_HandlerData, conn *net.U
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(&handler.serverBackendAddress, fromAddressBuffer[:])
+	fromAddressData, fromAddressPort := core.GetAddressData(&handler.ServerBackendAddress, fromAddressBuffer[:])
 	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
 	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
@@ -219,7 +219,7 @@ func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn
 	core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
-	upcomingMagic, currentMagic, previousMagic := handler.getMagicValues()
+	upcomingMagic, currentMagic, previousMagic := handler.GetMagicValues()
 
 	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
@@ -228,7 +228,7 @@ func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn
 	copy(responsePacket.CurrentMagic[:], currentMagic[:])
 	copy(responsePacket.PreviousMagic[:], previousMagic[:])
 
-	buyer, exists := handler.database.BuyerMap[requestPacket.BuyerId]
+	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK5_ServerInitResponseUnknownBuyer
@@ -244,7 +244,7 @@ func ProcessServerInitRequestPacket(handler *SDK5_HandlerData, conn *net.UDPConn
 		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
 	}
 
-	_, exists = handler.database.DatacenterMap[requestPacket.DatacenterId]
+	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
 		core.Debug("unknown datacenter %s [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 	}
@@ -262,7 +262,7 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
-	upcomingMagic, currentMagic, previousMagic := handler.getMagicValues()
+	upcomingMagic, currentMagic, previousMagic := handler.GetMagicValues()
 
 	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
@@ -270,7 +270,7 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 	copy(responsePacket.CurrentMagic[:], currentMagic[:])
 	copy(responsePacket.PreviousMagic[:], previousMagic[:])
 
-	buyer, exists := handler.database.BuyerMap[requestPacket.BuyerId]
+	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
 		return
@@ -288,7 +288,7 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_HandlerData, conn *net.UDPCo
 		return
 	}
 
-	_, exists = handler.database.DatacenterMap[requestPacket.DatacenterId]
+	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
 		core.Debug("unknown datacenter %016x", requestPacket.DatacenterId)
 	}
