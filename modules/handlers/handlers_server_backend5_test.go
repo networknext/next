@@ -10,6 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/routing"
 )
 
 func getMagicValues() ([]byte, []byte, []byte) {
@@ -206,6 +207,39 @@ func TestNoDatabase(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
+}
+
+func TestUnknownBuyer(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	packetData := make([]byte, 100)
+
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// correct inputs -> passes advanced packet filter
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownBuyer])
 }
 
 // ...
