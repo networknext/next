@@ -96,3 +96,57 @@ func TestUnsupportedPacketType(t *testing.T) {
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
 	}
 }
+
+func TestBasicPacketFilterFailed(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	packetData := make([]byte, 100)
+
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
+}
+
+func TestAdvancedPacketFilterFailed(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	packetData := make([]byte, 100)
+
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	magic := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
+	fromAddress := [4]byte{1, 2, 3, 4}
+	toAddress := [4]byte{4, 3, 2, 1}
+	fromPort := uint16(1000)
+	toPort := uint16(5000)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
+}
+
+// ...
+
+/*
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+*/
