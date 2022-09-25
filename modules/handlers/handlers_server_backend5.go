@@ -20,30 +20,28 @@ const (
 	SDK5_HandlerEvent_AdvancedPacketFilterFailed             = 3
 	SDK5_HandlerEvent_NoRouteMatrix                          = 4
 	SDK5_HandlerEvent_NoDatabase                             = 5
+	SDK5_HandlerEvent_UnknownBuyer                           = 6
+	SDK5_HandlerEvent_SignatureCheckFailed                   = 7
+	SDK5_HandlerEvent_BuyerNotLive                           = 8
+	SDK5_HandlerEvent_SDKTooOld                              = 9
+	SDK5_HandlerEvent_UnknownDatacenter                      = 10
 
-	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 6
-	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 7
-	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 8
-	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 9
-	SDK5_HandlerEvent_UnknownPacketType                      = 10
+	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
+	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
+	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
+	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 14
 
-	SDK5_HandlerEvent_ProcessServerInitRequestPacket         = 11
-	SDK5_HandlerEvent_ProcessServerUpdateRequestPacket       = 12
-	SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket      = 13
-	SDK5_HandlerEvent_ProcessMatchDataRequestPacket          = 14
+	SDK5_HandlerEvent_ProcessServerInitRequestPacket         = 15
+	SDK5_HandlerEvent_ProcessServerUpdateRequestPacket       = 16
+	SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket      = 17
+	SDK5_HandlerEvent_ProcessMatchDataRequestPacket          = 18
 
-	SDK5_HandlerEvent_SignatureCheckFailed                   = 15
-	SDK5_HandlerEvent_UnknownBuyer                           = 16
-	SDK5_HandlerEvent_BuyerNotLive                           = 17
-	SDK5_HandlerEvent_SDKTooOld                              = 18
-	SDK5_HandlerEvent_UnknownDatacenter                      = 19
+	SDK5_HandlerEvent_SentServerInitResponsePacket           = 19
+	SDK5_HandlerEvent_SentServerUpdateResponsePacket         = 20
+	SDK5_HandlerEvent_SentSessionUpdateResponsePacket        = 21
+	SDK5_HandlerEvent_SentMatchDataResponsePacket            = 22
 
-	SDK5_HandlerEvent_SentServerInitResponsePacket           = 20
-	SDK5_HandlerEvent_SentServerUpdateResponsePacket         = 21
-	SDK5_HandlerEvent_SentSessionUpdateResponsePacket        = 22
-	SDK5_HandlerEvent_SentMatchDataResponsePacket            = 23
-
-	SDK5_HandlerEvent_NumEvents = 24
+	SDK5_HandlerEvent_NumEvents = 23
 )
 
 type SDK5_Handler struct {
@@ -170,8 +168,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 		break
 
 	default:
-		core.Debug("received unknown packet type %d from %s", packetType, from.String())
-		handler.Events[SDK5_HandlerEvent_UnknownPacketType] = true
+		panic("unknown packet type")
 	}
 }
 

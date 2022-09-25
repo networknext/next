@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/packets"
 )
 
@@ -128,6 +129,7 @@ func TestAdvancedPacketFilterFailed(t *testing.T) {
 		packetData[i] = byte(i)
 	}
 
+	// intentionally incorrect inputs -> will pass basic packet filter, but fail advanced
 	magic := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 	fromAddress := [4]byte{1, 2, 3, 4}
 	toAddress := [4]byte{4, 3, 2, 1}
@@ -142,6 +144,68 @@ func TestAdvancedPacketFilterFailed(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
+}
+
+func TestNoRouteMatrix(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	packetData := make([]byte, 100)
+
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// correct inputs -> passes advanced packet filter
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
+}
+
+func TestNoDatabase(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	packetData := make([]byte, 100)
+
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// correct inputs -> passes advanced packet filter
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
 }
 
 // ...
