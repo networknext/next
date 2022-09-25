@@ -83,11 +83,14 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.RouteMatrix = routeMatrix
 	routeMatrixMutex.Unlock()
 
-	// todo: finish filling in handler data
+	handler.MaxPacketSize = maxPacketSize
+	handler.ServerBackendAddress = serverBackendAddress
+	handler.PrivateKey = privateKey
+	handler.GetMagicValues = func() ([]byte, []byte, []byte) {
+		return service.GetMagicValues()
+	}
 
-	// todo: call in to handler
-
-	_ = handler
+	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
 }
 
 func updateRouteMatrix() {
