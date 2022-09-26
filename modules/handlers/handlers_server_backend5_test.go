@@ -11,6 +11,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/crypto"
 )
 
 func getMagicValues() ([]byte, []byte, []byte) {
@@ -48,14 +49,16 @@ func CreateTestHarness() *TestHarness {
 
 	harness.conn = lp.(*net.UDPConn)
 
+	backendPort := harness.conn.LocalAddr().(*net.UDPAddr).Port
+
 	harness.handler = SDK5_Handler{}
 	harness.handler.MaxPacketSize = 4096
-	harness.handler.ServerBackendAddress = *core.ParseAddress("127.0.0.1:45000")        // todo: get port from the conn
+	harness.handler.ServerBackendAddress = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
 	harness.handler.GetMagicValues = getMagicValues
 
 	harness.from = core.ParseAddress("127.0.0.1:10000")
 
-	SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
+	SDK5_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
 
 	harness.handler.PrivateKey = harness.signPrivateKey[:]
 
@@ -64,9 +67,15 @@ func CreateTestHarness() *TestHarness {
 
 // ---------------------------------------------------------------------------------------
 
-// basic tests that apply to all packet types
+// test read and write SDK5 packets
 
-func TestPacketTooSmall(t *testing.T) {
+// todo
+
+// ---------------------------------------------------------------------------------------
+
+// basic tests that apply to the SDK5 handler for all packet types
+
+func TestPacketTooSmall_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -79,7 +88,7 @@ func TestPacketTooSmall(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
 }
 
-func TestUnsupportedPacketType(t *testing.T) {
+func TestUnsupportedPacketType_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -103,7 +112,7 @@ func TestUnsupportedPacketType(t *testing.T) {
 	}
 }
 
-func TestBasicPacketFilterFailed(t *testing.T) {
+func TestBasicPacketFilterFailed_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -121,7 +130,7 @@ func TestBasicPacketFilterFailed(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
 }
 
-func TestAdvancedPacketFilterFailed(t *testing.T) {
+func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -151,7 +160,7 @@ func TestAdvancedPacketFilterFailed(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
 }
 
-func TestNoRouteMatrix(t *testing.T) {
+func TestNoRouteMatrix_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -181,7 +190,7 @@ func TestNoRouteMatrix(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
 }
 
-func TestNoDatabase(t *testing.T) {
+func TestNoDatabase_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -213,7 +222,7 @@ func TestNoDatabase(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
 }
 
-func TestUnknownBuyer(t *testing.T) {
+func TestUnknownBuyer_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -246,7 +255,7 @@ func TestUnknownBuyer(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownBuyer])
 }
 
-func TestSignatureCheckFailed(t *testing.T) {
+func TestSignatureCheckFailed_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -282,7 +291,7 @@ func TestSignatureCheckFailed(t *testing.T) {
 	
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -308,7 +317,7 @@ func TestSignatureCheckFailed(t *testing.T) {
 
 // tests for the server init handler
 
-func TestBuyerNotLive(t *testing.T) {
+func TestBuyerNotLive_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -344,7 +353,7 @@ func TestBuyerNotLive(t *testing.T) {
 	
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -361,7 +370,7 @@ func TestBuyerNotLive(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	SignPacket(packetData[:], buyerPrivateKey[:])
+	SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -370,7 +379,7 @@ func TestBuyerNotLive(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 }
 
-func TestBuyerSDKTooOld(t *testing.T) {
+func TestBuyerSDKTooOld_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -406,7 +415,7 @@ func TestBuyerSDKTooOld(t *testing.T) {
 	
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -430,7 +439,7 @@ func TestBuyerSDKTooOld(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	SignPacket(packetData[:], buyerPrivateKey[:])
+	SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see that the SDK is too old
 
@@ -439,7 +448,7 @@ func TestBuyerSDKTooOld(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 }
 
-func TestUnknownDatacenter(t *testing.T) {
+func TestUnknownDatacenter_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -475,7 +484,7 @@ func TestUnknownDatacenter(t *testing.T) {
 	
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -493,7 +502,7 @@ func TestUnknownDatacenter(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	SignPacket(packetData[:], buyerPrivateKey[:])
+	SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
@@ -502,7 +511,7 @@ func TestUnknownDatacenter(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 }
 
-func TestServerInitRequestResponse(t *testing.T) {
+func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 	t.Parallel()
 
@@ -517,7 +526,7 @@ func TestServerInitRequestResponse(t *testing.T) {
 	
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -530,19 +539,67 @@ func TestServerInitRequestResponse(t *testing.T) {
 
 	// construct a valid, signed server init request packet
 
-	// ...
+	requestId := uint64(0x12345)
 
-	// setup a valid UDP socket to listen on so we can get the response
+	packet := packets.SDK5_ServerInitRequestPacket{
+		Version: packets.SDKVersion{5,0,0},
+		BuyerId: buyerId,
+		RequestId: requestId,
+		DatacenterId: crypto.HashID("local"),
+		DatacenterName: "local",
+	}
 
-	// ...
+	packetData := make([]byte, 1500)
+
+	writeStream := common.CreateWriteStream(packetData[:])
+
+	// todo: serialize 16 bytes dummy
+
+	err := packet.Serialize(writeStream)
+	assert.Nil(t, err)
+
+	// todo: packet type, chonkle, pittle, sign
+
+	writeStream.Flush()
+
+	// setup a UDP socket to listen on so we can get the response
+
+	ctx := context.Background()
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(ctx, "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind client socket")
+	}
+
+	clientConn := lp.(*net.UDPConn)
+
+	clientPort := clientConn.LocalAddr().(*net.UDPAddr).Port
+
+	fmt.Printf("client port is %d\n", clientPort)
 
 	// loop to process the packet, until we can get a response, up to n times
 
+	/*
+	for {
+
+		packetBytes, from, err := conn.ReadFromUDP(buffer[:])
+		if err != nil {
+			core.Debug("failed to read udp packet: %v", err)
+			break
+		}
+		*/
+
 	// ...
+
+	_ = clientConn
 }
 
 // ---------------------------------------------------------------------------------------
 
 // tests for the server update handler
+
+// ...
 
 // ---------------------------------------------------------------------------------------

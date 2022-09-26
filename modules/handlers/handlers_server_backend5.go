@@ -6,6 +6,7 @@ import "C"
 
 import (
 	"net"
+	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -116,7 +117,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
 	// check packet signature
 
-	if !CheckPacketSignature(handler, packetData, handler.RouteMatrix, handler.Database) {
+	if !SDK5_CheckPacketSignature(handler, packetData, handler.RouteMatrix, handler.Database) {
 		core.Debug("packet signature check failed")
 		return
 	}
@@ -134,7 +135,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 			handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket] = true
 			return
 		}
-		ProcessServerInitRequestPacket(handler, conn, from, &packet)
+		SDK5_ProcessServerInitRequestPacket(handler, conn, from, &packet)
 		break
 
 	case packets.SDK5_SERVER_UPDATE_REQUEST_PACKET:
@@ -144,7 +145,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 			handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket] = true
 			return
 		}
-		ProcessServerUpdateRequestPacket(handler, conn, from, &packet)
+		SDK5_ProcessServerUpdateRequestPacket(handler, conn, from, &packet)
 		break
 
 	case packets.SDK5_SESSION_UPDATE_REQUEST_PACKET:
@@ -154,7 +155,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 			handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket] = true
 			return
 		}
-		ProcessSessionUpdateRequestPacket(handler, conn, from, &packet)
+		SDK5_ProcessSessionUpdateRequestPacket(handler, conn, from, &packet)
 		break
 
 	case packets.SDK5_MATCH_DATA_REQUEST_PACKET:
@@ -164,7 +165,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 			handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket] = true
 			return
 		}
-		ProcessMatchDataRequestPacket(handler, conn, from, &packet)
+		SDK5_ProcessMatchDataRequestPacket(handler, conn, from, &packet)
 		break
 
 	default:
@@ -172,7 +173,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	}
 }
 
-func CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
+func SDK5_CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
 
 	var buyerId uint64
 	index := 16 + 3
@@ -202,12 +203,12 @@ func CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix 
 	return true
 }
 
-func SignKeypair(publicKey []byte, privateKey []byte) int {
+func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
 	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
 	return int(result)
 }
 
-func SignPacket(packetData []byte, privateKey []byte) {
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
@@ -215,9 +216,9 @@ func SignPacket(packetData []byte, privateKey []byte) {
 	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 }
 
-func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
+func SDK5_WritePacket[P packets.Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 
-	buffer := make([]byte, handler.MaxPacketSize)
+ 	buffer := make([]byte, maxPacketSize)
 
 	writeStream := common.CreateWriteStream(buffer[:])
 
@@ -226,8 +227,7 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPCo
 
 	err := packet.Serialize(writeStream)
 	if err != nil {
-		core.Error("failed to write response packet: %v", err)
-		return
+		return nil, fmt.Errorf("failed to write response packet: %v", err)
 	}
 
 	writeStream.Flush()
@@ -242,23 +242,33 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPCo
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&handler.PrivateKey[0]))
+	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 
 	if result != 0 {
-		core.Error("failed to sign response packet")
-		return
+		return nil, fmt.Errorf("failed to sign response packet: %d", result)
 	}
 
 	var magic [8]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(&handler.ServerBackendAddress, fromAddressBuffer[:])
+	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
 	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
 	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
 
 	core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+
+	return packetData, nil
+}
+
+func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
+
+	packetData, err := SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.PrivateKey)
+	if err != nil {
+		core.Error("failed to write response packet: %v", err)
+		return
+	}
 
 	if _, err := conn.WriteToUDP(packetData, to); err != nil {
 		core.Error("failed to send response packet: %v", err)
@@ -288,7 +298,7 @@ func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPCo
 	}
 }
 
-func ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket] = true
 
@@ -335,10 +345,10 @@ func ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, fr
 		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
-	SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
+	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
+func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket] = true
 
@@ -388,10 +398,10 @@ func ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, 
 
 	// todo: send server update message to bigquery via google pubsub
 
-	SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
+	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
 
@@ -402,7 +412,7 @@ func ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn,
 	// ...
 }
 
-func ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
+func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket] = true
 
