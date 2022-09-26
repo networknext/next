@@ -511,6 +511,25 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 	harness := CreateTestHarness()
 
+	// setup a UDP socket to listen on so we can get the response packet
+
+	ctx := context.Background()
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(ctx, "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind client socket")
+	}
+
+	clientConn := lp.(*net.UDPConn)
+
+	clientPort := clientConn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	fmt.Printf("client address is %s\n", clientAddress.String())
+
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
@@ -543,37 +562,15 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 		DatacenterName: "local",
 	}
 
-	packetData := make([]byte, 1500)
-
-	writeStream := common.CreateWriteStream(packetData[:])
-
-	// todo: serialize 16 bytes dummy
-
-	err := packet.Serialize(writeStream)
-	assert.Nil(t, err)
-
-	// todo: packet type, chonkle, pittle, sign
-
-	writeStream.Flush()
-
-	// setup a UDP socket to listen on so we can get the response
-
-	ctx := context.Background()
-
-	lc := net.ListenConfig{}
-
-	lp, err := lc.ListenPacket(ctx, "udp", "127.0.0.1:0")
+	packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, &harness.handler.ServerBackendAddress, clientAddress, harness.handler.PrivateKey)
 	if err != nil {
-		panic("could not bind client socket")
+		core.Error("failed to write response packet: %v", err)
+		return
 	}
 
-	clientConn := lp.(*net.UDPConn)
-
-	clientPort := clientConn.LocalAddr().(*net.UDPAddr).Port
-
-	fmt.Printf("client port is %d\n", clientPort)
-
 	// loop to process the packet, until we can get a response, up to n times
+
+	_ = packetData
 
 	/*
 	for {
