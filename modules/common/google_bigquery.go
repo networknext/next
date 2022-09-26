@@ -116,6 +116,10 @@ func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 	publisher.messageBatch = []bigquery.ValueSaver{}
 }
 
+func (publisher *GoogleBigQueryPublisher) Close() error {
+	return publisher.bigqueryClient.Close()
+}
+
 // Test entry for making func testing easier
 type TestEntry struct {
 	Timestamp uint32
