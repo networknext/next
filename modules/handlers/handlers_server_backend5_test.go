@@ -5,6 +5,7 @@ import (
 	"context"
 	"net"
 	"fmt"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/modules/core"
@@ -60,6 +61,8 @@ func CreateTestHarness() *TestHarness {
 	harness.handler.ServerBackendAddress = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
 	harness.handler.GetMagicValues = getMagicValues
 
+	fmt.Printf("server backend address is %s\n", harness.handler.ServerBackendAddress.String())
+
 	harness.from = core.ParseAddress("127.0.0.1:10000")
 
 	SDK5_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
@@ -69,6 +72,7 @@ func CreateTestHarness() *TestHarness {
 	return &harness
 }
 
+/*
 func TestPacketTooSmall_SDK5(t *testing.T) {
 
 	t.Parallel()
@@ -504,6 +508,7 @@ func TestUnknownDatacenter_SDK5(t *testing.T) {
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 }
+*/
 
 func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
@@ -546,9 +551,24 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 	buyer := routing.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
-	_ = buyerPrivateKey
 
 	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// setup "local" datacenter in the database
+
+	localDatacenterId := crypto.HashID("local")
+
+	localDatacenter := routing.Datacenter{
+		ID:   localDatacenterId,
+		Name: "local",
+		Location: routing.Location{
+			Latitude:  10,
+			Longitude: 20,
+		},
+	}
+
+	harness.handler.Database.DatacenterMap = make(map[uint64]routing.Datacenter)
+	harness.handler.Database.DatacenterMap[localDatacenterId] = localDatacenter
 
 	// construct a valid, signed server init request packet
 
@@ -562,29 +582,59 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 		DatacenterName: "local",
 	}
 
-	packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, &harness.handler.ServerBackendAddress, clientAddress, harness.handler.PrivateKey)
+	packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
 	}
 
-	// loop to process the packet, until we can get a response, up to n times
+	// setup a goroutine to listen for response packets from the packet handler
 
-	_ = packetData
+	var receivedResponse uint64
 
-	/*
-	for {
+	go func() {
 
-		packetBytes, from, err := conn.ReadFromUDP(buffer[:])
-		if err != nil {
-			core.Debug("failed to read udp packet: %v", err)
+		for {
+
+			var buffer [4096]byte
+
+			packetBytes, from, err := harness.conn.ReadFromUDP(buffer[:])
+			if err != nil {
+				core.Debug("failed to read udp packet: %v", err)
+				continue
+			}
+
+			// ...
+			_ = packetBytes
+			_ = from
+
+			// todo: atomic
+			receivedResponse++
 			break
 		}
-		*/
+	}()
 
-	// ...
+	// loop sending the request packet until we get a response or time out
 
-	_ = clientConn
+	harness.from = clientAddress
+
+	for i := 0; i < 100; i++ {
+
+		// todo: atomic
+		if receivedResponse != 0 {
+			break
+		}
+
+		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+		if i > 10 {
+			time.Sleep(10*time.Millisecond)
+		}
+	}
+
+	// verify that we received a response
+
+	assert.True(t, receivedResponse != 0)
 }
 
 // ---------------------------------------------------------------------------------------

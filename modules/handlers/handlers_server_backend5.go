@@ -341,7 +341,7 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
 		// IMPORTANT: Let the server init succeed even if the datacenter is unknown!
-		core.Debug("unknown datacenter %s [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
+		core.Debug("unknown datacenter '%s' [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
