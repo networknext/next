@@ -294,18 +294,6 @@ func test_google_bigquery() {
 		os.Exit(1)
 	}
 
-	tables := bigquerySetupClient.Dataset(dataset).Tables(cancelContext)
-
-	for {
-		table, err := tables.Next()
-
-		if err != nil {
-			break
-		}
-
-		core.Debug(table.FullyQualifiedName())
-	}
-
 	core.Debug("successfully set up bigquery emulator")
 
 	bigquerySetupClient.Close()
