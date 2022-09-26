@@ -377,10 +377,30 @@ func test_google_bigquery() {
 
 	for i := 0; i < NumPublishers; i++ {
 		totalEntriesPublished = totalEntriesPublished + int(publishers[i].NumEntriesPublished)
+		publishers[i].Close()
 	}
+
+	core.Debug("total entries published: %d", totalEntriesPublished)
+	core.Debug("total producers: %d", NumProducers)
+	core.Debug("entries per producer: %d", NumEntriesPerProducer)
 
 	if totalEntriesPublished != (NumProducers * NumEntriesPerProducer) {
 		core.Error("did not receive all messages sent")
+		os.Exit(1)
+	}
+
+	tableReference = bigquerySetupClient.Dataset(dataset).Table(tableName)
+	metdata, err := tableReference.Metadata(context.Background())
+
+	if err != nil {
+		core.Error("failed to get table metadata")
+		os.Exit(1)
+	}
+
+	core.Debug("entries published to bigquery: %d", metdata.NumRows)
+
+	if metdata.NumRows != uint64(totalEntriesPublished) {
+		core.Error("not all entries were published")
 		os.Exit(1)
 	}
 
@@ -902,10 +922,10 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		test_magic_backend,
-		test_redis_pubsub,
-		test_redis_streams,
-		test_google_pubsub,
+		// test_magic_backend,
+		// test_redis_pubsub,
+		// test_redis_streams,
+		// test_google_pubsub,
 		test_google_bigquery,
 	}
 
