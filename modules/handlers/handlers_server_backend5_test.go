@@ -5,6 +5,8 @@ import (
 	"context"
 	"net"
 	"fmt"
+	"time"
+	"sync/atomic"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/modules/core"
@@ -59,6 +61,8 @@ func CreateTestHarness() *TestHarness {
 	harness.handler.MaxPacketSize = 4096
 	harness.handler.ServerBackendAddress = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
 	harness.handler.GetMagicValues = getMagicValues
+
+	fmt.Printf("server backend address is %s\n", harness.handler.ServerBackendAddress.String())
 
 	harness.from = core.ParseAddress("127.0.0.1:10000")
 
@@ -511,6 +515,25 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 	harness := CreateTestHarness()
 
+	// setup a UDP socket to listen on so we can get the response packet
+
+	ctx := context.Background()
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(ctx, "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind client socket")
+	}
+
+	clientConn := lp.(*net.UDPConn)
+
+	clientPort := clientConn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	fmt.Printf("client address is %s\n", clientAddress.String())
+
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
@@ -527,9 +550,24 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 	buyer := routing.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
-	_ = buyerPrivateKey
 
 	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// setup "local" datacenter in the database
+
+	localDatacenterId := crypto.HashID("local")
+
+	localDatacenter := routing.Datacenter{
+		ID:   localDatacenterId,
+		Name: "local",
+		Location: routing.Location{
+			Latitude:  10,
+			Longitude: 20,
+		},
+	}
+
+	harness.handler.Database.DatacenterMap = make(map[uint64]routing.Datacenter)
+	harness.handler.Database.DatacenterMap[localDatacenterId] = localDatacenter
 
 	// construct a valid, signed server init request packet
 
@@ -543,51 +581,140 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 		DatacenterName: "local",
 	}
 
-	packetData := make([]byte, 1500)
-
-	writeStream := common.CreateWriteStream(packetData[:])
-
-	// todo: serialize 16 bytes dummy
-
-	err := packet.Serialize(writeStream)
-	assert.Nil(t, err)
-
-	// todo: packet type, chonkle, pittle, sign
-
-	writeStream.Flush()
-
-	// setup a UDP socket to listen on so we can get the response
-
-	ctx := context.Background()
-
-	lc := net.ListenConfig{}
-
-	lp, err := lc.ListenPacket(ctx, "udp", "127.0.0.1:0")
+	packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
-		panic("could not bind client socket")
+		core.Error("failed to write response packet: %v", err)
+		return
 	}
 
-	clientConn := lp.(*net.UDPConn)
+	// setup a goroutine to listen for response packets from the packet handler
 
-	clientPort := clientConn.LocalAddr().(*net.UDPAddr).Port
+	var receivedResponse uint64
 
-	fmt.Printf("client port is %d\n", clientPort)
+	go func() {
 
-	// loop to process the packet, until we can get a response, up to n times
+		for {
 
-	/*
-	for {
+			var buffer [4096]byte
 
-		packetBytes, from, err := conn.ReadFromUDP(buffer[:])
-		if err != nil {
-			core.Debug("failed to read udp packet: %v", err)
+			packetBytes, from, err := clientConn.ReadFromUDP(buffer[:])
+			if err != nil {
+				core.Debug("failed to read udp packet: %v", err)
+				continue
+			}
+
+			core.Debug("received response packet from %s", from.String())
+
+			packetData := buffer[:packetBytes]
+
+			// ignore any packets that aren't from the server backend we're testing
+
+			if from.String() != harness.handler.ServerBackendAddress.String() {
+				core.Debug("not from server backend")
+				continue
+			}
+
+			// ignore any packets that are not server init response packets
+
+			if packetData[0] != packets.SDK5_SERVER_INIT_RESPONSE_PACKET {
+				core.Debug("wrong packet type")
+				continue
+			}
+
+			// ignore any packets that are too small
+
+			if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+				core.Debug("too small")
+				continue
+			}
+
+			// make sure basic packet filter passes
+
+			if !core.BasicPacketFilter(packetData[:], len(packetData)) {
+				core.Debug("basic packet filter failed")
+				continue
+			}
+
+			// make sure advanced packet filter passes
+
+			var emptyMagic [8]byte
+
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+
+			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
+			toAddressData, toAddressPort := core.GetAddressData(clientAddress, toAddressBuffer[:])
+
+			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+				core.Debug("advanced packet filter failed")
+				continue
+			}
+
+			// make sure packet signature check passes
+
+			if !SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+				core.Debug("packet signature check failed")
+				return
+			}
+
+			// read packet
+
+			packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+
+			responsePacket := packets.SDK5_ServerInitResponsePacket{}
+			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
+				core.Debug("could not read server init response packet")
+				continue
+			}
+
+			// check all response packet fields match expected values
+
+			assert.Equal(t, packet.RequestId, responsePacket.RequestId)
+			assert.Equal(t, packets.SDK5_ServerInitResponseOK, int(responsePacket.Response))
+
+			// success!
+
+			atomic.AddUint64(&receivedResponse, 1)
 			break
 		}
-		*/
+	}()
 
-	// ...
+	// loop sending the request packet until we get a response or time out
 
-	_ = clientConn
+	harness.from = clientAddress
+
+	for i := 0; i < 100; i++ {
+
+		response := atomic.LoadUint64(&receivedResponse)
+		if response != 0 {
+			break
+		}
+
+		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+
+		if i > 10 {
+			time.Sleep(10*time.Millisecond)
+		}
+	}
+
+	// verify that we received a response
+
+	assert.True(t, receivedResponse != 0)
 }
 
 // ---------------------------------------------------------------------------------------
