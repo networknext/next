@@ -6,6 +6,7 @@ import (
 	"net"
 	"fmt"
 	"time"
+	"sync/atomic"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/networknext/backend/modules/core"
@@ -72,7 +73,6 @@ func CreateTestHarness() *TestHarness {
 	return &harness
 }
 
-/*
 func TestPacketTooSmall_SDK5(t *testing.T) {
 
 	t.Parallel()
@@ -508,7 +508,6 @@ func TestUnknownDatacenter_SDK5(t *testing.T) {
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 }
-*/
 
 func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
@@ -598,18 +597,55 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 			var buffer [4096]byte
 
-			packetBytes, from, err := harness.conn.ReadFromUDP(buffer[:])
+			packetBytes, from, err := clientConn.ReadFromUDP(buffer[:])
 			if err != nil {
 				core.Debug("failed to read udp packet: %v", err)
 				continue
 			}
 
-			// ...
-			_ = packetBytes
-			_ = from
+			core.Debug("received response packet from %s", from.String())
 
-			// todo: atomic
-			receivedResponse++
+			packetData := buffer[:packetBytes]
+
+			if from.String() != harness.handler.ServerBackendAddress.String() {
+				core.Debug("not from server backend")
+				continue
+			}
+
+			if packetData[0] != packets.SDK5_SERVER_INIT_RESPONSE_PACKET {
+				core.Debug("wrong packet type")
+				continue
+			}
+
+			if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+				core.Debug("too small")
+				continue
+			}
+
+			// todo: check basic packet filter
+
+			// todo: check advanced packet filter
+
+			// todo: check signature
+
+			// read packet
+
+			packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+
+			responsePacket := packets.SDK5_ServerInitResponsePacket{}
+			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
+				core.Debug("could not read server init response packet")
+				continue
+			}
+
+			// check all response packet fields match expected values
+
+			assert.Equal(t, packet.RequestId, responsePacket.RequestId)
+			assert.Equal(t, packets.SDK5_ServerInitResponseOK, int(responsePacket.Response))
+
+			// success!
+
+			atomic.AddUint64(&receivedResponse, 1)
 			break
 		}
 	}()
@@ -620,12 +656,27 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 
-		// todo: atomic
-		if receivedResponse != 0 {
+		response := atomic.LoadUint64(&receivedResponse)
+		if response != 0 {
 			break
 		}
 
 		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
 
 		if i > 10 {
 			time.Sleep(10*time.Millisecond)

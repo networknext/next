@@ -345,6 +345,9 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
+	// todo
+	core.Debug("send response packet to %s", from.String())
+
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
