@@ -14,6 +14,10 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 )
 
+// ---------------------------------------------------------------------------------------
+
+// tests that apply to the SDK5 handler for all packet types
+
 func getMagicValues() ([]byte, []byte, []byte) {
 	upcoming := make([]byte, 8)
 	current := make([]byte, 8)
@@ -64,16 +68,6 @@ func CreateTestHarness() *TestHarness {
 
 	return &harness
 }
-
-// ---------------------------------------------------------------------------------------
-
-// test read and write SDK5 packets
-
-// todo
-
-// ---------------------------------------------------------------------------------------
-
-// basic tests that apply to the SDK5 handler for all packet types
 
 func TestPacketTooSmall_SDK5(t *testing.T) {
 
