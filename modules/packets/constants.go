@@ -9,6 +9,8 @@ import (
 
 const (
 	NEXT_CRYPTO_SIGN_BYTES = 64
+	NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES = 32
+	NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
 )
 
 // -------------------------------------------------
@@ -98,7 +100,6 @@ const (
 // -------------------------------------------------
 
 const (
-
 	SDK5_SERVER_INIT_REQUEST_PACKET     = 50
 	SDK5_SERVER_INIT_RESPONSE_PACKET    = 51
 	SDK5_SERVER_UPDATE_REQUEST_PACKET   = 52
