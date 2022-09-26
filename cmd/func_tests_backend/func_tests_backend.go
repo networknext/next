@@ -291,6 +291,7 @@ func test_google_bigquery() {
 
 	if err != nil {
 		core.Error("failed to setup bigquery table")
+		os.Exit(1)
 	}
 
 	tables := bigquerySetupClient.Dataset(dataset).Tables(cancelContext)
