@@ -62,6 +62,10 @@ func CreateTestHarness() *TestHarness {
 	return &harness
 }
 
+// ---------------------------------------------------------------------------------------
+
+// basic tests that apply to all packet types
+
 func TestPacketTooSmall(t *testing.T) {
 
 	t.Parallel()
@@ -300,6 +304,10 @@ func TestSignatureCheckFailed(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
 }
 
+// ---------------------------------------------------------------------------------------
+
+// tests for the server init handler
+
 func TestBuyerNotLive(t *testing.T) {
 
 	t.Parallel()
@@ -493,3 +501,48 @@ func TestUnknownDatacenter(t *testing.T) {
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 }
+
+func TestServerInitRequestResponse(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	buyerId := uint64(0x1111111122222222)
+	
+	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+
+	buyer := routing.Buyer{}
+	buyer.Live = true
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// construct a valid, signed server init request packet
+
+	// ...
+
+	// setup a valid UDP socket to listen on so we can get the response
+
+	// ...
+
+	// loop to process the packet, until we can get a response, up to n times
+
+	// ...
+}
+
+// ---------------------------------------------------------------------------------------
+
+// tests for the server update handler
+
+// ---------------------------------------------------------------------------------------
