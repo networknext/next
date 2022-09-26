@@ -459,11 +459,11 @@ func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
 
 	writePacket := SDK5_ServerInitResponsePacket{
-		RequestId: 234198347,
-		Response:  1,
-		UpcomingMagic:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-		CurrentMagic:   [8]byte{2, 3, 4, 5, 6, 7, 8, 9},
-		PreviousMagic:  [8]byte{3, 4, 5, 6, 7, 8, 9, 10},
+		RequestId:     234198347,
+		Response:      1,
+		UpcomingMagic: [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		CurrentMagic:  [8]byte{2, 3, 4, 5, 6, 7, 8, 9},
+		PreviousMagic: [8]byte{3, 4, 5, 6, 7, 8, 9, 10},
 	}
 
 	readPacket := SDK5_ServerInitResponsePacket{}
@@ -474,10 +474,10 @@ func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
 func Test_SDK5_ServerUpdateRequestPacket(t *testing.T) {
 
 	writePacket := SDK5_ServerUpdateRequestPacket{
-		Version:        SDKVersion{1, 2, 3},
-		BuyerId:        1234567,
-		RequestId:      234198347,
-		DatacenterId:   5124111,
+		Version:      SDKVersion{1, 2, 3},
+		BuyerId:      1234567,
+		RequestId:    234198347,
+		DatacenterId: 5124111,
 	}
 
 	readPacket := SDK5_ServerUpdateRequestPacket{}
@@ -488,10 +488,10 @@ func Test_SDK5_ServerUpdateRequestPacket(t *testing.T) {
 func Test_SDK5_ServerUpdateResponsePacket(t *testing.T) {
 
 	writePacket := SDK5_ServerUpdateResponsePacket{
-		RequestId: 234198347,
-		UpcomingMagic:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
-		CurrentMagic:   [8]byte{2, 3, 4, 5, 6, 7, 8, 9},
-		PreviousMagic:  [8]byte{3, 4, 5, 6, 7, 8, 9, 10},
+		RequestId:     234198347,
+		UpcomingMagic: [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		CurrentMagic:  [8]byte{2, 3, 4, 5, 6, 7, 8, 9},
+		PreviousMagic: [8]byte{3, 4, 5, 6, 7, 8, 9, 10},
 	}
 
 	readPacket := SDK5_ServerUpdateResponsePacket{}
