@@ -607,26 +607,55 @@ func TestServerInitRequestResponse_SDK5(t *testing.T) {
 
 			packetData := buffer[:packetBytes]
 
+			// ignore any packets that aren't from the server backend we're testing
+
 			if from.String() != harness.handler.ServerBackendAddress.String() {
 				core.Debug("not from server backend")
 				continue
 			}
+
+			// ignore any packets that are not server init response packets
 
 			if packetData[0] != packets.SDK5_SERVER_INIT_RESPONSE_PACKET {
 				core.Debug("wrong packet type")
 				continue
 			}
 
+			// ignore any packets that are too small
+
 			if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
 
-			// todo: check basic packet filter
+			// make sure basic packet filter passes
 
-			// todo: check advanced packet filter
+			if !core.BasicPacketFilter(packetData[:], len(packetData)) {
+				core.Debug("basic packet filter failed")
+				continue
+			}
 
-			// todo: check signature
+			// make sure advanced packet filter passes
+
+			var emptyMagic [8]byte
+
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+
+			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
+			toAddressData, toAddressPort := core.GetAddressData(clientAddress, toAddressBuffer[:])
+
+			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+				core.Debug("advanced packet filter failed")
+				continue
+			}
+
+			// make sure packet signature check passes
+
+			if !SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+				core.Debug("packet signature check failed")
+				return
+			}
 
 			// read packet
 

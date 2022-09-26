@@ -117,8 +117,22 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
 	// check packet signature
 
-	if !SDK5_CheckPacketSignature(handler, packetData, handler.RouteMatrix, handler.Database) {
+	var buyerId uint64
+	index := 16 + 3
+	common.ReadUint64(packetData, &index, &buyerId)
+
+	buyer, ok := handler.Database.BuyerMap[buyerId]
+	if !ok {
+		core.Error("unknown buyer id: %016x", buyerId)
+		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
+		return
+	}
+
+	publicKey := buyer.PublicKey
+
+	if !SDK5_CheckPacketSignature(packetData, publicKey) {
 		core.Debug("packet signature check failed")
+		handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
 		return
 	}
 
@@ -173,20 +187,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	}
 }
 
-func SDK5_CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix *common.RouteMatrix, database *routing.DatabaseBinWrapper) bool {
-
-	var buyerId uint64
-	index := 16 + 3
-	common.ReadUint64(packetData, &index, &buyerId)
-
-	buyer, ok := database.BuyerMap[buyerId]
-	if !ok {
-		core.Error("unknown buyer id: %016x", buyerId)
-		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
-		return false
-	}
-
-	publicKey := buyer.PublicKey
+func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
@@ -196,7 +197,6 @@ func SDK5_CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMa
 
 	if result != 0 {
 		core.Error("signed packet did not verify")
-		handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
 		return false
 	}
 
