@@ -9,6 +9,8 @@ import (
 
 const (
 	NEXT_CRYPTO_SIGN_BYTES = 64
+	NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES = 32
+	NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
 )
 
 // -------------------------------------------------

@@ -202,6 +202,19 @@ func CheckPacketSignature(handler *SDK5_Handler, packetData []byte, routeMatrix 
 	return true
 }
 
+func SignKeypair(publicKey []byte, privateKey []byte) int {
+	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	return int(result)
+}
+
+func SignPacket(packetData []byte, privateKey []byte) {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
+
 func SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
 	buffer := make([]byte, handler.MaxPacketSize)

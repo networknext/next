@@ -29,6 +29,8 @@ type TestHarness struct {
 	handler SDK5_Handler
 	conn *net.UDPConn
 	from *net.UDPAddr
+	signPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	signPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 }
 
 func CreateTestHarness() *TestHarness {
@@ -44,20 +46,18 @@ func CreateTestHarness() *TestHarness {
 		panic(fmt.Sprintf("could not bind socket: %v", err))
 	}
 
-	// todo: generate sign keypair
+	harness.conn = lp.(*net.UDPConn)
 
 	harness.handler = SDK5_Handler{}
 	harness.handler.MaxPacketSize = 4096
-	harness.handler.ServerBackendAddress = *core.ParseAddress("127.0.0.1:45000")		// todo: get port from socket above
-	// todo: harness.handler.Database
-	// todo: harness.handler.RouteMatrix
-	// todo: harness.handler.PrivateKey
+	harness.handler.ServerBackendAddress = *core.ParseAddress("127.0.0.1:45000")        // todo: get port from the conn
 	harness.handler.GetMagicValues = getMagicValues
 
-	// todo: create client conn
+	harness.from = core.ParseAddress("127.0.0.1:10000")
 
-	harness.conn = lp.(*net.UDPConn)
-	harness.from = core.ParseAddress("127.0.0.1:10000")								// todo: get port from client socket
+	SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
+
+	harness.handler.PrivateKey = harness.signPrivateKey[:]
 
 	return &harness
 }
@@ -242,9 +242,254 @@ func TestUnknownBuyer(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownBuyer])
 }
 
-// ...
+func TestSignatureCheckFailed(t *testing.T) {
 
-/*
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 100)
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	buyerId := uint64(0x1111111122222222)
+	
+	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+
+	buyer := routing.Buyer{}
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 16 + 3
+	common.WriteUint64(packetData[:], &index, buyerId)
+
+	// run the packet through the handler, it should fail the signature check
 
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
-*/
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
+}
+
+func TestBuyerNotLive(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	buyerId := uint64(0x1111111122222222)
+	
+	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+
+	buyer := routing.Buyer{}
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 16 + 3
+	common.WriteUint64(packetData[:], &index, buyerId)
+
+	// actually sign the packet, so it passes the signature check
+
+	SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, it should pass the signature check then fail on buyer not live
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+}
+
+func TestBuyerSDKTooOld(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	buyerId := uint64(0x1111111122222222)
+	
+	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+
+	buyer := routing.Buyer{}
+	buyer.Live = true
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 16 + 3
+	common.WriteUint64(packetData[:], &index, buyerId)
+
+	// modify the packet so it has an old SDK version of 1.2.3
+
+	packetData[16] = 1
+	packetData[17] = 2	
+	packetData[18] = 3
+
+	// actually sign the packet, so it passes the signature check
+
+	SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, we should see that the SDK is too old
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+}
+
+func TestUnknownDatacenter(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	fromPort := uint16(harness.from.Port)
+	toPort := uint16(harness.handler.ServerBackendAddress.Port)
+	packetLength := len(packetData)
+
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{}
+
+	buyerId := uint64(0x1111111122222222)
+	
+	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+
+	buyer := routing.Buyer{}
+	buyer.Live = true
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 16 + 3
+	common.WriteUint64(packetData[:], &index, buyerId)
+
+	// actually sign the packet, so it passes the signature check
+
+	SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, we should see the datacenter is unknown
+
+	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
+}
