@@ -280,7 +280,7 @@ func test_google_bigquery() {
 	// Create local table under the local dataset
 	tableReference := bigquerySetupClient.Dataset(dataset).Table(tableName)
 
-	tableReference.Create(cancelContext, &bigquery.TableMetadata{
+	err = tableReference.Create(cancelContext, &bigquery.TableMetadata{
 		Schema: bigquery.Schema{
 			{
 				Type: bigquery.IntegerFieldType,
@@ -288,6 +288,22 @@ func test_google_bigquery() {
 			},
 		},
 	})
+
+	if err != nil {
+		core.Error("failed to setup bigquery table")
+	}
+
+	tables := bigquerySetupClient.Dataset(dataset).Tables(cancelContext)
+
+	for {
+		table, err := tables.Next()
+
+		if err != nil {
+			break
+		}
+
+		core.Debug(table.FullyQualifiedName())
+	}
 
 	core.Debug("successfully set up bigquery emulator")
 
@@ -327,7 +343,7 @@ func test_google_bigquery() {
 		go func() {
 			for j := 0; j < NumEntriesPerProducer; j++ {
 				var entry bigquery.ValueSaver = &common.TestEntry{
-					Timestamp: uint32(time.Now().Unix()),
+					Timestamp: uint32(time.Now().Nanosecond()),
 				}
 
 				messageChannel <- entry
@@ -377,7 +393,9 @@ func test_google_bigquery() {
 
 	for i := 0; i < NumPublishers; i++ {
 		totalEntriesPublished = totalEntriesPublished + int(publishers[i].NumEntriesPublished)
-		publishers[i].Close()
+		if err := publishers[i].Close(); err != nil {
+			core.Error("failed to shutdown publisher")
+		}
 	}
 
 	core.Debug("total entries published: %d", totalEntriesPublished)
@@ -389,17 +407,19 @@ func test_google_bigquery() {
 		os.Exit(1)
 	}
 
-	tableReference = bigquerySetupClient.Dataset(dataset).Table(tableName)
-	metdata, err := tableReference.Metadata(context.Background())
-
+	job, err := bigquerySetupClient.Query(fmt.Sprintf("SELECT * FROM %s.%s.%s", googleProjectID, dataset, tableName)).Run(context.Background())
 	if err != nil {
-		core.Error("failed to get table metadata")
+		core.Error("failed to run query: %v", err)
 		os.Exit(1)
 	}
 
-	core.Debug("entries published to bigquery: %d", metdata.NumRows)
+	rows, err := job.Read(context.Background())
+	if err != nil {
+		core.Error("failed to read results: %v", err)
+		os.Exit(1)
+	}
 
-	if metdata.NumRows != uint64(totalEntriesPublished) {
+	if rows.TotalRows != uint64(totalEntriesPublished) {
 		core.Error("not all entries were published")
 		os.Exit(1)
 	}
@@ -922,10 +942,10 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		// test_magic_backend,
-		// test_redis_pubsub,
-		// test_redis_streams,
-		// test_google_pubsub,
+		test_magic_backend,
+		test_redis_pubsub,
+		test_redis_streams,
+		test_google_pubsub,
 		test_google_bigquery,
 	}
 
