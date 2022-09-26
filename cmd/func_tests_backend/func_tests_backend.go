@@ -387,10 +387,6 @@ func test_google_bigquery() {
 		}
 	}
 
-	core.Debug("total entries published: %d", totalEntriesPublished)
-	core.Debug("total producers: %d", NumProducers)
-	core.Debug("entries per producer: %d", NumEntriesPerProducer)
-
 	if totalEntriesPublished != (NumProducers * NumEntriesPerProducer) {
 		core.Error("did not receive all messages sent")
 		os.Exit(1)
