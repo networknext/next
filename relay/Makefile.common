@@ -1,0 +1,39 @@
+# This contains things shared between the different makefiles
+
+#################
+### Functions ###
+#################
+
+rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+
+#################
+### Variables ###
+#################
+
+RELEASE_MAKEFILE 			:= Makefile.release
+DEBUG_MAKEFILE 				:= Makefile.debug
+TEST_MAKEFILE 				:= Makefile.test
+BENCHMARK_MAKEFILE 			:= Makefile.benchmark
+
+#LIBS                  		:= libsodium
+
+SRC							:= src
+BIN							:= bin
+OBJ							:= obj
+
+INCLUDE						:= $(SRC)
+INCLUDE_DIRS				:= -I$(INCLUDE) $(shell pkg-config --cflags-only-I $(LIBS))
+
+LIBRARIES					:= -lsodium -lcurl -lpthread
+
+SRC_SUB_DIRS				:= $(shell find src/* -type d -print)
+SRC_OBJ_DIRS				:= $(patsubst $(SRC)/%, $(OBJ)/$(SRC)/%, $(SRC_SUB_DIRS))
+SRC_FILES					:= $(call rwildcard,$(SRC),*.cpp)
+
+CXX							:= g++
+CXX_FLAGS 					:= -std=c++17
+CXX_DBG_FLAGS				:= -g -O0
+CXX_PERF_FLAGS				:= -O3
+
+PCH							:= $(INCLUDE)/includes.h
+GCH							:= $(PCH).gch
