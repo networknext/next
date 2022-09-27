@@ -517,7 +517,7 @@ func startEmulators() {
 	time.Sleep(time.Second * 5)
 
 	// Setup tables, topics and subscriptions
-	run_make("dev-setup-emulator", "logs/setup_emulator")
+	run_make("dev-setup-emulators", "logs/setup_emulators")
 }
 
 func main() {

@@ -595,9 +595,9 @@ build-reference-relay: dist
 	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 
-.PHONY: dev-setup-emulator
-dev-setup-emulator:
-	$(GO) run cmd/setup_emulator/setup_emulator.go
+.PHONY: dev-setup-emulators
+dev-setup-emulators:
+	$(GO) run cmd/setup_emulators/setup_emulators.go
 
 .PHONY: dev-pubsub-emulator
 dev-pubsub-emulator:
