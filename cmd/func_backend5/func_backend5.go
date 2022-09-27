@@ -27,11 +27,12 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/sys/unix"
 
-	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
+
+	"github.com/networknext/backend/modules-old/billing"
+	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/transport"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000

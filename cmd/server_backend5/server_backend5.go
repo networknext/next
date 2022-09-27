@@ -30,20 +30,21 @@ import (
 	// FUCK this logging system. FUCK IT. Marked for death!!!
 	"github.com/go-kit/kit/log"
 
-	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/billing"
-	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
-	md "github.com/networknext/backend/modules/match_data"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/middleware"
-	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/billing"
+	"github.com/networknext/backend/modules-old/config"
+	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/encoding"
+	md "github.com/networknext/backend/modules-old/match_data"
+	"github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/storage"
+	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/transport/middleware"
+	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"golang.org/x/sys/unix"
 

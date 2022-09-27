@@ -18,11 +18,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/transport"
 
 	"github.com/gorilla/mux"
 )

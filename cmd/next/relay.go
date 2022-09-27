@@ -21,8 +21,11 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/modood/table"
-	"github.com/networknext/backend/modules/routing"
-	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+
+	"github.com/networknext/backend/modules-old/routing"
+
+	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
+
 	"github.com/ybbus/jsonrpc"
 	"golang.org/x/crypto/nacl/box"
 	"google.golang.org/api/iterator"

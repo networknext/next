@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/networknext/backend/modules/routing"
-	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules-old/routing"
+	
+	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
 
 func validate(env Environment, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, inputFile string) {

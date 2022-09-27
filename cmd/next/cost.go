@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
 
 func getCostMatrix(env Environment, fileName string) {

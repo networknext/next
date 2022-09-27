@@ -17,7 +17,8 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/handlers"
-	"github.com/networknext/backend/modules/routing"
+
+	"github.com/networknext/backend/modules-old/routing"
 )
 
 var service *common.Service

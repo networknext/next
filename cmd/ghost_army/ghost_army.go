@@ -17,14 +17,16 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/modules/backend"
+
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
-	ghostarmy "github.com/networknext/backend/modules/ghost_army"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/encoding"
+	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
+	"github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/transport/pubsub"
 )
 
 const (

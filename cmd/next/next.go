@@ -28,9 +28,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/routing"
-	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/routing"
+	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
+
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
