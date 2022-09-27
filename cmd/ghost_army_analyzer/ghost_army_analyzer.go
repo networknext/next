@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/networknext/backend/modules/encoding"
-	ghostarmy "github.com/networknext/backend/modules/ghost_army"
+	"github.com/networknext/backend/modules-old/encoding"
+	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
 )
 
 const (

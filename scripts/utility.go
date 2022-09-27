@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/storage"
 )
 
 // Chose the utility function to use

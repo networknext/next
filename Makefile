@@ -335,51 +335,43 @@ dev-new-server-backend5: dist/new_server_backend5 ## runs a local new server bac
 
 .PHONY: build-test-server4
 build-test-server4: build-sdk4
-	@printf "Building test server 4... "
+	@echo "Building test server"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-server4
 build-server4: build-sdk4
-	@printf "Building server 4... "
+	@echo "Building server 4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-client4
 build-client4: build-sdk4
-	@printf "Building client 4... "
+	@echo "Building client 4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-test4
 build-test4: build-sdk4
-	@printf "Building test 4... "
+	@echo "Building test 4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-test-server5
 build-test-server5: build-sdk5
-	@printf "Building test server 5... "
+	@echo "Building test server 5"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-server5
 build-server5: build-sdk5
-	@printf "Building server 5... "
+	@echo "Building server 5"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-client5
 build-client5: build-sdk5
-	@printf "Building client 5... "
+	@echo "Building client 5"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-test5
 build-test5: build-sdk5
-	@printf "Building test 5... "
+	@echo "Building test 5"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client (sdk4)
@@ -442,47 +434,41 @@ test-relay: dist build-reference-relay ## runs relay unit tests
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
-	@printf "Building load test server... "
+	@echo "Building load test server"
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_server ./cmd/load_test_server/load_test_server.cpp  dist/$(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 else
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
-	@printf "Building load test server... "
+	@echo "Building load test server"
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
-	@printf "done\n"
 endif
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
-	@printf "Building load test client... "
+	@echo "Building load test client"
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_client ./cmd/load_test_client/load_test_client.cpp dist/$(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 else
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
-	@printf "Building load test client... "
+	@echo "Building load test client"
 	@$(CXX) $(CXX_FLAGS) -Isdk4/include -o dist/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
-	@printf "done\n"
 endif
 
 ########################
 
 .PHONY: build-functional-tests-backend
 build-functional-tests-backend: dist
-	@printf "Building functional tests backend... " ; \
-	$(GO) build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go ; \
-	printf "done\n" ; \
+	@echo "Building functional tests backend" ; \
+	$(GO) build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go
 
 .PHONY: build-test-func-backend
 build-test-func-backend: dist build-functional-tests-backend
 
 .PHONY: run-test-func-backend
 run-test-func-backend:
-	@printf "\nRunning functional tests backend...\n\n" ; \
-	cd dist && $(GO) run ../cmd/func_tests_backend/func_tests_backend.go $(test) ; \
-	printf "\ndone\n\n"
+	@echo "\nRunning functional tests backend" ; \
+	cd dist && $(GO) run ../cmd/func_tests_backend/func_tests_backend.go $(test)
 
 .PHONY: test-func-backend
 test-func-backend: build-test-func-backend run-test-func-backend ## runs functional tests (backend)
@@ -491,27 +477,23 @@ test-func-backend: build-test-func-backend run-test-func-backend ## runs functio
 
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
-	@printf "Building functional server 4... "
+	@echo "Building functional server 4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-functional-client4
 build-functional-client4: build-sdk4
-	@printf "Building functional client 4... "
+	@echo "Building functional client 4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-functional-backend4
 build-functional-backend4: dist
-	@printf "Building functional backend 4... " ; \
-	$(GO) build -o ./dist/func_backend4 ./cmd/func_backend4/*.go ; \
-	printf "done\n" ; \
+	@echo "Building functional backend 4" ; \
+	$(GO) build -o ./dist/func_backend4 ./cmd/func_backend4/*.go
 
 .PHONY: build-functional-tests-sdk4
 build-functional-tests-sdk4: dist
-	@printf "Building functional tests sdk4... " ; \
-	$(GO) build -o ./dist/func_tests_sdk4 ./cmd/func_tests_sdk4/*.go ; \
-	printf "done\n" ; \
+	@echo "Building functional tests sdk4"
+	$(GO) build -o ./dist/func_tests_sdk4 ./cmd/func_tests_sdk4/*.go
 
 .PHONY: build-test-func-sdk4
 build-test-func-sdk4: clean dist build-sdk4 build-reference-relay build-functional-server4 build-functional-client4 build-functional-backend4 build-functional-tests-sdk4
@@ -587,14 +569,12 @@ dev-fake-server: dist/fake_server ## runs a fake server that simulates 2 servers
 	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
 
 dist/$(SDKNAME4).so: dist
-	@printf "Building sdk4... "
+	@echo "Building sdk4"
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
-	@printf "done\n"
 
 dist/$(SDKNAME5).so: dist
-	@printf "Building sdk5... "
+	@echo "Building sdk5"
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -DNEXT_COMPILE_WITH_TESTS=1 -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
-	@printf "done\n"
 
 .PHONY: build-sdk4
 build-sdk4: dist/$(SDKNAME4).so
@@ -624,3 +604,17 @@ dev-pubsub-emulator:
 .PHONY: dev-bigquery-emulator
 dev-bigquery-emulator:
 	bigquery-emulator --project="local" --dataset="local"
+
+.PHONY: loc
+loc:
+	@echo "\ncommands:"
+	@find cmd -name '*.go' | xargs wc -l | grep total
+	@echo "\nmodules (new):"
+	@find modules -name '*.go' | xargs wc -l | grep total
+	@echo "\nmodules (old):"
+	@find modules-old -name '*.go' | xargs wc -l | grep total	
+	@echo "\nsdk4:"
+	@find sdk4 -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nsdk5:"
+	@find sdk5 -name '*.cpp' | xargs wc -l | grep total	
+	@echo

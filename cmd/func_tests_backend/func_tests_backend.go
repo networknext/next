@@ -280,7 +280,7 @@ func test_google_bigquery() {
 	// Create local table under the local dataset
 	tableReference := bigquerySetupClient.Dataset(dataset).Table(tableName)
 
-	tableReference.Create(cancelContext, &bigquery.TableMetadata{
+	err = tableReference.Create(cancelContext, &bigquery.TableMetadata{
 		Schema: bigquery.Schema{
 			{
 				Type: bigquery.IntegerFieldType,
@@ -288,6 +288,11 @@ func test_google_bigquery() {
 			},
 		},
 	})
+
+	if err != nil {
+		core.Error("failed to setup bigquery table")
+		os.Exit(1)
+	}
 
 	core.Debug("successfully set up bigquery emulator")
 
@@ -327,7 +332,7 @@ func test_google_bigquery() {
 		go func() {
 			for j := 0; j < NumEntriesPerProducer; j++ {
 				var entry bigquery.ValueSaver = &common.TestEntry{
-					Timestamp: uint32(time.Now().Unix()),
+					Timestamp: uint32(time.Now().Nanosecond()),
 				}
 
 				messageChannel <- entry
@@ -377,10 +382,30 @@ func test_google_bigquery() {
 
 	for i := 0; i < NumPublishers; i++ {
 		totalEntriesPublished = totalEntriesPublished + int(publishers[i].NumEntriesPublished)
+		if err := publishers[i].Close(); err != nil {
+			core.Error("failed to shutdown publisher")
+		}
 	}
 
 	if totalEntriesPublished != (NumProducers * NumEntriesPerProducer) {
 		core.Error("did not receive all messages sent")
+		os.Exit(1)
+	}
+
+	job, err := bigquerySetupClient.Query(fmt.Sprintf("SELECT * FROM %s.%s.%s", googleProjectID, dataset, tableName)).Run(context.Background())
+	if err != nil {
+		core.Error("failed to run query: %v", err)
+		os.Exit(1)
+	}
+
+	rows, err := job.Read(context.Background())
+	if err != nil {
+		core.Error("failed to read results: %v", err)
+		os.Exit(1)
+	}
+
+	if rows.TotalRows != uint64(totalEntriesPublished) {
+		core.Error("not all entries were published")
 		os.Exit(1)
 	}
 

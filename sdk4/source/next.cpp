@@ -7502,7 +7502,7 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     if ( send_continue_request )
     {
     	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }

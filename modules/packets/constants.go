@@ -2,7 +2,8 @@ package packets
 
 import (
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
+
+	"github.com/networknext/backend/modules-old/crypto"
 )
 
 // -------------------------------------------------

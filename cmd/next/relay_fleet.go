@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/modood/table"
-	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+
+	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
 
 func getFleetRelays(

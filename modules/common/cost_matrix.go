@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules-old/routing"
 )
 
 const CostMatrixSerializeVersion = 2

@@ -19,14 +19,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/metrics"
-	portalcruncher "github.com/networknext/backend/modules/portal_cruncher"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/config"
+	"github.com/networknext/backend/modules-old/metrics"
+	portalcruncher "github.com/networknext/backend/modules-old/portal_cruncher"
+	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"github.com/gorilla/mux"
 )

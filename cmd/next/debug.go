@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules-old/routing"
 )
 
 func GetRelayIndex(routeMatrix *routing.RouteMatrix, relayName string) int {
