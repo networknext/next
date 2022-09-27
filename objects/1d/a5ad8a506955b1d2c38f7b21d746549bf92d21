@@ -1,0 +1,3 @@
+[map "abc827f3-b966-300e-9b02-cf0c32bca320"]
+	object = 0cd244d64a9537c67bb7d7a80f4d13109f2c913b
+	type = extract tree + exclude
