@@ -129,11 +129,8 @@ const (
 
 	SDK5_ServerInitResponseOK                   = 0
 	SDK5_ServerInitResponseUnknownBuyer         = 1
-	SDK5_ServerInitResponseUnknownDatacenter    = 2
+	SDK5_ServerInitResponseBuyerNotActive       = 2
 	SDK5_ServerInitResponseOldSDKVersion        = 3
-	SDK5_ServerInitResponseSignatureCheckFailed = 4
-	SDK5_ServerInitResponseBuyerNotActive       = 5
-	SDK5_ServerInitResponseDatacenterNotEnabled = 6
 
 	SDK5_PlatformTypeUnknown     = 0
 	SDK5_PlatformTypeWindows     = 1

@@ -346,10 +346,9 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
-	// todo
-	core.Debug("send response packet to %s", from.String())
-
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
+
+	// todo: send a server init message via pubsub
 }
 
 func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
@@ -364,14 +363,6 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
-	upcomingMagic, currentMagic, previousMagic := handler.GetMagicValues()
-
-	responsePacket := &packets.SDK5_ServerInitResponsePacket{}
-	responsePacket.RequestId = requestPacket.RequestId
-	copy(responsePacket.UpcomingMagic[:], upcomingMagic[:])
-	copy(responsePacket.CurrentMagic[:], currentMagic[:])
-	copy(responsePacket.PreviousMagic[:], previousMagic[:])
-
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
@@ -381,17 +372,23 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 
 	if !buyer.Live {
 		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
-		responsePacket.Response = packets.SDK5_ServerInitResponseBuyerNotActive
 		handler.Events[SDK5_HandlerEvent_BuyerNotLive] = true
 		return
 	}
 
 	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
 		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
-		responsePacket.Response = packets.SDK5_ServerInitResponseOldSDKVersion
 		handler.Events[SDK5_HandlerEvent_SDKTooOld] = true
 		return
 	}
+
+	upcomingMagic, currentMagic, previousMagic := handler.GetMagicValues()
+
+	responsePacket := &packets.SDK5_ServerUpdateResponsePacket{}
+	responsePacket.RequestId = requestPacket.RequestId
+	copy(responsePacket.UpcomingMagic[:], upcomingMagic[:])
+	copy(responsePacket.CurrentMagic[:], currentMagic[:])
+	copy(responsePacket.PreviousMagic[:], previousMagic[:])
 
 	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
@@ -400,9 +397,9 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 		handler.Events[SDK5_HandlerEvent_UnknownDatacenter] = true
 	}
 
-	// todo: send server update message to bigquery via google pubsub
-
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
+
+	// todo: send server update message via google pubsub
 }
 
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
@@ -412,6 +409,8 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	core.Debug("---------------------------------------------------------------------------")
 	core.Debug("received session update request packet from %s", from.String())
 	core.Debug("---------------------------------------------------------------------------")
+
+	// todo
 
 	// ...
 }
@@ -424,5 +423,29 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 	core.Debug("received match data request packet from %s", from.String())
 	core.Debug("---------------------------------------------------------------------------")
 
-	// ...
+	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
+	if !exists {
+		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
+		return
+	}
+
+	if !buyer.Live {
+		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		handler.Events[SDK5_HandlerEvent_BuyerNotLive] = true
+		return
+	}
+
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
+		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		handler.Events[SDK5_HandlerEvent_SDKTooOld] = true
+		return
+	}
+
+	responsePacket := &packets.SDK5_MatchDataResponsePacket{}
+	responsePacket.SessionId = requestPacket.SessionId
+
+	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
+
+	// todo: build a match data message and send it to pubsub
 }
