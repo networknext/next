@@ -511,8 +511,17 @@ func happy_path() int {
 	return 0
 }
 
+func main() {
+	setupPubsubAndBigquery()
+	if happy_path() != 0 {
+		os.Exit(1)
+	}
+}
+
 var googleProjectID string
 var bigqueryDataset string
+
+// todo: lots of copy pasta below. surely we could simplify this by having a struct for message types?
 
 var costMatrixPubsubTopic string
 var costMatrixPubsubSubscription string
@@ -538,12 +547,19 @@ var relayStatsPubsubTopic string
 var relayStatsPubsubSubscription string
 var relayStatsTable string
 
-func main() {
+func setupPubsubAndBigquery() {
+
+	// todo: what if I want to run the services for the happy path manually?
+	// ideally this function would be something that would automatically be done
+	// when we run the pubsub emulator or biguery emulators from the makefile
+	// vs. happy path specific
 
 	// set up pubsub emulator
+
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
 	// set up bigquery emulator
+	
 	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
 	time.Sleep(time.Second * 5)
@@ -557,6 +573,8 @@ func main() {
 		core.Error("failed to create pubsub setup client: %v", err)
 		os.Exit(1)
 	}
+
+	// todo: simplify the code below
 
 	costMatrixPubsubTopic = envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "local")
 	costMatrixPubsubSubscription = envvar.GetString("COST_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "local")
@@ -607,6 +625,8 @@ func main() {
 	})
 
 	pubsubSetupClient.Close()
+
+	// ----------------
 
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "local")
 
@@ -1380,11 +1400,5 @@ func main() {
 		},
 	})
 
-	core.Debug("successfully set up bigquery emulator")
-
 	bigquerySetupClient.Close()
-
-	if happy_path() != 0 {
-		os.Exit(1)
-	}
 }
