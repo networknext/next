@@ -42,9 +42,9 @@ func main() {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 
-	routeMatrix, _ := service.RouteMatrixAndDatabase()
+	routeMatrix, database := service.RouteMatrixAndDatabase()
 
-	not_ready := routeMatrix == nil
+	not_ready := routeMatrix == nil || database == nil
 
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
