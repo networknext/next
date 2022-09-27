@@ -617,4 +617,10 @@ loc:
 	@find sdk4 -name '*.cpp' | xargs wc -l | grep total	
 	@echo "\nsdk5:"
 	@find sdk5 -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nrelay:"
+	@find relay -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nreference:"
+	@find reference -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nportal:"
+	@find portal -name '*.ts' | xargs wc -l | grep total	
 	@echo
