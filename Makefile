@@ -604,3 +604,17 @@ dev-pubsub-emulator:
 .PHONY: dev-bigquery-emulator
 dev-bigquery-emulator:
 	bigquery-emulator --project="local" --dataset="local"
+
+.PHONY: loc
+loc:
+	@echo "\ncommands:"
+	@find cmd -name '*.go' | xargs wc -l | grep total
+	@echo "\nmodules (new):"
+	@find modules -name '*.go' | xargs wc -l | grep total
+	@echo "\nmodules (old):"
+	@find modules-old -name '*.go' | xargs wc -l | grep total	
+	@echo "\nsdk4:"
+	@find sdk4 -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nsdk5:"
+	@find sdk5 -name '*.cpp' | xargs wc -l | grep total	
+	@echo
