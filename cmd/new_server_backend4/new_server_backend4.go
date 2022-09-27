@@ -11,6 +11,8 @@ func main() {
 
 	service := common.CreateService("new_server_backend4")
 
+	service.UpdateRouteMatrix()
+
 	service.StartUDPServer(packetHandler)
 
 	service.StartWebServer()

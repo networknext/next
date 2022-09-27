@@ -85,6 +85,10 @@ type Service struct {
 	healthHandler func(w http.ResponseWriter, r *http.Request)
 
 	udpServer *UDPServer
+
+	routeMatrixMutex sync.RWMutex
+	routeMatrix *RouteMatrix
+	routeMatrixDatabase *routing.DatabaseBinWrapper
 }
 
 func CreateService(serviceName string) *Service {
@@ -239,6 +243,91 @@ func (service *Service) LeaderElection() {
 			}
 		}
 	}()
+}
+
+func (service *Service) UpdateRouteMatrix() {
+	
+	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+
+	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("route matrix interval: %s", routeMatrixInterval.String())
+
+	httpClient := &http.Client{
+		Timeout: routeMatrixInterval,
+	}
+
+	ticker := time.NewTicker(routeMatrixInterval)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				service.routeMatrixMutex.RLock()
+				currentRouteMatrix := service.routeMatrix
+				service.routeMatrixMutex.RUnlock()
+
+				if currentRouteMatrix != nil && time.Now().Unix()-int64(currentRouteMatrix.CreatedAt) > 30 {
+					core.Error("route matrix is stale")
+					service.routeMatrixMutex.Lock()
+					service.routeMatrix = nil
+					service.routeMatrixMutex.Unlock()
+				}
+
+				response, err := httpClient.Get(routeMatrixURI)
+				if err != nil {
+					core.Error("failed to http get route matrix: %v", err)
+					continue
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				response.Body.Close()
+
+				newRouteMatrix := RouteMatrix{}
+
+				err = newRouteMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				var newDatabase routing.DatabaseBinWrapper
+
+				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+				decoder := gob.NewDecoder(databaseBuffer)
+				err = decoder.Decode(&newDatabase)
+				if err != nil {
+					core.Error("failed to read database: %v", err)
+					continue
+				}
+
+				service.routeMatrixMutex.Lock()
+				service.routeMatrix = &newRouteMatrix
+				service.routeMatrixDatabase = &newDatabase
+				service.routeMatrixMutex.Unlock()
+
+				core.Debug("updated route matrix: %d relays", len(newRouteMatrix.RelayIds))
+			}
+		}
+	}()
+}
+
+func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *routing.DatabaseBinWrapper) {
+	service.routeMatrixMutex.RLock()
+	routeMatrix := service.routeMatrix
+	database := service.routeMatrixDatabase
+	service.routeMatrixMutex.RUnlock()	
+	return routeMatrix, database
 }
 
 func (service *Service) IsLeader() bool {
