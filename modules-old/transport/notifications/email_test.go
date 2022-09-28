@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/modules-old/transport/notifications"
-	
+
 	"github.com/stretchr/testify/assert"
 )
 
