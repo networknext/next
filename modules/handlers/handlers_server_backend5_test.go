@@ -1065,6 +1065,18 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server update message sent over the channel
+
+	select {
+    case _ = <-harness.serverUpdateMessageChannel:
+    default:
+        panic("no server update message found on channel")
+    }
 }
 
 func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -1149,6 +1161,18 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server update message sent over the channel
+
+	select {
+    case _ = <-harness.serverUpdateMessageChannel:
+    default:
+        panic("no server update message found on channel")
+    }
 }
 
 func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -1225,6 +1249,18 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server update message sent over the channel
+
+	select {
+    case _ = <-harness.serverUpdateMessageChannel:
+    default:
+        panic("no server update message found on channel")
+    }
 }
 
 func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
@@ -1434,6 +1470,10 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -1442,6 +1482,19 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	// verify that we received a response
 
 	assert.True(t, receivedResponse != 0)
+
+	// verify that we get at least one server update message sent over the channel
+
+	select {
+    case message := <-harness.serverUpdateMessageChannel:
+    	assert.Equal(t, message.SDKVersion_Major, byte(5))
+    	assert.Equal(t, message.SDKVersion_Minor, byte(0))
+    	assert.Equal(t, message.SDKVersion_Patch, byte(0))
+    	assert.Equal(t, message.BuyerId, packet.BuyerId)
+    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+    default:
+        panic("no server update message found on channel")
+    }
 }
 
 // ---------------------------------------------------------------------------------------

@@ -388,6 +388,24 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
+	defer func() {
+	
+		if handler.ServerUpdateMessageChannel != nil {
+
+			message := messages.ServerUpdateMessage{}
+
+			message.SDKVersion_Major = byte(requestPacket.Version.Major)
+			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+			message.BuyerId = requestPacket.BuyerId
+			message.DatacenterId = requestPacket.DatacenterId
+
+			handler.ServerUpdateMessageChannel <- &message
+
+			handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage] = true
+		}
+	}()
+
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
@@ -423,8 +441,6 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	}
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
-
-	// todo: send server update message via google pubsub
 }
 
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {

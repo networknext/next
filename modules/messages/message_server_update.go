@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
-
 	"github.com/networknext/backend/modules-old/encoding"
 )
 
@@ -14,19 +13,24 @@ const (
 )
 
 type ServerUpdateMessage struct {
-	Version byte
-	// todo
+	MessageVersion   byte
+	SDKVersion_Major byte
+	SDKVersion_Minor byte
+	SDKVersion_Patch byte
+	BuyerId          uint64
+	DatacenterId     uint64
+	DatacenterName   string
 }
 
 func (message *ServerUpdateMessage) Read(buffer []byte) error {
 
 	index := 0
 
-	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read server update version")
+	if !encoding.ReadUint8(buffer, &index, &message.MessageVersion) {
+		return fmt.Errorf("failed to read server update message version")
 	}
 
-	// todo
+	// todo: code rest of read
 
 	return nil
 }
@@ -35,9 +39,9 @@ func (message *ServerUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint8(buffer, &index, message.Version)
+	encoding.WriteUint8(buffer, &index, message.MessageVersion)
 
-	// todo
+	// todo: code rest of write
 
 	return buffer[:index]
 }
@@ -46,7 +50,7 @@ func (message *ServerUpdateMessage) Save() (map[string]bigquery.Value, string, e
 
 	bigquery_message := make(map[string]bigquery.Value)
 
-	// todo
+	// todo: code save method
 
 	return bigquery_message, "", nil
 }
