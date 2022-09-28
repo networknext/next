@@ -595,6 +595,10 @@ build-reference-relay: dist
 	@echo "Building reference relay..."
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 
+.PHONY: dev-setup-emulators
+dev-setup-emulators:
+	$(GO) run cmd/setup_emulators/setup_emulators.go
+
 .PHONY: dev-pubsub-emulator
 dev-pubsub-emulator:
 	@-pkill -f "gcloud.py beta emulators pubsub"
