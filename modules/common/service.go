@@ -1,12 +1,15 @@
 package common
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,6 +17,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -86,9 +90,11 @@ type Service struct {
 
 	udpServer *UDPServer
 
-	routeMatrixMutex sync.RWMutex
-	routeMatrix *RouteMatrix
+	routeMatrixMutex    sync.RWMutex
+	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *routing.DatabaseBinWrapper
+
+	gcpStorage *GCPStorage
 }
 
 func CreateService(serviceName string) *Service {
@@ -121,6 +127,8 @@ func CreateService(serviceName string) *Service {
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
 	service.runStatusUpdateLoop()
+
+	service.setupGCPStorage()
 
 	return &service
 }
@@ -246,7 +254,7 @@ func (service *Service) LeaderElection() {
 }
 
 func (service *Service) UpdateRouteMatrix() {
-	
+
 	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
@@ -326,7 +334,7 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *routing.Databas
 	service.routeMatrixMutex.RLock()
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
-	service.routeMatrixMutex.RUnlock()	
+	service.routeMatrixMutex.RUnlock()
 	return routeMatrix, database
 }
 
@@ -343,6 +351,9 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Log("received shutdown signal")
+
+	service.gcpStorage.Client.Close()
+
 	// todo: wait group
 	core.Log("successfully shutdown")
 }
@@ -713,3 +724,116 @@ func (service *Service) updateMagicLoop() {
 }
 
 // ----------------------------------------------------------
+
+func (service *Service) setupGCPStorage() {
+
+	storageLocation := envvar.GetString("GCP_STORAGE_BUCKET", "gs://happy_path_testing")
+
+	core.Log("gcp storage location: %s", storageLocation)
+
+	gcpStorage, err := NewGCPStorageClient(service.Context, storageLocation)
+	if err != nil {
+		core.Error("failed to create gcp storage client: %v", err)
+		os.Exit(1)
+	}
+
+	service.gcpStorage = gcpStorage
+}
+
+func (service *Service) DownloadFileFromGCPBucket(storageFileLocation string, localFileLocation string) error {
+	if err := service.gcpStorage.CopyFromBucketToLocal(service.Context, storageFileLocation, localFileLocation); err != nil {
+		return errors.New(fmt.Sprintf("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err))
+	}
+
+	return nil
+}
+
+func (service *Service) UploadFileToGCPBucket(localFileLocation string, storageFileLocation string) error {
+	if err := service.gcpStorage.CopyFromLocalToBucket(service.Context, localFileLocation, storageFileLocation); err != nil {
+		return errors.New(fmt.Sprintf("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err))
+	}
+
+	return nil
+}
+
+func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uploadPath string, vmNames []string) error {
+
+	hadError := false
+	for _, vm := range vmNames {
+		if err := service.gcpStorage.CopyFromLocalToRemote(service.Context, fileLocation, uploadPath, vm); err != nil {
+			core.Error("failed to copy file to vm: %v", err)
+			hadError = true
+		}
+	}
+
+	if hadError {
+		return errors.New("failed to upload file to one or more vms")
+	}
+
+	return nil
+}
+
+func (service *Service) DownloadGzipFileFromURL(url string, outputLocation string) error {
+
+	httpClient := http.Client{
+		Timeout: time.Second * 30,
+	}
+
+	httpResponse, err := httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+
+	if httpResponse.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
+	}
+
+	// Decompress file in memory
+	gz, err := gzip.NewReader(httpResponse.Body)
+	if err != nil {
+		return err
+	}
+
+	fileBuffer := bytes.NewBuffer(nil)
+	tr := tar.NewReader(gz)
+	for {
+		var hdr *tar.Header
+
+		hdr, err = tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to read from GZIP file: %v", err))
+		}
+
+		if strings.HasSuffix(hdr.Name, "mmdb") {
+			_, err = io.Copy(fileBuffer, tr)
+			if err != nil {
+				return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
+			}
+		}
+	}
+
+	gz.Close()
+	httpResponse.Body.Close()
+
+	// Write file to disk
+	filePath, err := os.Create(outputLocation)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to create file at %s: %v", outputLocation, err))
+	}
+
+	_, err = io.Copy(filePath, fileBuffer)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to write file to disk at %s: %v", outputLocation, err))
+	}
+
+	return nil
+}
+
+// ---------------------------------------------------------------------------------------------------
+
+func (service *Service) GetMIGInstanceInfo(migName string) []InstanceInfo {
+	return service.gcpStorage.GetMIGInstanceInfo(migName)
+}
