@@ -72,7 +72,7 @@ func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
 	}
 }
 
-func GenerateRandomPingStatMessage(routeable bool) messages.PingStatsMessage {
+func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -84,11 +84,11 @@ func GenerateRandomPingStatMessage(routeable bool) messages.PingStatsMessage {
 		RTT:        rand.Float32(),
 		Jitter:     rand.Float32(),
 		PacketLoss: rand.Float32(),
-		Routable:   routeable,
+		Routable:   common.RandomBool(),
 	}
 }
 
-func GenerateRandomRelayStatMessage(full bool) messages.RelayStatsMessage {
+func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -100,7 +100,7 @@ func GenerateRandomRelayStatMessage(full bool) messages.RelayStatsMessage {
 		MaxSessions:              rand.Uint32(),
 		NumRoutable:              rand.Uint32(),
 		NumUnroutable:            rand.Uint32(),
-		Full:                     full,
+		Full:                     common.RandomBool(),
 		CPUUsage:                 rand.Float32(),
 		BandwidthSentPercent:     rand.Float32(),
 		BandwidthReceivedPercent: rand.Float32(),
@@ -160,7 +160,7 @@ func TestRouteMatrixStatsMessage(t *testing.T) {
 func TestPingStatsMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomPingStatMessage(true)
+		writeMessage := GenerateRandomPingStatMessage()
 		readMessage := messages.PingStatsMessage{}
 		MessageReadWriteTest[*messages.PingStatsMessage](&writeMessage, &readMessage, t)
 	}
@@ -169,7 +169,7 @@ func TestPingStatsMessage(t *testing.T) {
 func TestRelayStatsMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomRelayStatMessage(true)
+		writeMessage := GenerateRandomRelayStatMessage()
 		readMessage := messages.RelayStatsMessage{}
 		MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
 	}
