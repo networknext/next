@@ -5,45 +5,52 @@ package handlers
 import "C"
 
 import (
-	"net"
 	"fmt"
+	"net"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
 	"github.com/networknext/backend/modules-old/routing"
 )
 
 const (
-	SDK5_HandlerEvent_PacketTooSmall                         = 0
-	SDK5_HandlerEvent_UnsupportedPacketType                  = 1
-	SDK5_HandlerEvent_BasicPacketFilterFailed                = 2
-	SDK5_HandlerEvent_AdvancedPacketFilterFailed             = 3
-	SDK5_HandlerEvent_NoRouteMatrix                          = 4
-	SDK5_HandlerEvent_NoDatabase                             = 5
-	SDK5_HandlerEvent_UnknownBuyer                           = 6
-	SDK5_HandlerEvent_SignatureCheckFailed                   = 7
-	SDK5_HandlerEvent_BuyerNotLive                           = 8
-	SDK5_HandlerEvent_SDKTooOld                              = 9
-	SDK5_HandlerEvent_UnknownDatacenter                      = 10
+	SDK5_HandlerEvent_PacketTooSmall             = 0
+	SDK5_HandlerEvent_UnsupportedPacketType      = 1
+	SDK5_HandlerEvent_BasicPacketFilterFailed    = 2
+	SDK5_HandlerEvent_AdvancedPacketFilterFailed = 3
+	SDK5_HandlerEvent_NoRouteMatrix              = 4
+	SDK5_HandlerEvent_NoDatabase                 = 5
+	SDK5_HandlerEvent_UnknownBuyer               = 6
+	SDK5_HandlerEvent_SignatureCheckFailed       = 7
+	SDK5_HandlerEvent_BuyerNotLive               = 8
+	SDK5_HandlerEvent_SDKTooOld                  = 9
+	SDK5_HandlerEvent_UnknownDatacenter          = 10
 
 	SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
 	SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
 	SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
 	SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 14
 
-	SDK5_HandlerEvent_ProcessServerInitRequestPacket         = 15
-	SDK5_HandlerEvent_ProcessServerUpdateRequestPacket       = 16
-	SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket      = 17
-	SDK5_HandlerEvent_ProcessMatchDataRequestPacket          = 18
+	SDK5_HandlerEvent_ProcessServerInitRequestPacket    = 15
+	SDK5_HandlerEvent_ProcessServerUpdateRequestPacket  = 16
+	SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket = 17
+	SDK5_HandlerEvent_ProcessMatchDataRequestPacket     = 18
 
-	SDK5_HandlerEvent_SentServerInitResponsePacket           = 19
-	SDK5_HandlerEvent_SentServerUpdateResponsePacket         = 20
-	SDK5_HandlerEvent_SentSessionUpdateResponsePacket        = 21
-	SDK5_HandlerEvent_SentMatchDataResponsePacket            = 22
+	SDK5_HandlerEvent_SentServerInitResponsePacket    = 19
+	SDK5_HandlerEvent_SentServerUpdateResponsePacket  = 20
+	SDK5_HandlerEvent_SentSessionUpdateResponsePacket = 21
+	SDK5_HandlerEvent_SentMatchDataResponsePacket     = 22
 
-	SDK5_HandlerEvent_NumEvents = 23
+	SDK5_HandlerEvent_SentServerInitMessage    = 23
+	SDK5_HandlerEvent_SentServerUpdateMessage  = 24
+	SDK5_HandlerEvent_SentMatchDataMessage     = 25
+
+	// todo: billing message, summary message... or, unify to "session update message" and let analytics break them down?
+
+	SDK5_HandlerEvent_NumEvents = 26
 )
 
 type SDK5_Handler struct {
@@ -54,6 +61,10 @@ type SDK5_Handler struct {
 	PrivateKey           []byte
 	GetMagicValues       func() ([]byte, []byte, []byte)
 	Events               [SDK5_HandlerEvent_NumEvents]bool
+
+	ServerInitMessageChannel   chan<- *messages.ServerInitMessage
+	ServerUpdateMessageChannel chan<- *messages.ServerUpdateMessage
+	MatchDataMessageChannel    chan<- *messages.MatchDataMessage
 }
 
 func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -219,7 +230,7 @@ func SDK5_SignPacket(packetData []byte, privateKey []byte) {
 
 func SDK5_WritePacket[P packets.Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 
- 	buffer := make([]byte, maxPacketSize)
+	buffer := make([]byte, maxPacketSize)
 
 	writeStream := common.CreateWriteStream(buffer[:])
 
@@ -348,7 +359,21 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 
-	// todo: send a server init message via pubsub
+	if handler.ServerInitMessageChannel != nil {
+
+		message := messages.ServerInitMessage{}
+
+		message.SDKVersion_Major = byte(requestPacket.Version.Major)
+		message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+		message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+		message.BuyerId = requestPacket.BuyerId
+		message.DatacenterId = requestPacket.DatacenterId
+		message.DatacenterName = requestPacket.DatacenterName
+
+		handler.ServerInitMessageChannel <- &message
+
+		handler.Events[SDK5_HandlerEvent_SentServerInitMessage] = true
+	}
 }
 
 func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
@@ -362,6 +387,24 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	core.Debug("request id: %016x", requestPacket.RequestId)
 	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
+
+	defer func() {
+	
+		if handler.ServerUpdateMessageChannel != nil {
+
+			message := messages.ServerUpdateMessage{}
+
+			message.SDKVersion_Major = byte(requestPacket.Version.Major)
+			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+			message.BuyerId = requestPacket.BuyerId
+			message.DatacenterId = requestPacket.DatacenterId
+
+			handler.ServerUpdateMessageChannel <- &message
+
+			handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage] = true
+		}
+	}()
 
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
@@ -398,8 +441,6 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	}
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
-
-	// todo: send server update message via google pubsub
 }
 
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
