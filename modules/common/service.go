@@ -86,8 +86,8 @@ type Service struct {
 
 	udpServer *UDPServer
 
-	routeMatrixMutex sync.RWMutex
-	routeMatrix *RouteMatrix
+	routeMatrixMutex    sync.RWMutex
+	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *routing.DatabaseBinWrapper
 }
 
@@ -246,7 +246,7 @@ func (service *Service) LeaderElection() {
 }
 
 func (service *Service) UpdateRouteMatrix() {
-	
+
 	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
@@ -326,7 +326,7 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *routing.Databas
 	service.routeMatrixMutex.RLock()
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
-	service.routeMatrixMutex.RUnlock()	
+	service.routeMatrixMutex.RUnlock()
 	return routeMatrix, database
 }
 

@@ -45,12 +45,6 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	// todo
-	/*
-		Process[messages.BillingEntry](service, "billing", true)
-		Process[messages.SummaryEntry](service, "summary", true)
-	*/
-
 	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", false)
 	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", false)
 	Process[*messages.PingStatsMessage](service, "ping_stats", false)

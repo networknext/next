@@ -7,20 +7,20 @@ import (
 )
 
 const (
-	BillingMessageVersion = uint32(9)
+	SessionUpdateMessageVersion = uint32(0)
 
-	MaxBillingMessageBytes = 4096
+	MaxSessionUpdateMessageBytes = 4096
 
-	BillingMessageMaxRelays           = 5
-	BillingMessageMaxAddressLength    = 256
-	BillingMessageMaxISPLength        = 64
-	BillingMessageMaxSDKVersionLength = 11
-	BillingMessageMaxDebugLength      = 2048
-	BillingMessageMaxNearRelays       = 32
-	BillingMessageMaxTags             = 8
+	SessionUpdateMessageMaxRelays           = 5
+	SessionUpdateMessageMaxAddressLength    = 256
+	SessionUpdateMessageMaxISPLength        = 64
+	SessionUpdateMessageMaxSDKVersionLength = 11
+	SessionUpdateMessageMaxDebugLength      = 2048
+	SessionUpdateMessageMaxNearRelays       = 32
+	SessionUpdateMessageMaxTags             = 8
 )
 
-type BillingMessage struct {
+type SessionUpdateMessage struct {
 
 	// always
 
@@ -61,7 +61,7 @@ type BillingMessage struct {
 	PlatformType      int32
 	SDKVersion        string
 	NumTags           int32
-	Tags              [BillingMessageMaxTags]uint64
+	Tags              [SessionUpdateMessageMaxTags]uint64
 	ABTest            bool
 	Pro               bool
 
@@ -74,10 +74,10 @@ type BillingMessage struct {
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
 	NumNearRelays                   int32
-	NearRelayIDs                    [BillingMessageMaxNearRelays]uint64
-	NearRelayRTTs                   [BillingMessageMaxNearRelays]int32
-	NearRelayJitters                [BillingMessageMaxNearRelays]int32
-	NearRelayPacketLosses           [BillingMessageMaxNearRelays]int32
+	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
+	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
+	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
+	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
 	EverOnNext                      bool
 	SessionDuration                 uint32
 	TotalPriceSum                   uint64
@@ -94,8 +94,8 @@ type BillingMessage struct {
 	PredictedNextRTT    int32
 	NearRelayRTT        int32
 	NumNextRelays       int32
-	NextRelays          [BillingMessageMaxRelays]uint64
-	NextRelayPrice      [BillingMessageMaxRelays]uint64
+	NextRelays          [SessionUpdateMessageMaxRelays]uint64
+	NextRelayPrice      [SessionUpdateMessageMaxRelays]uint64
 	TotalPrice          uint64
 	Uncommitted         bool
 	Multipath           bool
@@ -121,7 +121,7 @@ type BillingMessage struct {
 	StaleRouteMatrix     bool
 }
 
-func (message *BillingMessage) Serialize(stream encoding.Stream) error {
+func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	/*
 		1. Always
@@ -145,17 +145,8 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeInteger(&message.DirectMinRTT, 0, 1023)
-
-	/*
-		Version 7
-
-		Includes DirectMaxRTT and DirectPrimeRTT stats from SDK 4.0.18.
-		DirectRTT was changed to DirectMinRTT.
-	*/
-	if message.Version >= uint32(7) {
-		stream.SerializeInteger(&message.DirectMaxRTT, 0, 1023)
-		stream.SerializeInteger(&message.DirectPrimeRTT, 0, 1023)
-	}
+	stream.SerializeInteger(&message.DirectMaxRTT, 0, 1023)
+	stream.SerializeInteger(&message.DirectPrimeRTT, 0, 1023)
 
 	stream.SerializeInteger(&message.DirectJitter, 0, 255)
 	stream.SerializeInteger(&message.DirectPacketLoss, 0, 100)
@@ -169,28 +160,14 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&message.Summary)
 
 	stream.SerializeBool(&message.UseDebug)
-	stream.SerializeString(&message.Debug, BillingMessageMaxDebugLength)
+	stream.SerializeString(&message.Debug, SessionUpdateMessageMaxDebugLength)
 
 	stream.SerializeInteger(&message.RouteDiversity, 0, 32)
 
-	/*
-		Version 8
+	stream.SerializeUint64(&message.UserFlags)
 
-		Includes UserFlags from SDK 4.20.0 driven by next_server_event().
-	*/
-	if message.Version >= uint32(8) {
-		stream.SerializeUint64(&message.UserFlags)
-	}
-
-	/*
-		Version 9
-
-		Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
-	*/
-	if message.Version >= uint32(9) {
-		stream.SerializeBool(&message.TryBeforeYouBuy)
-	}
-
+	stream.SerializeBool(&message.TryBeforeYouBuy)
+	
 	/*
 		2. First slice and summary slice only
 
@@ -199,50 +176,27 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
-	if message.Version >= uint32(3) {
-		if message.SliceNumber == 0 || message.Summary {
+	if message.SliceNumber == 0 || message.Summary {
 
-			stream.SerializeUint64(&message.DatacenterID)
-			stream.SerializeUint64(&message.BuyerID)
-			stream.SerializeUint64(&message.UserHash)
-			stream.SerializeUint64(&message.EnvelopeBytesUp)
-			stream.SerializeUint64(&message.EnvelopeBytesDown)
-			stream.SerializeFloat32(&message.Latitude)
-			stream.SerializeFloat32(&message.Longitude)
-			stream.SerializeString(&message.ISP, BillingMessageMaxISPLength)
-			stream.SerializeInteger(&message.ConnectionType, 0, 3) // todo: constant
-			stream.SerializeInteger(&message.PlatformType, 0, 10)  // todo: constant
-			stream.SerializeString(&message.SDKVersion, BillingMessageMaxSDKVersionLength)
-			stream.SerializeInteger(&message.NumTags, 0, BillingMessageMaxTags)
-			for i := 0; i < int(message.NumTags); i++ {
-				stream.SerializeUint64(&message.Tags[i])
-			}
-			stream.SerializeBool(&message.ABTest)
-			stream.SerializeBool(&message.Pro)
-
+		stream.SerializeUint64(&message.DatacenterID)
+		stream.SerializeUint64(&message.BuyerID)
+		stream.SerializeUint64(&message.UserHash)
+		stream.SerializeUint64(&message.EnvelopeBytesUp)
+		stream.SerializeUint64(&message.EnvelopeBytesDown)
+		stream.SerializeFloat32(&message.Latitude)
+		stream.SerializeFloat32(&message.Longitude)
+		stream.SerializeString(&message.ISP, SessionUpdateMessageMaxISPLength)
+		stream.SerializeInteger(&message.ConnectionType, 0, 3) // todo: constant
+		stream.SerializeInteger(&message.PlatformType, 0, 10)  // todo: constant
+		stream.SerializeString(&message.SDKVersion, SessionUpdateMessageMaxSDKVersionLength)
+		stream.SerializeInteger(&message.NumTags, 0, SessionUpdateMessageMaxTags)
+		for i := 0; i < int(message.NumTags); i++ {
+			stream.SerializeUint64(&message.Tags[i])
 		}
-	} else {
-		if message.SliceNumber == 0 {
-
-			stream.SerializeUint64(&message.DatacenterID)
-			stream.SerializeUint64(&message.BuyerID)
-			stream.SerializeUint64(&message.UserHash)
-			stream.SerializeUint64(&message.EnvelopeBytesUp)
-			stream.SerializeUint64(&message.EnvelopeBytesDown)
-			stream.SerializeFloat32(&message.Latitude)
-			stream.SerializeFloat32(&message.Longitude)
-			stream.SerializeString(&message.ISP, BillingMessageMaxISPLength)
-			stream.SerializeInteger(&message.ConnectionType, 0, 3) // todo: constant
-			stream.SerializeInteger(&message.PlatformType, 0, 10)  // todo: constant
-			stream.SerializeString(&message.SDKVersion, BillingMessageMaxSDKVersionLength)
-			stream.SerializeInteger(&message.NumTags, 0, BillingMessageMaxTags)
-			for i := 0; i < int(message.NumTags); i++ {
-				stream.SerializeUint64(&message.Tags[i])
-			}
-			stream.SerializeBool(&message.ABTest)
-			stream.SerializeBool(&message.Pro)
-
-		}
+		stream.SerializeBool(&message.ABTest)
+		stream.SerializeBool(&message.Pro)
+		stream.SerializeString(&message.ClientAddress, SessionUpdateMessageMaxAddressLength)
+		stream.SerializeString(&message.ServerAddress, SessionUpdateMessageMaxAddressLength)
 	}
 
 	/*
@@ -259,7 +213,8 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&message.ServerToClientPacketsLost)
 		stream.SerializeUint64(&message.ClientToServerPacketsOutOfOrder)
 		stream.SerializeUint64(&message.ServerToClientPacketsOutOfOrder)
-		stream.SerializeInteger(&message.NumNearRelays, 0, BillingMessageMaxNearRelays)
+		stream.SerializeInteger(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
+
 		for i := 0; i < int(message.NumNearRelays); i++ {
 			stream.SerializeUint64(&message.NearRelayIDs[i])
 			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, 255)
@@ -267,6 +222,18 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, 100)
 		}
 
+		stream.SerializeUint32(&message.StartTimestamp)		
+		stream.SerializeUint32(&message.SessionDuration)
+
+		stream.SerializeBool(&message.EverOnNext)
+
+		if message.EverOnNext {
+
+			stream.SerializeUint64(&message.TotalPriceSum)
+			stream.SerializeUint64(&message.EnvelopeBytesUpSum)
+			stream.SerializeUint64(&message.EnvelopeBytesDownSum)
+			stream.SerializeUint32(&message.DurationOnNext)
+		}
 	}
 
 	/*
@@ -283,7 +250,7 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&message.PredictedNextRTT, 0, 255)
 		stream.SerializeInteger(&message.NearRelayRTT, 0, 255)
 
-		stream.SerializeInteger(&message.NumNextRelays, 0, BillingMessageMaxRelays)
+		stream.SerializeInteger(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
 		for i := 0; i < int(message.NumNextRelays); i++ {
 			stream.SerializeUint64(&message.NextRelays[i])
 			stream.SerializeUint64(&message.NextRelayPrice[i])
@@ -295,6 +262,9 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&message.RTTReduction)
 		stream.SerializeBool(&message.PacketLossReduction)
 		stream.SerializeBool(&message.RouteChanged)
+
+		stream.SerializeUint64(&message.NextBytesUp)
+		stream.SerializeUint64(&message.NextBytesDown)
 	}
 
 	/*
@@ -337,136 +307,275 @@ func (message *BillingMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&message.DatacenterNotEnabled)
 		stream.SerializeBool(&message.BuyerNotLive)
 		stream.SerializeBool(&message.StaleRouteMatrix)
-
 	}
 
-	/*
-		Version 1
-
-		Include Next Bytes Up/Down for slices on next.
-	*/
-	if message.Version >= uint32(1) {
-
-		if message.Next {
-
-			stream.SerializeUint64(&message.NextBytesUp)
-			stream.SerializeUint64(&message.NextBytesDown)
-
-		}
-	}
-
-	/*
-		Version 2
-
-		Includes the following in the summary slice:
-			- Sum of TotalPrice
-			- Sum of EnvelopeBytesUp
-			- Sum of EnvelopeBytesDown
-			- Duration of the session (in seconds)
-			- EverOnNext
-	*/
-	if message.Version >= uint32(2) {
-		if message.Summary {
-
-			stream.SerializeBool(&message.EverOnNext)
-
-			stream.SerializeUint32(&message.SessionDuration)
-
-			if message.EverOnNext {
-
-				stream.SerializeUint64(&message.TotalPriceSum)
-
-				stream.SerializeUint64(&message.EnvelopeBytesUpSum)
-				stream.SerializeUint64(&message.EnvelopeBytesDownSum)
-
-			}
-
-		}
-	}
-
-	/*
-		Version 4
-
-		Includes the following in the summary slice:
-			- Duration of the session on next (in seconds)
-	*/
-	if message.Version >= uint32(4) {
-		if message.Summary && message.EverOnNext {
-			stream.SerializeUint32(&message.DurationOnNext)
-		}
-	}
-
-	/*
-		Version 5
-
-		Includes client IP address in first and summary slice
-	*/
-	if message.Version >= uint32(5) {
-		if message.SliceNumber == 0 || message.Summary {
-			stream.SerializeString(&message.ClientAddress, BillingMessageMaxAddressLength)
-		}
-	}
-
-	/*
-		Version 6
-
-		Includes session start timestamp in the summary slice
-
-		NOTE: Prior to version 6, summary slices were written to the billing2 table
-	*/
-	if message.Version >= uint32(6) {
-		if message.Summary {
-			stream.SerializeUint32(&message.StartTimestamp)
-		}
-	}
-
-	/*
-		Version 9
-
-		Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
-	*/
-	if message.Version >= uint32(9) {
-		if message.SliceNumber == 0 || message.Summary {
-			stream.SerializeString(&message.ServerAddress, BillingMessageMaxAddressLength)
-		}
-	}
 	return stream.Error()
 }
 
-/*
-func WriteBillingEntry(entry *BillingEntry) ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("recovered from panic during BillingEntry packet entry write: %v\n", r)
-		}
-	}()
-
-	buffer := [MaxBillingEntryBytes]byte{}
-
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
-
-	if err := message.Serialize(ws); err != nil {
-		return nil, err
-	}
-	ws.Flush()
-
-	return buffer[:ws.GetBytesProcessed()], nil
-}
-
-func ReadBillingEntry(entry *BillingEntry, data []byte) error {
-	if err := message.Serialize(encoding.CreateReadStream(data)); err != nil {
-		return err
-	}
-
+func (message *SessionUpdateMessage) Read(buffer []byte) error {
 	return nil
 }
 
-func (entry *BillingEntry) Validate() bool {
+func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
+	index := 0
+	return buffer[:index]
+}
 
-	// always
+func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	/*
+		1. Always
+
+		These values are written for every slice.
+	*/
+
+	e["timestamp"] = int(message.Timestamp)
+	e["sessionID"] = int(message.SessionID)
+	e["sliceNumber"] = int(message.SliceNumber)
+	e["directRTT"] = int(message.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
+	e["directMaxRTT"] = int(message.DirectMaxRTT)
+	e["directPrimeRTT"] = int(message.DirectPrimeRTT)
+	e["directJitter"] = int(message.DirectJitter)
+	e["directPacketLoss"] = int(message.DirectPacketLoss)
+	e["realPacketLoss"] = float64(message.RealPacketLoss) + float64(message.RealPacketLoss_Frac)/256.0
+	e["realJitter"] = int(message.RealJitter)
+
+	if message.Next {
+		e["next"] = true
+	}
+
+	if message.Flagged {
+		e["flagged"] = true
+	}
+
+	if message.Summary {
+		e["summary"] = true
+	}
+
+	if message.UseDebug {
+		e["debug"] = message.Debug
+	}
+
+	if message.RouteDiversity > 0 {
+		e["routeDiversity"] = int(message.RouteDiversity)
+	}
+
+	if message.UserFlags > 0 {
+		e["userFlags"] = int(message.UserFlags)
+	}
+
+	if message.TryBeforeYouBuy {
+		e["tryBeforeYouBuy"] = message.TryBeforeYouBuy
+	}
+
+	/*
+		2. First slice and summary slice only
+
+		These values are serialized only for slice 0 and the summary slice.
+	*/
+
+	if message.SliceNumber == 0 || message.Summary {
+
+		e["datacenterID"] = int(message.DatacenterID)
+		e["buyerID"] = int(message.BuyerID)
+		e["userHash"] = int(message.UserHash)
+		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
+		e["latitude"] = message.Latitude
+		e["longitude"] = message.Longitude
+		e["clientAddress"] = message.ClientAddress
+		e["serverAddress"] = message.ServerAddress
+		e["isp"] = message.ISP
+		e["connectionType"] = int(message.ConnectionType)
+		e["platformType"] = int(message.PlatformType)
+		e["sdkVersion"] = message.SDKVersion
+
+		if message.NumTags > 0 {
+			tags := make([]bigquery.Value, message.NumTags)
+			for i := 0; i < int(message.NumTags); i++ {
+				tags[i] = int(message.Tags[i])
+			}
+			e["tags"] = tags
+		}
+
+		if message.ABTest {
+			e["abTest"] = true
+		}
+
+		if message.Pro {
+			e["pro"] = true
+		}
+	}
+
+	/*
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
+	*/
+
+	if message.Summary {
+
+		e["clientToServerPacketsSent"] = int(message.ClientToServerPacketsSent)
+		e["serverToClientPacketsSent"] = int(message.ServerToClientPacketsSent)
+		e["clientToServerPacketsLost"] = int(message.ClientToServerPacketsLost)
+		e["serverToClientPacketsLost"] = int(message.ServerToClientPacketsLost)
+		e["clientToServerPacketsOutOfOrder"] = int(message.ClientToServerPacketsOutOfOrder)
+		e["serverToClientPacketsOutOfOrder"] = int(message.ServerToClientPacketsOutOfOrder)
+
+		if message.NumNearRelays > 0 {
+
+			nearRelayIDs := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
+
+			for i := 0; i < int(message.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(message.NearRelayIDs[i])
+				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
+				nearRelayJitters[i] = int(message.NearRelayJitters[i])
+				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
+			}
+
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+
+		}
+
+		if message.EverOnNext {
+			e["everOnNext"] = true
+		}
+
+		e["sessionDuration"] = int(message.SessionDuration)
+
+		if message.EverOnNext {
+			e["totalPriceSum"] = int(message.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(message.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(message.EnvelopeBytesDownSum)
+			e["durationOnNext"] = int(message.DurationOnNext)
+		}
+
+		e["startTimestamp"] = int(message.StartTimestamp)
+
+	}
+
+	/*
+		4. Network Next Only
+
+		These values are serialized only when a slice is on network next.
+	*/
+
+	if message.Next {
+
+		e["nextRTT"] = int(message.NextRTT)
+		e["nextJitter"] = int(message.NextJitter)
+		e["nextPacketLoss"] = int(message.NextPacketLoss)
+		e["predictedNextRTT"] = int(message.PredictedNextRTT)
+		e["nearRelayRTT"] = int(message.NearRelayRTT)
+
+		if message.NumNextRelays > 0 {
+
+			nextRelays := make([]bigquery.Value, message.NumNextRelays)
+			nextRelayPrice := make([]bigquery.Value, message.NumNextRelays)
+
+			for i := 0; i < int(message.NumNextRelays); i++ {
+				nextRelays[i] = int(message.NextRelays[i])
+				nextRelayPrice[i] = int(message.NextRelayPrice[i])
+			}
+
+			e["nextRelays"] = nextRelays
+			e["nextRelayPrice"] = nextRelayPrice
+		}
+
+		e["totalPrice"] = int(message.TotalPrice)
+
+		if message.Uncommitted {
+			e["uncommitted"] = true
+		}
+
+		if message.Multipath {
+			e["multipath"] = true
+		}
+
+		if message.RTTReduction {
+			e["rttReduction"] = true
+		}
+
+		if message.PacketLossReduction {
+			e["packetLossReduction"] = true
+		}
+
+		if message.RouteChanged {
+			e["routeChanged"] = true
+		}
+
+		e["nextBytesUp"] = int(message.NextBytesUp)
+		e["nextBytesDown"] = int(message.NextBytesDown)
+
+	}
+
+	/*
+		5. Error State Only
+
+		These values are only serialized when the session is in an error state (rare).
+	*/
+
+	if message.FallbackToDirect {
+		e["fallbackToDirect"] = true
+	}
+
+	if message.MultipathVetoed {
+		e["multipathVetoed"] = true
+	}
+
+	if message.Mispredicted {
+		e["mispredicted"] = true
+	}
+
+	if message.Vetoed {
+		e["vetoed"] = true
+	}
+
+	if message.LatencyWorse {
+		e["latencyWorse"] = true
+	}
+
+	if message.NoRoute {
+		e["noRoute"] = true
+	}
+
+	if message.NextLatencyTooHigh {
+		e["nextLatencyTooHigh"] = true
+	}
+
+	if message.CommitVeto {
+		e["commitVeto"] = true
+	}
+
+	if message.UnknownDatacenter {
+		e["unknownDatacenter"] = true
+	}
+
+	if message.DatacenterNotEnabled {
+		e["datacenterNotEnabled"] = true
+	}
+
+	if message.BuyerNotLive {
+		e["buyerNotLive"] = true
+	}
+
+	if message.StaleRouteMatrix {
+		e["staleRouteMatrix"] = true
+	}
+
+	return e, "", nil
+}
+
+/*
+func (entry *BillingEntry) Clamp() bool {
 
 	if message.Version < 0 {
 		fmt.Printf("invalid version\n")
@@ -670,7 +779,9 @@ func (entry *BillingEntry) CheckNaNOrInf() (bool, []string) {
 
 	return nanOrInfExists, nanOrInfFields
 }
+*/
 
+/*
 // To save bits during serialization, clamp integer and string fields if they go beyond the min
 // or max values as defined in BillingEntry.Serialize()
 
@@ -928,265 +1039,3 @@ func (entry *BillingEntry) ClampEntry() {
 	}
 }
 */
-
-func (message *BillingMessage) Read(buffer []byte) error {
-	return nil
-}
-
-func (message *BillingMessage) Write(buffer []byte) []byte {
-	index := 0
-	return buffer[:index]
-}
-
-func (message *BillingMessage) Save() (map[string]bigquery.Value, string, error) {
-
-	e := make(map[string]bigquery.Value)
-
-	/*
-		1. Always
-
-		These values are written for every slice.
-	*/
-
-	e["timestamp"] = int(message.Timestamp)
-	e["sessionID"] = int(message.SessionID)
-	e["sliceNumber"] = int(message.SliceNumber)
-	e["directRTT"] = int(message.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
-	e["directMaxRTT"] = int(message.DirectMaxRTT)
-	e["directPrimeRTT"] = int(message.DirectPrimeRTT)
-	e["directJitter"] = int(message.DirectJitter)
-	e["directPacketLoss"] = int(message.DirectPacketLoss)
-	e["realPacketLoss"] = float64(message.RealPacketLoss) + float64(message.RealPacketLoss_Frac)/256.0
-	e["realJitter"] = int(message.RealJitter)
-
-	if message.Next {
-		e["next"] = true
-	}
-
-	if message.Flagged {
-		e["flagged"] = true
-	}
-
-	if message.Summary {
-		e["summary"] = true
-	}
-
-	if message.UseDebug {
-		e["debug"] = message.Debug
-	}
-
-	if message.RouteDiversity > 0 {
-		e["routeDiversity"] = int(message.RouteDiversity)
-	}
-
-	if message.UserFlags > 0 {
-		e["userFlags"] = int(message.UserFlags)
-	}
-
-	if message.TryBeforeYouBuy {
-		e["tryBeforeYouBuy"] = message.TryBeforeYouBuy
-	}
-
-	/*
-		2. First slice and summary slice only
-
-		These values are serialized only for slice 0 and the summary slice.
-	*/
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		e["datacenterID"] = int(message.DatacenterID)
-		e["buyerID"] = int(message.BuyerID)
-		e["userHash"] = int(message.UserHash)
-		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
-		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
-		e["latitude"] = message.Latitude
-		e["longitude"] = message.Longitude
-		e["clientAddress"] = message.ClientAddress
-		e["serverAddress"] = message.ServerAddress
-		e["isp"] = message.ISP
-		e["connectionType"] = int(message.ConnectionType)
-		e["platformType"] = int(message.PlatformType)
-		e["sdkVersion"] = message.SDKVersion
-
-		if message.NumTags > 0 {
-			tags := make([]bigquery.Value, message.NumTags)
-			for i := 0; i < int(message.NumTags); i++ {
-				tags[i] = int(message.Tags[i])
-			}
-			e["tags"] = tags
-		}
-
-		if message.ABTest {
-			e["abTest"] = true
-		}
-
-		if message.Pro {
-			e["pro"] = true
-		}
-	}
-
-	/*
-		3. Summary slice only
-
-		These values are serialized only for the summary slice (at the end of the session)
-	*/
-
-	if message.Summary {
-
-		e["clientToServerPacketsSent"] = int(message.ClientToServerPacketsSent)
-		e["serverToClientPacketsSent"] = int(message.ServerToClientPacketsSent)
-		e["clientToServerPacketsLost"] = int(message.ClientToServerPacketsLost)
-		e["serverToClientPacketsLost"] = int(message.ServerToClientPacketsLost)
-		e["clientToServerPacketsOutOfOrder"] = int(message.ClientToServerPacketsOutOfOrder)
-		e["serverToClientPacketsOutOfOrder"] = int(message.ServerToClientPacketsOutOfOrder)
-
-		if message.NumNearRelays > 0 {
-
-			nearRelayIDs := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
-
-			for i := 0; i < int(message.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(message.NearRelayIDs[i])
-				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
-				nearRelayJitters[i] = int(message.NearRelayJitters[i])
-				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
-			}
-
-			e["nearRelayIDs"] = nearRelayIDs
-			e["nearRelayRTTs"] = nearRelayRTTs
-			e["nearRelayJitters"] = nearRelayJitters
-			e["nearRelayPacketLosses"] = nearRelayPacketLosses
-
-		}
-
-		if message.EverOnNext {
-			e["everOnNext"] = true
-		}
-
-		e["sessionDuration"] = int(message.SessionDuration)
-
-		if message.EverOnNext {
-			e["totalPriceSum"] = int(message.TotalPriceSum)
-			e["envelopeBytesUpSum"] = int(message.EnvelopeBytesUpSum)
-			e["envelopeBytesDownSum"] = int(message.EnvelopeBytesDownSum)
-			e["durationOnNext"] = int(message.DurationOnNext)
-		}
-
-		e["startTimestamp"] = int(message.StartTimestamp)
-
-	}
-
-	/*
-		4. Network Next Only
-
-		These values are serialized only when a slice is on network next.
-	*/
-
-	if message.Next {
-
-		e["nextRTT"] = int(message.NextRTT)
-		e["nextJitter"] = int(message.NextJitter)
-		e["nextPacketLoss"] = int(message.NextPacketLoss)
-		e["predictedNextRTT"] = int(message.PredictedNextRTT)
-		e["nearRelayRTT"] = int(message.NearRelayRTT)
-
-		if message.NumNextRelays > 0 {
-
-			nextRelays := make([]bigquery.Value, message.NumNextRelays)
-			nextRelayPrice := make([]bigquery.Value, message.NumNextRelays)
-
-			for i := 0; i < int(message.NumNextRelays); i++ {
-				nextRelays[i] = int(message.NextRelays[i])
-				nextRelayPrice[i] = int(message.NextRelayPrice[i])
-			}
-
-			e["nextRelays"] = nextRelays
-			e["nextRelayPrice"] = nextRelayPrice
-		}
-
-		e["totalPrice"] = int(message.TotalPrice)
-
-		if message.Uncommitted {
-			e["uncommitted"] = true
-		}
-
-		if message.Multipath {
-			e["multipath"] = true
-		}
-
-		if message.RTTReduction {
-			e["rttReduction"] = true
-		}
-
-		if message.PacketLossReduction {
-			e["packetLossReduction"] = true
-		}
-
-		if message.RouteChanged {
-			e["routeChanged"] = true
-		}
-
-		e["nextBytesUp"] = int(message.NextBytesUp)
-		e["nextBytesDown"] = int(message.NextBytesDown)
-
-	}
-
-	/*
-		5. Error State Only
-
-		These values are only serialized when the session is in an error state (rare).
-	*/
-
-	if message.FallbackToDirect {
-		e["fallbackToDirect"] = true
-	}
-
-	if message.MultipathVetoed {
-		e["multipathVetoed"] = true
-	}
-
-	if message.Mispredicted {
-		e["mispredicted"] = true
-	}
-
-	if message.Vetoed {
-		e["vetoed"] = true
-	}
-
-	if message.LatencyWorse {
-		e["latencyWorse"] = true
-	}
-
-	if message.NoRoute {
-		e["noRoute"] = true
-	}
-
-	if message.NextLatencyTooHigh {
-		e["nextLatencyTooHigh"] = true
-	}
-
-	if message.CommitVeto {
-		e["commitVeto"] = true
-	}
-
-	if message.UnknownDatacenter {
-		e["unknownDatacenter"] = true
-	}
-
-	if message.DatacenterNotEnabled {
-		e["datacenterNotEnabled"] = true
-	}
-
-	if message.BuyerNotLive {
-		e["buyerNotLive"] = true
-	}
-
-	if message.StaleRouteMatrix {
-		e["staleRouteMatrix"] = true
-	}
-
-	return e, "", nil
-}
