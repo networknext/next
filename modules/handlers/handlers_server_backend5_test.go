@@ -1576,6 +1576,18 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we *do not* get a match data message sent over the channel
+
+	select {
+    case _ = <-harness.matchDataMessageChannel:
+        panic("should not be match data message on channel")
+    default:
+    }
 }
 
 func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -1660,6 +1672,18 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we *do not* get a match data message sent over the channel
+
+	select {
+    case _ = <-harness.matchDataMessageChannel:
+        panic("should not be match data message on channel")
+    default:
+    }
 }
 
 func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
@@ -1885,6 +1909,24 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	// verify that we received a response
 
 	assert.True(t, receivedResponse != 0)
+
+	// verify that we get at least one match data message sent over the channel
+
+	select {
+    case message := <-harness.matchDataMessageChannel:
+    	assert.NotEqual(t, message.Timestamp, uint64(0))
+    	assert.Equal(t, message.BuyerId, packet.BuyerId)
+    	assert.Equal(t, message.ServerAddress, packet.ServerAddress.String())
+    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+    	assert.Equal(t, message.UserHash, packet.UserHash)
+    	assert.Equal(t, message.SessionId, packet.SessionId)
+    	assert.Equal(t, message.NumMatchValues, packet.NumMatchValues)
+    	for i := 0; i < int(packet.NumMatchValues); i++ {
+	    	assert.Equal(t, message.MatchValues[i], packet.MatchValues[i])
+    	}
+    default:
+        panic("no match data message found on channel")
+    }
 }
 
 // ---------------------------------------------------------------------------------------
