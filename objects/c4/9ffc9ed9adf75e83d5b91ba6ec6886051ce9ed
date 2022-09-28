@@ -9,3 +9,7 @@
 	object = db17f6505feef4be09018b6c37662d7279338310
 	path = sdk5
 	type = expand module
+[map "88908f8f-2700-3f14-b8e9-74021f0790ea"]
+	object = eb522d28c9a7b1a118e518fad25fd8c36a4e1f65
+	path = sdk5
+	type = expand module
