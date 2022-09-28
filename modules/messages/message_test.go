@@ -5,9 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/messages"
-
-	"github.com/networknext/backend/modules-old/backend"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -128,7 +127,7 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 		Version:        messages.MatchDataMessageVersion,
 		Timestamp:      uint64(time.Now().Unix()),
 		BuyerId:        rand.Uint64(),
-		ServerAddress:  backend.GenerateRandomStringSequence(messages.MatchDataMaxAddressLength),
+		ServerAddress:  common.RandomString(messages.MatchDataMaxAddressLength),
 		DatacenterId:   rand.Uint64(),
 		UserHash:       rand.Uint64(),
 		SessionId:      rand.Uint64(),
