@@ -1410,6 +1410,21 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -1479,6 +1494,21 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
@@ -1681,8 +1711,20 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
 
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
