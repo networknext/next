@@ -9,8 +9,8 @@ import (
 // -------------------------------------------------
 
 const (
-	NEXT_CRYPTO_SIGN_BYTES = 64
-	NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES = 32
+	NEXT_CRYPTO_SIGN_BYTES             = 64
+	NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
 	NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
 )
 
@@ -127,10 +127,10 @@ const (
 	SDK5_MaxSessionUpdateRetries = 10
 	SDK5_MaxSessionDebug         = 1024
 
-	SDK5_ServerInitResponseOK                   = 0
-	SDK5_ServerInitResponseUnknownBuyer         = 1
-	SDK5_ServerInitResponseBuyerNotActive       = 2
-	SDK5_ServerInitResponseOldSDKVersion        = 3
+	SDK5_ServerInitResponseOK             = 0
+	SDK5_ServerInitResponseUnknownBuyer   = 1
+	SDK5_ServerInitResponseBuyerNotActive = 2
+	SDK5_ServerInitResponseOldSDKVersion  = 3
 
 	SDK5_PlatformTypeUnknown     = 0
 	SDK5_PlatformTypeWindows     = 1
