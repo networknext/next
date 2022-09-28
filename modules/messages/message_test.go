@@ -175,37 +175,10 @@ func TestRelayStatsMessage(t *testing.T) {
 	}
 }
 
-// todo: finish testing the messages
-
-/*
-func TestMatchDataMessage(t *testing.T) {
-
-	writeMessage := GenerateRandomMatchDataMessage()
-
-	readMessage := messages.MatchDataMessage{}
-
-	MessageReadWriteTest[*messages.MatchDataMessage](&writeMessage, &readMessage, t)
-}
-
-func TestBillingMessage(t *testing.T) {
-
-	writeMessage := messages.BillingMessage{}
-
-	readMessage := messages.BillingMessage{}
-
-	MessageReadWriteTest[*messages.BillingMessage](&writeMessage, &readMessage, t)
-}
-
-func TestSummaryMessage(t *testing.T) {
-
-	writeMessage := messages.SummaryMessage{}
-
-	readMessage := messages.SummaryMessage{}
-
-	MessageReadWriteTest[*messages.SummaryMessage](&writeMessage, &readMessage, t)
-}
-*/
-
 // todo: test the server init message
 
 // todo: test the server update message
+
+// todo: test the match data message
+
+// todo: test the session update message
