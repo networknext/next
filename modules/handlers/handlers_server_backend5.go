@@ -7,6 +7,7 @@ import "C"
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -488,5 +489,25 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
 
-	// todo: build a match data message and send it to pubsub
+	if handler.MatchDataMessageChannel != nil {
+
+		message := messages.MatchDataMessage{}
+
+		message.Timestamp = uint64(time.Now().Unix())
+		message.BuyerId = requestPacket.BuyerId
+		message.ServerAddress = requestPacket.ServerAddress.String()
+		message.DatacenterId = requestPacket.DatacenterId
+		message.UserHash = requestPacket.UserHash
+		message.SessionId = requestPacket.SessionId
+		message.MatchId = requestPacket.MatchId
+		message.NumMatchValues = requestPacket.NumMatchValues
+
+		for i := 0; i < int(requestPacket.NumMatchValues); i++ {
+			message.MatchValues[i] = requestPacket.MatchValues[i]
+		}
+
+		handler.MatchDataMessageChannel <- &message
+
+		handler.Events[SDK5_HandlerEvent_SentMatchDataMessage] = true
+	}
 }
