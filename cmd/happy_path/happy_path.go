@@ -559,7 +559,7 @@ func setupPubsubAndBigquery() {
 	run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
 	// set up bigquery emulator
-	
+
 	run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
 
 	time.Sleep(time.Second * 5)

@@ -1,21 +1,21 @@
 package handlers
 
 import (
-	"testing"
 	"context"
-	"net"
 	"fmt"
-	"time"
+	"net"
 	"sync/atomic"
+	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	
-	"github.com/networknext/backend/modules/core"
+
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/packets"
 
-	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/routing"
 )
 
 // ---------------------------------------------------------------------------------------
@@ -35,10 +35,10 @@ func getMagicValues() ([]byte, []byte, []byte) {
 }
 
 type TestHarness struct {
-	handler SDK5_Handler
-	conn *net.UDPConn
-	from *net.UDPAddr
-	signPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	handler        SDK5_Handler
+	conn           *net.UDPConn
+	from           *net.UDPAddr
+	signPublicKey  [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	signPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 }
 
@@ -86,6 +86,21 @@ func TestPacketTooSmall_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestUnsupportedPacketType_SDK5(t *testing.T) {
@@ -97,7 +112,7 @@ func TestUnsupportedPacketType_SDK5(t *testing.T) {
 	packetData := make([]byte, 100)
 
 	for i := 0; i < 256; i++ {
-	
+
 		packetType := uint8(i)
 
 		if packetType == packets.SDK5_SERVER_INIT_REQUEST_PACKET || packetType == packets.SDK5_SERVER_UPDATE_REQUEST_PACKET || packetType == packets.SDK5_SESSION_UPDATE_REQUEST_PACKET || packetType == packets.SDK5_MATCH_DATA_REQUEST_PACKET {
@@ -109,6 +124,21 @@ func TestUnsupportedPacketType_SDK5(t *testing.T) {
 		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 	}
 }
 
@@ -128,6 +158,21 @@ func TestBasicPacketFilterFailed_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
@@ -158,6 +203,21 @@ func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestNoRouteMatrix_SDK5(t *testing.T) {
@@ -188,6 +248,21 @@ func TestNoRouteMatrix_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestNoDatabase_SDK5(t *testing.T) {
@@ -220,6 +295,21 @@ func TestNoDatabase_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestUnknownBuyer_SDK5(t *testing.T) {
@@ -253,6 +343,21 @@ func TestUnknownBuyer_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownBuyer])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func TestSignatureCheckFailed_SDK5(t *testing.T) {
@@ -288,7 +393,7 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -311,6 +416,21 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 // ---------------------------------------------------------------------------------------
@@ -350,7 +470,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -377,6 +497,21 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -412,7 +547,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -434,7 +569,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has an old SDK version of 1.2.3
 
 	packetData[16] = 1
-	packetData[17] = 2	
+	packetData[17] = 2
 	packetData[18] = 3
 
 	// actually sign the packet, so it passes the signature check
@@ -446,6 +581,21 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -481,7 +631,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -509,6 +659,21 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
 }
 
 func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
@@ -542,7 +707,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -576,10 +741,10 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	requestId := uint64(0x12345)
 
 	packet := packets.SDK5_ServerInitRequestPacket{
-		Version: packets.SDKVersion{5,0,0},
-		BuyerId: buyerId,
-		RequestId: requestId,
-		DatacenterId: crypto.HashID("local"),
+		Version:        packets.SDKVersion{5, 0, 0},
+		BuyerId:        buyerId,
+		RequestId:      requestId,
+		DatacenterId:   crypto.HashID("local"),
 		DatacenterName: "local",
 	}
 
@@ -674,6 +839,21 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 			assert.Equal(t, packet.RequestId, responsePacket.RequestId)
 			assert.Equal(t, packets.SDK5_ServerInitResponseOK, int(responsePacket.Response))
 
+			assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+			assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
+
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+			assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
 			// success!
 
 			atomic.AddUint64(&receivedResponse, 1)
@@ -704,13 +884,17 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
-		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
-
+		
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
 
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
 		if i > 10 {
-			time.Sleep(10*time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 
@@ -756,7 +940,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -783,6 +967,16 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
 }
 
 func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -818,7 +1012,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -840,7 +1034,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has an old SDK version of 1.2.3
 
 	packetData[16] = 1
-	packetData[17] = 2	
+	packetData[17] = 2
 	packetData[18] = 3
 
 	// actually sign the packet, so it passes the signature check
@@ -852,6 +1046,16 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
 }
 
 func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -863,7 +1067,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// setup a dummy packet that will get through the packet type check
 
 	packetData := make([]byte, 256)
-	packetData[0] = packets.SDK5_SERVER_INIT_REQUEST_PACKET
+	packetData[0] = packets.SDK5_SERVER_UPDATE_REQUEST_PACKET
 	for i := 1; i < len(packetData); i++ {
 		packetData[i] = byte(i)
 	}
@@ -887,7 +1091,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -914,7 +1118,15 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
-	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentSessionUpdateResponsePacket])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
 }
 
 func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
@@ -948,7 +1160,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -982,9 +1194,9 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	requestId := uint64(0x12345)
 
 	packet := packets.SDK5_ServerUpdateRequestPacket{
-		Version: packets.SDKVersion{5,0,0},
-		BuyerId: buyerId,
-		RequestId: requestId,
+		Version:      packets.SDKVersion{5, 0, 0},
+		BuyerId:      buyerId,
+		RequestId:    requestId,
 		DatacenterId: crypto.HashID("local"),
 	}
 
@@ -1114,7 +1326,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateResponsePacket])
 
 		if i > 10 {
-			time.Sleep(10*time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 
@@ -1160,7 +1372,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -1222,7 +1434,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -1244,7 +1456,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has an old SDK version of 1.2.3
 
 	packetData[16] = 1
-	packetData[17] = 2	
+	packetData[17] = 2
 	packetData[18] = 3
 
 	// actually sign the packet, so it passes the signature check
@@ -1289,7 +1501,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	harness.handler.Database = &routing.DatabaseBinWrapper{}
 
 	buyerId := uint64(0x1111111122222222)
-	
+
 	var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
@@ -1321,14 +1533,14 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	// construct a valid, signed match data request packet
 
 	packet := packets.SDK5_MatchDataRequestPacket{
-		Version: packets.SDKVersion{5,0,0},
-		BuyerId: buyerId,
-		ServerAddress: *core.ParseAddress("127.0.0.1:10000"),
-		DatacenterId: crypto.HashID("local"),
-		UserHash: uint64(123456789213),
-		SessionId: uint64(5213412421413),
-		RetryNumber: 2,
-		MatchId: uint64(112312737131),
+		Version:        packets.SDKVersion{5, 0, 0},
+		BuyerId:        buyerId,
+		ServerAddress:  *core.ParseAddress("127.0.0.1:10000"),
+		DatacenterId:   crypto.HashID("local"),
+		UserHash:       uint64(123456789213),
+		SessionId:      uint64(5213412421413),
+		RetryNumber:    2,
+		MatchId:        uint64(112312737131),
 		NumMatchValues: 64,
 	}
 
@@ -1462,7 +1674,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataResponsePacket])
 
 		if i > 10 {
-			time.Sleep(10*time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 

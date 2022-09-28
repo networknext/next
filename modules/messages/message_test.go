@@ -176,6 +176,8 @@ func TestRelayStatsMessage(t *testing.T) {
 	MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
 }
 
+// todo: finish testing the messages
+
 /*
 func TestMatchDataMessage(t *testing.T) {
 
@@ -204,3 +206,7 @@ func TestSummaryMessage(t *testing.T) {
 	MessageReadWriteTest[*messages.SummaryMessage](&writeMessage, &readMessage, t)
 }
 */
+
+// todo: test the server init message
+
+// todo: test the server update message
