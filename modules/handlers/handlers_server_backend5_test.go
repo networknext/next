@@ -13,6 +13,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/messages"
 
 	"github.com/networknext/backend/modules-old/crypto"
 	"github.com/networknext/backend/modules-old/routing"
@@ -40,6 +41,9 @@ type TestHarness struct {
 	from           *net.UDPAddr
 	signPublicKey  [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	signPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	serverInitMessageChannel   chan *messages.ServerInitMessage
+	serverUpdateMessageChannel chan *messages.ServerUpdateMessage
+	matchDataMessageChannel    chan *messages.MatchDataMessage
 }
 
 func CreateTestHarness() *TestHarness {
@@ -72,6 +76,14 @@ func CreateTestHarness() *TestHarness {
 
 	harness.handler.PrivateKey = harness.signPrivateKey[:]
 
+	harness.serverInitMessageChannel = make(chan *messages.ServerInitMessage, 1024)
+	harness.serverUpdateMessageChannel = make(chan *messages.ServerUpdateMessage, 1024)
+	harness.matchDataMessageChannel = make(chan *messages.MatchDataMessage, 1024)
+
+	harness.handler.ServerInitMessageChannel = harness.serverInitMessageChannel
+	harness.handler.ServerUpdateMessageChannel = harness.serverUpdateMessageChannel
+	harness.handler.MatchDataMessageChannel = harness.matchDataMessageChannel
+
 	return &harness
 }
 
@@ -101,6 +113,10 @@ func TestPacketTooSmall_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestUnsupportedPacketType_SDK5(t *testing.T) {
@@ -139,6 +155,10 @@ func TestUnsupportedPacketType_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 	}
 }
 
@@ -173,6 +193,10 @@ func TestBasicPacketFilterFailed_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
@@ -218,6 +242,10 @@ func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestNoRouteMatrix_SDK5(t *testing.T) {
@@ -263,6 +291,10 @@ func TestNoRouteMatrix_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestNoDatabase_SDK5(t *testing.T) {
@@ -310,6 +342,10 @@ func TestNoDatabase_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestUnknownBuyer_SDK5(t *testing.T) {
@@ -358,6 +394,10 @@ func TestUnknownBuyer_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 func TestSignatureCheckFailed_SDK5(t *testing.T) {
@@ -431,6 +471,10 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 }
 
 // ---------------------------------------------------------------------------------------
@@ -512,6 +556,18 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server init message sent over the channel
+
+	select {
+    case _ = <-harness.serverInitMessageChannel:
+    default:
+        panic("no server init message found on channel")
+    }
 }
 
 func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -596,6 +652,18 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server init message sent over the channel
+
+	select {
+    case _ = <-harness.serverInitMessageChannel:
+    default:
+        panic("no server init message found on channel")
+    }
 }
 
 func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -674,6 +742,18 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
+
+	// verify that we get a server init message sent over the channel
+
+	select {
+    case _ = <-harness.serverInitMessageChannel:
+    default:
+        panic("no server init message found on channel")
+    }
 }
 
 func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
@@ -869,7 +949,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
-		
+
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitResponsePacket])
 
@@ -877,6 +957,10 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket])
+
+		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SentServerInitMessage])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage])
+		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_SentMatchDataMessage])
 
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
@@ -886,6 +970,20 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	// verify that we received a response
 
 	assert.True(t, receivedResponse != 0)
+
+	// verify that we get at least one server init message sent over the channel
+
+	select {
+    case message := <-harness.serverInitMessageChannel:
+    	assert.Equal(t, message.SDKVersion_Major, byte(5))
+    	assert.Equal(t, message.SDKVersion_Minor, byte(0))
+    	assert.Equal(t, message.SDKVersion_Patch, byte(0))
+    	assert.Equal(t, message.BuyerId, packet.BuyerId)
+    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+    	assert.Equal(t, message.DatacenterName, packet.DatacenterName)
+    default:
+        panic("no server init message found on channel")
+    }
 }
 
 // ---------------------------------------------------------------------------------------

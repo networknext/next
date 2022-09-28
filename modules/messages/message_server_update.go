@@ -14,7 +14,7 @@ const (
 )
 
 type ServerUpdateMessage struct {
-	Version    byte
+	Version byte
 	// todo
 }
 
