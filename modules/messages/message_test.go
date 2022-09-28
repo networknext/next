@@ -27,8 +27,6 @@ func MessageReadWriteTest[M messages.Message](writeMessage messages.Message, rea
 
 func GenerateRandomCostMatrixStatMessage() messages.CostMatrixStatsMessage {
 
-	rand.Seed(time.Now().UnixNano())
-
 	return messages.CostMatrixStatsMessage{
 		Version:        messages.CostMatrixStatsMessageVersion,
 		Timestamp:      uint64(time.Now().Unix()),
@@ -40,8 +38,6 @@ func GenerateRandomCostMatrixStatMessage() messages.CostMatrixStatsMessage {
 }
 
 func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
-
-	rand.Seed(time.Now().UnixNano())
 
 	return messages.RouteMatrixStatsMessage{
 		Version:                 messages.RouteMatrixStatsMessageVersion,
@@ -74,8 +70,6 @@ func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
 
 func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 
-	rand.Seed(time.Now().UnixNano())
-
 	return messages.PingStatsMessage{
 		Version:    messages.PingStatsMessageVersion,
 		Timestamp:  uint64(time.Now().Unix()),
@@ -89,8 +83,6 @@ func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 }
 
 func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
-
-	rand.Seed(time.Now().UnixNano())
 
 	return messages.RelayStatsMessage{
 		Version:                  messages.RelayStatsMessageVersion,
@@ -115,8 +107,6 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 
 func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
-	rand.Seed(time.Now().UnixNano())
-
 	matchValues := [messages.MatchDataMaxMatchValues]float64{}
 
 	for i := 0; i < messages.MatchDataMaxMatchValues; i++ {
@@ -134,6 +124,13 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 		MatchId:        rand.Uint64(),
 		NumMatchValues: rand.Int31(),
 		MatchValues:    matchValues,
+	}
+}
+
+func GenerateRandomServerInitMessage() messages.ServerInitMessage {
+
+	return messages.ServerInitMessage{
+		// ...
 	}
 }
 
@@ -172,6 +169,15 @@ func TestRelayStatsMessage(t *testing.T) {
 		writeMessage := GenerateRandomRelayStatMessage()
 		readMessage := messages.RelayStatsMessage{}
 		MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestServerInitMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomServerInitMessage()
+		readMessage := messages.ServerInitMessage{}
+		MessageReadWriteTest[*messages.ServerInitMessage](&writeMessage, &readMessage, t)
 	}
 }
 
