@@ -130,11 +130,6 @@
 #define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
 #define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
-#define NEXT_MATCH_DATA_RESPONSE_OK                                     0
-#define NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER                       1
-#define NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED                 2
-#define NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE                    3
-
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
 #define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING                   (1<<2)
@@ -13266,28 +13261,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         entry->match_data_response_received = true;
         entry->waiting_for_match_data_response = false;
-
-        if ( packet.response != NEXT_MATCH_DATA_RESPONSE_OK )
-        {
-            switch ( packet.response )
-            {
-                case NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER: 
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". unknown customer", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". signature check failed", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". customer not active", packet.session_id );
-                    return;
-
-                default:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". response type %d", packet.session_id, packet.response );
-                    return;
-            }
-        }
 
         if ( entry->match_data_flush )
         {
