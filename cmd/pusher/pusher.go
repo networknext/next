@@ -26,6 +26,8 @@ func main() {
 
 	service.SetupGCPStorage()
 
+	service.LeaderElection()
+
 	locationFiles := []common.MaxmindFile{
 		{
 			Name:        envvar.GetString("MAXMIND_ISP_FILE_NAME", "GeoIP2-ISP.mmdb"),
@@ -61,8 +63,6 @@ func main() {
 	RefreshBinFiles(service, binFiles)
 
 	service.StartWebServer()
-
-	service.LeaderElection()
 
 	service.WaitForShutdown()
 }
