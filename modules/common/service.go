@@ -128,8 +128,6 @@ func CreateService(serviceName string) *Service {
 
 	service.runStatusUpdateLoop()
 
-	service.setupGCPStorage()
-
 	return &service
 }
 
@@ -723,7 +721,7 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
-func (service *Service) setupGCPStorage() {
+func (service *Service) SetupGCPStorage() {
 
 	googleProjectId := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	storageLocation := envvar.GetString("GCP_STORAGE_BUCKET", "gs://happy_path_testing")

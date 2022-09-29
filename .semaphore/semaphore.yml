@@ -7,10 +7,6 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 
-global_job_config:
-  secrets:
-    - name: google-cloud-platform
-
 blocks:
 
   - name: "Dependencies"
@@ -166,8 +162,6 @@ blocks:
 
       prologue:
         commands:
-
-            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
 
             - sudo apt-get install -y google-cloud-sdk-pubsub-emulator
 

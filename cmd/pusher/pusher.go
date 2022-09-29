@@ -46,6 +46,8 @@ func main() {
 
 	service := common.CreateService("relay_pusher")
 
+	service.SetupGCPStorage()
+
 	serverBackendInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("SERVER_BACKEND_MIG_NAME", "")
 
 	relayGatewayInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("RELAY_GATEWAY_MIG_NAME", "")
