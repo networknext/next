@@ -1,7 +1,12 @@
 package messages
 
 import (
+	"net"
+	"fmt"
+
 	"cloud.google.com/go/bigquery"
+
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -17,18 +22,60 @@ type MatchDataMessage struct {
 	Version        uint32
 	Timestamp      uint64
 	BuyerId        uint64
-	ServerAddress  string
+	ServerAddress  net.UDPAddr
 	DatacenterId   uint64
 	UserHash       uint64
 	SessionId      uint64
 	MatchId        uint64
-	NumMatchValues int32
+	NumMatchValues uint32
 	MatchValues    [MatchDataMaxMatchValues]float64
 }
 
 func (message *MatchDataMessage) Read(buffer []byte) error {
 
-	// todo: implement read
+	index := 0
+
+	if !encoding.ReadUint32(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read match data version")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read timestamp")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
+		return fmt.Errorf("failed to read buyer id")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+		return fmt.Errorf("failed to read server address")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
+		return fmt.Errorf("failed to read datacenter id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
+		return fmt.Errorf("failed to read user hash")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
+		return fmt.Errorf("failed to read session id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
+		return fmt.Errorf("failed to read match id")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.NumMatchValues) {
+		return fmt.Errorf("failed to read num match values")
+	}
+
+	for i := 0; i < int(message.NumMatchValues); i++ {
+		if !encoding.ReadFloat64(buffer, &index, &message.MatchValues[i]) {
+			return fmt.Errorf("failed to read match value %d", i)
+		}
+	}
 
 	return nil
 }

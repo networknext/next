@@ -117,12 +117,12 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 		Version:        messages.MatchDataMessageVersion,
 		Timestamp:      uint64(time.Now().Unix()),
 		BuyerId:        rand.Uint64(),
-		ServerAddress:  common.RandomString(messages.MatchDataMaxAddressLength),
+		ServerAddress:  common.RandomAddress(),
 		DatacenterId:   rand.Uint64(),
 		UserHash:       rand.Uint64(),
 		SessionId:      rand.Uint64(),
 		MatchId:        rand.Uint64(),
-		NumMatchValues: rand.Int31(),
+		NumMatchValues: rand.Uint32(),
 		MatchValues:    matchValues,
 	}
 }
@@ -137,6 +137,18 @@ func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 		BuyerId: rand.Uint64(),
 		DatacenterId: rand.Uint64(),
 		DatacenterName: common.RandomString(messages.ServerInitMaxDatacenterNameLength),
+	}
+}
+
+func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
+
+	return messages.ServerUpdateMessage{
+		MessageVersion: messages.ServerInitMessageVersion,
+		SDKVersion_Major: 5,
+		SDKVersion_Minor: 0,
+		SDKVersion_Patch: 0,
+		BuyerId: rand.Uint64(),
+		DatacenterId: rand.Uint64(),
 	}
 }
 
@@ -180,15 +192,21 @@ func TestRelayStatsMessage(t *testing.T) {
 
 func TestServerInitMessage(t *testing.T) {
 	t.Parallel()
-	// todo
-	// for i := 0; i < NumIterations; i++ {
+	for i := 0; i < NumIterations; i++ {
 		writeMessage := GenerateRandomServerInitMessage()
 		readMessage := messages.ServerInitMessage{}
 		MessageReadWriteTest[*messages.ServerInitMessage](&writeMessage, &readMessage, t)
-	// }
+	}
 }
 
-// todo: test the server update message
+func TestServerUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomServerUpdateMessage()
+		readMessage := messages.ServerUpdateMessage{}
+		MessageReadWriteTest[*messages.ServerUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
 
 // todo: test the match data message
 

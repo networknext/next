@@ -8,8 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 
 	"github.com/networknext/backend/modules/core"
-
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type RedisPubsubConfig struct {

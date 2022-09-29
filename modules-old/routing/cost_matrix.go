@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const CostMatrixSerializeVersion = 2
@@ -94,10 +94,7 @@ func (m *CostMatrix) GetResponseData() []byte {
 
 func (m *CostMatrix) WriteResponseData(bufferSize int) error {
 	buffer := make([]byte, bufferSize)
-	ws, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return fmt.Errorf("failed to create write stream in cost matrix WriteResponseData(): %v", err)
-	}
+	ws := encoding.CreateWriteStream(buffer)
 
 	if err := m.Serialize(ws); err != nil {
 		return fmt.Errorf("failed to serialize cost matrix in WriteResponseData(): %v", err)

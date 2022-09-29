@@ -9,8 +9,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
@@ -132,7 +133,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
 	var buyerId uint64
 	index := 16 + 3
-	common.ReadUint64(packetData, &index, &buyerId)
+	encoding.ReadUint64(packetData, &index, &buyerId)
 
 	buyer, ok := handler.Database.BuyerMap[buyerId]
 	if !ok {
@@ -233,7 +234,7 @@ func SDK5_WritePacket[P packets.Packet](packet P, packetType int, maxPacketSize 
 
 	buffer := make([]byte, maxPacketSize)
 
-	writeStream := common.CreateWriteStream(buffer[:])
+	writeStream := encoding.CreateWriteStream(buffer[:])
 
 	var dummy [16]byte
 	writeStream.SerializeBytes(dummy[:])
@@ -495,12 +496,12 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 
 		message.Timestamp = uint64(time.Now().Unix())
 		message.BuyerId = requestPacket.BuyerId
-		message.ServerAddress = requestPacket.ServerAddress.String()
+		message.ServerAddress = requestPacket.ServerAddress
 		message.DatacenterId = requestPacket.DatacenterId
 		message.UserHash = requestPacket.UserHash
 		message.SessionId = requestPacket.SessionId
 		message.MatchId = requestPacket.MatchId
-		message.NumMatchValues = requestPacket.NumMatchValues
+		message.NumMatchValues = uint32(requestPacket.NumMatchValues)
 
 		for i := 0; i < int(requestPacket.NumMatchValues); i++ {
 			message.MatchValues[i] = requestPacket.MatchValues[i]

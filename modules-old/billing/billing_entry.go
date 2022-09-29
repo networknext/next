@@ -8,8 +8,7 @@ import (
 	"cloud.google.com/go/bigquery"
 
 	"github.com/networknext/backend/modules/core"
-
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -490,10 +489,7 @@ func WriteBillingEntry2(entry *BillingEntry2) ([]byte, error) {
 
 	buffer := [MaxBillingEntry2Bytes]byte{}
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err

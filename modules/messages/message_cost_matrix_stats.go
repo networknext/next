@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/networknext/backend/modules-old/encoding"
+
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const CostMatrixStatsMessageVersion = byte(0) // IMPORTANT: increase this each time you change the data structure

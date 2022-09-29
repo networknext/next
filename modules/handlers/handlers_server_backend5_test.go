@@ -10,8 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/messages"
 
@@ -449,7 +450,7 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// run the packet through the handler, it should fail the signature check
 
@@ -530,7 +531,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
 
@@ -620,7 +621,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// modify the packet so it has an old SDK version of 1.2.3
 
@@ -716,7 +717,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
 
@@ -1039,7 +1040,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
 
@@ -1129,7 +1130,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// modify the packet so it has an old SDK version of 1.2.3
 
@@ -1225,7 +1226,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
 
@@ -1550,7 +1551,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
 
@@ -1640,7 +1641,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
 	index := 16 + 3
-	common.WriteUint64(packetData[:], &index, buyerId)
+	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// modify the packet so it has an old SDK version of 1.2.3
 
@@ -1916,11 +1917,11 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
     case message := <-harness.matchDataMessageChannel:
     	assert.NotEqual(t, message.Timestamp, uint64(0))
     	assert.Equal(t, message.BuyerId, packet.BuyerId)
-    	assert.Equal(t, message.ServerAddress, packet.ServerAddress.String())
+    	assert.Equal(t, message.ServerAddress.String(), packet.ServerAddress.String())
     	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
     	assert.Equal(t, message.UserHash, packet.UserHash)
     	assert.Equal(t, message.SessionId, packet.SessionId)
-    	assert.Equal(t, message.NumMatchValues, packet.NumMatchValues)
+    	assert.Equal(t, message.NumMatchValues, uint32(packet.NumMatchValues))
     	for i := 0; i < int(packet.NumMatchValues); i++ {
 	    	assert.Equal(t, message.MatchValues[i], packet.MatchValues[i])
     	}
