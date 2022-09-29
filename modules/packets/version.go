@@ -2,7 +2,7 @@ package packets
 
 import (
 	"fmt"
-	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -17,7 +17,7 @@ type SDKVersion struct {
 	Patch int32
 }
 
-func (version *SDKVersion) Serialize(stream common.Stream) error {
+func (version *SDKVersion) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&version.Major, 0, 255)
 	stream.SerializeInteger(&version.Minor, 0, 255)
 	stream.SerializeInteger(&version.Patch, 0, 255)

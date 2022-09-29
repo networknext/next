@@ -7,8 +7,8 @@ import (
 
 	"cloud.google.com/go/pubsub"
 
-	"github.com/networknext/backend/modules-old/metrics"
 	md "github.com/networknext/backend/modules-old/match_data"
+	"github.com/networknext/backend/modules-old/metrics"
 
 	"github.com/stretchr/testify/assert"
 )
