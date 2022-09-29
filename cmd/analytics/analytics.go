@@ -51,11 +51,11 @@ func main() {
 		Process[messages.SummaryEntry](service, "summary", true)
 	*/
 
-	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", false)
-	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", false)
-	Process[*messages.PingStatsMessage](service, "ping_stats", false)
-	Process[*messages.RelayStatsMessage](service, "relay_stats", false)
-	Process[*messages.MatchDataMessage](service, "match_data", false)
+	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
+	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
+	Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
+	Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
+	Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
 
 	service.StartWebServer()
 
@@ -66,7 +66,7 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T messages.Message](service *common.Service, name string, important bool) {
+func Process[T messages.Message](service *common.Service, name string, message messages.Message, important bool) {
 
 	namePrefix := strings.ToUpper(name) + "_"
 
@@ -79,6 +79,7 @@ func Process[T messages.Message](service *common.Service, name string, important
 	core.Debug("%s bigquery table: %s", name, bigqueryTable)
 
 	consumerConfig := common.GooglePubsubConfig{
+		ProjectId:     googleProjectId,
 		Subscription:  pubsubSubscription,
 		Topic:         pubsubTopic,
 		BatchDuration: 10 * time.Second,
@@ -117,7 +118,7 @@ func Process[T messages.Message](service *common.Service, name string, important
 				core.Debug("received %s message", name)
 
 				messageData := pubsubMessage.Data
-				var message T
+
 				err := message.Read(messageData)
 				if err != nil {
 					if !important {
@@ -240,6 +241,14 @@ func ProcessCostMatrix(service *common.Service) {
 				costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
 
 				message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
+
+				// todo: this could probably be a validate function
+				messageEntry := messages.CostMatrixStatsMessage{}
+
+				if err := messageEntry.Read(message); err != nil {
+					core.Error("cost matrix stat message failed to be written correctly: %v", err)
+					continue
+				}
 
 				statsPubsubProducer.MessageChannel <- message
 			}
@@ -389,8 +398,33 @@ func ProcessRouteMatrix(service *common.Service) {
 				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
 				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
 				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+				routeMatrixStatsEntry.TotalRoutes = analysis.TotalRoutes
+				routeMatrixStatsEntry.AverageNumRoutes = analysis.AverageNumRoutes
+				routeMatrixStatsEntry.AverageRouteLength = analysis.AverageRouteLength
+				routeMatrixStatsEntry.NoRoutePercent = analysis.NoRoutePercent
+				routeMatrixStatsEntry.OneRoutePercent = analysis.OneRoutePercent
+				routeMatrixStatsEntry.NoDirectRoutePercent = analysis.NoDirectRoutePercent
+				routeMatrixStatsEntry.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
+				routeMatrixStatsEntry.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
+				routeMatrixStatsEntry.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
+				routeMatrixStatsEntry.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
+				routeMatrixStatsEntry.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
+				routeMatrixStatsEntry.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
+				routeMatrixStatsEntry.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
+				routeMatrixStatsEntry.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
+				routeMatrixStatsEntry.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
+				routeMatrixStatsEntry.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
+				routeMatrixStatsEntry.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
+				routeMatrixStatsEntry.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
 
-				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+				message := routeMatrixStatsEntry.Write(make([]byte, routeMatrixBytes))
+
+				messageEntry := messages.RouteMatrixStatsMessage{}
+
+				if err := messageEntry.Read(message); err != nil {
+					core.Error("route matrix stat message failed to be written correctly: %v", err)
+					continue
+				}
 
 				statsPubsubProducer.MessageChannel <- message
 			}

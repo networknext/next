@@ -6,39 +6,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
 
-const (
-	ISP      = "isp"
-	CITY     = "city"
-	DATABASE = "database"
-	OVERLAY  = "overlay"
-)
-
 type FileConfig struct {
-	Name        string
-	DownloadURL string
-	VMFilePath  string
-	UploadVMs   []string
-}
-
-type LocationFile struct {
-	Config         FileConfig
-	ValidationFunc func(context.Context, string, string) error
-}
-
-type BinFile struct {
-	Config FileConfig
+	UploadVMs []string
 }
 
 func main() {
@@ -47,47 +26,35 @@ func main() {
 
 	service.SetupGCPStorage()
 
-	serverBackendInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("SERVER_BACKEND_MIG_NAME", "")
-
-	relayGatewayInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("RELAY_GATEWAY_MIG_NAME", "")
-
-	locationFiles := make(map[string]LocationFile)
-	locationFiles[ISP] = LocationFile{
-		Config: FileConfig{
+	locationFiles := []common.MaxmindFile{
+		{
 			Name:        envvar.GetString("MAXMIND_ISP_FILE_NAME", "GeoIP2-ISP.mmdb"),
+			Path:        envvar.GetString("MAXMIND_ISP_DOWNLOAD_PATH", "./GeoIP2-ISP.mmdb"),
 			DownloadURL: envvar.GetString("MAXMIND_ISP_DB_URI", ""),
-			VMFilePath:  envvar.GetString("MAXMIND_ISP_DOWNLOAD_PATH", "./GeoIP2-ISP.mmdb"),
-			UploadVMs:   serverBackendInstanceNames,
+			Type:        common.MAXMIND_ISP,
+			Env:         service.Env,
 		},
-		ValidationFunc: common.ValidateISPFile,
-	}
-
-	locationFiles[CITY] = LocationFile{
-		Config: FileConfig{
-			Name:        envvar.GetString("MAXMIND_CITY_FILE_NAME", "GeoIP2-City.mmdb"),
+		{
+			Name:        envvar.GetString("MAXMIND_CITY_FILE_NAME", "GeoIP2-CITY.mmdb"),
+			Path:        envvar.GetString("MAXMIND_CITY_DOWNLOAD_PATH", "./GeoIP2-City.mmdb"),
 			DownloadURL: envvar.GetString("MAXMIND_CITY_DB_URI", ""),
-			VMFilePath:  envvar.GetString("MAXMIND_CITY_DOWNLOAD_PATH", "./GeoIP2-City.mmdb"),
-			UploadVMs:   serverBackendInstanceNames,
+			Type:        common.MAXMIND_CITY,
+			Env:         service.Env,
 		},
-		ValidationFunc: common.ValidateCityFile,
 	}
 
 	RefreshLocationFiles(service, locationFiles)
 
-	binFiles := make(map[string]BinFile)
-	binFiles[DATABASE] = BinFile{
-		Config: FileConfig{
-			Name:       envvar.GetString("DATABASE_FILE_NAME", "database.bin"),
-			VMFilePath: envvar.GetString("DATABASE_DOWNLOAD_PATH", "./database.bin"),
-			UploadVMs:  relayGatewayInstanceNames,
+	binFiles := []common.BinFile{
+		{
+			Name: envvar.GetString("DATABASE_FILE_NAME", "database.bin"),
+			Path: envvar.GetString("DATABASE_DOWNLOAD_PATH", "./database.bin"),
+			Type: common.BIN_DATABASE,
 		},
-	}
-
-	binFiles[OVERLAY] = BinFile{
-		Config: FileConfig{
-			Name:       envvar.GetString("OVERLAY_FILE_NAME", "overlay.bin"),
-			VMFilePath: envvar.GetString("OVERLAY_DOWNLOAD_PATH", "./overlay.bin"),
-			UploadVMs:  relayGatewayInstanceNames,
+		{
+			Name: envvar.GetString("OVERLAY_FILE_NAME", "overlay.bin"),
+			Path: envvar.GetString("OVERLAY_DOWNLOAD_PATH", "./overlay.bin"),
+			Type: common.BIN_OVERLAY,
 		},
 	}
 
@@ -100,10 +67,11 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func RefreshLocationFiles(service *common.Service, files map[string]LocationFile) {
+func RefreshLocationFiles(service *common.Service, locationFiles []common.MaxmindFile) {
 
 	refreshInterval := envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", time.Hour*24)
 	locationFileBucketPath := envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing")
+	serverBackendInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("SERVER_BACKEND_MIG_NAME", "")
 
 	go func() {
 
@@ -116,27 +84,25 @@ func RefreshLocationFiles(service *common.Service, files map[string]LocationFile
 			case <-ticker.C:
 
 				// Download loop
-				for fileType, file := range files {
-
-					config := file.Config
+				for _, locationFile := range locationFiles {
 
 					// Toggle to avoid excess downloads - happy path - local testing
-					if config.DownloadURL == "" {
+					if locationFile.DownloadURL == "" {
 						continue
 					}
 
-					fileExtensionTokens := strings.Split(config.Name, ".")
+					fileExtensionTokens := strings.Split(locationFile.Path, ".")
 					fileExtension := fileExtensionTokens[len(fileExtensionTokens)-1]
 
 					// Download the file to local storage
-					if err := service.DownloadGzipFileFromURL(config.DownloadURL, config.VMFilePath, fileExtension); err != nil {
-						core.Error("failed to download %s file: %v", fileType, err)
+					if err := service.DownloadGzipFileFromURL(locationFile.DownloadURL, locationFile.Path, fileExtension); err != nil {
+						core.Error("failed to download %s file: %v", locationFile.Type, err)
 						continue
 					}
 
 					// Validate the file
-					if err := file.ValidationFunc(service.Context, service.Env, config.VMFilePath); err != nil {
-						core.Error("failed to validate %s file: %v", fileType, err)
+					if err := locationFile.Validate(service.Context); err != nil {
+						core.Error("failed to validate %s file: %v", locationFile.Type, err)
 						continue
 					}
 
@@ -145,17 +111,17 @@ func RefreshLocationFiles(service *common.Service, files map[string]LocationFile
 						continue
 					}
 
-					fullArtifactPath := fmt.Sprintf("%s/%s", locationFileBucketPath, config.Name)
+					fullArtifactPath := fmt.Sprintf("%s/%s", locationFileBucketPath, locationFile.Name)
 
 					// Upload file to GCP for VMs that are replacing (part of startup script)
-					if err := service.GcpStorage.CopyFromLocalToBucket(service.Context, config.VMFilePath, fullArtifactPath); err != nil {
+					if err := service.GcpStorage.CopyFromLocalToBucket(service.Context, locationFile.Path, fullArtifactPath); err != nil {
 						core.Error("failed to upload location file to GCP storage: %v", err)
 						continue
 					}
 
 					// Upload file directly to VMs to update them
 					// Upload == local file location here
-					if err := service.UploadFileToGCPVirtualMachines(config.VMFilePath, config.VMFilePath, config.UploadVMs); err != nil {
+					if err := service.UploadFileToGCPVirtualMachines(locationFile.Path, locationFile.Path, serverBackendInstanceNames); err != nil {
 						core.Error("failed to upload location file to GCP VMs: %v", err)
 					}
 				}
@@ -164,12 +130,13 @@ func RefreshLocationFiles(service *common.Service, files map[string]LocationFile
 	}()
 }
 
-func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
+func RefreshBinFiles(service *common.Service, binFiles []common.BinFile) {
 
 	go func() {
 
 		binFileRefreshInterval := envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", time.Minute*1)
 		binFileBucketPath := envvar.GetString("BIN_FILE_BUCKET_PATH", "gs://happy_path_testing")
+		relayGatewayInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("RELAY_GATEWAY_MIG_NAME", "")
 
 		ticker := time.NewTicker(binFileRefreshInterval)
 
@@ -180,41 +147,26 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 			case <-ticker.C:
 
 				// Download and Verify
-				for fileType, file := range files {
+				for _, binFile := range binFiles {
 
-					config := file.Config
-
-					fullArtifactPath := fmt.Sprintf("%s/%s", binFileBucketPath, config.Name)
+					fullArtifactPath := fmt.Sprintf("%s/%s", binFileBucketPath, binFile.Name)
 
 					// Download from GCP bucket (Portal/Next tool uploads to bucket after creation)
-					if err := service.GcpStorage.CopyFromBucketToLocal(service.Context, fullArtifactPath, config.VMFilePath); err != nil {
-						core.Error("failed to download %s file: %v", fileType, err)
+					if err := service.GcpStorage.CopyFromBucketToLocal(service.Context, fullArtifactPath, binFile.Path); err != nil {
+						core.Error("failed to download %s file: %v", binFile.Type, err)
 						continue
 					}
 
-					binFile, err := os.Open(config.VMFilePath)
+					binFileRef, err := os.Open(binFile.Path)
 					if err != nil {
 						core.Error("failed to open database file")
 						continue
 					}
-					defer binFile.Close()
+					defer binFileRef.Close()
 
 					// Validate bin file
-					// todo: figure out how to avoid this like location file
-					switch fileType {
-					case DATABASE:
-						if err := common.ValidateDatabaseFile(binFile, &routing.DatabaseBinWrapper{}); err != nil {
-							core.Error("failed to validate database file: %v", err)
-							continue
-						}
-						break
-					case OVERLAY:
-						if err := common.ValidateOverlayFile(binFile, &routing.OverlayBinWrapper{}); err != nil {
-							core.Error("failed to validate overlay file: %v", err)
-							continue
-						}
-						break
-					default:
+					if err := binFile.Validate(binFileRef); err != nil {
+						core.Error("failed to validate database file: %v", err)
 						continue
 					}
 
@@ -225,8 +177,8 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 
 					// Upload file directly to VMs to update them
 					// Upload == local file path here
-					if err := service.UploadFileToGCPVirtualMachines(config.VMFilePath, config.VMFilePath, config.UploadVMs); err != nil {
-						core.Error("failed to upload %s file to GCP VMs: %v", fileType, err)
+					if err := service.UploadFileToGCPVirtualMachines(binFile.Path, binFile.Path, relayGatewayInstanceNames); err != nil {
+						core.Error("failed to upload %s file to GCP VMs: %v", binFile.Type, err)
 					}
 				}
 			}
