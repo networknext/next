@@ -157,11 +157,23 @@ func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 	return messages.SessionUpdateMessage{
-		Version:     messages.SessionUpdateMessageVersion,
-		Timestamp:   rand.Uint64(),
-		SessionId:   rand.Uint64(),
-		SliceNumber: rand.Uint32(),
-		// ...
+		Version:             messages.SessionUpdateMessageVersion,
+		Timestamp:           rand.Uint64(),
+		SessionId:           rand.Uint64(),
+		SliceNumber:         rand.Uint32(),
+		DirectMinRTT:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectMaxRTT:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectPrimeRTT:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectJitter:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
+		DirectPacketLoss:    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
+		RealPacketLoss:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
+		RealPacketLoss_Frac: uint32(common.RandomInt(0, 255)),
+		RealJitter:          uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
+		Next:                common.RandomBool(),
+		Flagged:             common.RandomBool(),
+		Summary:             common.RandomBool(),
+		UseDebug:            common.RandomBool(),
+		Debug:               common.RandomString(messages.SessionUpdateMessageMaxDebugLength),
 	}
 }
 
@@ -170,22 +182,6 @@ type SessionUpdateMessage struct {
 
 	// always
 
-	Timestamp           uint32
-	SessionID           uint64
-	SliceNumber         uint32
-	DirectMinRTT        int32
-	DirectMaxRTT        int32
-	DirectPrimeRTT      int32
-	DirectJitter        int32
-	DirectPacketLoss    int32
-	RealPacketLoss      int32
-	RealPacketLoss_Frac uint32
-	RealJitter          uint32
-	Next                bool
-	Flagged             bool
-	Summary             bool
-	UseDebug            bool
-	Debug               string
 	RouteDiversity      int32
 	UserFlags           uint64
 	TryBeforeYouBuy     bool

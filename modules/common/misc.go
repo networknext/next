@@ -17,6 +17,12 @@ func RandomBool() bool {
 	}
 }
 
+func RandomInt(min int, max int) int {
+	difference := max - min
+	value := rand.Intn(difference + 1)
+	return value - min
+}
+
 func RandomString(length int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, length)

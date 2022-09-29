@@ -18,6 +18,9 @@ const (
 	SessionUpdateMessageMaxDebugLength      = 2048
 	SessionUpdateMessageMaxNearRelays       = 32
 	SessionUpdateMessageMaxTags             = 8
+	SessionUpdateMessageMaxRTT              = 1023
+	SessionUpdateMessageMaxJitter           = 255
+	SessionUpdateMessageMaxPacketLoss       = 100
 )
 
 type SessionUpdateMessage struct {
@@ -144,14 +147,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeBits(&message.SliceNumber, 32)
 	}
 
-	stream.SerializeInteger(&message.DirectMinRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectMaxRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectPrimeRTT, 0, 1023)
+	stream.SerializeInteger(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
+	stream.SerializeInteger(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 
-	stream.SerializeInteger(&message.DirectJitter, 0, 255)
-	stream.SerializeInteger(&message.DirectPacketLoss, 0, 100)
-
-	stream.SerializeInteger(&message.RealPacketLoss, 0, 100)
+	stream.SerializeInteger(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 	stream.SerializeBits(&message.RealPacketLoss_Frac, 8)
 	stream.SerializeUint32(&message.RealJitter)
 
