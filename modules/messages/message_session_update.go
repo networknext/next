@@ -1,13 +1,17 @@
 package messages
 
 import (
+	"fmt"
+	"net"
+
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	SessionUpdateMessageVersion = uint32(0)
+	SessionUpdateMessageVersion = 0
 
 	MaxSessionUpdateMessageBytes = 4096
 
@@ -18,6 +22,13 @@ const (
 	SessionUpdateMessageMaxDebugLength      = 2048
 	SessionUpdateMessageMaxNearRelays       = 32
 	SessionUpdateMessageMaxTags             = 8
+	SessionUpdateMessageMaxRTT              = 1023
+	SessionUpdateMessageMaxJitter           = 255
+	SessionUpdateMessageMaxPacketLoss       = 100
+	SessionUpdateMessageMaxRouteDiversity   = 31
+	SessionUpdateMessageMaxConnectionType   = 3
+	SessionUpdateMessageMaxPlatformType     = 10
+	SessionUpdateMessageMaxNearRelayRTT     = 255
 )
 
 type SessionUpdateMessage struct {
@@ -25,8 +36,8 @@ type SessionUpdateMessage struct {
 	// always
 
 	Version             uint32
-	Timestamp           uint32
-	SessionID           uint64
+	Timestamp           uint64
+	SessionId           uint64
 	SliceNumber         uint32
 	DirectMinRTT        int32
 	DirectMaxRTT        int32
@@ -47,19 +58,21 @@ type SessionUpdateMessage struct {
 
 	// first slice and summary slice only
 
-	DatacenterID      uint64
-	BuyerID           uint64
+	DatacenterId      uint64
+	BuyerId           uint64
 	UserHash          uint64
 	EnvelopeBytesUp   uint64
 	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
-	ClientAddress     string
-	ServerAddress     string
+	ClientAddress     net.UDPAddr
+	ServerAddress     net.UDPAddr
 	ISP               string
 	ConnectionType    int32
 	PlatformType      int32
-	SDKVersion        string
+	SDKVersion_Major  uint32
+	SDKVersion_Minor  uint32
+	SDKVersion_Patch  uint32
 	NumTags           int32
 	Tags              [SessionUpdateMessageMaxTags]uint64
 	ABTest            bool
@@ -74,7 +87,7 @@ type SessionUpdateMessage struct {
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
 	NumNearRelays                   int32
-	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
+	NearRelayIds                    [SessionUpdateMessageMaxNearRelays]uint64
 	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
@@ -84,7 +97,7 @@ type SessionUpdateMessage struct {
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
-	StartTimestamp                  uint32
+	StartTimestamp                  uint64
 
 	// network next only
 
@@ -129,9 +142,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&message.Version, 32)
-	stream.SerializeBits(&message.Timestamp, 32)
-	stream.SerializeUint64(&message.SessionID)
+	stream.SerializeBits(&message.Version, 8)
+	stream.SerializeUint64(&message.Timestamp)
+	stream.SerializeUint64(&message.SessionId)
 
 	small := false
 	if message.SliceNumber < 1024 {
@@ -144,14 +157,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeBits(&message.SliceNumber, 32)
 	}
 
-	stream.SerializeInteger(&message.DirectMinRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectMaxRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectPrimeRTT, 0, 1023)
+	stream.SerializeInteger(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
+	stream.SerializeInteger(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 
-	stream.SerializeInteger(&message.DirectJitter, 0, 255)
-	stream.SerializeInteger(&message.DirectPacketLoss, 0, 100)
-
-	stream.SerializeInteger(&message.RealPacketLoss, 0, 100)
+	stream.SerializeInteger(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 	stream.SerializeBits(&message.RealPacketLoss_Frac, 8)
 	stream.SerializeUint32(&message.RealJitter)
 
@@ -162,7 +174,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&message.UseDebug)
 	stream.SerializeString(&message.Debug, SessionUpdateMessageMaxDebugLength)
 
-	stream.SerializeInteger(&message.RouteDiversity, 0, 32)
+	stream.SerializeInteger(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
 
 	stream.SerializeUint64(&message.UserFlags)
 
@@ -172,31 +184,31 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		2. First slice and summary slice only
 
 		These values are serialized only for slice 0 and summary slice.
-
-		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		stream.SerializeUint64(&message.DatacenterID)
-		stream.SerializeUint64(&message.BuyerID)
+		stream.SerializeUint64(&message.DatacenterId)
+		stream.SerializeUint64(&message.BuyerId)
 		stream.SerializeUint64(&message.UserHash)
 		stream.SerializeUint64(&message.EnvelopeBytesUp)
 		stream.SerializeUint64(&message.EnvelopeBytesDown)
 		stream.SerializeFloat32(&message.Latitude)
 		stream.SerializeFloat32(&message.Longitude)
 		stream.SerializeString(&message.ISP, SessionUpdateMessageMaxISPLength)
-		stream.SerializeInteger(&message.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&message.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&message.SDKVersion, SessionUpdateMessageMaxSDKVersionLength)
+		stream.SerializeInteger(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
+		stream.SerializeInteger(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
+		stream.SerializeBits(&message.SDKVersion_Major, 8)
+		stream.SerializeBits(&message.SDKVersion_Minor, 8)
+		stream.SerializeBits(&message.SDKVersion_Patch, 8)
 		stream.SerializeInteger(&message.NumTags, 0, SessionUpdateMessageMaxTags)
 		for i := 0; i < int(message.NumTags); i++ {
 			stream.SerializeUint64(&message.Tags[i])
 		}
 		stream.SerializeBool(&message.ABTest)
 		stream.SerializeBool(&message.Pro)
-		stream.SerializeString(&message.ClientAddress, SessionUpdateMessageMaxAddressLength)
-		stream.SerializeString(&message.ServerAddress, SessionUpdateMessageMaxAddressLength)
+		stream.SerializeAddress(&message.ClientAddress)
+		stream.SerializeAddress(&message.ServerAddress)
 	}
 
 	/*
@@ -216,13 +228,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
 
 		for i := 0; i < int(message.NumNearRelays); i++ {
-			stream.SerializeUint64(&message.NearRelayIDs[i])
-			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, 255)
-			stream.SerializeInteger(&message.NearRelayJitters[i], 0, 255)
-			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, 100)
+			stream.SerializeUint64(&message.NearRelayIds[i])
+			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
+			stream.SerializeInteger(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
+			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
 		}
 
-		stream.SerializeUint32(&message.StartTimestamp)
+		stream.SerializeUint64(&message.StartTimestamp)
 		stream.SerializeUint32(&message.SessionDuration)
 
 		stream.SerializeBool(&message.EverOnNext)
@@ -244,11 +256,11 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	if message.Next {
 
-		stream.SerializeInteger(&message.NextRTT, 0, 255)
-		stream.SerializeInteger(&message.NextJitter, 0, 255)
-		stream.SerializeInteger(&message.NextPacketLoss, 0, 100)
-		stream.SerializeInteger(&message.PredictedNextRTT, 0, 255)
-		stream.SerializeInteger(&message.NearRelayRTT, 0, 255)
+		stream.SerializeInteger(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
+		stream.SerializeInteger(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
+		stream.SerializeInteger(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+		stream.SerializeInteger(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
+		stream.SerializeInteger(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
 
 		stream.SerializeInteger(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
 		for i := 0; i < int(message.NumNextRelays); i++ {
@@ -313,12 +325,26 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 }
 
 func (message *SessionUpdateMessage) Read(buffer []byte) error {
-	return nil
+
+	readStream := encoding.CreateReadStream(buffer)
+
+	return message.Serialize(readStream)
 }
 
 func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
-	index := 0
-	return buffer[:index]
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := message.Serialize(writeStream)
+	if err != nil {
+		panic(err)
+	}
+
+	writeStream.Flush()
+
+	packetBytes := writeStream.GetBytesProcessed()
+
+	return buffer[:packetBytes]
 }
 
 func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
@@ -332,9 +358,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	*/
 
 	e["timestamp"] = int(message.Timestamp)
-	e["sessionID"] = int(message.SessionID)
+	e["sessionID"] = int(message.SessionId)
 	e["sliceNumber"] = int(message.SliceNumber)
-	e["directRTT"] = int(message.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
+	e["directRTT"] = int(message.DirectMinRTT)
 	e["directMaxRTT"] = int(message.DirectMaxRTT)
 	e["directPrimeRTT"] = int(message.DirectPrimeRTT)
 	e["directJitter"] = int(message.DirectJitter)
@@ -378,8 +404,8 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		e["datacenterID"] = int(message.DatacenterID)
-		e["buyerID"] = int(message.BuyerID)
+		e["datacenterID"] = int(message.DatacenterId)
+		e["buyerID"] = int(message.BuyerId)
 		e["userHash"] = int(message.UserHash)
 		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
 		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
@@ -390,7 +416,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["isp"] = message.ISP
 		e["connectionType"] = int(message.ConnectionType)
 		e["platformType"] = int(message.PlatformType)
-		e["sdkVersion"] = message.SDKVersion
+		e["sdkVersion"] = fmt.Sprintf("%d.%d.%d", message.SDKVersion_Major, message.SDKVersion_Minor, message.SDKVersion_Patch)
 
 		if message.NumTags > 0 {
 			tags := make([]bigquery.Value, message.NumTags)
@@ -426,19 +452,19 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 		if message.NumNearRelays > 0 {
 
-			nearRelayIDs := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayIds := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
 
 			for i := 0; i < int(message.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(message.NearRelayIDs[i])
+				nearRelayIds[i] = int(message.NearRelayIds[i])
 				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
 				nearRelayJitters[i] = int(message.NearRelayJitters[i])
 				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
 			}
 
-			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayIDs"] = nearRelayIds
 			e["nearRelayRTTs"] = nearRelayRTTs
 			e["nearRelayJitters"] = nearRelayJitters
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses
@@ -459,7 +485,6 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		}
 
 		e["startTimestamp"] = int(message.StartTimestamp)
-
 	}
 
 	/*
@@ -574,468 +599,32 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	return e, "", nil
 }
 
-/*
-func (entry *BillingEntry) Clamp() bool {
+func (message *SessionUpdateMessage) Clamp() {
 
-	if message.Version < 0 {
-		fmt.Printf("invalid version\n")
-		return false
+	common.Clamp(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
+	common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.RealPacketLoss_Frac, 0, 255)
+	common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter)
+	common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength)
+	common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
+	common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength)
+	common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
+	common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
+	common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags)
+	common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		common.Clamp(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
+		common.Clamp(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
+		common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
 	}
-
-	if message.Timestamp < 0 {
-		fmt.Printf("invalid timestamp\n")
-		return false
-	}
-
-	if message.SessionID == 0 {
-		fmt.Printf("invalid session id\n")
-		return false
-	}
-
-	if message.SliceNumber < 0 {
-		fmt.Printf("invalid slice number\n")
-		return false
-	}
-
-	if message.DirectMinRTT < 0 || message.DirectMinRTT > 1023 {
-		fmt.Printf("invalid direct min rtt\n")
-		return false
-	}
-
-	if message.DirectMaxRTT < 0 || message.DirectMaxRTT > 1023 {
-		fmt.Printf("invalid direct max rtt\n")
-		return false
-	}
-
-	if message.DirectPrimeRTT < 0 || message.DirectPrimeRTT > 1023 {
-		fmt.Printf("invalid direct prime rtt\n")
-		return false
-	}
-
-	if message.DirectJitter < 0 || message.DirectJitter > 255 {
-		fmt.Printf("invalid direct jitter\n")
-		return false
-	}
-
-	if message.DirectPacketLoss < 0 || message.DirectPacketLoss > 100 {
-		fmt.Printf("invalid direct packet loss\n")
-		return false
-	}
-
-	if message.RealPacketLoss < 0 || message.RealPacketLoss > 100 {
-		if message.RealPacketLoss > 100 {
-			fmt.Printf("RealPacketLoss %v > 100. Clamping to 100\n%+v\n", message.RealPacketLoss, entry)
-			message.RealPacketLoss = 100
-		} else {
-			fmt.Printf("invalid real packet loss\n")
-			return false
-		}
-	}
-
-	if message.RealJitter < 0 || message.RealJitter > 1000 {
-		if message.RealJitter > 1000 {
-			fmt.Printf("RealJitter %v > 1000. Clamping to 1000\n%+v\n", message.RealJitter, entry)
-			message.RealJitter = 100
-		} else {
-			fmt.Printf("invalid real jitter\n")
-			return false
-		}
-	}
-
-	if message.RouteDiversity < 0 || message.RouteDiversity > 32 {
-		fmt.Printf("invalid route diversity\n")
-		return false
-	}
-
-	// first slice only
-
-	if message.SliceNumber == 0 {
-
-		if message.BuyerID == 0 {
-			fmt.Printf("invalid buyer id\n")
-			return false
-		}
-
-		// IMPORTANT: Logic inverted because comparing a NaN float value always returns false
-		if !(message.Latitude >= -90.0 && message.Latitude <= +90.0) {
-			fmt.Printf("invalid latitude\n")
-			return false
-		}
-
-		if !(message.Longitude >= -180.0 && message.Longitude <= +180.0) {
-			fmt.Printf("invalid longitude\n")
-			return false
-		}
-
-		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-		if message.ConnectionType < 0 || message.ConnectionType > 3 {
-			fmt.Printf("invalid connection type\n")
-			return false
-		}
-
-		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if message.PlatformType < 0 || message.PlatformType > 10 {
-			fmt.Printf("invalid platform type\n")
-			return false
-		}
-
-		if message.NumTags < 0 || message.NumTags > 8 {
-			fmt.Printf("invalid num tags\n")
-			return false
-		}
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		if message.NumNearRelays < 0 || message.NumNearRelays > 32 {
-			fmt.Printf("invalid num near relays\n")
-			return false
-		}
-
-		if message.NumNearRelays > 0 {
-
-			for i := 0; i < int(message.NumNearRelays); i++ {
-
-				if message.NearRelayIDs[i] == 0 {
-					// Log this but do not return false
-					// TODO: investigate why nearRelayID is 0
-					fmt.Printf("NearRelayIDs[%d] is 0.\n%+v\n", i, entry)
-				}
-
-				if message.NearRelayRTTs[i] < 0 || message.NearRelayRTTs[i] > 255 {
-					fmt.Printf("invalid near relay rtt\n")
-					return false
-				}
-
-				if message.NearRelayJitters[i] < 0 || message.NearRelayJitters[i] > 255 {
-					fmt.Printf("invalid near relay jitter\n")
-					return false
-				}
-
-				if message.NearRelayPacketLosses[i] < 0 || message.NearRelayPacketLosses[i] > 100 {
-					fmt.Printf("invalid near relay packet loss\n")
-					return false
-				}
-			}
-		}
-	}
-
-	// network next only
-
-	if message.Next {
-
-		if message.NextRTT < 0 || message.NextRTT > 255 {
-			fmt.Printf("invalid next rtt\n")
-			return false
-		}
-
-		if message.NextJitter < 0 || message.NextJitter > 255 {
-			fmt.Printf("invalid next jitter\n")
-			return false
-		}
-
-		if message.NextPacketLoss < 0 || message.NextPacketLoss > 100 {
-			fmt.Printf("invalid next packet loss\n")
-			return false
-		}
-
-		if message.PredictedNextRTT < 0 || message.PredictedNextRTT > 255 {
-			fmt.Printf("invalid predicted next rtt\n")
-			return false
-		}
-
-		if message.NearRelayRTT < 0 || message.NearRelayRTT > 255 {
-			fmt.Printf("invalid near relay rtt\n")
-			return false
-		}
-
-		if message.NumNextRelays < 0 || message.NumNextRelays > 32 {
-			fmt.Printf("invalid num next relays\n")
-			return false
-		}
-	}
-
-	return true
+	common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
+	common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
+	common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
 }
-
-func (entry *BillingEntry) CheckNaNOrInf() (bool, []string) {
-
-	var nanOrInfExists bool
-	var nanOrInfFields []string
-
-	if math.IsNaN(float64(message.Latitude)) || math.IsInf(float64(message.Latitude), 0) {
-		nanOrInfFields = append(nanOrInfFields, "Latitude")
-		nanOrInfExists = true
-		message.Latitude = float32(0)
-	}
-
-	if math.IsNaN(float64(message.Longitude)) || math.IsInf(float64(message.Longitude), 0) {
-		nanOrInfFields = append(nanOrInfFields, "Longitude")
-		nanOrInfExists = true
-		message.Longitude = float32(0)
-	}
-
-	return nanOrInfExists, nanOrInfFields
-}
-*/
-
-/*
-// To save bits during serialization, clamp integer and string fields if they go beyond the min
-// or max values as defined in BillingEntry.Serialize()
-
-func (entry *BillingEntry) ClampEntry() {
-
-	// always
-
-	if message.DirectMinRTT < 0 {
-		core.Error("BillingEntry DirectMinRTT (%d) < 0. Clamping to 0.", message.DirectMinRTT)
-		message.DirectMinRTT = 0
-	}
-
-	if message.DirectMinRTT > 1023 {
-		core.Debug("BillingEntry DirectMinRTT (%d) > 1023. Clamping to 1023.", message.DirectMinRTT)
-		message.DirectMinRTT = 1023
-	}
-
-	if message.DirectMaxRTT < 0 {
-		core.Error("BillingEntry DirectMaxRTT (%d) < 0. Clamping to 0.", message.DirectMaxRTT)
-		message.DirectMaxRTT = 0
-	}
-
-	if message.DirectMaxRTT > 1023 {
-		core.Debug("BillingEntry DirectMaxRTT (%d) > 1023. Clamping to 1023.", message.DirectMaxRTT)
-		message.DirectMaxRTT = 1023
-	}
-
-	if message.DirectPrimeRTT < 0 {
-		core.Error("BillingEntry DirectPrimeRTT (%d) < 0. Clamping to 0.", message.DirectPrimeRTT)
-		message.DirectPrimeRTT = 0
-	}
-
-	if message.DirectPrimeRTT > 1023 {
-		core.Debug("BillingEntry DirectPrimeRTT (%d) > 1023. Clamping to 1023.", message.DirectPrimeRTT)
-		message.DirectPrimeRTT = 1023
-	}
-
-	if message.DirectJitter < 0 {
-		core.Error("BillingEntry DirectJitter (%d) < 0. Clamping to 0.", message.DirectJitter)
-		message.DirectJitter = 0
-	}
-
-	if message.DirectJitter > 255 {
-		core.Debug("BillingEntry DirectJitter (%d) > 255. Clamping to 255.", message.DirectJitter)
-		message.DirectJitter = 255
-	}
-
-	if message.DirectPacketLoss < 0 {
-		core.Error("BillingEntry DirectPacketLoss (%d) < 0. Clamping to 0.", message.DirectPacketLoss)
-		message.DirectPacketLoss = 0
-	}
-
-	if message.DirectPacketLoss > 100 {
-		core.Debug("BillingEntry DirectPacketLoss (%d) > 100. Clamping to 100.", message.DirectPacketLoss)
-		message.DirectPacketLoss = 100
-	}
-
-	if message.RealPacketLoss < 0 {
-		core.Error("BillingEntry RealPacketLoss (%d) < 0. Clamping to 0.", message.RealPacketLoss)
-		message.RealPacketLoss = 0
-	}
-
-	if message.RealPacketLoss > 100 {
-		core.Debug("BillingEntry RealPacketLoss (%d) > 100. Clamping to 100.", message.RealPacketLoss)
-		message.RealPacketLoss = 100
-	}
-
-	if message.RealJitter > 1000 {
-		core.Debug("BillingEntry RealJitter (%d) > 1000. Clamping to 1000.", message.RealJitter)
-		message.RealJitter = uint32(1000)
-	}
-
-	if len(message.Debug) >= BillingEntryMaxDebugLength {
-		core.Debug("BillingEntry Debug length (%d) >= BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength - 1 (%d)", len(message.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength-1)
-		message.Debug = message.Debug[:BillingEntryMaxDebugLength-1]
-	}
-
-	if message.RouteDiversity < 0 {
-		core.Error("BillingEntry RouteDiversity (%d) < 0. Clamping to 0.", message.RouteDiversity)
-		message.RouteDiversity = 0
-	}
-
-	if message.RouteDiversity > 32 {
-		core.Debug("BillingEntry RouteDiversity (%d) > 32. Clamping to 32.", message.RouteDiversity)
-		message.RouteDiversity = 32
-	}
-
-	// first slice and summary slice only
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		if len(message.ClientAddress) >= BillingEntryMaxAddressLength {
-			core.Debug("BillingEntry Client IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(message.ClientAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
-			message.ClientAddress = message.ClientAddress[:BillingEntryMaxAddressLength-1]
-		}
-
-		if len(message.ISP) >= BillingEntryMaxISPLength {
-			core.Debug("BillingEntry ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1 (%d)", len(message.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
-			message.ISP = message.ISP[:BillingEntryMaxISPLength-1]
-		}
-
-		if message.ConnectionType < 0 {
-			core.Error("BillingEntry ConnectionType (%d) < 0. Clamping to 0.", message.ConnectionType)
-			message.ConnectionType = 0
-		}
-
-		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-		if message.ConnectionType > 3 {
-			core.Debug("BillingEntry ConnectionType (%d) > 3. Clamping to 0 (unknown).", message.ConnectionType)
-			message.ConnectionType = 0
-		}
-
-		if message.PlatformType < 0 {
-			core.Error("BillingEntry PlatformType (%d) < 0. Clamping to 0.", message.PlatformType)
-			message.PlatformType = 0
-		}
-
-		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if message.PlatformType > 10 {
-			core.Debug("BillingEntry PlatformType (%d) > 10. Clamping to 0 (unknown).", message.PlatformType)
-			message.PlatformType = 0
-		}
-
-		if len(message.SDKVersion) >= BillingEntryMaxSDKVersionLength {
-			core.Debug("BillingEntry SDKVersion length (%d) >= BillingEntryMaxSDKVersionLength (%d). Clamping to BillingEntryMaxSDKVersionLength - 1 (%d)", len(message.SDKVersion), BillingEntryMaxSDKVersionLength, BillingEntryMaxSDKVersionLength-1)
-			message.SDKVersion = message.SDKVersion[:BillingEntryMaxSDKVersionLength-1]
-		}
-
-		if message.NumTags < 0 {
-			core.Error("BillingEntry NumTags (%d) < 0. Clamping to 0.", message.NumTags)
-			message.NumTags = 0
-		}
-
-		if message.NumTags > BillingEntryMaxTags {
-			core.Debug("BillingEntry NumTags (%d) > BillingEntryMaxTags (%d). Clamping to BillingEntryMaxTags (%d).", message.NumTags, BillingEntryMaxTags, BillingEntryMaxTags)
-			message.NumTags = BillingEntryMaxTags
-		}
-
-		if len(message.ServerAddress) >= BillingEntryMaxAddressLength {
-			core.Debug("BillingEntry Server IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(message.ServerAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
-			message.ServerAddress = message.ServerAddress[:BillingEntryMaxAddressLength-1]
-		}
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		if message.NumNearRelays < 0 {
-			core.Error("BillingEntry NumNearRelays (%d) < 0. Clamping to 0.", message.NumNearRelays)
-			message.NumNearRelays = 0
-		}
-
-		if message.NumNearRelays > BillingEntryMaxNearRelays {
-			core.Debug("BillingEntry NumNearRelays (%d) > BillingEntryMaxNearRelays (%d). Clamping to BillingEntryMaxNearRelays (%d).", message.NumNearRelays, BillingEntryMaxNearRelays, BillingEntryMaxNearRelays)
-			message.NumNearRelays = BillingEntryMaxNearRelays
-		}
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			if message.NearRelayRTTs[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayRTTs[i])
-				message.NearRelayRTTs[i] = 0
-			}
-
-			if message.NearRelayRTTs[i] > 255 {
-				core.Debug("BillingEntry NearRelayRTTs[%d] (%d) > 255. Clamping to 255.", i, message.NearRelayRTTs[i])
-				message.NearRelayRTTs[i] = 255
-			}
-
-			if message.NearRelayJitters[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayJitters[i])
-				message.NearRelayJitters[i] = 0
-			}
-
-			if message.NearRelayJitters[i] > 255 {
-				core.Debug("BillingEntry NearRelayJitters[%d] (%d) > 255. Clamping to 255.", i, message.NearRelayJitters[i])
-				message.NearRelayJitters[i] = 255
-			}
-
-			if message.NearRelayPacketLosses[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayPacketLosses[i])
-				message.NearRelayPacketLosses[i] = 0
-			}
-
-			if message.NearRelayPacketLosses[i] > 100 {
-				core.Debug("BillingEntry NearRelayPacketLosses[%d] (%d) > 100. Clamping to 100.", i, message.NearRelayPacketLosses[i])
-				message.NearRelayPacketLosses[i] = 100
-			}
-		}
-	}
-
-	// network next only
-
-	if message.Next {
-
-		if message.NextRTT < 0 {
-			core.Error("BillingEntry NextRTT (%d) < 0. Clamping to 0.", message.NextRTT)
-			message.NextRTT = 0
-		}
-
-		if message.NextRTT > 255 {
-			core.Debug("BillingEntry NextRTT (%d) > 255. Clamping to 255.", message.NextRTT)
-			message.NextRTT = 255
-		}
-
-		if message.NextJitter < 0 {
-			core.Error("BillingEntry NextJitter (%d) < 0. Clamping to 0.", message.NextJitter)
-			message.NextJitter = 0
-		}
-
-		if message.NextJitter > 255 {
-			core.Debug("BillingEntry NextJitter (%d) > 255. Clamping to 255.", message.NextJitter)
-			message.NextJitter = 255
-		}
-
-		if message.NextPacketLoss < 0 {
-			core.Error("BillingEntry NextPacketLoss (%d) < 0. Clamping to 0.", message.NextPacketLoss)
-			message.NextPacketLoss = 0
-		}
-
-		if message.NextPacketLoss > 100 {
-			core.Debug("BillingEntry NextPacketLoss (%d) > 100. Clamping to 100.", message.NextPacketLoss)
-			message.NextPacketLoss = 100
-		}
-
-		if message.PredictedNextRTT < 0 {
-			core.Error("BillingEntry PredictedNextRTT (%d) < 0. Clamping to 0.", message.PredictedNextRTT)
-			message.PredictedNextRTT = 0
-		}
-
-		if message.PredictedNextRTT > 255 {
-			core.Debug("BillingEntry PredictedNextRTT (%d) > 255. Clamping to 255.", message.PredictedNextRTT)
-			message.PredictedNextRTT = 255
-		}
-
-		if message.NearRelayRTT < 0 {
-			core.Error("BillingEntry NearRelayRTT (%d) < 0. Clamping to 0.", message.NearRelayRTT)
-			message.NearRelayRTT = 0
-		}
-
-		if message.NearRelayRTT > 255 {
-			core.Debug("BillingEntry NearRelayRTT (%d) > 255. Clamping to 255.", message.NearRelayRTT)
-			message.NearRelayRTT = 255
-		}
-
-		if message.NumNextRelays < 0 {
-			core.Error("BillingEntry NumNextRelays (%d) < 0. Clamping to 0.", message.NumNextRelays)
-			message.NumNextRelays = 0
-		}
-
-		if message.NumNextRelays > BillingEntryMaxRelays {
-			core.Debug("BillingEntry NumNextRelays (%d) > BillingEntryMaxRelays (%d). Clamping to BillingEntryMaxRelays (%d).", message.NumNextRelays, BillingEntryMaxRelays, BillingEntryMaxRelays)
-			message.NumNextRelays = BillingEntryMaxRelays
-		}
-	}
-}
-*/

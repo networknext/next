@@ -8,7 +8,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixStatsMessageVersion = byte(0) // IMPORTANT: increase this each time you change the message data structure
+const RouteMatrixStatsMessageVersion = 0 // IMPORTANT: increase this each time you change the message data structure
 
 type RouteMatrixStatsMessage struct {
 	Version                 uint8
