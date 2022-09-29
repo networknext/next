@@ -107,9 +107,11 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 
 func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
+	numMatchValues := rand.Intn(65)
+
 	matchValues := [messages.MatchDataMaxMatchValues]float64{}
 
-	for i := 0; i < messages.MatchDataMaxMatchValues; i++ {
+	for i := 0; i < numMatchValues; i++ {
 		matchValues[i] = rand.Float64()
 	}
 
@@ -122,7 +124,7 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 		UserHash:       rand.Uint64(),
 		SessionId:      rand.Uint64(),
 		MatchId:        rand.Uint64(),
-		NumMatchValues: rand.Uint32(),
+		NumMatchValues: uint32(numMatchValues),
 		MatchValues:    matchValues,
 	}
 }
@@ -130,25 +132,25 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 
 	return messages.ServerInitMessage{
-		MessageVersion: messages.ServerInitMessageVersion,
+		MessageVersion:   messages.ServerInitMessageVersion,
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
-		BuyerId: rand.Uint64(),
-		DatacenterId: rand.Uint64(),
-		DatacenterName: common.RandomString(messages.ServerInitMaxDatacenterNameLength),
+		BuyerId:          rand.Uint64(),
+		DatacenterId:     rand.Uint64(),
+		DatacenterName:   common.RandomString(messages.ServerInitMaxDatacenterNameLength),
 	}
 }
 
 func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 
 	return messages.ServerUpdateMessage{
-		MessageVersion: messages.ServerInitMessageVersion,
+		MessageVersion:   messages.ServerInitMessageVersion,
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
-		BuyerId: rand.Uint64(),
-		DatacenterId: rand.Uint64(),
+		BuyerId:          rand.Uint64(),
+		DatacenterId:     rand.Uint64(),
 	}
 }
 
@@ -208,6 +210,13 @@ func TestServerUpdateMessage(t *testing.T) {
 	}
 }
 
-// todo: test the match data message
+func TestMatchDataMessage(t *testing.T) {
+	t.Parallel()
+	// for i := 0; i < NumIterations; i++ {
+	writeMessage := GenerateRandomMatchDataMessage()
+	readMessage := messages.MatchDataMessage{}
+	MessageReadWriteTest[*messages.MatchDataMessage](&writeMessage, &readMessage, t)
+	// }
+}
 
 // todo: test the session update message

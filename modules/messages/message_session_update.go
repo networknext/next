@@ -167,7 +167,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&message.UserFlags)
 
 	stream.SerializeBool(&message.TryBeforeYouBuy)
-	
+
 	/*
 		2. First slice and summary slice only
 
@@ -222,7 +222,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, 100)
 		}
 
-		stream.SerializeUint32(&message.StartTimestamp)		
+		stream.SerializeUint32(&message.StartTimestamp)
 		stream.SerializeUint32(&message.SessionDuration)
 
 		stream.SerializeBool(&message.EverOnNext)

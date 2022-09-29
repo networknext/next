@@ -9,8 +9,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
@@ -46,9 +46,9 @@ const (
 	SDK5_HandlerEvent_SentSessionUpdateResponsePacket = 21
 	SDK5_HandlerEvent_SentMatchDataResponsePacket     = 22
 
-	SDK5_HandlerEvent_SentServerInitMessage    = 23
-	SDK5_HandlerEvent_SentServerUpdateMessage  = 24
-	SDK5_HandlerEvent_SentMatchDataMessage     = 25
+	SDK5_HandlerEvent_SentServerInitMessage   = 23
+	SDK5_HandlerEvent_SentServerUpdateMessage = 24
+	SDK5_HandlerEvent_SentMatchDataMessage    = 25
 
 	// todo: billing message, summary message... or, unify to "session update message" and let analytics break them down?
 
@@ -391,7 +391,7 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	core.Debug("---------------------------------------------------------------------------")
 
 	defer func() {
-	
+
 		if handler.ServerUpdateMessageChannel != nil {
 
 			message := messages.ServerUpdateMessage{}

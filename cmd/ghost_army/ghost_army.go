@@ -19,8 +19,8 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/networknext/backend/modules-old/backend"
 	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"

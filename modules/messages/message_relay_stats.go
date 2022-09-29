@@ -14,7 +14,6 @@ const (
 )
 
 type RelayStatsMessage struct {
-
 	Version byte
 
 	Timestamp uint64

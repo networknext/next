@@ -1,8 +1,8 @@
 package messages
 
 import (
-	"net"
 	"fmt"
+	"net"
 
 	"cloud.google.com/go/bigquery"
 
@@ -10,12 +10,9 @@ import (
 )
 
 const (
-	MatchDataMessageVersion = uint32(0)
-
+	MatchDataMessageVersion  = uint32(0)
 	MaxMatchDataMessageBytes = 2048
-
-	MatchDataMaxAddressLength = 256
-	MatchDataMaxMatchValues   = 64
+	MatchDataMaxMatchValues  = 64
 )
 
 type MatchDataMessage struct {
@@ -72,6 +69,7 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 	}
 
 	for i := 0; i < int(message.NumMatchValues); i++ {
+		fmt.Printf("reading %d match values\n", message.NumMatchValues)
 		if !encoding.ReadFloat64(buffer, &index, &message.MatchValues[i]) {
 			return fmt.Errorf("failed to read match value %d", i)
 		}
@@ -81,10 +79,23 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 }
 
 func (message *MatchDataMessage) Write(buffer []byte) []byte {
-	
+
 	index := 0
 
-	// todo: implement write
+	encoding.WriteUint32(buffer, &index, message.Version)
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	encoding.WriteUint64(buffer, &index, message.BuyerId)
+	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
+	encoding.WriteUint64(buffer, &index, message.DatacenterId)
+	encoding.WriteUint64(buffer, &index, message.UserHash)
+	encoding.WriteUint64(buffer, &index, message.SessionId)
+	encoding.WriteUint64(buffer, &index, message.MatchId)
+	encoding.WriteUint32(buffer, &index, message.NumMatchValues)
+
+	for i := 0; i < int(message.NumMatchValues); i++ {
+		fmt.Printf("writing %d match values\n", message.NumMatchValues)
+		encoding.WriteFloat64(buffer, &index, message.MatchValues[i])
+	}
 
 	return buffer[:index]
 }

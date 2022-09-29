@@ -10,11 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/messages"
+	"github.com/networknext/backend/modules/packets"
 
 	"github.com/networknext/backend/modules-old/crypto"
 	"github.com/networknext/backend/modules-old/routing"
@@ -37,11 +37,11 @@ func getMagicValues() ([]byte, []byte, []byte) {
 }
 
 type TestHarness struct {
-	handler        SDK5_Handler
-	conn           *net.UDPConn
-	from           *net.UDPAddr
-	signPublicKey  [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	signPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	handler                    SDK5_Handler
+	conn                       *net.UDPConn
+	from                       *net.UDPAddr
+	signPublicKey              [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	signPrivateKey             [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	serverInitMessageChannel   chan *messages.ServerInitMessage
 	serverUpdateMessageChannel chan *messages.ServerUpdateMessage
 	matchDataMessageChannel    chan *messages.MatchDataMessage
@@ -565,10 +565,10 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-    case _ = <-harness.serverInitMessageChannel:
-    default:
-        panic("no server init message found on channel")
-    }
+	case _ = <-harness.serverInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -661,10 +661,10 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-    case _ = <-harness.serverInitMessageChannel:
-    default:
-        panic("no server init message found on channel")
-    }
+	case _ = <-harness.serverInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -751,10 +751,10 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-    case _ = <-harness.serverInitMessageChannel:
-    default:
-        panic("no server init message found on channel")
-    }
+	case _ = <-harness.serverInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
@@ -975,16 +975,16 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	// verify that we get at least one server init message sent over the channel
 
 	select {
-    case message := <-harness.serverInitMessageChannel:
-    	assert.Equal(t, message.SDKVersion_Major, byte(5))
-    	assert.Equal(t, message.SDKVersion_Minor, byte(0))
-    	assert.Equal(t, message.SDKVersion_Patch, byte(0))
-    	assert.Equal(t, message.BuyerId, packet.BuyerId)
-    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-    	assert.Equal(t, message.DatacenterName, packet.DatacenterName)
-    default:
-        panic("no server init message found on channel")
-    }
+	case message := <-harness.serverInitMessageChannel:
+		assert.Equal(t, message.SDKVersion_Major, byte(5))
+		assert.Equal(t, message.SDKVersion_Minor, byte(0))
+		assert.Equal(t, message.SDKVersion_Patch, byte(0))
+		assert.Equal(t, message.BuyerId, packet.BuyerId)
+		assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+		assert.Equal(t, message.DatacenterName, packet.DatacenterName)
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1074,10 +1074,10 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-    case _ = <-harness.serverUpdateMessageChannel:
-    default:
-        panic("no server update message found on channel")
-    }
+	case _ = <-harness.serverUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -1170,10 +1170,10 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-    case _ = <-harness.serverUpdateMessageChannel:
-    default:
-        panic("no server update message found on channel")
-    }
+	case _ = <-harness.serverUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
@@ -1258,10 +1258,10 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-    case _ = <-harness.serverUpdateMessageChannel:
-    default:
-        panic("no server update message found on channel")
-    }
+	case _ = <-harness.serverUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
@@ -1487,15 +1487,15 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	// verify that we get at least one server update message sent over the channel
 
 	select {
-    case message := <-harness.serverUpdateMessageChannel:
-    	assert.Equal(t, message.SDKVersion_Major, byte(5))
-    	assert.Equal(t, message.SDKVersion_Minor, byte(0))
-    	assert.Equal(t, message.SDKVersion_Patch, byte(0))
-    	assert.Equal(t, message.BuyerId, packet.BuyerId)
-    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-    default:
-        panic("no server update message found on channel")
-    }
+	case message := <-harness.serverUpdateMessageChannel:
+		assert.Equal(t, message.SDKVersion_Major, byte(5))
+		assert.Equal(t, message.SDKVersion_Minor, byte(0))
+		assert.Equal(t, message.SDKVersion_Patch, byte(0))
+		assert.Equal(t, message.BuyerId, packet.BuyerId)
+		assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1585,10 +1585,10 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we *do not* get a match data message sent over the channel
 
 	select {
-    case _ = <-harness.matchDataMessageChannel:
-        panic("should not be match data message on channel")
-    default:
-    }
+	case _ = <-harness.matchDataMessageChannel:
+		panic("should not be match data message on channel")
+	default:
+	}
 }
 
 func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
@@ -1681,10 +1681,10 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we *do not* get a match data message sent over the channel
 
 	select {
-    case _ = <-harness.matchDataMessageChannel:
-        panic("should not be match data message on channel")
-    default:
-    }
+	case _ = <-harness.matchDataMessageChannel:
+		panic("should not be match data message on channel")
+	default:
+	}
 }
 
 func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
@@ -1914,20 +1914,20 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	// verify that we get at least one match data message sent over the channel
 
 	select {
-    case message := <-harness.matchDataMessageChannel:
-    	assert.NotEqual(t, message.Timestamp, uint64(0))
-    	assert.Equal(t, message.BuyerId, packet.BuyerId)
-    	assert.Equal(t, message.ServerAddress.String(), packet.ServerAddress.String())
-    	assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-    	assert.Equal(t, message.UserHash, packet.UserHash)
-    	assert.Equal(t, message.SessionId, packet.SessionId)
-    	assert.Equal(t, message.NumMatchValues, uint32(packet.NumMatchValues))
-    	for i := 0; i < int(packet.NumMatchValues); i++ {
-	    	assert.Equal(t, message.MatchValues[i], packet.MatchValues[i])
-    	}
-    default:
-        panic("no match data message found on channel")
-    }
+	case message := <-harness.matchDataMessageChannel:
+		assert.NotEqual(t, message.Timestamp, uint64(0))
+		assert.Equal(t, message.BuyerId, packet.BuyerId)
+		assert.Equal(t, message.ServerAddress.String(), packet.ServerAddress.String())
+		assert.Equal(t, message.DatacenterId, packet.DatacenterId)
+		assert.Equal(t, message.UserHash, packet.UserHash)
+		assert.Equal(t, message.SessionId, packet.SessionId)
+		assert.Equal(t, message.NumMatchValues, uint32(packet.NumMatchValues))
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			assert.Equal(t, message.MatchValues[i], packet.MatchValues[i])
+		}
+	default:
+		panic("no match data message found on channel")
+	}
 }
 
 // ---------------------------------------------------------------------------------------

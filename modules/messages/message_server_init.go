@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ServerInitMessageVersion = uint8(0)
-	MaxServerInitMessageSize = 128
+	ServerInitMessageVersion          = uint8(0)
+	MaxServerInitMessageSize          = 128
 	ServerInitMaxDatacenterNameLength = 256
 )
 

@@ -6,8 +6,8 @@ import (
 	"cloud.google.com/go/bigquery"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/messages"
 )
 
 const (

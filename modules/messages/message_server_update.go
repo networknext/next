@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ServerUpdateMessageVersion = uint8(0)
-	MaxServerUpdateMessageSize = 128
+	ServerUpdateMessageVersion          = uint8(0)
+	MaxServerUpdateMessageSize          = 128
 	ServerUpdateMaxDatacenterNameLength = 256
 )
 
