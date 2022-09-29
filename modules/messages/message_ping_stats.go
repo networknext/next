@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	PingStatsMessageVersion = uint8(4)
+	PingStatsMessageVersion = 4
 	MaxPingStatsMessageSize = 128
 )
 
 type PingStatsMessage struct {
-	Version    byte
+	Version    uint8
 	Timestamp  uint64
 	RelayA     uint64
 	RelayB     uint64

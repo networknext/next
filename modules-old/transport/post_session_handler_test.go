@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/messages"
-
 	"github.com/networknext/backend/modules-old/billing"
 	md "github.com/networknext/backend/modules-old/match_data"
 	"github.com/networknext/backend/modules-old/metrics"
@@ -286,8 +284,8 @@ func testPortalData() *transport.SessionPortalData {
 }
 
 func testMatchData() *md.MatchDataEntry {
-	var matchValues [messages.MatchDataMaxMatchValues]float64
-	for i := 0; i < messages.MatchDataMaxMatchValues; i++ {
+	var matchValues [md.MatchDataMaxMatchValues]float64
+	for i := 0; i < md.MatchDataMaxMatchValues; i++ {
 		matchValues[i] = rand.ExpFloat64()
 	}
 
@@ -300,7 +298,7 @@ func testMatchData() *md.MatchDataEntry {
 		UserHash:       rand.Uint64(),
 		SessionID:      rand.Uint64(),
 		MatchID:        rand.Uint64(),
-		NumMatchValues: messages.MatchDataMaxMatchValues,
+		NumMatchValues: md.MatchDataMaxMatchValues,
 		MatchValues:    matchValues,
 	}
 
