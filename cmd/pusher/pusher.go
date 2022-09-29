@@ -22,7 +22,7 @@ type FileConfig struct {
 
 func main() {
 
-	service := common.CreateService("relay_pusher")
+	service := common.CreateService("pusher")
 
 	service.SetupGCPStorage()
 

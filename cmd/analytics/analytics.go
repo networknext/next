@@ -236,14 +236,6 @@ func ProcessCostMatrix(service *common.Service) {
 
 				message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
 
-				// todo: this could probably be a validate function
-				messageEntry := messages.CostMatrixStatsMessage{}
-
-				if err := messageEntry.Read(message); err != nil {
-					core.Error("cost matrix stat message failed to be written correctly: %v", err)
-					continue
-				}
-
 				statsPubsubProducer.MessageChannel <- message
 			}
 		}
@@ -412,13 +404,6 @@ func ProcessRouteMatrix(service *common.Service) {
 				routeMatrixStatsEntry.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
 
 				message := routeMatrixStatsEntry.Write(make([]byte, routeMatrixBytes))
-
-				messageEntry := messages.RouteMatrixStatsMessage{}
-
-				if err := messageEntry.Read(message); err != nil {
-					core.Error("route matrix stat message failed to be written correctly: %v", err)
-					continue
-				}
 
 				statsPubsubProducer.MessageChannel <- message
 			}
