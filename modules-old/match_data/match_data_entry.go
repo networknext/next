@@ -7,15 +7,13 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/messages"
 )
 
 const (
 	MatchDataEntryVersion = uint32(0)
-
 	MaxMatchDataEntryBytes = 2048
-
 	MatchDataMaxAddressLength = 256
+	MatchDataMaxMatchValues = 64
 )
 
 type MatchDataEntry struct {
@@ -28,7 +26,7 @@ type MatchDataEntry struct {
 	SessionID      uint64
 	MatchID        uint64
 	NumMatchValues int32
-	MatchValues    [messages.MatchDataMaxMatchValues]float64
+	MatchValues    [MatchDataMaxMatchValues]float64
 }
 
 func (entry *MatchDataEntry) Serialize(stream encoding.Stream) error {
@@ -41,7 +39,7 @@ func (entry *MatchDataEntry) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&entry.UserHash)
 	stream.SerializeUint64(&entry.SessionID)
 	stream.SerializeUint64(&entry.MatchID)
-	stream.SerializeInteger(&entry.NumMatchValues, 0, messages.MatchDataMaxMatchValues)
+	stream.SerializeInteger(&entry.NumMatchValues, 0, MatchDataMaxMatchValues)
 	for i := 0; i < int(entry.NumMatchValues); i++ {
 		stream.SerializeFloat64(&entry.MatchValues[i])
 	}
@@ -105,7 +103,7 @@ func (entry *MatchDataEntry) Validate() bool {
 		return false
 	}
 
-	if entry.NumMatchValues < 0 || entry.NumMatchValues > messages.MatchDataMaxMatchValues {
+	if entry.NumMatchValues < 0 || entry.NumMatchValues > MatchDataMaxMatchValues {
 		core.Error("invalid num match values (%d)", entry.NumMatchValues)
 		return false
 	}
@@ -143,9 +141,9 @@ func (entry *MatchDataEntry) ClampEntry() {
 		entry.NumMatchValues = 0
 	}
 
-	if entry.NumMatchValues > messages.MatchDataMaxMatchValues {
-		core.Debug("MatchDataEntry NumMatchValues (%d) > MatchDataMaxMatchValues (%d). Clamping to MatchDataMaxMatchValues.", entry.NumMatchValues, messages.MatchDataMaxMatchValues)
-		entry.NumMatchValues = messages.MatchDataMaxMatchValues
+	if entry.NumMatchValues > MatchDataMaxMatchValues {
+		core.Debug("MatchDataEntry NumMatchValues (%d) > MatchDataMaxMatchValues (%d). Clamping to MatchDataMaxMatchValues.", entry.NumMatchValues, MatchDataMaxMatchValues)
+		entry.NumMatchValues = MatchDataMaxMatchValues
 	}
 }
 

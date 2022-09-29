@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	MatchDataMessageVersion  = uint32(0)
+	MatchDataMessageVersion  = 0
 	MaxMatchDataMessageBytes = 2048
 	MatchDataMaxMatchValues  = 64
 )
 
 type MatchDataMessage struct {
-	Version        uint32
+	Version        uint8
 	Timestamp      uint64
 	BuyerId        uint64
 	ServerAddress  net.UDPAddr
@@ -32,7 +32,7 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 
 	index := 0
 
-	if !encoding.ReadUint32(buffer, &index, &message.Version) {
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
 		return fmt.Errorf("failed to read match data version")
 	}
 
@@ -69,7 +69,6 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 	}
 
 	for i := 0; i < int(message.NumMatchValues); i++ {
-		fmt.Printf("reading %d match values\n", message.NumMatchValues)
 		if !encoding.ReadFloat64(buffer, &index, &message.MatchValues[i]) {
 			return fmt.Errorf("failed to read match value %d", i)
 		}
@@ -82,7 +81,7 @@ func (message *MatchDataMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint32(buffer, &index, message.Version)
+	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
@@ -93,7 +92,6 @@ func (message *MatchDataMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.NumMatchValues)
 
 	for i := 0; i < int(message.NumMatchValues); i++ {
-		fmt.Printf("writing %d match values\n", message.NumMatchValues)
 		encoding.WriteFloat64(buffer, &index, message.MatchValues[i])
 	}
 
