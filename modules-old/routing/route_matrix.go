@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/analytics"
-	"github.com/networknext/backend/modules-old/encoding"
 )
 
 const RouteMatrixSerializeVersion = 7
@@ -418,11 +418,8 @@ func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
 
 func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 	buffer := make([]byte, bufferSize)
-	writeStream, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return 0, err
-	}
-	if err = m.Serialize(writeStream); err != nil {
+	writeStream := encoding.CreateWriteStream(buffer)
+	if err := m.Serialize(writeStream); err != nil {
 		return int64(writeStream.GetBytesProcessed()), err
 	}
 	writeStream.Flush()
@@ -758,11 +755,7 @@ func (m *RouteMatrix) GetResponseData() []byte {
 
 func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
 	buffer := make([]byte, bufferSize)
-	stream, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return fmt.Errorf("failed to create write stream in route matrix WriteResponseData(): %v", err)
-	}
-
+	stream := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(stream); err != nil {
 		return fmt.Errorf("failed to serialize route matrix in WriteResponseData(): %v", err)
 	}
