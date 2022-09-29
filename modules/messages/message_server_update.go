@@ -4,12 +4,14 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules-old/encoding"
 )
 
 const (
 	ServerUpdateMessageVersion = uint8(0)
 	MaxServerUpdateMessageSize = 128
+	ServerUpdateMaxDatacenterNameLength = 256
 )
 
 type ServerUpdateMessage struct {
@@ -30,7 +32,29 @@ func (message *ServerUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read server update message version")
 	}
 
-	// todo: code rest of read
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
+		return fmt.Errorf("failed to read sdk version major")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Minor) {
+		return fmt.Errorf("failed to read sdk version major")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
+		return fmt.Errorf("failed to read sdk version major")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
+		return fmt.Errorf("failed to read buyer id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
+		return fmt.Errorf("failed to read datacenter id")
+	}
+
+	if !encoding.ReadString(buffer, &index, &message.DatacenterName, ServerUpdateMaxDatacenterNameLength) {
+		return fmt.Errorf("failed to read datacenter name")
+	}
 
 	return nil
 }
@@ -40,8 +64,12 @@ func (message *ServerUpdateMessage) Write(buffer []byte) []byte {
 	index := 0
 
 	encoding.WriteUint8(buffer, &index, message.MessageVersion)
-
-	// todo: code rest of write
+	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
+	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
+	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
+	encoding.WriteUint64(buffer, &index, message.BuyerId)
+	encoding.WriteUint64(buffer, &index, message.DatacenterId)
+	encoding.WriteString(buffer, &index, message.DatacenterName, ServerUpdateMaxDatacenterNameLength)
 
 	return buffer[:index]
 }
