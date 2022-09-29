@@ -6,8 +6,9 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -36,10 +37,7 @@ func MarshalPacketSDK5(packetType int, packetObject Packet, magic []byte, from *
 	packet[0] = byte(packetType)
 
 	packetBuffer := make([]byte, DefaultMaxPacketSize)
-	writeStream, err := encoding.CreateWriteStream(packetBuffer[:])
-	if err != nil {
-		return nil, errors.New("could not create write stream")
-	}
+	writeStream := encoding.CreateWriteStream(packetBuffer[:])
 	if err := packetObject.Serialize(writeStream); err != nil {
 		return nil, errors.New(fmt.Sprintf("failed to write backend packet: %v\n", err))
 	}
@@ -456,10 +454,7 @@ func MarshalSessionDataSDK5(sessionData *SessionDataSDK5) ([]byte, error) {
 
 	buffer := [DefaultMaxPacketSize]byte{}
 
-	stream, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	stream := encoding.CreateWriteStream(buffer[:])
 
 	if err := sessionData.Serialize(stream); err != nil {
 		return nil, err

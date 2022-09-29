@@ -5,7 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )

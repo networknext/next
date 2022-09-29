@@ -10,7 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -106,10 +107,7 @@ func WriteSessionCountData(entry *SessionCountData) ([]byte, error) {
 
 	buffer := make([]byte, MaxSessionCountDataSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -349,10 +347,7 @@ func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
 
 	buffer := make([]byte, MaxSessionPortalDataSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -432,10 +427,7 @@ func WriteRelayHop(entry *RelayHop) ([]byte, error) {
 
 	buffer := make([]byte, MaxRelayHopSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -533,10 +525,7 @@ func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
 
 	buffer := make([]byte, MaxNearRelayPortalDataSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -911,10 +900,7 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 
 	buffer := make([]byte, MaxSessionMetaSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -1426,10 +1412,7 @@ func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 
 	buffer := make([]byte, MaxSessionSliceSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err
@@ -1640,10 +1623,7 @@ func WriteSessionMapPoint(entry *SessionMapPoint) ([]byte, error) {
 
 	buffer := make([]byte, MaxSessionMapPointSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err

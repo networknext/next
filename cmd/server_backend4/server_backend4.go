@@ -33,12 +33,12 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/billing"
 	"github.com/networknext/backend/modules-old/config"
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 	md "github.com/networknext/backend/modules-old/match_data"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/routing"

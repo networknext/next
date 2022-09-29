@@ -5,7 +5,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const RouteMatrixStatsMessageVersion = byte(0) // IMPORTANT: increase this each time you change the message data structure

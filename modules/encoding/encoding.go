@@ -211,13 +211,21 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	return true
 }
 
-func ReadAddress(buffer []byte) *net.UDPAddr {
-	addressType := buffer[0]
+func ReadAddress(data []byte, index *int, address *net.UDPAddr) bool {
+	addressType := data[*index]
 	switch addressType {
 	case IPAddressIPv4:
-		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+		if *index+6 > len(data) {
+			return false
+		}
+		*address = net.UDPAddr{IP: net.IPv4(data[*index+1], data[*index+2], data[*index+3], data[*index+4]), Port: ((int)(binary.LittleEndian.Uint16(data[*index+5:])))}
+		return true
 	case IPAddressIPv6:
-		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+		if *index+18 > len(data) {
+			return false
+		}
+		*address = net.UDPAddr{IP: data[*index+1:], Port: ((int)(binary.LittleEndian.Uint16(data[*index+17:])))}
+		return true
 	}
-	return nil
+	return false
 }
