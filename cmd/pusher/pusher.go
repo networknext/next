@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -60,7 +59,7 @@ func main() {
 			VMFilePath:  envvar.GetString("MAXMIND_ISP_DOWNLOAD_PATH", "./GeoIP2-ISP.mmdb"),
 			UploadVMs:   serverBackendInstanceNames,
 		},
-		ValidationFunc: validateISPFile,
+		ValidationFunc: common.ValidateISPFile,
 	}
 
 	locationFiles[CITY] = LocationFile{
@@ -70,7 +69,7 @@ func main() {
 			VMFilePath:  envvar.GetString("MAXMIND_CITY_DOWNLOAD_PATH", "./GeoIP2-City.mmdb"),
 			UploadVMs:   serverBackendInstanceNames,
 		},
-		ValidationFunc: validateCityFile,
+		ValidationFunc: common.ValidateCityFile,
 	}
 
 	RefreshLocationFiles(service, locationFiles)
@@ -204,13 +203,13 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 					// todo: figure out how to avoid this like location file
 					switch fileType {
 					case DATABASE:
-						if err := validateDatabaseFile(binFile, &routing.DatabaseBinWrapper{}); err != nil {
+						if err := common.ValidateDatabaseFile(binFile, &routing.DatabaseBinWrapper{}); err != nil {
 							core.Error("failed to validate database file: %v", err)
 							continue
 						}
 						break
 					case OVERLAY:
-						if err := validateOverlayFile(binFile, &routing.OverlayBinWrapper{}); err != nil {
+						if err := common.ValidateOverlayFile(binFile, &routing.OverlayBinWrapper{}); err != nil {
 							core.Error("failed to validate overlay file: %v", err)
 							continue
 						}
@@ -233,68 +232,4 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 			}
 		}
 	}()
-}
-
-// todo: move these somewhere better
-
-func validateISPFile(ctx context.Context, env string, ispStorageName string) error {
-	mmdb := &routing.MaxmindDB{
-		IspFile:   ispStorageName,
-		IsStaging: env == "staging",
-	}
-
-	// Validate the ISP file
-	if err := mmdb.OpenISP(ctx); err != nil {
-		return err
-	}
-
-	if err := mmdb.ValidateISP(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateCityFile(ctx context.Context, env string, cityStorageName string) error {
-	mmdb := &routing.MaxmindDB{
-		CityFile:  cityStorageName,
-		IsStaging: env == "staging",
-	}
-
-	// Validate the City file
-	if err := mmdb.OpenCity(ctx); err != nil {
-		return err
-	}
-
-	if err := mmdb.ValidateCity(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateDatabaseFile(databaseFile *os.File, databaseNew *routing.DatabaseBinWrapper) error {
-	if err := backend.DecodeBinWrapper(databaseFile, databaseNew); err != nil {
-		core.Error("validateDatabaseFile() failed to decode database file: %v", err)
-		return err
-	}
-
-	if databaseNew.IsEmpty() {
-		// Don't want to use an empty bin wrapper
-		// so early out here and use existing array and hash
-		err := fmt.Errorf("new database file is empty, keeping previous values")
-		core.Error(err.Error())
-		return err
-	}
-
-	return nil
-}
-
-func validateOverlayFile(overlayFile *os.File, overlayNew *routing.OverlayBinWrapper) error {
-	if err := backend.DecodeOverlayWrapper(overlayFile, overlayNew); err != nil {
-		core.Error("validateOverlayFile() failed to decode database file: %v", err)
-		return err
-	}
-
-	return nil
 }
