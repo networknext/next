@@ -41,18 +41,23 @@ type Number interface {
     constraints.Integer | constraints.Float
 }
 
-func Clamp[T Number](value *T, min T, max T) {
+func Clamp[T Number](value *T, min T, max T) bool {
 	if *value < min {
 		*value = min
+		return true
 	} else if *value > max {
 		*value = max
+		return true
 	}
+	return false
 }
 
-func ClampString(value *string, maxLength int) {
+func ClampString(value *string, maxLength int) bool {
 	// IMPORTANT: only on simple ascii strings please
 	byteArray := []byte(*value)
 	if len(byteArray) > maxLength {
 		*value = string(byteArray[:maxLength])
+		return true
 	}
+	return false
 }

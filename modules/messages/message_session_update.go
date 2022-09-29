@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -601,30 +602,102 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 func (message *SessionUpdateMessage) Clamp() {
 
-	common.Clamp(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
-	common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
-	common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
-	common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
-	common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-	common.Clamp(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-	common.Clamp(&message.RealPacketLoss_Frac, 0, 255)
-	common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter)
-	common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength)
-	common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
-	common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength)
-	common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
-	common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
-	common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags)
-	common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		common.Clamp(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
-		common.Clamp(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
-		common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
+	if common.Clamp(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT) {
+		core.Warn("DirectMinRTT was clamped!")
 	}
-	common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
-	common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
-	common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-	common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
-	common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
-	common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
+
+	if common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT) {
+		core.Warn("DirectMaxRTT was clamped!")		
+	}
+
+	if common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT) {
+		core.Warn("DirectPrimeRTT was clamped!")		
+	}
+
+	if common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter) {
+		core.Warn("DirectMinRTT was clamped!")
+	}
+	
+	if common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
+		core.Warn("DirectPacketLoss was clamped!")
+	}
+
+	if common.Clamp(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
+		core.Warn("RealPacketLoss was clamped!")
+	}
+
+	if common.Clamp(&message.RealPacketLoss_Frac, 0, 255) {
+		core.Warn("RealPacketLoss_Frac was clamped!")
+	}
+
+	if common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter) {
+		core.Warn("RealPacketJitter was clamped!")		
+	}
+
+	if common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength) {
+		core.Warn("Debug was clamped!")		
+	}
+
+	if common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity) {
+		core.Warn("RouteDiversity was clamped!")		
+	}
+
+	if common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength) {
+		core.Warn("ISP was clamped!")		
+	}
+
+	if common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType) {
+		core.Warn("RealPacketLoss was clamped!")
+	}
+
+	if common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType) {
+		core.Warn("PlatformType was clamped!")		
+	}
+
+	if common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags) {
+		core.Warn("NumTags was clamped!")		
+	}
+
+	if common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays) {
+		core.Warn("NumNearRelays was clamped!")		
+	}
+
+	for i := 0; i < int(message.NumNearRelays); i++ {
+
+		if common.Clamp(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT) {
+			core.Warn("NearRelayRTT was clamped!")
+		}
+
+		if common.Clamp(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter) {
+			core.Warn("NearRelayJitters was clamped!")
+		}
+
+		if common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss) {
+			core.Warn("NearRelayPacketLosses was clamped!")			
+		}
+	}
+
+	if common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT) {
+		core.Warn("NextRTT was clamped!")		
+	}
+
+	if common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter) {
+		core.Warn("NextJitter was clamped!")		
+	}
+
+	if common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
+		core.Warn("NextPacketLoss was clamped!")		
+	}
+
+	if common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT) {
+		core.Warn("PredictedNextRTT was clamped!")		
+	}
+
+	if common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT) {
+		core.Warn("NearRelayRTT was clamped!")		
+	}
+
+	if common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays) {
+		core.Warn("NumNextRelays was clamped!")		
+	}
 }
