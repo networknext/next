@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -336,9 +337,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	err := message.Serialize(writeStream)
 	if err != nil {
-		// todo
-		fmt.Printf("failed to write session update message: %v", err)
-		return nil
+		panic(err)
 	}
 
 	writeStream.Flush()
@@ -486,7 +485,6 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		}
 
 		e["startTimestamp"] = int(message.StartTimestamp)
-
 	}
 
 	/*
@@ -601,468 +599,32 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	return e, "", nil
 }
 
-/*
-func (entry *BillingEntry) Clamp() bool {
+func (message *SessionUpdateMessage) Clamp() {
 
-	if message.Version < 0 {
-		fmt.Printf("invalid version\n")
-		return false
+	common.Clamp(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
+	common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.RealPacketLoss_Frac, 0, 255)
+	common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter)
+	common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength)
+	common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
+	common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength)
+	common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
+	common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
+	common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags)
+	common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		common.Clamp(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
+		common.Clamp(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
+		common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
 	}
-
-	if message.Timestamp < 0 {
-		fmt.Printf("invalid timestamp\n")
-		return false
-	}
-
-	if message.SessionID == 0 {
-		fmt.Printf("invalid session id\n")
-		return false
-	}
-
-	if message.SliceNumber < 0 {
-		fmt.Printf("invalid slice number\n")
-		return false
-	}
-
-	if message.DirectMinRTT < 0 || message.DirectMinRTT > 1023 {
-		fmt.Printf("invalid direct min rtt\n")
-		return false
-	}
-
-	if message.DirectMaxRTT < 0 || message.DirectMaxRTT > 1023 {
-		fmt.Printf("invalid direct max rtt\n")
-		return false
-	}
-
-	if message.DirectPrimeRTT < 0 || message.DirectPrimeRTT > 1023 {
-		fmt.Printf("invalid direct prime rtt\n")
-		return false
-	}
-
-	if message.DirectJitter < 0 || message.DirectJitter > 255 {
-		fmt.Printf("invalid direct jitter\n")
-		return false
-	}
-
-	if message.DirectPacketLoss < 0 || message.DirectPacketLoss > 100 {
-		fmt.Printf("invalid direct packet loss\n")
-		return false
-	}
-
-	if message.RealPacketLoss < 0 || message.RealPacketLoss > 100 {
-		if message.RealPacketLoss > 100 {
-			fmt.Printf("RealPacketLoss %v > 100. Clamping to 100\n%+v\n", message.RealPacketLoss, entry)
-			message.RealPacketLoss = 100
-		} else {
-			fmt.Printf("invalid real packet loss\n")
-			return false
-		}
-	}
-
-	if message.RealJitter < 0 || message.RealJitter > 1000 {
-		if message.RealJitter > 1000 {
-			fmt.Printf("RealJitter %v > 1000. Clamping to 1000\n%+v\n", message.RealJitter, entry)
-			message.RealJitter = 100
-		} else {
-			fmt.Printf("invalid real jitter\n")
-			return false
-		}
-	}
-
-	if message.RouteDiversity < 0 || message.RouteDiversity > 32 {
-		fmt.Printf("invalid route diversity\n")
-		return false
-	}
-
-	// first slice only
-
-	if message.SliceNumber == 0 {
-
-		if message.BuyerID == 0 {
-			fmt.Printf("invalid buyer id\n")
-			return false
-		}
-
-		// IMPORTANT: Logic inverted because comparing a NaN float value always returns false
-		if !(message.Latitude >= -90.0 && message.Latitude <= +90.0) {
-			fmt.Printf("invalid latitude\n")
-			return false
-		}
-
-		if !(message.Longitude >= -180.0 && message.Longitude <= +180.0) {
-			fmt.Printf("invalid longitude\n")
-			return false
-		}
-
-		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-		if message.ConnectionType < 0 || message.ConnectionType > 3 {
-			fmt.Printf("invalid connection type\n")
-			return false
-		}
-
-		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if message.PlatformType < 0 || message.PlatformType > 10 {
-			fmt.Printf("invalid platform type\n")
-			return false
-		}
-
-		if message.NumTags < 0 || message.NumTags > 8 {
-			fmt.Printf("invalid num tags\n")
-			return false
-		}
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		if message.NumNearRelays < 0 || message.NumNearRelays > 32 {
-			fmt.Printf("invalid num near relays\n")
-			return false
-		}
-
-		if message.NumNearRelays > 0 {
-
-			for i := 0; i < int(message.NumNearRelays); i++ {
-
-				if message.NearRelayIDs[i] == 0 {
-					// Log this but do not return false
-					// TODO: investigate why nearRelayID is 0
-					fmt.Printf("NearRelayIDs[%d] is 0.\n%+v\n", i, entry)
-				}
-
-				if message.NearRelayRTTs[i] < 0 || message.NearRelayRTTs[i] > 255 {
-					fmt.Printf("invalid near relay rtt\n")
-					return false
-				}
-
-				if message.NearRelayJitters[i] < 0 || message.NearRelayJitters[i] > 255 {
-					fmt.Printf("invalid near relay jitter\n")
-					return false
-				}
-
-				if message.NearRelayPacketLosses[i] < 0 || message.NearRelayPacketLosses[i] > 100 {
-					fmt.Printf("invalid near relay packet loss\n")
-					return false
-				}
-			}
-		}
-	}
-
-	// network next only
-
-	if message.Next {
-
-		if message.NextRTT < 0 || message.NextRTT > 255 {
-			fmt.Printf("invalid next rtt\n")
-			return false
-		}
-
-		if message.NextJitter < 0 || message.NextJitter > 255 {
-			fmt.Printf("invalid next jitter\n")
-			return false
-		}
-
-		if message.NextPacketLoss < 0 || message.NextPacketLoss > 100 {
-			fmt.Printf("invalid next packet loss\n")
-			return false
-		}
-
-		if message.PredictedNextRTT < 0 || message.PredictedNextRTT > 255 {
-			fmt.Printf("invalid predicted next rtt\n")
-			return false
-		}
-
-		if message.NearRelayRTT < 0 || message.NearRelayRTT > 255 {
-			fmt.Printf("invalid near relay rtt\n")
-			return false
-		}
-
-		if message.NumNextRelays < 0 || message.NumNextRelays > 32 {
-			fmt.Printf("invalid num next relays\n")
-			return false
-		}
-	}
-
-	return true
+	common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
+	common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+	common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
+	common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
+	common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
 }
-
-func (entry *BillingEntry) CheckNaNOrInf() (bool, []string) {
-
-	var nanOrInfExists bool
-	var nanOrInfFields []string
-
-	if math.IsNaN(float64(message.Latitude)) || math.IsInf(float64(message.Latitude), 0) {
-		nanOrInfFields = append(nanOrInfFields, "Latitude")
-		nanOrInfExists = true
-		message.Latitude = float32(0)
-	}
-
-	if math.IsNaN(float64(message.Longitude)) || math.IsInf(float64(message.Longitude), 0) {
-		nanOrInfFields = append(nanOrInfFields, "Longitude")
-		nanOrInfExists = true
-		message.Longitude = float32(0)
-	}
-
-	return nanOrInfExists, nanOrInfFields
-}
-*/
-
-/*
-// To save bits during serialization, clamp integer and string fields if they go beyond the min
-// or max values as defined in BillingEntry.Serialize()
-
-func (entry *BillingEntry) ClampEntry() {
-
-	// always
-
-	if message.DirectMinRTT < 0 {
-		core.Error("BillingEntry DirectMinRTT (%d) < 0. Clamping to 0.", message.DirectMinRTT)
-		message.DirectMinRTT = 0
-	}
-
-	if message.DirectMinRTT > 1023 {
-		core.Debug("BillingEntry DirectMinRTT (%d) > 1023. Clamping to 1023.", message.DirectMinRTT)
-		message.DirectMinRTT = 1023
-	}
-
-	if message.DirectMaxRTT < 0 {
-		core.Error("BillingEntry DirectMaxRTT (%d) < 0. Clamping to 0.", message.DirectMaxRTT)
-		message.DirectMaxRTT = 0
-	}
-
-	if message.DirectMaxRTT > 1023 {
-		core.Debug("BillingEntry DirectMaxRTT (%d) > 1023. Clamping to 1023.", message.DirectMaxRTT)
-		message.DirectMaxRTT = 1023
-	}
-
-	if message.DirectPrimeRTT < 0 {
-		core.Error("BillingEntry DirectPrimeRTT (%d) < 0. Clamping to 0.", message.DirectPrimeRTT)
-		message.DirectPrimeRTT = 0
-	}
-
-	if message.DirectPrimeRTT > 1023 {
-		core.Debug("BillingEntry DirectPrimeRTT (%d) > 1023. Clamping to 1023.", message.DirectPrimeRTT)
-		message.DirectPrimeRTT = 1023
-	}
-
-	if message.DirectJitter < 0 {
-		core.Error("BillingEntry DirectJitter (%d) < 0. Clamping to 0.", message.DirectJitter)
-		message.DirectJitter = 0
-	}
-
-	if message.DirectJitter > 255 {
-		core.Debug("BillingEntry DirectJitter (%d) > 255. Clamping to 255.", message.DirectJitter)
-		message.DirectJitter = 255
-	}
-
-	if message.DirectPacketLoss < 0 {
-		core.Error("BillingEntry DirectPacketLoss (%d) < 0. Clamping to 0.", message.DirectPacketLoss)
-		message.DirectPacketLoss = 0
-	}
-
-	if message.DirectPacketLoss > 100 {
-		core.Debug("BillingEntry DirectPacketLoss (%d) > 100. Clamping to 100.", message.DirectPacketLoss)
-		message.DirectPacketLoss = 100
-	}
-
-	if message.RealPacketLoss < 0 {
-		core.Error("BillingEntry RealPacketLoss (%d) < 0. Clamping to 0.", message.RealPacketLoss)
-		message.RealPacketLoss = 0
-	}
-
-	if message.RealPacketLoss > 100 {
-		core.Debug("BillingEntry RealPacketLoss (%d) > 100. Clamping to 100.", message.RealPacketLoss)
-		message.RealPacketLoss = 100
-	}
-
-	if message.RealJitter > 1000 {
-		core.Debug("BillingEntry RealJitter (%d) > 1000. Clamping to 1000.", message.RealJitter)
-		message.RealJitter = uint32(1000)
-	}
-
-	if len(message.Debug) >= BillingEntryMaxDebugLength {
-		core.Debug("BillingEntry Debug length (%d) >= BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength - 1 (%d)", len(message.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength-1)
-		message.Debug = message.Debug[:BillingEntryMaxDebugLength-1]
-	}
-
-	if message.RouteDiversity < 0 {
-		core.Error("BillingEntry RouteDiversity (%d) < 0. Clamping to 0.", message.RouteDiversity)
-		message.RouteDiversity = 0
-	}
-
-	if message.RouteDiversity > 32 {
-		core.Debug("BillingEntry RouteDiversity (%d) > 32. Clamping to 32.", message.RouteDiversity)
-		message.RouteDiversity = 32
-	}
-
-	// first slice and summary slice only
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		if len(message.ClientAddress) >= BillingEntryMaxAddressLength {
-			core.Debug("BillingEntry Client IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(message.ClientAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
-			message.ClientAddress = message.ClientAddress[:BillingEntryMaxAddressLength-1]
-		}
-
-		if len(message.ISP) >= BillingEntryMaxISPLength {
-			core.Debug("BillingEntry ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1 (%d)", len(message.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
-			message.ISP = message.ISP[:BillingEntryMaxISPLength-1]
-		}
-
-		if message.ConnectionType < 0 {
-			core.Error("BillingEntry ConnectionType (%d) < 0. Clamping to 0.", message.ConnectionType)
-			message.ConnectionType = 0
-		}
-
-		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-		if message.ConnectionType > 3 {
-			core.Debug("BillingEntry ConnectionType (%d) > 3. Clamping to 0 (unknown).", message.ConnectionType)
-			message.ConnectionType = 0
-		}
-
-		if message.PlatformType < 0 {
-			core.Error("BillingEntry PlatformType (%d) < 0. Clamping to 0.", message.PlatformType)
-			message.PlatformType = 0
-		}
-
-		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if message.PlatformType > 10 {
-			core.Debug("BillingEntry PlatformType (%d) > 10. Clamping to 0 (unknown).", message.PlatformType)
-			message.PlatformType = 0
-		}
-
-		if len(message.SDKVersion) >= BillingEntryMaxSDKVersionLength {
-			core.Debug("BillingEntry SDKVersion length (%d) >= BillingEntryMaxSDKVersionLength (%d). Clamping to BillingEntryMaxSDKVersionLength - 1 (%d)", len(message.SDKVersion), BillingEntryMaxSDKVersionLength, BillingEntryMaxSDKVersionLength-1)
-			message.SDKVersion = message.SDKVersion[:BillingEntryMaxSDKVersionLength-1]
-		}
-
-		if message.NumTags < 0 {
-			core.Error("BillingEntry NumTags (%d) < 0. Clamping to 0.", message.NumTags)
-			message.NumTags = 0
-		}
-
-		if message.NumTags > BillingEntryMaxTags {
-			core.Debug("BillingEntry NumTags (%d) > BillingEntryMaxTags (%d). Clamping to BillingEntryMaxTags (%d).", message.NumTags, BillingEntryMaxTags, BillingEntryMaxTags)
-			message.NumTags = BillingEntryMaxTags
-		}
-
-		if len(message.ServerAddress) >= BillingEntryMaxAddressLength {
-			core.Debug("BillingEntry Server IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(message.ServerAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
-			message.ServerAddress = message.ServerAddress[:BillingEntryMaxAddressLength-1]
-		}
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		if message.NumNearRelays < 0 {
-			core.Error("BillingEntry NumNearRelays (%d) < 0. Clamping to 0.", message.NumNearRelays)
-			message.NumNearRelays = 0
-		}
-
-		if message.NumNearRelays > BillingEntryMaxNearRelays {
-			core.Debug("BillingEntry NumNearRelays (%d) > BillingEntryMaxNearRelays (%d). Clamping to BillingEntryMaxNearRelays (%d).", message.NumNearRelays, BillingEntryMaxNearRelays, BillingEntryMaxNearRelays)
-			message.NumNearRelays = BillingEntryMaxNearRelays
-		}
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			if message.NearRelayRTTs[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayRTTs[i])
-				message.NearRelayRTTs[i] = 0
-			}
-
-			if message.NearRelayRTTs[i] > 255 {
-				core.Debug("BillingEntry NearRelayRTTs[%d] (%d) > 255. Clamping to 255.", i, message.NearRelayRTTs[i])
-				message.NearRelayRTTs[i] = 255
-			}
-
-			if message.NearRelayJitters[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayJitters[i])
-				message.NearRelayJitters[i] = 0
-			}
-
-			if message.NearRelayJitters[i] > 255 {
-				core.Debug("BillingEntry NearRelayJitters[%d] (%d) > 255. Clamping to 255.", i, message.NearRelayJitters[i])
-				message.NearRelayJitters[i] = 255
-			}
-
-			if message.NearRelayPacketLosses[i] < 0 {
-				core.Error("BillingEntry NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, message.NearRelayPacketLosses[i])
-				message.NearRelayPacketLosses[i] = 0
-			}
-
-			if message.NearRelayPacketLosses[i] > 100 {
-				core.Debug("BillingEntry NearRelayPacketLosses[%d] (%d) > 100. Clamping to 100.", i, message.NearRelayPacketLosses[i])
-				message.NearRelayPacketLosses[i] = 100
-			}
-		}
-	}
-
-	// network next only
-
-	if message.Next {
-
-		if message.NextRTT < 0 {
-			core.Error("BillingEntry NextRTT (%d) < 0. Clamping to 0.", message.NextRTT)
-			message.NextRTT = 0
-		}
-
-		if message.NextRTT > 255 {
-			core.Debug("BillingEntry NextRTT (%d) > 255. Clamping to 255.", message.NextRTT)
-			message.NextRTT = 255
-		}
-
-		if message.NextJitter < 0 {
-			core.Error("BillingEntry NextJitter (%d) < 0. Clamping to 0.", message.NextJitter)
-			message.NextJitter = 0
-		}
-
-		if message.NextJitter > 255 {
-			core.Debug("BillingEntry NextJitter (%d) > 255. Clamping to 255.", message.NextJitter)
-			message.NextJitter = 255
-		}
-
-		if message.NextPacketLoss < 0 {
-			core.Error("BillingEntry NextPacketLoss (%d) < 0. Clamping to 0.", message.NextPacketLoss)
-			message.NextPacketLoss = 0
-		}
-
-		if message.NextPacketLoss > 100 {
-			core.Debug("BillingEntry NextPacketLoss (%d) > 100. Clamping to 100.", message.NextPacketLoss)
-			message.NextPacketLoss = 100
-		}
-
-		if message.PredictedNextRTT < 0 {
-			core.Error("BillingEntry PredictedNextRTT (%d) < 0. Clamping to 0.", message.PredictedNextRTT)
-			message.PredictedNextRTT = 0
-		}
-
-		if message.PredictedNextRTT > 255 {
-			core.Debug("BillingEntry PredictedNextRTT (%d) > 255. Clamping to 255.", message.PredictedNextRTT)
-			message.PredictedNextRTT = 255
-		}
-
-		if message.NearRelayRTT < 0 {
-			core.Error("BillingEntry NearRelayRTT (%d) < 0. Clamping to 0.", message.NearRelayRTT)
-			message.NearRelayRTT = 0
-		}
-
-		if message.NearRelayRTT > 255 {
-			core.Debug("BillingEntry NearRelayRTT (%d) > 255. Clamping to 255.", message.NearRelayRTT)
-			message.NearRelayRTT = 255
-		}
-
-		if message.NumNextRelays < 0 {
-			core.Error("BillingEntry NumNextRelays (%d) < 0. Clamping to 0.", message.NumNextRelays)
-			message.NumNextRelays = 0
-		}
-
-		if message.NumNextRelays > BillingEntryMaxRelays {
-			core.Debug("BillingEntry NumNextRelays (%d) > BillingEntryMaxRelays (%d). Clamping to BillingEntryMaxRelays (%d).", message.NumNextRelays, BillingEntryMaxRelays, BillingEntryMaxRelays)
-			message.NumNextRelays = BillingEntryMaxRelays
-		}
-	}
-}
-*/

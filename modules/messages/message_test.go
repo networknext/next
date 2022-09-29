@@ -164,20 +164,20 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		Timestamp:                       rand.Uint64(),
 		SessionId:                       rand.Uint64(),
 		SliceNumber:                     rand.Uint32(),
-		DirectMinRTT:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectMaxRTT:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectPrimeRTT:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectJitter:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
-		DirectPacketLoss:                int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
-		RealPacketLoss:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
-		RealPacketLoss_Frac:             uint32(common.RandomInt(0, 255)),
-		RealJitter:                      uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
+		DirectMinRTT:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectMaxRTT:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectPrimeRTT:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectJitter:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10)),
+		DirectPacketLoss:                int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
+		RealPacketLoss:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
+		RealPacketLoss_Frac:             uint32(common.RandomInt(0, 300)),
+		RealJitter:                      uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter+10)),
 		Next:                            common.RandomBool(),
 		Flagged:                         common.RandomBool(),
 		Summary:                         common.RandomBool(),
 		UseDebug:                        common.RandomBool(),
-		Debug:                           common.RandomString(messages.SessionUpdateMessageMaxDebugLength),
-		RouteDiversity:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRouteDiversity)),
+		Debug:                           common.RandomString(messages.SessionUpdateMessageMaxDebugLength+10),
+		RouteDiversity:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRouteDiversity+10)),
 		UserFlags:                       rand.Uint64(),
 		TryBeforeYouBuy:                 common.RandomBool(),
 
@@ -211,15 +211,11 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.ClientAddress = common.RandomAddress()
 		message.ServerAddress = common.RandomAddress()
 		message.ISP = common.RandomString(messages.SessionUpdateMessageMaxISPLength)
-		message.ConnectionType = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxConnectionType))
-		message.PlatformType = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPlatformType))
-		message.NumTags = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxTags))
+		message.ConnectionType = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxConnectionType+10))
+		message.PlatformType = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPlatformType+10))
+		message.NumTags = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxTags+10))
 		message.ABTest = common.RandomBool()
 		message.Pro = common.RandomBool()
-
-		for i := 0; i < int(message.NumTags); i++ {
-			message.Tags[i] = rand.Uint64()
-		}
 	}
 
 	// summary slice only
@@ -244,29 +240,18 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		}
 
 		message.StartTimestamp = rand.Uint64()
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			message.NearRelayIds[i] = rand.Uint64()
-			message.NearRelayRTTs[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelayRTT))
-			message.NearRelayJitters[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter))
-			message.NearRelayPacketLosses[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss))
-		}
 	}
 
 	// next only
 
 	if message.Next {
 
-		message.NextRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT))
-		message.NextJitter = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter))
-		message.NextPacketLoss = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss))
-		message.PredictedNextRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT))
-		message.NearRelayRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelayRTT))
-		message.NumNextRelays = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRelays))
-		for i := 0; i < int(message.NumNextRelays); i++ {
-			message.NextRelays[i] = rand.Uint64()
-			message.NextRelayPrice[i] = rand.Uint64()
-		}
+		message.NextRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10))
+		message.NextJitter = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
+		message.NextPacketLoss = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
+		message.PredictedNextRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10))
+		message.NearRelayRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
+		message.NumNextRelays = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRelays+10))
 		message.TotalPrice = rand.Uint64()
 		message.Uncommitted = common.RandomBool()
 		message.Multipath = common.RandomBool()
@@ -276,6 +261,39 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.NextBytesUp = rand.Uint64()
 		message.NextBytesDown = rand.Uint64()
 	}
+
+	message.Clamp()
+
+	// post clamp
+
+	if message.SliceNumber == 0 || message.Summary {
+
+		for i := 0; i < int(message.NumTags); i++ {
+			message.Tags[i] = rand.Uint64()
+		}
+	}
+
+	if message.Summary {
+
+		for i := 0; i < int(message.NumNearRelays); i++ {
+			message.NearRelayIds[i] = rand.Uint64()
+			message.NearRelayRTTs[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
+			message.NearRelayJitters[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
+			message.NearRelayPacketLosses[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
+		}		
+	}
+
+	if message.Next {
+
+		for i := 0; i < int(message.NumNextRelays); i++ {
+			message.NextRelays[i] = rand.Uint64()
+			message.NextRelayPrice[i] = rand.Uint64()
+		}
+	}
+
+	// clamp again for array entries
+
+	message.Clamp()
 
 	return message
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"golang.org/x/exp/constraints"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -34,4 +35,24 @@ func RandomString(length int) string {
 
 func RandomAddress() net.UDPAddr {
 	return *core.ParseAddress(fmt.Sprintf("%d.%d.%d.%d:%d", rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(65536)))
+}
+
+type Number interface {
+    constraints.Integer | constraints.Float
+}
+
+func Clamp[T Number](value *T, min T, max T) {
+	if *value < min {
+		*value = min
+	} else if *value > max {
+		*value = max
+	}
+}
+
+func ClampString(value *string, maxLength int) {
+	// IMPORTANT: only on simple ascii strings please
+	byteArray := []byte(*value)
+	if len(byteArray) > maxLength {
+		*value = string(byteArray[:maxLength])
+	}
 }
