@@ -163,6 +163,8 @@ blocks:
       prologue:
         commands:
 
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
             - sudo apt-get install -y google-cloud-sdk-pubsub-emulator
 
             - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64

@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules-old/backend"
@@ -45,21 +46,9 @@ func main() {
 
 	service := common.CreateService("relay_pusher")
 
-	serverBackendMIGName := envvar.GetString("SERVER_BACKEND_MIG_NAME", "")
-	serverBackendInstances := service.GetMIGInstanceInfo(serverBackendMIGName)
-	serverBackendInstanceNames := make([]string, len(serverBackendInstances))
+	serverBackendInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("SERVER_BACKEND_MIG_NAME", "")
 
-	for i, instance := range serverBackendInstances {
-		serverBackendInstanceNames[i] = instance.Id
-	}
-
-	relayGatewayMIGName := envvar.GetString("RELAY_GATEWAY_MIG_NAME", "")
-	relayGatewayInstances := service.GetMIGInstanceInfo(relayGatewayMIGName)
-	relayGatewayInstanceNames := make([]string, len(relayGatewayInstances))
-
-	for i, instance := range relayGatewayInstances {
-		relayGatewayInstanceNames[i] = instance.Id
-	}
+	relayGatewayInstanceNames := service.GcpStorage.GetMIGInstanceNamesEnv("RELAY_GATEWAY_MIG_NAME", "")
 
 	locationFiles := make(map[string]LocationFile)
 	locationFiles[ISP] = LocationFile{
@@ -110,7 +99,7 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func RefreshLocationFiles(service *common.Service, configs map[string]LocationFile) {
+func RefreshLocationFiles(service *common.Service, files map[string]LocationFile) {
 
 	refreshInterval := envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", time.Hour*24)
 	locationFileBucketPath := envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing")
@@ -126,7 +115,7 @@ func RefreshLocationFiles(service *common.Service, configs map[string]LocationFi
 			case <-ticker.C:
 
 				// Download loop
-				for fileType, file := range configs {
+				for fileType, file := range files {
 
 					config := file.Config
 
@@ -135,8 +124,11 @@ func RefreshLocationFiles(service *common.Service, configs map[string]LocationFi
 						continue
 					}
 
+					fileExtensionTokens := strings.Split(config.Name, ".")
+					fileExtension := fileExtensionTokens[len(fileExtensionTokens)-1]
+
 					// Download the file to local storage
-					if err := service.DownloadGzipFileFromURL(config.DownloadURL, config.VMFilePath); err != nil {
+					if err := service.DownloadGzipFileFromURL(config.DownloadURL, config.VMFilePath, fileExtension); err != nil {
 						core.Error("failed to download %s file: %v", fileType, err)
 						continue
 					}
@@ -146,20 +138,16 @@ func RefreshLocationFiles(service *common.Service, configs map[string]LocationFi
 						core.Error("failed to validate %s file: %v", fileType, err)
 						continue
 					}
-				}
 
-				// Don't upload unless leader VM
-				if !service.IsLeader() {
-					continue
-				}
-
-				for _, file := range configs {
-					config := file.Config
+					// Don't upload unless leader VM
+					if !service.IsLeader() {
+						continue
+					}
 
 					fullArtifactPath := fmt.Sprintf("%s/%s", locationFileBucketPath, config.Name)
 
 					// Upload file to GCP for VMs that are replacing (part of startup script)
-					if err := service.UploadFileToGCPBucket(config.VMFilePath, fullArtifactPath); err != nil {
+					if err := service.GcpStorage.CopyFromLocalToBucket(service.Context, config.VMFilePath, fullArtifactPath); err != nil {
 						core.Error("failed to upload location file to GCP storage: %v", err)
 						continue
 					}
@@ -198,7 +186,7 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 					fullArtifactPath := fmt.Sprintf("%s/%s", binFileBucketPath, config.Name)
 
 					// Download from GCP bucket (Portal/Next tool uploads to bucket after creation)
-					if err := service.DownloadFileFromGCPBucket(fullArtifactPath, config.VMFilePath); err != nil {
+					if err := service.GcpStorage.CopyFromBucketToLocal(service.Context, fullArtifactPath, config.VMFilePath); err != nil {
 						core.Error("failed to download %s file: %v", fileType, err)
 						continue
 					}
@@ -228,16 +216,11 @@ func RefreshBinFiles(service *common.Service, files map[string]BinFile) {
 					default:
 						continue
 					}
-				}
 
-				// Don't upload unless leader VM
-				if !service.IsLeader() {
-					continue
-				}
-
-				for fileType, file := range files {
-
-					config := file.Config
+					// Don't upload unless leader VM
+					if !service.IsLeader() {
+						continue
+					}
 
 					// Upload file directly to VMs to update them
 					// Upload == local file path here

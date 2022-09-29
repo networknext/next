@@ -7,48 +7,56 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
 )
 
-type GCPStorage struct {
-	Client    *storage.Client
-	BucketURL string
-	Bucket    *storage.BucketHandle
-	ProjectId string
+type GCPHandler struct {
+	ProjectId        string
+	storageClient    *storage.Client
+	StorageBucketURL string
+	storageBucket    *storage.BucketHandle
 }
 
-type GCPStorageError struct {
+type GCPHandlerError struct {
 	err error
 }
 
-func (g *GCPStorageError) Error() string {
-	return fmt.Sprintf("unknown GCP storage error: %v", g.err)
+func (g *GCPHandlerError) Error() string {
+	return fmt.Sprintf("unknown GCP handler error: %v", g.err)
 }
 
-// Create new GCPStorage client
-func NewGCPStorageClient(ctx context.Context, bucketURL string, opts ...option.ClientOption) (*GCPStorage, error) {
-	client, err := storage.NewClient(ctx, opts...)
+// Create new GCPHandler
+func NewGCPHandler(ctx context.Context, projectId string, bucketURL string, opts ...option.ClientOption) (*GCPHandler, error) {
+	storageClient, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	if bucketURL == "" {
-		err := fmt.Errorf("NewGCPStorageClient() bucket name is empty or not defined")
+		err := fmt.Errorf("NewGCPHandler() bucket name is empty or not defined")
 		return nil, err
 	}
 
-	return &GCPStorage{
-		Client: client,
+	bucketNameTokens := strings.Split(bucketURL, "/")
+	bucketName := bucketNameTokens[len(bucketNameTokens)-1]
+
+	return &GCPHandler{
+		ProjectId:        projectId,
+		storageClient:    storageClient,
+		StorageBucketURL: bucketURL,
+		storageBucket:    storageClient.Bucket(bucketName),
 	}, nil
 }
 
-func (g *GCPStorage) CopyFromBytesToStorage(ctx context.Context, inputBytes []byte, outputPath string) error {
+func (g *GCPHandler) CopyFromBytesToStorage(ctx context.Context, inputBytes []byte, outputPath string) error {
 	// Create an object writer
-	writer := g.Bucket.Object(outputPath).NewWriter(ctx)
+	writer := g.storageBucket.Object(outputPath).NewWriter(ctx)
 
 	writer.ObjectAttrs.ContentType = "application/octet-stream"
 
@@ -66,7 +74,7 @@ func (g *GCPStorage) CopyFromBytesToStorage(ctx context.Context, inputBytes []by
 	return nil
 }
 
-func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []string, outputPath string) error {
+func (g *GCPHandler) CopyFromBytesToRemote(inputBytes []byte, instanceNames []string, outputPath string) error {
 	// Check if there is a temp file with the same name already
 	if LocalFileExists(outputPath) {
 		// delete temp file
@@ -112,7 +120,7 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 }
 
 // Copy file from local to GCP Storage Bucket
-func (g *GCPStorage) CopyFromLocalToBucket(ctx context.Context, localPath string, storagePath string) error {
+func (g *GCPHandler) CopyFromLocalToBucket(ctx context.Context, localPath string, storagePath string) error {
 	if !LocalFileExists(localPath) {
 		err := fmt.Errorf("local file %s does not exist", localPath)
 		return err
@@ -134,7 +142,7 @@ func (g *GCPStorage) CopyFromLocalToBucket(ctx context.Context, localPath string
 }
 
 // Copy file from local to remote location on VM (SCP function)
-func (g *GCPStorage) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
+func (g *GCPHandler) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
 
 	// Call gsutil to copy the tmp file over to the instance
 	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", localPath, fmt.Sprintf("%s:%s", instanceName, outputPath))
@@ -152,7 +160,7 @@ func (g *GCPStorage) CopyFromLocalToRemote(ctx context.Context, localPath string
 }
 
 // Copy artifact to local a local file location
-func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, storagePath string, outputPath string) error {
+func (g *GCPHandler) CopyFromBucketToLocal(ctx context.Context, storagePath string, outputPath string) error {
 	if LocalFileExists(outputPath) {
 		// delete output file
 		if err := os.Remove(outputPath); err != nil {
@@ -177,7 +185,7 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, storagePath stri
 }
 
 // Copy artifact to remote file location (SCP function)
-func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, storagePath string, instanceNames []string, outputPath string) error {
+func (g *GCPHandler) CopyFromBucketToRemote(ctx context.Context, storagePath string, instanceNames []string, outputPath string) error {
 	// grab file from bucket
 	if err := g.CopyFromBucketToLocal(ctx, storagePath, outputPath); err != nil {
 		err = fmt.Errorf("failed to fetch file from GCP bucket: %v", err)
@@ -231,7 +239,12 @@ type InstanceInfo struct {
 	InstanceStatus string
 }
 
-func (g *GCPStorage) GetMIGInstanceInfo(migName string) []InstanceInfo {
+func (g *GCPHandler) GetMIGInstanceInfo(migName string) []InstanceInfo {
+
+	if g.ProjectId == "local" {
+		return make([]InstanceInfo, 0)
+	}
+
 	var instances []InstanceInfo
 
 	// Get the latest instance list in the relay backend mig
@@ -249,4 +262,22 @@ func (g *GCPStorage) GetMIGInstanceInfo(migName string) []InstanceInfo {
 	}
 
 	return instances
+}
+
+func (g *GCPHandler) GetMIGInstanceNames(migName string) []string {
+	instances := g.GetMIGInstanceInfo(migName)
+
+	numInstances := len(instances)
+
+	names := make([]string, numInstances)
+
+	for i := 0; i < numInstances; i++ {
+		names[i] = instances[i].Id
+	}
+
+	return names
+}
+
+func (g *GCPHandler) GetMIGInstanceNamesEnv(environmentVariable string, defaultValue string) []string {
+	return g.GetMIGInstanceNames(envvar.GetString(environmentVariable, defaultValue))
 }

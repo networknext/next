@@ -94,7 +94,7 @@ type Service struct {
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *routing.DatabaseBinWrapper
 
-	gcpStorage *GCPStorage
+	GcpStorage *GCPHandler
 }
 
 func CreateService(serviceName string) *Service {
@@ -351,8 +351,6 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Log("received shutdown signal")
-
-	service.gcpStorage.Client.Close()
 
 	// todo: wait group
 	core.Log("successfully shutdown")
@@ -727,40 +725,31 @@ func (service *Service) updateMagicLoop() {
 
 func (service *Service) setupGCPStorage() {
 
+	googleProjectId := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	storageLocation := envvar.GetString("GCP_STORAGE_BUCKET", "gs://happy_path_testing")
 
+	core.Log("google project id: %s", googleProjectId)
 	core.Log("gcp storage location: %s", storageLocation)
 
-	gcpStorage, err := NewGCPStorageClient(service.Context, storageLocation)
+	gcpStorage, err := NewGCPHandler(service.Context, googleProjectId, storageLocation)
 	if err != nil {
 		core.Error("failed to create gcp storage client: %v", err)
 		os.Exit(1)
 	}
 
-	service.gcpStorage = gcpStorage
-}
-
-func (service *Service) DownloadFileFromGCPBucket(storageFileLocation string, localFileLocation string) error {
-	if err := service.gcpStorage.CopyFromBucketToLocal(service.Context, storageFileLocation, localFileLocation); err != nil {
-		return errors.New(fmt.Sprintf("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err))
-	}
-
-	return nil
-}
-
-func (service *Service) UploadFileToGCPBucket(localFileLocation string, storageFileLocation string) error {
-	if err := service.gcpStorage.CopyFromLocalToBucket(service.Context, localFileLocation, storageFileLocation); err != nil {
-		return errors.New(fmt.Sprintf("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err))
-	}
-
-	return nil
+	service.GcpStorage = gcpStorage
 }
 
 func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uploadPath string, vmNames []string) error {
 
+	if len(vmNames) == 0 {
+		core.Debug("no VMs to upload to")
+		return nil
+	}
+
 	hadError := false
 	for _, vm := range vmNames {
-		if err := service.gcpStorage.CopyFromLocalToRemote(service.Context, fileLocation, uploadPath, vm); err != nil {
+		if err := service.GcpStorage.CopyFromLocalToRemote(service.Context, fileLocation, uploadPath, vm); err != nil {
 			core.Error("failed to copy file to vm: %v", err)
 			hadError = true
 		}
@@ -773,7 +762,7 @@ func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uplo
 	return nil
 }
 
-func (service *Service) DownloadGzipFileFromURL(url string, outputLocation string) error {
+func (service *Service) DownloadGzipFileFromURL(url string, outputLocation string, extension string) error {
 
 	httpClient := http.Client{
 		Timeout: time.Second * 30,
@@ -807,7 +796,7 @@ func (service *Service) DownloadGzipFileFromURL(url string, outputLocation strin
 			return errors.New(fmt.Sprintf("failed to read from GZIP file: %v", err))
 		}
 
-		if strings.HasSuffix(hdr.Name, "mmdb") {
+		if strings.HasSuffix(hdr.Name, extension) {
 			_, err = io.Copy(fileBuffer, tr)
 			if err != nil {
 				return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
@@ -833,7 +822,3 @@ func (service *Service) DownloadGzipFileFromURL(url string, outputLocation strin
 }
 
 // ---------------------------------------------------------------------------------------------------
-
-func (service *Service) GetMIGInstanceInfo(migName string) []InstanceInfo {
-	return service.gcpStorage.GetMIGInstanceInfo(migName)
-}
