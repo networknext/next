@@ -30,3 +30,6 @@ logs
 
 # volatile sqlite3 db required for unit testing
 network_next.db
+
+# test files
+*.mmdb

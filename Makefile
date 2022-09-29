@@ -586,6 +586,10 @@ build-sdk5: dist/$(SDKNAME5).so
 dev-ghost-army: dist/ghost_army ## runs a local ghost army
 	@./dist/ghost_army
 
+.PHONY:
+dev-pusher: dist/pusher ## runs a local ghost army
+	@HTTP_PORT=41009 ./dist/pusher
+
 .PHONY: dev-fake-relays
 dev-fake-relays: dist/fake_relays ## runs local fake relays
 	@PORT=30007 ./dist/fake_relays
