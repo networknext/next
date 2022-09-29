@@ -21,6 +21,7 @@ const (
 	SessionUpdateMessageMaxRTT              = 1023
 	SessionUpdateMessageMaxJitter           = 255
 	SessionUpdateMessageMaxPacketLoss       = 100
+	SessionUpdateMessageMaxRouteDiversity   = 31
 )
 
 type SessionUpdateMessage struct {
@@ -164,7 +165,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&message.UseDebug)
 	stream.SerializeString(&message.Debug, SessionUpdateMessageMaxDebugLength)
 
-	stream.SerializeInteger(&message.RouteDiversity, 0, 32)
+	stream.SerializeInteger(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
 
 	stream.SerializeUint64(&message.UserFlags)
 

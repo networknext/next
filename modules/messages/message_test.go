@@ -174,27 +174,24 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		Summary:             common.RandomBool(),
 		UseDebug:            common.RandomBool(),
 		Debug:               common.RandomString(messages.SessionUpdateMessageMaxDebugLength),
+		RouteDiversity:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRouteDiversity)),
+		UserFlags:           rand.Uint64(),
+		TryBeforeYouBuy:     common.RandomBool(),
+		DatacenterId:        rand.Uint64(),
+		BuyerId:             rand.Uint64(),
+		UserHash:            rand.Uint64(),
+		EnvelopeBytesUp:     rand.Uint64(),
+		EnvelopeBytesDown:   rand.Uint64(),
+		Latitude:            rand.Float32(),
+		Longitude:           rand.Float32(),
 	}
 }
 
 /*
 type SessionUpdateMessage struct {
 
-	// always
-
-	RouteDiversity      int32
-	UserFlags           uint64
-	TryBeforeYouBuy     bool
-
 	// first slice and summary slice only
 
-	DatacenterID      uint64
-	BuyerID           uint64
-	UserHash          uint64
-	EnvelopeBytesUp   uint64
-	EnvelopeBytesDown uint64
-	Latitude          float32
-	Longitude         float32
 	ClientAddress     string
 	ServerAddress     string
 	ISP               string
