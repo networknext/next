@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	RelayStatsMessageVersion = uint8(3)
+	RelayStatsMessageVersion = 3
 	MaxRelayStatsMessageSize = 128
 )
 
 type RelayStatsMessage struct {
-	Version byte
+	
+	Version uint8
 
 	Timestamp uint64
 

@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	SessionUpdateMessageVersion = uint32(0)
+	SessionUpdateMessageVersion = 0
 
 	MaxSessionUpdateMessageBytes = 4096
 
@@ -25,8 +25,8 @@ type SessionUpdateMessage struct {
 	// always
 
 	Version             uint32
-	Timestamp           uint32
-	SessionID           uint64
+	Timestamp           uint64
+	SessionId           uint64
 	SliceNumber         uint32
 	DirectMinRTT        int32
 	DirectMaxRTT        int32
@@ -47,8 +47,8 @@ type SessionUpdateMessage struct {
 
 	// first slice and summary slice only
 
-	DatacenterID      uint64
-	BuyerID           uint64
+	DatacenterId      uint64
+	BuyerId           uint64
 	UserHash          uint64
 	EnvelopeBytesUp   uint64
 	EnvelopeBytesDown uint64
@@ -74,7 +74,7 @@ type SessionUpdateMessage struct {
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
 	NumNearRelays                   int32
-	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
+	NearRelayIds                    [SessionUpdateMessageMaxNearRelays]uint64
 	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
@@ -84,7 +84,7 @@ type SessionUpdateMessage struct {
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
-	StartTimestamp                  uint32
+	StartTimestamp                  uint64
 
 	// network next only
 
@@ -129,9 +129,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&message.Version, 32)
-	stream.SerializeBits(&message.Timestamp, 32)
-	stream.SerializeUint64(&message.SessionID)
+	stream.SerializeBits(&message.Version, 8)
+	stream.SerializeUint64(&message.Timestamp)
+	stream.SerializeUint64(&message.SessionId)
 
 	small := false
 	if message.SliceNumber < 1024 {
@@ -178,8 +178,8 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		stream.SerializeUint64(&message.DatacenterID)
-		stream.SerializeUint64(&message.BuyerID)
+		stream.SerializeUint64(&message.DatacenterId)
+		stream.SerializeUint64(&message.BuyerId)
 		stream.SerializeUint64(&message.UserHash)
 		stream.SerializeUint64(&message.EnvelopeBytesUp)
 		stream.SerializeUint64(&message.EnvelopeBytesDown)
@@ -216,13 +216,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
 
 		for i := 0; i < int(message.NumNearRelays); i++ {
-			stream.SerializeUint64(&message.NearRelayIDs[i])
+			stream.SerializeUint64(&message.NearRelayIds[i])
 			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, 255)
 			stream.SerializeInteger(&message.NearRelayJitters[i], 0, 255)
 			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, 100)
 		}
 
-		stream.SerializeUint32(&message.StartTimestamp)
+		stream.SerializeUint64(&message.StartTimestamp)
 		stream.SerializeUint32(&message.SessionDuration)
 
 		stream.SerializeBool(&message.EverOnNext)
@@ -332,7 +332,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	*/
 
 	e["timestamp"] = int(message.Timestamp)
-	e["sessionID"] = int(message.SessionID)
+	e["sessionID"] = int(message.SessionId)
 	e["sliceNumber"] = int(message.SliceNumber)
 	e["directRTT"] = int(message.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
 	e["directMaxRTT"] = int(message.DirectMaxRTT)
@@ -378,8 +378,8 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		e["datacenterID"] = int(message.DatacenterID)
-		e["buyerID"] = int(message.BuyerID)
+		e["datacenterID"] = int(message.DatacenterId)
+		e["buyerID"] = int(message.BuyerId)
 		e["userHash"] = int(message.UserHash)
 		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
 		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
@@ -426,19 +426,19 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 		if message.NumNearRelays > 0 {
 
-			nearRelayIDs := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayIds := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
 
 			for i := 0; i < int(message.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(message.NearRelayIDs[i])
+				nearRelayIds[i] = int(message.NearRelayIds[i])
 				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
 				nearRelayJitters[i] = int(message.NearRelayJitters[i])
 				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
 			}
 
-			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayIDs"] = nearRelayIds
 			e["nearRelayRTTs"] = nearRelayRTTs
 			e["nearRelayJitters"] = nearRelayJitters
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses

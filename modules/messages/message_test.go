@@ -154,6 +154,121 @@ func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 	}
 }
 
+func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
+
+	return messages.SessionUpdateMessage{
+		Version:     messages.SessionUpdateMessageVersion,
+		Timestamp:   rand.Uint64(),
+		SessionId:   rand.Uint64(),
+		SliceNumber: rand.Uint32(),
+		// ...
+	}
+}
+
+/*
+type SessionUpdateMessage struct {
+
+	// always
+
+	Timestamp           uint32
+	SessionID           uint64
+	SliceNumber         uint32
+	DirectMinRTT        int32
+	DirectMaxRTT        int32
+	DirectPrimeRTT      int32
+	DirectJitter        int32
+	DirectPacketLoss    int32
+	RealPacketLoss      int32
+	RealPacketLoss_Frac uint32
+	RealJitter          uint32
+	Next                bool
+	Flagged             bool
+	Summary             bool
+	UseDebug            bool
+	Debug               string
+	RouteDiversity      int32
+	UserFlags           uint64
+	TryBeforeYouBuy     bool
+
+	// first slice and summary slice only
+
+	DatacenterID      uint64
+	BuyerID           uint64
+	UserHash          uint64
+	EnvelopeBytesUp   uint64
+	EnvelopeBytesDown uint64
+	Latitude          float32
+	Longitude         float32
+	ClientAddress     string
+	ServerAddress     string
+	ISP               string
+	ConnectionType    int32
+	PlatformType      int32
+	SDKVersion        string
+	NumTags           int32
+	Tags              [SessionUpdateMessageMaxTags]uint64
+	ABTest            bool
+	Pro               bool
+
+	// summary slice only
+
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	ClientToServerPacketsOutOfOrder uint64
+	ServerToClientPacketsOutOfOrder uint64
+	NumNearRelays                   int32
+	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
+	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
+	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
+	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
+	TotalPriceSum                   uint64
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
+	DurationOnNext                  uint32
+	StartTimestamp                  uint32
+
+	// network next only
+
+	NextRTT             int32
+	NextJitter          int32
+	NextPacketLoss      int32
+	PredictedNextRTT    int32
+	NearRelayRTT        int32
+	NumNextRelays       int32
+	NextRelays          [SessionUpdateMessageMaxRelays]uint64
+	NextRelayPrice      [SessionUpdateMessageMaxRelays]uint64
+	TotalPrice          uint64
+	Uncommitted         bool
+	Multipath           bool
+	RTTReduction        bool
+	PacketLossReduction bool
+	RouteChanged        bool
+	NextBytesUp         uint64
+	NextBytesDown       uint64
+
+	// error state only
+
+	FallbackToDirect     bool
+	MultipathVetoed      bool
+	Mispredicted         bool
+	Vetoed               bool
+	LatencyWorse         bool
+	NoRoute              bool
+	NextLatencyTooHigh   bool
+	CommitVeto           bool
+	UnknownDatacenter    bool
+	DatacenterNotEnabled bool
+	BuyerNotLive         bool
+	StaleRouteMatrix     bool
+}
+*/
+
+// -----------------------------------------------------------
+
 const NumIterations = 10000
 
 func TestCostMatrixStatsMessage(t *testing.T) {
