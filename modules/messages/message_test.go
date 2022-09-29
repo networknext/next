@@ -156,109 +156,129 @@ func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 
 func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
-	return messages.SessionUpdateMessage{
-		Version:             messages.SessionUpdateMessageVersion,
-		Timestamp:           rand.Uint64(),
-		SessionId:           rand.Uint64(),
-		SliceNumber:         rand.Uint32(),
-		DirectMinRTT:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectMaxRTT:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectPrimeRTT:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
-		DirectJitter:        int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
-		DirectPacketLoss:    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
-		RealPacketLoss:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
-		RealPacketLoss_Frac: uint32(common.RandomInt(0, 255)),
-		RealJitter:          uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
-		Next:                common.RandomBool(),
-		Flagged:             common.RandomBool(),
-		Summary:             common.RandomBool(),
-		UseDebug:            common.RandomBool(),
-		Debug:               common.RandomString(messages.SessionUpdateMessageMaxDebugLength),
-		RouteDiversity:      int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRouteDiversity)),
-		UserFlags:           rand.Uint64(),
-		TryBeforeYouBuy:     common.RandomBool(),
-		DatacenterId:        rand.Uint64(),
-		BuyerId:             rand.Uint64(),
-		UserHash:            rand.Uint64(),
-		EnvelopeBytesUp:     rand.Uint64(),
-		EnvelopeBytesDown:   rand.Uint64(),
-		Latitude:            rand.Float32(),
-		Longitude:           rand.Float32(),
+	message := messages.SessionUpdateMessage{
+
+		// always
+
+		Version:                         messages.SessionUpdateMessageVersion,
+		Timestamp:                       rand.Uint64(),
+		SessionId:                       rand.Uint64(),
+		SliceNumber:                     rand.Uint32(),
+		DirectMinRTT:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectMaxRTT:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectPrimeRTT:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT)),
+		DirectJitter:                    int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
+		DirectPacketLoss:                int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
+		RealPacketLoss:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss)),
+		RealPacketLoss_Frac:             uint32(common.RandomInt(0, 255)),
+		RealJitter:                      uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter)),
+		Next:                            common.RandomBool(),
+		Flagged:                         common.RandomBool(),
+		Summary:                         common.RandomBool(),
+		UseDebug:                        common.RandomBool(),
+		Debug:                           common.RandomString(messages.SessionUpdateMessageMaxDebugLength),
+		RouteDiversity:                  int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRouteDiversity)),
+		UserFlags:                       rand.Uint64(),
+		TryBeforeYouBuy:                 common.RandomBool(),
+
+		// error state only
+
+		FallbackToDirect:     common.RandomBool(),
+		MultipathVetoed:      common.RandomBool(),
+		Mispredicted:         common.RandomBool(),
+		Vetoed:               common.RandomBool(),
+		LatencyWorse:         common.RandomBool(),
+		NoRoute:              common.RandomBool(),
+		NextLatencyTooHigh:   common.RandomBool(),
+		CommitVeto:           common.RandomBool(),
+		UnknownDatacenter:    common.RandomBool(),
+		DatacenterNotEnabled: common.RandomBool(),
+		BuyerNotLive:         common.RandomBool(),
+		StaleRouteMatrix:     common.RandomBool(),
 	}
-}
 
-/*
-type SessionUpdateMessage struct {
+	// first slice and summary slice
 
-	// first slice and summary slice only
+	if message.SliceNumber == 0 || message.Summary {
 
-	ClientAddress     string
-	ServerAddress     string
-	ISP               string
-	ConnectionType    int32
-	PlatformType      int32
-	SDKVersion        string
-	NumTags           int32
-	Tags              [SessionUpdateMessageMaxTags]uint64
-	ABTest            bool
-	Pro               bool
+		message.DatacenterId = rand.Uint64()
+		message.BuyerId = rand.Uint64()
+		message.UserHash = rand.Uint64()
+		message.EnvelopeBytesUp = rand.Uint64()
+		message.EnvelopeBytesDown = rand.Uint64()
+		message.Latitude = rand.Float32()
+		message.Longitude = rand.Float32()
+		message.ClientAddress = common.RandomAddress()
+		message.ServerAddress = common.RandomAddress()
+		message.ISP = common.RandomString(messages.SessionUpdateMessageMaxISPLength)
+		message.ConnectionType = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxConnectionType))
+		message.PlatformType = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPlatformType))
+		message.NumTags = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxTags))
+		message.ABTest = common.RandomBool()
+		message.Pro = common.RandomBool()
+
+		for i := 0; i < int(message.NumTags); i++ {
+			message.Tags[i] = rand.Uint64()
+		}
+	}
 
 	// summary slice only
 
-	ClientToServerPacketsSent       uint64
-	ServerToClientPacketsSent       uint64
-	ClientToServerPacketsLost       uint64
-	ServerToClientPacketsLost       uint64
-	ClientToServerPacketsOutOfOrder uint64
-	ServerToClientPacketsOutOfOrder uint64
-	NumNearRelays                   int32
-	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
-	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
-	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
-	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
-	EverOnNext                      bool
-	SessionDuration                 uint32
-	TotalPriceSum                   uint64
-	EnvelopeBytesUpSum              uint64
-	EnvelopeBytesDownSum            uint64
-	DurationOnNext                  uint32
-	StartTimestamp                  uint32
+	if message.Summary {
 
-	// network next only
+		message.ClientToServerPacketsSent = rand.Uint64()
+		message.ServerToClientPacketsSent = rand.Uint64()
+		message.ClientToServerPacketsLost = rand.Uint64()
+		message.ServerToClientPacketsLost = rand.Uint64()
+		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
+		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
+		message.NumNearRelays = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelays))
+		message.EverOnNext = common.RandomBool()
+		message.SessionDuration = rand.Uint32()
 
-	NextRTT             int32
-	NextJitter          int32
-	NextPacketLoss      int32
-	PredictedNextRTT    int32
-	NearRelayRTT        int32
-	NumNextRelays       int32
-	NextRelays          [SessionUpdateMessageMaxRelays]uint64
-	NextRelayPrice      [SessionUpdateMessageMaxRelays]uint64
-	TotalPrice          uint64
-	Uncommitted         bool
-	Multipath           bool
-	RTTReduction        bool
-	PacketLossReduction bool
-	RouteChanged        bool
-	NextBytesUp         uint64
-	NextBytesDown       uint64
+		if message.EverOnNext {
+			message.TotalPriceSum = rand.Uint64()
+			message.EnvelopeBytesUpSum = rand.Uint64()
+			message.EnvelopeBytesDownSum = rand.Uint64()
+			message.DurationOnNext = rand.Uint32()
+		}
 
-	// error state only
+		message.StartTimestamp = rand.Uint64()
 
-	FallbackToDirect     bool
-	MultipathVetoed      bool
-	Mispredicted         bool
-	Vetoed               bool
-	LatencyWorse         bool
-	NoRoute              bool
-	NextLatencyTooHigh   bool
-	CommitVeto           bool
-	UnknownDatacenter    bool
-	DatacenterNotEnabled bool
-	BuyerNotLive         bool
-	StaleRouteMatrix     bool
+		for i := 0; i < int(message.NumNearRelays); i++ {
+			message.NearRelayIds[i] = rand.Uint64()
+			message.NearRelayRTTs[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelayRTT))
+			message.NearRelayJitters[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter))
+			message.NearRelayPacketLosses[i] = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss))
+		}
+	}
+
+	// next only
+
+	if message.Next {
+
+		message.NextRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT))
+		message.NextJitter = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter))
+		message.NextPacketLoss = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxPacketLoss))
+		message.PredictedNextRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRTT))
+		message.NearRelayRTT = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelayRTT))
+		message.NumNextRelays = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxRelays))
+		for i := 0; i < int(message.NumNextRelays); i++ {
+			message.NextRelays[i] = rand.Uint64()
+			message.NextRelayPrice[i] = rand.Uint64()
+		}
+		message.TotalPrice = rand.Uint64()
+		message.Uncommitted = common.RandomBool()
+		message.Multipath = common.RandomBool()
+		message.RTTReduction = common.RandomBool()
+		message.PacketLossReduction = common.RandomBool()
+		message.RouteChanged = common.RandomBool()
+		message.NextBytesUp = rand.Uint64()
+		message.NextBytesDown = rand.Uint64()
+	}
+
+	return message
 }
-*/
 
 // -----------------------------------------------------------
 
@@ -320,11 +340,18 @@ func TestServerUpdateMessage(t *testing.T) {
 
 func TestMatchDataMessage(t *testing.T) {
 	t.Parallel()
-	// for i := 0; i < NumIterations; i++ {
-	writeMessage := GenerateRandomMatchDataMessage()
-	readMessage := messages.MatchDataMessage{}
-	MessageReadWriteTest[*messages.MatchDataMessage](&writeMessage, &readMessage, t)
-	// }
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomMatchDataMessage()
+		readMessage := messages.MatchDataMessage{}
+		MessageReadWriteTest[*messages.MatchDataMessage](&writeMessage, &readMessage, t)
+	}
 }
 
-// todo: test the session update message
+func TestSessionUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomSessionUpdateMessage()
+		readMessage := messages.SessionUpdateMessage{}
+		MessageReadWriteTest[*messages.SessionUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}

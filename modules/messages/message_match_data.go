@@ -69,7 +69,6 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 	}
 
 	for i := 0; i < int(message.NumMatchValues); i++ {
-		fmt.Printf("reading %d match values\n", message.NumMatchValues)
 		if !encoding.ReadFloat64(buffer, &index, &message.MatchValues[i]) {
 			return fmt.Errorf("failed to read match value %d", i)
 		}
@@ -93,7 +92,6 @@ func (message *MatchDataMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.NumMatchValues)
 
 	for i := 0; i < int(message.NumMatchValues); i++ {
-		fmt.Printf("writing %d match values\n", message.NumMatchValues)
 		encoding.WriteFloat64(buffer, &index, message.MatchValues[i])
 	}
 
