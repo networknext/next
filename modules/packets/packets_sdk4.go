@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/crypto"
 )
@@ -21,7 +21,7 @@ type SDK4_ServerInitRequestPacket struct {
 	DatacenterName string
 }
 
-func (packet *SDK4_ServerInitRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.DatacenterId)
@@ -37,7 +37,7 @@ type SDK4_ServerInitResponsePacket struct {
 	Response  uint32
 }
 
-func (packet *SDK4_ServerInitResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
@@ -53,7 +53,7 @@ type SDK4_ServerUpdatePacket struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet *SDK4_ServerUpdatePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.DatacenterId)
@@ -116,7 +116,7 @@ type SDK4_SessionUpdatePacket struct {
 	JitterServerToClient            float32
 }
 
-func (packet *SDK4_SessionUpdatePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -250,7 +250,7 @@ type SDK4_SessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *SDK4_SessionResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_SessionResponsePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -325,7 +325,7 @@ func (location *SDK4_LocationData) Read(data []byte) error {
 	index := 0
 
 	var version uint32
-	if !common.ReadUint32(data, &index, &version) {
+	if !encoding.ReadUint32(data, &index, &version) {
 		return errors.New("invalid read at version number")
 	}
 
@@ -333,19 +333,19 @@ func (location *SDK4_LocationData) Read(data []byte) error {
 		return fmt.Errorf("unknown location version: %d", version)
 	}
 
-	if !common.ReadFloat32(data, &index, &location.Latitude) {
+	if !encoding.ReadFloat32(data, &index, &location.Latitude) {
 		return errors.New("invalid read at latitude")
 	}
 
-	if !common.ReadFloat32(data, &index, &location.Longitude) {
+	if !encoding.ReadFloat32(data, &index, &location.Longitude) {
 		return errors.New("invalid read at longitude")
 	}
 
-	if !common.ReadString(data, &index, &location.ISP, SDK4_MaxISPNameLength) {
+	if !encoding.ReadString(data, &index, &location.ISP, SDK4_MaxISPNameLength) {
 		return errors.New("invalid read at ISP")
 	}
 
-	if !common.ReadUint32(data, &index, &location.ASN) {
+	if !encoding.ReadUint32(data, &index, &location.ASN) {
 		return errors.New("invalid read at ASN")
 	}
 
@@ -354,11 +354,11 @@ func (location *SDK4_LocationData) Read(data []byte) error {
 
 func (location *SDK4_LocationData) Write(buffer []byte) ([]byte, error) {
 	index := 0
-	common.WriteUint32(buffer, &index, SDK4_LocationVersion)
-	common.WriteFloat32(buffer, &index, location.Latitude)
-	common.WriteFloat32(buffer, &index, location.Longitude)
-	common.WriteString(buffer, &index, location.ISP, SDK4_MaxISPNameLength)
-	common.WriteUint32(buffer, &index, location.ASN)
+	encoding.WriteUint32(buffer, &index, SDK4_LocationVersion)
+	encoding.WriteFloat32(buffer, &index, location.Latitude)
+	encoding.WriteFloat32(buffer, &index, location.Longitude)
+	encoding.WriteString(buffer, &index, location.ISP, SDK4_MaxISPNameLength)
+	encoding.WriteUint32(buffer, &index, location.ASN)
 	return buffer[:index], nil
 }
 
@@ -392,7 +392,7 @@ type SDK4_SessionData struct {
 	DurationOnNext                uint32
 }
 
-func (sessionData *SDK4_SessionData) Serialize(stream common.Stream) error {
+func (sessionData *SDK4_SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
@@ -551,7 +551,7 @@ type SDK4_MatchDataRequestPacket struct {
 	MatchValues    [SDK4_MaxMatchValues]float64
 }
 
-func (packet *SDK4_MatchDataRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_MatchDataRequestPacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -584,7 +584,7 @@ type SDK4_MatchDataResponsePacket struct {
 	Response  uint32
 }
 
-func (packet *SDK4_MatchDataResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK4_MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()

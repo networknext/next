@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 // TrafficStats describes the measured relay traffic statistics reported from the relay

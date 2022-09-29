@@ -6,9 +6,8 @@ import (
 	"cloud.google.com/go/bigquery"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
-	
-	"github.com/networknext/backend/modules-old/encoding"
 )
 
 const (
@@ -59,10 +58,7 @@ func WriteMatchDataEntry(entry *MatchDataEntry) ([]byte, error) {
 
 	buffer := [MaxMatchDataEntryBytes]byte{}
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err

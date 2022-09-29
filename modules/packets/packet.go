@@ -1,14 +1,14 @@
 package packets
 
 import (
-	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type Packet interface {
-	Serialize(stream common.Stream) error
+	Serialize(stream encoding.Stream) error
 }
 
 func ReadPacket[P Packet](packetData []byte, packetObject P) error {
-	readStream := common.CreateReadStream(packetData)
+	readStream := encoding.CreateReadStream(packetData)
 	return packetObject.Serialize(readStream)
 }

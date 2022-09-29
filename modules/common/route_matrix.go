@@ -6,9 +6,9 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/analytics"
-	"github.com/networknext/backend/modules-old/encoding"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -246,10 +246,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
-	ws, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create write stream for route matrix: %v", err)
-	}
+	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
 		return nil, fmt.Errorf("failed to serialize route matrix: %v", err)
 	}
