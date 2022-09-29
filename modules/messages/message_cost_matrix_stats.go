@@ -8,7 +8,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const CostMatrixStatsMessageVersion = byte(0) // IMPORTANT: increase this each time you change the data structure
+const CostMatrixStatsMessageVersion = 0 // IMPORTANT: increase this each time you change the data structure
 
 type CostMatrixStatsMessage struct {
 	Version        byte

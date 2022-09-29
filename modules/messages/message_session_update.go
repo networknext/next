@@ -1,13 +1,16 @@
 package messages
 
 import (
+	"fmt"
+	"net"
+
 	"cloud.google.com/go/bigquery"
 
 	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	SessionUpdateMessageVersion = uint32(0)
+	SessionUpdateMessageVersion = 0
 
 	MaxSessionUpdateMessageBytes = 4096
 
@@ -18,6 +21,13 @@ const (
 	SessionUpdateMessageMaxDebugLength      = 2048
 	SessionUpdateMessageMaxNearRelays       = 32
 	SessionUpdateMessageMaxTags             = 8
+	SessionUpdateMessageMaxRTT              = 1023
+	SessionUpdateMessageMaxJitter           = 255
+	SessionUpdateMessageMaxPacketLoss       = 100
+	SessionUpdateMessageMaxRouteDiversity   = 31
+	SessionUpdateMessageMaxConnectionType   = 3
+	SessionUpdateMessageMaxPlatformType     = 10
+	SessionUpdateMessageMaxNearRelayRTT     = 255
 )
 
 type SessionUpdateMessage struct {
@@ -25,8 +35,8 @@ type SessionUpdateMessage struct {
 	// always
 
 	Version             uint32
-	Timestamp           uint32
-	SessionID           uint64
+	Timestamp           uint64
+	SessionId           uint64
 	SliceNumber         uint32
 	DirectMinRTT        int32
 	DirectMaxRTT        int32
@@ -47,19 +57,21 @@ type SessionUpdateMessage struct {
 
 	// first slice and summary slice only
 
-	DatacenterID      uint64
-	BuyerID           uint64
+	DatacenterId      uint64
+	BuyerId           uint64
 	UserHash          uint64
 	EnvelopeBytesUp   uint64
 	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
-	ClientAddress     string
-	ServerAddress     string
+	ClientAddress     net.UDPAddr
+	ServerAddress     net.UDPAddr
 	ISP               string
 	ConnectionType    int32
 	PlatformType      int32
-	SDKVersion        string
+	SDKVersion_Major  uint32
+	SDKVersion_Minor  uint32
+	SDKVersion_Patch  uint32
 	NumTags           int32
 	Tags              [SessionUpdateMessageMaxTags]uint64
 	ABTest            bool
@@ -74,7 +86,7 @@ type SessionUpdateMessage struct {
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
 	NumNearRelays                   int32
-	NearRelayIDs                    [SessionUpdateMessageMaxNearRelays]uint64
+	NearRelayIds                    [SessionUpdateMessageMaxNearRelays]uint64
 	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
 	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
@@ -84,7 +96,7 @@ type SessionUpdateMessage struct {
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
-	StartTimestamp                  uint32
+	StartTimestamp                  uint64
 
 	// network next only
 
@@ -129,9 +141,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&message.Version, 32)
-	stream.SerializeBits(&message.Timestamp, 32)
-	stream.SerializeUint64(&message.SessionID)
+	stream.SerializeBits(&message.Version, 8)
+	stream.SerializeUint64(&message.Timestamp)
+	stream.SerializeUint64(&message.SessionId)
 
 	small := false
 	if message.SliceNumber < 1024 {
@@ -144,14 +156,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeBits(&message.SliceNumber, 32)
 	}
 
-	stream.SerializeInteger(&message.DirectMinRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectMaxRTT, 0, 1023)
-	stream.SerializeInteger(&message.DirectPrimeRTT, 0, 1023)
+	stream.SerializeInteger(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
+	stream.SerializeInteger(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
+	stream.SerializeInteger(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 
-	stream.SerializeInteger(&message.DirectJitter, 0, 255)
-	stream.SerializeInteger(&message.DirectPacketLoss, 0, 100)
-
-	stream.SerializeInteger(&message.RealPacketLoss, 0, 100)
+	stream.SerializeInteger(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
 	stream.SerializeBits(&message.RealPacketLoss_Frac, 8)
 	stream.SerializeUint32(&message.RealJitter)
 
@@ -162,7 +173,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&message.UseDebug)
 	stream.SerializeString(&message.Debug, SessionUpdateMessageMaxDebugLength)
 
-	stream.SerializeInteger(&message.RouteDiversity, 0, 32)
+	stream.SerializeInteger(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
 
 	stream.SerializeUint64(&message.UserFlags)
 
@@ -172,31 +183,31 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		2. First slice and summary slice only
 
 		These values are serialized only for slice 0 and summary slice.
-
-		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		stream.SerializeUint64(&message.DatacenterID)
-		stream.SerializeUint64(&message.BuyerID)
+		stream.SerializeUint64(&message.DatacenterId)
+		stream.SerializeUint64(&message.BuyerId)
 		stream.SerializeUint64(&message.UserHash)
 		stream.SerializeUint64(&message.EnvelopeBytesUp)
 		stream.SerializeUint64(&message.EnvelopeBytesDown)
 		stream.SerializeFloat32(&message.Latitude)
 		stream.SerializeFloat32(&message.Longitude)
 		stream.SerializeString(&message.ISP, SessionUpdateMessageMaxISPLength)
-		stream.SerializeInteger(&message.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&message.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&message.SDKVersion, SessionUpdateMessageMaxSDKVersionLength)
+		stream.SerializeInteger(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
+		stream.SerializeInteger(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
+		stream.SerializeBits(&message.SDKVersion_Major, 8)
+		stream.SerializeBits(&message.SDKVersion_Minor, 8)
+		stream.SerializeBits(&message.SDKVersion_Patch, 8)
 		stream.SerializeInteger(&message.NumTags, 0, SessionUpdateMessageMaxTags)
 		for i := 0; i < int(message.NumTags); i++ {
 			stream.SerializeUint64(&message.Tags[i])
 		}
 		stream.SerializeBool(&message.ABTest)
 		stream.SerializeBool(&message.Pro)
-		stream.SerializeString(&message.ClientAddress, SessionUpdateMessageMaxAddressLength)
-		stream.SerializeString(&message.ServerAddress, SessionUpdateMessageMaxAddressLength)
+		stream.SerializeAddress(&message.ClientAddress)
+		stream.SerializeAddress(&message.ServerAddress)
 	}
 
 	/*
@@ -216,13 +227,13 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
 
 		for i := 0; i < int(message.NumNearRelays); i++ {
-			stream.SerializeUint64(&message.NearRelayIDs[i])
-			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, 255)
-			stream.SerializeInteger(&message.NearRelayJitters[i], 0, 255)
-			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, 100)
+			stream.SerializeUint64(&message.NearRelayIds[i])
+			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
+			stream.SerializeInteger(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
+			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
 		}
 
-		stream.SerializeUint32(&message.StartTimestamp)
+		stream.SerializeUint64(&message.StartTimestamp)
 		stream.SerializeUint32(&message.SessionDuration)
 
 		stream.SerializeBool(&message.EverOnNext)
@@ -244,11 +255,11 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	if message.Next {
 
-		stream.SerializeInteger(&message.NextRTT, 0, 255)
-		stream.SerializeInteger(&message.NextJitter, 0, 255)
-		stream.SerializeInteger(&message.NextPacketLoss, 0, 100)
-		stream.SerializeInteger(&message.PredictedNextRTT, 0, 255)
-		stream.SerializeInteger(&message.NearRelayRTT, 0, 255)
+		stream.SerializeInteger(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
+		stream.SerializeInteger(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
+		stream.SerializeInteger(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
+		stream.SerializeInteger(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
+		stream.SerializeInteger(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
 
 		stream.SerializeInteger(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
 		for i := 0; i < int(message.NumNextRelays); i++ {
@@ -313,12 +324,28 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 }
 
 func (message *SessionUpdateMessage) Read(buffer []byte) error {
-	return nil
+
+	readStream := encoding.CreateReadStream(buffer)
+
+	return message.Serialize(readStream)
 }
 
 func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
-	index := 0
-	return buffer[:index]
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := message.Serialize(writeStream)
+	if err != nil {
+		// todo
+		fmt.Printf("failed to write session update message: %v", err)
+		return nil
+	}
+
+	writeStream.Flush()
+
+	packetBytes := writeStream.GetBytesProcessed()
+
+	return buffer[:packetBytes]
 }
 
 func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
@@ -332,9 +359,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	*/
 
 	e["timestamp"] = int(message.Timestamp)
-	e["sessionID"] = int(message.SessionID)
+	e["sessionID"] = int(message.SessionId)
 	e["sliceNumber"] = int(message.SliceNumber)
-	e["directRTT"] = int(message.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
+	e["directRTT"] = int(message.DirectMinRTT)
 	e["directMaxRTT"] = int(message.DirectMaxRTT)
 	e["directPrimeRTT"] = int(message.DirectPrimeRTT)
 	e["directJitter"] = int(message.DirectJitter)
@@ -378,8 +405,8 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 	if message.SliceNumber == 0 || message.Summary {
 
-		e["datacenterID"] = int(message.DatacenterID)
-		e["buyerID"] = int(message.BuyerID)
+		e["datacenterID"] = int(message.DatacenterId)
+		e["buyerID"] = int(message.BuyerId)
 		e["userHash"] = int(message.UserHash)
 		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
 		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
@@ -390,7 +417,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["isp"] = message.ISP
 		e["connectionType"] = int(message.ConnectionType)
 		e["platformType"] = int(message.PlatformType)
-		e["sdkVersion"] = message.SDKVersion
+		e["sdkVersion"] = fmt.Sprintf("%d.%d.%d", message.SDKVersion_Major, message.SDKVersion_Minor, message.SDKVersion_Patch)
 
 		if message.NumTags > 0 {
 			tags := make([]bigquery.Value, message.NumTags)
@@ -426,19 +453,19 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 		if message.NumNearRelays > 0 {
 
-			nearRelayIDs := make([]bigquery.Value, message.NumNearRelays)
+			nearRelayIds := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
 			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
 
 			for i := 0; i < int(message.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(message.NearRelayIDs[i])
+				nearRelayIds[i] = int(message.NearRelayIds[i])
 				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
 				nearRelayJitters[i] = int(message.NearRelayJitters[i])
 				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
 			}
 
-			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayIDs"] = nearRelayIds
 			e["nearRelayRTTs"] = nearRelayRTTs
 			e["nearRelayJitters"] = nearRelayJitters
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses
