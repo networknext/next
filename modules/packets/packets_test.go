@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/crypto"
 
@@ -94,14 +94,14 @@ func PacketSerializationTest[P Packet](writePacket Packet, readPacket Packet, t 
 
 	buffer := [BufferSize]byte{}
 
-	writeStream := common.CreateWriteStream(buffer[:])
+	writeStream := encoding.CreateWriteStream(buffer[:])
 
 	err := writePacket.Serialize(writeStream)
 	assert.Nil(t, err)
 	writeStream.Flush()
 	packetBytes := writeStream.GetBytesProcessed()
 
-	readStream := common.CreateReadStream(buffer[:packetBytes])
+	readStream := encoding.CreateReadStream(buffer[:packetBytes])
 	err = readPacket.Serialize(readStream)
 	assert.Nil(t, err)
 

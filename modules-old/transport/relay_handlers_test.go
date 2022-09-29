@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
-	
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"

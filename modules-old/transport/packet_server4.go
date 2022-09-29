@@ -6,9 +6,9 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -216,10 +216,7 @@ func UnmarshalPacket(packet Packet, data []byte) error {
 
 func MarshalPacket(packet Packet) ([]byte, error) {
 	buffer := [DefaultMaxPacketSize]byte{}
-	stream, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	stream := encoding.CreateWriteStream(buffer[:])
 
 	if err := packet.Serialize(stream); err != nil {
 		return nil, err
@@ -649,10 +646,7 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 	buffer := [DefaultMaxPacketSize]byte{}
 
-	stream, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	stream := encoding.CreateWriteStream(buffer[:])
 
 	if err := sessionData.Serialize(stream); err != nil {
 		return nil, err

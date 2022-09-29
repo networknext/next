@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 )
 
 const (
@@ -207,7 +208,8 @@ func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byt
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsUp)
 	encoding.WriteUint32(r.tokens[nonceend:], &index, r.KbpsDown)
 	byteaddr := make([]byte, encoding.AddressSize)
-	encoding.WriteAddress(byteaddr, addr)
+	byteaddr_index := 0
+	encoding.WriteAddress(byteaddr, &byteaddr_index, addr)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, byteaddr, encoding.AddressSize)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, r.privateKey, crypto.KeySize)
 

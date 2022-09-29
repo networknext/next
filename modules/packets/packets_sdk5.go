@@ -1,13 +1,13 @@
 package packets
 
 import (
-	"net"
-	"fmt"
 	"errors"
+	"fmt"
+	"net"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/common"
-	
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/crypto"
 )
 
@@ -21,7 +21,7 @@ type SDK5_ServerInitRequestPacket struct {
 	DatacenterName string
 }
 
-func (packet *SDK5_ServerInitRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
@@ -40,7 +40,7 @@ type SDK5_ServerInitResponsePacket struct {
 	PreviousMagic [8]byte
 }
 
-func (packet *SDK5_ServerInitResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
 	stream.SerializeBytes(packet.UpcomingMagic[:])
@@ -60,7 +60,7 @@ type SDK5_ServerUpdateRequestPacket struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
@@ -79,7 +79,7 @@ type SDK5_ServerUpdateResponsePacket struct {
 	PreviousMagic [8]byte
 }
 
-func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBytes(packet.UpcomingMagic[:])
 	stream.SerializeBytes(packet.CurrentMagic[:])
@@ -141,7 +141,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	JitterServerToClient            float32
 }
 
-func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -275,7 +275,7 @@ type SDK5_SessionUpdateResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -350,7 +350,7 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 	index := 0
 
 	var version uint32
-	if !common.ReadUint32(data, &index, &version) {
+	if !encoding.ReadUint32(data, &index, &version) {
 		return errors.New("invalid read at version number")
 	}
 
@@ -358,19 +358,19 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 		return fmt.Errorf("unknown location version: %d", version)
 	}
 
-	if !common.ReadFloat32(data, &index, &location.Latitude) {
+	if !encoding.ReadFloat32(data, &index, &location.Latitude) {
 		return errors.New("invalid read at latitude")
 	}
 
-	if !common.ReadFloat32(data, &index, &location.Longitude) {
+	if !encoding.ReadFloat32(data, &index, &location.Longitude) {
 		return errors.New("invalid read at longitude")
 	}
 
-	if !common.ReadString(data, &index, &location.ISP, SDK5_MaxISPNameLength) {
+	if !encoding.ReadString(data, &index, &location.ISP, SDK5_MaxISPNameLength) {
 		return errors.New("invalid read at ISP")
 	}
 
-	if !common.ReadUint32(data, &index, &location.ASN) {
+	if !encoding.ReadUint32(data, &index, &location.ASN) {
 		return errors.New("invalid read at ASN")
 	}
 
@@ -379,11 +379,11 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 
 func (location *SDK5_LocationData) Write(buffer []byte) ([]byte, error) {
 	index := 0
-	common.WriteUint32(buffer, &index, SDK5_LocationVersion)
-	common.WriteFloat32(buffer, &index, location.Latitude)
-	common.WriteFloat32(buffer, &index, location.Longitude)
-	common.WriteString(buffer, &index, location.ISP, SDK5_MaxISPNameLength)
-	common.WriteUint32(buffer, &index, location.ASN)
+	encoding.WriteUint32(buffer, &index, SDK5_LocationVersion)
+	encoding.WriteFloat32(buffer, &index, location.Latitude)
+	encoding.WriteFloat32(buffer, &index, location.Longitude)
+	encoding.WriteString(buffer, &index, location.ISP, SDK5_MaxISPNameLength)
+	encoding.WriteUint32(buffer, &index, location.ASN)
 	return buffer[:index], nil
 }
 
@@ -417,7 +417,7 @@ type SDK5_SessionData struct {
 	DurationOnNext                uint32
 }
 
-func (sessionData *SDK5_SessionData) Serialize(stream common.Stream) error {
+func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
@@ -576,7 +576,7 @@ type SDK5_MatchDataRequestPacket struct {
 	MatchValues    [SDK5_MaxMatchValues]float64
 }
 
-func (packet *SDK5_MatchDataRequestPacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_MatchDataRequestPacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version.Serialize(stream)
 
@@ -609,7 +609,7 @@ type SDK5_MatchDataResponsePacket struct {
 	Response  uint32
 }
 
-func (packet *SDK5_MatchDataResponsePacket) Serialize(stream common.Stream) error {
+func (packet *SDK5_MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
