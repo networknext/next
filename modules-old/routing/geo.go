@@ -12,7 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/networknext/backend/modules-old/encoding"
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/metrics"
 
 	"github.com/oschwald/geoip2-golang"
@@ -176,10 +177,7 @@ func WriteLocation(entry *Location) ([]byte, error) {
 
 	buffer := make([]byte, MaxLocationSize)
 
-	ws, err := encoding.CreateWriteStream(buffer[:])
-	if err != nil {
-		return nil, err
-	}
+	ws := encoding.CreateWriteStream(buffer[:])
 
 	if err := entry.Serialize(ws); err != nil {
 		return nil, err

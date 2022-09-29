@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/encoding"
+
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/billing"
 	"github.com/networknext/backend/modules-old/crypto"
-	"github.com/networknext/backend/modules-old/encoding"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -171,11 +172,10 @@ func TestSerializeBillingEntry2_Empty(t *testing.T) {
 
 	buffer := [BufferSize]byte{}
 
-	writeStream, err := encoding.CreateWriteStream(buffer[:])
-	assert.NoError(t, err)
+	writeStream := encoding.CreateWriteStream(buffer[:])
 
 	writeObject := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
-	err = writeObject.Serialize(writeStream)
+	err := writeObject.Serialize(writeStream)
 	assert.NoError(t, err)
 
 	writeStream.Flush()
