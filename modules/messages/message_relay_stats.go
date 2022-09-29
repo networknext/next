@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
-	
+
 	"github.com/networknext/backend/modules-old/encoding"
 )
 
@@ -14,6 +14,7 @@ const (
 )
 
 type RelayStatsMessage struct {
+
 	Version byte
 
 	Timestamp uint64
