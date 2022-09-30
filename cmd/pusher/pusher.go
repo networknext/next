@@ -35,7 +35,7 @@ func main() {
 				SyncInterval:   envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", time.Minute*5),
 				ValidationFunc: validateLocationFiles,
 				SaveBucket:     envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
-				ReceivingVMs:   service.GcpStorage.GetMIGInstanceNamesEnv("SERVER_BACKEND_MIG_NAME", ""),
+				ReceivingMIG:   envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
 				FileConfigs: []common.SyncFile{
 					{
 						Name:        "GeoIP2-ISP.mmdb", // download URL is a compress tar.gz so we need to know single file name
@@ -50,7 +50,7 @@ func main() {
 			{
 				SyncInterval:   envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", time.Minute*1),
 				ValidationFunc: validateBinFiles,
-				ReceivingVMs:   service.GcpStorage.GetMIGInstanceNamesEnv("RELAY_GATEWAY_MIG_NAME", ""),
+				ReceivingMIG:   envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
 				FileConfigs: []common.SyncFile{
 					{
 						Name:        databaseFileName,
