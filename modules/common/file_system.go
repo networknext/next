@@ -1,128 +1,105 @@
 package common
 
 import (
-	"context"
+	"archive/tar"
+	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-
-	"github.com/networknext/backend/modules-old/backend"
-	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules/core"
+	"strings"
 )
 
-// ------------------------------------------------------------------------
-
-type BinType string
-
-const BIN_DATABASE BinType = "city"
-const BIN_OVERLAY BinType = "isp"
-
-type BinFile struct {
-	Name string
-	Path string
-	Type BinType
+func GetFileExtension(filePath string) string {
+	pathTokens := strings.Split(filePath, ".")
+	return pathTokens[len(pathTokens)-1]
 }
 
-func (binFile *BinFile) Validate(fileRef *os.File) error {
-	switch binFile.Type {
-	case BIN_DATABASE:
-		return validateDatabaseFile(fileRef, &routing.DatabaseBinWrapper{})
-	case BIN_OVERLAY:
-		return validateOverlayFile(fileRef, &routing.OverlayBinWrapper{})
-	default:
-		return errors.New("unknown bin file type")
-	}
+func GetFileNameFromPath(filePath string) string {
+	pathTokens := strings.Split(filePath, "/")
+	return pathTokens[len(pathTokens)-1]
 }
 
-// todo: revisit these as the old modules are cleaned up
-func validateDatabaseFile(databaseFile *os.File, databaseNew *routing.DatabaseBinWrapper) error {
-	if err := backend.DecodeBinWrapper(databaseFile, databaseNew); err != nil {
-		core.Error("validateDatabaseFile() failed to decode database file: %v", err)
-		return err
+func LocalFileExists(fileName string) bool {
+
+	info, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return false
 	}
 
-	if databaseNew.IsEmpty() {
-		// Don't want to use an empty bin wrapper
-		// so early out here and use existing array and hash
-		err := fmt.Errorf("new database file is empty, keeping previous values")
-		core.Error(err.Error())
-		return err
+	return !info.IsDir()
+}
+
+func RemoveLocalFile(filePath string) error {
+
+	if LocalFileExists(filePath) {
+		return os.Remove(filePath)
 	}
 
 	return nil
 }
 
-// todo: revisit these as the old modules are cleaned up
-func validateOverlayFile(overlayFile *os.File, overlayNew *routing.OverlayBinWrapper) error {
-	if err := backend.DecodeOverlayWrapper(overlayFile, overlayNew); err != nil {
-		core.Error("validateOverlayFile() failed to decode database file: %v", err)
-		return err
+func SaveBytesToFile(fileData io.Reader, filePath string) error {
+
+	if err := RemoveLocalFile(filePath); err != nil {
+		return errors.New(fmt.Sprintf("failed to remove existing output file: %v", err))
+	}
+
+	outputFile, err := os.Create(filePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to create file at %s: %v", filePath, err))
+	}
+	defer outputFile.Close()
+
+	_, err = io.Copy(outputFile, fileData)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
 	}
 
 	return nil
 }
 
-// ------------------------------------------------------------------------
+func ExtractFileFromGZIP(fileData io.Reader, filePath string) error {
 
-type MaxmindType string
-
-const MAXMIND_CITY MaxmindType = "city"
-const MAXMIND_ISP MaxmindType = "isp"
-
-type MaxmindFile struct {
-	Name        string
-	Path        string
-	Type        MaxmindType
-	DownloadURL string
-	Env         string
-}
-
-func (mmdbFile *MaxmindFile) Validate(ctx context.Context) error {
-	switch mmdbFile.Type {
-	case MAXMIND_ISP:
-		return validateISPFile(ctx, mmdbFile.Env, mmdbFile.Path)
-	case MAXMIND_CITY:
-		return validateISPFile(ctx, mmdbFile.Env, mmdbFile.Path)
-	default:
-		return errors.New("unknown maxmind file type")
-	}
-}
-
-// todo: revisit these as the old modules are cleaned up
-func validateISPFile(ctx context.Context, env string, ispStorageName string) error {
-	mmdb := &routing.MaxmindDB{
-		IspFile:   ispStorageName,
-		IsStaging: env == "staging",
+	if err := RemoveLocalFile(filePath); err != nil {
+		return errors.New(fmt.Sprintf("failed to remove existing output file: %v", err))
 	}
 
-	// Validate the ISP file
-	if err := mmdb.OpenISP(ctx); err != nil {
+	outputFile, err := os.Create(filePath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to create file at %s: %v", filePath, err))
+	}
+	defer outputFile.Close()
+
+	outputFileName := GetFileNameFromPath(filePath)
+
+	// Decompress file in memory
+	gz, err := gzip.NewReader(fileData)
+	if err != nil {
 		return err
 	}
 
-	if err := mmdb.ValidateISP(); err != nil {
-		return err
+	tr := tar.NewReader(gz)
+	for {
+		var hdr *tar.Header
+
+		hdr, err = tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to read from GZIP file: %v", err))
+		}
+
+		if GetFileNameFromPath(hdr.Name) == outputFileName {
+			_, err = io.Copy(outputFile, tr)
+			if err != nil {
+				return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
+			}
+		}
 	}
 
-	return nil
-}
-
-// todo: revisit these as the old modules are cleaned up
-func validateCityFile(ctx context.Context, env string, cityStorageName string) error {
-	mmdb := &routing.MaxmindDB{
-		CityFile:  cityStorageName,
-		IsStaging: env == "staging",
-	}
-
-	// Validate the City file
-	if err := mmdb.OpenCity(ctx); err != nil {
-		return err
-	}
-
-	if err := mmdb.ValidateCity(); err != nil {
-		return err
-	}
+	gz.Close()
 
 	return nil
 }
