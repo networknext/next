@@ -16,17 +16,9 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 )
 
-type FileConfig struct {
-	UploadVMs []string
-}
-
 func main() {
 
 	service := common.CreateService("pusher")
-
-	service.SetupGCPStorage()
-
-	service.LeaderElection()
 
 	locationFiles := []common.MaxmindFile{
 		{
@@ -45,8 +37,6 @@ func main() {
 		},
 	}
 
-	RefreshLocationFiles(service, locationFiles)
-
 	binFiles := []common.BinFile{
 		{
 			Name: envvar.GetString("DATABASE_FILE_NAME", "database.bin"),
@@ -59,6 +49,12 @@ func main() {
 			Type: common.BIN_OVERLAY,
 		},
 	}
+
+	service.SetupGCPStorage()
+
+	service.LeaderElection()
+
+	RefreshLocationFiles(service, locationFiles)
 
 	RefreshBinFiles(service, binFiles)
 
@@ -79,8 +75,10 @@ func RefreshLocationFiles(service *common.Service, locationFiles []common.Maxmin
 
 		for {
 			select {
+
 			case <-service.Context.Done():
 				return
+
 			case <-ticker.C:
 
 				// Download loop
