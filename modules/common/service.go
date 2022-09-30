@@ -726,7 +726,7 @@ type FileSyncGroup struct {
 	FileConfigs    []SyncFile
 	ValidationFunc func([]string) bool
 	SaveBucket     string
-	ReceivingVMs   []string
+	ReceivingMIG   string
 }
 
 type SyncFile struct {
@@ -748,10 +748,7 @@ func (config *FileSyncConfig) Print() {
 			core.Log("file name: %s", config.Name)
 			core.Log("download url: %s", config.DownloadURL)
 		}
-		core.Log("receiving vms:")
-		for _, vm := range group.ReceivingVMs {
-			core.Log("vm name: %s", vm)
-		}
+		core.Log("receiving mig name: %s", group.ReceivingMIG)
 	}
 	core.Log("")
 
@@ -802,7 +799,9 @@ func (service *Service) StartFileSync(config *FileSyncConfig) {
 							}
 						}
 
-						if err := service.PushFileToGCPVirtualMachines(fileName, group.ReceivingVMs); err != nil {
+						receivingVMs := service.GcpStorage.GetMIGInstanceNames(group.ReceivingMIG)
+
+						if err := service.PushFileToGCPVirtualMachines(fileName, receivingVMs); err != nil {
 							core.Error("failed to upload location file to GCP VMs: %v", err)
 						}
 					}
