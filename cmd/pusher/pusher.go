@@ -225,3 +225,44 @@ func RefreshBinFiles(service *common.Service, binFiles []common.BinFile) {
 		}
 	}()
 }
+
+
+/*
+	FileSyncConfig		
+		FileGroup
+		 - interval
+		 - array of n files (how to download them, where they go)
+		 - function pointer to validate function, takes array of file paths, and returns true if valid (optional)
+		 - bucket where files should be uploaded when they pass validation (optional)
+		 - name of mig where files should be pushed to when they pass validation (optional)
+*/
+
+/*
+	Two functions:
+
+		1. RunFileSync(config)
+
+		2. RunFilePusher
+
+	File pusher does not take config, all config is passed to it, as needed, via a struct, which comes in on a channel.
+
+	For example:
+
+		FilePushData
+			- files []string
+			- upload bucket
+			- push to mig name
+*/
+
+/*
+	It should be possible to configure a FileSync method, so it runs and syncs files, but does no pushing.
+
+	This will be useful for any service that needs to periodically update files from some external source.
+
+	When you download files, instead of downloading them to the final filename, they should be downloaded to temporary files, eg. downloadname-[guid]
+
+	Once the validation finishes, all files in the group should be quickly renamed to the correct final name on disk.
+
+	This way, if the file sync in used by itself, we can guarantee that we don't periodically overwrite valid files, with 
+	bad files that do not validate.
+*/
