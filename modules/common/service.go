@@ -1,12 +1,15 @@
 package common
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,6 +17,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -89,6 +93,8 @@ type Service struct {
 	routeMatrixMutex    sync.RWMutex
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *routing.DatabaseBinWrapper
+
+	GcpStorage *GCPHandler
 }
 
 func CreateService(serviceName string) *Service {
@@ -343,6 +349,7 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Log("received shutdown signal")
+
 	// todo: wait group
 	core.Log("successfully shutdown")
 }
@@ -713,3 +720,103 @@ func (service *Service) updateMagicLoop() {
 }
 
 // ----------------------------------------------------------
+
+func (service *Service) SetupGCPStorage() {
+
+	googleProjectId := envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	storageLocation := envvar.GetString("GCP_STORAGE_BUCKET", "gs://happy_path_testing")
+
+	core.Log("google project id: %s", googleProjectId)
+	core.Log("gcp storage location: %s", storageLocation)
+
+	gcpStorage, err := NewGCPHandler(service.Context, googleProjectId, storageLocation)
+	if err != nil {
+		core.Error("failed to create gcp storage client: %v", err)
+		os.Exit(1)
+	}
+
+	service.GcpStorage = gcpStorage
+}
+
+func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uploadPath string, vmNames []string) error {
+
+	if len(vmNames) == 0 {
+		core.Debug("no VMs to upload to")
+		return nil
+	}
+
+	hadError := false
+	for _, vm := range vmNames {
+		if err := service.GcpStorage.CopyFromLocalToRemote(service.Context, fileLocation, uploadPath, vm); err != nil {
+			core.Error("failed to copy file to vm: %v", err)
+			hadError = true
+		}
+	}
+
+	if hadError {
+		return errors.New("failed to upload file to one or more vms")
+	}
+
+	return nil
+}
+
+func (service *Service) DownloadGzipFileFromURL(url string, outputLocation string, extension string) error {
+
+	httpClient := http.Client{
+		Timeout: time.Second * 30,
+	}
+
+	httpResponse, err := httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+
+	if httpResponse.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
+	}
+
+	// Decompress file in memory
+	gz, err := gzip.NewReader(httpResponse.Body)
+	if err != nil {
+		return err
+	}
+
+	fileBuffer := bytes.NewBuffer(nil)
+	tr := tar.NewReader(gz)
+	for {
+		var hdr *tar.Header
+
+		hdr, err = tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to read from GZIP file: %v", err))
+		}
+
+		if strings.HasSuffix(hdr.Name, extension) {
+			_, err = io.Copy(fileBuffer, tr)
+			if err != nil {
+				return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
+			}
+		}
+	}
+
+	gz.Close()
+	httpResponse.Body.Close()
+
+	// Write file to disk
+	filePath, err := os.Create(outputLocation)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to create file at %s: %v", outputLocation, err))
+	}
+
+	_, err = io.Copy(filePath, fileBuffer)
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to write file to disk at %s: %v", outputLocation, err))
+	}
+
+	return nil
+}
+
+// ---------------------------------------------------------------------------------------------------
