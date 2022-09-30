@@ -1,15 +1,12 @@
 package common
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -721,15 +718,107 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
+type FileSyncConfig struct {
+	FileGroups []FileSyncGroup
+}
+type FileSyncGroup struct {
+	SyncInterval   time.Duration
+	FileConfigs    []SyncFile
+	ValidationFunc func([]string) bool
+	SaveBucket     string
+	ReceivingVMs   []string
+}
+
+type SyncFile struct {
+	Name        string
+	DownloadURL string
+}
+
+func (config *FileSyncConfig) Print() {
+
+	core.Log("sync group configs:")
+
+	for _, group := range config.FileGroups {
+		core.Log("\nsync interval: %v", group.SyncInterval)
+		if group.SaveBucket != "" {
+			core.Log("save bucket url: %s", group.SaveBucket)
+		}
+		core.Log("sync files:")
+		for _, config := range group.FileConfigs {
+			core.Log("file name: %s", config.Name)
+			core.Log("download url: %s", config.DownloadURL)
+		}
+		core.Log("receiving vms:")
+		for _, vm := range group.ReceivingVMs {
+			core.Log("vm name: %s", vm)
+		}
+	}
+	core.Log("")
+
+}
+
+func (service *Service) StartFileSync(config *FileSyncConfig) {
+
+	for _, group := range config.FileGroups {
+
+		go func(group FileSyncGroup) {
+
+			ticker := time.NewTicker(group.SyncInterval)
+
+			for {
+				select {
+
+				case <-service.Context.Done():
+					return
+
+				case <-ticker.C:
+
+					if !service.IsLeader() {
+						continue
+					}
+
+					fileNames := make([]string, len(group.FileConfigs))
+					for i, syncFile := range group.FileConfigs {
+
+						fileNames[i] = syncFile.Name
+
+						if err := service.DownloadFile(syncFile.DownloadURL, syncFile.Name); err != nil {
+							core.Error("failed to download file: %v", err)
+							continue
+						}
+					}
+
+					if !group.ValidationFunc(fileNames) {
+						core.Error("failed to validate files")
+						continue
+					}
+
+					for _, fileName := range fileNames {
+
+						if group.SaveBucket != "" {
+							if err := service.GcpStorage.CopyFromLocalToBucket(service.Context, fileName, fmt.Sprintf("%s/%s", group.SaveBucket, fileName)); err != nil {
+								core.Error("failed to upload location file to GCP storage: %v", err)
+								continue
+							}
+						}
+
+						if err := service.PushFileToGCPVirtualMachines(fileName, group.ReceivingVMs); err != nil {
+							core.Error("failed to upload location file to GCP VMs: %v", err)
+						}
+					}
+				}
+			}
+		}(group)
+	}
+}
+
 func (service *Service) SetupGCPStorage() {
 
 	googleProjectId := envvar.GetString("GOOGLE_PROJECT_ID", "local")
-	storageLocation := envvar.GetString("GCP_STORAGE_BUCKET", "gs://happy_path_testing")
 
 	core.Log("google project id: %s", googleProjectId)
-	core.Log("gcp storage location: %s", storageLocation)
 
-	gcpStorage, err := NewGCPHandler(service.Context, googleProjectId, storageLocation)
+	gcpStorage, err := NewGCPHandler(service.Context, googleProjectId)
 	if err != nil {
 		core.Error("failed to create gcp storage client: %v", err)
 		os.Exit(1)
@@ -738,7 +827,7 @@ func (service *Service) SetupGCPStorage() {
 	service.GcpStorage = gcpStorage
 }
 
-func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uploadPath string, vmNames []string) error {
+func (service *Service) PushFileToGCPVirtualMachines(filePath string, vmNames []string) error {
 
 	if len(vmNames) == 0 {
 		core.Debug("no VMs to upload to")
@@ -747,7 +836,7 @@ func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uplo
 
 	hadError := false
 	for _, vm := range vmNames {
-		if err := service.GcpStorage.CopyFromLocalToRemote(service.Context, fileLocation, uploadPath, vm); err != nil {
+		if err := service.GcpStorage.CopyFromLocalToRemote(service.Context, filePath, filePath, vm); err != nil {
 			core.Error("failed to copy file to vm: %v", err)
 			hadError = true
 		}
@@ -760,60 +849,59 @@ func (service *Service) UploadFileToGCPVirtualMachines(fileLocation string, uplo
 	return nil
 }
 
-func (service *Service) DownloadGzipFileFromURL(url string, outputLocation string, extension string) error {
+func (service *Service) DownloadFile(downloadURL string, fileName string) error {
+
+	currentDirectory, err := os.Getwd()
+	if err != nil {
+		core.Error("failed to get current directory: %v", err)
+		currentDirectory = "./"
+	}
+
+	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
+
+	urlScheme := strings.Split(downloadURL, "://")[0]
+
+	switch urlScheme {
+	case "gs":
+		return service.downloadFileFromGCPBucket(downloadURL, path)
+	case "http", "https":
+		return service.downloadFileFromURL(downloadURL, path)
+	default:
+		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
+	}
+}
+
+func (service *Service) downloadFileFromGCPBucket(bucketPath string, filePath string) error {
+	return service.GcpStorage.CopyFromBucketToLocal(service.Context, bucketPath, filePath)
+}
+
+func (service *Service) downloadFileFromURL(downloadURL string, filePath string) error {
 
 	httpClient := http.Client{
 		Timeout: time.Second * 30,
 	}
 
-	httpResponse, err := httpClient.Get(url)
+	httpResponse, err := httpClient.Get(downloadURL)
 	if err != nil {
 		return err
 	}
+	defer httpResponse.Body.Close()
 
 	if httpResponse.StatusCode != http.StatusOK {
 		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
 	}
 
-	// Decompress file in memory
-	gz, err := gzip.NewReader(httpResponse.Body)
-	if err != nil {
-		return err
-	}
+	contentType := httpResponse.Header.Get("content-type")
 
-	fileBuffer := bytes.NewBuffer(nil)
-	tr := tar.NewReader(gz)
-	for {
-		var hdr *tar.Header
+	if contentType == "application/gzip" {
 
-		hdr, err = tr.Next()
-		if err == io.EOF {
-			break
+		if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
+			return err
 		}
-		if err != nil {
-			return errors.New(fmt.Sprintf("failed to read from GZIP file: %v", err))
+	} else {
+		if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
+			return err
 		}
-
-		if strings.HasSuffix(hdr.Name, extension) {
-			_, err = io.Copy(fileBuffer, tr)
-			if err != nil {
-				return errors.New(fmt.Sprintf("failed to copy file data to buffer: %v", err))
-			}
-		}
-	}
-
-	gz.Close()
-	httpResponse.Body.Close()
-
-	// Write file to disk
-	filePath, err := os.Create(outputLocation)
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to create file at %s: %v", outputLocation, err))
-	}
-
-	_, err = io.Copy(filePath, fileBuffer)
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to write file to disk at %s: %v", outputLocation, err))
 	}
 
 	return nil
