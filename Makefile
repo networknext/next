@@ -545,13 +545,8 @@ run-test-func-sdk5:
 .PHONY: test-func-sdk5
 test-func-sdk5: build-test-func-sdk5 run-test-func-sdk5 ## runs functional tests (sdk5)
 
-.PHONY: activate-gcp-credentials
-activate-gcp-credentials:
-	gcloud auth activate-service-account --key-file=./happy-path-service-account.json
-
 .PHONY: dev-happy-path
-dev-happy-path: activate-gcp-credentials ## runs the happy path
-	gcloud auth activate-service-account --key-file=./happy-path-service-account.json
+dev-happy-path: ## runs the happy path
 	@printf "\ndon't worry. be happy.\n\n" ; \
 	./build.sh
 	$(GO) build -o ./dist/happy_path ./cmd/happy_path/happy_path.go
@@ -592,7 +587,7 @@ dev-ghost-army: dist/ghost_army ## runs a local ghost army
 	@./dist/ghost_army
 
 .PHONY:
-dev-pusher: dist/pusher activate-gcp-credentials ## runs a local pusher
+dev-pusher: dist/pusher ## runs a local pusher
 	@HTTP_PORT=41009 ./dist/pusher
 
 .PHONY: dev-fake-relays
