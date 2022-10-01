@@ -50,7 +50,7 @@ public class NetworkNext : ModuleRules
         );
 
         bEnableUndefinedIdentifierWarnings = false;
-		
+        
         if (Target.Platform == UnrealTargetPlatform.Mac)
         {
             PublicFrameworks.Add("SystemConfiguration");
