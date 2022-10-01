@@ -33,11 +33,13 @@ func main() {
 	fileSyncConfig := &common.FileSyncConfig{
 		FileGroups: []common.FileSyncGroup{
 			{
+				Name:           "ip2location",
 				SyncInterval:   envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateLocationFiles,
-				SaveBucket:     envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
-				ReceivingMIG:   envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
-				FileConfigs: []common.SyncFile{
+				// todo: we should not upload to the same location where it comes from. makes no sense!
+				UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
+				PushToMIG:      envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
+				Files: []common.SyncFile{
 					{
 						Name:        "GeoIP2-ISP.mmdb", // download URL is a compress tar.gz so we need to know single file name
 						DownloadURL: envvar.GetString("MAXMIND_ISP_DOWNLOAD_URI", "gs://happy_path_testing/GeoIP2-ISP.tar.gz"),
@@ -49,10 +51,13 @@ func main() {
 				},
 			},
 			{
+				Name:           "database",
 				SyncInterval:   envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateBinFiles,
-				ReceivingMIG:   envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
-				FileConfigs: []common.SyncFile{
+				// todo: we should not upload to the same location where it comes from. makes no sense!
+				// UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
+				PushToMIG:      envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
+				Files: []common.SyncFile{
 					{
 						Name:        databaseFileName,
 						DownloadURL: databaseDownloadURL,

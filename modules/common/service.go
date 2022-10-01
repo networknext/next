@@ -723,113 +723,6 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
-// todo: move file sync nuts and bolts into "filesync.go"
-// service should just create the object and call into the method to do the file sync using a config as a helper
-
-type FileSyncConfig struct {
-	FileGroups []FileSyncGroup
-}
-type FileSyncGroup struct {
-	SyncInterval   time.Duration
-	FileConfigs    []SyncFile
-	ValidationFunc func([]string) bool
-	SaveBucket     string
-	ReceivingMIG   string
-}
-
-type SyncFile struct {
-	Name        string
-	DownloadURL string
-}
-
-func (config *FileSyncConfig) Print() {
-
-	core.Log("sync group configs:")
-
-	for _, group := range config.FileGroups {
-		core.Log("\nsync interval: %v", group.SyncInterval)
-		if group.SaveBucket != "" {
-			core.Log("save bucket url: %s", group.SaveBucket)
-		}
-		for _, config := range group.FileConfigs {
-			core.Log("%s -> %s", config.DownloadURL, config.Name)
-		}
-		if group.ReceivingMIG != "" {
-			core.Log("receiving mig name: %s", group.ReceivingMIG)
-		}
-	}
-	core.Log("")
-
-}
-
-func (service *Service) StartFileSync(config *FileSyncConfig) {
-
-	for _, group := range config.FileGroups {
-
-		go func(group FileSyncGroup) {
-
-			ticker := time.NewTicker(group.SyncInterval)
-
-			for {
-				select {
-
-				case <-service.Context.Done():
-					return
-
-				case <-ticker.C:
-
-					if !service.IsLeader() {
-						continue
-					}
-
-					fileNames := make([]string, len(group.FileConfigs))
-
-					for i, syncFile := range group.FileConfigs {
-						fileNames[i] = syncFile.Name
-					}
-
-					core.Debug("syncing files: %v", fileNames)
-
-					for i, syncFile := range group.FileConfigs {
-
-						fileNames[i] = syncFile.Name
-						core.Debug("downloading %s", syncFile.DownloadURL)
-						if err := service.DownloadFile(syncFile.DownloadURL, syncFile.Name); err != nil {
-							core.Error("failed to download file: %v", err)
-							continue
-						}
-					}
-
-					if !group.ValidationFunc(fileNames) {
-						core.Error("failed to validate files: %v", fileNames)
-						continue
-					}
-
-					for _, fileName := range fileNames {
-
-						if group.SaveBucket != "" {
-							if err := service.googleCloudStorage.CopyFromLocalToBucket(service.Context, fileName, fmt.Sprintf("%s/%s", group.SaveBucket, fileName)); err != nil {
-								core.Error("failed to upload location file to GCP storage: %v", err)
-								continue
-							}
-						}
-
-						receivingVMs := GetMIGInstanceNames(service.googleProjectId, group.ReceivingMIG)
-
-						if len(receivingVMs) > 0 {
-							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-						}
-
-						if err := service.PushFileToVMs(fileName, receivingVMs); err != nil {
-							core.Error("failed to upload location file to GCP VMs: %v", err)
-						}
-					}
-				}
-			}
-		}(group)
-	}
-}
-
 func (service *Service) SetupStorage() {
 
 	googleCloudStorage, err := NewGoogleCloudStorage(service.Context, service.googleProjectId)
@@ -839,6 +732,10 @@ func (service *Service) SetupStorage() {
 	}
 
 	service.googleCloudStorage = googleCloudStorage
+}
+
+func (service *Service) StartFileSync(config *FileSyncConfig) {
+	// todo: call out to file sync
 }
 
 func (service *Service) PushFileToVMs(filePath string, vmNames []string) error {
