@@ -185,11 +185,11 @@ int relay_initialize()
         relay_debug = atoi( relay_debug_env );
         if ( relay_debug )
         {
-        	printf( "    relay debug is on\n" );
+            printf( "    relay debug is on\n" );
         }
         else
         {
-        	printf( "    relay debug is off\n" );
+            printf( "    relay debug is off\n" );
         }
     }
 
@@ -3907,7 +3907,7 @@ struct TestObject
 
         serialize_bool( stream, data.g );
 
-	    serialize_int( stream, data.numItems, 0, MaxItems - 1 );
+        serialize_int( stream, data.numItems, 0, MaxItems - 1 );
         for ( int i = 0; i < data.numItems; ++i )
             serialize_bits( stream, data.items[i], 8 );
 

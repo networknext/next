@@ -36,7 +36,7 @@
 extern "C"
 {
 #if defined _WIN32_WCE
-	static DWORD thread_routine (LPVOID arg_)
+    static DWORD thread_routine (LPVOID arg_)
 #else
     static unsigned int __stdcall thread_routine (void *arg_)
 #endif
