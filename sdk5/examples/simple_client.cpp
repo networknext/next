@@ -71,8 +71,8 @@ int main()
 
         if ( next_client_ready( client ) )
         {
-	        next_client_send_packet( client, packet_data, sizeof(packet_data) );
-	    }
+            next_client_send_packet( client, packet_data, sizeof(packet_data) );
+        }
         
         next_sleep( 0.25 );
     }

@@ -555,16 +555,16 @@ void zmq::mtrie_t::match (unsigned char *data_, size_t size_,
             break;
 
         //  If there's one subnode (optimisation).
-		if (current->count == 1) {
+        if (current->count == 1) {
             if (data_ [0] != current->min)
                 break;
             current = current->next.node;
             data_++;
             size_--;
-		    continue;
-		}
+            continue;
+        }
 
-		//  If there are multiple subnodes.
+        //  If there are multiple subnodes.
         if (data_ [0] < current->min || data_ [0] >=
               current->min + current->count)
             break;

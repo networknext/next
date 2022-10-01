@@ -176,7 +176,7 @@ int zmq::gssapi_mechanism_base_t::decode_message (msg_t *msg_)
 
     const uint8_t flags = static_cast <char *> (plaintext.value)[0];
     if (flags & 0x01)
-	    msg_->set_flags (msg_t::more);
+        msg_->set_flags (msg_t::more);
 
     memcpy (msg_->data (), static_cast <char *> (plaintext.value)+1, plaintext.length-1);
 

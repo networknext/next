@@ -45,14 +45,14 @@ static void print_function( int level, const char * format, ...)
     vsnprintf( buffer, sizeof( buffer ), format, args );
     const char * level_str = log_level_str( level );
     va_end( args );
-	if ( level != NEXT_LOG_LEVEL_NONE )
-	{
-	    NN_LOG( "%0.6f %s: %s\n", next_time(), level_str, buffer );
-	}
-	else
-	{
-		NN_LOG( "%s\n", buffer );
-	}
+    if ( level != NEXT_LOG_LEVEL_NONE )
+    {
+        NN_LOG( "%0.6f %s: %s\n", next_time(), level_str, buffer );
+    }
+    else
+    {
+        NN_LOG( "%s\n", buffer );
+    }
 }
 
 static nn::socket::ConfigDefaultWithMemory socket_config_with_memory;
@@ -70,32 +70,32 @@ extern "C" void nnMain()
 
     next_log_function( print_function );
 
-	next_config_t config;
-	next_default_config( &config );
-	strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
 
-	next_init( NULL, &config );
+    next_init( NULL, &config );
 
-	NN_LOG( "\nRunning tests...\n\n" );
+    NN_LOG( "\nRunning tests...\n\n" );
 
-	next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level( NEXT_LOG_LEVEL_NONE );
 
-	next_test();
-	
-	printf( "\nAll tests passed successfully!\n\n" );
+    next_test();
+    
+    printf( "\nAll tests passed successfully!\n\n" );
 
-	next_log_level( NEXT_LOG_LEVEL_INFO );
+    next_log_level( NEXT_LOG_LEVEL_INFO );
 
-	printf( "Starting client...\n\n" );
+    printf( "Starting client...\n\n" );
 
-	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
     if ( !client )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create network next client" );
         exit( 1 );
     }
 
-	next_client_open_session( client, "173.255.241.176:32202" );
+    next_client_open_session( client, "173.255.241.176:32202" );
 
     while ( !quit )
     {
@@ -108,9 +108,9 @@ extern "C" void nnMain()
         next_sleep( 1.0f / 60.0f );
     }
 
-	printf( "Shutting down...\n\n" );
+    printf( "Shutting down...\n\n" );
 
-	next_client_destroy( client );
+    next_client_destroy( client );
 
     next_term();
 

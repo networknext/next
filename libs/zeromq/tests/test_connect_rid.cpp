@@ -186,7 +186,7 @@ int main (void)
 {
     setup_test_environment ();
 
-	test_stream_2_stream ();
+    test_stream_2_stream ();
     test_router_2_router (false);
     test_router_2_router (true);
 

@@ -199,7 +199,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
 
-	memset( mutex, 0, sizeof( next_platform_mutex_t) );
+    memset( mutex, 0, sizeof( next_platform_mutex_t) );
 
     ScePthreadMutexattr attr;
     scePthreadMutexattrInit(&attr);
@@ -207,12 +207,12 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
     bool success = scePthreadMutexInit( &mutex->handle, &attr, "next" ) == SCE_OK;
     scePthreadMutexattrDestroy( &attr );
     
-	if ( !success )
+    if ( !success )
     {
-		return NEXT_ERROR;
+        return NEXT_ERROR;
     }
 
-	mutex->ok = true;
+    mutex->ok = true;
 
     return NEXT_OK;
 }
@@ -220,25 +220,25 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
+    next_assert( mutex->ok );
     scePthreadMutexLock( &mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
-	scePthreadMutexUnlock( &mutex->handle );
+    next_assert( mutex->ok );
+    scePthreadMutexUnlock( &mutex->handle );
 }
 
 void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	if ( mutex->ok )
-	{
-		scePthreadMutexDestroy( &mutex->handle );
-		memset( mutex, 0, sizeof(next_platform_mutex_t) );
-	}
+    if ( mutex->ok )
+    {
+        scePthreadMutexDestroy( &mutex->handle );
+        memset( mutex, 0, sizeof(next_platform_mutex_t) );
+    }
 }
 
 // time
