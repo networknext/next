@@ -16,26 +16,25 @@ import (
 	"google.golang.org/api/option"
 )
 
-type GCPHandler struct {
+type GoogleCloudStorage struct {
 	ProjectId     string
 	storageClient *storage.Client
 }
 
-// Create new GCPHandler
-func NewGCPHandler(ctx context.Context, projectId string, opts ...option.ClientOption) (*GCPHandler, error) {
+func NewGoogleCloudStorage(ctx context.Context, projectId string, opts ...option.ClientOption) (*GoogleCloudStorage, error) {
+
 	storageClient, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GCPHandler{
+	return &GoogleCloudStorage{
 		ProjectId:     projectId,
 		storageClient: storageClient,
 	}, nil
 }
 
-// Copy file from local to GCP Storage Bucket
-func (g *GCPHandler) CopyFromLocalToBucket(ctx context.Context, fileName string, storagePath string) error {
+func (g *GoogleCloudStorage) CopyFromLocalToBucket(ctx context.Context, fileName string, storagePath string) error {
 
 	currentDirectory, err := os.Getwd()
 	if err != nil {
@@ -53,18 +52,16 @@ func (g *GCPHandler) CopyFromLocalToBucket(ctx context.Context, fileName string,
 	buffer, err := runnable.CombinedOutput()
 
 	if err != nil {
+		if len(buffer) > 0 {
+			core.Debug("gsutil cp output: %s", buffer)
+		}
 		return errors.New(fmt.Sprintf("failed to copy file to bucket: %v", err))
-	}
-
-	if len(buffer) > 0 {
-		core.Debug("gsutil cp output: %s", buffer)
 	}
 
 	return nil
 }
 
-// Copy file from local to remote location on VM (SCP function)
-func (g *GCPHandler) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
+func (g *GoogleCloudStorage) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
 
 	// Call gsutil to copy the tmp file over to the instance
 	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", localPath, fmt.Sprintf("%s:%s", instanceName, outputPath))
@@ -82,8 +79,7 @@ func (g *GCPHandler) CopyFromLocalToRemote(ctx context.Context, localPath string
 	return nil
 }
 
-// Copy artifact to local a local file location
-func (g *GCPHandler) CopyFromBucketToLocal(ctx context.Context, bucketURL string, outputPath string) error {
+func (g *GoogleCloudStorage) CopyFromBucketToLocal(ctx context.Context, bucketURL string, outputPath string) error {
 
 	artifactPath := strings.Trim(bucketURL, "gs://")
 	pathTokens := strings.Split(artifactPath, "/")
@@ -115,16 +111,16 @@ type InstanceInfo struct {
 	InstanceStatus string
 }
 
-func (g *GCPHandler) GetMIGInstanceInfo(migName string) []InstanceInfo {
+func GetMIGInstanceInfo(projectId string, migName string) []InstanceInfo {
 
-	if g.ProjectId == "local" {
+	if projectId == "local" {
 		return make([]InstanceInfo, 0)
 	}
 
 	var instances []InstanceInfo
 
 	// Get the latest instance list in the relay backend mig
-	runnable := exec.Command("gcloud", "compute", "--project", g.ProjectId, "instance-groups", "managed", "list-instances", migName, "--zone", "us-central1-a", "--format", "json")
+	runnable := exec.Command("gcloud", "compute", "--project", projectId, "instance-groups", "managed", "list-instances", migName, "--zone", "us-central1-a", "--format", "json")
 
 	instancesListJson, err := runnable.CombinedOutput()
 	if err != nil {
@@ -140,8 +136,9 @@ func (g *GCPHandler) GetMIGInstanceInfo(migName string) []InstanceInfo {
 	return instances
 }
 
-func (g *GCPHandler) GetMIGInstanceNames(migName string) []string {
-	instances := g.GetMIGInstanceInfo(migName)
+func GetMIGInstanceNames(projectId string, migName string) []string {
+
+	instances := GetMIGInstanceInfo(projectId, migName)
 
 	numInstances := len(instances)
 
@@ -154,6 +151,6 @@ func (g *GCPHandler) GetMIGInstanceNames(migName string) []string {
 	return names
 }
 
-func (g *GCPHandler) GetMIGInstanceNamesEnv(environmentVariable string, defaultValue string) []string {
-	return g.GetMIGInstanceNames(envvar.GetString(environmentVariable, defaultValue))
+func GetMIGInstanceNamesEnv(environmentVariable string, projectId string, defaultValue string) []string {
+	return GetMIGInstanceNames(projectId, envvar.GetString(environmentVariable, defaultValue))
 }

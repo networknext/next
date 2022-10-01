@@ -160,26 +160,26 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 		// always
 
-		Version:                         messages.SessionUpdateMessageVersion,
-		Timestamp:                       rand.Uint64(),
-		SessionId:                       rand.Uint64(),
-		SliceNumber:                     rand.Uint32(),
-		DirectMinRTT:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectMaxRTT:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectPrimeRTT:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectJitter:                    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10)),
-		DirectPacketLoss:                int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
-		RealPacketLoss:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
-		RealPacketLoss_Frac:             uint32(common.RandomInt(0, 300)),
-		RealJitter:                      uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter+10)),
-		Next:                            common.RandomBool(),
-		Flagged:                         common.RandomBool(),
-		Summary:                         common.RandomBool(),
-		UseDebug:                        common.RandomBool(),
-		Debug:                           common.RandomString(messages.SessionUpdateMessageMaxDebugLength+10),
-		RouteDiversity:                  int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRouteDiversity+10)),
-		UserFlags:                       rand.Uint64(),
-		TryBeforeYouBuy:                 common.RandomBool(),
+		Version:             messages.SessionUpdateMessageVersion,
+		Timestamp:           rand.Uint64(),
+		SessionId:           rand.Uint64(),
+		SliceNumber:         rand.Uint32(),
+		DirectMinRTT:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectMaxRTT:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectPrimeRTT:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
+		DirectJitter:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10)),
+		DirectPacketLoss:    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
+		RealPacketLoss:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
+		RealPacketLoss_Frac: uint32(common.RandomInt(0, 300)),
+		RealJitter:          uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter+10)),
+		Next:                common.RandomBool(),
+		Flagged:             common.RandomBool(),
+		Summary:             common.RandomBool(),
+		UseDebug:            common.RandomBool(),
+		Debug:               common.RandomString(messages.SessionUpdateMessageMaxDebugLength + 10),
+		RouteDiversity:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRouteDiversity+10)),
+		UserFlags:           rand.Uint64(),
+		TryBeforeYouBuy:     common.RandomBool(),
 
 		// error state only
 
@@ -280,7 +280,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 			message.NearRelayRTTs[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
 			message.NearRelayJitters[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
 			message.NearRelayPacketLosses[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
-		}		
+		}
 	}
 
 	if message.Next {
