@@ -632,4 +632,10 @@ loc:
 	@find reference -name '*.cpp' | xargs wc -l | grep total	
 	@echo "\nportal:"
 	@find portal -name '*.ts' | xargs wc -l | grep total	
+	@echo "\nunity:"
+	@find unity -name '*.cs' | xargs wc -l | grep total	
+	@echo "\nue4:"
+	@find ue4 -name '*.cpp' | xargs wc -l | grep total	
+	@echo "\nenet:"
+	@find enet -name '*.cpp' | xargs wc -l | grep total	
 	@echo
