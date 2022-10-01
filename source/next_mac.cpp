@@ -342,7 +342,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else if ( timeout_seconds > 0.0f )
     {
-    	// blocking with receive timeout
+        // blocking with receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
