@@ -723,6 +723,9 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
+// todo: move file sync nuts and bolts into "filesync.go"
+// service should just create the object and call into the method to do the file sync using a config as a helper
+
 type FileSyncConfig struct {
 	FileGroups []FileSyncGroup
 }
@@ -782,16 +785,20 @@ func (service *Service) StartFileSync(config *FileSyncConfig) {
 					fileNames := make([]string, len(group.FileConfigs))
 
 					for i, syncFile := range group.FileConfigs {
+						fileNames[i] = syncFile.Name
+					}
+
+					core.Debug("syncing files: %v", fileNames)
+
+					for i, syncFile := range group.FileConfigs {
 
 						fileNames[i] = syncFile.Name
-
+						core.Debug("downloading %s", syncFile.DownloadURL)
 						if err := service.DownloadFile(syncFile.DownloadURL, syncFile.Name); err != nil {
 							core.Error("failed to download file: %v", err)
 							continue
 						}
 					}
-
-					core.Debug("syncing files: %v", fileNames)
 
 					if !group.ValidationFunc(fileNames) {
 						core.Error("failed to validate files: %v", fileNames)
@@ -813,7 +820,7 @@ func (service *Service) StartFileSync(config *FileSyncConfig) {
 							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
 						}
 
-						if err := service.PushFileToGoogleCloudVMs(fileName, receivingVMs); err != nil {
+						if err := service.PushFileToVMs(fileName, receivingVMs); err != nil {
 							core.Error("failed to upload location file to GCP VMs: %v", err)
 						}
 					}
@@ -834,7 +841,7 @@ func (service *Service) SetupStorage() {
 	service.googleCloudStorage = googleCloudStorage
 }
 
-func (service *Service) PushFileToGoogleCloudVMs(filePath string, vmNames []string) error {
+func (service *Service) PushFileToVMs(filePath string, vmNames []string) error {
 
 	if len(vmNames) == 0 {
 		return nil
