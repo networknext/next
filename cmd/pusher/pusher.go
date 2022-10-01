@@ -21,22 +21,25 @@ func main() {
 
 	service := common.CreateService("pusher")
 
-	service.SetupGCPStorage()
+	service.SetupStorage()
 
 	databaseDownloadURL := envvar.GetString("DATABASE_DOWNLOAD_URI", "gs://happy_path_testing/database.bin")
 	overlayDownloadURL := envvar.GetString("OVERLAY_DOWNLOAD_URI", "gs://happy_path_testing/overlay.bin")
 
+	// todo: don't do this work here. do it internally in the config or file sync code
 	databaseFileName := common.GetFileNameFromPath(databaseDownloadURL)
 	overlayFileName := common.GetFileNameFromPath(overlayDownloadURL)
 
 	fileSyncConfig := &common.FileSyncConfig{
 		FileGroups: []common.FileSyncGroup{
 			{
-				SyncInterval:   envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", time.Minute*5),
+				Name:           "ip2location",
+				SyncInterval:   envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateLocationFiles,
-				SaveBucket:     envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
-				ReceivingMIG:   envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
-				FileConfigs: []common.SyncFile{
+				// todo: we should not upload to the same location where it comes from. makes no sense!
+				UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
+				PushToMIG:      envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
+				Files: []common.SyncFile{
 					{
 						Name:        "GeoIP2-ISP.mmdb", // download URL is a compress tar.gz so we need to know single file name
 						DownloadURL: envvar.GetString("MAXMIND_ISP_DOWNLOAD_URI", "gs://happy_path_testing/GeoIP2-ISP.tar.gz"),
@@ -48,10 +51,13 @@ func main() {
 				},
 			},
 			{
-				SyncInterval:   envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", time.Minute*1),
+				Name:           "database",
+				SyncInterval:   envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateBinFiles,
-				ReceivingMIG:   envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
-				FileConfigs: []common.SyncFile{
+				// todo: we should not upload to the same location where it comes from. makes no sense!
+				// UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
+				PushToMIG:      envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
+				Files: []common.SyncFile{
 					{
 						Name:        databaseFileName,
 						DownloadURL: databaseDownloadURL,
@@ -67,16 +73,15 @@ func main() {
 
 	fileSyncConfig.Print()
 
-	service.LeaderElection()
-
 	service.StartFileSync(fileSyncConfig)
+
+	service.LeaderElection()
 
 	service.StartWebServer()
 
 	service.WaitForShutdown()
 }
 
-// todo: keep an eye on these structures while modules-new is being built out
 func validateLocationFiles(locationFiles []string) bool {
 
 	ipStr := "192.0.2.1"
@@ -141,10 +146,8 @@ func validateLocationFiles(locationFiles []string) bool {
 	}
 
 	return true
-
 }
 
-// todo: keep an eye on these structures while modules-new is being built out
 func validateBinFiles(binFiles []string) bool {
 
 	databaseFile := binFiles[0]

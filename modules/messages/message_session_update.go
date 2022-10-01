@@ -6,8 +6,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -607,17 +607,17 @@ func (message *SessionUpdateMessage) Clamp() {
 	}
 
 	if common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("DirectMaxRTT was clamped!")		
+		core.Warn("DirectMaxRTT was clamped!")
 	}
 
 	if common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("DirectPrimeRTT was clamped!")		
+		core.Warn("DirectPrimeRTT was clamped!")
 	}
 
 	if common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter) {
 		core.Warn("DirectMinRTT was clamped!")
 	}
-	
+
 	if common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
 		core.Warn("DirectPacketLoss was clamped!")
 	}
@@ -631,19 +631,19 @@ func (message *SessionUpdateMessage) Clamp() {
 	}
 
 	if common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter) {
-		core.Warn("RealPacketJitter was clamped!")		
+		core.Warn("RealPacketJitter was clamped!")
 	}
 
 	if common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength) {
-		core.Warn("Debug was clamped!")		
+		core.Warn("Debug was clamped!")
 	}
 
 	if common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity) {
-		core.Warn("RouteDiversity was clamped!")		
+		core.Warn("RouteDiversity was clamped!")
 	}
 
 	if common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength) {
-		core.Warn("ISP was clamped!")		
+		core.Warn("ISP was clamped!")
 	}
 
 	if common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType) {
@@ -651,15 +651,15 @@ func (message *SessionUpdateMessage) Clamp() {
 	}
 
 	if common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType) {
-		core.Warn("PlatformType was clamped!")		
+		core.Warn("PlatformType was clamped!")
 	}
 
 	if common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags) {
-		core.Warn("NumTags was clamped!")		
+		core.Warn("NumTags was clamped!")
 	}
 
 	if common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays) {
-		core.Warn("NumNearRelays was clamped!")		
+		core.Warn("NumNearRelays was clamped!")
 	}
 
 	for i := 0; i < int(message.NumNearRelays); i++ {
@@ -673,31 +673,31 @@ func (message *SessionUpdateMessage) Clamp() {
 		}
 
 		if common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss) {
-			core.Warn("NearRelayPacketLosses was clamped!")			
+			core.Warn("NearRelayPacketLosses was clamped!")
 		}
 	}
 
 	if common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("NextRTT was clamped!")		
+		core.Warn("NextRTT was clamped!")
 	}
 
 	if common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter) {
-		core.Warn("NextJitter was clamped!")		
+		core.Warn("NextJitter was clamped!")
 	}
 
 	if common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
-		core.Warn("NextPacketLoss was clamped!")		
+		core.Warn("NextPacketLoss was clamped!")
 	}
 
 	if common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("PredictedNextRTT was clamped!")		
+		core.Warn("PredictedNextRTT was clamped!")
 	}
 
 	if common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT) {
-		core.Warn("NearRelayRTT was clamped!")		
+		core.Warn("NearRelayRTT was clamped!")
 	}
 
 	if common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays) {
-		core.Warn("NumNextRelays was clamped!")		
+		core.Warn("NumNextRelays was clamped!")
 	}
 }
