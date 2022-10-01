@@ -28,5 +28,6 @@ parallel ::: \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/analytics ./cmd/analytics/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_server_backend4 ./cmd/new_server_backend4/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_server_backend5 ./cmd/new_server_backend5/*.go" \
+"go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_pusher ./cmd/pusher/*.go" \
 "go build -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
 "go build -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \
