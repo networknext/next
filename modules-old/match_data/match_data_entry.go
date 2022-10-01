@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	MatchDataEntryVersion = uint32(0)
-	MaxMatchDataEntryBytes = 2048
+	MatchDataEntryVersion     = uint32(0)
+	MaxMatchDataEntryBytes    = 2048
 	MatchDataMaxAddressLength = 256
-	MatchDataMaxMatchValues = 64
+	MatchDataMaxMatchValues   = 64
 )
 
 type MatchDataEntry struct {
