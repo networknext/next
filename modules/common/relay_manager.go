@@ -69,36 +69,36 @@ func CreateRelayManager() *RelayManager {
 func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
 
     /*
-        Process Relay Update
-        --------------------
+       Process Relay Update
+       --------------------
 
-        Our goal is to get stable RTT, Jitter and PL values to feed into our route optimization algorithm,
-        so we can send traffic across stable routes that aren't subject to change.
+       Our goal is to get stable RTT, Jitter and PL values to feed into our route optimization algorithm,
+       so we can send traffic across stable routes that aren't subject to change.
 
-        To achieve this, this function processes a "relay update" sent from a relay and stores it
-        in a data structure use to generate RTT, Jitter and Packet Loss values per-relay pair (source,dest)
-        to feed into our route optimization algorithm.
+       To achieve this, this function processes a "relay update" sent from a relay and stores it
+       in a data structure use to generate RTT, Jitter and Packet Loss values per-relay pair (source,dest)
+       to feed into our route optimization algorithm.
 
-        The relay update contains samples the relay has derived by pinging n other relays for roughly one second.
+       The relay update contains samples the relay has derived by pinging n other relays for roughly one second.
 
-        Each sample contains:
+       Each sample contains:
 
-            1. The id of the relay being pinged.
+           1. The id of the relay being pinged.
 
-            1. RTT (minimum RTT seen over the last second)
+           1. RTT (minimum RTT seen over the last second)
 
-            2. Jitter (one standard deviation of jitter, relative to min RTT over one second)
+           2. Jitter (one standard deviation of jitter, relative to min RTT over one second)
 
-            3. Packet Loss (%)
+           3. Packet Loss (%)
 
-        To achieve this we have a ~5 minute history buffer per (source,dest) relay pair, and we take the
-        average RTT, Jitter and PL values across this history.
+       To achieve this we have a ~5 minute history buffer per (source,dest) relay pair, and we take the
+       average RTT, Jitter and PL values across this history.
 
-        In addition, we "poison" the history buffer for any newly seen relay pair by setting RTT, Jitter
-        and Packet Loss values very high, so we won't route any traffic across it, until it has proven
-        itself to be stable for at least 5 minutes.
+       In addition, we "poison" the history buffer for any newly seen relay pair by setting RTT, Jitter
+       and Packet Loss values very high, so we won't route any traffic across it, until it has proven
+       itself to be stable for at least 5 minutes.
 
-        ps. The data structure used to store relay stats is designed primarily to minimize lock contention.
+       ps. The data structure used to store relay stats is designed primarily to minimize lock contention.
     */
 
     // look up the entry corresponding to the source relay, or create it if it doesn't exist

@@ -1878,8 +1878,8 @@ func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *Data
 }
 
 /*
-     TODO: These functions will eventually be renamed but is being used instead of the existing functions to avoid breaking datacenters page in admin tool
-     and to avoid continuing the pattern of two separate endpoints (next and admin tool)
+   TODO: These functions will eventually be renamed but is being used instead of the existing functions to avoid breaking datacenters page in admin tool
+   and to avoid continuing the pattern of two separate endpoints (next and admin tool)
 */
 
 type mappableDatacenter struct {

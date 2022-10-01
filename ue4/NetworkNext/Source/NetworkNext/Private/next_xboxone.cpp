@@ -105,38 +105,38 @@ bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
-	next_assert( mutex );
-	memset( mutex, 0, sizeof(next_platform_mutex_t) );
+    next_assert( mutex );
+    memset( mutex, 0, sizeof(next_platform_mutex_t) );
     if ( !InitializeCriticalSectionAndSpinCount( &mutex->handle, 0xFF ) )
     {
-		return NEXT_ERROR;
+        return NEXT_ERROR;
     }
-	mutex->ok = true;
-	return NEXT_OK;
+    mutex->ok = true;
+    return NEXT_OK;
 }
 
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
+    next_assert( mutex->ok );
     EnterCriticalSection( &mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
+    next_assert( mutex->ok );
     LeaveCriticalSection( &mutex->handle );
 }
 
 void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	if ( mutex->ok )
-	{
-		DeleteCriticalSection( &mutex->handle );
-		memset( mutex, 0, sizeof(next_platform_mutex_t) );
-	}
+    if ( mutex->ok )
+    {
+        DeleteCriticalSection( &mutex->handle );
+        memset( mutex, 0, sizeof(next_platform_mutex_t) );
+    }
 }
 
 // time
@@ -158,7 +158,7 @@ static const char * next_randombytes_implementation_name()
 
 static uint32_t next_randombytes_random()
 {
-	uint32_t random = 0;
+    uint32_t random = 0;
     bool success = BCRYPT_SUCCESS( BCryptGenRandom( bcrypt_algorithm_provider, (uint8_t *)( &random ), ULONG( sizeof( random ) ), 0 ) );
     (void) success;
     next_assert( success );
@@ -228,30 +228,30 @@ int next_platform_init()
     }
 
     connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
-	try
-	{
-		auto profile = Windows::Networking::Connectivity::NetworkInformation::GetInternetConnectionProfile();
-		if ( profile )
-		{
-			switch ( profile->NetworkAdapter->IanaInterfaceType )
-			{
-				case 6:
-					connection_type = NEXT_CONNECTION_TYPE_WIRED;
-					break;
-				case 71:
-					connection_type = NEXT_CONNECTION_TYPE_WIFI;
-					break;
-				case 237:
-				case 243:
-				case 244:
-					connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-					break;
-			}
-		}
-	}
-	catch ( Platform::Exception^ )
-	{
-	}
+    try
+    {
+        auto profile = Windows::Networking::Connectivity::NetworkInformation::GetInternetConnectionProfile();
+        if ( profile )
+        {
+            switch ( profile->NetworkAdapter->IanaInterfaceType )
+            {
+                case 6:
+                    connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                    break;
+                case 71:
+                    connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                    break;
+                case 237:
+                case 243:
+                case 244:
+                    connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
+                    break;
+            }
+        }
+    }
+    catch ( Platform::Exception^ )
+    {
+    }
     return NEXT_OK;
 }
 

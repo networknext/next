@@ -188,8 +188,8 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Serve
         }
 
         /*
-            IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
-            and just log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
+           IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
+           and just log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
         */
 
         if !datacenterExists(database, packet.DatacenterID) {
@@ -378,19 +378,19 @@ func BuildNextTokens(
     response *SessionResponsePacket,
 ) {
     /*
-        This is either the first network next route, or we have changed network next route.
+       This is either the first network next route, or we have changed network next route.
 
-        We add an extra 10 seconds to the session expire timestamp, taking it to a total of 20 seconds.
+       We add an extra 10 seconds to the session expire timestamp, taking it to a total of 20 seconds.
 
-        This means that each time we get a new route, we purchase ahead an extra 10 seconds, and renew
-        the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds
-        when we continue the route.
+       This means that each time we get a new route, we purchase ahead an extra 10 seconds, and renew
+       the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds
+       when we continue the route.
 
-        However, this also means that each time we switch routes, we burn the tail (10 seconds),
-        so we want to minimize route switching where possible, for our customer's benefit.
+       However, this also means that each time we switch routes, we burn the tail (10 seconds),
+       so we want to minimize route switching where possible, for our customer's benefit.
 
-        We also increase the session version here. This ensures that the new route is considered
-        distinct from the old route, even if there are common relays in the old and the new routes.
+       We also increase the session version here. This ensures that the new route is considered
+       distinct from the old route, even if there are common relays in the old and the new routes.
     */
 
     sessionData.ExpireTimestamp += billing.BillingSliceSeconds
@@ -398,26 +398,26 @@ func BuildNextTokens(
     sessionData.Initial = true
 
     /*
-        Build the cryptographic tokens that describe the route.
+       Build the cryptographic tokens that describe the route.
 
-        The first token in the array always corresponds to the client.
+       The first token in the array always corresponds to the client.
 
-        The last token in the array always corresponds to the server.
+       The last token in the array always corresponds to the server.
 
-        The tokens in the middle correspond to relays.
+       The tokens in the middle correspond to relays.
 
-        Each token is encrypted with the private key of the router (known only to us),
-        and the public key of the corresponding node (client, server or relay).
+       Each token is encrypted with the private key of the router (known only to us),
+       and the public key of the corresponding node (client, server or relay).
 
-        This gives us the following properties:
+       This gives us the following properties:
 
-            1. Nobody can generate routes except us
+           1. Nobody can generate routes except us
 
-            2. Only the corresponding node can decrypt the token
+           2. Only the corresponding node can decrypt the token
 
-        While we are not currently a DDoS protection solution, property #2 means that
-        we could use our technology to build one, if we choose, since we can construct
-        a route and the client would only know the address of the next hop, and nothing more...
+       While we are not currently a DDoS protection solution, property #2 means that
+       we could use our technology to build one, if we choose, since we can construct
+       a route and the client would only know the address of the next hop, and nothing more...
     */
 
     numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
@@ -444,11 +444,11 @@ func BuildContinueTokens(
 ) {
 
     /*
-        Continue tokens are used when we hold the same route from one slice to the next.
+       Continue tokens are used when we hold the same route from one slice to the next.
 
-        Continue tokens just extend the expire time for the route across each relay by 10 seconds.
+       Continue tokens just extend the expire time for the route across each relay by 10 seconds.
 
-        It is smaller than the full initial description of the route, and is the common case.
+       It is smaller than the full initial description of the route, and is the common case.
     */
 
     numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
@@ -495,8 +495,8 @@ func GetRouteAddressesAndPublicKeys(
         relayID := allRelayIDs[relayIndex]
 
         /*
-            IMPORTANT: By this point, all relays in the route have been verified to exist
-            so we don't need to check that it exists in the relay map here. It *DOES*
+           IMPORTANT: By this point, all relays in the route have been verified to exist
+           so we don't need to check that it exists in the relay map here. It *DOES*
         */
 
         relay, exists := database.RelayMap[relayID]
@@ -509,18 +509,18 @@ func GetRouteAddressesAndPublicKeys(
 
         if i == 0 && relay.InternalAddressClientRoutable && relay.InternalAddr.String() != ":0" {
             /*
-                If the relay is the first hop and has an internal address
-                that can be pinged by the client, prefer to use this address
-                instead of the external address.
+               If the relay is the first hop and has an internal address
+               that can be pinged by the client, prefer to use this address
+               instead of the external address.
             */
 
             relayAddresses[i] = &relay.InternalAddr
         } else if i > 0 {
             /*
-                If the relay has a private address defined and the previous relay in the route
-                is from the same seller, prefer to send to the relay private address instead.
-                These private addresses often have better performance than the public addresses,
-                and in the case of google cloud, have cheaper bandwidth prices.
+               If the relay has a private address defined and the previous relay in the route
+               is from the same seller, prefer to send to the relay private address instead.
+               These private addresses often have better performance than the public addresses,
+               and in the case of google cloud, have cheaper bandwidth prices.
             */
 
             prevRelayIndex := routeRelays[i-1]
@@ -547,11 +547,11 @@ func GetRouteAddressesAndPublicKeys(
 type SessionHandlerState struct {
 
     /*
-        Convenience state struct for the session update handler.
+       Convenience state struct for the session update handler.
 
-        We put all the state in here so it's easy to call out to functions to do work.
+       We put all the state in here so it's easy to call out to functions to do work.
 
-        Otherwise we have to pass a million parameters into every function and it gets old fast.
+       Otherwise we have to pass a million parameters into every function and it gets old fast.
     */
 
     Input SessionData // sent up from the SDK. previous slice.
@@ -618,7 +618,7 @@ type SessionHandlerState struct {
 
     // todo
     /*
-        multipathVetoHandler storage.MultipathVetoHandler
+       multipathVetoHandler storage.MultipathVetoHandler
     */
 }
 
@@ -687,13 +687,13 @@ func SessionPre(state *SessionHandlerState) bool {
     } else {
 
         /*
-            For existing sessions, read in the input state from the session data.
+           For existing sessions, read in the input state from the session data.
 
-            This is the state.Output from the previous slice.
+           This is the state.Output from the previous slice.
 
-            We do this in SessionPre() rather than SessionUpdateExistingSession()
-            in case we early out later on in SessionPre() to ensure location is
-            written back to the SDK.
+           We do this in SessionPre() rather than SessionUpdateExistingSession()
+           in case we early out later on in SessionPre() to ensure location is
+           written back to the SDK.
         */
 
         defer func() {
@@ -710,17 +710,17 @@ func SessionPre(state *SessionHandlerState) bool {
     }
 
     /*
-        If the buyer is "Analysis Only", allow the session to proceed
-        even if the datacenter does not exist, is not enabled, or has zero
-        destination relays in the database.
+       If the buyer is "Analysis Only", allow the session to proceed
+       even if the datacenter does not exist, is not enabled, or has zero
+       destination relays in the database.
 
-        The session will always go direct since the Route State will be disabled.
+       The session will always go direct since the Route State will be disabled.
 
-        The billing entry will still contain the UnknownDatacenter flag to let
-        us know if we need to add this datacenter for the buyer.
+       The billing entry will still contain the UnknownDatacenter flag to let
+       us know if we need to add this datacenter for the buyer.
 
-        It does not make sense to record the DatacenterNotEnabled flag or
-        NoRelaysInDatacenter metric for an "Analysis Only" buyer.
+       It does not make sense to record the DatacenterNotEnabled flag or
+       NoRelaysInDatacenter metric for an "Analysis Only" buyer.
     */
 
     if !datacenterExists(state.Database, state.Packet.DatacenterID) {
@@ -798,8 +798,8 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
     if !state.UnmarshaledSessionData {
 
         /*
-            If for some reason we did not unmarshal the SessionData
-            already, we must do it here for existing sessions.
+           If for some reason we did not unmarshal the SessionData
+           already, we must do it here for existing sessions.
         */
 
         err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
@@ -812,8 +812,8 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
     }
 
     /*
-        Check for some obviously divergent data between the session request packet
-        and the stored session data. If there is a mismatch, just return a direct route.
+       Check for some obviously divergent data between the session request packet
+       and the stored session data. If there is a mismatch, just return a direct route.
     */
 
     if state.Input.SessionID != state.Packet.SessionID {
@@ -829,10 +829,10 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
     }
 
     /*
-        Copy input state to output and go to next slice.
+       Copy input state to output and go to next slice.
 
-        During the rest of the session update we transform session.output in place,
-        before sending it back to the SDK in the session response packet.
+       During the rest of the session update we transform session.output in place,
+       before sending it back to the SDK in the session response packet.
     */
 
     state.Output = state.Input
@@ -841,11 +841,11 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
     state.Output.ExpireTimestamp += billing.BillingSliceSeconds
 
     /*
-        Calculate real packet loss.
+       Calculate real packet loss.
 
-        This is driven from actual game packets, not ping packets.
+       This is driven from actual game packets, not ping packets.
 
-        This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
+       This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
     */
 
     slicePacketsSentClientToServer := state.Packet.PacketsSentClientToServer - state.Input.PrevPacketsSentClientToServer
@@ -873,13 +873,13 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
     state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
 
     /*
-        Calculate real jitter.
+       Calculate real jitter.
 
-        This is driven from actual game packets, not ping packets.
+       This is driven from actual game packets, not ping packets.
 
-        Clamp jitter between client and server at 1000.
+       Clamp jitter between client and server at 1000.
 
-        It is meaningless beyond that...
+       It is meaningless beyond that...
     */
 
     if state.Packet.JitterClientToServer > 1000.0 {
@@ -899,12 +899,12 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
 func SessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 
     /*
-        Fallback to direct is a state where the SDK has met some fatal error condition.
+       Fallback to direct is a state where the SDK has met some fatal error condition.
 
-        When this happens, the session will go direct from that point forward.
+       When this happens, the session will go direct from that point forward.
 
-        Here we look at flags sent up from the SDK, and send them to stackdriver metrics,
-        so we can diagnose what caused any fallback to directs to happen.
+       Here we look at flags sent up from the SDK, and send them to stackdriver metrics,
+       so we can diagnose what caused any fallback to directs to happen.
     */
 
     if state.Packet.FallbackToDirect && !state.Output.FellBackToDirect {
@@ -988,27 +988,27 @@ func SessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 func SessionGetNearRelays(state *SessionHandlerState) bool {
 
     /*
-        This function selects up to 32 near relays for the session,
-        according to the players latitude and longitude determined by
-        ip2location.
+       This function selects up to 32 near relays for the session,
+       according to the players latitude and longitude determined by
+       ip2location.
 
-        These near relays are selected only on the first slice (slice 0)
-        of a session, and are held fixed for the duration of the session.
+       These near relays are selected only on the first slice (slice 0)
+       of a session, and are held fixed for the duration of the session.
 
-        The SDK pings the near relays, and reports up the latency, jitter
-        and packet loss to each near relay, with each subsequent session
-        update (every 10 seconds).
+       The SDK pings the near relays, and reports up the latency, jitter
+       and packet loss to each near relay, with each subsequent session
+       update (every 10 seconds).
 
-        Network Next uses the relay ping statistics in route planning,
-        by adding the latency to the first relay to the total route cost,
-        and by excluding near relays with higher jitter or packet loss
-        than the default internet route.
+       Network Next uses the relay ping statistics in route planning,
+       by adding the latency to the first relay to the total route cost,
+       and by excluding near relays with higher jitter or packet loss
+       than the default internet route.
 
-        This function is skipped for "Analysis Only" buyers because sessions
-        will always take direct.
+       This function is skipped for "Analysis Only" buyers because sessions
+       will always take direct.
 
-        This function is skipped for datacenters that are not enabled for
-        acceleration, forcing all connected clients to go direct.
+       This function is skipped for datacenters that are not enabled for
+       acceleration, forcing all connected clients to go direct.
     */
 
     if state.Buyer.RouteShader.AnalysisOnly {
@@ -1046,22 +1046,22 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
     /*
-        This function is called once every seconds for all slices
-        in a session after slice 0 (first slice).
+       This function is called once every seconds for all slices
+       in a session after slice 0 (first slice).
 
-        It takes the ping statistics for each near relay, and collates them
-        into a format suitable for route planning later on in the session
-        update.
+       It takes the ping statistics for each near relay, and collates them
+       into a format suitable for route planning later on in the session
+       update.
 
-        It also runs various filters inside core.ReframeRelays, which look at
-        the history of latency, jitter and packet loss across the entire session
-        in order to exclude near relays with bad performance from being selected.
+       It also runs various filters inside core.ReframeRelays, which look at
+       the history of latency, jitter and packet loss across the entire session
+       in order to exclude near relays with bad performance from being selected.
 
-        This function is skipped for "Analysis Only" buyers because sessions
-        will always take direct.
+       This function is skipped for "Analysis Only" buyers because sessions
+       will always take direct.
 
-        This function is skipped for datacenters that are not enabled for
-        accelerations because sessions will always go direct.
+       This function is skipped for datacenters that are not enabled for
+       accelerations because sessions will always go direct.
     */
 
     routeShader := &state.Buyer.RouteShader
@@ -1095,8 +1095,8 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
     state.DestRelays = make([]int32, len(destRelayIDs))
 
     /*
-        If we are holding near relays, use the held near relay RTT as input
-        instead of the near relay ping data sent up from the SDK.
+       If we are holding near relays, use the held near relay RTT as input
+       instead of the near relay ping data sent up from the SDK.
     */
 
     if state.Input.HoldNearRelays {
@@ -1109,7 +1109,7 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
     }
 
     /*
-        Reframe the near relays to get them in a relay index form relative to the current route matrix.
+       Reframe the near relays to get them in a relay index form relative to the current route matrix.
     */
 
     core.ReframeRelays(
@@ -1156,10 +1156,10 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 func SessionFilterNearRelays(state *SessionHandlerState) {
 
     /*
-        Reduce the % of sessions running near relay pings for large customers.
+       Reduce the % of sessions running near relay pings for large customers.
 
-        We do this by only running near relay pings for the first 3 slices, and then holding
-        the near relay ping results fixed for the rest of the session.
+       We do this by only running near relay pings for the first 3 slices, and then holding
+       the near relay ping results fixed for the rest of the session.
     */
 
     if !state.Buyer.InternalConfig.LargeCustomer {
@@ -1197,8 +1197,8 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
     multipathVetoMap := map[uint64]bool{}
 
     /*
-        If we are on on network next but don't have any relays in our route, something is WRONG.
-        Veto the session and go direct.
+       If we are on on network next but don't have any relays in our route, something is WRONG.
+       Veto the session and go direct.
     */
 
     if state.Input.RouteState.Next && state.Input.RouteNumRelays == 0 {
@@ -1254,9 +1254,9 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
         }
 
         /*
-            Reframe the current route in terms of relay indices in the current route matrix
+           Reframe the current route in terms of relay indices in the current route matrix
 
-            This is necessary because the set of relays in the route matrix change over time.
+           This is necessary because the set of relays in the route matrix change over time.
         */
 
         if !core.ReframeRoute(&state.Output.RouteState, state.RouteMatrix.RelayIDsToIndices, state.Output.RouteRelayIDs[:state.Output.RouteNumRelays], &routeRelays) {
@@ -1307,24 +1307,24 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
     }
 
     /*
-        Stash key route parameters in the response so the SDK recieves them.
+       Stash key route parameters in the response so the SDK recieves them.
 
-        Committed means to actually send packets across the network next route,
-        if false, then the route just has ping packets sent across it, but no
-        game packets.
+       Committed means to actually send packets across the network next route,
+       if false, then the route just has ping packets sent across it, but no
+       game packets.
 
-        Multipath means to send packets across both the direct and the network
-        next route at the same time, which reduces packet loss.
+       Multipath means to send packets across both the direct and the network
+       next route at the same time, which reduces packet loss.
     */
 
     state.Response.Committed = state.Output.RouteState.Committed
     state.Response.Multipath = state.Output.RouteState.Multipath
 
     /*
-        Stick the route cost, whether the route changed, and the route relay data
-        in the output state. This output state is serialized into the route state
-        in the route response, and sent back up to us, allowing us to know the
-        current network next route, when we plan the next 10 second slice.
+       Stick the route cost, whether the route changed, and the route relay data
+       in the output state. This output state is serialized into the route state
+       in the route response, and sent back up to us, allowing us to know the
+       current network next route, when we plan the next 10 second slice.
     */
 
     if routeCost > routing.InvalidRouteValue {
@@ -1344,8 +1344,8 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 func SessionPost(state *SessionHandlerState) {
 
     /*
-        If the buyer doesn't exist, or the signature check failed,
-        this is potentially a malicious request. Don't respond to it.
+       If the buyer doesn't exist, or the signature check failed,
+       this is potentially a malicious request. Don't respond to it.
     */
 
     if state.BuyerNotFound || state.SignatureCheckFailed {
@@ -1354,11 +1354,11 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Build the set of near relays for the SDK to ping.
+       Build the set of near relays for the SDK to ping.
 
-        The SDK pings these near relays and reports up the results in the next session update.
+       The SDK pings these near relays and reports up the results in the next session update.
 
-        We hold the set of near relays fixed for the session, so we only do this work on the first slice.
+       We hold the set of near relays fixed for the session, so we only do this work on the first slice.
     */
 
     if state.Packet.SliceNumber == 0 {
@@ -1367,8 +1367,8 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Since post runs at the end of every session handler, run logic
-        here that must run if we are taking network next vs. direct
+       Since post runs at the end of every session handler, run logic
+       here that must run if we are taking network next vs. direct
     */
 
     if state.Response.RouteType != routing.RouteTypeDirect {
@@ -1380,10 +1380,10 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Decide if the session was ever on next.
+       Decide if the session was ever on next.
 
-        We avoid using route type to verify if a session was ever on next
-        in case the route decision to take next was made on the final slice.
+       We avoid using route type to verify if a session was ever on next
+       in case the route decision to take next was made on the final slice.
     */
 
     if state.Packet.Next {
@@ -1391,8 +1391,8 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Store the packets sent and packets lost counters in the route state,
-        so we can use them to calculate real packet loss next session update.
+       Store the packets sent and packets lost counters in the route state,
+       so we can use them to calculate real packet loss next session update.
     */
 
     state.Output.PrevPacketsSentClientToServer = state.Packet.PacketsSentClientToServer
@@ -1401,7 +1401,7 @@ func SessionPost(state *SessionHandlerState) {
     state.Output.PrevPacketsLostServerToClient = state.Packet.PacketsLostServerToClient
 
     /*
-        If the core routing logic generated a debug string, include it in the response.
+       If the core routing logic generated a debug string, include it in the response.
     */
 
     if state.Debug != nil {
@@ -1412,23 +1412,23 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Build route relay data (for portal, billing etc...).
+       Build route relay data (for portal, billing etc...).
 
-        This is done here to get the post route relay sellers egress price override for
-        calculating total price and route relay price when building the billing entry.
+       This is done here to get the post route relay sellers egress price override for
+       calculating total price and route relay price when building the billing entry.
     */
 
     BuildPostRouteRelayData(state)
 
     /*
-        Determine if we should write the summary slice. Should only happen
-        when the session is finished.
+       Determine if we should write the summary slice. Should only happen
+       when the session is finished.
 
-        The end of a session occurs when the client ping times out.
+       The end of a session occurs when the client ping times out.
 
-        We always set the output flag to true so that it remains recorded as true on
-        subsequent slices where the client ping has timed out. Instead, we check
-        the input when deciding to write billing entry 2.
+       We always set the output flag to true so that it remains recorded as true on
+       subsequent slices where the client ping has timed out. Instead, we check
+       the input when deciding to write billing entry 2.
     */
 
     if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
@@ -1436,16 +1436,16 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Each slice is 10 seconds long except for the first slice with a given network next route,
-        which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
-        that we pre-bought at the start of the previous route.
+       Each slice is 10 seconds long except for the first slice with a given network next route,
+       which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
+       that we pre-bought at the start of the previous route.
 
-        If the route changed on the final session slice, the slice duration
-        should be 10 seconds, not 20 seconds, since the session ended using
-        the previous route.
+       If the route changed on the final session slice, the slice duration
+       should be 10 seconds, not 20 seconds, since the session ended using
+       the previous route.
 
-        Otherwise the first and summary slices will have different values for
-        the envelope bandwidth, total price, etc.
+       Otherwise the first and summary slices will have different values for
+       the envelope bandwidth, total price, etc.
     */
 
     sliceDuration := uint64(billing.BillingSliceSeconds)
@@ -1454,30 +1454,30 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
+       Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
 
-        This is what we bill on.
+       This is what we bill on.
     */
 
     nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
 
     /*
-        Calculate the total price for this slice of bandwidth envelope.
+       Calculate the total price for this slice of bandwidth envelope.
 
-        This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
-        and the length of the session in seconds.
+       This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
+       and the length of the session in seconds.
     */
 
     totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
     /*
-        Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
-        the output session data. Used in the summary slice.
+       Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
+       the output session data. Used in the summary slice.
 
-        If this is the summary slice, then we do NOT want to include this slice's values in the
-        cumulative sum since this session is finished.
+       If this is the summary slice, then we do NOT want to include this slice's values in the
+       cumulative sum since this session is finished.
 
-        This saves datascience some work when analyzing sessions across days.
+       This saves datascience some work when analyzing sessions across days.
     */
 
     if !state.Output.WroteSummary && state.Packet.Next {
@@ -1488,7 +1488,7 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Write the session response packet and send it back to the caller.
+       Write the session response packet and send it back to the caller.
     */
 
     if err := WriteSessionResponse(state.Writer, &state.Response, &state.Output, state.Metrics); err != nil {
@@ -1498,43 +1498,43 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Check if we should multipath veto this user.
+       Check if we should multipath veto this user.
 
-        Multipath veto detects users who spike up RTT while on multipath, indicating
-        that multipath is sending too much bandwidth for their connection.
+       Multipath veto detects users who spike up RTT while on multipath, indicating
+       that multipath is sending too much bandwidth for their connection.
 
-        Multipath veto users immediately leave network next (go direct), and are
-        disallowed from taking multipath for future next routes for some period
-        of time.
+       Multipath veto users immediately leave network next (go direct), and are
+       disallowed from taking multipath for future next routes for some period
+       of time.
 
-        After this time elapses, they are allowed to try multipath again.
+       After this time elapses, they are allowed to try multipath again.
     */
 
     // todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
     /*
-        if packet.Next && sessionData.RouteState.MultipathOverload {
-            if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
-                level.Error(PostSessionHandler.logger).Log("err", err)
-            }
-        }
+       if packet.Next && sessionData.RouteState.MultipathOverload {
+           if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
+               level.Error(PostSessionHandler.logger).Log("err", err)
+           }
+       }
     */
 
     /*
-        Build post near relay data (for portal, billing etc...)
+       Build post near relay data (for portal, billing etc...)
     */
 
     BuildPostNearRelayData(state)
 
     /*
-        Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
+       Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
 
-        Check the input state to see if we wrote the summary slice since
-        the output state is not set to input state if we early out in sessionPre()
-        when the client ping times out.
+       Check the input state to see if we wrote the summary slice since
+       the output state is not set to input state if we early out in sessionPre()
+       when the client ping times out.
 
-        Doing this ensures that we only write the summary slice once since the first time the
-        client ping times out, input flag will be false and the output flag will be true,
-        and on the following slices, both will be true.
+       Doing this ensures that we only write the summary slice once since the first time the
+       client ping times out, input flag will be false and the output flag will be true,
+       and on the following slices, both will be true.
     */
 
     if state.PostSessionHandler.featureBilling2 && !state.Input.WroteSummary {
@@ -1544,10 +1544,10 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        The client times out at the end of each session, and holds on for 60 seconds.
-        These slices at the end have no useful information for the portal, so we drop
-        them here. Billing2 needs to know if the client times out to write the summary
-        portion of the billing entry 2, but Billing1 does not.
+       The client times out at the end of each session, and holds on for 60 seconds.
+       These slices at the end have no useful information for the portal, so we drop
+       them here. Billing2 needs to know if the client times out to write the summary
+       portion of the billing entry 2, but Billing1 does not.
     */
 
     if state.Packet.ClientPingTimedOut {
@@ -1555,7 +1555,7 @@ func SessionPost(state *SessionHandlerState) {
     }
 
     /*
-        Send data to the portal (real-time path)
+       Send data to the portal (real-time path)
     */
 
     portalData := BuildPortalData(state)
@@ -1568,9 +1568,9 @@ func SessionPost(state *SessionHandlerState) {
 func BuildPostRouteRelayData(state *SessionHandlerState) {
 
     /*
-        Build information about the relays involved in the current route.
+       Build information about the relays involved in the current route.
 
-        This data is sent to the portal, and billing system.
+       This data is sent to the portal, and billing system.
     */
 
     for i := int32(0); i < state.Input.RouteNumRelays; i++ {
@@ -1590,8 +1590,8 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
     for i := 0; i < state.PostNearRelayCount; i++ {
 
         /*
-            The set of near relays is held fixed at the start of a session.
-            Therefore it is possible that a near relay may no longer exist.
+           The set of near relays is held fixed at the start of a session.
+           Therefore it is possible that a near relay may no longer exist.
         */
 
         relayID := state.Packet.NearRelayIDs[i]
@@ -1601,11 +1601,11 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
         }
 
         /*
-            Fill in information for near relays needed by billing and the portal.
+           Fill in information for near relays needed by billing and the portal.
 
-            We grab this data from the session update packet, which corresponds to the previous slice (input).
+           We grab this data from the session update packet, which corresponds to the previous slice (input).
 
-            This makes sure all values for a slice in billing and the portal line up temporally.
+           This makes sure all values for a slice in billing and the portal line up temporally.
         */
 
         state.PostNearRelayIDs[i] = relayID
@@ -1619,16 +1619,16 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
 
 func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry2 {
     /*
-        Calculate the actual amounts of bytes sent up and down along the network next route
-        for the duration of the previous slice (just being reported up from the SDK).
+       Calculate the actual amounts of bytes sent up and down along the network next route
+       for the duration of the previous slice (just being reported up from the SDK).
 
-        This is *not* what we bill on.
+       This is *not* what we bill on.
     */
 
     nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
 
     /*
-        Calculate the per-relay hop price that sums up to the total price, minus our rake.
+       Calculate the per-relay hop price that sums up to the total price, minus our rake.
     */
 
     routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
@@ -1646,9 +1646,9 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        Save the first hop RTT from the client to the first relay in the route.
+       Save the first hop RTT from the client to the first relay in the route.
 
-        This is useful for analysis and saves data science some work.
+       This is useful for analysis and saves data science some work.
     */
 
     var nearRelayRTT int32
@@ -1662,7 +1662,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        If the debug string is set to something by the core routing system, put it in the billing entry.
+       If the debug string is set to something by the core routing system, put it in the billing entry.
     */
 
     debugString := ""
@@ -1671,16 +1671,16 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        Separate the integer and fractional portions of real packet loss to
-        allow for more efficient bitpacking while maintaining precision.
+       Separate the integer and fractional portions of real packet loss to
+       allow for more efficient bitpacking while maintaining precision.
     */
 
     RealPacketLoss, RealPacketLoss_Frac := math.Modf(float64(state.RealPacketLoss))
     RealPacketLoss_Frac = math.Round(RealPacketLoss_Frac * 255.0)
 
     /*
-        Recast near relay RTT, Jitter, and Packet Loss to int32.
-        We do this here since the portal data requires float level precision.
+       Recast near relay RTT, Jitter, and Packet Loss to int32.
+       We do this here since the portal data requires float level precision.
     */
 
     var NearRelayRTTs [core.MaxNearRelays]int32
@@ -1693,10 +1693,10 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        Calculate the session duration in seconds for the summary slice.
+       Calculate the session duration in seconds for the summary slice.
 
-        Slice numbers start at 0, so the length of a session is the
-        summary slice's slice number * 10 seconds.
+       Slice numbers start at 0, so the length of a session is the
+       summary slice's slice number * 10 seconds.
     */
     var sessionDuration uint32
     if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
@@ -1704,7 +1704,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        Calculate the starting timestamp of the session to include in the summary slice.
+       Calculate the starting timestamp of the session to include in the summary slice.
     */
     var startTime time.Time
     if state.Output.WroteSummary {
@@ -1713,7 +1713,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
     }
 
     /*
-        Create the billing entry 2 and return it to the caller.
+       Create the billing entry 2 and return it to the caller.
     */
 
     billingEntry2 := billing.BillingEntry2{
@@ -1811,7 +1811,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 
     /*
-        Build the relay hops for the portal
+       Build the relay hops for the portal
     */
 
     // todo: we should try to avoid allocations
@@ -1825,7 +1825,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
     }
 
     /*
-        Build the near relay data for the portal
+       Build the near relay data for the portal
     */
 
     // todo: we should try to avoid allocations
@@ -1844,9 +1844,9 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
     }
 
     /*
-        Calculate the delta between network next and direct.
+       Calculate the delta between network next and direct.
 
-        Clamp the delta RTT above 0. This is used for the top sessions page.
+       Clamp the delta RTT above 0. This is used for the top sessions page.
     */
 
     var deltaRTT float32
@@ -1855,8 +1855,8 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
     }
 
     /*
-        Predicted RTT is the round trip time that we predict, even if we don't
-        take network next. It's a conservative prodiction.
+       Predicted RTT is the round trip time that we predict, even if we don't
+       take network next. It's a conservative prodiction.
     */
 
     predictedRTT := float64(state.Input.RouteCost)
@@ -1865,7 +1865,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
     }
 
     /*
-        Build the portal data and return it to the caller.
+       Build the portal data and return it to the caller.
     */
 
     portalData := SessionPortalData{
@@ -2022,7 +2022,7 @@ func SessionUpdateHandlerFunc(
         core.Debug("retry number is %d", state.Packet.RetryNumber)
 
         /*
-            Build session handler state. Putting everything in a struct makes calling subroutines much easier.
+           Build session handler state. Putting everything in a struct makes calling subroutines much easier.
         */
 
         state.Writer = w
@@ -2043,20 +2043,20 @@ func SessionUpdateHandlerFunc(
         state.PostSessionHandler = PostSessionHandler
 
         /*
-            Session post *always* runs at the end of this function
+           Session post *always* runs at the end of this function
 
-            It writes and sends the response packet back to the sender,
-            and sends session data to billing and the portal.
+           It writes and sends the response packet back to the sender,
+           and sends session data to billing and the portal.
         */
 
         defer SessionPost(&state)
 
         /*
-            Call session pre function
+           Call session pre function
 
-            This function checks for early out conditions and does some setup of the handler state.
+           This function checks for early out conditions and does some setup of the handler state.
 
-            If it returns true, one of the early out conditions has been met, so we return early.
+           If it returns true, one of the early out conditions has been met, so we return early.
         */
 
         if SessionPre(&state) {
@@ -2064,16 +2064,16 @@ func SessionUpdateHandlerFunc(
         }
 
         /*
-            Update the session
+           Update the session
 
-            Do setup on slice 0, then for subsequent slices transform state.Input -> state.Output
+           Do setup on slice 0, then for subsequent slices transform state.Input -> state.Output
 
-            state.Output is sent down to the SDK in the session response packet, and next slice
-            it is sent back up to us in the subsequent session update packet for this session.
+           state.Output is sent down to the SDK in the session response packet, and next slice
+           it is sent back up to us in the subsequent session update packet for this session.
 
-            This is how we make this handler stateless. Without this, we need to store per-session
-            data somewhere and this is extremely difficult at scale, given the real-time nature of
-            this handler.
+           This is how we make this handler stateless. Without this, we need to store per-session
+           data somewhere and this is extremely difficult at scale, given the real-time nature of
+           this handler.
         */
 
         if state.Packet.SliceNumber == 0 {
@@ -2083,13 +2083,13 @@ func SessionUpdateHandlerFunc(
         }
 
         /*
-            Handle fallback to direct.
+           Handle fallback to direct.
 
-            Fallback to direct is a condition where the SDK indicates that it has seen
-            some fatal error, like not getting a session response from the backend,
-            and has decided to go direct for the rest of the session.
+           Fallback to direct is a condition where the SDK indicates that it has seen
+           some fatal error, like not getting a session response from the backend,
+           and has decided to go direct for the rest of the session.
 
-            When this happens, we early out to save processing time.
+           When this happens, we early out to save processing time.
         */
 
         if SessionHandleFallbackToDirect(&state) {
@@ -2097,15 +2097,15 @@ func SessionUpdateHandlerFunc(
         }
 
         /*
-            Process near relay ping statistics after the first slice.
+           Process near relay ping statistics after the first slice.
 
-            We use near relay latency, jitter and packet loss for route planning.
+           We use near relay latency, jitter and packet loss for route planning.
         */
 
         SessionUpdateNearRelayStats(&state)
 
         /*
-            Decide whether we should take network next or not.
+           Decide whether we should take network next or not.
         */
 
         SessionMakeRouteDecision(&state)

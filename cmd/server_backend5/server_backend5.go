@@ -1038,9 +1038,9 @@ func mainReturnWithCode() int {
                 }
 
                 /*
-                    We do not strip the packet type, chonkle, and pittle from the packet data
-                    before handing off to the handlers since those are required for sodium to
-                    properly verify the signature check.
+                   We do not strip the packet type, chonkle, and pittle from the packet data
+                   before handing off to the handlers since those are required for sodium to
+                   properly verify the signature check.
                 */
 
                 packetType := data[0]

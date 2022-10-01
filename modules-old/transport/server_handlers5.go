@@ -881,27 +881,27 @@ func SessionHandleFallbackToDirectSDK5(state *SessionHandlerStateSDK5) bool {
 func SessionGetNearRelaysSDK5(state *SessionHandlerStateSDK5) bool {
 
     /*
-        This function selects up to 32 near relays for the session,
-        according to the players latitude and longitude determined by
-        ip2location.
+       This function selects up to 32 near relays for the session,
+       according to the players latitude and longitude determined by
+       ip2location.
 
-        These near relays are selected only on the first slice (slice 0)
-        of a session, and are held fixed for the duration of the session.
+       These near relays are selected only on the first slice (slice 0)
+       of a session, and are held fixed for the duration of the session.
 
-        The SDK pings the near relays, and reports up the latency, jitter
-        and packet loss to each near relay, with each subsequent session
-        update (every 10 seconds).
+       The SDK pings the near relays, and reports up the latency, jitter
+       and packet loss to each near relay, with each subsequent session
+       update (every 10 seconds).
 
-        Network Next uses the relay ping statistics in route planning,
-        by adding the latency to the first relay to the total route cost,
-        and by excluding near relays with higher jitter or packet loss
-        than the default internet route.
+       Network Next uses the relay ping statistics in route planning,
+       by adding the latency to the first relay to the total route cost,
+       and by excluding near relays with higher jitter or packet loss
+       than the default internet route.
 
-        This function is skipped for "Analysis Only" buyers because sessions
-        will always take direct.
+       This function is skipped for "Analysis Only" buyers because sessions
+       will always take direct.
 
-        This function is skipped for datacenters that are not enabled for
-        acceleration, forcing all connected clients to go direct
+       This function is skipped for datacenters that are not enabled for
+       acceleration, forcing all connected clients to go direct
     */
 
     if state.Buyer.RouteShader.AnalysisOnly {
@@ -939,22 +939,22 @@ func SessionGetNearRelaysSDK5(state *SessionHandlerStateSDK5) bool {
 func SessionUpdateNearRelayStatsSDK5(state *SessionHandlerStateSDK5) bool {
 
     /*
-        This function is called once every seconds for all slices
-        in a session after slice 0 (first slice).
+       This function is called once every seconds for all slices
+       in a session after slice 0 (first slice).
 
-        It takes the ping statistics for each near relay, and collates them
-        into a format suitable for route planning later on in the session
-        update.
+       It takes the ping statistics for each near relay, and collates them
+       into a format suitable for route planning later on in the session
+       update.
 
-        It also runs various filters inside core.ReframeRelays, which look at
-        the history of latency, jitter and packet loss across the entire session
-        in order to exclude near relays with bad performance from being selected.
+       It also runs various filters inside core.ReframeRelays, which look at
+       the history of latency, jitter and packet loss across the entire session
+       in order to exclude near relays with bad performance from being selected.
 
-        This function is skipped for "Analysis Only" buyers because sessions
-        will always take direct.
+       This function is skipped for "Analysis Only" buyers because sessions
+       will always take direct.
 
-        This function is skipped for datacenters that are not enabled for
-        accelerations because sessions will always go direct.
+       This function is skipped for datacenters that are not enabled for
+       accelerations because sessions will always go direct.
     */
 
     routeShader := &state.Buyer.RouteShader
@@ -1118,18 +1118,18 @@ func SessionMakeRouteDecisionSDK5(state *SessionHandlerStateSDK5) {
 
             // todo: apparently broken
             /*
-                if state.Debug != nil {
+               if state.Debug != nil {
 
-                    *state.Debug += "route relays: "
+                   *state.Debug += "route relays: "
 
-                    for i, routeRelay := range routeRelays[:routeNumRelays] {
-                        if i != int(routeNumRelays-1) {
-                            *state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
-                        } else {
-                            *state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
-                        }
-                    }
-                }
+                   for i, routeRelay := range routeRelays[:routeNumRelays] {
+                       if i != int(routeNumRelays-1) {
+                           *state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+                       } else {
+                           *state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+                       }
+                   }
+               }
             */
         }
 

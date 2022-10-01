@@ -19,13 +19,13 @@ const (
 const (
     // todo: clean up as per sdk5 below
     /*
-        SDK4_PACKET_TYPE_ServerUpdate       = 220
-        SDK4_PACKET_TYPE_SessionUpdate      = 221
-        SDK4_PACKET_TYPE_SessionResponse    = 222
-        SDK4_PACKET_TYPE_ServerInitRequest  = 223
-        SDK4_PACKET_TYPE_ServerInitResponse = 224
-        SDK4_PACKET_TYPE_MatchDataRequest   = 225
-        SDK4_PACKET_TYPE_MatchDataResponse  = 226
+       SDK4_PACKET_TYPE_ServerUpdate       = 220
+       SDK4_PACKET_TYPE_SessionUpdate      = 221
+       SDK4_PACKET_TYPE_SessionResponse    = 222
+       SDK4_PACKET_TYPE_ServerInitRequest  = 223
+       SDK4_PACKET_TYPE_ServerInitResponse = 224
+       SDK4_PACKET_TYPE_MatchDataRequest   = 225
+       SDK4_PACKET_TYPE_MatchDataResponse  = 226
     */
 
     SDK4_MaxDatacenterNameLength = 256

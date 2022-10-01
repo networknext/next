@@ -138,9 +138,9 @@ type SessionUpdateMessage struct {
 func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
     /*
-        1. Always
+       1. Always
 
-        These values are serialized in every slice
+       These values are serialized in every slice
     */
 
     stream.SerializeBits(&message.Version, 8)
@@ -182,9 +182,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
     stream.SerializeBool(&message.TryBeforeYouBuy)
 
     /*
-        2. First slice and summary slice only
+       2. First slice and summary slice only
 
-        These values are serialized only for slice 0 and summary slice.
+       These values are serialized only for slice 0 and summary slice.
     */
 
     if message.SliceNumber == 0 || message.Summary {
@@ -213,9 +213,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        3. Summary slice only
+       3. Summary slice only
 
-        These values are serialized only for the summary slice (at the end of the session)
+       These values are serialized only for the summary slice (at the end of the session)
     */
 
     if message.Summary {
@@ -250,9 +250,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        4. Network Next Only
+       4. Network Next Only
 
-        These values are serialized only when a slice is on network next.
+       These values are serialized only when a slice is on network next.
     */
 
     if message.Next {
@@ -281,9 +281,9 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        5. Error State Only
+       5. Error State Only
 
-        These values are only serialized when the session is in an error state (rare).
+       These values are only serialized when the session is in an error state (rare).
     */
 
     errorState := false
@@ -353,9 +353,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
     e := make(map[string]bigquery.Value)
 
     /*
-        1. Always
+       1. Always
 
-        These values are written for every slice.
+       These values are written for every slice.
     */
 
     e["timestamp"] = int(message.Timestamp)
@@ -398,9 +398,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
     }
 
     /*
-        2. First slice and summary slice only
+       2. First slice and summary slice only
 
-        These values are serialized only for slice 0 and the summary slice.
+       These values are serialized only for slice 0 and the summary slice.
     */
 
     if message.SliceNumber == 0 || message.Summary {
@@ -437,9 +437,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
     }
 
     /*
-        3. Summary slice only
+       3. Summary slice only
 
-        These values are serialized only for the summary slice (at the end of the session)
+       These values are serialized only for the summary slice (at the end of the session)
     */
 
     if message.Summary {
@@ -489,9 +489,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
     }
 
     /*
-        4. Network Next Only
+       4. Network Next Only
 
-        These values are serialized only when a slice is on network next.
+       These values are serialized only when a slice is on network next.
     */
 
     if message.Next {
@@ -544,9 +544,9 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
     }
 
     /*
-        5. Error State Only
+       5. Error State Only
 
-        These values are only serialized when the session is in an error state (rare).
+       These values are only serialized when the session is in an error state (rare).
     */
 
     if message.FallbackToDirect {

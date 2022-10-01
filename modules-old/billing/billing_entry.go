@@ -171,9 +171,9 @@ type BillingEntry2Summary struct {
 func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
     /*
-        1. Always
+       1. Always
 
-        These values are serialized in every slice
+       These values are serialized in every slice
     */
 
     stream.SerializeBits(&entry.Version, 32)
@@ -194,10 +194,10 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     stream.SerializeInteger(&entry.DirectMinRTT, 0, 1023)
 
     /*
-        Version 7
+       Version 7
 
-        Includes DirectMaxRTT and DirectPrimeRTT stats from SDK 4.0.18.
-        DirectRTT was changed to DirectMinRTT.
+       Includes DirectMaxRTT and DirectPrimeRTT stats from SDK 4.0.18.
+       DirectRTT was changed to DirectMinRTT.
     */
     if entry.Version >= uint32(7) {
         stream.SerializeInteger(&entry.DirectMaxRTT, 0, 1023)
@@ -221,29 +221,29 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
     /*
-        Version 8
+       Version 8
 
-        Includes UserFlags from SDK 4.20.0 driven by next_server_event().
+       Includes UserFlags from SDK 4.20.0 driven by next_server_event().
     */
     if entry.Version >= uint32(8) {
         stream.SerializeUint64(&entry.UserFlags)
     }
 
     /*
-        Version 9
+       Version 9
 
-        Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
+       Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
     */
     if entry.Version >= uint32(9) {
         stream.SerializeBool(&entry.TryBeforeYouBuy)
     }
 
     /*
-        2. First slice and summary slice only
+       2. First slice and summary slice only
 
-        These values are serialized only for slice 0 and summary slice.
+       These values are serialized only for slice 0 and summary slice.
 
-        NOTE: Prior to version 3, these fields were only serialized for slice 0.
+       NOTE: Prior to version 3, these fields were only serialized for slice 0.
     */
 
     if entry.Version >= uint32(3) {
@@ -293,9 +293,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        3. Summary slice only
+       3. Summary slice only
 
-        These values are serialized only for the summary slice (at the end of the session)
+       These values are serialized only for the summary slice (at the end of the session)
     */
 
     if entry.Summary {
@@ -317,9 +317,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        4. Network Next Only
+       4. Network Next Only
 
-        These values are serialized only when a slice is on network next.
+       These values are serialized only when a slice is on network next.
     */
 
     if entry.Next {
@@ -345,9 +345,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        5. Error State Only
+       5. Error State Only
 
-        These values are only serialized when the session is in an error state (rare).
+       These values are only serialized when the session is in an error state (rare).
     */
 
     errorState := false
@@ -388,9 +388,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 1
+       Version 1
 
-        Include Next Bytes Up/Down for slices on next.
+       Include Next Bytes Up/Down for slices on next.
     */
     if entry.Version >= uint32(1) {
 
@@ -403,14 +403,14 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 2
+       Version 2
 
-        Includes the following in the summary slice:
-            - Sum of TotalPrice
-            - Sum of EnvelopeBytesUp
-            - Sum of EnvelopeBytesDown
-            - Duration of the session (in seconds)
-            - EverOnNext
+       Includes the following in the summary slice:
+           - Sum of TotalPrice
+           - Sum of EnvelopeBytesUp
+           - Sum of EnvelopeBytesDown
+           - Duration of the session (in seconds)
+           - EverOnNext
     */
     if entry.Version >= uint32(2) {
         if entry.Summary {
@@ -432,10 +432,10 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 4
+       Version 4
 
-        Includes the following in the summary slice:
-            - Duration of the session on next (in seconds)
+       Includes the following in the summary slice:
+           - Duration of the session on next (in seconds)
     */
     if entry.Version >= uint32(4) {
         if entry.Summary && entry.EverOnNext {
@@ -444,9 +444,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 5
+       Version 5
 
-        Includes client IP address in first and summary slice
+       Includes client IP address in first and summary slice
     */
     if entry.Version >= uint32(5) {
         if entry.SliceNumber == 0 || entry.Summary {
@@ -455,11 +455,11 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 6
+       Version 6
 
-        Includes session start timestamp in the summary slice
+       Includes session start timestamp in the summary slice
 
-        NOTE: Prior to version 6, summary slices were written to the billing2 table
+       NOTE: Prior to version 6, summary slices were written to the billing2 table
     */
     if entry.Version >= uint32(6) {
         if entry.Summary {
@@ -468,9 +468,9 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
     }
 
     /*
-        Version 9
+       Version 9
 
-        Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
+       Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
     */
     if entry.Version >= uint32(9) {
         if entry.SliceNumber == 0 || entry.Summary {
@@ -976,9 +976,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
     e := make(map[string]bigquery.Value)
 
     /*
-        1. Always
+       1. Always
 
-        These values are written for every slice.
+       These values are written for every slice.
     */
 
     e["timestamp"] = int(entry.Timestamp)
@@ -1021,9 +1021,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
     }
 
     /*
-        2. First slice and summary slice only
+       2. First slice and summary slice only
 
-        These values are serialized only for slice 0 and the summary slice.
+       These values are serialized only for slice 0 and the summary slice.
     */
 
     if entry.SliceNumber == 0 || entry.Summary {
@@ -1060,9 +1060,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
     }
 
     /*
-        3. Summary slice only
+       3. Summary slice only
 
-        These values are serialized only for the summary slice (at the end of the session)
+       These values are serialized only for the summary slice (at the end of the session)
     */
 
     if entry.Summary {
@@ -1113,9 +1113,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
     }
 
     /*
-        4. Network Next Only
+       4. Network Next Only
 
-        These values are serialized only when a slice is on network next.
+       These values are serialized only when a slice is on network next.
     */
 
     if entry.Next {
@@ -1168,9 +1168,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
     }
 
     /*
-        5. Error State Only
+       5. Error State Only
 
-        These values are only serialized when the session is in an error state (rare).
+       These values are only serialized when the session is in an error state (rare).
     */
 
     if entry.FallbackToDirect {
@@ -1271,9 +1271,9 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
     e := make(map[string]bigquery.Value)
 
     /*
-        1. Always
+       1. Always
 
-        These values are written for every slice.
+       These values are written for every slice.
     */
 
     e["sessionID"] = int(entry.SessionID)
@@ -1281,9 +1281,9 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
     if entry.Summary {
 
         /*
-            2. First slice and summary slice only
+           2. First slice and summary slice only
 
-            These values are serialized only for slice 0 and the summary slice.
+           These values are serialized only for slice 0 and the summary slice.
         */
 
         e["datacenterID"] = int(entry.DatacenterID)
@@ -1317,9 +1317,9 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
         }
 
         /*
-            3. Summary slice only
+           3. Summary slice only
 
-            These values are serialized only for the summary slice (at the end of the session)
+           These values are serialized only for the summary slice (at the end of the session)
         */
 
         e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)

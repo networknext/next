@@ -815,9 +815,9 @@ func mainReturnWithCode() int {
                     case <-ticker.C:
                         // Get metadata value for connection drain
                         /*val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
-                        if err != nil {
-                            core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
-                        }
+                          if err != nil {
+                              core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+                          }
                         */
                         MIGInstancesStatusList, err := getMIGInstancesStatusList(gcpProjectID, serverBackendMIGName)
                         if err != nil {
