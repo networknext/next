@@ -1,33 +1,33 @@
 package billing
 
 import (
-	"context"
+    "context"
 
-	"github.com/networknext/backend/modules/core"
+    "github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/metrics"
+    "github.com/networknext/backend/modules-old/metrics"
 )
 
 type LocalBiller struct {
-	Metrics *metrics.BillingMetrics
+    Metrics *metrics.BillingMetrics
 }
 
 func (local *LocalBiller) Bill2(ctx context.Context, entry *BillingEntry2) error {
-	if entry.Summary {
-		local.Metrics.SummaryEntries2Submitted.Add(1)
-		core.Debug("submitted billing entry 2 summary")
-	} else {
-		local.Metrics.Entries2Submitted.Add(1)
-		core.Debug("submitted billing entry 2")
-	}
+    if entry.Summary {
+        local.Metrics.SummaryEntries2Submitted.Add(1)
+        core.Debug("submitted billing entry 2 summary")
+    } else {
+        local.Metrics.Entries2Submitted.Add(1)
+        core.Debug("submitted billing entry 2")
+    }
 
-	if entry.Summary {
-		local.Metrics.SummaryEntries2Flushed.Add(1)
-	} else {
-		local.Metrics.Entries2Flushed.Add(1)
-	}
+    if entry.Summary {
+        local.Metrics.SummaryEntries2Flushed.Add(1)
+    } else {
+        local.Metrics.Entries2Flushed.Add(1)
+    }
 
-	return nil
+    return nil
 }
 
 func (local *LocalBiller) FlushBuffer(ctx context.Context) {}

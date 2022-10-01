@@ -6,1000 +6,1000 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"encoding/gob"
-	"encoding/json"
-	"expvar"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
-	_ "net/http/pprof"
-	"os"
-	"os/exec"
-	"os/signal"
-	"runtime"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
+    "bytes"
+    "context"
+    "encoding/gob"
+    "encoding/json"
+    "expvar"
+    "fmt"
+    "io"
+    "io/ioutil"
+    "net"
+    "net/http"
+    _ "net/http/pprof"
+    "os"
+    "os/exec"
+    "os/signal"
+    "runtime"
+    "strings"
+    "sync"
+    "syscall"
+    "time"
 
-	"github.com/gorilla/mux"
+    "github.com/gorilla/mux"
 
-	// FUCK this logging system. FUCK IT. Marked for death!!!
-	"github.com/go-kit/kit/log"
+    // FUCK this logging system. FUCK IT. Marked for death!!!
+    "github.com/go-kit/kit/log"
 
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envvar"
+    "github.com/networknext/backend/modules/core"
+    "github.com/networknext/backend/modules/encoding"
+    "github.com/networknext/backend/modules/envvar"
 
-	"github.com/networknext/backend/modules-old/backend"
-	"github.com/networknext/backend/modules-old/billing"
-	"github.com/networknext/backend/modules-old/config"
-	"github.com/networknext/backend/modules-old/crypto"
-	md "github.com/networknext/backend/modules-old/match_data"
-	"github.com/networknext/backend/modules-old/metrics"
-	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/storage"
-	"github.com/networknext/backend/modules-old/transport"
-	"github.com/networknext/backend/modules-old/transport/middleware"
-	"github.com/networknext/backend/modules-old/transport/pubsub"
+    "github.com/networknext/backend/modules-old/backend"
+    "github.com/networknext/backend/modules-old/billing"
+    "github.com/networknext/backend/modules-old/config"
+    "github.com/networknext/backend/modules-old/crypto"
+    md "github.com/networknext/backend/modules-old/match_data"
+    "github.com/networknext/backend/modules-old/metrics"
+    "github.com/networknext/backend/modules-old/routing"
+    "github.com/networknext/backend/modules-old/storage"
+    "github.com/networknext/backend/modules-old/transport"
+    "github.com/networknext/backend/modules-old/transport/middleware"
+    "github.com/networknext/backend/modules-old/transport/pubsub"
 
-	"golang.org/x/sys/unix"
+    "golang.org/x/sys/unix"
 
-	"cloud.google.com/go/compute/metadata"
-	googlepubsub "cloud.google.com/go/pubsub"
+    "cloud.google.com/go/compute/metadata"
+    googlepubsub "cloud.google.com/go/pubsub"
 )
 
 var (
-	buildTime     string
-	commitMessage string
-	commitHash    string
-	keys          middleware.JWKS
+    buildTime     string
+    commitMessage string
+    commitHash    string
+    keys          middleware.JWKS
 )
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
 func main() {
-	os.Exit(mainReturnWithCode())
+    os.Exit(mainReturnWithCode())
 }
 
 func mainReturnWithCode() int {
-	serviceName := "server_backend4"
-	fmt.Printf("%s\n", serviceName)
-
-	est, _ := time.LoadLocation("EST")
-	startTime := time.Now().In(est)
-
-	isDebug := envvar.GetBool("NEXT_DEBUG", false)
-	if isDebug {
-		core.Debug("running as debug")
-	}
-
-	ctx, ctxCancelFunc := context.WithCancel(context.Background())
-
-	gcpProjectID := backend.GetGCPProjectID()
-
-	env := backend.GetEnv()
-
-	//Get Server Backend MIG name
-	serverBackendMIGName := envvar.GetString("SERVER_BACKEND_MIG_NAME", "")
-	if serverBackendMIGName == "" && env != "local" {
-		core.Error("SERVER_BACKEND_MIG_NAME not set")
-		return 1
-	}
-
-	// FUCK THIS LOGGING SYSTEM!!!
-	logger := log.NewNopLogger()
-
-	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
-	if err != nil {
-		core.Error("could not get metrics handler: %v", err)
-		return 1
-	}
-
-	if gcpProjectID != "" {
-		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			core.Error("could not initialize stackdriver profiler: %v", err)
-			return 1
-		}
-	}
-
-	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
-	if err != nil {
-		core.Error("could not create backend metrics: %v", err)
-		return 1
-	}
-
-	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
-	if err != nil {
-		core.Error("could not max mind sync metrics: %v", err)
-		return 1
-	}
-
-	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
-		core.Error("SERVER_BACKEND_PRIVATE_KEY not set")
-		return 1
-	}
-
-	privateKey := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
-	if err != nil {
-		core.Error("invalid SERVER_BACKEND_PRIVATE_KEY: %v", err)
-		return 1
-	}
-
-	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
-		core.Error("RELAY_ROUTER_PRIVATE_KEY not set")
-		return 1
-	}
-
-	routerPrivateKeySlice := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
-	if routerPrivateKeySlice == nil {
-		core.Error("invalid RELAY_ROUTER_PRIVATE_KEY")
-		return 1
-	}
-
-	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
-
-	maxmindCityFile := envvar.GetString("MAXMIND_CITY_DB_FILE", "")
-	if maxmindCityFile == "" {
-		core.Error("could not get maxmind city file")
-		return 1
-	}
-
-	maxmindISPFile := envvar.GetString("MAXMIND_ISP_DB_FILE", "")
-	if maxmindISPFile == "" {
-		core.Error("could not get maxmind isp file")
-		return 1
-	}
-
-	// function to get mmdb under mutex
-
-	mmdb := &routing.MaxmindDB{
-		CityFile:  maxmindCityFile,
-		IspFile:   maxmindISPFile,
-		IsStaging: env == "staging",
-	}
-
-	if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-		core.Error("could not open maxmind city/isp files: %v", err)
-		return 1
-	}
-
-	var mmdbMutex sync.RWMutex
-
-	getIPLocator := func() *routing.MaxmindDB {
-		mmdbMutex.RLock()
-		mmdbRet := mmdb
-		mmdbMutex.RUnlock()
-		return mmdbRet
-	}
-
-	// Sync mmdb
-	{
-		maxmindSyncInterval := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute)
+    serviceName := "server_backend4"
+    fmt.Printf("%s\n", serviceName)
+
+    est, _ := time.LoadLocation("EST")
+    startTime := time.Now().In(est)
+
+    isDebug := envvar.GetBool("NEXT_DEBUG", false)
+    if isDebug {
+        core.Debug("running as debug")
+    }
+
+    ctx, ctxCancelFunc := context.WithCancel(context.Background())
+
+    gcpProjectID := backend.GetGCPProjectID()
+
+    env := backend.GetEnv()
+
+    //Get Server Backend MIG name
+    serverBackendMIGName := envvar.GetString("SERVER_BACKEND_MIG_NAME", "")
+    if serverBackendMIGName == "" && env != "local" {
+        core.Error("SERVER_BACKEND_MIG_NAME not set")
+        return 1
+    }
+
+    // FUCK THIS LOGGING SYSTEM!!!
+    logger := log.NewNopLogger()
+
+    metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+    if err != nil {
+        core.Error("could not get metrics handler: %v", err)
+        return 1
+    }
+
+    if gcpProjectID != "" {
+        if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+            core.Error("could not initialize stackdriver profiler: %v", err)
+            return 1
+        }
+    }
+
+    backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
+    if err != nil {
+        core.Error("could not create backend metrics: %v", err)
+        return 1
+    }
+
+    maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
+    if err != nil {
+        core.Error("could not max mind sync metrics: %v", err)
+        return 1
+    }
+
+    if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
+        core.Error("SERVER_BACKEND_PRIVATE_KEY not set")
+        return 1
+    }
+
+    privateKey := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
+    if err != nil {
+        core.Error("invalid SERVER_BACKEND_PRIVATE_KEY: %v", err)
+        return 1
+    }
+
+    if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
+        core.Error("RELAY_ROUTER_PRIVATE_KEY not set")
+        return 1
+    }
+
+    routerPrivateKeySlice := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
+    if routerPrivateKeySlice == nil {
+        core.Error("invalid RELAY_ROUTER_PRIVATE_KEY")
+        return 1
+    }
+
+    routerPrivateKey := [crypto.KeySize]byte{}
+    copy(routerPrivateKey[:], routerPrivateKeySlice)
+
+    maxmindCityFile := envvar.GetString("MAXMIND_CITY_DB_FILE", "")
+    if maxmindCityFile == "" {
+        core.Error("could not get maxmind city file")
+        return 1
+    }
+
+    maxmindISPFile := envvar.GetString("MAXMIND_ISP_DB_FILE", "")
+    if maxmindISPFile == "" {
+        core.Error("could not get maxmind isp file")
+        return 1
+    }
+
+    // function to get mmdb under mutex
+
+    mmdb := &routing.MaxmindDB{
+        CityFile:  maxmindCityFile,
+        IspFile:   maxmindISPFile,
+        IsStaging: env == "staging",
+    }
+
+    if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+        core.Error("could not open maxmind city/isp files: %v", err)
+        return 1
+    }
+
+    var mmdbMutex sync.RWMutex
+
+    getIPLocator := func() *routing.MaxmindDB {
+        mmdbMutex.RLock()
+        mmdbRet := mmdb
+        mmdbMutex.RUnlock()
+        return mmdbRet
+    }
+
+    // Sync mmdb
+    {
+        maxmindSyncInterval := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute)
 
-		go func() {
-			ticker := time.NewTicker(maxmindSyncInterval)
-
-			for {
-				select {
-				case <-ticker.C:
-					// Load the new MMDB
-					newMMDB := &routing.MaxmindDB{
-						CityFile:  maxmindCityFile,
-						IspFile:   maxmindISPFile,
-						IsStaging: env == "staging",
-					}
+        go func() {
+            ticker := time.NewTicker(maxmindSyncInterval)
+
+            for {
+                select {
+                case <-ticker.C:
+                    // Load the new MMDB
+                    newMMDB := &routing.MaxmindDB{
+                        CityFile:  maxmindCityFile,
+                        IspFile:   maxmindISPFile,
+                        IsStaging: env == "staging",
+                    }
 
-					if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
-						core.Error("could not update maxmind db: %v", err)
-						continue
-					}
+                    if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+                        core.Error("could not update maxmind db: %v", err)
+                        continue
+                    }
 
-					if err := newMMDB.Validate(); err != nil {
-						core.Error("failed to validate new maxmind db: %v", err)
-						continue
-					}
+                    if err := newMMDB.Validate(); err != nil {
+                        core.Error("failed to validate new maxmind db: %v", err)
+                        continue
+                    }
 
-					// Pointer swap under mutex
-					mmdbMutex.Lock()
-					// IMPORTANT: Do not close the previous mmdb since it could still be in use
-					mmdb = newMMDB
-					mmdbMutex.Unlock()
+                    // Pointer swap under mutex
+                    mmdbMutex.Lock()
+                    // IMPORTANT: Do not close the previous mmdb since it could still be in use
+                    mmdb = newMMDB
+                    mmdbMutex.Unlock()
 
-					core.Debug("updated maxmind database")
+                    core.Debug("updated maxmind database")
 
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-	}
+                case <-ctx.Done():
+                    return
+                }
+            }
+        }()
+    }
 
-	// function to get the route matrix pointer under mutex
-
-	routeMatrix := &routing.RouteMatrix{}
+    // function to get the route matrix pointer under mutex
+
+    routeMatrix := &routing.RouteMatrix{}
 
-	var routeMatrixMutex sync.RWMutex
-
-	getRouteMatrix := func() *routing.RouteMatrix {
-		routeMatrixMutex.RLock()
-		rm := routeMatrix
-		routeMatrixMutex.RUnlock()
-		return rm
-	}
-
-	// function to get the database under mutex
-
-	database := routing.CreateEmptyDatabaseBinWrapper()
-
-	var databaseMutex sync.RWMutex
-
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		databaseMutex.RLock()
-		db := database
-		databaseMutex.RUnlock()
-		return db
-	}
-
-	// function to clear route matrix and database atomically
-
-	clearEverything := func() {
-		routeMatrixMutex.RLock()
-		databaseMutex.RLock()
-		database = routing.CreateEmptyDatabaseBinWrapper()
-		routeMatrix = &routing.RouteMatrix{}
-		databaseMutex.RUnlock()
-		routeMatrixMutex.RUnlock()
-	}
-
-	var staleDuration time.Duration
-
-	// Sync route matrix
-	{
-		uri := envvar.GetString("ROUTE_MATRIX_URI", "")
-
-		if uri == "" {
-			core.Error("ROUTE_MATRIX_URI not set")
-			return 1
-		}
-
-		syncInterval := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
-
-		readTimeout := envvar.GetDuration("ROUTE_MATRIX_READ_DURATION", 10*time.Second)
-
-		staleDuration = envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
-
-		go func() {
-			httpClient := &http.Client{
-				Timeout: readTimeout,
-			}
-
-			ticker := time.NewTicker(syncInterval)
-
-			for {
-				select {
-				case <-ticker.C:
-
-					var buffer []byte
-					start := time.Now()
-
-					var routeMatrixReader io.ReadCloser
-
-					if f, err := os.Open(uri); err == nil {
-						routeMatrixReader = f
-					}
-
-					if r, err := httpClient.Get(uri); err == nil {
-						routeMatrixReader = r.Body
-					}
-
-					if routeMatrixReader == nil {
-						clearEverything()
-						backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
-						continue
-					}
-
-					buffer, err = ioutil.ReadAll(routeMatrixReader)
-
-					routeMatrixReader.Close()
-
-					if err != nil {
-						core.Error("failed to read route matrix data: %v", err)
-						clearEverything()
-						backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
-						continue
-					}
-
-					if len(buffer) == 0 {
-						core.Debug("route matrix buffer is empty")
-						clearEverything()
-						backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
-						continue
-					}
-
-					var newRouteMatrix routing.RouteMatrix
-					readStream := encoding.CreateReadStream(buffer)
-					if err := newRouteMatrix.Serialize(readStream); err != nil {
-						core.Error("failed to serialize route matrix: %v", err)
-						clearEverything()
-						backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
-						continue
-					}
-
-					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-						core.Error("route matrix is stale")
-						backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
-						continue
-					}
-
-					routeEntriesTime := time.Since(start)
-					duration := float64(routeEntriesTime.Milliseconds())
-					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-					if duration > 250 {
-						core.Error("long route matrix duration %dms", int(duration))
-						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
-					}
-
-					// update some statistics from the route matrix
-
-					numRoutes := int32(0)
-					for i := range newRouteMatrix.RouteEntries {
-						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
-					}
-					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
-					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
-
-					// decode the database in the route matrix
-
-					var newDatabase routing.DatabaseBinWrapper
-
-					databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
-					decoder := gob.NewDecoder(databaseBuffer)
-					err := decoder.Decode(&newDatabase)
-					if err == io.EOF {
-						core.Error("database.bin is empty")
-						clearEverything()
-						backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
-						continue
-					}
-					if err != nil {
-						core.Error("failed to read database.bin: %v", err)
-						clearEverything()
-						backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
-						continue
-					}
-
-					// pointer swap route matrix and database atomically
-
-					routeMatrixMutex.Lock()
-					databaseMutex.Lock()
-					routeMatrix = &newRouteMatrix
-					database = &newDatabase
-					databaseMutex.Unlock()
-					relays := routeMatrix.RelayNames
-					routeMatrixMutex.Unlock()
-
-					core.Debug("updated route matrix: %d relays %s", len(relays), relays)
-
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-	}
-
-	// Setup feature config for billing
-	var featureConfig config.Config
-	envVarConfig := config.NewEnvVarConfig([]config.Feature{
-		{
-			Name:        "FEATURE_BILLING2",
-			Enum:        config.FEATURE_BILLING2,
-			Value:       true,
-			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
-		},
-	})
-	featureConfig = envVarConfig
-
-	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
-
-	// Create local biller
-	var biller2 billing.Biller = &billing.LocalBiller{
-		Metrics: backendMetrics.BillingMetrics,
-	}
-
-	// Create local matcher
-	var matcher md.Matcher = &md.LocalMatcher{
-		Metrics: backendMetrics.MatchDataMetrics,
-	}
-
-	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-	if gcpProjectID != "" || pubsubEmulatorOK {
-
-		pubsubCtx := ctx
-		if pubsubEmulatorOK {
-			gcpProjectID = "local"
-
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			core.Debug("detected pubsub emulator")
-		}
-
-		// Google Pubsub for billing
-		{
-			clientCount := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
-
-			countThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
-
-			byteThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
-
-			settings := googlepubsub.DefaultPublishSettings
-			settings.CountThreshold = 1
-			settings.ByteThreshold = byteThreshold
-			settings.NumGoroutines = runtime.GOMAXPROCS(0)
-
-			if featureBilling2 {
-				billing2TopicID := envvar.GetString("FEATURE_BILLING2_TOPIC_NAME", "billing2")
-
-				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
-				if err != nil {
-					core.Error("could not create pubsub biller2: %v", err)
-					return 1
-				}
-
-				biller2 = pubsub
-			}
-		}
-
-		// Google Pubsub for match data
-		{
-			clientCount := envvar.GetInt("MATCH_DATA_CLIENT_COUNT", 1)
-
-			countThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
-
-			byteThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
-
-			settings := googlepubsub.DefaultPublishSettings
-			settings.CountThreshold = 1
-			settings.ByteThreshold = byteThreshold
-			settings.NumGoroutines = runtime.GOMAXPROCS(0)
-
-			matchDataTopicID := envvar.GetString("MATCH_DATA_TOPIC_NAME", "match_data")
-
-			pubsub, err := md.NewGooglePubSubMatcher(pubsubCtx, backendMetrics.MatchDataMetrics, gcpProjectID, matchDataTopicID, clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				core.Error("could not create pubsub matcher: %v", err)
-				return 1
-			}
-
-			matcher = pubsub
-		}
-	}
-
-	// Start portal cruncher publisher
-	portalPublishers := make([]pubsub.Publisher, 0)
-	{
-		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
-
-		postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
-
-		for _, host := range portalCruncherHosts {
-			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
-			if err != nil {
-				core.Error("could not create portal cruncher publisher: %v", err)
-				return 1
-			}
-
-			portalPublishers = append(portalPublishers, portalCruncherPublisher)
-		}
-	}
-
-	numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
-
-	postSessionBufferSize := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
-
-	postSessionPortalMaxRetries := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
-	if err != nil {
-		core.Error("invalid POST_SESSION_PORTAL_MAX_RETRIES: %v", err)
-		return 1
-	}
-
-	// Create a post session handler to handle the post process of session updates.
-	// This way, we can quickly return from the session update handler and not spawn a
-	// ton of goroutines if things get backed up.
-	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
-	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
-
-	// Create a server tracker to keep track of which servers are sending updates to this backend
-	serverTracker := storage.NewServerTracker()
-
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
-	if err != nil {
-		core.Error("could not create local multipath veto handler: %v", err)
-		return 1
-	}
-	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
-
-	redisMultipathVetoHost := envvar.GetString("REDIS_HOST_MULTIPATH_VETO", "")
-	if redisMultipathVetoHost != "" {
-		redisMultipathVetoPassword := envvar.GetString("REDIS_PASSWORD_MULTIPATH_VETO", "")
-		redisMultipathVetoMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
-		redisMultipathVetoMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
-
-		multipathVetoSyncFrequency := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
-		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, redisMultipathVetoPassword, redisMultipathVetoMaxIdleConns, redisMultipathVetoMaxActiveConns, getDatabase)
-		if err != nil {
-			core.Error("could not create redis multipath veto handler: %v", err)
-			return 1
-		}
-
-		if err := multipathVetoHandler.Sync(); err != nil {
-			core.Error("failed to sync multipath veto handler: %v", err)
-			return 1
-		}
-
-		// Start a routine to sync multipath vetoed users from redis to this instance
-		{
-			ticker := time.NewTicker(multipathVetoSyncFrequency)
-			go func(ctx context.Context) {
-				for {
-					select {
-					case <-ticker.C:
-						if err := multipathVetoHandler.Sync(); err != nil {
-							core.Error("failed to sync multipath veto handler: %v", err)
-						}
-					case <-ctx.Done():
-						return
-					}
-				}
-			}(ctx)
-		}
-	}
-
-	auth0Domain := envvar.GetString("AUTH0_DOMAIN", "")
-	if auth0Domain == "" {
-		core.Error("invalid AUTH0_DOMAIN: not set")
-		return 1
-	}
-
-	// Fetch the Auth0 Cert and refresh occasionally
-	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
-	if err != nil {
-		core.Error("failed to fetch auth0 cert: %v", err)
-		return 1
-	}
-	keys = newKeys
-
-	fetchAuthCertInterval := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
-
-	go func() {
-		ticker := time.NewTicker(fetchAuthCertInterval)
-		for {
-			select {
-			case <-ticker.C:
-				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
-				if err != nil {
-					continue
-				}
-				keys = newKeys
-			case <-ctx.Done():
-				return
-			}
-
-		}
-	}()
-
-	// Setup the status handler info
-
-	statusData := &metrics.ServerBackendStatus{}
-	var statusMutex sync.RWMutex
-
-	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		go func() {
-			for {
-				backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
-
-				newStatusData := &metrics.ServerBackendStatus{}
-
-				// Service Information
-				newStatusData.ServiceName = serviceName
-				newStatusData.GitHash = commitHash
-				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
-				newStatusData.Uptime = time.Since(startTime).String()
-
-				// Service Metrics
-				newStatusData.Goroutines = int(backendMetrics.ServiceMetrics.Goroutines.Value())
-				newStatusData.MemoryAllocated = backendMetrics.ServiceMetrics.MemoryAllocated.Value()
-
-				// Server Init Metrics
-				newStatusData.ServerInitInvocations = int(backendMetrics.ServerInitMetrics.HandlerMetrics.Invocations.Value())
-				newStatusData.ServerInitReadPacketFailure = int(backendMetrics.ServerInitMetrics.ReadPacketFailure.Value())
-				newStatusData.ServerInitBuyerNotFound = int(backendMetrics.ServerInitMetrics.BuyerNotFound.Value())
-				newStatusData.ServerInitBuyerNotActive = int(backendMetrics.ServerInitMetrics.BuyerNotActive.Value())
-				newStatusData.ServerInitSignatureCheckFailed = int(backendMetrics.ServerInitMetrics.SignatureCheckFailed.Value())
-				newStatusData.ServerInitSDKTooOld = int(backendMetrics.ServerInitMetrics.SDKTooOld.Value())
-				newStatusData.ServerInitDatacenterMapNotFound = int(backendMetrics.ServerInitMetrics.DatacenterMapNotFound.Value())
-				newStatusData.ServerInitDatacenterNotFound = int(backendMetrics.ServerInitMetrics.DatacenterNotFound.Value())
-				newStatusData.ServerInitWriteResponseFailure = int(backendMetrics.ServerInitMetrics.WriteResponseFailure.Value())
-
-				// Server Update Metrics
-				newStatusData.ServerUpdateInvocations = int(backendMetrics.ServerUpdateMetrics.HandlerMetrics.Invocations.Value())
-				newStatusData.ServerUpdateReadPacketFailure = int(backendMetrics.ServerUpdateMetrics.ReadPacketFailure.Value())
-				newStatusData.ServerUpdateBuyerNotFound = int(backendMetrics.ServerUpdateMetrics.BuyerNotFound.Value())
-				newStatusData.ServerUpdateBuyerNotLive = int(backendMetrics.ServerUpdateMetrics.BuyerNotLive.Value())
-				newStatusData.ServerUpdateSignatureCheckFailed = int(backendMetrics.ServerUpdateMetrics.SignatureCheckFailed.Value())
-				newStatusData.ServerUpdateSDKTooOld = int(backendMetrics.ServerUpdateMetrics.SDKTooOld.Value())
-				newStatusData.ServerUpdateDatacenterMapNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterMapNotFound.Value())
-				newStatusData.ServerUpdateDatacenterNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterNotFound.Value())
-
-				// Session Update Metrics
-				newStatusData.SessionUpdateInvocations = int(backendMetrics.SessionUpdateMetrics.HandlerMetrics.Invocations.Value())
-				newStatusData.SessionUpdateDirectSlices = int(backendMetrics.SessionUpdateMetrics.DirectSlices.Value())
-				newStatusData.SessionUpdateNextSlices = int(backendMetrics.SessionUpdateMetrics.NextSlices.Value())
-				newStatusData.SessionUpdateReadPacketFailure = int(backendMetrics.SessionUpdateMetrics.ReadPacketFailure.Value())
-				newStatusData.SessionUpdateFallbackToDirectUnknownReason = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUnknownReason.Value())
-				newStatusData.SessionUpdateFallbackToDirectBadRouteToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadRouteToken.Value())
-				newStatusData.SessionUpdateFallbackToDirectNoNextRouteToContinue = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNoNextRouteToContinue.Value())
-				newStatusData.SessionUpdateFallbackToDirectPreviousUpdateStillPending = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectPreviousUpdateStillPending.Value())
-				newStatusData.SessionUpdateFallbackToDirectBadContinueToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadContinueToken.Value())
-				newStatusData.SessionUpdateFallbackToDirectRouteExpired = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteExpired.Value())
-				newStatusData.SessionUpdateFallbackToDirectRouteRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteRequestTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectContinueRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectContinueRequestTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectClientTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectClientTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectUpgradeResponseTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUpgradeResponseTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectRouteUpdateTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteUpdateTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectDirectPongTimedOut.Value())
-				newStatusData.SessionUpdateFallbackToDirectNextPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNextPongTimedOut.Value())
-				newStatusData.SessionUpdateBuyerNotFound = int(backendMetrics.SessionUpdateMetrics.BuyerNotFound.Value())
-				newStatusData.SessionUpdateSignatureCheckFailed = int(backendMetrics.SessionUpdateMetrics.SignatureCheckFailed.Value())
-				newStatusData.SessionUpdateClientLocateFailure = int(backendMetrics.SessionUpdateMetrics.ClientLocateFailure.Value())
-				newStatusData.SessionUpdateReadSessionDataFailure = int(backendMetrics.SessionUpdateMetrics.ReadSessionDataFailure.Value())
-				newStatusData.SessionUpdateBadSessionID = int(backendMetrics.SessionUpdateMetrics.BadSessionID.Value())
-				newStatusData.SessionUpdateBadSliceNumber = int(backendMetrics.SessionUpdateMetrics.BadSliceNumber.Value())
-				newStatusData.SessionUpdateBuyerNotLive = int(backendMetrics.SessionUpdateMetrics.BuyerNotLive.Value())
-				newStatusData.SessionUpdateClientPingTimedOut = int(backendMetrics.SessionUpdateMetrics.ClientPingTimedOut.Value())
-				newStatusData.SessionUpdateDatacenterMapNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterMapNotFound.Value())
-				newStatusData.SessionUpdateDatacenterNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterNotFound.Value())
-				newStatusData.SessionUpdateDatacenterNotEnabled = int(backendMetrics.SessionUpdateMetrics.DatacenterNotEnabled.Value())
-				newStatusData.SessionUpdateNearRelaysLocateFailure = int(backendMetrics.SessionUpdateMetrics.NearRelaysLocateFailure.Value())
-				newStatusData.SessionUpdateNearRelaysChanged = int(backendMetrics.SessionUpdateMetrics.NearRelaysChanged.Value())
-				newStatusData.SessionUpdateNoRelaysInDatacenter = int(backendMetrics.SessionUpdateMetrics.NoRelaysInDatacenter.Value())
-				newStatusData.SessionUpdateRouteDoesNotExist = int(backendMetrics.SessionUpdateMetrics.RouteDoesNotExist.Value())
-				newStatusData.SessionUpdateRouteSwitched = int(backendMetrics.SessionUpdateMetrics.RouteSwitched.Value())
-				newStatusData.SessionUpdateNextWithoutRouteRelays = int(backendMetrics.SessionUpdateMetrics.NextWithoutRouteRelays.Value())
-				newStatusData.SessionUpdateSDKAborted = int(backendMetrics.SessionUpdateMetrics.SDKAborted.Value())
-				newStatusData.SessionUpdateNoRoute = int(backendMetrics.SessionUpdateMetrics.NoRoute.Value())
-				newStatusData.SessionUpdateMultipathOverload = int(backendMetrics.SessionUpdateMetrics.MultipathOverload.Value())
-				newStatusData.SessionUpdateLatencyWorse = int(backendMetrics.SessionUpdateMetrics.LatencyWorse.Value())
-				newStatusData.SessionUpdateMispredictVeto = int(backendMetrics.SessionUpdateMetrics.MispredictVeto.Value())
-				newStatusData.SessionUpdateWriteResponseFailure = int(backendMetrics.SessionUpdateMetrics.WriteResponseFailure.Value())
-				newStatusData.SessionUpdateStaleRouteMatrix = int(backendMetrics.SessionUpdateMetrics.StaleRouteMatrix.Value())
-
-				// Match Data Handler Metrics
-				newStatusData.MatchDataHandlerInvocations = int(backendMetrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
-				newStatusData.MatchDataHandlerReadPacketFailure = int(backendMetrics.MatchDataHandlerMetrics.ReadPacketFailure.Value())
-				newStatusData.MatchDataHandlerBuyerNotFound = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
-				newStatusData.MatchDataHandlerBuyerNotActive = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
-				newStatusData.MatchDataHandlerSignatureCheckFailed = int(backendMetrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
-				newStatusData.MatchDataHandlerWriteResponseFailure = int(backendMetrics.MatchDataHandlerMetrics.WriteResponseFailure.Value())
-
-				// Post Session Metrics
-				newStatusData.PostSessionBillingEntries2Sent = int(backendMetrics.PostSessionMetrics.BillingEntries2Sent.Value())
-				newStatusData.PostSessionBillingEntries2Finished = int(backendMetrics.PostSessionMetrics.BillingEntries2Finished.Value())
-				newStatusData.PostSessionBilling2BufferFull = int(backendMetrics.PostSessionMetrics.Billing2BufferFull.Value())
-				newStatusData.PostSessionPortalEntriesSent = int(backendMetrics.PostSessionMetrics.PortalEntriesSent.Value())
-				newStatusData.PostSessionPortalEntriesFinished = int(backendMetrics.PostSessionMetrics.PortalEntriesFinished.Value())
-				newStatusData.PostSessionPortalBufferFull = int(backendMetrics.PostSessionMetrics.PortalBufferFull.Value())
-				newStatusData.PostSessionMatchDataEntriesSent = int(backendMetrics.PostSessionMetrics.MatchDataEntriesSent.Value())
-				newStatusData.PostSessionMatchDataEntriesFinished = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFinished.Value())
-				newStatusData.PostSessionMatchDataEntriesBufferFull = int(backendMetrics.PostSessionMetrics.MatchDataEntriesBufferFull.Value())
-				newStatusData.PostSessionBilling2Failure = int(backendMetrics.PostSessionMetrics.Billing2Failure.Value())
-				newStatusData.PostSessionPortalFailure = int(backendMetrics.PostSessionMetrics.PortalFailure.Value())
-				newStatusData.PostSessionMatchDataEntriesFailure = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFailure.Value())
-
-				// Billing Metrics
-				newStatusData.BillingEntries2Submitted = int(backendMetrics.BillingMetrics.Entries2Submitted.Value())
-				newStatusData.BillingEntries2Queued = int(backendMetrics.BillingMetrics.Entries2Queued.Value())
-				newStatusData.BillingEntries2Flushed = int(backendMetrics.BillingMetrics.Entries2Flushed.Value())
-				newStatusData.Billing2PublishFailure = int(backendMetrics.BillingMetrics.ErrorMetrics.Billing2PublishFailure.Value())
-
-				// Match Data Metrics
-				newStatusData.MatchDataEntriesSubmitted = int(backendMetrics.MatchDataMetrics.EntriesSubmitted.Value())
-				newStatusData.MatchDataEntriesQueued = int(backendMetrics.MatchDataMetrics.EntriesQueued.Value())
-				newStatusData.MatchDataEntriesFlushed = int(backendMetrics.MatchDataMetrics.EntriesFlushed.Value())
-				newStatusData.MatchDataEntriesPublishFailure = int(backendMetrics.MatchDataMetrics.ErrorMetrics.MatchDataPublishFailure.Value())
-
-				// Route Matrix Metrics
-				newStatusData.RouteMatrixNumRoutes = int(backendMetrics.RouteMatrixNumRoutes.Value())
-				newStatusData.RouteMatrixBytes = int(backendMetrics.RouteMatrixBytes.Value())
-
-				// Error Metrics
-				newStatusData.RouteMatrixReaderNil = int(backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
-				newStatusData.RouteMatrixReadFailure = int(backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Value())
-				newStatusData.RouteMatrixBufferEmpty = int(backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value())
-				newStatusData.RouteMatrixSerializeFailure = int(backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value())
-				newStatusData.BinWrapperEmpty = int(backendMetrics.ErrorMetrics.BinWrapperEmpty.Value())
-				newStatusData.BinWrapperFailure = int(backendMetrics.ErrorMetrics.BinWrapperFailure.Value())
-				newStatusData.StaleRouteMatrix = int(backendMetrics.ErrorMetrics.StaleRouteMatrix.Value())
-
-				statusMutex.Lock()
-				statusData = newStatusData
-				statusMutex.Unlock()
-
-				time.Sleep(time.Second * 10)
-
-				core.Debug("updated metrics")
-			}
-		}()
-	}
-
-	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		statusMutex.RLock()
-		data := statusData
-		statusMutex.RUnlock()
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(data); err != nil {
-			core.Error("could not write status data to json: %v\n%+v", err, data)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-
-		core.Debug("served status")
-	}
-
-	// Start HTTP server
-	{
-		allowedOrigins := envvar.GetString("ALLOWED_ORIGINS", "")
-		if allowedOrigins == "" {
-			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
-		}
-
-		auth0Issuer := envvar.GetString("AUTH0_ISSUER", "")
-		if auth0Issuer == "" {
-			core.Debug("unable to parse AUTH0_ISSUER environment variable")
-		}
-
-		router := mux.NewRouter()
-		router.HandleFunc("/health", transport.HealthHandlerFunc())
-		router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
-		router.Handle("/debug/vars", expvar.Handler())
-		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-
-		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
-		router.Handle("/servers", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
-
-		enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-		if enablePProf {
-			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-		}
-
-		httpPort := envvar.GetString("HTTP_PORT", "40001")
-
-		srv := &http.Server{
-			Addr:    ":" + httpPort,
-			Handler: router,
-		}
-
-		go func() {
-			fmt.Printf("started http server on port %s\n", httpPort)
-			err := srv.ListenAndServe()
-			if err != nil {
-				core.Error("failed to start http server: %v", err)
-				return
-			}
-		}()
-
-		if gcpProjectID != "" {
-			metadataSyncInterval := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
-			connectionDrainMetadata := envvar.GetString("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
-
-			// Start a goroutine to shutdown the HTTP server when the metadata changes
-			go func() {
-				for {
-					ticker := time.NewTicker(metadataSyncInterval)
-					select {
-					case <-ticker.C:
-						// Get metadata value for connection drain
-						/*val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
-						if err != nil {
-							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
-						}
-						*/
-						MIGInstancesStatusList, err := getMIGInstancesStatusList(gcpProjectID, serverBackendMIGName)
-						if err != nil {
-							core.Error("failed to get list of instances in server backend MIG : %v", err)
-						}
-
-						val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList)
-
-						// Get metadata value for connection drain
-						valMetadata, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
-						if err != nil {
-							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
-						}
-
-						if val || valMetadata == "true" {
-							core.Debug("the instance is deleting, shutting down HTTP server")
-							// Shutdown the HTTP server
-							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
-							defer cancel()
-							srv.Shutdown(ctxTimeout)
-						}
-					case <-ctx.Done():
-						return
-					}
-				}
-			}()
-		}
-	}
-
-	numThreads := envvar.GetInt("NUM_THREADS", 1)
-	readBuffer := envvar.GetInt("READ_BUFFER", 100000)
-	writeBuffer := envvar.GetInt("WRITE_BUFFER", 100000)
-	udpPort := envvar.GetString("UDP_PORT", "40000")
-
-	var wg sync.WaitGroup
-
-	wg.Add(numThreads)
-
-	lc := net.ListenConfig{
-		Control: func(network string, address string, c syscall.RawConn) error {
-			err := c.Control(func(fileDescriptor uintptr) {
-				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
-				}
-
-				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-				if err != nil {
-					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
-				}
-			})
-
-			return err
-		},
-	}
-
-	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
-	matchDataHandler := transport.MatchDataHandlerFunc(getDatabase, postSessionHandler, backendMetrics.MatchDataHandlerMetrics)
-
-	for i := 0; i < numThreads; i++ {
-		go func(thread int) {
-
-			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
-			if err != nil {
-				panic(fmt.Sprintf("could not bind socket: %v", err))
-			}
-
-			conn := lp.(*net.UDPConn)
-			defer conn.Close()
-
-			if err := conn.SetReadBuffer(readBuffer); err != nil {
-				panic(fmt.Sprintf("could not set connection read buffer size: %v", err))
-			}
-
-			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
-				panic(fmt.Sprintf("could not set connection write buffer size: %v", err))
-			}
-
-			dataArray := [transport.DefaultMaxPacketSize]byte{}
-			for {
-				data := dataArray[:]
-				size, fromAddr, err := conn.ReadFromUDP(data)
-				if err != nil {
-					core.Error("failed to read udp packet: %v", err)
-					break
-				}
-
-				if size <= 0 {
-					continue
-				}
-
-				data = data[:size]
-
-				// Check the packet hash is legit and remove the hash from the beginning of the packet
-				// to continue processing the packet as normal
-				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-					continue
-				}
-
-				packetType := data[0]
-				data = data[crypto.PacketHashSize+1 : size]
-
-				var buffer bytes.Buffer
-				packet := transport.UDPPacket{From: *fromAddr, Data: data}
-
-				switch packetType {
-				case transport.PacketTypeServerInitRequest:
-					serverInitHandler(&buffer, &packet)
-				case transport.PacketTypeServerUpdate:
-					serverUpdateHandler(&buffer, &packet)
-				case transport.PacketTypeSessionUpdate:
-					sessionUpdateHandler(&buffer, &packet)
-				case transport.PacketTypeMatchDataRequest:
-					matchDataHandler(&buffer, &packet)
-				}
-
-				if buffer.Len() > 0 {
-					response := buffer.Bytes()
-
-					// Sign and hash the response
-					response = crypto.SignPacket(privateKey, response)
-					crypto.HashPacket(crypto.PacketHashKey, response)
-
-					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-						core.Error("failed to write udp response packet: %v", err)
-					}
-				}
-			}
-
-			wg.Done()
-		}(i)
-	}
-
-	fmt.Printf("started udp server on port %s\n", udpPort)
-
-	// Wait for shutdown signal
-	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-	<-termChan
-	fmt.Println("Received shutdown signal.")
-
-	ctxCancelFunc()
-	// Wait for essential post session goroutines to finish up
-	wgPostSession.Wait()
-
-	fmt.Println("Successfully shutdown.")
-
-	return 0
+    var routeMatrixMutex sync.RWMutex
+
+    getRouteMatrix := func() *routing.RouteMatrix {
+        routeMatrixMutex.RLock()
+        rm := routeMatrix
+        routeMatrixMutex.RUnlock()
+        return rm
+    }
+
+    // function to get the database under mutex
+
+    database := routing.CreateEmptyDatabaseBinWrapper()
+
+    var databaseMutex sync.RWMutex
+
+    getDatabase := func() *routing.DatabaseBinWrapper {
+        databaseMutex.RLock()
+        db := database
+        databaseMutex.RUnlock()
+        return db
+    }
+
+    // function to clear route matrix and database atomically
+
+    clearEverything := func() {
+        routeMatrixMutex.RLock()
+        databaseMutex.RLock()
+        database = routing.CreateEmptyDatabaseBinWrapper()
+        routeMatrix = &routing.RouteMatrix{}
+        databaseMutex.RUnlock()
+        routeMatrixMutex.RUnlock()
+    }
+
+    var staleDuration time.Duration
+
+    // Sync route matrix
+    {
+        uri := envvar.GetString("ROUTE_MATRIX_URI", "")
+
+        if uri == "" {
+            core.Error("ROUTE_MATRIX_URI not set")
+            return 1
+        }
+
+        syncInterval := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
+
+        readTimeout := envvar.GetDuration("ROUTE_MATRIX_READ_DURATION", 10*time.Second)
+
+        staleDuration = envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
+
+        go func() {
+            httpClient := &http.Client{
+                Timeout: readTimeout,
+            }
+
+            ticker := time.NewTicker(syncInterval)
+
+            for {
+                select {
+                case <-ticker.C:
+
+                    var buffer []byte
+                    start := time.Now()
+
+                    var routeMatrixReader io.ReadCloser
+
+                    if f, err := os.Open(uri); err == nil {
+                        routeMatrixReader = f
+                    }
+
+                    if r, err := httpClient.Get(uri); err == nil {
+                        routeMatrixReader = r.Body
+                    }
+
+                    if routeMatrixReader == nil {
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
+                        continue
+                    }
+
+                    buffer, err = ioutil.ReadAll(routeMatrixReader)
+
+                    routeMatrixReader.Close()
+
+                    if err != nil {
+                        core.Error("failed to read route matrix data: %v", err)
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
+                        continue
+                    }
+
+                    if len(buffer) == 0 {
+                        core.Debug("route matrix buffer is empty")
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
+                        continue
+                    }
+
+                    var newRouteMatrix routing.RouteMatrix
+                    readStream := encoding.CreateReadStream(buffer)
+                    if err := newRouteMatrix.Serialize(readStream); err != nil {
+                        core.Error("failed to serialize route matrix: %v", err)
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
+                        continue
+                    }
+
+                    if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+                        core.Error("route matrix is stale")
+                        backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
+                        continue
+                    }
+
+                    routeEntriesTime := time.Since(start)
+                    duration := float64(routeEntriesTime.Milliseconds())
+                    backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+                    if duration > 250 {
+                        core.Error("long route matrix duration %dms", int(duration))
+                        backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+                    }
+
+                    // update some statistics from the route matrix
+
+                    numRoutes := int32(0)
+                    for i := range newRouteMatrix.RouteEntries {
+                        numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
+                    }
+                    backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+                    backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+                    // decode the database in the route matrix
+
+                    var newDatabase routing.DatabaseBinWrapper
+
+                    databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+                    decoder := gob.NewDecoder(databaseBuffer)
+                    err := decoder.Decode(&newDatabase)
+                    if err == io.EOF {
+                        core.Error("database.bin is empty")
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
+                        continue
+                    }
+                    if err != nil {
+                        core.Error("failed to read database.bin: %v", err)
+                        clearEverything()
+                        backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
+                        continue
+                    }
+
+                    // pointer swap route matrix and database atomically
+
+                    routeMatrixMutex.Lock()
+                    databaseMutex.Lock()
+                    routeMatrix = &newRouteMatrix
+                    database = &newDatabase
+                    databaseMutex.Unlock()
+                    relays := routeMatrix.RelayNames
+                    routeMatrixMutex.Unlock()
+
+                    core.Debug("updated route matrix: %d relays %s", len(relays), relays)
+
+                case <-ctx.Done():
+                    return
+                }
+            }
+        }()
+    }
+
+    // Setup feature config for billing
+    var featureConfig config.Config
+    envVarConfig := config.NewEnvVarConfig([]config.Feature{
+        {
+            Name:        "FEATURE_BILLING2",
+            Enum:        config.FEATURE_BILLING2,
+            Value:       true,
+            Description: "Inserts BillingEntry2 types to Google Pub/Sub",
+        },
+    })
+    featureConfig = envVarConfig
+
+    featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
+
+    // Create local biller
+    var biller2 billing.Biller = &billing.LocalBiller{
+        Metrics: backendMetrics.BillingMetrics,
+    }
+
+    // Create local matcher
+    var matcher md.Matcher = &md.LocalMatcher{
+        Metrics: backendMetrics.MatchDataMetrics,
+    }
+
+    pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+    if gcpProjectID != "" || pubsubEmulatorOK {
+
+        pubsubCtx := ctx
+        if pubsubEmulatorOK {
+            gcpProjectID = "local"
+
+            var cancelFunc context.CancelFunc
+            pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+            defer cancelFunc()
+
+            core.Debug("detected pubsub emulator")
+        }
+
+        // Google Pubsub for billing
+        {
+            clientCount := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
+
+            countThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
+
+            byteThreshold := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
+
+            settings := googlepubsub.DefaultPublishSettings
+            settings.CountThreshold = 1
+            settings.ByteThreshold = byteThreshold
+            settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+            if featureBilling2 {
+                billing2TopicID := envvar.GetString("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+
+                pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
+                if err != nil {
+                    core.Error("could not create pubsub biller2: %v", err)
+                    return 1
+                }
+
+                biller2 = pubsub
+            }
+        }
+
+        // Google Pubsub for match data
+        {
+            clientCount := envvar.GetInt("MATCH_DATA_CLIENT_COUNT", 1)
+
+            countThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
+
+            byteThreshold := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
+
+            settings := googlepubsub.DefaultPublishSettings
+            settings.CountThreshold = 1
+            settings.ByteThreshold = byteThreshold
+            settings.NumGoroutines = runtime.GOMAXPROCS(0)
+
+            matchDataTopicID := envvar.GetString("MATCH_DATA_TOPIC_NAME", "match_data")
+
+            pubsub, err := md.NewGooglePubSubMatcher(pubsubCtx, backendMetrics.MatchDataMetrics, gcpProjectID, matchDataTopicID, clientCount, countThreshold, byteThreshold, &settings)
+            if err != nil {
+                core.Error("could not create pubsub matcher: %v", err)
+                return 1
+            }
+
+            matcher = pubsub
+        }
+    }
+
+    // Start portal cruncher publisher
+    portalPublishers := make([]pubsub.Publisher, 0)
+    {
+        portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
+
+        postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
+
+        for _, host := range portalCruncherHosts {
+            portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
+            if err != nil {
+                core.Error("could not create portal cruncher publisher: %v", err)
+                return 1
+            }
+
+            portalPublishers = append(portalPublishers, portalCruncherPublisher)
+        }
+    }
+
+    numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
+
+    postSessionBufferSize := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
+
+    postSessionPortalMaxRetries := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
+    if err != nil {
+        core.Error("invalid POST_SESSION_PORTAL_MAX_RETRIES: %v", err)
+        return 1
+    }
+
+    // Create a post session handler to handle the post process of session updates.
+    // This way, we can quickly return from the session update handler and not spawn a
+    // ton of goroutines if things get backed up.
+    var wgPostSession sync.WaitGroup
+    postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
+    go postSessionHandler.StartProcessing(ctx, &wgPostSession)
+
+    // Create a server tracker to keep track of which servers are sending updates to this backend
+    serverTracker := storage.NewServerTracker()
+
+    localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
+    if err != nil {
+        core.Error("could not create local multipath veto handler: %v", err)
+        return 1
+    }
+    var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
+
+    redisMultipathVetoHost := envvar.GetString("REDIS_HOST_MULTIPATH_VETO", "")
+    if redisMultipathVetoHost != "" {
+        redisMultipathVetoPassword := envvar.GetString("REDIS_PASSWORD_MULTIPATH_VETO", "")
+        redisMultipathVetoMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
+        redisMultipathVetoMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
+
+        multipathVetoSyncFrequency := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
+        multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, redisMultipathVetoPassword, redisMultipathVetoMaxIdleConns, redisMultipathVetoMaxActiveConns, getDatabase)
+        if err != nil {
+            core.Error("could not create redis multipath veto handler: %v", err)
+            return 1
+        }
+
+        if err := multipathVetoHandler.Sync(); err != nil {
+            core.Error("failed to sync multipath veto handler: %v", err)
+            return 1
+        }
+
+        // Start a routine to sync multipath vetoed users from redis to this instance
+        {
+            ticker := time.NewTicker(multipathVetoSyncFrequency)
+            go func(ctx context.Context) {
+                for {
+                    select {
+                    case <-ticker.C:
+                        if err := multipathVetoHandler.Sync(); err != nil {
+                            core.Error("failed to sync multipath veto handler: %v", err)
+                        }
+                    case <-ctx.Done():
+                        return
+                    }
+                }
+            }(ctx)
+        }
+    }
+
+    auth0Domain := envvar.GetString("AUTH0_DOMAIN", "")
+    if auth0Domain == "" {
+        core.Error("invalid AUTH0_DOMAIN: not set")
+        return 1
+    }
+
+    // Fetch the Auth0 Cert and refresh occasionally
+    newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
+    if err != nil {
+        core.Error("failed to fetch auth0 cert: %v", err)
+        return 1
+    }
+    keys = newKeys
+
+    fetchAuthCertInterval := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
+
+    go func() {
+        ticker := time.NewTicker(fetchAuthCertInterval)
+        for {
+            select {
+            case <-ticker.C:
+                newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
+                if err != nil {
+                    continue
+                }
+                keys = newKeys
+            case <-ctx.Done():
+                return
+            }
+
+        }
+    }()
+
+    // Setup the status handler info
+
+    statusData := &metrics.ServerBackendStatus{}
+    var statusMutex sync.RWMutex
+
+    {
+        memoryUsed := func() float64 {
+            var m runtime.MemStats
+            runtime.ReadMemStats(&m)
+            return float64(m.Alloc) / (1000.0 * 1000.0)
+        }
+
+        go func() {
+            for {
+                backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+                backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+                newStatusData := &metrics.ServerBackendStatus{}
+
+                // Service Information
+                newStatusData.ServiceName = serviceName
+                newStatusData.GitHash = commitHash
+                newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+                newStatusData.Uptime = time.Since(startTime).String()
+
+                // Service Metrics
+                newStatusData.Goroutines = int(backendMetrics.ServiceMetrics.Goroutines.Value())
+                newStatusData.MemoryAllocated = backendMetrics.ServiceMetrics.MemoryAllocated.Value()
+
+                // Server Init Metrics
+                newStatusData.ServerInitInvocations = int(backendMetrics.ServerInitMetrics.HandlerMetrics.Invocations.Value())
+                newStatusData.ServerInitReadPacketFailure = int(backendMetrics.ServerInitMetrics.ReadPacketFailure.Value())
+                newStatusData.ServerInitBuyerNotFound = int(backendMetrics.ServerInitMetrics.BuyerNotFound.Value())
+                newStatusData.ServerInitBuyerNotActive = int(backendMetrics.ServerInitMetrics.BuyerNotActive.Value())
+                newStatusData.ServerInitSignatureCheckFailed = int(backendMetrics.ServerInitMetrics.SignatureCheckFailed.Value())
+                newStatusData.ServerInitSDKTooOld = int(backendMetrics.ServerInitMetrics.SDKTooOld.Value())
+                newStatusData.ServerInitDatacenterMapNotFound = int(backendMetrics.ServerInitMetrics.DatacenterMapNotFound.Value())
+                newStatusData.ServerInitDatacenterNotFound = int(backendMetrics.ServerInitMetrics.DatacenterNotFound.Value())
+                newStatusData.ServerInitWriteResponseFailure = int(backendMetrics.ServerInitMetrics.WriteResponseFailure.Value())
+
+                // Server Update Metrics
+                newStatusData.ServerUpdateInvocations = int(backendMetrics.ServerUpdateMetrics.HandlerMetrics.Invocations.Value())
+                newStatusData.ServerUpdateReadPacketFailure = int(backendMetrics.ServerUpdateMetrics.ReadPacketFailure.Value())
+                newStatusData.ServerUpdateBuyerNotFound = int(backendMetrics.ServerUpdateMetrics.BuyerNotFound.Value())
+                newStatusData.ServerUpdateBuyerNotLive = int(backendMetrics.ServerUpdateMetrics.BuyerNotLive.Value())
+                newStatusData.ServerUpdateSignatureCheckFailed = int(backendMetrics.ServerUpdateMetrics.SignatureCheckFailed.Value())
+                newStatusData.ServerUpdateSDKTooOld = int(backendMetrics.ServerUpdateMetrics.SDKTooOld.Value())
+                newStatusData.ServerUpdateDatacenterMapNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterMapNotFound.Value())
+                newStatusData.ServerUpdateDatacenterNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+                // Session Update Metrics
+                newStatusData.SessionUpdateInvocations = int(backendMetrics.SessionUpdateMetrics.HandlerMetrics.Invocations.Value())
+                newStatusData.SessionUpdateDirectSlices = int(backendMetrics.SessionUpdateMetrics.DirectSlices.Value())
+                newStatusData.SessionUpdateNextSlices = int(backendMetrics.SessionUpdateMetrics.NextSlices.Value())
+                newStatusData.SessionUpdateReadPacketFailure = int(backendMetrics.SessionUpdateMetrics.ReadPacketFailure.Value())
+                newStatusData.SessionUpdateFallbackToDirectUnknownReason = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUnknownReason.Value())
+                newStatusData.SessionUpdateFallbackToDirectBadRouteToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadRouteToken.Value())
+                newStatusData.SessionUpdateFallbackToDirectNoNextRouteToContinue = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNoNextRouteToContinue.Value())
+                newStatusData.SessionUpdateFallbackToDirectPreviousUpdateStillPending = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectPreviousUpdateStillPending.Value())
+                newStatusData.SessionUpdateFallbackToDirectBadContinueToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadContinueToken.Value())
+                newStatusData.SessionUpdateFallbackToDirectRouteExpired = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteExpired.Value())
+                newStatusData.SessionUpdateFallbackToDirectRouteRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteRequestTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectContinueRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectContinueRequestTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectClientTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectClientTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectUpgradeResponseTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUpgradeResponseTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectRouteUpdateTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteUpdateTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectDirectPongTimedOut.Value())
+                newStatusData.SessionUpdateFallbackToDirectNextPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNextPongTimedOut.Value())
+                newStatusData.SessionUpdateBuyerNotFound = int(backendMetrics.SessionUpdateMetrics.BuyerNotFound.Value())
+                newStatusData.SessionUpdateSignatureCheckFailed = int(backendMetrics.SessionUpdateMetrics.SignatureCheckFailed.Value())
+                newStatusData.SessionUpdateClientLocateFailure = int(backendMetrics.SessionUpdateMetrics.ClientLocateFailure.Value())
+                newStatusData.SessionUpdateReadSessionDataFailure = int(backendMetrics.SessionUpdateMetrics.ReadSessionDataFailure.Value())
+                newStatusData.SessionUpdateBadSessionID = int(backendMetrics.SessionUpdateMetrics.BadSessionID.Value())
+                newStatusData.SessionUpdateBadSliceNumber = int(backendMetrics.SessionUpdateMetrics.BadSliceNumber.Value())
+                newStatusData.SessionUpdateBuyerNotLive = int(backendMetrics.SessionUpdateMetrics.BuyerNotLive.Value())
+                newStatusData.SessionUpdateClientPingTimedOut = int(backendMetrics.SessionUpdateMetrics.ClientPingTimedOut.Value())
+                newStatusData.SessionUpdateDatacenterMapNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterMapNotFound.Value())
+                newStatusData.SessionUpdateDatacenterNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterNotFound.Value())
+                newStatusData.SessionUpdateDatacenterNotEnabled = int(backendMetrics.SessionUpdateMetrics.DatacenterNotEnabled.Value())
+                newStatusData.SessionUpdateNearRelaysLocateFailure = int(backendMetrics.SessionUpdateMetrics.NearRelaysLocateFailure.Value())
+                newStatusData.SessionUpdateNearRelaysChanged = int(backendMetrics.SessionUpdateMetrics.NearRelaysChanged.Value())
+                newStatusData.SessionUpdateNoRelaysInDatacenter = int(backendMetrics.SessionUpdateMetrics.NoRelaysInDatacenter.Value())
+                newStatusData.SessionUpdateRouteDoesNotExist = int(backendMetrics.SessionUpdateMetrics.RouteDoesNotExist.Value())
+                newStatusData.SessionUpdateRouteSwitched = int(backendMetrics.SessionUpdateMetrics.RouteSwitched.Value())
+                newStatusData.SessionUpdateNextWithoutRouteRelays = int(backendMetrics.SessionUpdateMetrics.NextWithoutRouteRelays.Value())
+                newStatusData.SessionUpdateSDKAborted = int(backendMetrics.SessionUpdateMetrics.SDKAborted.Value())
+                newStatusData.SessionUpdateNoRoute = int(backendMetrics.SessionUpdateMetrics.NoRoute.Value())
+                newStatusData.SessionUpdateMultipathOverload = int(backendMetrics.SessionUpdateMetrics.MultipathOverload.Value())
+                newStatusData.SessionUpdateLatencyWorse = int(backendMetrics.SessionUpdateMetrics.LatencyWorse.Value())
+                newStatusData.SessionUpdateMispredictVeto = int(backendMetrics.SessionUpdateMetrics.MispredictVeto.Value())
+                newStatusData.SessionUpdateWriteResponseFailure = int(backendMetrics.SessionUpdateMetrics.WriteResponseFailure.Value())
+                newStatusData.SessionUpdateStaleRouteMatrix = int(backendMetrics.SessionUpdateMetrics.StaleRouteMatrix.Value())
+
+                // Match Data Handler Metrics
+                newStatusData.MatchDataHandlerInvocations = int(backendMetrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
+                newStatusData.MatchDataHandlerReadPacketFailure = int(backendMetrics.MatchDataHandlerMetrics.ReadPacketFailure.Value())
+                newStatusData.MatchDataHandlerBuyerNotFound = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
+                newStatusData.MatchDataHandlerBuyerNotActive = int(backendMetrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
+                newStatusData.MatchDataHandlerSignatureCheckFailed = int(backendMetrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
+                newStatusData.MatchDataHandlerWriteResponseFailure = int(backendMetrics.MatchDataHandlerMetrics.WriteResponseFailure.Value())
+
+                // Post Session Metrics
+                newStatusData.PostSessionBillingEntries2Sent = int(backendMetrics.PostSessionMetrics.BillingEntries2Sent.Value())
+                newStatusData.PostSessionBillingEntries2Finished = int(backendMetrics.PostSessionMetrics.BillingEntries2Finished.Value())
+                newStatusData.PostSessionBilling2BufferFull = int(backendMetrics.PostSessionMetrics.Billing2BufferFull.Value())
+                newStatusData.PostSessionPortalEntriesSent = int(backendMetrics.PostSessionMetrics.PortalEntriesSent.Value())
+                newStatusData.PostSessionPortalEntriesFinished = int(backendMetrics.PostSessionMetrics.PortalEntriesFinished.Value())
+                newStatusData.PostSessionPortalBufferFull = int(backendMetrics.PostSessionMetrics.PortalBufferFull.Value())
+                newStatusData.PostSessionMatchDataEntriesSent = int(backendMetrics.PostSessionMetrics.MatchDataEntriesSent.Value())
+                newStatusData.PostSessionMatchDataEntriesFinished = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFinished.Value())
+                newStatusData.PostSessionMatchDataEntriesBufferFull = int(backendMetrics.PostSessionMetrics.MatchDataEntriesBufferFull.Value())
+                newStatusData.PostSessionBilling2Failure = int(backendMetrics.PostSessionMetrics.Billing2Failure.Value())
+                newStatusData.PostSessionPortalFailure = int(backendMetrics.PostSessionMetrics.PortalFailure.Value())
+                newStatusData.PostSessionMatchDataEntriesFailure = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFailure.Value())
+
+                // Billing Metrics
+                newStatusData.BillingEntries2Submitted = int(backendMetrics.BillingMetrics.Entries2Submitted.Value())
+                newStatusData.BillingEntries2Queued = int(backendMetrics.BillingMetrics.Entries2Queued.Value())
+                newStatusData.BillingEntries2Flushed = int(backendMetrics.BillingMetrics.Entries2Flushed.Value())
+                newStatusData.Billing2PublishFailure = int(backendMetrics.BillingMetrics.ErrorMetrics.Billing2PublishFailure.Value())
+
+                // Match Data Metrics
+                newStatusData.MatchDataEntriesSubmitted = int(backendMetrics.MatchDataMetrics.EntriesSubmitted.Value())
+                newStatusData.MatchDataEntriesQueued = int(backendMetrics.MatchDataMetrics.EntriesQueued.Value())
+                newStatusData.MatchDataEntriesFlushed = int(backendMetrics.MatchDataMetrics.EntriesFlushed.Value())
+                newStatusData.MatchDataEntriesPublishFailure = int(backendMetrics.MatchDataMetrics.ErrorMetrics.MatchDataPublishFailure.Value())
+
+                // Route Matrix Metrics
+                newStatusData.RouteMatrixNumRoutes = int(backendMetrics.RouteMatrixNumRoutes.Value())
+                newStatusData.RouteMatrixBytes = int(backendMetrics.RouteMatrixBytes.Value())
+
+                // Error Metrics
+                newStatusData.RouteMatrixReaderNil = int(backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
+                newStatusData.RouteMatrixReadFailure = int(backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Value())
+                newStatusData.RouteMatrixBufferEmpty = int(backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value())
+                newStatusData.RouteMatrixSerializeFailure = int(backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value())
+                newStatusData.BinWrapperEmpty = int(backendMetrics.ErrorMetrics.BinWrapperEmpty.Value())
+                newStatusData.BinWrapperFailure = int(backendMetrics.ErrorMetrics.BinWrapperFailure.Value())
+                newStatusData.StaleRouteMatrix = int(backendMetrics.ErrorMetrics.StaleRouteMatrix.Value())
+
+                statusMutex.Lock()
+                statusData = newStatusData
+                statusMutex.Unlock()
+
+                time.Sleep(time.Second * 10)
+
+                core.Debug("updated metrics")
+            }
+        }()
+    }
+
+    serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+        statusMutex.RLock()
+        data := statusData
+        statusMutex.RUnlock()
+
+        w.Header().Set("Content-Type", "application/json")
+        if err := json.NewEncoder(w).Encode(data); err != nil {
+            core.Error("could not write status data to json: %v\n%+v", err, data)
+            w.WriteHeader(http.StatusInternalServerError)
+        }
+
+        core.Debug("served status")
+    }
+
+    // Start HTTP server
+    {
+        allowedOrigins := envvar.GetString("ALLOWED_ORIGINS", "")
+        if allowedOrigins == "" {
+            core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
+        }
+
+        auth0Issuer := envvar.GetString("AUTH0_ISSUER", "")
+        if auth0Issuer == "" {
+            core.Debug("unable to parse AUTH0_ISSUER environment variable")
+        }
+
+        router := mux.NewRouter()
+        router.HandleFunc("/health", transport.HealthHandlerFunc())
+        router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+        router.Handle("/debug/vars", expvar.Handler())
+        router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+
+        serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
+        router.Handle("/servers", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
+
+        enablePProf := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+        if enablePProf {
+            router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+        }
+
+        httpPort := envvar.GetString("HTTP_PORT", "40001")
+
+        srv := &http.Server{
+            Addr:    ":" + httpPort,
+            Handler: router,
+        }
+
+        go func() {
+            fmt.Printf("started http server on port %s\n", httpPort)
+            err := srv.ListenAndServe()
+            if err != nil {
+                core.Error("failed to start http server: %v", err)
+                return
+            }
+        }()
+
+        if gcpProjectID != "" {
+            metadataSyncInterval := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
+            connectionDrainMetadata := envvar.GetString("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+
+            // Start a goroutine to shutdown the HTTP server when the metadata changes
+            go func() {
+                for {
+                    ticker := time.NewTicker(metadataSyncInterval)
+                    select {
+                    case <-ticker.C:
+                        // Get metadata value for connection drain
+                        /*val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+                        if err != nil {
+                            core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+                        }
+                        */
+                        MIGInstancesStatusList, err := getMIGInstancesStatusList(gcpProjectID, serverBackendMIGName)
+                        if err != nil {
+                            core.Error("failed to get list of instances in server backend MIG : %v", err)
+                        }
+
+                        val := checkIfInstanceIsInDeletingAction(MIGInstancesStatusList)
+
+                        // Get metadata value for connection drain
+                        valMetadata, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+                        if err != nil {
+                            core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+                        }
+
+                        if val || valMetadata == "true" {
+                            core.Debug("the instance is deleting, shutting down HTTP server")
+                            // Shutdown the HTTP server
+                            ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+                            defer cancel()
+                            srv.Shutdown(ctxTimeout)
+                        }
+                    case <-ctx.Done():
+                        return
+                    }
+                }
+            }()
+        }
+    }
+
+    numThreads := envvar.GetInt("NUM_THREADS", 1)
+    readBuffer := envvar.GetInt("READ_BUFFER", 100000)
+    writeBuffer := envvar.GetInt("WRITE_BUFFER", 100000)
+    udpPort := envvar.GetString("UDP_PORT", "40000")
+
+    var wg sync.WaitGroup
+
+    wg.Add(numThreads)
+
+    lc := net.ListenConfig{
+        Control: func(network string, address string, c syscall.RawConn) error {
+            err := c.Control(func(fileDescriptor uintptr) {
+                err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+                if err != nil {
+                    panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+                }
+
+                err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+                if err != nil {
+                    panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+                }
+            })
+
+            return err
+        },
+    }
+
+    serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
+    serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
+    sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+    matchDataHandler := transport.MatchDataHandlerFunc(getDatabase, postSessionHandler, backendMetrics.MatchDataHandlerMetrics)
+
+    for i := 0; i < numThreads; i++ {
+        go func(thread int) {
+
+            lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
+            if err != nil {
+                panic(fmt.Sprintf("could not bind socket: %v", err))
+            }
+
+            conn := lp.(*net.UDPConn)
+            defer conn.Close()
+
+            if err := conn.SetReadBuffer(readBuffer); err != nil {
+                panic(fmt.Sprintf("could not set connection read buffer size: %v", err))
+            }
+
+            if err := conn.SetWriteBuffer(writeBuffer); err != nil {
+                panic(fmt.Sprintf("could not set connection write buffer size: %v", err))
+            }
+
+            dataArray := [transport.DefaultMaxPacketSize]byte{}
+            for {
+                data := dataArray[:]
+                size, fromAddr, err := conn.ReadFromUDP(data)
+                if err != nil {
+                    core.Error("failed to read udp packet: %v", err)
+                    break
+                }
+
+                if size <= 0 {
+                    continue
+                }
+
+                data = data[:size]
+
+                // Check the packet hash is legit and remove the hash from the beginning of the packet
+                // to continue processing the packet as normal
+                if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+                    continue
+                }
+
+                packetType := data[0]
+                data = data[crypto.PacketHashSize+1 : size]
+
+                var buffer bytes.Buffer
+                packet := transport.UDPPacket{From: *fromAddr, Data: data}
+
+                switch packetType {
+                case transport.PacketTypeServerInitRequest:
+                    serverInitHandler(&buffer, &packet)
+                case transport.PacketTypeServerUpdate:
+                    serverUpdateHandler(&buffer, &packet)
+                case transport.PacketTypeSessionUpdate:
+                    sessionUpdateHandler(&buffer, &packet)
+                case transport.PacketTypeMatchDataRequest:
+                    matchDataHandler(&buffer, &packet)
+                }
+
+                if buffer.Len() > 0 {
+                    response := buffer.Bytes()
+
+                    // Sign and hash the response
+                    response = crypto.SignPacket(privateKey, response)
+                    crypto.HashPacket(crypto.PacketHashKey, response)
+
+                    if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+                        core.Error("failed to write udp response packet: %v", err)
+                    }
+                }
+            }
+
+            wg.Done()
+        }(i)
+    }
+
+    fmt.Printf("started udp server on port %s\n", udpPort)
+
+    // Wait for shutdown signal
+    termChan := make(chan os.Signal, 1)
+    signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+    <-termChan
+    fmt.Println("Received shutdown signal.")
+
+    ctxCancelFunc()
+    // Wait for essential post session goroutines to finish up
+    wgPostSession.Wait()
+
+    fmt.Println("Successfully shutdown.")
+
+    return 0
 }
 
 type InstanceInfo struct {
-	CurrentAction  string
-	Id             string
-	InstanceStatus string
+    CurrentAction  string
+    Id             string
+    InstanceStatus string
 }
 
 func getMIGInstancesStatusList(gcpProjectID string, migName string) ([]InstanceInfo, error) {
-	// Get the latest instance list in the relay backend mig
-	runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", migName, "--zone", "us-central1-a", "--format", "json")
+    // Get the latest instance list in the relay backend mig
+    runnable := exec.Command("gcloud", "compute", "--project", gcpProjectID, "instance-groups", "managed", "list-instances", migName, "--zone", "us-central1-a", "--format", "json")
 
-	instancesListJson, err := runnable.CombinedOutput()
-	if err != nil {
-		core.Error("Cannot get the Instances Status list %v", err)
-		return nil, err
-	}
-	var instances []InstanceInfo
-	json.Unmarshal([]byte(instancesListJson), &instances)
+    instancesListJson, err := runnable.CombinedOutput()
+    if err != nil {
+        core.Error("Cannot get the Instances Status list %v", err)
+        return nil, err
+    }
+    var instances []InstanceInfo
+    json.Unmarshal([]byte(instancesListJson), &instances)
 
-	return instances, nil
+    return instances, nil
 }
 func checkIfInstanceIsInDeletingAction(currentInstancesList []InstanceInfo) bool {
-	myInstanceId, err := metadata.InstanceID()
-	if err != nil {
-		core.Error("failed to get Instance ID : %v", err)
-	}
-	//check current list
-	for i := range currentInstancesList {
-		if currentInstancesList[i].CurrentAction == "DELETING" && currentInstancesList[i].Id == myInstanceId {
-			return true
-		}
-	}
-	return false
+    myInstanceId, err := metadata.InstanceID()
+    if err != nil {
+        core.Error("failed to get Instance ID : %v", err)
+    }
+    //check current list
+    for i := range currentInstancesList {
+        if currentInstancesList[i].CurrentAction == "DELETING" && currentInstancesList[i].Id == myInstanceId {
+            return true
+        }
+    }
+    return false
 }

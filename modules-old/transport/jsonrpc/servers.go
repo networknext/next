@@ -1,56 +1,56 @@
 package jsonrpc
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
+    "encoding/json"
+    "fmt"
+    "net/http"
 
-	"github.com/networknext/backend/modules/core"
+    "github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/storage"
+    "github.com/networknext/backend/modules-old/storage"
 )
 
 type LiveServerService struct {
 }
 
 type LiveServerArgs struct {
-	ServerBackendIPs []string
+    ServerBackendIPs []string
 }
 
 type LiveServerReply struct {
-	ServerTrackers []storage.ServerTracker `json:"server_trackers"`
+    ServerTrackers []storage.ServerTracker `json:"server_trackers"`
 }
 
 // LiveServers gets a json from each provided server_backend/servers and puts it on the wire
 func (lss *LiveServerService) LiveServers(r *http.Request, args *LiveServerArgs, reply *LiveServerReply) error {
 
-	authHeader := r.Header.Get("Authorization")
+    authHeader := r.Header.Get("Authorization")
 
-	var trackers []storage.ServerTracker
-	for _, serverBackendIP := range args.ServerBackendIPs {
-		uri := fmt.Sprintf("%s/servers", serverBackendIP)
+    var trackers []storage.ServerTracker
+    for _, serverBackendIP := range args.ServerBackendIPs {
+        uri := fmt.Sprintf("%s/servers", serverBackendIP)
 
-		client := &http.Client{}
-		req, _ := http.NewRequest("GET", uri, nil)
-		req.Header.Set("Authorization", authHeader)
+        client := &http.Client{}
+        req, _ := http.NewRequest("GET", uri, nil)
+        req.Header.Set("Authorization", authHeader)
 
-		response, err := client.Do(req)
-		if err != nil {
-			err = fmt.Errorf("LiveServers() error getting servers json: %v", err)
-			core.Error("%v", err)
-			return err
-		}
+        response, err := client.Do(req)
+        if err != nil {
+            err = fmt.Errorf("LiveServers() error getting servers json: %v", err)
+            core.Error("%v", err)
+            return err
+        }
 
-		tracker := storage.NewServerTracker()
+        tracker := storage.NewServerTracker()
 
-		json.NewDecoder(response.Body).Decode(&tracker.Tracker)
-		response.Body.Close()
+        json.NewDecoder(response.Body).Decode(&tracker.Tracker)
+        response.Body.Close()
 
-		trackers = append(trackers, *tracker)
+        trackers = append(trackers, *tracker)
 
-	}
+    }
 
-	reply.ServerTrackers = trackers
+    reply.ServerTrackers = trackers
 
-	return nil
+    return nil
 }

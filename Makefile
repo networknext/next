@@ -258,6 +258,7 @@ dist/%.prod.tar.gz: dist/%
 .PHONY: format
 format:
 	@$(GOFMT) -s -w .
+	@./scripts/tabs2spaces.sh
 	@printf "\n"
 
 # Clean, build all, rebuild all
