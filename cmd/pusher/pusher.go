@@ -21,8 +21,6 @@ func main() {
 
 	service := common.CreateService("pusher")
 
-	service.SetupStorage()
-
 	databaseDownloadURL := envvar.GetString("DATABASE_DOWNLOAD_URI", "gs://happy_path_testing/database.bin")
 	overlayDownloadURL := envvar.GetString("OVERLAY_DOWNLOAD_URI", "gs://happy_path_testing/overlay.bin")
 

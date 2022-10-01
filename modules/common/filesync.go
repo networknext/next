@@ -1,9 +1,13 @@
 package common
 
 import (
-	// "fmt"
+	"fmt"
 	"time"
 	"context"
+	"errors"
+	"os"
+	"strings"
+	"net/http"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -35,7 +39,9 @@ func (config *FileSyncConfig) Print() {
 	}
 }
 
-func StartFileSync(ctx context.Context, config *FileSyncConfig, googleProjectId string, isLeader func() bool) {
+func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStorage *GoogleCloudStorage, isLeader func() bool) {
+
+	googleProjectId := googleCloudStorage.ProjectId
 
 	for _, group := range config.FileGroups {
 
@@ -64,13 +70,11 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleProjectId 
 						fileNames[i] = syncFile.Name
 
 						core.Debug("downloading %s", syncFile.DownloadURL)
-						// todo
-						/*
-						if err := service.DownloadFile(syncFile.DownloadURL, syncFile.Name); err != nil {
+
+						if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, syncFile.Name); err != nil {
 							core.Error("failed to download %s: %v", syncFile.Name, err)
 							continue
 						}
-						*/
 					}
 
 					if !group.ValidationFunc(fileNames) {
@@ -80,28 +84,102 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleProjectId 
 
 					for _, fileName := range fileNames {
 
-						// todo
-						/*
-						if group.SaveBucket != "" {
-							if err := service.googleCloudStorage.CopyFromLocalToBucket(service.Context, fileName, fmt.Sprintf("%s/%s", group.SaveBucket, fileName)); err != nil {
+						if group.PushTo != "" {
+							if err := googleCloudStorage.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
 								core.Error("failed to upload location file to google cloud storage: %v", err)
 								continue
 							}
 						}
-						*/
 
 						receivingVMs := GetMIGInstanceNames(googleProjectId, group.PushTo)
+
 						if len(receivingVMs) > 0 {
 							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-							/*
-							if err := service.PushFileToVMs(fileName, receivingVMs); err != nil {
+							if err := PushFileToVMs(ctx, googleCloudStorage, fileName, receivingVMs); err != nil {
 								core.Error("failed to upload location file to google cloud VMs: %v", err)
 							}
-							*/
 						}
 					}
 				}
 			}
 		}(group)
 	}
+}
+
+func DownloadFile(ctx context.Context, googleCloudStorage *GoogleCloudStorage, downloadURL string, fileName string) error {
+
+	currentDirectory, err := os.Getwd()
+	if err != nil {
+		core.Error("failed to get current directory: %v", err)
+		currentDirectory = "./"
+	}
+
+	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
+
+	urlScheme := strings.Split(downloadURL, "://")[0]
+
+	switch urlScheme {
+	case "gs":
+		return googleCloudStorage.CopyFromBucketToLocal(ctx, downloadURL, path)
+	case "http", "https":
+		return DownloadFileFromURL(ctx, downloadURL, path)
+	default:
+		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
+	}
+}
+
+func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath string) error {
+
+	httpClient := http.Client{
+		Timeout: time.Second * 30,
+	}
+
+	// todo: should we do n retries here? probably yes!
+	_ = ctx
+
+	httpResponse, err := httpClient.Get(downloadURL)
+	if err != nil {
+		return err
+	}
+	defer httpResponse.Body.Close()
+
+	if httpResponse.StatusCode != http.StatusOK {
+		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
+	}
+
+	contentType := httpResponse.Header.Get("content-type")
+
+	if contentType == "application/gzip" {
+
+		if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
+			return err
+		}
+	} else {
+		if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func PushFileToVMs(ctx context.Context, googleCloudStorage *GoogleCloudStorage, filePath string, vmNames []string) error {
+
+	if len(vmNames) == 0 {
+		return nil
+	}
+
+	hadError := false
+	for _, vm := range vmNames {
+		if err := googleCloudStorage.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
+			core.Error("failed to copy file to vm: %v", err)
+			hadError = true
+		}
+	}
+
+	if hadError {
+		return errors.New("failed to upload file to one or more vms")
+	}
+
+	return nil
 }

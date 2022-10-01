@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -723,7 +722,13 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
-func (service *Service) SetupStorage() {
+func isLeaderFunc(service *Service) func() bool {
+	return func() bool {
+		return service.IsLeader()
+	}
+}
+
+func (service *Service) setupStorage() {
 
 	googleCloudStorage, err := NewGoogleCloudStorage(service.Context, service.googleProjectId)
 	if err != nil {
@@ -734,92 +739,10 @@ func (service *Service) SetupStorage() {
 	service.googleCloudStorage = googleCloudStorage
 }
 
-func isLeaderFunc(service *Service) func() bool {
-	return func() bool {
-		return service.IsLeader()
-	}
-}
-
 func (service *Service) SyncFiles(config *FileSyncConfig) {
 	config.Print()
-	StartFileSync(service.Context, config, service.googleProjectId, isLeaderFunc(service))
-}
-
-func (service *Service) PushFileToVMs(filePath string, vmNames []string) error {
-
-	if len(vmNames) == 0 {
-		return nil
-	}
-
-	hadError := false
-	for _, vm := range vmNames {
-		if err := service.googleCloudStorage.CopyFromLocalToRemote(service.Context, filePath, filePath, vm); err != nil {
-			core.Error("failed to copy file to vm: %v", err)
-			hadError = true
-		}
-	}
-
-	if hadError {
-		return errors.New("failed to upload file to one or more vms")
-	}
-
-	return nil
-}
-
-func (service *Service) DownloadFile(downloadURL string, fileName string) error {
-
-	currentDirectory, err := os.Getwd()
-	if err != nil {
-		core.Error("failed to get current directory: %v", err)
-		currentDirectory = "./"
-	}
-
-	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
-
-	urlScheme := strings.Split(downloadURL, "://")[0]
-
-	switch urlScheme {
-	case "gs":
-		return service.googleCloudStorage.CopyFromBucketToLocal(service.Context, downloadURL, path)
-	case "http", "https":
-		return service.downloadFileFromURL(downloadURL, path)
-	default:
-		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
-	}
-}
-
-func (service *Service) downloadFileFromURL(downloadURL string, filePath string) error {
-
-	httpClient := http.Client{
-		Timeout: time.Second * 30,
-	}
-
-	// todo: should we do n retries here? probably yes!
-
-	httpResponse, err := httpClient.Get(downloadURL)
-	if err != nil {
-		return err
-	}
-	defer httpResponse.Body.Close()
-
-	if httpResponse.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
-	}
-
-	contentType := httpResponse.Header.Get("content-type")
-
-	if contentType == "application/gzip" {
-
-		if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
-			return err
-		}
-	} else {
-		if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	service.setupStorage()
+	StartFileSync(service.Context, config, service.googleCloudStorage, isLeaderFunc(service))
 }
 
 // ---------------------------------------------------------------------------------------------------
