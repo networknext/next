@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -91,7 +90,8 @@ type Service struct {
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *routing.DatabaseBinWrapper
 
-	GcpStorage *GCPHandler
+	googleProjectId    string
+	googleCloudStorage *GoogleCloudStorage
 }
 
 func CreateService(serviceName string) *Service {
@@ -104,10 +104,6 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("%s", service.ServiceName)
 
-	core.Log("commit message: %s", service.CommitMessage)
-	core.Log("commit hash: %s", service.CommitHash)
-	core.Log("build time: %s", service.BuildTime)
-
 	env := backend.GetEnv()
 
 	core.Log("env: %s", env)
@@ -115,6 +111,10 @@ func CreateService(serviceName string) *Service {
 	service.Local = env == "local"
 
 	service.Env = env
+
+	core.Log("commit message: %s", service.CommitMessage)
+	core.Log("commit hash: %s", service.CommitHash)
+	core.Log("build time: %s", service.BuildTime)
 
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
@@ -124,6 +124,10 @@ func CreateService(serviceName string) *Service {
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
 	service.runStatusUpdateLoop()
+
+	service.googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
+	core.Log("google project id: %s", service.googleProjectId)
 
 	return &service
 }
@@ -718,192 +722,27 @@ func (service *Service) updateMagicLoop() {
 
 // ----------------------------------------------------------
 
-type FileSyncConfig struct {
-	FileGroups []FileSyncGroup
-}
-type FileSyncGroup struct {
-	SyncInterval   time.Duration
-	FileConfigs    []SyncFile
-	ValidationFunc func([]string) bool
-	SaveBucket     string
-	ReceivingMIG   string
-}
-
-type SyncFile struct {
-	Name        string
-	DownloadURL string
-}
-
-func (config *FileSyncConfig) Print() {
-
-	core.Log("sync group configs:")
-
-	for _, group := range config.FileGroups {
-		core.Log("\nsync interval: %v", group.SyncInterval)
-		if group.SaveBucket != "" {
-			core.Log("save bucket url: %s", group.SaveBucket)
-		}
-		core.Log("sync files:")
-		for _, config := range group.FileConfigs {
-			core.Log("file name: %s", config.Name)
-			core.Log("download url: %s", config.DownloadURL)
-		}
-		core.Log("receiving mig name: %s", group.ReceivingMIG)
-	}
-	core.Log("")
-
-}
-
-func (service *Service) StartFileSync(config *FileSyncConfig) {
-
-	for _, group := range config.FileGroups {
-
-		go func(group FileSyncGroup) {
-
-			ticker := time.NewTicker(group.SyncInterval)
-
-			for {
-				select {
-
-				case <-service.Context.Done():
-					return
-
-				case <-ticker.C:
-
-					if !service.IsLeader() {
-						continue
-					}
-
-					fileNames := make([]string, len(group.FileConfigs))
-					for i, syncFile := range group.FileConfigs {
-
-						fileNames[i] = syncFile.Name
-
-						if err := service.DownloadFile(syncFile.DownloadURL, syncFile.Name); err != nil {
-							core.Error("failed to download file: %v", err)
-							continue
-						}
-					}
-
-					if !group.ValidationFunc(fileNames) {
-						core.Error("failed to validate files")
-						continue
-					}
-
-					for _, fileName := range fileNames {
-
-						if group.SaveBucket != "" {
-							if err := service.GcpStorage.CopyFromLocalToBucket(service.Context, fileName, fmt.Sprintf("%s/%s", group.SaveBucket, fileName)); err != nil {
-								core.Error("failed to upload location file to GCP storage: %v", err)
-								continue
-							}
-						}
-
-						receivingVMs := service.GcpStorage.GetMIGInstanceNames(group.ReceivingMIG)
-
-						if err := service.PushFileToGCPVirtualMachines(fileName, receivingVMs); err != nil {
-							core.Error("failed to upload location file to GCP VMs: %v", err)
-						}
-					}
-				}
-			}
-		}(group)
+func isLeaderFunc(service *Service) func() bool {
+	return func() bool {
+		return service.IsLeader()
 	}
 }
 
-func (service *Service) SetupGCPStorage() {
+func (service *Service) setupStorage() {
 
-	googleProjectId := envvar.GetString("GOOGLE_PROJECT_ID", "local")
-
-	core.Log("google project id: %s", googleProjectId)
-
-	gcpStorage, err := NewGCPHandler(service.Context, googleProjectId)
+	googleCloudStorage, err := NewGoogleCloudStorage(service.Context, service.googleProjectId)
 	if err != nil {
-		core.Error("failed to create gcp storage client: %v", err)
+		core.Error("failed to create google cloud storage: %v", err)
 		os.Exit(1)
 	}
 
-	service.GcpStorage = gcpStorage
+	service.googleCloudStorage = googleCloudStorage
 }
 
-func (service *Service) PushFileToGCPVirtualMachines(filePath string, vmNames []string) error {
-
-	if len(vmNames) == 0 {
-		core.Debug("no VMs to upload to")
-		return nil
-	}
-
-	hadError := false
-	for _, vm := range vmNames {
-		if err := service.GcpStorage.CopyFromLocalToRemote(service.Context, filePath, filePath, vm); err != nil {
-			core.Error("failed to copy file to vm: %v", err)
-			hadError = true
-		}
-	}
-
-	if hadError {
-		return errors.New("failed to upload file to one or more vms")
-	}
-
-	return nil
-}
-
-func (service *Service) DownloadFile(downloadURL string, fileName string) error {
-
-	currentDirectory, err := os.Getwd()
-	if err != nil {
-		core.Error("failed to get current directory: %v", err)
-		currentDirectory = "./"
-	}
-
-	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
-
-	urlScheme := strings.Split(downloadURL, "://")[0]
-
-	switch urlScheme {
-	case "gs":
-		return service.downloadFileFromGCPBucket(downloadURL, path)
-	case "http", "https":
-		return service.downloadFileFromURL(downloadURL, path)
-	default:
-		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
-	}
-}
-
-func (service *Service) downloadFileFromGCPBucket(bucketPath string, filePath string) error {
-	return service.GcpStorage.CopyFromBucketToLocal(service.Context, bucketPath, filePath)
-}
-
-func (service *Service) downloadFileFromURL(downloadURL string, filePath string) error {
-
-	httpClient := http.Client{
-		Timeout: time.Second * 30,
-	}
-
-	httpResponse, err := httpClient.Get(downloadURL)
-	if err != nil {
-		return err
-	}
-	defer httpResponse.Body.Close()
-
-	if httpResponse.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
-	}
-
-	contentType := httpResponse.Header.Get("content-type")
-
-	if contentType == "application/gzip" {
-
-		if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
-			return err
-		}
-	} else {
-		if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (service *Service) SyncFiles(config *FileSyncConfig) {
+	config.Print()
+	service.setupStorage()
+	StartFileSync(service.Context, config, service.googleCloudStorage, isLeaderFunc(service))
 }
 
 // ---------------------------------------------------------------------------------------------------

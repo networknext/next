@@ -2,9 +2,9 @@ package common
 
 import (
 	"fmt"
+	"golang.org/x/exp/constraints"
 	"math/rand"
 	"net"
-	"golang.org/x/exp/constraints"
 
 	"github.com/networknext/backend/modules/core"
 )
@@ -38,7 +38,7 @@ func RandomAddress() net.UDPAddr {
 }
 
 type Number interface {
-    constraints.Integer | constraints.Float
+	constraints.Integer | constraints.Float
 }
 
 func Clamp[T Number](value *T, min T, max T) bool {
