@@ -36,9 +36,10 @@ func main() {
 				Name:           "ip2location",
 				SyncInterval:   envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateLocationFiles,
+				// todo: please don't use the concept "happy path" as synonymous with local. local is local.
 				// todo: we should not upload to the same location where it comes from. makes no sense!
 				UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
-				PushToMIG:      envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
+				PushTo:     envvar.GetString("SERVER_BACKEND_MIG_NAME", ""),
 				Files: []common.SyncFile{
 					{
 						Name:        "GeoIP2-ISP.mmdb", // download URL is a compress tar.gz so we need to know single file name
@@ -54,9 +55,10 @@ func main() {
 				Name:           "database",
 				SyncInterval:   envvar.GetDuration("BIN_FILE_REFRESH_INTERVAL", 10*time.Second),
 				ValidationFunc: validateBinFiles,
+				// todo: please don't use the concept "happy path" as synonymous with local. local is local.
 				// todo: we should not upload to the same location where it comes from. makes no sense!
 				// UploadTo:   envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://happy_path_testing"),
-				PushToMIG:      envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
+				PushTo:      envvar.GetString("RELAY_GATEWAY_MIG_NAME", ""),
 				Files: []common.SyncFile{
 					{
 						Name:        databaseFileName,
@@ -71,9 +73,7 @@ func main() {
 		},
 	}
 
-	fileSyncConfig.Print()
-
-	service.StartFileSync(fileSyncConfig)
+	service.SyncFiles(fileSyncConfig)
 
 	service.LeaderElection()
 

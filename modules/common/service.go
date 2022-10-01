@@ -734,8 +734,15 @@ func (service *Service) SetupStorage() {
 	service.googleCloudStorage = googleCloudStorage
 }
 
-func (service *Service) StartFileSync(config *FileSyncConfig) {
-	// todo: call out to file sync
+func isLeaderFunc(service *Service) func() bool {
+	return func() bool {
+		return service.IsLeader()
+	}
+}
+
+func (service *Service) SyncFiles(config *FileSyncConfig) {
+	config.Print()
+	StartFileSync(service.Context, config, service.googleProjectId, isLeaderFunc(service))
 }
 
 func (service *Service) PushFileToVMs(filePath string, vmNames []string) error {
