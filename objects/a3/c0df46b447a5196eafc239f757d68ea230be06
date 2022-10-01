@@ -1,11 +1,3 @@
-[map "4a0e385e-5113-3987-b3cb-78b56d195391"]
-	object = e5cbff6a376e7170ee4c9c76935e2ae0dafb5a29
-	path = sdk5
-	type = extract module
-[map "9829c864-113b-3ee4-8dfb-3724fa9a7c68"]
-	object = 40f8cf801384d817efe6a4e0be22ca37d0194f61
-	path = sdk4
-	type = extract module
 [module "2d134adc-e371-313d-9dd5-f33bf521927b"]
 	conflict = request-pull
 	path = enet
@@ -78,5 +70,15 @@
 [map "19fe8b41-e19a-3b2a-ae3a-786092a9c7c7"]
 	object = b2b1a77f972bfdc54b7b0c6c1fceb05cce9a4fc8
 	path = unity
+	stage = sync
+	type = extract module
+[map "6db3e778-b634-3616-8596-e1c74b6015c6"]
+	object = 40f8cf801384d817efe6a4e0be22ca37d0194f61
+	path = sdk4
+	stage = sync
+	type = extract module
+[map "4abb3ba8-58bf-3c2f-a9b7-6be99e6d724c"]
+	object = e5cbff6a376e7170ee4c9c76935e2ae0dafb5a29
+	path = sdk5
 	stage = sync
 	type = extract module
