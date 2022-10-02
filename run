@@ -1,0 +1,12 @@
+#!/bin/bash
+
+unset -v latest
+for file in scripts/run/*.go; do
+	[[ $file -nt $latest ]] && latest=$file
+done
+
+if [ ! -f ./dist/run ] || [ $latest -nt ./dist/run ]; then
+	go build -o ./dist/run scripts/run/*.go
+fi
+
+./dist/run "$@"

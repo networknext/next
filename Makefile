@@ -39,10 +39,12 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
 # Build most artifacts
 
 dist/%.dev.tar.gz: dist/%
-	@go run scripts/build_artifact/build_artifact.go $@ dev
+	@go run scripts/artifact/artifact.go $@ dev
 
 dist/%.prod.tar.gz: dist/%
-	@go run scripts/build_artifact/build_artifact.go $@ prod
+	@go run scripts/artifact/artifact.go $@ prod
+
+# Clean and rebuild
 
 .PHONY: clean
 clean: ## clean everything
