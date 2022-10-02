@@ -90,7 +90,11 @@ func relay_gateway() {
 }
 
 func relay_backend() {
-	bash("make ./dist/relay_backend && HTTP_PORT=30001 ./dist/relay_backend")
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "30001"
+	}
+	bash(fmt.Sprintf("make ./dist/relay_backend && HTTP_PORT=%s ./dist/relay_backend", httpPort))
 }
 
 func analytics() {
@@ -99,11 +103,10 @@ func analytics() {
 
 func relay() {
 	relayPort := os.Getenv("RELAY_PORT")
-	if relayPort != "" {
-		bash(fmt.Sprintf("make reference-relay && RELAY_ADDRESS=127.0.0.1:%s ./dist/reference_relay", relayPort))
-	} else {
-		bash("make reference-relay && ./dist/reference_relay")
+	if relayPort == "" {
+		relayPort = "2000"
 	}
+	bash(fmt.Sprintf("make reference-relay && RELAY_ADDRESS=127.0.0.1:%s ./dist/reference_relay", relayPort))
 }
 
 func server_backend4() {
