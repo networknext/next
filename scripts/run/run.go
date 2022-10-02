@@ -52,6 +52,12 @@ func main() {
 		magic_backend()
 	} else if command == "relay-gateway" {
 		relay_gateway()
+	} else if command == "relay-backend" {
+		relay_backend()
+	} else if command == "analytics" {
+		analytics()
+	} else if command == "relay" {
+		relay()
 	}
 }
 
@@ -77,4 +83,17 @@ func magic_backend() {
 
 func relay_gateway() {
 	bash("make ./dist/relay_gateway && HTTP_PORT=30000 ./dist/relay_gateway")
+}
+
+func relay_backend() {
+	bash("make ./dist/relay_backend && HTTP_PORT=30001 ./dist/relay_backend")
+}
+
+func analytics() {
+	bash("make ./dist/analytics && HTTP_PORT=40001 ./dist/analytics")
+}
+
+func relay() {
+	// todo: need to work out how to take RELAY_PORT -> RELAY_ADDRESS here
+	bash("make reference-relay && ./dist/reference_relay")
 }
