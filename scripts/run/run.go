@@ -50,6 +50,8 @@ func main() {
 		test_sdk5()
 	} else if command == "magic-backend" {
 		magic_backend()
+	} else if command == "relay-gateway" {
+		relay_gateway()
 	}
 }
 
@@ -70,5 +72,9 @@ func test_sdk5() {
 }
 
 func magic_backend() {
-	bash("make ./dist/magic_backend && ./dist/magic_backend")
+	bash("make ./dist/magic_backend && HTTP_PORT=41007 ./dist/magic_backend")
+}
+
+func relay_gateway() {
+	bash("make ./dist/relay_gateway && HTTP_PORT=30000 ./dist/relay_gateway")
 }
