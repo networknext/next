@@ -467,7 +467,7 @@ func happy_path() int {
 
     fmt.Printf("\nsuccess!\n\n")
 
-    time.Sleep(time.Hour)
+    // time.Sleep(time.Hour)
 
     return 0
 }

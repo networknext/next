@@ -141,11 +141,11 @@ func test() {
 }
 
 func test_sdk4() {
-	bash("make ./dist/test4 && cd ./dist && ./test4")
+	bash("make ./dist/test4 -j && cd ./dist && ./test4")
 }
 
 func test_sdk5() {
-	bash("make ./dist/test5 && cd ./dist && ./test5")
+	bash("make ./dist/test5 -j && cd ./dist && ./test5")
 }
 
 func magic_backend() {
@@ -173,7 +173,7 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("make ./dist/reference_relay && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	bash(fmt.Sprintf("make ./dist/reference_relay -j && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
 }
 
 func server_backend4() {
@@ -190,19 +190,19 @@ func happy_path() {
 }
 
 func server4() {
-	bash("make ./dist/server4 && cd dist && ./server4")
+	bash("make ./dist/server4 -j && cd dist && ./server4")
 }
 
 func server5() {
-	bash("make ./dist/server5 && cd dist && ./server5")
+	bash("make ./dist/server5 -j && cd dist && ./server5")
 }
 
 func client4() {
-	bash("make ./dist/client4 && cd dist && ./client4")
+	bash("make ./dist/client4 -j && cd dist && ./client4")
 }
 
 func client5() {
-	bash("make ./dist/client5 && cd dist && ./client5")
+	bash("make ./dist/client5 -j && cd dist && ./client5")
 }
 
 func setup_emulators() {

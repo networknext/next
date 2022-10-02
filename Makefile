@@ -46,7 +46,7 @@ build: dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5
 .PHONY: rebuild
 rebuild: clean build ## rebuild everything
 
-# --------------------------------------------------------------
+# Build sdk4
 
 dist/$(SDKNAME4).so: $(shell find sdk4 -type f)
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
@@ -60,7 +60,7 @@ dist/server4: dist/$(SDKNAME4).so cmd/server4/server4.cpp
 dist/test4: dist/$(SDKNAME4).so sdk4/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
 
-# --------------------------------------------------------------
+# Build sdk5
 
 dist/$(SDKNAME5).so: $(shell find sdk5 -type f)
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
@@ -74,9 +74,7 @@ dist/server5: dist/$(SDKNAME5).so cmd/server5/server5.cpp
 dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 
-# --------------------------------------------------------------
+# Build reference relay
 
 dist/reference_relay: reference/relay/*
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
-
-# --------------------------------------------------------------
