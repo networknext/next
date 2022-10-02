@@ -63,7 +63,7 @@ blocks:
 
             - cd ~/backend
             - make clean
-            - run test
+            - ./run test
             - cache store
 
   - name: "SDK4"
@@ -81,7 +81,7 @@ blocks:
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
             - make clean
-            - run test
+            - ./run test
 
   - name: "SDK5"
     dependencies: []
@@ -98,7 +98,7 @@ blocks:
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
             - make clean
-            - run test
+            - ./run test
 
   - name: "Relay"
     dependencies: []
