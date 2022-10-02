@@ -1,0 +1,13 @@
+#!/bin/bash
+
+unset -v latest
+for file in scripts/run/*.go; do
+	[[ $file -nt $latest ]] && latest=$file
+done
+
+if [ ! -f ./dist/run ] || [ $latest -nt ./dist/run ]; then
+	mkdir -p ./dist
+	go build -o ./dist/run scripts/run/*.go || { echo 'failed to build run.go' ; exit 1; }
+fi
+
+./dist/run "$@"

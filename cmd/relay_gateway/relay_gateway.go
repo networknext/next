@@ -26,7 +26,7 @@ var producer *common.RedisPubsubProducer
 
 func main() {
 
-    service := common.CreateService("relay_gateway_new")
+    service := common.CreateService("relay_gateway")
 
     redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
     redisPassword = envvar.GetString("REDIS_PASSWORD", "")
