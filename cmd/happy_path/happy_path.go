@@ -37,12 +37,6 @@ func run(action string, log string, env ...string) *bytes.Buffer {
     	cmd.Env = append(cmd.Env, env[i])
     }
 
-    /*
-	var buffer bytes.Buffer
-	cmd.Stdout = &buffer
-	cmd.Stderr = &buffer
-	*/
-
     var stdout bytes.Buffer
     stdout_pipe, err := cmd.StdoutPipe()
     if err != nil {
@@ -88,6 +82,9 @@ func happy_path() int {
 
     // build and run services as a developer would
 
+	setup_emulators_stdout := run("setup-emulators", "logs/setup_emulators")
+	_ = setup_emulators_stdout // todo
+
     magic_backend_stdout := run("magic-backend", "logs/magic_backend")
     relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
     relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
@@ -104,8 +101,7 @@ func happy_path() int {
     server_backend4_stdout := run("server-backend4", "logs/server_backend4")
     server_backend5_stdout := run("server-backend5", "logs/server_backend5")
 
-    // todo
-    // analytics_stdout := run_make("dev-analytics", "logs/analytics")
+    analytics_stdout := run("analytics", "logs/analytics")
 
     // initialize the magic backend
 
@@ -322,7 +318,6 @@ func happy_path() int {
         return 1
     }
 
-    /*
     // initialize analytics
 
     fmt.Printf("initializing analytics\n")
@@ -332,6 +327,7 @@ func happy_path() int {
     for i := 0; i < 100; i++ {
         if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
             strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
+           	// todo: additional checks, like we see each type of pubsub message we expect being processed at least once
             analytics_initialized = true
             break
         }
@@ -345,16 +341,13 @@ func happy_path() int {
         fmt.Printf("----------------------------------------------------\n")
         return 1
     }
-    */
 
     // ==================================================================================
 
     fmt.Printf("\n")
 
     server4_stdout := run("server4", "logs/server4")
-
-    // todo
-    // server5_stdout := run("server5", "logs/server5")
+    server5_stdout := run("server5", "logs/server5")
 
     fmt.Printf("\n")
 
@@ -381,13 +374,17 @@ func happy_path() int {
         return 1
     }
 
-    /*
     // initialize server5
 
     fmt.Printf("initializing server 5\n")
 
     server5_initialized := false
 
+    // todo
+    _ = server5_stdout
+    _ = server5_initialized
+
+    /*
     for i := 0; i < 100; i++ {
         if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
             strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
@@ -411,9 +408,7 @@ func happy_path() int {
     fmt.Printf("\n")
 
     client4_stdout := run("client4", "logs/client4")
-
-    // todo
-    // client5_stdout := run("client5", "logs/client5")
+    client5_stdout := run("client5", "logs/client5")
 
     fmt.Printf("\n")
 
@@ -440,13 +435,16 @@ func happy_path() int {
         return 1
     }
 
-    /*
     // initialize client5
 
     fmt.Printf("initializing client 5\n")
 
     client5_initialized := false
 
+    _ = client5_initialized
+    _ = client5_stdout
+
+    /*
     for i := 0; i < 30; i++ {
         if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
             strings.Contains(client5_stdout.String(), "client continues route (committed)") {
@@ -474,22 +472,6 @@ func happy_path() int {
     return 0
 }
 
-func startEmulators() {
-// todo
-/*
-    // Start pubsub emulator
-    run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
-
-    // Start bigquery emulator
-    run_make("dev-bigquery-emulator", "logs/bigquery_emulator")
-
-    time.Sleep(time.Second * 5)
-
-    // Setup tables, topics and subscriptions
-    run_make("dev-setup-emulators", "logs/setup_emulators")
-*/
-}
-
 func cleanup() {
 	core.Log("cleaning up")
     for i := range commands {
@@ -507,8 +489,6 @@ func main() {
         cleanup()
         os.Exit(1)
     }()
-
-    startEmulators()
 
     result := happy_path()
 

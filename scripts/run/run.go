@@ -6,6 +6,7 @@ import (
     "os/signal"
     "fmt"
     "syscall"
+    "time"
 
     "github.com/joho/godotenv"
 )
@@ -34,6 +35,39 @@ func bash(command string) {
 	}
 
 	cmd.Wait()
+}
+
+func bash_ignore_result(command string) {
+
+    cmd = exec.Command("bash", "-c", command)
+    if cmd == nil {
+        fmt.Printf("error: could not run bash!\n")
+        os.Exit(1)
+    }
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cmd.Run()
+
+	cmd.Wait()
+}
+
+func bash_no_wait(command string) {
+
+    cmd = exec.Command("bash", "-c", command)
+    if cmd == nil {
+        fmt.Printf("error: could not run bash!\n")
+        os.Exit(1)
+    }
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+	    fmt.Printf("error: failed to run command: %v\n", err)
+	    os.Exit(1)
+	}
 }
 
 func main() {
@@ -91,6 +125,8 @@ func main() {
 		client4()
 	} else if command == "client5" {
 		client5()
+	} else if command == "setup-emulators" {
+		setup_emulators()
 	}
 
 	cleanup()
@@ -167,4 +203,19 @@ func client4() {
 
 func client5() {
 	bash("make ./dist/client5 && cd dist && ./client5")
+}
+
+func setup_emulators() {
+
+	// restart pubsub emulator
+	bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
+	bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &")
+
+	// restart bigquery emulator	
+	bash_ignore_result("pkill -f \"bigquery-emulator\"")	
+	bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
+
+	// setup pubsub topics, subscriptions and bigquery tables
+    time.Sleep(time.Second * 5) // todo: lame
+	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
 }
