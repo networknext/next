@@ -2523,7 +2523,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
     var serversCommand = &ffcli.Command{
         Name:       "servers",
         ShortUsage: "next servers <subcommand>",
-        ShortHelp:  "Analayze and parse all live servers connected to a server backend",
+        ShortHelp:  "Analyze and parse all live servers connected to a server backend",
         Exec: func(_ context.Context, args []string) error {
             return flag.ErrHelp
         },
