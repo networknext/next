@@ -4,6 +4,8 @@ import (
     "os"
     "os/exec"
     "fmt"
+
+    "github.com/joho/godotenv"
 )
 
 func bash(command string) {
@@ -32,10 +34,18 @@ func main() {
 		return
 	}
 
+	err := godotenv.Load(".env")
+	if err != nil {
+		fmt.Printf("error: could not load .env file")
+		os.Exit(1)
+	}
+
 	command := args[1]
 
 	if command == "test" {
 		test()
+	} else if command == "magic-backend" {
+		magic_backend()
 	}
 }
 
@@ -44,6 +54,9 @@ func help() {
 }
 
 func test() {
-	fmt.Printf("test\n")
 	bash("./scripts/test-backend.sh")
+}
+
+func magic_backend() {
+	bash("make ./dist/magic_backend && ./dist/magic_backend")
 }

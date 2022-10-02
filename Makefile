@@ -33,7 +33,6 @@ dist:
 # Build most golang services
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
-	@echo "Building $(@F)"
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 
 # Build most artifacts
