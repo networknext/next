@@ -58,6 +58,10 @@ func main() {
 		analytics()
 	} else if command == "relay" {
 		relay()
+	} else if command == "server-backend4" {
+		server_backend4()
+	} else if command == "server-backend5" {
+		server_backend5()
 	}
 }
 
@@ -96,4 +100,12 @@ func analytics() {
 func relay() {
 	// todo: need to work out how to take RELAY_PORT -> RELAY_ADDRESS here
 	bash("make reference-relay && ./dist/reference_relay")
+}
+
+func server_backend4() {
+	bash("make ./dist/server_backend4 && HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
+}
+
+func server_backend5() {
+	bash("make ./dist/server_backend5 && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
 }
