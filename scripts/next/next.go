@@ -2486,44 +2486,13 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
                     return nil
                 },
             },
-            // {
-            //     Name:       "configure",
-            //     ShortUsage: "next staging configure <config file>",
-            //     ShortHelp:  "Reconfigures the staging environment with the given configuration file",
-            //     Exec: func(ctx context.Context, args []string) error {
-            //         var config StagingConfig
-            //         if len(args) > 0 {
-            //             if err := json.Unmarshal(readJSONData("staging", args), &config); err != nil {
-            //                 handleRunTimeError(fmt.Sprintf("Failed to parse staging JSON: %v", err), 0)
-            //             }
-            //         }
-
-            //         if err := configureStaging(config); err != nil {
-            //             handleRunTimeError(err.Error(), 1)
-            //         }
-
-            //         return nil
-            //     },
-            // },
-            // {
-            //     Name:       "resize",
-            //     ShortUsage: "next staging resize",
-            //     ShortHelp:  "Resizes the staging environment with the given flags",
-            //     Exec: func(ctx context.Context, args []string) error {
-            //         if err := resizeStaging(serverBackendCount, clientCount); err != nil {
-            //             handleJSONRPCError(env, err)
-            //         }
-
-            //         return nil
-            //     },
-            // },
         },
     }
 
     var serversCommand = &ffcli.Command{
         Name:       "servers",
         ShortUsage: "next servers <subcommand>",
-        ShortHelp:  "Analayze and parse all live servers connected to a server backend",
+        ShortHelp:  "Analyze and parse all live servers connected to a server backend",
         Exec: func(_ context.Context, args []string) error {
             return flag.ErrHelp
         },

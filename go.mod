@@ -64,6 +64,7 @@ require (
 	github.com/google/pprof v0.0.0-20220412212628-83db2b799d1f // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.5.1 // indirect
+	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/kisielk/godepgraph v0.0.0-20220719222756-573dc89cecc8 // indirect
 	github.com/oschwald/maxminddb-golang v1.6.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
