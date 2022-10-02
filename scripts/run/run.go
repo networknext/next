@@ -98,8 +98,12 @@ func analytics() {
 }
 
 func relay() {
-	// todo: need to work out how to take RELAY_PORT -> RELAY_ADDRESS here
-	bash("make reference-relay && ./dist/reference_relay")
+	relayPort := os.Getenv("RELAY_PORT")
+	if relayPort != "" {
+		bash(fmt.Sprintf("make reference-relay && RELAY_ADDRESS=127.0.0.1:%s ./dist/reference_relay", relayPort))
+	} else {
+		bash("make reference-relay && ./dist/reference_relay")
+	}
 }
 
 func server_backend4() {
