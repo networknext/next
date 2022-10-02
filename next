@@ -6,7 +6,7 @@ for file in scripts/next/*.go; do
 done
 
 if [ ! -f ./dist/next ] || [ $latest -nt ./dist/next ]; then
-	go build -o ./dist/next scripts/next/*.go
+	go build -o ./dist/next scripts/next/*.go || { echo 'failed to build next.go' ; exit 1; }
 fi
 
 ./dist/next "$@"
