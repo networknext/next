@@ -1,22 +1,12 @@
 #!/bin/bash
-set -e
-set -o pipefail
-
-if [ -z "$NEXT_HOME" ]; then
-	export NEXT_HOME="$( cd "$(dirname "$0")" ; pwd -P )"
-fi
-
-source="cmd/next"
-timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-release=$(git describe --tags --exact-match 2> /dev/null || git rev-parse --short HEAD)
 
 unset -v latest
-for file in $source/*; do
+for file in scripts/next/*.go; do
 	[[ $file -nt $latest ]] && latest=$file
 done
 
-tool_path="dist/next"
-if [ ! -f $tool_path ] || [ $latest -nt $tool_path ]; then
-	go build -ldflags "-s -w -X main.buildtime=$timestamp -X main.release=$release" -o $tool_path $source/*.go
+if [ ! -f ./dist/next ] || [ $latest -nt ./dist/next ]; then
+	go build -o ./dist/next scripts/next/*.go
 fi
-$tool_path "$@"
+
+./dist/next "$@"
