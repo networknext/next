@@ -44,6 +44,10 @@ func main() {
 
 	if command == "test" {
 		test()
+	} else if command == "test-sdk4" || command == "test4" {
+		test_sdk4()
+	} else if command == "test-sdk5" || command == "test5" {
+		test_sdk5()
 	} else if command == "magic-backend" {
 		magic_backend()
 	}
@@ -55,6 +59,14 @@ func help() {
 
 func test() {
 	bash("./scripts/test-backend.sh")
+}
+
+func test_sdk4() {
+	bash("make test4 && cd ./dist && ./test4")
+}
+
+func test_sdk5() {
+	bash("make test5 && cd ./dist && ./test5")
 }
 
 func magic_backend() {
