@@ -20,12 +20,10 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
-dist:
-	@mkdir -p dist
-
 # Build most golang services
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
+	mkdir -p dist
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 
 # Build most artifacts
@@ -51,35 +49,44 @@ rebuild: clean build ## rebuild everything
 
 # --------------------------------------------------------------
 
-dist/$(SDKNAME4).so: dist $(shell find sdk4 -type f)
+dist/$(SDKNAME4).so: $(shell find sdk4 -type f)
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
 
 dist/client4: dist/$(SDKNAME4).so cmd/client4/client4.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
 
 dist/server4: dist/$(SDKNAME4).so cmd/server4/server4.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
 
 dist/test4: dist/$(SDKNAME4).so sdk4/test.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
 
 # --------------------------------------------------------------
 
-dist/$(SDKNAME5).so: dist $(shell find sdk5 -type f)
+dist/$(SDKNAME5).so: $(shell find sdk5 -type f)
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
 
 dist/client5: dist/$(SDKNAME5).so cmd/client5/client5.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
 
 dist/server5: dist/$(SDKNAME5).so cmd/server5/server5.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
 
 dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
+	mkdir -p dist
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 
 # --------------------------------------------------------------
 
-dist/reference_relay: dist reference/relay/*
+dist/reference_relay: reference/relay/*
+	mkdir -p dist
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
 
 # --------------------------------------------------------------

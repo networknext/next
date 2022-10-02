@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
-mkdir -p dist
+if [ ! -d ./dist ]; then
+	echo mkdir dist
+	mkdir -p dist
+fi
 
 CFLAGS="-fPIC"
 
 LDFLAGS="-lsodium -lcurl -lpthread -lm"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-  LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
+ 	LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
 fi
 
 MODULE="github.com/networknext/backend/modules/common"
