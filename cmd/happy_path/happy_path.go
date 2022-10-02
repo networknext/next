@@ -21,13 +21,13 @@ import (
 
 var processes []*os.Process
 
-func run_make(action string, log string) *bytes.Buffer {
+func run(action string, log string, env ...string) *bytes.Buffer {
 
-    fmt.Printf("make %s\n", action)
+    fmt.Printf("run %s %s\n", action, strings.Join(env, " "))
 
-    cmd := exec.Command("make", action)
+    cmd := exec.Command("./run", action)
     if cmd == nil {
-        core.Error("could not run make!\n")
+        core.Error("could not run %s!\n", action)
         os.Exit(1)
     }
 
@@ -35,8 +35,13 @@ func run_make(action string, log string) *bytes.Buffer {
 
     stdout_pipe, err := cmd.StdoutPipe()
     if err != nil {
-        core.Error("could not create stdout pipe for make")
+        core.Error("could not create stdout pipe for run")
         os.Exit(1)
+    }
+
+	cmd.Env = os.Environ()
+    for i := range env {
+    	cmd.Env = append(cmd.Env, env[i])
     }
 
     cmd.Start()
@@ -52,55 +57,10 @@ func run_make(action string, log string) *bytes.Buffer {
         writer := bufio.NewWriter(file)
         buf := bufio.NewReader(stdout_pipe)
         for {
-            line, _, _ := buf.ReadLine()
-            writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
-            writer.Flush()
-            output.Write(line)
-            output.Write([]byte("\n"))
-        }
-    }(&stdout)
-
-    return &stdout
-}
-
-func run_relay(port int, log string) *bytes.Buffer {
-
-    fmt.Printf("RELAY_PORT=%d make %s\n", port, "dev-relay")
-
-    cmd := exec.Command("./dist/reference_relay")
-    if cmd == nil {
-        panic("could not run relay!\n")
-        return nil
-    }
-
-    cmd.Env = make([]string, 0)
-    cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_ADDRESS=127.0.0.1:%d", port))
-    cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
-    cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
-    cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
-    cmd.Env = append(cmd.Env, "RELAY_GATEWAY=http://127.0.0.1:30000")
-    cmd.Env = append(cmd.Env, "RELAY_DEBUG=1")
-
-    var stdout bytes.Buffer
-
-    stdout_pipe, err := cmd.StdoutPipe()
-    if err != nil {
-        panic(err)
-    }
-
-    cmd.Start()
-
-    processes = append(processes, cmd.Process)
-
-    go func(output *bytes.Buffer) {
-        file, err := os.Create(log)
-        if err != nil {
-            panic(err)
-        }
-        writer := bufio.NewWriter(file)
-        buf := bufio.NewReader(stdout_pipe)
-        for {
-            line, _, _ := buf.ReadLine()
+            line, _, err := buf.ReadLine()
+            if err != nil {
+            	break
+            }
             writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
             writer.Flush()
             output.Write(line)
@@ -118,29 +78,7 @@ func happy_path() int {
         return 1
     }
 
-    fmt.Printf("\nhappy path\n\n")
-
     os.Mkdir("logs", os.ModePerm)
-
-    // build and run services, as a developer would via "make dev-*" as much as possible
-
-    magic_backend_stdout := run_make("dev-magic-backend", "logs/magic_backend")
-    relay_gateway_stdout := run_make("dev-relay-gateway", "logs/relay_gateway")
-    relay_backend_1_stdout := run_make("dev-relay-backend", "logs/relay_backend_1")
-    relay_backend_2_stdout := run_make("dev-relay-backend-2", "logs/relay_backend_2")
-
-    time.Sleep(time.Second * 5)
-
-    relay_1_stdout := run_make("dev-relay", "logs/relay_1")
-    relay_2_stdout := run_relay(2001, "logs/relay_2")
-    relay_3_stdout := run_relay(2002, "logs/relay_3")
-    relay_4_stdout := run_relay(2003, "logs/relay_4")
-    relay_5_stdout := run_relay(2004, "logs/relay_5")
-
-    server_backend4_stdout := run_make("dev-server-backend4", "logs/server_backend4")
-    server_backend5_stdout := run_make("dev-server-backend5", "logs/server_backend5")
-
-    analytics_stdout := run_make("dev-analytics", "logs/analytics")
 
     // make sure all processes we create get cleaned up
 
@@ -149,6 +87,27 @@ func happy_path() int {
             processes[i].Signal(syscall.SIGTERM)
         }
     }()
+
+    // build and run services as a developer would
+
+    magic_backend_stdout := run("magic-backend", "logs/magic_backend")
+    relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
+    relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
+    relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
+
+    time.Sleep(time.Second * 10)
+
+    relay_1_stdout := run("relay", "logs/relay_1")
+    relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")
+    relay_3_stdout := run("relay", "logs/relay_3", "RELAY_PORT=2002")
+    relay_4_stdout := run("relay", "logs/relay_4", "RELAY_PORT=2003")
+    relay_5_stdout := run("relay", "logs/relay_5", "RELAY_PORT=2004")
+
+    server_backend4_stdout := run("server-backend4", "logs/server_backend4")
+    server_backend5_stdout := run("server-backend5", "logs/server_backend5")
+
+    // todo
+    // analytics_stdout := run_make("dev-analytics", "logs/analytics")
 
     // initialize the magic backend
 
@@ -207,12 +166,7 @@ func happy_path() int {
         if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
             strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
             strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") &&
-            strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") &&
-            strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.0'") &&
-            strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.1'") &&
-            strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.2'") &&
-            strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.3'") &&
-            strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.4'") {
+            strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
             relay_backend_1_initialized = true
             break
         }
@@ -237,12 +191,7 @@ func happy_path() int {
         if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
             strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
             strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") &&
-            strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") &&
-            strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
-            strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
-            strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
-            strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
-            strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
+            strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
             relay_backend_2_initialized = true
             break
         }
@@ -317,6 +266,16 @@ func happy_path() int {
         return 1
     }
 
+    // todo: verify that both relay backends see relay updates from each relay
+
+    /*
+    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
+    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
+    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
+    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
+    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
+    */
+
     // initialize server backend 4
 
     fmt.Printf("initializing server backend 4\n")
@@ -365,6 +324,7 @@ func happy_path() int {
         return 1
     }
 
+    /*
     // initialize analytics
 
     fmt.Printf("initializing analytics\n")
@@ -387,13 +347,14 @@ func happy_path() int {
         fmt.Printf("----------------------------------------------------\n")
         return 1
     }
+    */
 
     // ==================================================================================
 
     fmt.Printf("\n")
 
-    server4_stdout := run_make("dev-server4", "logs/server4")
-    server5_stdout := run_make("dev-server5", "logs/server5")
+    server4_stdout := run("server4", "logs/server4")
+    server5_stdout := run("server5", "logs/server5")
 
     fmt.Printf("\n")
 
@@ -404,8 +365,8 @@ func happy_path() int {
     server4_initialized := false
 
     for i := 0; i < 100; i++ {
-        if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
-            strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+        if strings.Contains(server4_stdout.String(), "welcome to network next :)") &&
+            strings.Contains(server4_stdout.String(), "server is ready to receive client connections") {
             server4_initialized = true
             break
         }
@@ -447,8 +408,8 @@ func happy_path() int {
 
     fmt.Printf("\n")
 
-    client4_stdout := run_make("dev-client4", "logs/client4")
-    client5_stdout := run_make("dev-client5", "logs/client5")
+    client4_stdout := run("client4", "logs/client4")
+    client5_stdout := run("client5", "logs/client5")
 
     fmt.Printf("\n")
 
@@ -507,6 +468,8 @@ func happy_path() int {
     return 0
 }
 
+// todo
+/*
 func startEmulators() {
     // Start pubsub emulator
     run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
@@ -519,10 +482,11 @@ func startEmulators() {
     // Setup tables, topics and subscriptions
     run_make("dev-setup-emulators", "logs/setup_emulators")
 }
+*/
 
 func main() {
 
-    startEmulators()
+    // startEmulators()
 
     if happy_path() != 0 {
         os.Exit(1)

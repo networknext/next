@@ -62,6 +62,16 @@ func main() {
 		server_backend4()
 	} else if command == "server-backend5" {
 		server_backend5()
+	} else if command == "happy-path" {
+		happy_path()
+	} else if command == "server4" {
+		server4()
+	} else if command == "server5" {
+		server5()
+	} else if command == "client4" {
+		client4()
+	} else if command == "client5" {
+		client5()
 	}
 }
 
@@ -115,4 +125,25 @@ func server_backend4() {
 
 func server_backend5() {
 	bash("make ./dist/server_backend5 && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
+}
+
+func happy_path() {
+	fmt.Printf("\ndon't worry. be happy.\n\n")
+	bash("./build.sh && go run ./cmd/happy_path/happy_path.go")
+}
+
+func server4() {
+	bash("make server4 && cd dist && ./server4")
+}
+
+func server5() {
+	bash("make server5 && cd dist && ./server5")
+}
+
+func client4() {
+	bash("make client4 && cd dist && ./client4")
+}
+
+func client5() {
+	bash("make client5 && cd dist && ./client5")
 }
