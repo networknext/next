@@ -3,14 +3,25 @@ package main
 import (
     "os"
     "os/exec"
+    "os/signal"
     "fmt"
+    "syscall"
 
     "github.com/joho/godotenv"
 )
 
+var cmd *exec.Cmd
+
+func cleanup() {
+	fmt.Printf("cleaning up\n")
+    cmd.Process.Signal(os.Interrupt)
+    cmd.Wait()
+    fmt.Print("\n")
+}
+
 func bash(command string) {
 
-    cmd := exec.Command("bash", "-c", command)
+    cmd = exec.Command("bash", "-c", command)
     if cmd == nil {
         fmt.Printf("error: could not run bash!\n")
         os.Exit(1)
@@ -23,10 +34,20 @@ func bash(command string) {
 	    fmt.Printf("error: failed to run command: %v", err)
 	    os.Exit(1)
 	}
+
+	cmd.Wait()
 }
 
 func main() {
 	
+    c := make(chan os.Signal)
+    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+    go func() {
+        <-c
+        cleanup()
+        os.Exit(1)
+    }()
+
 	args := os.Args
 	
 	if len(args) < 2 || (len(args) == 2 && args[1]=="help") {
@@ -116,7 +137,7 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("make reference-relay && RELAY_ADDRESS=127.0.0.1:%s ./dist/reference_relay", relayPort))
+	bash(fmt.Sprintf("make reference-relay && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
 }
 
 func server_backend4() {

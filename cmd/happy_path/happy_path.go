@@ -6,7 +6,7 @@
 package main
 
 import (
-    "bufio"
+    // "bufio"
     "bytes"
     "fmt"
     "os"
@@ -14,12 +14,13 @@ import (
     "strings"
     "syscall"
     "time"
+    "os/signal"
 
     "github.com/networknext/backend/modules/core"
     "github.com/networknext/backend/modules/envvar"
 )
 
-var processes []*os.Process
+var commands []*exec.Cmd
 
 func run(action string, log string, env ...string) *bytes.Buffer {
 
@@ -31,23 +32,29 @@ func run(action string, log string, env ...string) *bytes.Buffer {
         os.Exit(1)
     }
 
-    var stdout bytes.Buffer
-
-    stdout_pipe, err := cmd.StdoutPipe()
-    if err != nil {
-        core.Error("could not create stdout pipe for run")
-        os.Exit(1)
-    }
-
 	cmd.Env = os.Environ()
     for i := range env {
     	cmd.Env = append(cmd.Env, env[i])
     }
 
+	var buffer bytes.Buffer
+	cmd.Stdout = &buffer
+	cmd.Stderr = &buffer
+
+	/*
+    var stdout bytes.Buffer
+    stdout_pipe, err := cmd.StdoutPipe()
+    if err != nil {
+        core.Error("could not create stdout pipe for run")
+        os.Exit(1)
+    }
+    */
+
     cmd.Start()
 
-    processes = append(processes, cmd.Process)
+    commands = append(commands, cmd)
 
+    /*
     go func(output *bytes.Buffer) {
         file, err := os.Create(log)
         if err != nil {
@@ -67,8 +74,9 @@ func run(action string, log string, env ...string) *bytes.Buffer {
             output.Write([]byte("\n"))
         }
     }(&stdout)
+    */
 
-    return &stdout
+    return &buffer
 }
 
 func happy_path() int {
@@ -80,14 +88,6 @@ func happy_path() int {
 
     os.Mkdir("logs", os.ModePerm)
 
-    // make sure all processes we create get cleaned up
-
-    defer func() {
-        for i := range processes {
-            processes[i].Signal(syscall.SIGTERM)
-        }
-    }()
-
     // build and run services as a developer would
 
     magic_backend_stdout := run("magic-backend", "logs/magic_backend")
@@ -95,7 +95,7 @@ func happy_path() int {
     relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
     relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
 
-    time.Sleep(time.Second * 10)
+    time.Sleep(time.Second * 5)
 
     relay_1_stdout := run("relay", "logs/relay_1")
     relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")
@@ -468,9 +468,9 @@ func happy_path() int {
     return 0
 }
 
+func startEmulators() {
 // todo
 /*
-func startEmulators() {
     // Start pubsub emulator
     run_make("dev-pubsub-emulator", "logs/pubsub_emulator")
 
@@ -481,12 +481,29 @@ func startEmulators() {
 
     // Setup tables, topics and subscriptions
     run_make("dev-setup-emulators", "logs/setup_emulators")
-}
 */
+}
+
+func cleanup() {
+	core.Log("cleaning up")
+    for i := range commands {
+        commands[i].Process.Signal(os.Interrupt)
+        commands[i].Wait()
+    }
+    fmt.Print("\n")
+}
 
 func main() {
 
-    // startEmulators()
+    c := make(chan os.Signal)
+    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+    go func() {
+        <-c
+        cleanup()
+        os.Exit(1)
+    }()
+
+    startEmulators()
 
     if happy_path() != 0 {
         os.Exit(1)
