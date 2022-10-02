@@ -6,6 +6,7 @@ for file in scripts/run/*.go; do
 done
 
 if [ ! -f ./dist/run ] || [ $latest -nt ./dist/run ]; then
+	mkdir -p ./dist
 	go build -o ./dist/run scripts/run/*.go
 fi
 

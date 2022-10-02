@@ -13,9 +13,7 @@ import (
 var cmd *exec.Cmd
 
 func cleanup() {
-	fmt.Printf("cleaning up\n")
-    cmd.Process.Signal(os.Interrupt)
-    cmd.Wait()
+    cmd.Process.Kill()
     fmt.Print("\n")
 }
 
@@ -31,7 +29,7 @@ func bash(command string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-	    fmt.Printf("error: failed to run command: %v", err)
+	    fmt.Printf("error: failed to run command: %v\n", err)
 	    os.Exit(1)
 	}
 
@@ -39,8 +37,8 @@ func bash(command string) {
 }
 
 func main() {
-	
-    c := make(chan os.Signal)
+
+	c := make(chan os.Signal)
     signal.Notify(c, os.Interrupt, syscall.SIGTERM)
     go func() {
         <-c
@@ -94,6 +92,8 @@ func main() {
 	} else if command == "client5" {
 		client5()
 	}
+
+	cleanup()
 }
 
 func help() {
@@ -105,11 +105,11 @@ func test() {
 }
 
 func test_sdk4() {
-	bash("make test4 && cd ./dist && ./test4")
+	bash("make ./dist/test4 && cd ./dist && ./test4")
 }
 
 func test_sdk5() {
-	bash("make test5 && cd ./dist && ./test5")
+	bash("make ./dist/test5 && cd ./dist && ./test5")
 }
 
 func magic_backend() {
@@ -137,7 +137,8 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("make reference-relay && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	// bash(fmt.Sprintf("make ./dist/reference_relay && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	bash(fmt.Sprintf("cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
 }
 
 func server_backend4() {
@@ -154,17 +155,17 @@ func happy_path() {
 }
 
 func server4() {
-	bash("make server4 && cd dist && ./server4")
+	bash("make ./dist/server4 && cd dist && ./server4")
 }
 
 func server5() {
-	bash("make server5 && cd dist && ./server5")
+	bash("make ./dist/server5 && cd dist && ./server5")
 }
 
 func client4() {
-	bash("make client4 && cd dist && ./client4")
+	bash("make ./dist/client4 && cd dist && ./client4")
 }
 
 func client5() {
-	bash("make client5 && cd dist && ./client5")
+	bash("make ./dist/client5 && cd dist && ./client5")
 }

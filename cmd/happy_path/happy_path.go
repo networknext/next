@@ -6,7 +6,7 @@
 package main
 
 import (
-    // "bufio"
+    "bufio"
     "bytes"
     "fmt"
     "os"
@@ -37,24 +37,23 @@ func run(action string, log string, env ...string) *bytes.Buffer {
     	cmd.Env = append(cmd.Env, env[i])
     }
 
+    /*
 	var buffer bytes.Buffer
 	cmd.Stdout = &buffer
 	cmd.Stderr = &buffer
+	*/
 
-	/*
     var stdout bytes.Buffer
     stdout_pipe, err := cmd.StdoutPipe()
     if err != nil {
         core.Error("could not create stdout pipe for run")
         os.Exit(1)
     }
-    */
 
     cmd.Start()
 
     commands = append(commands, cmd)
 
-    /*
     go func(output *bytes.Buffer) {
         file, err := os.Create(log)
         if err != nil {
@@ -74,9 +73,8 @@ func run(action string, log string, env ...string) *bytes.Buffer {
             output.Write([]byte("\n"))
         }
     }(&stdout)
-    */
 
-    return &buffer
+    return &stdout
 }
 
 func happy_path() int {
@@ -354,7 +352,9 @@ func happy_path() int {
     fmt.Printf("\n")
 
     server4_stdout := run("server4", "logs/server4")
-    server5_stdout := run("server5", "logs/server5")
+
+    // todo
+    // server5_stdout := run("server5", "logs/server5")
 
     fmt.Printf("\n")
 
@@ -381,6 +381,7 @@ func happy_path() int {
         return 1
     }
 
+    /*
     // initialize server5
 
     fmt.Printf("initializing server 5\n")
@@ -403,13 +404,16 @@ func happy_path() int {
         fmt.Printf("----------------------------------------------------\n")
         return 1
     }
+    */
 
     // ==================================================================================
 
     fmt.Printf("\n")
 
     client4_stdout := run("client4", "logs/client4")
-    client5_stdout := run("client5", "logs/client5")
+
+    // todo
+    // client5_stdout := run("client5", "logs/client5")
 
     fmt.Printf("\n")
 
@@ -436,6 +440,7 @@ func happy_path() int {
         return 1
     }
 
+    /*
     // initialize client5
 
     fmt.Printf("initializing client 5\n")
@@ -458,6 +463,7 @@ func happy_path() int {
         fmt.Printf("----------------------------------------------------\n")
         return 1
     }
+    */
 
     // ==================================================================================
 
@@ -487,8 +493,7 @@ func startEmulators() {
 func cleanup() {
 	core.Log("cleaning up")
     for i := range commands {
-        commands[i].Process.Signal(os.Interrupt)
-        commands[i].Wait()
+        commands[i].Process.Kill()
     }
     fmt.Print("\n")
 }
@@ -505,7 +510,11 @@ func main() {
 
     startEmulators()
 
-    if happy_path() != 0 {
+    result := happy_path()
+
+    cleanup()
+
+    if result != 0 {
         os.Exit(1)
     }
 }
