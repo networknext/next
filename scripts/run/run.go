@@ -6,8 +6,6 @@ import (
     "fmt"
 )
 
-var processes []*os.Process
-
 func bash(command string) {
 
     cmd := exec.Command("bash", "-c", command)
@@ -35,7 +33,7 @@ func main() {
 	}
 
 	command := args[1]
-	
+
 	if command == "test" {
 		test()
 	}
