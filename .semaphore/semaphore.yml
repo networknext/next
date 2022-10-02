@@ -62,7 +62,8 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-            - make test
+            - make clean
+            - run test
             - cache store
 
   - name: "SDK4"
@@ -78,7 +79,9 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
-            - export LD_LIBRARY_PATH=. && make -j32 test-sdk4
+            - export LD_LIBRARY_PATH=.
+            - make clean
+            - run test
 
   - name: "SDK5"
     dependencies: []
@@ -93,7 +96,9 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
-            - export LD_LIBRARY_PATH=. && make -j32 test-sdk5
+            - export LD_LIBRARY_PATH=.
+            - make clean
+            - run test
 
   - name: "Relay"
     dependencies: []

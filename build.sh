@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
-mkdir -p dist
+if [ ! -d ./dist ]; then
+	echo mkdir dist
+	mkdir -p dist
+fi
 
 CFLAGS="-fPIC"
 
 LDFLAGS="-lsodium -lcurl -lpthread -lm"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-  LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
+ 	LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
 fi
 
 MODULE="github.com/networknext/backend/modules/common"
@@ -31,3 +34,5 @@ parallel ::: \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_pusher ./cmd/pusher/*.go" \
 "go build -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
 "go build -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \
+
+cd dist && touch *
