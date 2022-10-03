@@ -235,7 +235,7 @@ blocks:
 
             - cd ~/backend
             - make clean
-            - ./run func-test-sdk4
+            - make func-test-sdk4
 
             - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
@@ -484,7 +484,7 @@ blocks:
 
             - cd ~/backend
             - make clean
-            - ./run func-test-sdk5
+            - make func-test-sdk5
 
             - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
