@@ -54,13 +54,6 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
-            - cd ~/backend/libs/zeromq
-            - ./autogen.sh
-            - ./configure --with-norm=no --with-pgm=no
-            - make -j32
-            - sudo make -j32 install
-            - sudo ldconfig
-
             - cd ~/backend
           
             - cache restore
@@ -274,11 +267,6 @@ blocks:
           commands:
             - artifact pull workflow libsodium.so
             - gsutil cp libsodium.so gs://development_artifacts/libsodium.so
-
-        - name: "ZeroMQ"
-          commands:
-            - artifact pull workflow libzmq.so
-            - gsutil cp libzmq.so gs://development_artifacts/libzmq.so
 
         - name: "SDK4"
           commands:
