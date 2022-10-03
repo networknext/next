@@ -19,7 +19,7 @@ import (
     "os"
     "os/signal"
     // "runtime"
-    "sort"
+    // "sort"
     "sync"
     "syscall"
     "time"
@@ -919,14 +919,14 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
+    // todo
+    /*
     udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
     if err != nil {
         fmt.Printf("bad resolve addr %s\n", relay_address)
         return
     }
 
-    // todo
-    /*
        relay := &routing.RelayData{
            ID:             crypto.HashID(relay_address),
            Addr:           *udpAddr,
@@ -1241,6 +1241,9 @@ func main() {
 
     backend.serverDatabase = make(map[string]ServerEntry)
     backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
+
+    // todo
+    /*
     backend.statsDatabase = routing.NewStatsDatabase()
     backend.routeMatrix = &routing.RouteMatrix{}
 
@@ -1248,6 +1251,7 @@ func main() {
         backend.statsDatabase.DeleteEntry(relayData.ID)
         return nil
     })
+    */
 
     if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
         backend.mode = BACKEND_MODE_FORCE_DIRECT
@@ -1319,7 +1323,7 @@ func main() {
 
     go OptimizeThread()
 
-    go TimeoutThread()
+    // go TimeoutThread()
 
     GenerateMagic(magicUpcoming[:])
     GenerateMagic(magicCurrent[:])
