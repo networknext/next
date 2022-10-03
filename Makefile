@@ -83,3 +83,6 @@ dist/reference_relay: reference/relay/*
 
 dist/func_server4: dist/$(SDKNAME4).so dist/cmd/func_server4/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+
+dist/func_client4: dist/$(SDKNAME4).so dist/cmd/func_client4/*
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
