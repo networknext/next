@@ -791,6 +791,26 @@ blocks:
             - cd ./dist && ./func_tests_sdk5 test_big_packets
 
 
+  - name: "Happy Path (Mac)"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      jobs:
+        - name: "make dev-happy-path"
+          commands:
+           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "cd build && ./build.sh backend happy-path"
+
+
 promotions:
 
   - name: "Development Deployment"
