@@ -84,6 +84,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
             for {
                 select {
+                // todo: we need to convert to redis streams
+                /*
                 case postSessionCountData := <-post.sessionPortalCountsChannel:
                     countBytes, err := WriteSessionCountData(postSessionCountData)
                     if err != nil {
@@ -98,8 +100,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
                         post.metrics.PortalFailure.Add(1)
                         continue
                     }
-
                     post.metrics.PortalEntriesFinished.Add(1)
+                */
                 case <-ctx.Done():
                     return
                 }
@@ -114,6 +116,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
             for {
                 select {
+                	// todo: need to update to redis streams
+                	/*
                 case postSessionPortalData := <-post.sessionPortalDataChannel:
                     sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
                     if err != nil {
@@ -130,6 +134,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
                     }
 
                     post.metrics.PortalEntriesFinished.Add(1)
+                    */
+
                 case <-ctx.Done():
                     return
                 }

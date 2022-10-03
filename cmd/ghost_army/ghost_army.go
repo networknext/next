@@ -26,7 +26,7 @@ import (
     ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
     "github.com/networknext/backend/modules-old/metrics"
     "github.com/networknext/backend/modules-old/transport"
-    "github.com/networknext/backend/modules-old/transport/pubsub"
+    // "github.com/networknext/backend/modules-old/transport/pubsub"
 )
 
 const (
@@ -275,10 +275,12 @@ func mainReturnWithCode() int {
 
     publishChan := make(chan transport.SessionPortalData)
 
-    portalPublishers := make([]pubsub.Publisher, 0)
+    // portalPublishers := make([]pubsub.Publisher, 0)
     {
         fmt.Println("setting up portal cruncher")
 
+        // todo: need to update to redis streams
+        /*
         portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
 
         if !envvar.Exists("POST_SESSION_PORTAL_SEND_BUFFER_SIZE") {
@@ -297,6 +299,7 @@ func mainReturnWithCode() int {
 
             portalPublishers = append(portalPublishers, portalCruncherPublisher)
         }
+        */
 
         fmt.Println("portal cruncher setup complete")
     }
@@ -308,10 +311,12 @@ func mainReturnWithCode() int {
     go func() {
         defer wg.Done()
 
-        publisherIndex := 0
+        // publisherIndex := 0
 
         for {
             select {
+            	// todo: need to update to redis streams
+            	/*
             case slice := <-publishChan:
                 // TODO: switch to serialization instead of binary encoding
                 sessionBytes, err := slice.MarshalBinary()
@@ -329,6 +334,7 @@ func mainReturnWithCode() int {
                 }
 
                 publisherIndex = (publisherIndex + 1) % len(portalPublishers)
+                */
             case <-ctx.Done():
                 return
             }

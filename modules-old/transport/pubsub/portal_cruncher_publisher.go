@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
     "context"
     "sync"
@@ -61,3 +62,4 @@ func (pub *PortalCruncherPublisher) Close() error {
     defer pub.mutex.Unlock()
     return pub.socket.Close()
 }
+*/

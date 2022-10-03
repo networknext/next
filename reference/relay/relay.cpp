@@ -5697,8 +5697,6 @@ void relay_test()
     RUN_TEST( test_session_pong_packet_sdk5 );
     RUN_TEST( test_pong_packet_sdk5 );
 
-    printf( "\n" );
-
     fflush( stdout );
 
     relay_term();
