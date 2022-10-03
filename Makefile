@@ -22,7 +22,7 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 
 # Build most golang services
 
-dist/%: cmd/%/*.go $(shell find modules -name '*.go') dist
+dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 
 # Build most artifacts
@@ -78,3 +78,8 @@ dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
 
 dist/reference_relay: reference/relay/*
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
+
+# Functional tests (sdk4)
+
+dist/func_server4: dist/$(SDKNAME4).so dist/cmd/func_server4/*
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
