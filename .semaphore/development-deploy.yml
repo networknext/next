@@ -54,13 +54,6 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
 
-            - cd ~/backend/libs/zeromq
-            - ./autogen.sh
-            - ./configure --with-norm=no --with-pgm=no
-            - make -j32
-            - sudo make -j32 install
-            - sudo ldconfig
-
             - cd ~/backend
           
             - cache restore
