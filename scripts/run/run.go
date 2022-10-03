@@ -1,42 +1,42 @@
 package main
 
 import (
-    "os"
-    "os/exec"
-    "os/signal"
-    "fmt"
-    "syscall"
-    "time"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 var cmd *exec.Cmd
 
 func cleanup() {
 	if cmd != nil {
-	    cmd.Process.Kill()
+		cmd.Process.Kill()
 	}
-    fmt.Print("\n")
+	fmt.Print("\n")
 }
 
 func bash(command string) {
 
-    cmd = exec.Command("bash", "-c", command)
-    if cmd == nil {
-        fmt.Printf("error: could not run bash!\n")
-        os.Exit(1)
-    }
+	cmd = exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	cmd.Env = os.Environ()
-   	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.") // IMPORTANT: linux needs this to run server4 etc.
-   
+	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.") // IMPORTANT: linux needs this to run server4 etc.
+
 	if err := cmd.Run(); err != nil {
-	    fmt.Printf("error: failed to run command: %v\n", err)
-	    os.Exit(1)
+		fmt.Printf("error: failed to run command: %v\n", err)
+		os.Exit(1)
 	}
 
 	cmd.Wait()
@@ -44,11 +44,11 @@ func bash(command string) {
 
 func bash_ignore_result(command string) {
 
-    cmd = exec.Command("bash", "-c", command)
-    if cmd == nil {
-        fmt.Printf("error: could not run bash!\n")
-        os.Exit(1)
-    }
+	cmd = exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -60,34 +60,34 @@ func bash_ignore_result(command string) {
 
 func bash_no_wait(command string) {
 
-    cmd = exec.Command("bash", "-c", command)
-    if cmd == nil {
-        fmt.Printf("error: could not run bash!\n")
-        os.Exit(1)
-    }
+	cmd = exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-	    fmt.Printf("error: failed to run command: %v\n", err)
-	    os.Exit(1)
+		fmt.Printf("error: failed to run command: %v\n", err)
+		os.Exit(1)
 	}
 }
 
 func main() {
 
 	c := make(chan os.Signal)
-    signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-    go func() {
-        <-c
-        cleanup()
-        os.Exit(1)
-    }()
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		cleanup()
+		os.Exit(1)
+	}()
 
 	args := os.Args
-	
-	if len(args) < 2 || (len(args) == 2 && args[1]=="help") {
+
+	if len(args) < 2 || (len(args) == 2 && args[1] == "help") {
 		help()
 		return
 	}
@@ -116,6 +116,8 @@ func main() {
 		relay_backend()
 	} else if command == "analytics" {
 		analytics()
+	} else if command == "pusher" {
+		pusher()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend4" {
@@ -183,6 +185,10 @@ func analytics() {
 	bash("make ./dist/analytics && HTTP_PORT=40001 ./dist/analytics")
 }
 
+func pusher() {
+	bash("make ./dist/pusher && HTTP_PORT=40010 ./dist/pusher")
+}
+
 func relay() {
 	relayPort := os.Getenv("RELAY_PORT")
 	if relayPort == "" {
@@ -226,12 +232,12 @@ func setup_emulators() {
 	bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
 	bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &")
 
-	// restart bigquery emulator	
-	bash_ignore_result("pkill -f \"bigquery-emulator\"")	
+	// restart bigquery emulator
+	bash_ignore_result("pkill -f \"bigquery-emulator\"")
 	bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
 
 	// setup pubsub topics, subscriptions and bigquery tables
-    time.Sleep(time.Second * 5) // todo: lame
+	time.Sleep(time.Second * 5) // todo: lame
 	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
