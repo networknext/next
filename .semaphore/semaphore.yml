@@ -66,7 +66,7 @@ blocks:
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
             - make clean
-            - ./run test
+            - ./run test-sdk4
 
   - name: "SDK5"
     dependencies: []
@@ -83,7 +83,7 @@ blocks:
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
             - make clean
-            - ./run test
+            - ./run test-sdk5
 
   - name: "Relay"
     dependencies: []
@@ -98,7 +98,8 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
-            - make -j32 test-relay
+            - make clean
+            - run test-relay
             - artifact push workflow ./dist/reference_relay
 
   - name: "Build Functional Tests (backend)"

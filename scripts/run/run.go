@@ -101,6 +101,8 @@ func main() {
 		test_sdk4()
 	} else if command == "test-sdk5" || command == "test5" {
 		test_sdk5()
+	} else if command == "test-relay" {
+		test_relay()
 	} else if command == "magic-backend" {
 		magic_backend()
 	} else if command == "relay-gateway" {
@@ -146,6 +148,10 @@ func test_sdk4() {
 
 func test_sdk5() {
 	bash("make ./dist/test5 -j && cd ./dist && ./test5")
+}
+
+func test_relay() {
+	bash("make ./dist/reference_relay -j && cd dist && ./reference_relay test")
 }
 
 func magic_backend() {
