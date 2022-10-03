@@ -116,6 +116,8 @@ func main() {
         relay_backend()
     } else if command == "analytics" {
         analytics()
+    } else if command == "pusher" {
+        pusher()
     } else if command == "relay" {
         relay()
     } else if command == "server-backend4" {
@@ -181,6 +183,10 @@ func relay_backend() {
 
 func analytics() {
     bash("make ./dist/analytics && HTTP_PORT=40001 ./dist/analytics")
+}
+
+func pusher() {
+    bash("make ./dist/pusher && HTTP_PORT=40010 ./dist/pusher")
 }
 
 func relay() {
