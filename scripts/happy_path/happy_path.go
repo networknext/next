@@ -11,10 +11,10 @@ import (
     "fmt"
     "os"
     "os/exec"
+    "os/signal"
     "strings"
     "syscall"
     "time"
-    "os/signal"
 
     "github.com/networknext/backend/modules/core"
     "github.com/networknext/backend/modules/envvar"
@@ -32,9 +32,9 @@ func run(action string, log string, env ...string) *bytes.Buffer {
         os.Exit(1)
     }
 
-	cmd.Env = os.Environ()
+    cmd.Env = os.Environ()
     for i := range env {
-    	cmd.Env = append(cmd.Env, env[i])
+        cmd.Env = append(cmd.Env, env[i])
     }
 
     var stdout bytes.Buffer
@@ -59,7 +59,7 @@ func run(action string, log string, env ...string) *bytes.Buffer {
         for {
             line, _, err := buf.ReadLine()
             if err != nil {
-            	break
+                break
             }
             writer.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format("2006-01-02 15:04:05"), string(line)))
             writer.Flush()
@@ -82,8 +82,8 @@ func happy_path() int {
 
     // build and run services as a developer would
 
-	setup_emulators_stdout := run("setup-emulators", "logs/setup_emulators")
-	_ = setup_emulators_stdout // todo
+    setup_emulators_stdout := run("setup-emulators", "logs/setup_emulators")
+    _ = setup_emulators_stdout // todo
 
     magic_backend_stdout := run("magic-backend", "logs/magic_backend")
     relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
@@ -263,11 +263,11 @@ func happy_path() int {
     // todo: verify that both relay backends see relay updates from each relay
 
     /*
-    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
-    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
-    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
-    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
-    strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
+       strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
+       strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
+       strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
+       strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
+       strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
     */
 
     // initialize server backend 4
@@ -328,7 +328,7 @@ func happy_path() int {
     for i := 0; i < 100; i++ {
         if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
             strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
-           	// todo: additional checks, like we see each type of pubsub message we expect being processed at least once
+            // todo: additional checks, like we see each type of pubsub message we expect being processed at least once
             analytics_initialized = true
             break
         }
@@ -386,22 +386,22 @@ func happy_path() int {
     _ = server5_initialized
 
     /*
-    for i := 0; i < 100; i++ {
-        if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
-            strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
-            server5_initialized = true
-            break
-        }
-        time.Sleep(100 * time.Millisecond)
-    }
+       for i := 0; i < 100; i++ {
+           if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
+               strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+               server5_initialized = true
+               break
+           }
+           time.Sleep(100 * time.Millisecond)
+       }
 
-    if !server5_initialized {
-        fmt.Printf("\nerror: server 5 failed to initialize\n\n")
-        fmt.Printf("----------------------------------------------------\n")
-        fmt.Printf("%s", server5_stdout)
-        fmt.Printf("----------------------------------------------------\n")
-        return 1
-    }
+       if !server5_initialized {
+           fmt.Printf("\nerror: server 5 failed to initialize\n\n")
+           fmt.Printf("----------------------------------------------------\n")
+           fmt.Printf("%s", server5_stdout)
+           fmt.Printf("----------------------------------------------------\n")
+           return 1
+       }
     */
 
     // ==================================================================================
@@ -446,22 +446,22 @@ func happy_path() int {
     _ = client5_stdout
 
     /*
-    for i := 0; i < 30; i++ {
-        if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-            strings.Contains(client5_stdout.String(), "client continues route (committed)") {
-            client5_initialized = true
-            break
-        }
-        time.Sleep(time.Second)
-    }
+       for i := 0; i < 30; i++ {
+           if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+               strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+               client5_initialized = true
+               break
+           }
+           time.Sleep(time.Second)
+       }
 
-    if !client5_initialized {
-        fmt.Printf("\nerror: client 5 failed to initialize\n\n")
-        fmt.Printf("----------------------------------------------------\n")
-        fmt.Printf("%s", client5_stdout)
-        fmt.Printf("----------------------------------------------------\n")
-        return 1
-    }
+       if !client5_initialized {
+           fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+           fmt.Printf("----------------------------------------------------\n")
+           fmt.Printf("%s", client5_stdout)
+           fmt.Printf("----------------------------------------------------\n")
+           return 1
+       }
     */
 
     // ==================================================================================
@@ -474,7 +474,7 @@ func happy_path() int {
 }
 
 func cleanup() {
-	core.Log("cleaning up")
+    core.Log("cleaning up")
     for i := range commands {
         commands[i].Process.Kill()
     }
