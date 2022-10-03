@@ -198,7 +198,7 @@ func server_backend5() {
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./cmd/happy_path/happy_path.go")
+	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
 }
 
 func server4() {
