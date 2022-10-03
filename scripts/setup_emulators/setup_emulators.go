@@ -49,7 +49,7 @@ type PubsubMessageType struct {
 }
 
 func main() {
-	
+
     ctx := context.Background()
 
     googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")

@@ -3,6 +3,7 @@ package common
 import (
     "fmt"
     "golang.org/x/exp/constraints"
+    "hash/fnv"
     "math/rand"
     "net"
 
@@ -60,4 +61,10 @@ func ClampString(value *string, maxLength int) bool {
         return true
     }
     return false
+}
+
+func DatacenterId(datacenterName string) uint64 {
+    hash := fnv.New64a()
+    hash.Write([]byte(datacenterName))
+    return hash.Sum64()
 }

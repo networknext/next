@@ -107,31 +107,31 @@ func mainReturnWithCode() int {
     var portalSubscriber pubsub.Subscriber
     {
         /*
-        cruncherPort := envvar.GetString("CRUNCHER_PORT", "5555")
-        if cruncherPort == "" {
-            core.Error("CRUNCHER_PORT not set")
-            return 1
-        }
+           cruncherPort := envvar.GetString("CRUNCHER_PORT", "5555")
+           if cruncherPort == "" {
+               core.Error("CRUNCHER_PORT not set")
+               return 1
+           }
 
-        receiveBufferSize := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
+           receiveBufferSize := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
 
-        portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
-        if err != nil {
-            core.Error("failed to create portal cruncher subscriber: %v", err)
-            return 1
-        }
+           portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
+           if err != nil {
+               core.Error("failed to create portal cruncher subscriber: %v", err)
+               return 1
+           }
 
-        if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
-            core.Error("failed to subscribe to portal cruncher session data topic: %v", err)
-            return 1
-        }
+           if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
+               core.Error("failed to subscribe to portal cruncher session data topic: %v", err)
+               return 1
+           }
 
-        if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
-            core.Error("failed to subscribe to portal cruncher session counts topic: %v", err)
-            return 1
-        }
+           if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
+               core.Error("failed to subscribe to portal cruncher session counts topic: %v", err)
+               return 1
+           }
 
-        portalSubscriber = portalCruncherSubscriber
+           portalSubscriber = portalCruncherSubscriber
         */
     }
 
