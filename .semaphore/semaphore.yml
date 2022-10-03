@@ -234,7 +234,8 @@ blocks:
             - cp envs/local.env .env
 
             - cd ~/backend
-            - make -j32 build-test-func-sdk4
+            - make clean
+            - ./run func-test-sdk4
 
             - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
@@ -482,7 +483,8 @@ blocks:
             - cp envs/local.env .env
 
             - cd ~/backend
-            - make -j32 build-test-func-sdk5
+            - make clean
+            - ./run func-test-sdk5
 
             - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
