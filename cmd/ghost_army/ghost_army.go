@@ -315,8 +315,8 @@ func mainReturnWithCode() int {
 
         for {
             select {
-            	// todo: need to update to redis streams
-            	/*
+                // todo: need to update to redis streams
+                /*
             case slice := <-publishChan:
                 // TODO: switch to serialization instead of binary encoding
                 sessionBytes, err := slice.MarshalBinary()

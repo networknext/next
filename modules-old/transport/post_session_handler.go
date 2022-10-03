@@ -116,8 +116,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
             for {
                 select {
-                	// todo: need to update to redis streams
-                	/*
+                    // todo: need to update to redis streams
+                    /*
                 case postSessionPortalData := <-post.sessionPortalDataChannel:
                     sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
                     if err != nil {
