@@ -4,12 +4,17 @@ import (
     "context"
     "errors"
     "fmt"
+    "math"
     "net/http"
     "os"
     "strings"
     "time"
 
     "github.com/networknext/backend/modules/core"
+)
+
+const (
+    MAX_RETRY_COUNT = 5
 )
 
 type FileSyncConfig struct {
@@ -29,12 +34,34 @@ type SyncFile struct {
     DownloadURL string
 }
 
+func CreateFileSyncConfig() *FileSyncConfig {
+    return &FileSyncConfig{
+        FileGroups: make([]FileSyncGroup, 0),
+    }
+}
+
+func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migName string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
+    config.FileGroups = append(config.FileGroups, FileSyncGroup{
+        Name:           groupName,
+        SyncInterval:   syncInterval,
+        PushTo:         migName,
+        ValidationFunc: validationFunc,
+        UploadTo:       uploadBucketURL,
+        Files:          files,
+    })
+}
+
 func (config *FileSyncConfig) Print() {
     core.Log("file sync groups:")
     for index, group := range config.FileGroups {
         core.Log("%d: %s [%s]", index, group.Name, group.SyncInterval.String())
         for _, file := range group.Files {
-            core.Log(" + %s -> %s ", file.DownloadURL, file.Name)
+            fileName := file.Name
+
+            if fileName == "" {
+                fileName = GetFileNameFromPath(file.DownloadURL)
+            }
+            core.Log(" + %s -> %s ", file.DownloadURL, fileName)
         }
     }
 }
@@ -67,14 +94,25 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStora
 
                     for i, syncFile := range group.Files {
 
-                        fileNames[i] = syncFile.Name
+                        if syncFile.DownloadURL == "" {
+                            core.Debug("no download url specified: %s", syncFile.Name)
+                            continue
+                        }
+
+                        fileName := syncFile.Name
+
+                        if fileName == "" {
+                            fileName = GetFileNameFromPath(syncFile.DownloadURL)
+                        }
 
                         core.Debug("downloading %s", syncFile.DownloadURL)
 
-                        if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, syncFile.Name); err != nil {
-                            core.Error("failed to download %s: %v", syncFile.Name, err)
+                        if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, fileName); err != nil {
+                            core.Error("failed to download %s: %v", fileName, err)
                             continue
                         }
+
+                        fileNames[i] = fileName
                     }
 
                     if !group.ValidationFunc(fileNames) {
@@ -84,7 +122,8 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStora
 
                     for _, fileName := range fileNames {
 
-                        if group.PushTo != "" {
+                        if group.UploadTo != "" {
+                            core.Debug("uploading files to: %s", group.UploadTo)
                             if err := googleCloudStorage.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
                                 core.Error("failed to upload location file to google cloud storage: %v", err)
                                 continue
@@ -130,27 +169,46 @@ func DownloadFile(ctx context.Context, googleCloudStorage *GoogleCloudStorage, d
 
 func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath string) error {
 
+    var httpResponse *http.Response
+    var err error
+
+    retryCount := 0
+
     httpClient := http.Client{
         Timeout: time.Second * 30,
     }
 
-    // todo: should we do n retries here? probably yes!
-    _ = ctx
+    for retryCount < MAX_RETRY_COUNT {
+        httpResponse, err = httpClient.Get(downloadURL)
+        if err != nil {
+            core.Debug("http get request failed: %v", err)
+            continue
+        }
 
-    httpResponse, err := httpClient.Get(downloadURL)
-    if err != nil {
-        return err
+        if httpResponse.StatusCode == http.StatusOK {
+            break
+        }
+
+        retryCount = retryCount + 1
+
+        if retryCount == MAX_RETRY_COUNT {
+            continue
+        }
+
+        backOff := float64(time.Second) / (2 * math.Exp(float64(retryCount)))
+
+        time.Sleep(time.Duration(backOff))
     }
+
+    if retryCount == MAX_RETRY_COUNT {
+        return errors.New(fmt.Sprintf("http call hit max retries"))
+    }
+
     defer httpResponse.Body.Close()
-
-    if httpResponse.StatusCode != http.StatusOK {
-        return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
-    }
 
     contentType := httpResponse.Header.Get("content-type")
 
     if contentType == "application/gzip" {
-
         if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
             return err
         }
