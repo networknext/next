@@ -1,185 +1,243 @@
 package common
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "net/http"
-    "os"
-    "strings"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"math"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
-    "github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/core"
+)
+
+const (
+	MAX_RETRY_COUNT = 5
 )
 
 type FileSyncConfig struct {
-    FileGroups []FileSyncGroup
+	FileGroups []FileSyncGroup
 }
 type FileSyncGroup struct {
-    Name           string
-    Files          []SyncFile
-    SyncInterval   time.Duration
-    ValidationFunc func([]string) bool
-    UploadTo       string
-    PushTo         string
+	Name           string
+	Files          []SyncFile
+	SyncInterval   time.Duration
+	ValidationFunc func([]string) bool
+	UploadTo       string
+	PushTo         string
 }
 
 type SyncFile struct {
-    Name        string
-    DownloadURL string
+	Name        string
+	DownloadURL string
+}
+
+func CreateFileSyncConfig() *FileSyncConfig {
+	return &FileSyncConfig{
+		FileGroups: make([]FileSyncGroup, 0),
+	}
+}
+
+func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migName string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
+	config.FileGroups = append(config.FileGroups, FileSyncGroup{
+		Name:           groupName,
+		SyncInterval:   syncInterval,
+		PushTo:         migName,
+		ValidationFunc: validationFunc,
+		UploadTo:       uploadBucketURL,
+		Files:          files,
+	})
 }
 
 func (config *FileSyncConfig) Print() {
-    core.Log("file sync groups:")
-    for index, group := range config.FileGroups {
-        core.Log("%d: %s [%s]", index, group.Name, group.SyncInterval.String())
-        for _, file := range group.Files {
-            core.Log(" + %s -> %s ", file.DownloadURL, file.Name)
-        }
-    }
+	core.Log("file sync groups:")
+	for index, group := range config.FileGroups {
+		core.Log("%d: %s [%s]", index, group.Name, group.SyncInterval.String())
+		for _, file := range group.Files {
+			fileName := file.Name
+
+			if fileName == "" {
+				fileName = GetFileNameFromPath(file.DownloadURL)
+			}
+			core.Log(" + %s -> %s ", file.DownloadURL, fileName)
+		}
+	}
 }
 
 func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStorage *GoogleCloudStorage, isLeader func() bool) {
 
-    googleProjectId := googleCloudStorage.ProjectId
+	googleProjectId := googleCloudStorage.ProjectId
 
-    for _, group := range config.FileGroups {
+	for _, group := range config.FileGroups {
 
-        go func(group FileSyncGroup) {
+		go func(group FileSyncGroup) {
 
-            ticker := time.NewTicker(group.SyncInterval)
+			ticker := time.NewTicker(group.SyncInterval)
 
-            for {
-                select {
+			for {
+				select {
 
-                case <-ctx.Done():
-                    return
+				case <-ctx.Done():
+					return
 
-                case <-ticker.C:
+				case <-ticker.C:
 
-                    if !isLeader() {
-                        continue
-                    }
+					if !isLeader() {
+						continue
+					}
 
-                    core.Debug("syncing %s", group.Name)
+					core.Debug("syncing %s", group.Name)
 
-                    fileNames := make([]string, len(group.Files))
+					fileNames := make([]string, len(group.Files))
 
-                    for i, syncFile := range group.Files {
+					for i, syncFile := range group.Files {
 
-                        fileNames[i] = syncFile.Name
+						if syncFile.DownloadURL == "" {
+							core.Debug("no download url specified: %s", syncFile.Name)
+							continue
+						}
 
-                        core.Debug("downloading %s", syncFile.DownloadURL)
+						fileName := syncFile.Name
 
-                        if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, syncFile.Name); err != nil {
-                            core.Error("failed to download %s: %v", syncFile.Name, err)
-                            continue
-                        }
-                    }
+						if fileName == "" {
+							fileName = GetFileNameFromPath(syncFile.DownloadURL)
+						}
 
-                    if !group.ValidationFunc(fileNames) {
-                        core.Error("failed to validate files: %v", fileNames)
-                        continue
-                    }
+						core.Debug("downloading %s", syncFile.DownloadURL)
 
-                    for _, fileName := range fileNames {
+						if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, fileName); err != nil {
+							core.Error("failed to download %s: %v", fileName, err)
+							continue
+						}
 
-                        if group.PushTo != "" {
-                            if err := googleCloudStorage.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
-                                core.Error("failed to upload location file to google cloud storage: %v", err)
-                                continue
-                            }
-                        }
+						fileNames[i] = fileName
+					}
 
-                        receivingVMs := GetMIGInstanceNames(googleProjectId, group.PushTo)
+					if !group.ValidationFunc(fileNames) {
+						core.Error("failed to validate files: %v", fileNames)
+						continue
+					}
 
-                        if len(receivingVMs) > 0 {
-                            core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-                            if err := PushFileToVMs(ctx, googleCloudStorage, fileName, receivingVMs); err != nil {
-                                core.Error("failed to upload location file to google cloud VMs: %v", err)
-                            }
-                        }
-                    }
-                }
-            }
-        }(group)
-    }
+					for _, fileName := range fileNames {
+
+						if group.UploadTo != "" {
+							core.Debug("uploading files to: %s", group.UploadTo)
+							if err := googleCloudStorage.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
+								core.Error("failed to upload location file to google cloud storage: %v", err)
+								continue
+							}
+						}
+
+						receivingVMs := GetMIGInstanceNames(googleProjectId, group.PushTo)
+
+						if len(receivingVMs) > 0 {
+							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
+							if err := PushFileToVMs(ctx, googleCloudStorage, fileName, receivingVMs); err != nil {
+								core.Error("failed to upload location file to google cloud VMs: %v", err)
+							}
+						}
+					}
+				}
+			}
+		}(group)
+	}
 }
 
 func DownloadFile(ctx context.Context, googleCloudStorage *GoogleCloudStorage, downloadURL string, fileName string) error {
 
-    currentDirectory, err := os.Getwd()
-    if err != nil {
-        core.Error("failed to get current directory: %v", err)
-        currentDirectory = "./"
-    }
+	currentDirectory, err := os.Getwd()
+	if err != nil {
+		core.Error("failed to get current directory: %v", err)
+		currentDirectory = "./"
+	}
 
-    path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
+	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
 
-    urlScheme := strings.Split(downloadURL, "://")[0]
+	urlScheme := strings.Split(downloadURL, "://")[0]
 
-    switch urlScheme {
-    case "gs":
-        return googleCloudStorage.CopyFromBucketToLocal(ctx, downloadURL, path)
-    case "http", "https":
-        return DownloadFileFromURL(ctx, downloadURL, path)
-    default:
-        return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
-    }
+	switch urlScheme {
+	case "gs":
+		return googleCloudStorage.CopyFromBucketToLocal(ctx, downloadURL, path)
+	case "http", "https":
+		return DownloadFileFromURL(ctx, downloadURL, path)
+	default:
+		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
+	}
 }
 
 func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath string) error {
 
-    httpClient := http.Client{
-        Timeout: time.Second * 30,
-    }
+	var httpResponse *http.Response
+	var err error
 
-    // todo: should we do n retries here? probably yes!
-    _ = ctx
+	retryCount := 0
 
-    httpResponse, err := httpClient.Get(downloadURL)
-    if err != nil {
-        return err
-    }
-    defer httpResponse.Body.Close()
+	httpClient := http.Client{
+		Timeout: time.Second * 30,
+	}
 
-    if httpResponse.StatusCode != http.StatusOK {
-        return errors.New(fmt.Sprintf("http call returned status code: %s", httpResponse.Status))
-    }
+	for retryCount < MAX_RETRY_COUNT {
+		httpResponse, err = httpClient.Get(downloadURL)
+		if err != nil {
+			core.Debug("http get request failed: %v", err)
+			continue
+		}
 
-    contentType := httpResponse.Header.Get("content-type")
+		if httpResponse.StatusCode == http.StatusOK {
+			break
+		}
 
-    if contentType == "application/gzip" {
+		retryCount = retryCount + 1
 
-        if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
-            return err
-        }
-    } else {
-        if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
-            return err
-        }
-    }
+		if retryCount == MAX_RETRY_COUNT {
+			continue
+		}
 
-    return nil
+		backOff := float64(time.Second) / (2 * math.Exp(float64(retryCount)))
+
+		time.Sleep(time.Duration(backOff))
+	}
+
+	if retryCount == MAX_RETRY_COUNT {
+		return errors.New(fmt.Sprintf("http call hit max retries"))
+	}
+
+	defer httpResponse.Body.Close()
+
+	contentType := httpResponse.Header.Get("content-type")
+
+	if contentType == "application/gzip" {
+		if err := ExtractFileFromGZIP(httpResponse.Body, filePath); err != nil {
+			return err
+		}
+	} else {
+		if err := SaveBytesToFile(httpResponse.Body, filePath); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func PushFileToVMs(ctx context.Context, googleCloudStorage *GoogleCloudStorage, filePath string, vmNames []string) error {
 
-    if len(vmNames) == 0 {
-        return nil
-    }
+	if len(vmNames) == 0 {
+		return nil
+	}
 
-    hadError := false
-    for _, vm := range vmNames {
-        if err := googleCloudStorage.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
-            core.Error("failed to copy file to vm: %v", err)
-            hadError = true
-        }
-    }
+	hadError := false
+	for _, vm := range vmNames {
+		if err := googleCloudStorage.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
+			core.Error("failed to copy file to vm: %v", err)
+			hadError = true
+		}
+	}
 
-    if hadError {
-        return errors.New("failed to upload file to one or more vms")
-    }
+	if hadError {
+		return errors.New("failed to upload file to one or more vms")
+	}
 
-    return nil
+	return nil
 }
