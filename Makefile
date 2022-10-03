@@ -57,6 +57,9 @@ dist/client4: dist/$(SDKNAME4).so cmd/client4/client4.cpp
 dist/server4: dist/$(SDKNAME4).so cmd/server4/server4.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
 
+dist/test_server4: dist/$(SDKNAME4).so cmd/test_server4/test_server4.cpp
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+
 dist/test4: dist/$(SDKNAME4).so sdk4/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
 
@@ -70,6 +73,9 @@ dist/client5: dist/$(SDKNAME5).so cmd/client5/client5.cpp
 
 dist/server5: dist/$(SDKNAME5).so cmd/server5/server5.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
+
+dist/test_server5: dist/$(SDKNAME5).so cmd/test_server5/test_server5.cpp
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 
 dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
