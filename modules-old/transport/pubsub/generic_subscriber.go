@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
     "context"
     "errors"
@@ -98,3 +99,4 @@ func (sub *GenericSubscriber) ReceiveMessage(ctx context.Context) <-chan Message
 func (sub *GenericSubscriber) Close() {
     sub.socket.Close()
 }
+*/

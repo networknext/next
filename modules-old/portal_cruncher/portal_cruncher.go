@@ -244,6 +244,8 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
         case <-ctx.Done():
             errChan <- ctx.Err()
             return
+            // todo: update to redis streams
+            /*
         case messageInfo := <-cruncher.subscriber.ReceiveMessage():
             cruncher.metrics.ReceivedMessageCount.Add(1)
 
@@ -294,6 +296,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
             }
 
             errChan <- nil
+            */
         }
     }()
 
