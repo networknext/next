@@ -12,8 +12,8 @@
 	time = 2022-09-20T20:23:54Z
 [component "org.tmatesoft.gitx.gitx-core"]
 	version = 1.0.1-SNAPSHOT
-	number = 848
-	commit = afb51cba93b964c4d9acd893ec96a4a375206ea3
+	number = 849
+	commit = 8e176c4dd986813e80d122163bc2a25e1cc36a91
 	builder = gitx-core
-	time = 2022-09-26T16:51:05Z
+	time = 2022-09-30T16:01:13Z
 	format = 1.0.0
