@@ -99,7 +99,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - make clean
-            - run test-relay
+            - ./run test-relay
             - artifact push workflow ./dist/reference_relay
 
   - name: "Build Functional Tests (backend)"
