@@ -14,7 +14,9 @@ import (
 var cmd *exec.Cmd
 
 func cleanup() {
-    cmd.Process.Kill()
+	if cmd != nil {
+	    cmd.Process.Kill()
+	}
     fmt.Print("\n")
 }
 
@@ -129,6 +131,10 @@ func main() {
 		client5()
 	} else if command == "setup-emulators" {
 		setup_emulators()
+	} else if command == "func-test-sdk4" {
+		func_test_sdk4()
+	} else if command == "func-test-sdk5" {
+		func_test_sdk5()
 	}
 
 	cleanup()
@@ -224,4 +230,12 @@ func setup_emulators() {
 	// setup pubsub topics, subscriptions and bigquery tables
     time.Sleep(time.Second * 5) // todo: lame
 	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
+}
+
+func func_test_sdk4() {
+	bash("make func_test_sdk4 -j && cd dist && ./func_tests_sdk4")
+}
+
+func func_test_sdk5() {
+	bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
 }
