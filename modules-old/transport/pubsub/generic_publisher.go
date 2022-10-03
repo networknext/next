@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
     "context"
     "fmt"
@@ -69,3 +70,4 @@ func (p *GenericPublisher) Close() error {
     defer p.mutex.Unlock()
     return p.socket.Close()
 }
+*/
