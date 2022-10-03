@@ -806,6 +806,8 @@ blocks:
 
             - checkout            
             - sudo apt-get install -y libsodium-dev redis-server
+            - gcloud components install pubsub-emulator
+            - gcloud components update
             - cd ~/backend
             - ./next select local
             - make clean
