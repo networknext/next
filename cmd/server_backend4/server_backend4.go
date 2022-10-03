@@ -482,8 +482,10 @@ func mainReturnWithCode() int {
         }
     }
 
-    // Start portal cruncher publisher
+    // todo: update to redis streams
     portalPublishers := make([]pubsub.Publisher, 0)
+    /*
+    // Start portal cruncher publisher
     {
         portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
@@ -499,6 +501,7 @@ func mainReturnWithCode() int {
             portalPublishers = append(portalPublishers, portalCruncherPublisher)
         }
     }
+    */
 
     numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 

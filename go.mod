@@ -31,7 +31,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/oschwald/geoip2-golang v1.4.0
-	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/cors v1.7.0
 	github.com/russellcardullo/go-pingdom v1.3.0

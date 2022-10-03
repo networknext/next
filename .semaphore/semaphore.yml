@@ -17,7 +17,7 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        - name: "Build Sodium and ZeroMQ"
+        - name: "Build Sodium"
           commands:
 
             - checkout
@@ -28,14 +28,6 @@ blocks:
             - sudo make -j32 install
             - sudo ldconfig
             - artifact push workflow /usr/local/lib/libsodium.so
-
-            - cd ~/backend/libs/zeromq
-            - ./autogen.sh
-            - ./configure --with-norm=no --with-pgm=no
-            - make -j32
-            - sudo make -j32 install
-            - sudo ldconfig
-            - artifact push workflow /usr/local/lib/libzmq.so
 
   - name: "Backend"
     dependencies: []
@@ -178,7 +170,6 @@ blocks:
             - cd dist
 
             - artifact pull workflow libsodium.so
-            - artifact pull workflow libzmq.so
 
             - artifact pull workflow func_tests_backend
             - artifact pull workflow func_tests_backend_libnext4.so
@@ -197,15 +188,12 @@ blocks:
             - chmod +x libnext4.so
             - chmod +x libnext5.so
             - chmod +x libsodium.so
-            - chmod +x libzmq.so
 
             - chmod +x func_tests_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
-            # - chmod +x relay_backend
 
             - sudo mv libsodium.so /usr/local/lib
-            - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
 
@@ -299,7 +287,6 @@ blocks:
             - artifact pull workflow reference_relay4
             - artifact pull workflow libnext4.so
             - artifact pull workflow libsodium.so
-            - artifact pull workflow libzmq.so
 
             - chmod +x func_client4
             - chmod +x func_server4
@@ -308,10 +295,8 @@ blocks:
             - chmod +x reference_relay4
             - chmod +x libnext4.so
             - chmod +x libsodium.so
-            - chmod +x libzmq.so
 
             - sudo mv libsodium.so /usr/local/lib
-            - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo ldconfig
 
@@ -557,7 +542,6 @@ blocks:
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
-            - artifact pull workflow libzmq.so
 
             - chmod +x func_client5
             - chmod +x func_server5
@@ -566,10 +550,8 @@ blocks:
             - chmod +x reference_relay5
             - chmod +x libnext5.so
             - chmod +x libsodium.so
-            - chmod +x libzmq.so
 
             - sudo mv libsodium.so /usr/local/lib
-            - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
@@ -802,7 +784,6 @@ blocks:
             - artifact pull workflow reference_relay5
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
-            - artifact pull workflow libzmq.so
 
             - chmod +x func_client5
             - chmod +x func_server5
@@ -811,10 +792,8 @@ blocks:
             - chmod +x reference_relay5
             - chmod +x libnext5.so
             - chmod +x libsodium.so
-            - chmod +x libzmq.so
 
             - sudo mv libsodium.so /usr/local/lib
-            - sudo mv libzmq.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 

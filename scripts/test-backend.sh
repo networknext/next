@@ -6,5 +6,3 @@ testResult=$?
 if [ ! $testResult -eq 0 ]; then
     exit $testResult
 fi
-
-printf "\n"
