@@ -246,56 +246,56 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
             return
             // todo: update to redis streams
             /*
-        case messageInfo := <-cruncher.subscriber.ReceiveMessage():
-            cruncher.metrics.ReceivedMessageCount.Add(1)
+               case messageInfo := <-cruncher.subscriber.ReceiveMessage():
+                   cruncher.metrics.ReceivedMessageCount.Add(1)
 
-            if messageInfo.Err != nil {
-                errChan <- &ErrReceiveMessage{err: messageInfo.Err}
-            }
+                   if messageInfo.Err != nil {
+                       errChan <- &ErrReceiveMessage{err: messageInfo.Err}
+                   }
 
-            switch messageInfo.Topic {
-            case pubsub.TopicPortalCruncherSessionCounts:
-                var sessionCountData transport.SessionCountData
-                if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-                    errChan <- &ErrUnmarshalMessage{err: err}
-                }
+                   switch messageInfo.Topic {
+                   case pubsub.TopicPortalCruncherSessionCounts:
+                       var sessionCountData transport.SessionCountData
+                       if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
+                           errChan <- &ErrUnmarshalMessage{err: err}
+                       }
 
-                select {
-                case cruncher.redisCountMessageChan <- &sessionCountData:
-                default:
-                    errChan <- &ErrChannelFull{}
-                }
+                       select {
+                       case cruncher.redisCountMessageChan <- &sessionCountData:
+                       default:
+                           errChan <- &ErrChannelFull{}
+                       }
 
-            case pubsub.TopicPortalCruncherSessionData:
-                // First try binary decoding, and upon failure, try serialization
-                // We need to do both because Ghost Army uses binary decoding
-                // TODO: once Ghost Army uses serialization, remove binary decoding
-                var sessionPortalData transport.SessionPortalData
-                if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
+                   case pubsub.TopicPortalCruncherSessionData:
+                       // First try binary decoding, and upon failure, try serialization
+                       // We need to do both because Ghost Army uses binary decoding
+                       // TODO: once Ghost Army uses serialization, remove binary decoding
+                       var sessionPortalData transport.SessionPortalData
+                       if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
 
-                    sessionPortalData = transport.SessionPortalData{}
+                           sessionPortalData = transport.SessionPortalData{}
 
-                    if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
-                        errChan <- &ErrUnmarshalMessage{err: err}
-                    }
-                }
+                           if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
+                               errChan <- &ErrUnmarshalMessage{err: err}
+                           }
+                       }
 
-                select {
-                case cruncher.redisDataMessageChan <- &sessionPortalData:
-                default:
-                    errChan <- &ErrChannelFull{}
-                }
+                       select {
+                       case cruncher.redisDataMessageChan <- &sessionPortalData:
+                       default:
+                           errChan <- &ErrChannelFull{}
+                       }
 
-                select {
-                case cruncher.btDataMessageChan <- &sessionPortalData:
-                default:
-                    errChan <- &ErrChannelFull{}
-                }
-            default:
-                errChan <- &ErrUnknownMessage{}
-            }
+                       select {
+                       case cruncher.btDataMessageChan <- &sessionPortalData:
+                       default:
+                           errChan <- &ErrChannelFull{}
+                       }
+                   default:
+                       errChan <- &ErrUnknownMessage{}
+                   }
 
-            errChan <- nil
+                   errChan <- nil
             */
         }
     }()
