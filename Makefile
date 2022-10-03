@@ -87,8 +87,8 @@ dist/func_server4: dist/$(SDKNAME4).so cmd/func_server4/*
 dist/func_client4: dist/$(SDKNAME4).so cmd/func_client4/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
 
-.PHONY: func_test_sdk4
-func_test_sdk4: dist/reference_relay dist/func_server4 dist/func_client4 dist/func_backend4 dist/func_tests_sdk4
+.PHONY: func-test-sdk4
+func-test-sdk4: dist/reference_relay dist/func_server4 dist/func_client4 dist/func_backend4 dist/func_tests_sdk4
 
 # Functional tests (sdk5)
 
@@ -98,5 +98,5 @@ dist/func_server5: dist/$(SDKNAME5).so cmd/func_server5/*
 dist/func_client5: dist/$(SDKNAME5).so cmd/func_client5/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
 
-.PHONY: func_test_sdk5
-func_test_sdk5: dist/reference_relay dist/func_server5 dist/func_client5 dist/func_backend5 dist/func_tests_sdk5
+.PHONY: func-test-sdk5
+func-test-sdk5: dist/reference_relay dist/func_server5 dist/func_client5 dist/func_backend5 dist/func_tests_sdk5
