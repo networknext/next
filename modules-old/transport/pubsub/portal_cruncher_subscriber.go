@@ -1,5 +1,6 @@
 package pubsub
 
+/*
 import (
     "errors"
     "fmt"
@@ -112,3 +113,4 @@ func (sub *PortalCruncherSubscriber) containsTopic(topic Topic) (bool, int) {
 
     return containsTopic, topicIndex
 }
+*/

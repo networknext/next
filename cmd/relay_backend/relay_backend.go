@@ -61,7 +61,7 @@ var redisSelector *common.RedisSelector
 
 func main() {
 
-    service := common.CreateService("relay_backend_new")
+    service := common.CreateService("relay_backend")
 
     googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
     maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
