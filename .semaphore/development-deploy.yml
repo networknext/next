@@ -275,11 +275,6 @@ blocks:
             - artifact pull workflow libsodium.so
             - gsutil cp libsodium.so gs://development_artifacts/libsodium.so
 
-        - name: "ZeroMQ"
-          commands:
-            - artifact pull workflow libzmq.so
-            - gsutil cp libzmq.so gs://development_artifacts/libzmq.so
-
         - name: "SDK4"
           commands:
             - artifact pull workflow libnext4.so
