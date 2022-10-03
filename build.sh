@@ -19,6 +19,8 @@ BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_HASH=$(git rev-parse --short HEAD) 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 
+time go test ./... -cover
+
 parallel ::: \
 "cd ./dist && g++ ${CFLAGS} -I../sdk4/include -shared -o libnext4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
 "cd ./dist && g++ ${CFLAGS} -I../sdk5/include -shared -o libnext5.so ../sdk5/source/*.cpp ${LDFLAGS}" \
