@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
-mkdir -p dist
+if [ ! -d ./dist ]; then
+	echo mkdir dist
+	mkdir -p dist
+fi
 
 CFLAGS="-fPIC"
 
 LDFLAGS="-lsodium -lcurl -lpthread -lm"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-  LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
+ 	LDFLAGS="${LDFLAGS} -framework CoreFoundation -framework SystemConfiguration"
 fi
 
 MODULE="github.com/networknext/backend/modules/common"
@@ -15,6 +18,8 @@ MODULE="github.com/networknext/backend/modules/common"
 BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_HASH=$(git rev-parse --short HEAD) 
 COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
+
+run test
 
 parallel ::: \
 "cd ./dist && g++ ${CFLAGS} -I../sdk4/include -shared -o libnext4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
@@ -31,3 +36,5 @@ parallel ::: \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_pusher ./cmd/pusher/*.go" \
 "go build -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
 "go build -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \
+
+cd dist && touch *

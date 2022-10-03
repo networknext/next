@@ -106,6 +106,7 @@ func mainReturnWithCode() int {
     // Start portal cruncher subscriber
     var portalSubscriber pubsub.Subscriber
     {
+        /*
         cruncherPort := envvar.GetString("CRUNCHER_PORT", "5555")
         if cruncherPort == "" {
             core.Error("CRUNCHER_PORT not set")
@@ -131,6 +132,7 @@ func mainReturnWithCode() int {
         }
 
         portalSubscriber = portalCruncherSubscriber
+        */
     }
 
     redisPingFrequency := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
