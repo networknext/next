@@ -26,9 +26,6 @@ done
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
 
-# Copy libzmq from GCP Storage
-gsutil cp "$bucket/libzmq.so" '/usr/local/lib'
-
 # Copy the ghost army binary data from GCP Storage
 gsutil cp "$bucket/ghost_army.bin" .
 
