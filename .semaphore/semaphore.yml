@@ -804,10 +804,10 @@ blocks:
 
           commands:
 
-            - checkout
+            - checkout            
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
-            - cp envs/local.env .env
+            - ./next select local
             - make clean
             - ./run happy-path
 
