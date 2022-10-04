@@ -6,7 +6,7 @@
 package main
 
 import (
-    "bytes"
+    // "bytes"
     "context"
     "encoding/binary"
     "fmt"
@@ -25,9 +25,10 @@ import (
     "time"
 
     "github.com/gorilla/mux"
-    "golang.org/x/sys/unix"
 
     "github.com/networknext/backend/modules/core"
+    "github.com/networknext/backend/modules/common"
+    "github.com/networknext/backend/modules/packets"
 
     "github.com/networknext/backend/modules-old/transport"
 )
@@ -92,9 +93,8 @@ type SessionCacheEntry struct {
     Version                    uint8
     DirectRTT                  float64
     NextRTT                    float64
-    // todo
-    // Location                   routing.Location
-    Response []byte
+    Location                   packets.SDK5_LocationData
+    Response                   []byte
 }
 
 const ThresholdRTT = 1.0
@@ -921,181 +921,181 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     // todo
     /*
-    udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
-    if err != nil {
-        fmt.Printf("bad resolve addr %s\n", relay_address)
-        return
-    }
-
-       relay := &routing.RelayData{
-           ID:             crypto.HashID(relay_address),
-           Addr:           *udpAddr,
-           PublicKey:      token,
-           LastUpdateTime: time.Now(),
-       }
-
-       var numRelays uint32
-       if !ReadUint32(body, &index, &numRelays) {
-           fmt.Printf("could not read num relays\n")
+       udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
+       if err != nil {
+           fmt.Printf("bad resolve addr %s\n", relay_address)
            return
        }
 
-       if numRelays > MaxRelays {
-           fmt.Printf("too many relays\n")
-           return
-       }
+          relay := &routing.RelayData{
+              ID:             crypto.HashID(relay_address),
+              Addr:           *udpAddr,
+              PublicKey:      token,
+              LastUpdateTime: time.Now(),
+          }
 
-       statsUpdate := &routing.RelayStatsUpdate{}
-       statsUpdate.ID = relay.ID
+          var numRelays uint32
+          if !ReadUint32(body, &index, &numRelays) {
+              fmt.Printf("could not read num relays\n")
+              return
+          }
 
-       for i := 0; i < int(numRelays); i++ {
-           var id uint64
-           var rtt, jitter, packetLoss float32
-           if !ReadUint64(body, &index, &id) {
-               fmt.Printf("bad relay id\n")
-               return
-           }
-           if !ReadFloat32(body, &index, &rtt) {
-               fmt.Printf("bad relay rtt\n")
-               return
-           }
-           if !ReadFloat32(body, &index, &jitter) {
-               fmt.Printf("bad relay jitter\n")
-               return
-           }
-           if !ReadFloat32(body, &index, &packetLoss) {
-               fmt.Printf("bad relay packet loss\n")
-               return
-           }
-           ping := routing.RelayStatsPing{}
-           ping.RelayID = id
-           ping.RTT = rtt
-           ping.Jitter = jitter
-           ping.PacketLoss = packetLoss
-           statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
-       }
+          if numRelays > MaxRelays {
+              fmt.Printf("too many relays\n")
+              return
+          }
 
-       var sessionCount uint64
-       if !ReadUint64(body, &index, &sessionCount) {
-           fmt.Printf("could not read session count\n")
-           return
-       }
+          statsUpdate := &routing.RelayStatsUpdate{}
+          statsUpdate.ID = relay.ID
 
-       var shutdown bool
-       if !ReadBool(body, &index, &shutdown) {
-           fmt.Printf("could not read shutdown\n")
-           return
-       }
+          for i := 0; i < int(numRelays); i++ {
+              var id uint64
+              var rtt, jitter, packetLoss float32
+              if !ReadUint64(body, &index, &id) {
+                  fmt.Printf("bad relay id\n")
+                  return
+              }
+              if !ReadFloat32(body, &index, &rtt) {
+                  fmt.Printf("bad relay rtt\n")
+                  return
+              }
+              if !ReadFloat32(body, &index, &jitter) {
+                  fmt.Printf("bad relay jitter\n")
+                  return
+              }
+              if !ReadFloat32(body, &index, &packetLoss) {
+                  fmt.Printf("bad relay packet loss\n")
+                  return
+              }
+              ping := routing.RelayStatsPing{}
+              ping.RelayID = id
+              ping.RTT = rtt
+              ping.Jitter = jitter
+              ping.PacketLoss = packetLoss
+              statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
+          }
 
-       var relayVersion string
-       if !ReadString(body, &index, &relayVersion, uint32(32)) {
-           fmt.Printf("could not read relay version\n")
-           return
-       }
+          var sessionCount uint64
+          if !ReadUint64(body, &index, &sessionCount) {
+              fmt.Printf("could not read session count\n")
+              return
+          }
 
-       var cpu uint8
-       if !ReadUint8(body, &index, &cpu) {
-           fmt.Printf("could not read cpu\n")
-           return
-       }
+          var shutdown bool
+          if !ReadBool(body, &index, &shutdown) {
+              fmt.Printf("could not read shutdown\n")
+              return
+          }
 
-       var envelopeUpKbps uint64
-       if !ReadUint64(body, &index, &envelopeUpKbps) {
-           fmt.Printf("could not read envelope up kbps\n")
-           return
-       }
+          var relayVersion string
+          if !ReadString(body, &index, &relayVersion, uint32(32)) {
+              fmt.Printf("could not read relay version\n")
+              return
+          }
 
-       var envelopeDownKbps uint64
-       if !ReadUint64(body, &index, &envelopeDownKbps) {
-           fmt.Printf("could not read envelope down kbps\n")
-           return
-       }
+          var cpu uint8
+          if !ReadUint8(body, &index, &cpu) {
+              fmt.Printf("could not read cpu\n")
+              return
+          }
 
-       var bandwidthSentKbps uint64
-       if !ReadUint64(body, &index, &bandwidthSentKbps) {
-           fmt.Printf("could not read bandwidth sent kbps\n")
-           return
-       }
+          var envelopeUpKbps uint64
+          if !ReadUint64(body, &index, &envelopeUpKbps) {
+              fmt.Printf("could not read envelope up kbps\n")
+              return
+          }
 
-       var bandwidthRecvKbps uint64
-       if !ReadUint64(body, &index, &bandwidthRecvKbps) {
-           fmt.Printf("could not read bandwidth recv kbps\n")
-           return
-       }
+          var envelopeDownKbps uint64
+          if !ReadUint64(body, &index, &envelopeDownKbps) {
+              fmt.Printf("could not read envelope down kbps\n")
+              return
+          }
 
-       backend.mutex.Lock()
-       backend.statsDatabase.ProcessStats(statsUpdate)
-       backend.mutex.Unlock()
+          var bandwidthSentKbps uint64
+          if !ReadUint64(body, &index, &bandwidthSentKbps) {
+              fmt.Printf("could not read bandwidth sent kbps\n")
+              return
+          }
 
-       relaysToPing := make([]routing.RelayPingData, 0)
+          var bandwidthRecvKbps uint64
+          if !ReadUint64(body, &index, &bandwidthRecvKbps) {
+              fmt.Printf("could not read bandwidth recv kbps\n")
+              return
+          }
 
-       backend.mutex.Lock()
+          backend.mutex.Lock()
+          backend.statsDatabase.ProcessStats(statsUpdate)
+          backend.mutex.Unlock()
 
-       allRelayData := backend.relayMap.GetAllRelayData()
-       for _, v := range allRelayData {
-           if v.Addr.String() != relay.Addr.String() {
-               relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
-           }
-       }
+          relaysToPing := make([]routing.RelayPingData, 0)
 
-       _, ok := backend.relayMap.GetRelayData(relay.Addr.String())
-       if !ok {
-           backend.dirty = true
-       }
+          backend.mutex.Lock()
 
-       relayData := routing.RelayData{
-           ID:                crypto.HashID(relay_address),
-           Addr:              *udpAddr,
-           PublicKey:         crypto.RelayPublicKey[:],
-           SessionCount:      int(sessionCount),
-           ShuttingDown:      shutdown,
-           LastUpdateTime:    time.Now(),
-           Version:           relayVersion,
-           CPU:               cpu,
-           EnvelopeUpMbps:    float32(float64(envelopeUpKbps) / 1000.0),
-           EnvelopeDownMbps:  float32(float64(envelopeDownKbps) / 1000.0),
-           BandwidthSentMbps: float32(float64(bandwidthSentKbps) / 1000.0),
-           BandwidthRecvMbps: float32(float64(bandwidthRecvKbps) / 1000.0),
-       }
+          allRelayData := backend.relayMap.GetAllRelayData()
+          for _, v := range allRelayData {
+              if v.Addr.String() != relay.Addr.String() {
+                  relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(v.ID), Address: v.Addr.String()})
+              }
+          }
 
-       backend.relayMap.UpdateRelayData(relayData)
+          _, ok := backend.relayMap.GetRelayData(relay.Addr.String())
+          if !ok {
+              backend.dirty = true
+          }
 
-       backend.mutex.Unlock()
+          relayData := routing.RelayData{
+              ID:                crypto.HashID(relay_address),
+              Addr:              *udpAddr,
+              PublicKey:         crypto.RelayPublicKey[:],
+              SessionCount:      int(sessionCount),
+              ShuttingDown:      shutdown,
+              LastUpdateTime:    time.Now(),
+              Version:           relayVersion,
+              CPU:               cpu,
+              EnvelopeUpMbps:    float32(float64(envelopeUpKbps) / 1000.0),
+              EnvelopeDownMbps:  float32(float64(envelopeDownKbps) / 1000.0),
+              BandwidthSentMbps: float32(float64(bandwidthSentKbps) / 1000.0),
+              BandwidthRecvMbps: float32(float64(bandwidthRecvKbps) / 1000.0),
+          }
 
-       magicUpcoming, magicCurrent, magicPrevious := GetMagic()
+          backend.relayMap.UpdateRelayData(relayData)
 
-       responseData := make([]byte, 10*1024)
+          backend.mutex.Unlock()
 
-       index = 0
+          magicUpcoming, magicCurrent, magicPrevious := GetMagic()
 
-       WriteUint32(responseData, &index, UpdateResponseVersion)
+          responseData := make([]byte, 10*1024)
 
-       WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+          index = 0
 
-       WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+          WriteUint32(responseData, &index, UpdateResponseVersion)
 
-       for i := range relaysToPing {
-           WriteUint64(responseData, &index, relaysToPing[i].ID)
-           WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
-       }
+          WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 
-       WriteString(responseData, &index, relayVersion, uint32(32))
+          WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
-       WriteBytes(responseData, &index, magicUpcoming[:], 8)
+          for i := range relaysToPing {
+              WriteUint64(responseData, &index, relaysToPing[i].ID)
+              WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
+          }
 
-       WriteBytes(responseData, &index, magicCurrent[:], 8)
+          WriteString(responseData, &index, relayVersion, uint32(32))
 
-       WriteBytes(responseData, &index, magicPrevious[:], 8)
+          WriteBytes(responseData, &index, magicUpcoming[:], 8)
 
-       WriteUint32(responseData, &index, 0)
+          WriteBytes(responseData, &index, magicCurrent[:], 8)
 
-       responseLength := index
+          WriteBytes(responseData, &index, magicPrevious[:], 8)
 
-       responseData = responseData[:responseLength]
+          WriteUint32(responseData, &index, 0)
 
-       writer.Header().Set("Content-Type", "application/octet-stream")
+          responseLength := index
 
-       writer.Write(responseData)
+          responseData = responseData[:responseLength]
+
+          writer.Header().Set("Content-Type", "application/octet-stream")
+
+          writer.Write(responseData)
     */
 }
 
@@ -1108,130 +1108,142 @@ func NearHandler(writer http.ResponseWriter, request *http.Request) {
     writer.Write(nearData)
 }
 
-func WebServer() {
+func StartWebServer() {
     router := mux.NewRouter()
     router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
     router.HandleFunc("/near", NearHandler).Methods("GET")
     http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }
 
-// -----------------------------------------------
+func StartUDPServer() {
 
-func UDPServer() {
-
-    sendAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
-
-    receiveAddress := sendAddress
-
-    lc := net.ListenConfig{
-        Control: func(network string, address string, c syscall.RawConn) error {
-            err := c.Control(func(fileDescriptor uintptr) {
-                err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-                if err != nil {
-                    panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
-                }
-
-                err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-                if err != nil {
-                    panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
-                }
-            })
-
-            return err
-        },
-    }
-
-    for {
-
-        // very rarely, semaphore won't let us bind to UDP because the port is already in use (?!)
-        // be tolerant of this, and retry until we can get it...
-
-        var lp net.PacketConn
-        var err error
-
-        for {
-            lp, err = lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
-            if err == nil {
-                break
-            }
-            fmt.Printf("retrying UDP socket create...\n")
-            time.Sleep(time.Second)
-        }
-
-        conn := lp.(*net.UDPConn)
-
-        dataArray := [transport.DefaultMaxPacketSize]byte{}
-        for {
-            data := dataArray[:]
-            size, fromAddr, err := conn.ReadFromUDP(data)
-            if err != nil {
-                fmt.Printf("failed to read udp packet: %v\n", err)
-                break
-            }
-
-            if size <= 0 {
-                continue
-            }
-
-            data = data[:size]
-
-            if !core.BasicPacketFilter(data[:], len(data)) {
-                fmt.Printf("basic packet filter failed\n")
-                continue
-            }
-
-            {
-                to := receiveAddress
-
-                var emptyMagic [8]byte
-
-                var fromAddressBuffer [32]byte
-                var toAddressBuffer [32]byte
-
-                fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
-                toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
-
-                if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
-                    fmt.Printf("advanced packet filter failed\n")
-                    continue
-                }
-            }
-
-            packetType := data[0]
-
-            var buffer bytes.Buffer
-
-            // todo
-            _ = buffer
-            _ = packetType
-
-            /*
-               packet := transport.UDPPacket{From: *fromAddr, Data: data}
-
-               switch packetType {
-               case transport.PacketTypeServerInitRequestSDK5:
-                   ServerInitHandlerFunc(&buffer, &packet)
-               case transport.PacketTypeServerUpdateSDK5:
-                   ServerUpdateHandlerFunc(&buffer, &packet)
-               case transport.PacketTypeSessionUpdateSDK5:
-                   SessionUpdateHandlerFunc(&buffer, &packet)
-               case transport.PacketTypeMatchDataRequestSDK5:
-                   MatchDataRequestHandlerFunc(&buffer, &packet)
-               default:
-                   fmt.Printf("unknown packet type %d\n", packetType)
-               }
-
-               if buffer.Len() > 0 {
-                   response := buffer.Bytes()
-
-                   if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-                       fmt.Printf("failed to write UDP response: %v\n", err)
-                   }
-               }
-            */
-        }
-    }
+    config := common.UDPServerConfig{}
+    config.Port = NEXT_SERVER_BACKEND_PORT
+    config.NumThreads = 2
+    config.SocketReadBuffer = 1024 * 1024
+    config.SocketWriteBuffer = 1024 * 10924
+    config.MaxPacketSize = 4096
+    
+    common.CreateUDPServer(context.Background(), config, packetHandler)
 }
+
+func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
+
+    fmt.Printf("received %d byte packet from %s", len(packetData), from.String())
+
+    // todo: process packets
+}
+
+/*
+   sendAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+
+   receiveAddress := sendAddress
+
+   lc := net.ListenConfig{
+       Control: func(network string, address string, c syscall.RawConn) error {
+           err := c.Control(func(fileDescriptor uintptr) {
+               err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+               if err != nil {
+                   panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+               }
+
+               err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+               if err != nil {
+                   panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+               }
+           })
+
+           return err
+       },
+   }
+
+   for {
+
+       // very rarely, semaphore won't let us bind to UDP because the port is already in use (?!)
+       // be tolerant of this, and retry until we can get it...
+
+       var lp net.PacketConn
+       var err error
+
+       for {
+           lp, err = lc.ListenPacket(context.Background(), "udp", "0.0.0.0:"+fmt.Sprintf("%d", NEXT_SERVER_BACKEND_PORT))
+           if err == nil {
+               break
+           }
+           fmt.Printf("retrying UDP socket create...\n")
+           time.Sleep(time.Second)
+       }
+
+       conn := lp.(*net.UDPConn)
+
+       dataArray := [transport.DefaultMaxPacketSize]byte{}
+       for {
+           data := dataArray[:]
+           size, fromAddr, err := conn.ReadFromUDP(data)
+           if err != nil {
+               fmt.Printf("failed to read udp packet: %v\n", err)
+               break
+           }
+
+           if size <= 0 {
+               continue
+           }
+
+           data = data[:size]
+
+           if !core.BasicPacketFilter(data[:], len(data)) {
+               fmt.Printf("basic packet filter failed\n")
+               continue
+           }
+
+           {
+               to := receiveAddress
+
+               var emptyMagic [8]byte
+
+               var fromAddressBuffer [32]byte
+               var toAddressBuffer [32]byte
+
+               fromAddressData, fromAddressPort := core.GetAddressData(fromAddr, fromAddressBuffer[:])
+               toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+               if !core.AdvancedPacketFilter(data, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(data)) {
+                   fmt.Printf("advanced packet filter failed\n")
+                   continue
+               }
+           }
+
+           packetType := data[0]
+
+           var buffer bytes.Buffer
+
+           // todo
+           _ = buffer
+           _ = packetType
+
+              packet := transport.UDPPacket{From: *fromAddr, Data: data}
+
+              switch packetType {
+              case transport.PacketTypeServerInitRequestSDK5:
+                  ServerInitHandlerFunc(&buffer, &packet)
+              case transport.PacketTypeServerUpdateSDK5:
+                  ServerUpdateHandlerFunc(&buffer, &packet)
+              case transport.PacketTypeSessionUpdateSDK5:
+                  SessionUpdateHandlerFunc(&buffer, &packet)
+              case transport.PacketTypeMatchDataRequestSDK5:
+                  MatchDataRequestHandlerFunc(&buffer, &packet)
+              default:
+                  fmt.Printf("unknown packet type %d\n", packetType)
+              }
+
+              if buffer.Len() > 0 {
+                  response := buffer.Bytes()
+
+                  if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
+                      fmt.Printf("failed to write UDP response: %v\n", err)
+                  }
+              }
+*/
 
 // -----------------------------------------------
 
@@ -1244,13 +1256,13 @@ func main() {
 
     // todo
     /*
-    backend.statsDatabase = routing.NewStatsDatabase()
-    backend.routeMatrix = &routing.RouteMatrix{}
+       backend.statsDatabase = routing.NewStatsDatabase()
+       backend.routeMatrix = &routing.RouteMatrix{}
 
-    backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
-        backend.statsDatabase.DeleteEntry(relayData.ID)
-        return nil
-    })
+       backend.relayMap = routing.NewRelayMap(func(relayData routing.RelayData) error {
+           backend.statsDatabase.DeleteEntry(relayData.ID)
+           return nil
+       })
     */
 
     if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
@@ -1331,9 +1343,9 @@ func main() {
 
     go UpdateMagic()
 
-    go WebServer()
+    go StartWebServer()
 
-    go UDPServer()
+    go StartUDPServer()
 
     fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
