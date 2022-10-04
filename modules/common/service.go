@@ -24,6 +24,7 @@ import (
     "github.com/networknext/backend/modules-old/backend"
     "github.com/networknext/backend/modules-old/routing"
     "github.com/networknext/backend/modules-old/transport"
+    "github.com/networknext/backend/modules-old/transport/looker"
 
     "github.com/gorilla/mux"
 )
@@ -498,14 +499,6 @@ func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.Overlay
     }
 }
 
-func fileExists(filename string) bool {
-    _, err := os.Stat(filename)
-    if err == nil {
-        return true
-    }
-    return false
-}
-
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
 
     syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
@@ -746,3 +739,11 @@ func (service *Service) SyncFiles(config *FileSyncConfig) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+
+func (service *Service) SetupLookerClient() *looker.LookerClient {
+    return &looker.LookerClient{}
+}
+
+func (service *Service) StartDataCollection() {
+    // todo - use this function to call out to different source to collect data to be used elsewhere in the system
+}
