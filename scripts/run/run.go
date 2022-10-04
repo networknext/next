@@ -66,13 +66,7 @@ func bash_no_wait(command string) {
         os.Exit(1)
     }
 
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-
-    if err := cmd.Run(); err != nil {
-        fmt.Printf("error: failed to run command: %v\n", err)
-        os.Exit(1)
-    }
+    cmd.Run()
 }
 
 func main() {
@@ -230,7 +224,7 @@ func setup_emulators() {
 
     // restart pubsub emulator
     bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
-    bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &")
+    bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 --quiet &")
 
     // restart bigquery emulator
     bash_ignore_result("pkill -f \"bigquery-emulator\"")
