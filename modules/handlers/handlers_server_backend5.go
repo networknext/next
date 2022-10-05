@@ -152,7 +152,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
     // process the packet according to type
 
-    packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+    packetData = packetData[16:]
 
     switch packetType {
 
