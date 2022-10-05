@@ -570,6 +570,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
     // todo: check buyer id and packet signature
 
+    // ...
+
     // process the packet according to type
 
     packetData = packetData[16:]
@@ -653,7 +655,13 @@ func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requ
 
 	fmt.Printf("server update request\n")
 
-	// todo
+	responsePacket := &packets.SDK5_ServerUpdateResponsePacket{
+	   RequestId: requestPacket.RequestId,
+	}
+
+	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
+
+	SendResponsePacket(conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
 func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
