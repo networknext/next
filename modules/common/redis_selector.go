@@ -119,8 +119,7 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
     dataStores := []DataStoreConfig{}
     itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
     for itor.Next(timeoutContext) {
-        key := itor.Val()
-        instanceKeys = append(instanceKeys, key)
+        instanceKeys = append(instanceKeys, itor.Val())
     }
     if err := itor.Err(); err != nil {
         core.Error("failed to get instance keys: %v", err)

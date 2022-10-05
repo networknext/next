@@ -578,7 +578,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
                 // store our most recent cost and route matrix in redis
 
-                dataStoreConfig := []common.DataStoreConfig{
+                dataStores := []common.DataStoreConfig{
                     {
                         Name: "relays",
                         Data: relaysDataNew,
@@ -593,25 +593,30 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
                     },
                 }
 
-                redisSelector.Store(service.Context, dataStoreConfig)
+                redisSelector.Store(service.Context, dataStores)
 
                 // load the master cost and route matrix from redis (leader election)
 
-                dataStoreConfig = redisSelector.Load(service.Context)
+                dataStores = redisSelector.Load(service.Context)
 
-                relaysDataNew = dataStoreConfig[0].Data
+                if len(dataStores) == 0 {
+                    core.Error("failed to get data stores from redis selector")
+                    continue
+                }
+
+                relaysDataNew = dataStores[0].Data
                 if relaysDataNew == nil {
                     core.Error("failed to get relays from redis selector")
                     continue
                 }
 
-                costMatrixDataNew = dataStoreConfig[1].Data
+                costMatrixDataNew = dataStores[1].Data
                 if costMatrixDataNew == nil {
                     core.Error("failed to get cost matrix from redis selector")
                     continue
                 }
 
-                routeMatrixDataNew = dataStoreConfig[2].Data
+                routeMatrixDataNew = dataStores[2].Data
                 if routeMatrixDataNew == nil {
                     core.Error("failed to get route matrix from redis selector")
                     continue
