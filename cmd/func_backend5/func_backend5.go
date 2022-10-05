@@ -54,11 +54,11 @@ const BACKEND_MODE_MATCH_ID = 17
 const BACKEND_MODE_MATCH_VALUES = 18
 
 type Backend struct {
-    mutex           sync.RWMutex
-    dirty           bool
-    mode            int
-    relayManager    *common.RelayManager
-    routeMatrix     *common.RouteMatrix
+    mutex        sync.RWMutex
+    dirty        bool
+    mode         int
+    relayManager *common.RelayManager
+    routeMatrix  *common.RouteMatrix
 }
 
 var backend Backend
@@ -105,10 +105,10 @@ func OptimizeThread() {
         // todo: get set of relay ids and datacenter ids from relay manager
 
         /*
-            for _, relayData := range backend.relayMap.GetAllRelayData() {
-               relayIDs = append(relayIDs, relayData.ID)
-               relayDatacenterIDs = append(relayDatacenterIDs, common.DatacenterId("local"))
-            }
+           for _, relayData := range backend.relayMap.GetAllRelayData() {
+              relayIDs = append(relayIDs, relayData.ID)
+              relayDatacenterIDs = append(relayDatacenterIDs, common.DatacenterId("local"))
+           }
         */
 
         costMatrix := backend.relayManager.GetCosts(relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
@@ -412,7 +412,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
     // ignore packets that are too small
 
-    if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+    if len(packetData) < packets.SDK5_MinPacketBytes {
         fmt.Printf("packet is too small")
         return
     }
@@ -772,77 +772,77 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         // todo: get processing for when on next
         /*
-            // next
+           // next
 
-            numRelays := len(nearRelays)
-            if numRelays > core.MaxRelaysPerRoute {
-               numRelays = core.MaxRelaysPerRoute
-            }
-            nextRoute := routing.Route{
-               NumRelays:       numRelays,
-               RelayIDs:        nearRelayIDs,
-               RelayAddrs:      nearRelayAddresses,
-               RelayPublicKeys: nearRelayPublicKeys,
-            }
+           numRelays := len(nearRelays)
+           if numRelays > core.MaxRelaysPerRoute {
+              numRelays = core.MaxRelaysPerRoute
+           }
+           nextRoute := routing.Route{
+              NumRelays:       numRelays,
+              RelayIDs:        nearRelayIDs,
+              RelayAddrs:      nearRelayAddresses,
+              RelayPublicKeys: nearRelayPublicKeys,
+           }
 
-            relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
-            for i := range relayTokens {
-               relayTokens[i] = routing.RelayToken{
-                   ID:        nextRoute.RelayIDs[i],
-                   Addr:      nextRoute.RelayAddrs[i],
-                   PublicKey: nextRoute.RelayPublicKeys[i],
-               }
-            }
+           relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
+           for i := range relayTokens {
+              relayTokens[i] = routing.RelayToken{
+                  ID:        nextRoute.RelayIDs[i],
+                  Addr:      nextRoute.RelayAddrs[i],
+                  PublicKey: nextRoute.RelayPublicKeys[i],
+              }
+           }
 
-            var routeType int32
-            sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
+           var routeType int32
+           sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
 
-            routerPrivateKey := [crypto.KeySize]byte{}
-            copy(routerPrivateKey[:], crypto.RouterPrivateKey)
+           routerPrivateKey := [crypto.KeySize]byte{}
+           copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
-            tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
-            tokenAddresses[0] = &sessionUpdate.ClientAddress
-            tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
-            for i := 0; i < nextRoute.NumRelays; i++ {
-               tokenAddresses[1+i] = &nearRelayAddresses[i]
-            }
+           tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
+           tokenAddresses[0] = &sessionUpdate.ClientAddress
+           tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
+           for i := 0; i < nextRoute.NumRelays; i++ {
+              tokenAddresses[1+i] = &nearRelayAddresses[i]
+           }
 
-            tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
-            tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
-            tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
-            for i := 0; i < nextRoute.NumRelays; i++ {
-               tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
-            }
+           tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
+           tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
+           tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
+           for i := 0; i < nextRoute.NumRelays; i++ {
+              tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
+           }
 
-            numTokens := nextRoute.NumRelays + 2
+           numTokens := nextRoute.NumRelays + 2
 
-            var tokenData []byte
-            if sameRoute {
-               tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-               core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
-               routeType = routing.RouteTypeContinue
-            } else {
-               sessionData.ExpireTimestamp += billing.BillingSliceSeconds
-               sessionData.SessionVersion++
+           var tokenData []byte
+           if sameRoute {
+              tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+              core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
+              routeType = routing.RouteTypeContinue
+           } else {
+              sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+              sessionData.SessionVersion++
 
-               tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-               core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
-               routeType = routing.RouteTypeNew
-            }
+              tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+              core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+              routeType = routing.RouteTypeNew
+           }
 
-            sessionResponse = &transport.SessionResponsePacketSDK5{
-                SessionID:          sessionUpdate.SessionID,
-                SliceNumber:        sessionUpdate.SliceNumber,
-                NumNearRelays:      int32(len(nearRelays)),
-                NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
-                NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
-                RouteType:          routeType,
-                Multipath:          multipath,
-                Committed:          committed,
-                NumTokens:          int32(numTokens),
-                Tokens:             tokenData,
-                HighFrequencyPings: true,
-            }
+           sessionResponse = &transport.SessionResponsePacketSDK5{
+               SessionID:          sessionUpdate.SessionID,
+               SliceNumber:        sessionUpdate.SliceNumber,
+               NumNearRelays:      int32(len(nearRelays)),
+               NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
+               NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+               RouteType:          routeType,
+               Multipath:          multipath,
+               Committed:          committed,
+               NumTokens:          int32(numTokens),
+               Tokens:             tokenData,
+               HighFrequencyPings: true,
+           }
         */
     }
 
@@ -862,18 +862,18 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
     SendResponsePacket(conn, from, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
 
     /*
-        sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
-        if err != nil {
-           fmt.Printf("error: failed to marshal session data: %v\n", err)
-           return
-        }
+       sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
+       if err != nil {
+          fmt.Printf("error: failed to marshal session data: %v\n", err)
+          return
+       }
 
-        if len(sessionDataBuffer) > transport.MaxSessionDataSize {
-           fmt.Printf("session data too large\n")
-        }
+       if len(sessionDataBuffer) > transport.MaxSessionDataSize {
+          fmt.Printf("session data too large\n")
+       }
 
-        sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
-        copy(sessionResponse.SessionData[:], sessionDataBuffer)
+       sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
+       copy(sessionResponse.SessionData[:], sessionDataBuffer)
     */
 }
 
@@ -944,7 +944,7 @@ func main() {
     rand.Seed(time.Now().UnixNano())
 
     backend.relayManager = common.CreateRelayManager()
-    
+
     backend.routeMatrix = &common.RouteMatrix{}
 
     if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
