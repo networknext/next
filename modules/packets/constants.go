@@ -191,6 +191,10 @@ const (
     SDK5_MaxISPNameLength     = 64
 
     SDK5_MaxLocationSize = 128
+
+    SDK5_BillingSliceSeconds = 10
+
+    SDK5_MinPacketBytes = 16 + 3 + 8 + NEXT_CRYPTO_SIGN_BYTES + 2
 )
 
 // -------------------------------------------------
