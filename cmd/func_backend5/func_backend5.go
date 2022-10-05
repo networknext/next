@@ -849,8 +849,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
         return
     }
 
-    responsePacket.Version = requestPacket.Version
-
     excludeNearRelays(responsePacket, sessionData.RouteState)
 
 	packetSessionData, err := packets.WritePacket[*packets.SDK5_SessionData](responsePacket.SessionData[:], &sessionData)

@@ -334,7 +334,6 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateResponsePacket struct {
-    Version            SDKVersion
     SessionId          uint64
     SliceNumber        uint32
     SessionDataBytes   int32
@@ -356,8 +355,6 @@ type SDK5_SessionUpdateResponsePacket struct {
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
-
-    packet.Version.Serialize(stream)
 
     stream.SerializeUint64(&packet.SessionId)
 
