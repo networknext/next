@@ -408,8 +408,6 @@ var serverBackendAddress net.UDPAddr
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
-    fmt.Printf("received %d byte packet from %s\n", len(packetData), from.String())
-
     // ignore packets that are too small
 
     if len(packetData) < packets.SDK5_MinPacketBytes {
@@ -517,7 +515,7 @@ func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, pa
 
 func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
 
-    fmt.Printf("server init request\n")
+    fmt.Printf("server init request from %s\n", from.String())
 
     responsePacket := &packets.SDK5_ServerInitResponsePacket{
         RequestId: requestPacket.RequestId,
@@ -531,7 +529,7 @@ func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, reques
 
 func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
 
-    fmt.Printf("server update request\n")
+    fmt.Printf("server update request from %s\n", from.String())
 
     responsePacket := &packets.SDK5_ServerUpdateResponsePacket{
         RequestId: requestPacket.RequestId,
@@ -544,7 +542,7 @@ func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requ
 
 func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 
-    fmt.Printf("server init request\n")
+    fmt.Printf("session update request from %s\n", from.String())
 
     if backend.mode == BACKEND_MODE_FORCE_RETRY && requestPacket.RetryNumber < 4 {
         return
