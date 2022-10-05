@@ -119,7 +119,7 @@ const (
     SDK5_MATCH_DATA_RESPONSE_PACKET     = 57
 
     SDK5_MaxDatacenterNameLength = 256
-    SDK5_MaxSessionDataSize      = 511
+    SDK5_MaxSessionDataSize      = 500
     SDK5_MaxTags                 = 8
     SDK5_MaxTokens               = core.NEXT_MAX_NODES
     SDK5_MaxRelaysPerRoute       = core.NEXT_MAX_NODES
