@@ -6,12 +6,9 @@
 package main
 
 import (
-    // "bytes"
     "context"
-    "encoding/binary"
     "fmt"
     "io/ioutil"
-    "math"
     "math/rand"
     "net"
     "net/http"
@@ -28,7 +25,8 @@ import (
     "github.com/networknext/backend/modules/common"
     "github.com/networknext/backend/modules/core"
     "github.com/networknext/backend/modules/packets"
-    "github.com/networknext/backend/modules/handlers"
+    "github.com/networknext/backend/modules/encoding"
+    "github.com/networknext/backend/modules/handlers"	// todo: ideally we would not depend on handlers here, we're not really using them
 
     "github.com/networknext/backend/modules-old/crypto"
     "github.com/networknext/backend/modules-old/routing"
@@ -202,121 +200,6 @@ const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 5
 
-// todo: these should not be duplicated here
-
-func ReadBool(data []byte, index *int, value *bool) bool {
-    if *index+1 > len(data) {
-        return false
-    }
-
-    if data[*index] > 0 {
-        *value = true
-    } else {
-        *value = false
-    }
-
-    *index += 1
-    return true
-}
-
-func ReadUint8(data []byte, index *int, value *uint8) bool {
-    if *index+1 > len(data) {
-        return false
-    }
-    *value = data[*index]
-    *index += 1
-    return true
-}
-
-func ReadUint32(data []byte, index *int, value *uint32) bool {
-    if *index+4 > len(data) {
-        return false
-    }
-    *value = binary.LittleEndian.Uint32(data[*index:])
-    *index += 4
-    return true
-}
-
-func ReadUint64(data []byte, index *int, value *uint64) bool {
-    if *index+8 > len(data) {
-        return false
-    }
-    *value = binary.LittleEndian.Uint64(data[*index:])
-    *index += 8
-    return true
-}
-
-func ReadFloat32(data []byte, index *int, value *float32) bool {
-    var int_value uint32
-    if !ReadUint32(data, index, &int_value) {
-        return false
-    }
-    *value = math.Float32frombits(int_value)
-    return true
-}
-
-func ReadString(data []byte, index *int, value *string, maxStringLength uint32) bool {
-    var stringLength uint32
-    if !ReadUint32(data, index, &stringLength) {
-        return false
-    }
-    if stringLength > maxStringLength {
-        return false
-    }
-    if *index+int(stringLength) > len(data) {
-        return false
-    }
-    stringData := make([]byte, stringLength)
-    for i := uint32(0); i < stringLength; i++ {
-        stringData[i] = data[*index]
-        *index += 1
-    }
-    *value = string(stringData)
-    return true
-}
-
-func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
-    if *index+int(bytes) > len(data) {
-        return false
-    }
-    *value = make([]byte, bytes)
-    for i := uint32(0); i < bytes; i++ {
-        (*value)[i] = data[*index]
-        *index += 1
-    }
-    return true
-}
-
-func WriteUint32(data []byte, index *int, value uint32) {
-    binary.LittleEndian.PutUint32(data[*index:], value)
-    *index += 4
-}
-
-func WriteUint64(data []byte, index *int, value uint64) {
-    binary.LittleEndian.PutUint64(data[*index:], value)
-    *index += 8
-}
-
-func WriteString(data []byte, index *int, value string, maxStringLength uint32) {
-    stringLength := uint32(len(value))
-    if stringLength > maxStringLength {
-        panic("string is too long!\n")
-    }
-    binary.LittleEndian.PutUint32(data[*index:], stringLength)
-    *index += 4
-    for i := 0; i < int(stringLength); i++ {
-        data[*index] = value[i]
-        *index++
-    }
-}
-
-func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
-    for i := 0; i < numBytes; i++ {
-        data[*index] = value[i]
-        *index++
-    }
-}
-
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// parse the relay update request
@@ -331,19 +214,19 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
     index := 0
 
     var version uint32
-    if !ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
+    if !encoding.ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
         fmt.Printf("bad version\n")
         return
     }
 
     var relay_address string
-    if !ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
+    if !encoding.ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
         fmt.Printf("address\n")
         return
     }
 
     var token []byte
-    if !ReadBytes(body, &index, &token, RelayTokenBytes) {
+    if !encoding.ReadBytes(body, &index, &token, RelayTokenBytes) {
         fmt.Printf("bad token\n")
         return
     }
@@ -362,7 +245,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
     }
 
     var numRelays uint32
-    if !ReadUint32(body, &index, &numRelays) {
+    if !encoding.ReadUint32(body, &index, &numRelays) {
         fmt.Printf("could not read num relays\n")
         return
     }
@@ -378,19 +261,19 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
     for i := 0; i < int(numRelays); i++ {
         var id uint64
         var rtt, jitter, packetLoss float32
-        if !ReadUint64(body, &index, &id) {
+        if !encoding.ReadUint64(body, &index, &id) {
             fmt.Printf("bad relay id\n")
             return
         }
-        if !ReadFloat32(body, &index, &rtt) {
+        if !encoding.ReadFloat32(body, &index, &rtt) {
             fmt.Printf("bad relay rtt\n")
             return
         }
-        if !ReadFloat32(body, &index, &jitter) {
+        if !encoding.ReadFloat32(body, &index, &jitter) {
             fmt.Printf("bad relay jitter\n")
             return
         }
-        if !ReadFloat32(body, &index, &packetLoss) {
+        if !encoding.ReadFloat32(body, &index, &packetLoss) {
             fmt.Printf("bad relay packet loss\n")
             return
         }
@@ -403,49 +286,49 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
     }
 
     var sessionCount uint64
-    if !ReadUint64(body, &index, &sessionCount) {
+    if !encoding.ReadUint64(body, &index, &sessionCount) {
         fmt.Printf("could not read session count\n")
         return
     }
 
     var shutdown bool
-    if !ReadBool(body, &index, &shutdown) {
+    if !encoding.ReadBool(body, &index, &shutdown) {
         fmt.Printf("could not read shutdown\n")
         return
     }
 
     var relayVersion string
-    if !ReadString(body, &index, &relayVersion, uint32(32)) {
+    if !encoding.ReadString(body, &index, &relayVersion, uint32(32)) {
         fmt.Printf("could not read relay version\n")
         return
     }
 
     var cpu uint8
-    if !ReadUint8(body, &index, &cpu) {
+    if !encoding.ReadUint8(body, &index, &cpu) {
         fmt.Printf("could not read cpu\n")
         return
     }
 
     var envelopeUpKbps uint64
-    if !ReadUint64(body, &index, &envelopeUpKbps) {
+    if !encoding.ReadUint64(body, &index, &envelopeUpKbps) {
         fmt.Printf("could not read envelope up kbps\n")
         return
     }
 
     var envelopeDownKbps uint64
-    if !ReadUint64(body, &index, &envelopeDownKbps) {
+    if !encoding.ReadUint64(body, &index, &envelopeDownKbps) {
         fmt.Printf("could not read envelope down kbps\n")
         return
     }
 
     var bandwidthSentKbps uint64
-    if !ReadUint64(body, &index, &bandwidthSentKbps) {
+    if !encoding.ReadUint64(body, &index, &bandwidthSentKbps) {
         fmt.Printf("could not read bandwidth sent kbps\n")
         return
     }
 
     var bandwidthRecvKbps uint64
-    if !ReadUint64(body, &index, &bandwidthRecvKbps) {
+    if !encoding.ReadUint64(body, &index, &bandwidthRecvKbps) {
         fmt.Printf("could not read bandwidth recv kbps\n")
         return
     }
@@ -472,26 +355,26 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     index = 0
 
-    WriteUint32(responseData, &index, UpdateResponseVersion)
+    encoding.WriteUint32(responseData, &index, UpdateResponseVersion)
 
-    WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+    encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 
-    WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+    encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
 
     for i := range relaysToPing {
-        WriteUint64(responseData, &index, relaysToPing[i].ID)
-        WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
+        encoding.WriteUint64(responseData, &index, relaysToPing[i].ID)
+        encoding.WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
     }
 
-    WriteString(responseData, &index, relayVersion, uint32(32))
+    encoding.WriteString(responseData, &index, relayVersion, uint32(32))
 
-    WriteBytes(responseData, &index, magicUpcoming[:], 8)
+    encoding.WriteBytes(responseData, &index, magicUpcoming[:], 8)
 
-    WriteBytes(responseData, &index, magicCurrent[:], 8)
+    encoding.WriteBytes(responseData, &index, magicCurrent[:], 8)
 
-    WriteBytes(responseData, &index, magicPrevious[:], 8)
+    encoding.WriteBytes(responseData, &index, magicPrevious[:], 8)
 
-    WriteUint32(responseData, &index, 0)
+    encoding.WriteUint32(responseData, &index, 0)
 
     responseLength := index
 
@@ -761,30 +644,37 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	   }
 	}
 
-	/*
-	newSession := sessionUpdate.SliceNumber == 0
+	// read the session data
 
-	var sessionData transport.SessionDataSDK5
+	newSession := requestPacket.SliceNumber == 0
+
+	var sessionData packets.SDK5_SessionData
+
 	if newSession {
-	   sessionData.Version = transport.SessionDataVersionSDK5
-	   sessionData.SessionID = sessionUpdate.SessionID
-	   sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
-	   sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
-	   sessionData.RouteState.UserID = sessionUpdate.UserHash
-	   sessionData.Location = routing.LocationNullIsland
-	} else {
-	   if err := transport.UnmarshalSessionDataSDK5(&sessionData, sessionUpdate.SessionData[:]); err != nil {
-	       fmt.Printf("could not read session data in session update packet: %v\n", err)
-	       return
-	   }
 
-	   sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
-	   sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+	   sessionData.Version = packets.SDK5_SessionDataVersion
+	   sessionData.SessionId = requestPacket.SessionId
+	   sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
+	   sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
+	   sessionData.RouteState.UserID = requestPacket.UserHash
+
+	} else {
+
+	    readStream := encoding.CreateReadStream(requestPacket.SessionData[:])
+
+	    err := sessionData.Serialize(readStream)
+	    if err != nil {
+			fmt.Printf("could not read session data in session update packet: %v\n", err)
+			return
+	    }
+
+		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
+		sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 	}
 
-	nearRelays := backend.GetNearRelays()
+	// decide if we should take network next or not
 
-	var sessionResponse *transport.SessionResponsePacketSDK5
+	nearRelays := backend.GetNearRelays()
 
 	takeNetworkNext := len(nearRelays) > 0
 
@@ -798,14 +688,14 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	if backend.mode == BACKEND_MODE_ON_OFF {
 	   // Alternate between direct and next routes for each slice
-	   if (sessionUpdate.SliceNumber & 1) == 0 {
+	   if (requestPacket.SliceNumber & 1) == 0 {
 	       takeNetworkNext = false
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_ON_ON_OFF {
 	   // Alternate between direct, a new route token and a continue route token for every 3 slices
-	   if (sessionUpdate.SliceNumber & 2) == 0 {
+	   if (requestPacket.SliceNumber & 2) == 0 {
 	       takeNetworkNext = false
 	   }
 	}
@@ -816,43 +706,52 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	   })
 	}
 
+	// run various checks and prints for special func test modes
+
 	multipath := len(nearRelays) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 	committed := true
 
 	if backend.mode == BACKEND_MODE_UNCOMMITTED {
 	   committed = false
-	   if sessionUpdate.Committed {
+	   if requestPacket.Committed {
 	       panic("slices must not be committed in this mode")
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
-	   committed = sessionUpdate.SliceNumber > 2
-	   if sessionUpdate.SliceNumber <= 2 && sessionUpdate.Committed {
+	   committed = requestPacket.SliceNumber > 2
+	   if requestPacket.SliceNumber <= 2 && requestPacket.Committed {
 	       panic("slices 0,1,2,3 should not be committed")
 	   }
-	   if sessionUpdate.SliceNumber >= 4 && !sessionUpdate.Committed {
+	   if requestPacket.SliceNumber >= 4 && !requestPacket.Committed {
 	       panic("slices 4 and greater should be committed")
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-	   if sessionUpdate.SliceNumber >= 2 && sessionUpdate.ServerEvents != 0x123 {
-	       panic("server flags not set on session update")
+	   if requestPacket.SliceNumber >= 2 && requestPacket.UserFlags != 0x123 {
+	       panic("server events not set on session update")
 	   }
 	}
 
-	if sessionUpdate.ServerEvents > 0 {
-	   fmt.Printf("server events %x\n", sessionUpdate.ServerEvents)
+	if requestPacket.UserFlags > 0 {
+	   fmt.Printf("server events %x\n", requestPacket.UserFlags)
 	}
 
-	// Extract ids and addresses into own list to make response
-	var nearRelayIDs = [MaxRelays]uint64{}
+	// todo
+	_ = multipath
+	_ = committed
+
+	// build response packet
+
+	var responsePacket *packets.SDK5_SessionUpdateResponsePacket
+
+	var nearRelayIds = [MaxRelays]uint64{}
 	var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
 	var nearRelayPublicKeys = [MaxRelays][]byte{}
 	for i, relay := range nearRelays {
-	   nearRelayIDs[i] = relay.ID
+	   nearRelayIds[i] = relay.ID
 	   nearRelayAddresses[i] = relay.Addr
 	   nearRelayPublicKeys[i] = relay.PublicKey
 	}
@@ -860,13 +759,15 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	if !takeNetworkNext {
 
 	   // direct route
-	   sessionResponse = &transport.SessionResponsePacketSDK5{
-	       SessionID:          sessionUpdate.SessionID,
-	       SliceNumber:        sessionUpdate.SliceNumber,
+
+	   responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
+	       SessionId:          requestPacket.SessionId,
+	       SliceNumber:        requestPacket.SliceNumber,
 	       NumNearRelays:      int32(len(nearRelays)),
-	       NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
-	       NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
-	       RouteType:          int32(routing.RouteTypeDirect),
+	       // todo: need to fill out near relay ids etc.
+	       // NearRelayIds:       nearRelayIds[:len(nearRelays)],
+	       // NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+	       RouteType:          int32(packets.SDK5_RouteTypeDirect),
 	       NumTokens:          0,
 	       Tokens:             nil,
 	       HighFrequencyPings: true,
@@ -874,87 +775,98 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	} else {
 
-	   // Make next route from near relays (but respect hop limit)
-	   numRelays := len(nearRelays)
-	   if numRelays > core.MaxRelaysPerRoute {
-	       numRelays = core.MaxRelaysPerRoute
-	   }
-	   nextRoute := routing.Route{
-	       NumRelays:       numRelays,
-	       RelayIDs:        nearRelayIDs,
-	       RelayAddrs:      nearRelayAddresses,
-	       RelayPublicKeys: nearRelayPublicKeys,
-	   }
+		// todo: get processing for when on next
+		/*
+		// next
 
-	   relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
-	   for i := range relayTokens {
-	       relayTokens[i] = routing.RelayToken{
-	           ID:        nextRoute.RelayIDs[i],
-	           Addr:      nextRoute.RelayAddrs[i],
-	           PublicKey: nextRoute.RelayPublicKeys[i],
-	       }
-	   }
+		numRelays := len(nearRelays)
+		if numRelays > core.MaxRelaysPerRoute {
+		   numRelays = core.MaxRelaysPerRoute
+		}
+		nextRoute := routing.Route{
+		   NumRelays:       numRelays,
+		   RelayIDs:        nearRelayIDs,
+		   RelayAddrs:      nearRelayAddresses,
+		   RelayPublicKeys: nearRelayPublicKeys,
+		}
 
-	   var routeType int32
-	   sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
+		relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
+		for i := range relayTokens {
+		   relayTokens[i] = routing.RelayToken{
+		       ID:        nextRoute.RelayIDs[i],
+		       Addr:      nextRoute.RelayAddrs[i],
+		       PublicKey: nextRoute.RelayPublicKeys[i],
+		   }
+		}
 
-	   routerPrivateKey := [crypto.KeySize]byte{}
-	   copy(routerPrivateKey[:], crypto.RouterPrivateKey)
+		var routeType int32
+		sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
 
-	   tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
-	   tokenAddresses[0] = &sessionUpdate.ClientAddress
-	   tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
-	   for i := 0; i < nextRoute.NumRelays; i++ {
-	       tokenAddresses[1+i] = &nearRelayAddresses[i]
-	   }
+		routerPrivateKey := [crypto.KeySize]byte{}
+		copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
-	   tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
-	   tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
-	   tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
-	   for i := 0; i < nextRoute.NumRelays; i++ {
-	       tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
-	   }
+		tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
+		tokenAddresses[0] = &sessionUpdate.ClientAddress
+		tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
+		for i := 0; i < nextRoute.NumRelays; i++ {
+		   tokenAddresses[1+i] = &nearRelayAddresses[i]
+		}
 
-	   numTokens := nextRoute.NumRelays + 2
+		tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
+		tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
+		tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
+		for i := 0; i < nextRoute.NumRelays; i++ {
+		   tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
+		}
 
-	   var tokenData []byte
-	   if sameRoute {
-	       tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-	       core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
-	       routeType = routing.RouteTypeContinue
-	   } else {
-	       sessionData.ExpireTimestamp += billing.BillingSliceSeconds
-	       sessionData.SessionVersion++
+		numTokens := nextRoute.NumRelays + 2
 
-	       tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-	       core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
-	       routeType = routing.RouteTypeNew
-	   }
+		var tokenData []byte
+		if sameRoute {
+		   tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+		   core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
+		   routeType = routing.RouteTypeContinue
+		} else {
+		   sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+		   sessionData.SessionVersion++
 
-	   sessionResponse = &transport.SessionResponsePacketSDK5{
-	       SessionID:          sessionUpdate.SessionID,
-	       SliceNumber:        sessionUpdate.SliceNumber,
-	       NumNearRelays:      int32(len(nearRelays)),
-	       NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
-	       NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
-	       RouteType:          routeType,
-	       Multipath:          multipath,
-	       Committed:          committed,
-	       NumTokens:          int32(numTokens),
-	       Tokens:             tokenData,
-	       HighFrequencyPings: true,
-	   }
+		   tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+		   core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+		   routeType = routing.RouteTypeNew
+		}
+
+		sessionResponse = &transport.SessionResponsePacketSDK5{
+			SessionID:          sessionUpdate.SessionID,
+			SliceNumber:        sessionUpdate.SliceNumber,
+			NumNearRelays:      int32(len(nearRelays)),
+			NearRelayIDs:       nearRelayIDs[:len(nearRelays)],
+			NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+			RouteType:          routeType,
+			Multipath:          multipath,
+			Committed:          committed,
+			NumTokens:          int32(numTokens),
+			Tokens:             tokenData,
+			HighFrequencyPings: true,
+		}
+		*/
 	}
 
-	if sessionResponse == nil {
-	   fmt.Printf("error: nil session response\n")
-	   return
+	if responsePacket == nil {
+		fmt.Printf("error: nil session response\n")
+		return
 	}
 
-	sessionResponse.Version = sessionUpdate.Version
+	responsePacket.Version = requestPacket.Version
 
-	excludeNearRelays(sessionResponse, sessionData.RouteState)
+	excludeNearRelays(responsePacket, sessionData.RouteState)
 
+	// todo: write session data to buffer
+
+	// todo: stash session data in response packet
+
+	SendResponsePacket(conn, from, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
+
+	/*
 	sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
 	if err != nil {
 	   fmt.Printf("error: failed to marshal session data: %v\n", err)
@@ -967,38 +879,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
 	copy(sessionResponse.SessionData[:], sessionDataBuffer)
-
-	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
-	toAddress := &incoming.From
-
-	var emptyMagic [8]byte
-	sessionResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeSessionResponseSDK5, sessionResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
-	if err != nil {
-	   fmt.Printf("error: failed to marshal session response: %v\n", err)
-	   return
-	}
-
-	if !core.BasicPacketFilter(sessionResponseData[:], len(sessionResponseData)) {
-	   panic("basic packet filter failed on session response?")
-	}
-
-	{
-	   var emptyMagic [8]byte
-	   var fromAddressBuffer [32]byte
-	   var toAddressBuffer [32]byte
-
-	   fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
-	   toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
-
-	   if !core.AdvancedPacketFilter(sessionResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(sessionResponseData)) {
-	       panic("advanced packet filter failed on session response\n")
-	   }
-	}
-
-	if _, err := w.Write(sessionResponseData); err != nil {
-	   fmt.Printf("error: failed to write session response: %v\n", err)
-	   return
-	}
 	*/
 }
 
@@ -1052,21 +932,15 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, request
     }
 */
 
-// todo
-/*
-func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
-
+func excludeNearRelays(sessionResponse *packets.SDK5_SessionUpdateResponsePacket, routeState core.RouteState) {
     numExcluded := 0
-
     for i := 0; i < int(routeState.NumNearRelays); i++ {
         if routeState.NearRelayRTT[i] == 255 {
             sessionResponse.NearRelayExcluded[i] = true
         }
     }
-
     sessionResponse.ExcludeNearRelays = numExcluded > 0
 }
-*/
 
 // -----------------------------------------------
 
