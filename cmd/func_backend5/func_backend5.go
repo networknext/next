@@ -57,8 +57,6 @@ type Backend struct {
     mutex           sync.RWMutex
     dirty           bool
     mode            int
-    serverDatabase  map[string]ServerEntry
-    sessionDatabase map[uint64]SessionCacheEntry
     relayManager    *common.RelayManager
     routeMatrix     *common.RouteMatrix
 }
@@ -945,9 +943,8 @@ func main() {
 
     rand.Seed(time.Now().UnixNano())
 
-    backend.serverDatabase = make(map[string]ServerEntry)
-    backend.sessionDatabase = make(map[uint64]SessionCacheEntry)
     backend.relayManager = common.CreateRelayManager()
+    
     backend.routeMatrix = &common.RouteMatrix{}
 
     if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
