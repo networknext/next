@@ -13037,17 +13037,17 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. packet failed to read" );
             return;
         }
 
         if ( packet.request_id != server->server_update_request_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. request id does not match" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. request id does not match" );
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server update response packet from backend" );
 
         server->server_update_request_id = 0;
         server->server_update_resend_time = 0.0;
@@ -13102,26 +13102,26 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. packet failed to read" );
             return;
         }
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. could not find session %" PRIx64, packet.session_id );
             return;
         }
 
         if ( !entry->waiting_for_update_response )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. not waiting for session response" );
             return;
         }
 
         if ( packet.slice_number != entry->update_sequence - 1 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. wrong sequence number" );
             return;
         }
 
@@ -13134,7 +13134,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session update response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
 
         bool multipath = packet.multipath;
 

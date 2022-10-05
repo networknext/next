@@ -468,7 +468,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
     case packets.SDK5_SERVER_UPDATE_REQUEST_PACKET:
         packet := packets.SDK5_ServerUpdateRequestPacket{}
         if err := packets.ReadPacket(packetData, &packet); err != nil {
-            core.Error("could not read server update request packet from %s", from.String())
+            core.Error("could not read server update request packet from %s: %v", from.String(), err)
             return
         }
         ProcessServerUpdateRequestPacket(conn, from, &packet)
@@ -477,7 +477,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
     case packets.SDK5_SESSION_UPDATE_REQUEST_PACKET:
         packet := packets.SDK5_SessionUpdateRequestPacket{}
         if err := packets.ReadPacket(packetData, &packet); err != nil {
-            core.Error("could not read session update request packet from %s", from.String())
+            core.Error("could not read session update request packet from %s: %v", from.String(), err)
             return
         }
         ProcessSessionUpdateRequestPacket(conn, from, &packet)
@@ -486,7 +486,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
     case packets.SDK5_MATCH_DATA_REQUEST_PACKET:
         packet := packets.SDK5_MatchDataRequestPacket{}
         if err := packets.ReadPacket(packetData, &packet); err != nil {
-            core.Error("could not read match data request packet from %s", from.String())
+            core.Error("could not read match data request packet from %s: %v", from.String(), err)
             return
         }
         ProcessMatchDataRequestPacket(conn, from, &packet)
