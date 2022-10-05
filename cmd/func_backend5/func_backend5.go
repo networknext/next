@@ -503,8 +503,6 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-    // todo: sdk5 write packet should move into "packets" module
-
     // todo: we should not be running the func test with the real backend private key...
 
     packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, crypto.BackendPrivateKey)
