@@ -574,7 +574,6 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,
@@ -605,7 +604,6 @@ func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
 func Test_SDK5_SessionUpdateResponsePacket_NewRoute(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,
@@ -645,7 +643,6 @@ func Test_SDK5_SessionUpdateResponsePacket_NewRoute(t *testing.T) {
 func Test_SDK5_SessionResponsePacket_ContinueRoute(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,
