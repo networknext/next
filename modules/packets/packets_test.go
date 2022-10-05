@@ -523,6 +523,7 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
         ClientBandwidthOverLimit:        false,
         ServerBandwidthOverLimit:        false,
         ClientPingTimedOut:              false,
+		HasNearRelayPings:               true,
         NumTags:                         2,
         ServerEvents:                    3152384721,
         DirectMinRTT:                    10.0,
