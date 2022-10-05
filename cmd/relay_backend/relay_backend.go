@@ -58,6 +58,7 @@ var ready bool
 var startTime time.Time
 
 var redisSelector *common.RedisSelector
+var redisSelectorTimeout time.Duration
 
 func main() {
 
@@ -72,6 +73,7 @@ func main() {
     routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
     redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
     redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+    redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
     redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
     relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
     pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "ping_stats")
@@ -479,6 +481,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
     config.RedisHostname = redisHostname
     config.RedisPassword = redisPassword
+    config.Timeout = redisSelectorTimeout
 
     redisSelector, err = common.CreateRedisSelector(service.Context, config)
     if err != nil {
@@ -487,6 +490,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
     }
 
     go func() {
+
         for {
             select {
 
@@ -574,22 +578,40 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
                 // store our most recent cost and route matrix in redis
 
-                redisSelector.Store(service.Context, relaysDataNew, costMatrixDataNew, routeMatrixDataNew)
+                dataStoreConfig := []common.DataStoreConfig{
+                    {
+                        Name: "relays",
+                        Data: relaysDataNew,
+                    },
+                    {
+                        Name: "cost_matrix",
+                        Data: costMatrixDataNew,
+                    },
+                    {
+                        Name: "route_matrix",
+                        Data: routeMatrixDataNew,
+                    },
+                }
+
+                redisSelector.Store(service.Context, dataStoreConfig)
 
                 // load the master cost and route matrix from redis (leader election)
 
-                relaysDataNew, costMatrixDataNew, routeMatrixDataNew = redisSelector.Load(service.Context)
+                dataStoreConfig = redisSelector.Load(service.Context)
 
+                relaysDataNew = dataStoreConfig[0].Data
                 if relaysDataNew == nil {
                     core.Error("failed to get relays from redis selector")
                     continue
                 }
 
+                costMatrixDataNew = dataStoreConfig[1].Data
                 if costMatrixDataNew == nil {
                     core.Error("failed to get cost matrix from redis selector")
                     continue
                 }
 
+                routeMatrixDataNew = dataStoreConfig[2].Data
                 if routeMatrixDataNew == nil {
                     core.Error("failed to get route matrix from redis selector")
                     continue
