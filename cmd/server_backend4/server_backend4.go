@@ -485,22 +485,22 @@ func mainReturnWithCode() int {
     // todo: update to redis streams
     portalPublishers := make([]pubsub.Publisher, 0)
     /*
-    // Start portal cruncher publisher
-    {
-        portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
+       // Start portal cruncher publisher
+       {
+           portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
-        postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
+           postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 
-        for _, host := range portalCruncherHosts {
-            portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
-            if err != nil {
-                core.Error("could not create portal cruncher publisher: %v", err)
-                return 1
-            }
+           for _, host := range portalCruncherHosts {
+               portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
+               if err != nil {
+                   core.Error("could not create portal cruncher publisher: %v", err)
+                   return 1
+               }
 
-            portalPublishers = append(portalPublishers, portalCruncherPublisher)
-        }
-    }
+               portalPublishers = append(portalPublishers, portalCruncherPublisher)
+           }
+       }
     */
 
     numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
