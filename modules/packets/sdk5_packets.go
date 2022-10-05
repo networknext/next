@@ -1,4 +1,8 @@
-package transport
+package packets
+
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
 
 import (
     "errors"
@@ -9,94 +13,115 @@ import (
     "github.com/networknext/backend/modules/encoding"
 
     "github.com/networknext/backend/modules-old/crypto"
-    "github.com/networknext/backend/modules-old/routing"
 )
 
-const (
-    SessionDataVersionSDK5 = 0
+// ------------------------------------------------------------
 
-    PacketTypeServerInitRequestSDK5  = 50
-    PacketTypeServerInitResponseSDK5 = 51
-    PacketTypeServerUpdateSDK5       = 52
-    PacketTypeServerResponseSDK5     = 53
-    PacketTypeSessionUpdateSDK5      = 54
-    PacketTypeSessionResponseSDK5    = 55
-    PacketTypeMatchDataRequestSDK5   = 56
-    PacketTypeMatchDataResponseSDK5  = 57
-)
+func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 
-func UnmarshalPacketSDK5(packet Packet, data []byte) error {
-    if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
-        return err
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+
+    if result != 0 {
+        core.Error("signed packet did not verify")
+        return false
     }
-    return nil
+
+    return true
+}
+func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
+    result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+    return int(result)
 }
 
-func MarshalPacketSDK5(packetType int, packetObject Packet, magic []byte, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
-    packet := make([]byte, DefaultMaxPacketSize)
-    packet[0] = byte(packetType)
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
 
-    packetBuffer := make([]byte, DefaultMaxPacketSize)
-    writeStream := encoding.CreateWriteStream(packetBuffer[:])
-    if err := packetObject.Serialize(writeStream); err != nil {
-        return nil, errors.New(fmt.Sprintf("failed to write backend packet: %v\n", err))
+func SDK5_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
+
+    buffer := make([]byte, maxPacketSize)
+
+    writeStream := encoding.CreateWriteStream(buffer[:])
+
+    var dummy [16]byte
+    writeStream.SerializeBytes(dummy[:])
+
+    err := packet.Serialize(writeStream)
+    if err != nil {
+        return nil, fmt.Errorf("failed to write response packet: %v", err)
     }
+
     writeStream.Flush()
 
-    serializeBytes := writeStream.GetBytesProcessed()
-    serializeData := writeStream.GetData()[:serializeBytes]
-    for i := 0; i < serializeBytes; i++ {
-        packet[16+i] = serializeData[i]
+    packetBytes := writeStream.GetBytesProcessed() + NEXT_CRYPTO_SIGN_BYTES + 2
+
+    packetData := buffer[:packetBytes]
+
+    packetData[0] = uint8(packetType)
+
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+
+    if result != 0 {
+        return nil, fmt.Errorf("failed to sign response packet: %d", result)
     }
 
-    packet = crypto.SignPacketSDK5(privateKey[:], packet, serializeBytes)
-
+    var magic [8]byte
     var fromAddressBuffer [32]byte
     var toAddressBuffer [32]byte
 
     fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
     toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
 
-    packetLength := len(packet)
+    core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
 
-    core.GenerateChonkle(packet[1:], magic, fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+    core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
 
-    core.GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
-
-    return packet, nil
+    return packetData, nil
 }
 
-type ServerInitRequestPacketSDK5 struct {
-    Version      SDKVersion
-    BuyerID      uint64
-    RequestID    uint64
-    DatacenterID uint64
+// ------------------------------------------------------------
+
+type SDK5_ServerInitRequestPacket struct {
+    Version        SDKVersion
+    BuyerId        uint64
+    RequestId      uint64
+    DatacenterId   uint64
+    DatacenterName string
 }
 
-func (packet *ServerInitRequestPacketSDK5) Serialize(stream encoding.Stream) error {
-    versionMajor := uint32(packet.Version.Major)
-    versionMinor := uint32(packet.Version.Minor)
-    versionPatch := uint32(packet.Version.Patch)
-    stream.SerializeBits(&versionMajor, 8)
-    stream.SerializeBits(&versionMinor, 8)
-    stream.SerializeBits(&versionPatch, 8)
-    packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-    stream.SerializeUint64(&packet.BuyerID)
-    stream.SerializeUint64(&packet.RequestID)
-    stream.SerializeUint64(&packet.DatacenterID)
+func (packet *SDK5_ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
+    packet.Version.Serialize(stream)
+    stream.SerializeUint64(&packet.BuyerId)
+    stream.SerializeUint64(&packet.RequestId)
+    stream.SerializeUint64(&packet.DatacenterId)
+    stream.SerializeString(&packet.DatacenterName, SDK5_MaxDatacenterNameLength)
     return stream.Error()
 }
 
-type ServerInitResponsePacketSDK5 struct {
-    RequestID     uint64
+// ------------------------------------------------------------
+
+type SDK5_ServerInitResponsePacket struct {
+    RequestId     uint64
     Response      uint32
     UpcomingMagic [8]byte
     CurrentMagic  [8]byte
     PreviousMagic [8]byte
 }
 
-func (packet *ServerInitResponsePacketSDK5) Serialize(stream encoding.Stream) error {
-    stream.SerializeUint64(&packet.RequestID)
+func (packet *SDK5_ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
+    stream.SerializeUint64(&packet.RequestId)
     stream.SerializeBits(&packet.Response, 8)
     stream.SerializeBytes(packet.UpcomingMagic[:])
     stream.SerializeBytes(packet.CurrentMagic[:])
@@ -104,59 +129,59 @@ func (packet *ServerInitResponsePacketSDK5) Serialize(stream encoding.Stream) er
     return stream.Error()
 }
 
-type ServerUpdatePacketSDK5 struct {
+// ------------------------------------------------------------
+
+type SDK5_ServerUpdateRequestPacket struct {
     Version       SDKVersion
-    BuyerID       uint64
-    RequestID     uint64
-    DatacenterID  uint64
+    BuyerId       uint64
+    RequestId     uint64
+    DatacenterId  uint64
     NumSessions   uint32
     ServerAddress net.UDPAddr
 }
 
-func (packet *ServerUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
-    versionMajor := uint32(packet.Version.Major)
-    versionMinor := uint32(packet.Version.Minor)
-    versionPatch := uint32(packet.Version.Patch)
-    stream.SerializeBits(&versionMajor, 8)
-    stream.SerializeBits(&versionMinor, 8)
-    stream.SerializeBits(&versionPatch, 8)
-    packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-    stream.SerializeUint64(&packet.BuyerID)
-    stream.SerializeUint64(&packet.RequestID)
-    stream.SerializeUint64(&packet.DatacenterID)
+func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
+    packet.Version.Serialize(stream)
+    stream.SerializeUint64(&packet.BuyerId)
+    stream.SerializeUint64(&packet.RequestId)
+    stream.SerializeUint64(&packet.DatacenterId)
     stream.SerializeUint32(&packet.NumSessions)
     stream.SerializeAddress(&packet.ServerAddress)
     return stream.Error()
 }
 
-type ServerResponsePacketSDK5 struct {
-    RequestID     uint64
+// ------------------------------------------------------------
+
+type SDK5_ServerUpdateResponsePacket struct {
+    RequestId     uint64
     UpcomingMagic [8]byte
     CurrentMagic  [8]byte
     PreviousMagic [8]byte
 }
 
-func (packet *ServerResponsePacketSDK5) Serialize(stream encoding.Stream) error {
-    stream.SerializeUint64(&packet.RequestID)
+func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream encoding.Stream) error {
+    stream.SerializeUint64(&packet.RequestId)
     stream.SerializeBytes(packet.UpcomingMagic[:])
     stream.SerializeBytes(packet.CurrentMagic[:])
     stream.SerializeBytes(packet.PreviousMagic[:])
     return stream.Error()
 }
 
-type SessionUpdatePacketSDK5 struct {
+// ------------------------------------------------------------
+
+type SDK5_SessionUpdateRequestPacket struct {
     Version                         SDKVersion
-    BuyerID                         uint64
-    DatacenterID                    uint64
-    SessionID                       uint64
+    BuyerId                         uint64
+    DatacenterId                    uint64
+    SessionId                       uint64
     SliceNumber                     uint32
     RetryNumber                     int32
     SessionDataBytes                int32
-    SessionData                     [MaxSessionDataSize]byte
+    SessionData                     [SDK5_MaxSessionDataSize]byte
     ClientAddress                   net.UDPAddr
     ServerAddress                   net.UDPAddr
-    ClientRoutePublicKey            []byte
-    ServerRoutePublicKey            []byte
+    ClientRoutePublicKey            [crypto.KeySize]byte
+    ServerRoutePublicKey            [crypto.KeySize]byte
     UserHash                        uint64
     PlatformType                    int32
     ConnectionType                  int32
@@ -169,7 +194,7 @@ type SessionUpdatePacketSDK5 struct {
     ClientPingTimedOut              bool
     HasNearRelayPings               bool
     NumTags                         int32
-    Tags                            [MaxTags]uint64
+    Tags                            [SDK5_MaxTags]uint64
     ServerEvents                    uint64
     DirectMinRTT                    float32
     DirectMaxRTT                    float32
@@ -180,10 +205,10 @@ type SessionUpdatePacketSDK5 struct {
     NextJitter                      float32
     NextPacketLoss                  float32
     NumNearRelays                   int32
-    NearRelayIDs                    []uint64
-    NearRelayRTT                    []int32
-    NearRelayJitter                 []int32
-    NearRelayPacketLoss             []int32
+    NearRelayIds                    [SDK5_MaxNearRelays]uint64
+    NearRelayRTT                    [SDK5_MaxNearRelays]int32
+    NearRelayJitter                 [SDK5_MaxNearRelays]int32
+    NearRelayPacketLoss             [SDK5_MaxNearRelays]int32
     NextKbpsUp                      uint32
     NextKbpsDown                    uint32
     PacketsSentClientToServer       uint64
@@ -196,25 +221,17 @@ type SessionUpdatePacketSDK5 struct {
     JitterServerToClient            float32
 }
 
-func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
+func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
 
-    versionMajor := uint32(packet.Version.Major)
-    versionMinor := uint32(packet.Version.Minor)
-    versionPatch := uint32(packet.Version.Patch)
+    packet.Version.Serialize(stream)
 
-    stream.SerializeBits(&versionMajor, 8)
-    stream.SerializeBits(&versionMinor, 8)
-    stream.SerializeBits(&versionPatch, 8)
-
-    packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-
-    stream.SerializeUint64(&packet.BuyerID)
-    stream.SerializeUint64(&packet.DatacenterID)
-    stream.SerializeUint64(&packet.SessionID)
+    stream.SerializeUint64(&packet.BuyerId)
+    stream.SerializeUint64(&packet.DatacenterId)
+    stream.SerializeUint64(&packet.SessionId)
     stream.SerializeUint32(&packet.SliceNumber)
-    stream.SerializeInteger(&packet.RetryNumber, 0, MaxSessionUpdateRetries)
+    stream.SerializeInteger(&packet.RetryNumber, 0, SDK5_MaxSessionUpdateRetries)
 
-    stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
+    stream.SerializeInteger(&packet.SessionDataBytes, 0, SDK5_MaxSessionDataSize)
     if packet.SessionDataBytes > 0 {
         sessionData := packet.SessionData[:packet.SessionDataBytes]
         stream.SerializeBytes(sessionData)
@@ -224,20 +241,15 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
 
     stream.SerializeAddress(&packet.ServerAddress)
 
-    if stream.IsReading() {
-        packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
-        packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
-    }
+    stream.SerializeBytes(packet.ClientRoutePublicKey[:])
 
-    stream.SerializeBytes(packet.ClientRoutePublicKey)
-
-    stream.SerializeBytes(packet.ServerRoutePublicKey)
+    stream.SerializeBytes(packet.ServerRoutePublicKey[:])
 
     stream.SerializeUint64(&packet.UserHash)
 
-    stream.SerializeInteger(&packet.PlatformType, PlatformTypeUnknown, PlatformTypeMax)
+    stream.SerializeInteger(&packet.PlatformType, SDK5_PlatformTypeUnknown, SDK5_PlatformTypeMax)
 
-    stream.SerializeInteger(&packet.ConnectionType, ConnectionTypeUnknown, ConnectionTypeMax)
+    stream.SerializeInteger(&packet.ConnectionType, SDK5_ConnectionTypeUnknown, SDK5_ConnectionTypeMax)
 
     stream.SerializeBool(&packet.Next)
     stream.SerializeBool(&packet.Committed)
@@ -248,7 +260,7 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
     stream.SerializeBool(&packet.ClientPingTimedOut)
     stream.SerializeBool(&packet.HasNearRelayPings)
 
-    hasTags := stream.IsWriting() && packet.NumTags > 0
+    hasTags := stream.IsWriting() && packet.SliceNumber == 0 && packet.NumTags > 0
     hasServerEvents := stream.IsWriting() && packet.ServerEvents != 0
     hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
     hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
@@ -259,7 +271,7 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
     stream.SerializeBool(&hasOutOfOrderPackets)
 
     if hasTags {
-        stream.SerializeInteger(&packet.NumTags, 0, MaxTags)
+        stream.SerializeInteger(&packet.NumTags, 0, SDK5_MaxTags)
         for i := 0; i < int(packet.NumTags); i++ {
             stream.SerializeUint64(&packet.Tags[i])
         }
@@ -281,20 +293,15 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
         stream.SerializeFloat32(&packet.NextPacketLoss)
     }
 
-    stream.SerializeInteger(&packet.NumNearRelays, 0, core.MaxNearRelays)
-
-    if stream.IsReading() {
-        packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-        packet.NearRelayRTT = make([]int32, packet.NumNearRelays)
-        packet.NearRelayJitter = make([]int32, packet.NumNearRelays)
-        packet.NearRelayPacketLoss = make([]int32, packet.NumNearRelays)
-    }
+    stream.SerializeInteger(&packet.NumNearRelays, 0, SDK5_MaxNearRelays)
 
     for i := int32(0); i < packet.NumNearRelays; i++ {
-        stream.SerializeUint64(&packet.NearRelayIDs[i])
-        stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
-        stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
-        stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+        stream.SerializeUint64(&packet.NearRelayIds[i])
+        if packet.HasNearRelayPings {
+	        stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+	        stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+	        stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+	    }
     }
 
     if packet.Next {
@@ -321,83 +328,75 @@ func (packet *SessionUpdatePacketSDK5) Serialize(stream encoding.Stream) error {
     return stream.Error()
 }
 
-type SessionResponsePacketSDK5 struct {
-    Version            SDKVersion
-    SessionID          uint64
+// ------------------------------------------------------------
+
+type SDK5_SessionUpdateResponsePacket struct {
+    SessionId          uint64
     SliceNumber        uint32
     SessionDataBytes   int32
-    SessionData        [MaxSessionDataSize]byte
+    SessionData        [SDK5_MaxSessionDataSize]byte
     RouteType          int32
     NearRelaysChanged  bool
     NumNearRelays      int32
-    NearRelayIDs       []uint64
-    NearRelayAddresses []net.UDPAddr
+    NearRelayIds       [SDK5_MaxNearRelays]uint64
+    NearRelayAddresses [SDK5_MaxNearRelays]net.UDPAddr
     NumTokens          int32
     Tokens             []byte
     Multipath          bool
     Committed          bool
     HasDebug           bool
     Debug              string
-    DontPingNearRelays bool
     ExcludeNearRelays  bool
-    NearRelayExcluded  [core.MaxNearRelays]bool
+    NearRelayExcluded  [SDK5_MaxNearRelays]bool
     HighFrequencyPings bool
 }
 
-func (packet *SessionResponsePacketSDK5) Serialize(stream encoding.Stream) error {
+func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
 
-    stream.SerializeUint64(&packet.SessionID)
+    stream.SerializeUint64(&packet.SessionId)
 
     stream.SerializeUint32(&packet.SliceNumber)
 
-    stream.SerializeInteger(&packet.SessionDataBytes, 0, MaxSessionDataSize)
+    stream.SerializeInteger(&packet.SessionDataBytes, 0, SDK5_MaxSessionDataSize)
     if packet.SessionDataBytes > 0 {
         sessionData := packet.SessionData[:packet.SessionDataBytes]
         stream.SerializeBytes(sessionData)
     }
 
-    stream.SerializeInteger(&packet.RouteType, 0, routing.RouteTypeContinue)
+    stream.SerializeInteger(&packet.RouteType, 0, SDK5_RouteTypeContinue)
 
     stream.SerializeBool(&packet.NearRelaysChanged)
 
     if packet.NearRelaysChanged {
-        stream.SerializeInteger(&packet.NumNearRelays, 0, core.MaxNearRelays)
-        if stream.IsReading() {
-            packet.NearRelayIDs = make([]uint64, packet.NumNearRelays)
-            packet.NearRelayAddresses = make([]net.UDPAddr, packet.NumNearRelays)
-        }
+        stream.SerializeInteger(&packet.NumNearRelays, 0, SDK5_MaxNearRelays)
         for i := int32(0); i < packet.NumNearRelays; i++ {
-            stream.SerializeUint64(&packet.NearRelayIDs[i])
+            stream.SerializeUint64(&packet.NearRelayIds[i])
             stream.SerializeAddress(&packet.NearRelayAddresses[i])
         }
     }
 
-    if packet.RouteType != routing.RouteTypeDirect {
+    if packet.RouteType != SDK5_RouteTypeDirect {
         stream.SerializeBool(&packet.Multipath)
         stream.SerializeBool(&packet.Committed)
-        stream.SerializeInteger(&packet.NumTokens, 0, MaxTokens)
+        stream.SerializeInteger(&packet.NumTokens, 0, SDK5_MaxTokens)
     }
 
-    if packet.RouteType == routing.RouteTypeNew {
+    if packet.RouteType == SDK5_RouteTypeNew {
         if stream.IsReading() {
-            packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedNextRouteTokenSize)
+            packet.Tokens = make([]byte, packet.NumTokens*SDK5_EncryptedNextRouteTokenSize)
         }
         stream.SerializeBytes(packet.Tokens)
     }
 
-    if packet.RouteType == routing.RouteTypeContinue {
+    if packet.RouteType == SDK5_RouteTypeContinue {
         if stream.IsReading() {
-            packet.Tokens = make([]byte, packet.NumTokens*routing.EncryptedContinueRouteTokenSize)
+            packet.Tokens = make([]byte, packet.NumTokens*SDK5_EncryptedContinueRouteTokenSize)
         }
         stream.SerializeBytes(packet.Tokens)
     }
 
     stream.SerializeBool(&packet.HasDebug)
-    if packet.HasDebug {
-        stream.SerializeString(&packet.Debug, NextMaxSessionDebug)
-    }
-
-    stream.SerializeBool(&packet.DontPingNearRelays)
+    stream.SerializeString(&packet.Debug, SDK5_MaxSessionDebug)
 
     stream.SerializeBool(&packet.ExcludeNearRelays)
     if packet.ExcludeNearRelays {
@@ -411,18 +410,71 @@ func (packet *SessionResponsePacketSDK5) Serialize(stream encoding.Stream) error
     return stream.Error()
 }
 
-type SessionDataSDK5 struct {
+// ------------------------------------------------------------
+
+type SDK5_LocationData struct {
+    Latitude  float32
+    Longitude float32
+    ISP       string
+    ASN       uint32
+}
+
+func (location *SDK5_LocationData) Read(data []byte) error {
+
+    index := 0
+
+    var version uint32
+    if !encoding.ReadUint32(data, &index, &version) {
+        return errors.New("invalid read at version number")
+    }
+
+    if version > SDK5_LocationVersion {
+        return fmt.Errorf("unknown location version: %d", version)
+    }
+
+    if !encoding.ReadFloat32(data, &index, &location.Latitude) {
+        return errors.New("invalid read at latitude")
+    }
+
+    if !encoding.ReadFloat32(data, &index, &location.Longitude) {
+        return errors.New("invalid read at longitude")
+    }
+
+    if !encoding.ReadString(data, &index, &location.ISP, SDK5_MaxISPNameLength) {
+        return errors.New("invalid read at ISP")
+    }
+
+    if !encoding.ReadUint32(data, &index, &location.ASN) {
+        return errors.New("invalid read at ASN")
+    }
+
+    return nil
+}
+
+func (location *SDK5_LocationData) Write(buffer []byte) ([]byte, error) {
+    index := 0
+    encoding.WriteUint32(buffer, &index, SDK5_LocationVersion)
+    encoding.WriteFloat32(buffer, &index, location.Latitude)
+    encoding.WriteFloat32(buffer, &index, location.Longitude)
+    encoding.WriteString(buffer, &index, location.ISP, SDK5_MaxISPNameLength)
+    encoding.WriteUint32(buffer, &index, location.ASN)
+    return buffer[:index], nil
+}
+
+// ------------------------------------------------------------
+
+type SDK5_SessionData struct {
     Version                       uint32
-    SessionID                     uint64
+    SessionId                     uint64
     SessionVersion                uint32
     SliceNumber                   uint32
     ExpireTimestamp               uint64
     Initial                       bool
-    Location                      routing.Location
+    Location                      SDK5_LocationData
     RouteChanged                  bool
     RouteNumRelays                int32
     RouteCost                     int32
-    RouteRelayIDs                 [core.MaxRelaysPerRoute]uint64
+    RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
     RouteState                    core.RouteState
     EverOnNext                    bool
     FellBackToDirect              bool
@@ -431,7 +483,7 @@ type SessionDataSDK5 struct {
     PrevPacketsLostClientToServer uint64
     PrevPacketsLostServerToClient uint64
     HoldNearRelays                bool
-    HoldNearRelayRTT              [core.MaxNearRelays]int32
+    HoldNearRelayRTT              [SDK5_MaxNearRelays]int32
     WroteSummary                  bool
     TotalPriceSum                 uint64
     NextEnvelopeBytesUpSum        uint64
@@ -439,39 +491,15 @@ type SessionDataSDK5 struct {
     DurationOnNext                uint32
 }
 
-func UnmarshalSessionDataSDK5(sessionData *SessionDataSDK5, data []byte) error {
-    if err := sessionData.Serialize(encoding.CreateReadStream(data)); err != nil {
-        return err
-    }
-    return nil
-}
-
-func MarshalSessionDataSDK5(sessionData *SessionDataSDK5) ([]byte, error) {
-    // If we never got around to setting the session data version, set it here so that we can serialize it properly
-    if sessionData.Version == 0 {
-        sessionData.Version = SessionDataVersionSDK5
-    }
-
-    buffer := [DefaultMaxPacketSize]byte{}
-
-    stream := encoding.CreateWriteStream(buffer[:])
-
-    if err := sessionData.Serialize(stream); err != nil {
-        return nil, err
-    }
-    stream.Flush()
-
-    return buffer[:stream.GetBytesProcessed()], nil
-}
-
-func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
-
-    // IMPORTANT: DO NOT EVER CHANGE CODE IN THIS FUNCTION BELOW HERE.
-    // CHANGING CODE BELOW HERE *WILL* BREAK PRODUCTION!!!!
+func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
     stream.SerializeBits(&sessionData.Version, 8)
 
-    stream.SerializeUint64(&sessionData.SessionID)
+    if sessionData.Version < 8 {
+        return errors.New("session data is too old")
+    }
+
+    stream.SerializeUint64(&sessionData.SessionId)
     stream.SerializeBits(&sessionData.SessionVersion, 8)
 
     stream.SerializeUint32(&sessionData.SliceNumber)
@@ -480,47 +508,42 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 
     stream.SerializeBool(&sessionData.Initial)
 
-    var err error
-    var locSize uint64
-    var loc []byte
+    buffer := [SDK5_MaxLocationSize]byte{}
 
     if stream.IsWriting() {
-        loc, err = routing.WriteLocation(&sessionData.Location)
+
+        locationData, err := sessionData.Location.Write(buffer[:])
+        if err != nil {
+            return err
+        }
+        locationBytes := uint32(len(locationData))
+        stream.SerializeUint32(&locationBytes)
+        stream.SerializeBytes(locationData)
+
+    } else {
+
+        var locationBytes uint32
+        stream.SerializeUint32(&locationBytes)
+        stream.SerializeBytes(buffer[:locationBytes])
+        err := sessionData.Location.Read(buffer[:locationBytes])
         if err != nil {
             return err
         }
 
-        locSize = sessionData.Location.Size()
-    }
-
-    stream.SerializeUint64(&locSize)
-    if locSize > 0 {
-        if stream.IsReading() {
-            loc = make([]byte, routing.MaxLocationSize)
-        }
-
-        loc = loc[:locSize]
-        stream.SerializeBytes(loc)
-
-        if stream.IsReading() {
-            err = routing.ReadLocation(&sessionData.Location, loc)
-            if err != nil {
-                return err
-            }
-        }
     }
 
     stream.SerializeBool(&sessionData.RouteChanged)
 
     hasRoute := sessionData.RouteNumRelays > 0
+
     stream.SerializeBool(&hasRoute)
 
-    stream.SerializeInteger(&sessionData.RouteCost, 0, routing.InvalidRouteValue)
+    stream.SerializeInteger(&sessionData.RouteCost, 0, SDK5_InvalidRouteValue)
 
     if hasRoute {
-        stream.SerializeInteger(&sessionData.RouteNumRelays, 0, core.MaxRelaysPerRoute)
+        stream.SerializeInteger(&sessionData.RouteNumRelays, 0, SDK5_MaxTokens)
         for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-            stream.SerializeUint64(&sessionData.RouteRelayIDs[i])
+            stream.SerializeUint64(&sessionData.RouteRelayIds[i])
         }
     }
 
@@ -542,10 +565,12 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
     stream.SerializeBool(&sessionData.RouteState.CommitVeto)
     stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
     stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
-    stream.SerializeBool(&sessionData.RouteState.LocationVeto)
     stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
     stream.SerializeBool(&sessionData.RouteState.NoRoute)
     stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
+    stream.SerializeBool(&sessionData.RouteState.Mispredict)
+    stream.SerializeBool(&sessionData.EverOnNext)
+    stream.SerializeBool(&sessionData.FellBackToDirect)
 
     stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
 
@@ -555,32 +580,39 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
         nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
         stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
         sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
-        stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
     }
 
     directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
     stream.SerializeInteger(&directPLHistory, 0, 255)
     sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
-    stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+
     stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
     stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
+
     stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
     stream.SerializeBool(&sessionData.RouteState.RouteLost)
     stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-    stream.SerializeBool(&sessionData.RouteState.Mispredict)
-    stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
-    stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-    stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
-    stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
-    stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
 
-    stream.SerializeBool(&sessionData.EverOnNext)
-    stream.SerializeBool(&sessionData.FellBackToDirect)
+    stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+
+    for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+        stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
+    }
+
+    stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+
+    stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
+
+    stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+
+    stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
 
     stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
     stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
     stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
     stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
+
+    stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 
     stream.SerializeBool(&sessionData.HoldNearRelays)
     if sessionData.HoldNearRelays {
@@ -588,6 +620,8 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
             stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
         }
     }
+
+    stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
 
     stream.SerializeBool(&sessionData.WroteSummary)
 
@@ -598,53 +632,42 @@ func (sessionData *SessionDataSDK5) Serialize(stream encoding.Stream) error {
 
     stream.SerializeUint32(&sessionData.DurationOnNext)
 
-    // IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
-
-    // >>> new fields go here <<<
-
-    // IMPORTANT: ADD NEW FIELDS ABOVE HERE ONLY.
-    // AFTER YOU ADD NEW FIELDS, UPDATE THE COMMENTS SO FIELDS
-    // MAY ONLY BE ADDED *AFTER* YOUR NEW FIELDS.
-    // FAILING TO FOLLOW THESE INSRUCTIONS WILL BREAK PRODUCTION!!!!
-
     return stream.Error()
 }
 
-type MatchDataRequestPacketSDK5 struct {
+// ------------------------------------------------------------
+
+type SDK5_MatchDataRequestPacket struct {
     Version        SDKVersion
-    BuyerID        uint64
+    BuyerId        uint64
     ServerAddress  net.UDPAddr
-    DatacenterID   uint64
+    DatacenterId   uint64
     UserHash       uint64
-    SessionID      uint64
+    SessionId      uint64
     RetryNumber    uint32
-    MatchID        uint64
+    MatchId        uint64
     NumMatchValues int32
-    MatchValues    [MaxMatchValues]float64
+    MatchValues    [SDK5_MaxMatchValues]float64
 }
 
-func (packet *MatchDataRequestPacketSDK5) Serialize(stream encoding.Stream) error {
-    versionMajor := uint32(packet.Version.Major)
-    versionMinor := uint32(packet.Version.Minor)
-    versionPatch := uint32(packet.Version.Patch)
-    stream.SerializeBits(&versionMajor, 8)
-    stream.SerializeBits(&versionMinor, 8)
-    stream.SerializeBits(&versionPatch, 8)
-    packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-    stream.SerializeUint64(&packet.BuyerID)
+func (packet *SDK5_MatchDataRequestPacket) Serialize(stream encoding.Stream) error {
+
+    packet.Version.Serialize(stream)
+
+    stream.SerializeUint64(&packet.BuyerId)
     stream.SerializeAddress(&packet.ServerAddress)
-    stream.SerializeUint64(&packet.DatacenterID)
+    stream.SerializeUint64(&packet.DatacenterId)
     stream.SerializeUint64(&packet.UserHash)
-    stream.SerializeUint64(&packet.SessionID)
+    stream.SerializeUint64(&packet.SessionId)
     stream.SerializeUint32(&packet.RetryNumber)
-    stream.SerializeUint64(&packet.MatchID)
+    stream.SerializeUint64(&packet.MatchId)
 
     hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
 
     stream.SerializeBool(&hasMatchValues)
 
     if hasMatchValues {
-        stream.SerializeInteger(&packet.NumMatchValues, 0, MaxMatchValues)
+        stream.SerializeInteger(&packet.NumMatchValues, 0, SDK5_MaxMatchValues)
         for i := 0; i < int(packet.NumMatchValues); i++ {
             stream.SerializeFloat64(&packet.MatchValues[i])
         }
@@ -653,13 +676,17 @@ func (packet *MatchDataRequestPacketSDK5) Serialize(stream encoding.Stream) erro
     return stream.Error()
 }
 
-type MatchDataResponsePacketSDK5 struct {
-    SessionID uint64
+// ------------------------------------------------------------
+
+type SDK5_MatchDataResponsePacket struct {
+    SessionId uint64
     Response  uint32
 }
 
-func (packet *MatchDataResponsePacketSDK5) Serialize(stream encoding.Stream) error {
-    stream.SerializeUint64(&packet.SessionID)
+func (packet *SDK5_MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
+    stream.SerializeUint64(&packet.SessionId)
     stream.SerializeBits(&packet.Response, 8)
     return stream.Error()
 }
+
+// ------------------------------------------------------------
