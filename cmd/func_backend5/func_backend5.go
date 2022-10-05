@@ -855,26 +855,16 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
     excludeNearRelays(responsePacket, sessionData.RouteState)
 
-    // todo: write session data to buffer
+	packetSessionData, err := packets.WritePacket[*packets.SDK5_SessionData](responsePacket.SessionData[:], &sessionData)
 
-    // todo: stash session data in response packet
+	if err != nil {
+        fmt.Printf("error: failed to write session data\n")
+        return
+	}
+
+	responsePacket.SessionDataBytes = int32(len(packetSessionData))
 
     SendResponsePacket(conn, from, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
-
-    /*
-       sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
-       if err != nil {
-          fmt.Printf("error: failed to marshal session data: %v\n", err)
-          return
-       }
-
-       if len(sessionDataBuffer) > transport.MaxSessionDataSize {
-          fmt.Printf("session data too large\n")
-       }
-
-       sessionResponse.SessionDataBytes = int32(len(sessionDataBuffer))
-       copy(sessionResponse.SessionData[:], sessionDataBuffer)
-    */
 }
 
 func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
