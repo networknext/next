@@ -666,156 +666,77 @@ func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requ
 
 func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 	
-	// todo
-	
 	fmt.Printf("server init request\n")
-}
-
-func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
-
-	fmt.Printf("server match data request\n")	
 
 	if backend.mode == BACKEND_MODE_FORCE_RETRY && requestPacket.RetryNumber < 4 {
-	   fmt.Printf("force retry for match data request packet\n")
 	   return
 	}
 
-	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
-	   fmt.Printf("match id %x\n", requestPacket.MatchId)
-	}
-
-	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
-	   for i := 0; i < int(requestPacket.NumMatchValues); i++ {
-	       fmt.Printf("match value %.2f\n", requestPacket.MatchValues[i])
-	   }
-	}
-
-	responsePacket := &packets.SDK5_MatchDataResponsePacket{
-	   SessionId: requestPacket.SessionId,
-	}
-
-	SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
-}
-
-// todo: incorporate
-/*
-    // check packet signature
-
-    var buyerId uint64
-    index := 16 + 3
-    encoding.ReadUint64(packetData, &index, &buyerId)
-
-    buyer, ok := handler.Database.BuyerMap[buyerId]
-    if !ok {
-        core.Error("unknown buyer id: %016x", buyerId)
-        handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
-        return
-    }
-
-    publicKey := buyer.PublicKey
-
-    if !SDK5_CheckPacketSignature(packetData, publicKey) {
-        core.Debug("packet signature check failed")
-        handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
-        return
-    }
-*/
-
-// todo
-/*
-func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
-
-    numExcluded := 0
-
-    for i := 0; i < int(routeState.NumNearRelays); i++ {
-        if routeState.NearRelayRTT[i] == 255 {
-            sessionResponse.NearRelayExcluded[i] = true
-        }
-    }
-
-    sessionResponse.ExcludeNearRelays = numExcluded > 0
-}
-*/
-
-// todo
-/*
-func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-
-	var sessionUpdate transport.SessionUpdatePacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&sessionUpdate, core.GetPacketDataSDK5(incoming.Data)); err != nil {
-	   fmt.Printf("error: failed to read session update packet: %v\n", err)
-	   return
-	}
-
-	if backend.mode == BACKEND_MODE_FORCE_RETRY && sessionUpdate.RetryNumber < 4 {
-	   return
-	}
-
-	if sessionUpdate.PlatformType == transport.PlatformTypeUnknown {
+	if requestPacket.PlatformType == packets.SDK5_PlatformTypeUnknown {
 	   panic("platform type is unknown")
 	}
 
-	if sessionUpdate.ConnectionType == transport.ConnectionTypeUnknown {
+	if requestPacket.ConnectionType == packets.SDK5_ConnectionTypeUnknown {
 	   panic("connection type is unknown")
 	}
 
-	if sessionUpdate.FallbackToDirect {
-	   fmt.Printf("error: fallback to direct %s\n", incoming.From.String())
+	if requestPacket.FallbackToDirect {
+	   fmt.Printf("error: fallback to direct %s\n", from.String())
 	   return
 	}
 
-	if sessionUpdate.Reported {
+	if requestPacket.Reported {
 	   fmt.Printf("client reported session\n")
 	}
 
-	if sessionUpdate.ClientPingTimedOut {
+	if requestPacket.ClientPingTimedOut {
 	   fmt.Printf("client ping timed out\n")
 	}
 
-	if sessionUpdate.ClientBandwidthOverLimit {
+	if requestPacket.ClientBandwidthOverLimit {
 	   fmt.Printf("client bandwidth over limit\n")
 	}
 
-	if sessionUpdate.ServerBandwidthOverLimit {
+	if requestPacket.ServerBandwidthOverLimit {
 	   fmt.Printf("server bandwidth over limit\n")
 	}
 
-	if sessionUpdate.PacketsLostClientToServer > 0 {
-	   fmt.Printf("%d client to server packets lost\n", sessionUpdate.PacketsLostClientToServer)
+	if requestPacket.PacketsLostClientToServer > 0 {
+	   fmt.Printf("%d client to server packets lost\n", requestPacket.PacketsLostClientToServer)
 	}
 
-	if sessionUpdate.PacketsLostServerToClient > 0 {
-	   fmt.Printf("%d server to client packets lost\n", sessionUpdate.PacketsLostServerToClient)
+	if requestPacket.PacketsLostServerToClient > 0 {
+	   fmt.Printf("%d server to client packets lost\n", requestPacket.PacketsLostServerToClient)
 	}
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
-	   if sessionUpdate.NextKbpsUp > 0 {
-	       fmt.Printf("%d kbps up\n", sessionUpdate.NextKbpsUp)
+	   if requestPacket.NextKbpsUp > 0 {
+	       fmt.Printf("%d kbps up\n", requestPacket.NextKbpsUp)
 	   }
-	   if sessionUpdate.NextKbpsDown > 0 {
-	       fmt.Printf("%d kbps down\n", sessionUpdate.NextKbpsDown)
+	   if requestPacket.NextKbpsDown > 0 {
+	       fmt.Printf("%d kbps down\n", requestPacket.NextKbpsDown)
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_JITTER {
-	   if sessionUpdate.JitterClientToServer > 0 {
-	       fmt.Printf("%f jitter up\n", sessionUpdate.JitterClientToServer)
-	       if sessionUpdate.JitterClientToServer > 100 {
+	   if requestPacket.JitterClientToServer > 0 {
+	       fmt.Printf("%f jitter up\n", requestPacket.JitterClientToServer)
+	       if requestPacket.JitterClientToServer > 100 {
 	           panic("jitter up too high")
 	       }
 	   }
-	   if sessionUpdate.JitterServerToClient > 0 {
-	       fmt.Printf("%f jitter down\n", sessionUpdate.JitterServerToClient)
-	       if sessionUpdate.JitterServerToClient > 100 {
+	   if requestPacket.JitterServerToClient > 0 {
+	       fmt.Printf("%f jitter down\n", requestPacket.JitterServerToClient)
+	       if requestPacket.JitterServerToClient > 100 {
 	           panic("jitter down too high")
 	       }
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_TAGS {
-	   if sessionUpdate.NumTags > 0 {
-	       for i := 0; i < int(sessionUpdate.NumTags); i++ {
-	           fmt.Printf("tag %x\n", sessionUpdate.Tags[i])
+	   if requestPacket.NumTags > 0 {
+	       for i := 0; i < int(requestPacket.NumTags); i++ {
+	           fmt.Printf("tag %x\n", requestPacket.Tags[i])
 	       }
 	   } else {
 	       fmt.Printf("tag cleared\n")
@@ -823,23 +744,24 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if backend.mode == BACKEND_MODE_DIRECT_STATS {
-	   if sessionUpdate.DirectMinRTT > 0 && sessionUpdate.DirectJitter > 0 && sessionUpdate.DirectPacketLoss > 0 {
-	       fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", sessionUpdate.DirectMinRTT, sessionUpdate.DirectJitter, sessionUpdate.DirectPacketLoss)
+	   if requestPacket.DirectMinRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
+	       fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectMinRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_NEXT_STATS {
-	   if sessionUpdate.NextRTT > 0 && sessionUpdate.NextJitter > 0 && sessionUpdate.NextPacketLoss > 0 {
-	       fmt.Printf("next rtt = %f, next jitter = %f, next packet loss = %f\n", sessionUpdate.NextRTT, sessionUpdate.NextJitter, sessionUpdate.NextPacketLoss)
+	   if requestPacket.NextRTT > 0 && requestPacket.NextJitter > 0 && requestPacket.NextPacketLoss > 0 {
+	       fmt.Printf("next rtt = %f, next jitter = %f, next packet loss = %f\n", requestPacket.NextRTT, requestPacket.NextJitter, requestPacket.NextPacketLoss)
 	   }
 	}
 
 	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
-	   for i := 0; i <= int(sessionUpdate.NumNearRelays); i++ {
-	       fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", sessionUpdate.NearRelayIDs[i], sessionUpdate.NearRelayRTT[i], sessionUpdate.NearRelayJitter[i], sessionUpdate.NearRelayPacketLoss[i])
+	   for i := 0; i <= int(requestPacket.NumNearRelays); i++ {
+	       fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", requestPacket.NearRelayIds[i], requestPacket.NearRelayRTT[i], requestPacket.NearRelayJitter[i], requestPacket.NearRelayPacketLoss[i])
 	   }
 	}
 
+	/*
 	newSession := sessionUpdate.SliceNumber == 0
 
 	var sessionData transport.SessionDataSDK5
@@ -1077,6 +999,72 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	   fmt.Printf("error: failed to write session response: %v\n", err)
 	   return
 	}
+	*/
+}
+
+func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
+
+	fmt.Printf("server match data request\n")	
+
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && requestPacket.RetryNumber < 4 {
+	   fmt.Printf("force retry for match data request packet\n")
+	   return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
+	   fmt.Printf("match id %x\n", requestPacket.MatchId)
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
+	   for i := 0; i < int(requestPacket.NumMatchValues); i++ {
+	       fmt.Printf("match value %.2f\n", requestPacket.MatchValues[i])
+	   }
+	}
+
+	responsePacket := &packets.SDK5_MatchDataResponsePacket{
+	   SessionId: requestPacket.SessionId,
+	}
+
+	SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
+}
+
+// todo: incorporate
+/*
+    // check packet signature
+
+    var buyerId uint64
+    index := 16 + 3
+    encoding.ReadUint64(packetData, &index, &buyerId)
+
+    buyer, ok := handler.Database.BuyerMap[buyerId]
+    if !ok {
+        core.Error("unknown buyer id: %016x", buyerId)
+        handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
+        return
+    }
+
+    publicKey := buyer.PublicKey
+
+    if !SDK5_CheckPacketSignature(packetData, publicKey) {
+        core.Debug("packet signature check failed")
+        handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
+        return
+    }
+*/
+
+// todo
+/*
+func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
+
+    numExcluded := 0
+
+    for i := 0; i < int(routeState.NumNearRelays); i++ {
+        if routeState.NearRelayRTT[i] == 255 {
+            sessionResponse.NearRelayExcluded[i] = true
+        }
+    }
+
+    sessionResponse.ExcludeNearRelays = numExcluded > 0
 }
 */
 
