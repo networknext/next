@@ -192,6 +192,7 @@ type SDK5_SessionUpdateRequestPacket struct {
     ClientBandwidthOverLimit        bool
     ServerBandwidthOverLimit        bool
     ClientPingTimedOut              bool
+    HasNearRelayPings               bool
     NumTags                         int32
     Tags                            [SDK5_MaxTags]uint64
     ServerEvents                    uint64
@@ -257,6 +258,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
     stream.SerializeBool(&packet.ClientBandwidthOverLimit)
     stream.SerializeBool(&packet.ServerBandwidthOverLimit)
     stream.SerializeBool(&packet.ClientPingTimedOut)
+    stream.SerializeBool(&packet.HasNearRelayPings)
 
     hasTags := stream.IsWriting() && packet.SliceNumber == 0 && packet.NumTags > 0
     hasServerEvents := stream.IsWriting() && packet.ServerEvents != 0
@@ -295,9 +297,11 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 
     for i := int32(0); i < packet.NumNearRelays; i++ {
         stream.SerializeUint64(&packet.NearRelayIds[i])
-        stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
-        stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
-        stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+        if packet.HasNearRelayPings {
+	        stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+	        stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+	        stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+	    }
     }
 
     if packet.Next {
