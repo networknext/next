@@ -194,8 +194,7 @@ type SDK5_SessionUpdateRequestPacket struct {
     ClientPingTimedOut              bool
     NumTags                         int32
     Tags                            [SDK5_MaxTags]uint64
-    Flags                           uint32
-    UserFlags                       uint64
+    ServerEvents                    uint64
     DirectMinRTT                    float32
     DirectMaxRTT                    float32
     DirectPrimeRTT                  float32
@@ -259,15 +258,13 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
     stream.SerializeBool(&packet.ServerBandwidthOverLimit)
     stream.SerializeBool(&packet.ClientPingTimedOut)
 
-    hasTags := stream.IsWriting() && packet.NumTags > 0
-    hasFlags := stream.IsWriting() && packet.Flags != 0
-    hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
+    hasTags := stream.IsWriting() && packet.SliceNumber == 0 && packet.NumTags > 0
+    hasServerEvents := stream.IsWriting() && packet.ServerEvents != 0
     hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
     hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
     stream.SerializeBool(&hasTags)
-    stream.SerializeBool(&hasFlags)
-    stream.SerializeBool(&hasUserFlags)
+    stream.SerializeBool(&hasServerEvents)
     stream.SerializeBool(&hasLostPackets)
     stream.SerializeBool(&hasOutOfOrderPackets)
 
@@ -278,12 +275,8 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
         }
     }
 
-    if hasFlags {
-        stream.SerializeBits(&packet.Flags, SDK5_FallbackFlagsCount)
-    }
-
-    if hasUserFlags {
-        stream.SerializeUint64(&packet.UserFlags)
+    if hasServerEvents {
+        stream.SerializeUint64(&packet.ServerEvents)
     }
 
     stream.SerializeFloat32(&packet.DirectMinRTT)

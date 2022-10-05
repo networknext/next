@@ -723,13 +723,13 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
     }
 
     if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-        if requestPacket.SliceNumber >= 2 && requestPacket.UserFlags != 0x123 {
+        if requestPacket.SliceNumber >= 2 && requestPacket.ServerEvents != 0x123 {
             panic("server events not set on session update")
         }
     }
 
-    if requestPacket.UserFlags > 0 {
-        fmt.Printf("server events %x\n", requestPacket.UserFlags)
+    if requestPacket.ServerEvents > 0 {
+        fmt.Printf("server events %x\n", requestPacket.ServerEvents)
     }
 
     // todo
