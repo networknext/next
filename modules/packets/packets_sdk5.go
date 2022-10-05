@@ -1,5 +1,9 @@
 package packets
 
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
 import (
     "errors"
     "fmt"
@@ -10,6 +14,82 @@ import (
 
     "github.com/networknext/backend/modules-old/crypto"
 )
+
+// ------------------------------------------------------------
+
+func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
+
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+
+    if result != 0 {
+        core.Error("signed packet did not verify")
+        return false
+    }
+
+    return true
+}
+func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
+    result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+    return int(result)
+}
+
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
+
+func SDK5_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
+
+    buffer := make([]byte, maxPacketSize)
+
+    writeStream := encoding.CreateWriteStream(buffer[:])
+
+    var dummy [16]byte
+    writeStream.SerializeBytes(dummy[:])
+
+    err := packet.Serialize(writeStream)
+    if err != nil {
+        return nil, fmt.Errorf("failed to write response packet: %v", err)
+    }
+
+    writeStream.Flush()
+
+    packetBytes := writeStream.GetBytesProcessed() + NEXT_CRYPTO_SIGN_BYTES + 2
+
+    packetData := buffer[:packetBytes]
+
+    packetData[0] = uint8(packetType)
+
+    var state C.crypto_sign_state
+    C.crypto_sign_init(&state)
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-NEXT_CRYPTO_SIGN_BYTES))
+    result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+
+    if result != 0 {
+        return nil, fmt.Errorf("failed to sign response packet: %d", result)
+    }
+
+    var magic [8]byte
+    var fromAddressBuffer [32]byte
+    var toAddressBuffer [32]byte
+
+    fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
+    toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+    core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+
+    core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+
+    return packetData, nil
+}
 
 // ------------------------------------------------------------
 
