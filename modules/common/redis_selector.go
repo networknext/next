@@ -1,211 +1,226 @@
 package common
 
 import (
-    "bytes"
-    "context"
-    "encoding/gob"
-    "fmt"
-    "sort"
-    "sync"
-    "time"
+	"bytes"
+	"context"
+	"encoding/gob"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/go-redis/redis/v8"
-    "github.com/google/uuid"
-    "github.com/networknext/backend/modules/core"
+	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
+	"github.com/networknext/backend/modules/core"
 )
 
 const RedisSelectorVersion = 0 // IMPORTANT: bump this anytime you change the redis data structures!
 
 type RedisSelectorConfig struct {
-    RedisHostname string
-    RedisPassword string
+	RedisHostname string
+	RedisPassword string
+	Timeout       time.Duration
 }
 
 type RedisSelector struct {
-    config          RedisSelectorConfig
-    redisClient     *redis.Client
-    startTime       time.Time
-    instanceId      string
-    relaysData      []byte
-    costMatrixData  []byte
-    routeMatrixData []byte
-    storeCounter    uint64
+	config       RedisSelectorConfig
+	redisClient  *redis.Client
+	startTime    time.Time
+	instanceId   string
+	storeCounter uint64
 
-    leaderMutex sync.RWMutex
-    isLeader    bool
+	leaderMutex sync.RWMutex
+	isLeader    bool
 }
 
 type InstanceEntry struct {
-    InstanceId     string
-    Uptime         uint64
-    Timestamp      uint64
-    RelaysKey      string
-    CostMatrixKey  string
-    RouteMatrixKey string
+	InstanceId string
+	Uptime     uint64
+	Timestamp  uint64
+	Keys       []string
+}
+
+type DataStoreConfig struct {
+	Name string
+	Data []byte
 }
 
 func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*RedisSelector, error) {
 
-    redisClient := redis.NewClient(&redis.Options{
-        Addr:     config.RedisHostname,
-        Password: config.RedisPassword,
-    })
-    _, err := redisClient.Ping(ctx).Result()
-    if err != nil {
-        return nil, err
-    }
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     config.RedisHostname,
+		Password: config.RedisPassword,
+	})
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		return nil, err
+	}
 
-    selector := &RedisSelector{}
+	selector := &RedisSelector{}
 
-    selector.config = config
-    selector.redisClient = redisClient
-    selector.startTime = time.Now()
-    selector.instanceId = uuid.New().String()
+	selector.config = config
+	selector.redisClient = redisClient
+	selector.startTime = time.Now()
+	selector.instanceId = uuid.New().String()
 
-    core.Debug("redis selector instance id: %s", selector.instanceId)
+	core.Debug("redis selector instance id: %s", selector.instanceId)
 
-    return selector, nil
+	return selector, nil
 }
 
-func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, costMatrixData []byte, routeMatrixData []byte) {
+func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStoreConfig) {
 
-    selector.storeCounter++
+	selector.storeCounter++
 
-    instanceEntry := InstanceEntry{}
-    instanceEntry.InstanceId = selector.instanceId
-    instanceEntry.Uptime = uint64(time.Since(selector.startTime))
-    instanceEntry.Timestamp = uint64(time.Now().Unix())
-    instanceEntry.RelaysKey = fmt.Sprintf("relays-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
-    instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
-    instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+	instanceEntry := InstanceEntry{}
+	instanceEntry.InstanceId = selector.instanceId
+	instanceEntry.Uptime = uint64(time.Since(selector.startTime))
+	instanceEntry.Timestamp = uint64(time.Now().Unix())
 
-    var buffer bytes.Buffer
-    encoder := gob.NewEncoder(&buffer)
-    err := encoder.Encode(instanceEntry)
-    if err != nil {
-        core.Error("failed to write instance entry\n")
-    }
-    instanceData := buffer.Bytes()
+	numStores := len(dataStores)
+	instanceEntry.Keys = make([]string, numStores)
 
-    timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+	for i := 0; i < numStores; i++ {
+		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s-%d", dataStores[i].Name, RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+	}
 
-    pipe := selector.redisClient.TxPipeline()
-    pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.RelaysKey, relaysData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.CostMatrixKey, costMatrixData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.RouteMatrixKey, routeMatrixData[:], 10*time.Second)
-    _, err = pipe.Exec(timeoutContext)
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(instanceEntry)
+	if err != nil {
+		core.Error("failed to write instance entry\n")
+	}
+	instanceData := buffer.Bytes()
 
-    if err != nil {
-        core.Error("failed to store instance data: %v", err)
-        return
-    }
+	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+
+	pipe := selector.redisClient.TxPipeline()
+	pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], selector.config.Timeout)
+
+	for i := 0; i < numStores; i++ {
+		pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], selector.config.Timeout)
+	}
+
+	_, err = pipe.Exec(timeoutContext)
+	if err != nil {
+		core.Error("failed to store instance data: %v", err)
+		return
+	}
 }
 
-func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte) {
+func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
-    timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
-    // get all "instance/*" keys via scan to be safe
+	// get all "instance/*" keys via scan to be safe
 
-    instanceKeys := []string{}
-    itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
-    for itor.Next(timeoutContext) {
-        instanceKeys = append(instanceKeys, itor.Val())
-    }
-    if err := itor.Err(); err != nil {
-        core.Error("failed to get instance keys: %v", err)
-        return nil, nil, nil
-    }
+	instanceKeys := []string{}
+	dataStores := []DataStoreConfig{}
+	itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
+	for itor.Next(timeoutContext) {
+		key := itor.Val()
+		instanceKeys = append(instanceKeys, key)
+	}
+	if err := itor.Err(); err != nil {
+		core.Error("failed to get instance keys: %v", err)
+		return dataStores
 
-    // query all instance data
+	}
 
-    pipe := selector.redisClient.Pipeline()
-    for i := range instanceKeys {
-        pipe.Get(timeoutContext, instanceKeys[i])
-    }
-    cmds, err := pipe.Exec(timeoutContext)
+	// query all instance data
 
-    if err != nil {
-        core.Error("failed to get instance entries: %v", err)
-        return nil, nil, nil
-    }
+	pipe := selector.redisClient.Pipeline()
+	for i := range instanceKeys {
+		pipe.Get(timeoutContext, instanceKeys[i])
+	}
+	cmds, err := pipe.Exec(timeoutContext)
 
-    // convert instance data to instance entries
+	if err != nil {
+		core.Error("failed to get instance entries: %v", err)
+		return dataStores
+	}
 
-    instanceEntries := []InstanceEntry{}
+	// convert instance data to instance entries
 
-    for _, cmd := range cmds {
+	instanceEntries := []InstanceEntry{}
 
-        instanceData := cmd.(*redis.StringCmd).Val()
+	for _, cmd := range cmds {
 
-        instanceEntry := InstanceEntry{}
-        buffer := bytes.NewBuffer([]byte(instanceData))
-        decoder := gob.NewDecoder(buffer)
-        err := decoder.Decode(&instanceEntry)
-        if err != nil {
-            core.Debug("could not decode instance entry: %v", err)
-            continue
-        }
+		instanceData := cmd.(*redis.StringCmd).Val()
 
-        // IMPORTANT: ignore any instance entries more than 5 seconds old
-        if instanceEntry.Timestamp >= uint64(time.Now().Unix()-5) {
-            instanceEntries = append(instanceEntries, instanceEntry)
-        }
-    }
+		instanceEntry := InstanceEntry{}
+		buffer := bytes.NewBuffer([]byte(instanceData))
+		decoder := gob.NewDecoder(buffer)
+		err := decoder.Decode(&instanceEntry)
+		if err != nil {
+			core.Debug("could not decode instance entry: %v", err)
+			continue
+		}
 
-    // no instance entries? we have no route matrix data...
+		// IMPORTANT: ignore any instance entries more than 5 seconds old
+		if instanceEntry.Timestamp >= uint64(time.Now().Unix()-5) {
+			instanceEntries = append(instanceEntries, instanceEntry)
+		}
+	}
 
-    if len(instanceEntries) == 0 {
-        core.Error("no instance entries found")
-        return nil, nil, nil
-    }
+	// no instance entries? we have no route matrix data...
 
-    // select master instance (most uptime, instance id as tie breaker)
+	if len(instanceEntries) == 0 {
+		core.Error("no instance entries found")
+		return dataStores
+	}
 
-    sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
+	// select master instance (most uptime, instance id as tie breaker)
 
-    sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].Uptime > instanceEntries[j].Uptime })
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
 
-    masterInstance := instanceEntries[0]
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].Uptime > instanceEntries[j].Uptime })
 
-    // are we the leader?
+	masterInstance := instanceEntries[0]
 
-    selector.leaderMutex.Lock()
-    previousValue := selector.isLeader
-    currentValue := masterInstance.InstanceId == selector.instanceId
-    selector.isLeader = currentValue
-    selector.leaderMutex.Unlock()
+	// are we the leader?
 
-    if !previousValue && currentValue {
-        core.Log("we became the leader")
-    } else if previousValue && !currentValue {
-        core.Log("we are no longer the leader")
-    }
+	selector.leaderMutex.Lock()
+	previousValue := selector.isLeader
+	currentValue := masterInstance.InstanceId == selector.instanceId
+	selector.isLeader = currentValue
+	selector.leaderMutex.Unlock()
 
-    // get data for master instance
+	if !previousValue && currentValue {
+		core.Log("we became the leader")
+	} else if previousValue && !currentValue {
+		core.Log("we are no longer the leader")
+	}
 
-    pipe = selector.redisClient.Pipeline()
-    pipe.Get(timeoutContext, masterInstance.RelaysKey)
-    pipe.Get(timeoutContext, masterInstance.CostMatrixKey)
-    pipe.Get(timeoutContext, masterInstance.RouteMatrixKey)
-    cmds, err = pipe.Exec(timeoutContext)
+	// get data for master instance
 
-    if err != nil {
-        core.Error("failed to get data from redis: %v", err)
-        return nil, nil, nil
-    }
+	pipe = selector.redisClient.Pipeline()
 
-    selector.relaysData = []byte(cmds[0].(*redis.StringCmd).Val())
-    selector.costMatrixData = []byte(cmds[1].(*redis.StringCmd).Val())
-    selector.routeMatrixData = []byte(cmds[2].(*redis.StringCmd).Val())
+	dataStores = make([]DataStoreConfig, len(masterInstance.Keys))
 
-    return selector.relaysData, selector.costMatrixData, selector.routeMatrixData
+	for i := 0; i < len(dataStores); i++ {
+		key := masterInstance.Keys[i]
+		dataStores[i].Name = strings.Split(key, "-")[0]
+		pipe.Get(timeoutContext, key)
+	}
+
+	cmds, err = pipe.Exec(timeoutContext)
+	if err != nil {
+		core.Error("failed to get data from redis: %v", err)
+		return dataStores
+	}
+
+	for i := 0; i < len(dataStores); i++ {
+		dataStores[i].Data = []byte(cmds[i].(*redis.StringCmd).Val())
+	}
+
+	return dataStores
 }
 
 func (selector *RedisSelector) IsLeader() bool {
-    selector.leaderMutex.RLock()
-    value := selector.isLeader
-    selector.leaderMutex.RUnlock()
-    return value
+	selector.leaderMutex.RLock()
+	value := selector.isLeader
+	selector.leaderMutex.RUnlock()
+	return value
 }
