@@ -673,9 +673,28 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
 
-	// todo
-
 	fmt.Printf("server match data request\n")	
+
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && requestPacket.RetryNumber < 4 {
+	   fmt.Printf("force retry for match data request packet\n")
+	   return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
+	   fmt.Printf("match id %x\n", requestPacket.MatchId)
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
+	   for i := 0; i < int(requestPacket.NumMatchValues); i++ {
+	       fmt.Printf("match value %.2f\n", requestPacket.MatchValues[i])
+	   }
+	}
+
+	responsePacket := &packets.SDK5_MatchDataResponsePacket{
+	   SessionId: requestPacket.SessionId,
+	}
+
+	SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
 }
 
 // todo: incorporate
@@ -700,116 +719,6 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, request
         handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
         return
     }
-*/
-
-// todo
-/*
-func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-
-	var serverUpdate transport.ServerUpdatePacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&serverUpdate, core.GetPacketDataSDK5(incoming.Data)); err != nil {
-	   fmt.Printf("error: failed to read server update packet: %v\n", err)
-	   return
-	}
-
-	updateResponse := &transport.ServerResponsePacketSDK5{
-	   RequestID: serverUpdate.RequestID,
-	}
-	updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic = GetMagic()
-
-	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
-	toAddress := &incoming.From
-
-	var emptyMagic [8]byte
-	updateResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerResponseSDK5, updateResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
-	if err != nil {
-	   fmt.Printf("error: failed to marshal server response: %v\n", err)
-	   return
-	}
-
-	if !core.BasicPacketFilter(updateResponseData[:], len(updateResponseData)) {
-	   panic("basic packet filter failed on server response?")
-	}
-
-	{
-	   var fromAddressBuffer [32]byte
-	   var toAddressBuffer [32]byte
-
-	   fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
-	   toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
-
-	   if !core.AdvancedPacketFilter(updateResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(updateResponseData)) {
-	       panic("advanced packet filter failed on server response\n")
-	   }
-	}
-
-	if _, err := w.Write(updateResponseData); err != nil {
-	   fmt.Printf("error: failed to write server response: %v\n", err)
-	   return
-	}
-}
-*/
-
-/*
-func MatchDataRequestHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-
-	var matchDataRequest transport.MatchDataRequestPacketSDK5
-	if err := transport.UnmarshalPacketSDK5(&matchDataRequest, core.GetPacketDataSDK5(incoming.Data)); err != nil {
-	   fmt.Printf("error: failed to read match data request packet: %v\n", err)
-	   return
-	}
-
-	if backend.mode == BACKEND_MODE_FORCE_RETRY && matchDataRequest.RetryNumber < 4 {
-	   fmt.Printf("force retry for match data request packet\n")
-	   return
-	}
-
-	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
-	   fmt.Printf("match id %x\n", matchDataRequest.MatchID)
-	}
-
-	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
-	   for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
-	       fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
-	   }
-	}
-
-	matchDataResponse := &transport.MatchDataResponsePacketSDK5{
-	   SessionID: matchDataRequest.SessionID,
-	   Response:  transport.MatchDataResponseOK,
-	}
-
-	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
-	toAddress := &incoming.From
-
-	var emptyMagic [8]byte
-	matchDataResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeMatchDataResponseSDK5, matchDataResponse, emptyMagic[:], fromAddress, toAddress, crypto.BackendPrivateKey)
-	if err != nil {
-	   fmt.Printf("error: failed to marshal match data response: %v\n", err)
-	   return
-	}
-
-	if !core.BasicPacketFilter(matchDataResponseData[:], len(matchDataResponseData)) {
-	   panic("basic packet filter failed on match data response")
-	}
-
-	{
-	   var fromAddressBuffer [32]byte
-	   var toAddressBuffer [32]byte
-
-	   fromAddressData, fromAddressPort := core.GetAddressData(fromAddress, fromAddressBuffer[:])
-	   toAddressData, toAddressPort := core.GetAddressData(toAddress, toAddressBuffer[:])
-
-	   if !core.AdvancedPacketFilter(matchDataResponseData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(matchDataResponseData)) {
-	       panic("advanced packet filter failed on match data response\n")
-	   }
-	}
-
-	if _, err := w.Write(matchDataResponseData); err != nil {
-	   fmt.Printf("error: failed to write match data response: %v\n", err)
-	   return
-	}
-}
 */
 
 // todo
