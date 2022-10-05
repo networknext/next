@@ -191,6 +191,8 @@ const (
     SDK5_MaxISPNameLength     = 64
 
     SDK5_MaxLocationSize = 128
+
+    SDK5_BillingSliceSeconds = 10
 )
 
 // -------------------------------------------------
