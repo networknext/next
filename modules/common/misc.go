@@ -68,3 +68,9 @@ func DatacenterId(datacenterName string) uint64 {
     hash.Write([]byte(datacenterName))
     return hash.Sum64()
 }
+
+func RelayId(relayAddress string) uint64 {
+    hash := fnv.New64a()
+    hash.Write([]byte(relayAddress))
+    return hash.Sum64()
+}

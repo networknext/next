@@ -134,6 +134,10 @@ func main() {
         func_test_sdk4()
     } else if command == "func-test-sdk5" {
         func_test_sdk5()
+    } else if command == "func-backend4" {
+        func_backend4()
+    } else if command == "func-backend5" {
+        func_backend5()
     }
 
     cleanup()
@@ -231,7 +235,7 @@ func setup_emulators() {
     bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
 
     // setup pubsub topics, subscriptions and bigquery tables
-    time.Sleep(time.Second * 5) // todo: lame
+    time.Sleep(time.Second * 5)
     bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
@@ -241,4 +245,12 @@ func func_test_sdk4() {
 
 func func_test_sdk5() {
     bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
+}
+
+func func_backend4() {
+    bash("make ./dist/func_backend4 -j && cd dist && ./func_backend4")
+}
+
+func func_backend5() {
+    bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
 }
