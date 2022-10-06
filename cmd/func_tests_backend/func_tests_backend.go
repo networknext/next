@@ -1055,7 +1055,7 @@ func test_redis_selector() {
         }
     }()
 
-    time.Sleep(time.Second * 30)
+    time.Sleep(time.Second * 20)
 
     core.Debug("done")
 }
