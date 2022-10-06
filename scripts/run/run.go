@@ -140,6 +140,8 @@ func main() {
         func_test_sdk4()
     } else if command == "func-test-sdk5" {
         func_test_sdk5()
+    } else if command == "func-tests-backend" {
+        func_tests_backend()
     }
 
     cleanup()
@@ -247,4 +249,8 @@ func func_test_sdk4() {
 
 func func_test_sdk5() {
     bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
+}
+
+func func_tests_backend() {
+    bash("make ./dist/func_tests_backend && ./dist/func_tests_backend")
 }
