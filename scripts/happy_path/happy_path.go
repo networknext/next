@@ -419,7 +419,7 @@ func happy_path() int {
 
     client4_initialized := false
 
-    for i := 0; i < 30; i++ {
+    for i := 0; i < 45; i++ {
         if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
             strings.Contains(client4_stdout.String(), "client continues route (committed)") {
             client4_initialized = true
