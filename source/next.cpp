@@ -51,7 +51,7 @@
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -65,7 +65,7 @@
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
-#define NEXT_SERVER_INIT_TIMEOUT                                     10.0
+#define NEXT_SERVER_INIT_TIMEOUT                                     30.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
