@@ -47,10 +47,6 @@
 	pull = squash never
 	ref = if refs/heads/master sync refs/heads/main
 	url = agnostic://gh/399961391
-[map "b2875dc1-8fea-37df-a4cb-3f00b7760df1"]
-	object = cd5f2c7159c93b30958167ee4d1d6400ea4d6343
-	path = sdk5
-	type = extract module
 [map "98ce737b-cb9a-336e-bc90-f264081d0220"]
 	object = 04d203460379afce38fa9318f6a9718c0ba7ca70
 	path = enet
@@ -79,5 +75,10 @@
 [map "5d3a8804-1464-362a-a9bf-7a80ca486be1"]
 	object = df4d7dc6cfbf2a95818c01ee3f2cfcd75563e197
 	path = unity
+	stage = sync
+	type = extract module
+[map "b0e72cc0-27ab-3df4-8dc2-673005407ef0"]
+	object = cd5f2c7159c93b30958167ee4d1d6400ea4d6343
+	path = sdk5
 	stage = sync
 	type = extract module
