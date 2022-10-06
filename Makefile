@@ -33,6 +33,13 @@ dist/%.dev.tar.gz: dist/%
 dist/%.prod.tar.gz: dist/%
 	@go run scripts/artifact/artifact.go $@ prod
 
+# Format code
+
+.PHONY: format
+format:
+	@gofmt -s -w .
+	@./scripts/tabs2spaces.sh
+
 # Clean and rebuild
 
 .PHONY: clean
