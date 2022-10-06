@@ -9,7 +9,6 @@ import (
 // -------------------------------------------------
 
 const (
-
     SDK5_CRYPTO_SIGN_BYTES             = 64
     SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
     SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
@@ -27,7 +26,7 @@ const (
     SDK5_MaxSessionDataSize      = 500
     SDK5_MaxTags                 = 8
     SDK5_MaxTokens               = core.NEXT_MAX_NODES
-    SDK5_MaxRelaysPerRoute       = core.NEXT_MAX_NODES
+    SDK5_MaxRelaysPerRoute       = core.NEXT_MAX_NODES - 2
     SDK5_MaxNearRelays           = core.MaxNearRelays
     SDK5_MaxSessionUpdateRetries = 10
     SDK5_MaxSessionDebug         = 1024
