@@ -926,7 +926,7 @@ func test_redis_selector() {
     redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
         RedisHostname: "127.0.0.1:6379",
         RedisPassword: "",
-        Timeout:       time.Second * 10,
+        Timeout:       time.Second * 5,
     })
     if err != nil {
         core.Error("failed to setup redis selector 1")
@@ -936,7 +936,7 @@ func test_redis_selector() {
     redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
         RedisHostname: "127.0.0.1:6379",
         RedisPassword: "",
-        Timeout:       time.Second * 10,
+        Timeout:       time.Second * 5,
     })
     if err != nil {
         core.Error("failed to setup redis selector 2")
@@ -973,71 +973,89 @@ func test_redis_selector() {
         },
     }
 
-    redisSelector.Store(cancelContext, dataStore)
+    go func() {
 
-    newDataStore1 := redisSelector.Load(cancelContext)
+        ticker := time.NewTicker(time.Second)
 
-    if !redisSelector.IsLeader() {
-        core.Error("first selector should be leader")
-        os.Exit(1)
-    }
+        iterationNum := 0
 
-    for i, store := range dataStore {
-        if string(store.Data) != string(newDataStore1[i].Data) {
-            core.Error("failed to get correct data: %s != %s", string(store.Data), string(newDataStore1[i].Data))
+        for {
+            select {
+            case <-cancelContext.Done():
+                return
+            case <-ticker.C:
+                if redisSelector.IsLeader() {
+                    iterationNum++
+                    if iterationNum%5 == 0 {
+                        continue
+                    }
+                }
+                redisSelector.Store(cancelContext, dataStore)
+                newDataStore := redisSelector.Load(cancelContext)
+
+                if redisSelector.IsLeader() {
+                    for i, store := range dataStore {
+                        if string(store.Data) != string(newDataStore[i].Data) {
+                            core.Error("selector 1: data loaded was not from selector 1: %s != %s", string(store.Data), string(newDataStore[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+                } else {
+                    for i, store := range dataStore2 {
+                        if string(store.Data) != string(newDataStore[i].Data) {
+                            core.Error("selector 1: data loaded was not from selector 2: %s != %s", string(store.Data), string(newDataStore[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+
+                }
+            }
         }
-    }
+    }()
 
-    redisSelector.Store(cancelContext, dataStore)
+    time.Sleep(time.Second * 2)
 
-    redisSelector2.Store(cancelContext, dataStore2)
+    go func() {
 
-    time.Sleep(time.Second)
+        ticker := time.NewTicker(time.Second)
 
-    newDataStore1 = redisSelector.Load(cancelContext)
+        iterationNum := 0
 
-    newDataStore2 := redisSelector2.Load(cancelContext)
+        for {
+            select {
+            case <-cancelContext.Done():
+                return
+            case <-ticker.C:
+                if redisSelector2.IsLeader() {
+                    iterationNum++
+                    if iterationNum%5 == 0 {
+                        continue
+                    }
+                }
+                redisSelector2.Store(cancelContext, dataStore2)
+                newDataStore2 := redisSelector2.Load(cancelContext)
 
-    if !redisSelector.IsLeader() {
-        core.Error("selectors switched")
-        os.Exit(1)
-    }
+                if redisSelector2.IsLeader() {
+                    for i, store := range dataStore2 {
+                        if string(store.Data) != string(newDataStore2[i].Data) {
+                            core.Error("selector 2: data loaded was not from selector 2: %s != %s", string(store.Data), string(newDataStore2[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+                } else {
+                    for i, store := range dataStore {
+                        if string(store.Data) != string(newDataStore2[i].Data) {
+                            core.Error("selector 2: data loaded was not from selector 1: %s != %s", string(store.Data), string(newDataStore2[i].Data))
+                            os.Exit(1)
+                        }
+                    }
 
-    for i, store := range dataStore {
-        if string(store.Data) != string(newDataStore1[i].Data) {
-            core.Error("failed to get correct data for first store: %s != %s", string(store.Data), string(newDataStore1[i].Data))
+                }
+            }
         }
-    }
+    }()
 
-    for i, store := range dataStore2 {
-        if string(store.Data) == string(newDataStore2[i].Data) {
-            core.Error("failed to get correct data for second store: %s == %s", string(store.Data), string(newDataStore2[i].Data))
-        }
-    }
-
-    time.Sleep(time.Second * 12)
-
-    redisSelector2.Store(cancelContext, dataStore2)
-
-    newDataStore1 = redisSelector.Load(cancelContext)
-    newDataStore2 = redisSelector2.Load(cancelContext)
-
-    if !redisSelector2.IsLeader() {
-        core.Error("failed to switch selectors")
-        os.Exit(1)
-    }
-
-    for i, store := range dataStore2 {
-        if string(store.Data) != string(newDataStore2[i].Data) {
-            core.Error("failed to get correct data for first store: %s != %s", string(store.Data), string(newDataStore2[i].Data))
-        }
-    }
-
-    for i, store := range dataStore {
-        if string(store.Data) == string(newDataStore1[i].Data) {
-            core.Error("failed to get correct data for second store: %s == %s", string(store.Data), string(newDataStore1[i].Data))
-        }
-    }
+    time.Sleep(time.Second * 30)
 
     core.Debug("done")
 }
@@ -1054,9 +1072,9 @@ func main() {
         test_magic_backend,
         test_redis_pubsub,
         test_redis_streams,
+        test_redis_selector,
         test_google_pubsub,
         test_google_bigquery,
-        test_redis_selector,
     }
 
     var tests []test_function
