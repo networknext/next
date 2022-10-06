@@ -5,7 +5,6 @@ package handlers
 import "C"
 
 import (
-    "fmt"
     "net"
     "time"
 
@@ -46,13 +45,12 @@ const (
     SDK5_HandlerEvent_SentSessionUpdateResponsePacket = 21
     SDK5_HandlerEvent_SentMatchDataResponsePacket     = 22
 
-    SDK5_HandlerEvent_SentServerInitMessage   = 23
-    SDK5_HandlerEvent_SentServerUpdateMessage = 24
-    SDK5_HandlerEvent_SentMatchDataMessage    = 25
+    SDK5_HandlerEvent_SentServerInitMessage    = 23
+    SDK5_HandlerEvent_SentServerUpdateMessage  = 24
+    SDK5_HandlerEvent_SentSessionUpdateMessage = 25
+    SDK5_HandlerEvent_SentMatchDataMessage     = 26
 
-    // todo: billing message, summary message... or, unify to "session update message" and let analytics break them down?
-
-    SDK5_HandlerEvent_NumEvents = 26
+    SDK5_HandlerEvent_NumEvents = 27
 )
 
 type SDK5_Handler struct {
@@ -64,16 +62,17 @@ type SDK5_Handler struct {
     GetMagicValues       func() ([]byte, []byte, []byte)
     Events               [SDK5_HandlerEvent_NumEvents]bool
 
-    ServerInitMessageChannel   chan<- *messages.ServerInitMessage
-    ServerUpdateMessageChannel chan<- *messages.ServerUpdateMessage
-    MatchDataMessageChannel    chan<- *messages.MatchDataMessage
+    ServerInitMessageChannel    chan<- *messages.ServerInitMessage
+    ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
+    SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
+    MatchDataMessageChannel     chan<- *messages.MatchDataMessage
 }
 
 func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
     // ignore packets that are too small
 
-    if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+    if len(packetData) < packets.SDK5_MinPacketBytes {
         core.Debug("packet is too small")
         handler.Events[SDK5_HandlerEvent_PacketTooSmall] = true
         return
@@ -144,7 +143,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
     publicKey := buyer.PublicKey
 
-    if !SDK5_CheckPacketSignature(packetData, publicKey) {
+    if !packets.SDK5_CheckPacketSignature(packetData, publicKey) {
         core.Debug("packet signature check failed")
         handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
         return
@@ -152,7 +151,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
     // process the packet according to type
 
-    packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+    packetData = packetData[16:]
 
     switch packetType {
 
@@ -201,84 +200,9 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
     }
 }
 
-func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
-
-    var state C.crypto_sign_state
-    C.crypto_sign_init(&state)
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
-    result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
-
-    if result != 0 {
-        core.Error("signed packet did not verify")
-        return false
-    }
-
-    return true
-}
-
-func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
-    result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
-    return int(result)
-}
-
-func SDK5_SignPacket(packetData []byte, privateKey []byte) {
-    var state C.crypto_sign_state
-    C.crypto_sign_init(&state)
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
-    C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
-}
-
-func SDK5_WritePacket[P packets.Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
-
-    buffer := make([]byte, maxPacketSize)
-
-    writeStream := encoding.CreateWriteStream(buffer[:])
-
-    var dummy [16]byte
-    writeStream.SerializeBytes(dummy[:])
-
-    err := packet.Serialize(writeStream)
-    if err != nil {
-        return nil, fmt.Errorf("failed to write response packet: %v", err)
-    }
-
-    writeStream.Flush()
-
-    packetBytes := writeStream.GetBytesProcessed() + packets.NEXT_CRYPTO_SIGN_BYTES + 2
-
-    packetData := buffer[:packetBytes]
-
-    packetData[0] = uint8(packetType)
-
-    var state C.crypto_sign_state
-    C.crypto_sign_init(&state)
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-    C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-packets.NEXT_CRYPTO_SIGN_BYTES))
-    result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-packets.NEXT_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
-
-    if result != 0 {
-        return nil, fmt.Errorf("failed to sign response packet: %d", result)
-    }
-
-    var magic [8]byte
-    var fromAddressBuffer [32]byte
-    var toAddressBuffer [32]byte
-
-    fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
-    toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
-
-    core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
-
-    core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
-
-    return packetData, nil
-}
-
 func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-    packetData, err := SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.PrivateKey)
+    packetData, err := packets.SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.PrivateKey)
     if err != nil {
         core.Error("failed to write response packet: %v", err)
         return

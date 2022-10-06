@@ -508,7 +508,7 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
         BuyerId:                         123414,
         DatacenterId:                    1234123491,
         SessionId:                       120394810984109,
-        SliceNumber:                     5,
+        SliceNumber:                     0,
         RetryNumber:                     1,
         SessionDataBytes:                100,
         ClientAddress:                   *core.ParseAddress("127.0.0.1:50000"),
@@ -523,9 +523,9 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
         ClientBandwidthOverLimit:        false,
         ServerBandwidthOverLimit:        false,
         ClientPingTimedOut:              false,
+		HasNearRelayPings:               true,
         NumTags:                         2,
-        Flags:                           122,
-        UserFlags:                       3152384721,
+        ServerEvents:                    3152384721,
         DirectMinRTT:                    10.0,
         DirectMaxRTT:                    20.0,
         DirectPrimeRTT:                  19.0,
@@ -574,7 +574,6 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,
@@ -605,7 +604,6 @@ func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
 func Test_SDK5_SessionUpdateResponsePacket_NewRoute(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,
@@ -645,7 +643,6 @@ func Test_SDK5_SessionUpdateResponsePacket_NewRoute(t *testing.T) {
 func Test_SDK5_SessionResponsePacket_ContinueRoute(t *testing.T) {
 
     writePacket := SDK5_SessionUpdateResponsePacket{
-        Version:            SDKVersion{1, 2, 3},
         SessionId:          123412341243,
         SliceNumber:        10234,
         SessionDataBytes:   100,

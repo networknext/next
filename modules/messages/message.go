@@ -5,6 +5,7 @@ import (
 )
 
 type Message interface {
+    
     Write(buffer []byte) []byte
 
     Read(buffer []byte) error
