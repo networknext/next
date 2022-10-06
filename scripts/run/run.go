@@ -66,13 +66,7 @@ func bash_no_wait(command string) {
         os.Exit(1)
     }
 
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-
-    if err := cmd.Run(); err != nil {
-        fmt.Printf("error: failed to run command: %v\n", err)
-        os.Exit(1)
-    }
+    cmd.Run()
 }
 
 func main() {
@@ -140,6 +134,10 @@ func main() {
         func_test_sdk4()
     } else if command == "func-test-sdk5" {
         func_test_sdk5()
+    } else if command == "func-backend4" {
+        func_backend4()
+    } else if command == "func-backend5" {
+        func_backend5()
     } else if command == "func-tests-backend" {
         func_tests_backend()
     }
@@ -232,14 +230,14 @@ func setup_emulators() {
 
     // restart pubsub emulator
     bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
-    bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &")
+    bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 --quiet &")
 
     // restart bigquery emulator
     bash_ignore_result("pkill -f \"bigquery-emulator\"")
     bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
 
     // setup pubsub topics, subscriptions and bigquery tables
-    time.Sleep(time.Second * 5) // todo: lame
+    time.Sleep(time.Second * 5)
     bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
@@ -249,6 +247,14 @@ func func_test_sdk4() {
 
 func func_test_sdk5() {
     bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
+}
+
+func func_backend4() {
+    bash("make ./dist/func_backend4 -j && cd dist && ./func_backend4")
+}
+
+func func_backend5() {
+    bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
 }
 
 func func_tests_backend() {

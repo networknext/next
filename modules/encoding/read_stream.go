@@ -206,7 +206,7 @@ func (stream *ReadStream) SerializeString(value *string, maxSize int) {
     }
     length := int32(0)
     min := int32(0)
-    max := int32(maxSize)
+    max := int32(maxSize) - 1
     stream.SerializeInteger(&length, min, max)
     if stream.err != nil {
         return
