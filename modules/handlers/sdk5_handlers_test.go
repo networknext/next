@@ -40,8 +40,8 @@ type TestHarness struct {
     handler                    SDK5_Handler
     conn                       *net.UDPConn
     from                       *net.UDPAddr
-    signPublicKey              [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    signPrivateKey             [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    signPublicKey              [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    signPrivateKey             [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
     serverInitMessageChannel   chan *messages.ServerInitMessage
     serverUpdateMessageChannel chan *messages.ServerUpdateMessage
     matchDataMessageChannel    chan *messages.MatchDataMessage
@@ -73,7 +73,7 @@ func CreateTestHarness() *TestHarness {
 
     harness.from = core.ParseAddress("127.0.0.1:10000")
 
-    SDK5_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
+    packets.SDK5_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
 
     harness.handler.PrivateKey = harness.signPrivateKey[:]
 
@@ -435,9 +435,9 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -516,9 +516,9 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -535,7 +535,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -605,9 +605,9 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -631,7 +631,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, we should see that the SDK is too old
 
@@ -701,9 +701,9 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -721,7 +721,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, we should see the datacenter is unknown
 
@@ -789,9 +789,9 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -829,7 +829,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
         DatacenterName: "local",
     }
 
-    packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+    packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
     if err != nil {
         core.Error("failed to write server init request packet: %v", err)
         return
@@ -871,7 +871,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
             // ignore any packets that are too small
 
-            if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+            if len(packetData) < 16+3+4+packets.SDK5_CRYPTO_SIGN_BYTES+2 {
                 core.Debug("too small")
                 continue
             }
@@ -900,14 +900,14 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
             // make sure packet signature check passes
 
-            if !SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+            if !packets.SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
                 core.Debug("packet signature check failed")
                 return
             }
 
             // read packet
 
-            packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+            packetData = packetData[16 : len(packetData)-(2+packets.SDK5_CRYPTO_SIGN_BYTES)]
 
             responsePacket := packets.SDK5_ServerInitResponsePacket{}
             if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
@@ -1025,9 +1025,9 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1044,7 +1044,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -1114,9 +1114,9 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1140,7 +1140,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, we should see that the SDK is too old
 
@@ -1210,9 +1210,9 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1230,7 +1230,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, we should see the datacenter is unknown
 
@@ -1296,9 +1296,9 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1335,7 +1335,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
         DatacenterId: crypto.HashID("local"),
     }
 
-    packetData, err := SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+    packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
     if err != nil {
         core.Error("failed to write server update request packet: %v", err)
         return
@@ -1377,7 +1377,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
             // ignore any packets that are too small
 
-            if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+            if len(packetData) < 16+3+4+packets.SDK5_CRYPTO_SIGN_BYTES+2 {
                 core.Debug("too small")
                 continue
             }
@@ -1406,14 +1406,14 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
             // make sure packet signature check passes
 
-            if !SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+            if !packets.SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
                 core.Debug("packet signature check failed")
                 return
             }
 
             // read packet
 
-            packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+            packetData = packetData[16 : len(packetData)-(2+packets.SDK5_CRYPTO_SIGN_BYTES)]
 
             responsePacket := packets.SDK5_ServerUpdateResponsePacket{}
             if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
@@ -1536,9 +1536,9 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1555,7 +1555,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -1625,9 +1625,9 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1651,7 +1651,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
     // actually sign the packet, so it passes the signature check
 
-    SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
+    packets.SDK5_SignPacket(packetData[:], buyerPrivateKey[:])
 
     // run the packet through the handler, we should see that the SDK is too old
 
@@ -1719,9 +1719,9 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
     buyerId := uint64(0x1111111122222222)
 
-    var buyerPublicKey [packets.NEXT_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-    var buyerPrivateKey [packets.NEXT_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-    SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+    var buyerPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+    var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+    packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
     harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
@@ -1765,7 +1765,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
         packet.MatchValues[i] = float64(i)
     }
 
-    packetData, err := SDK5_WritePacket(&packet, packets.SDK5_MATCH_DATA_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+    packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_MATCH_DATA_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
     if err != nil {
         core.Error("failed to write match data request packet: %v", err)
         return
@@ -1807,7 +1807,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
             // ignore any packets that are too small
 
-            if len(packetData) < 16+3+4+packets.NEXT_CRYPTO_SIGN_BYTES+2 {
+            if len(packetData) < 16+3+4+packets.SDK5_CRYPTO_SIGN_BYTES+2 {
                 core.Debug("too small")
                 continue
             }
@@ -1836,14 +1836,14 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
             // make sure packet signature check passes
 
-            if !SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+            if !packets.SDK5_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
                 core.Debug("packet signature check failed")
                 return
             }
 
             // read packet
 
-            packetData = packetData[16 : len(packetData)-(2+packets.NEXT_CRYPTO_SIGN_BYTES)]
+            packetData = packetData[16 : len(packetData)-(2+packets.SDK5_CRYPTO_SIGN_BYTES)]
 
             responsePacket := packets.SDK5_MatchDataResponsePacket{}
             if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
