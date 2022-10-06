@@ -15,7 +15,6 @@ import (
     "os"
     "os/signal"
     "runtime"
-    // "sort"
     "sync"
     "syscall"
     "time"
@@ -171,24 +170,25 @@ func UpdateMagic() {
     }
 }
 
-func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []*net.UDPAddr) {
+func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []net.UDPAddr) {
     backend.mutex.Lock()
-    // todo: fill all relay data from relay manager
-    // allRelayData := make([]routing.RelayData, 0)
+	activeRelays := backend.relayManager.GetActiveRelays()
     backend.mutex.Unlock()
-    /*
-    sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
-    if len(allRelayData) > int(core.MaxNearRelays) {
-        allRelayData = allRelayData[:core.MaxNearRelays]
+    if len(activeRelays) > core.MaxNearRelays {
+    	activeRelays = activeRelays[:core.MaxNearRelays]
     }
-    */
-    return nil, nil
+    numRelays := len(activeRelays)
+    relayIds = make([]uint64, numRelays)
+    relayAddresses = make([]net.UDPAddr, numRelays)
+    for i := range activeRelays {
+    	relayIds[i] = activeRelays[i].Id
+    	relayAddresses[i] = activeRelays[i].Address
+    }
+	return
 }
 
 // -----------------------------------------------------------
 
-const InitRequestMagic = uint32(0x9083708f)
-const InitRequestVersion = 0
 const UpdateRequestVersion = 5
 const UpdateResponseVersion = 1
 const MaxRelayAddressLength = 256
@@ -336,11 +336,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     // get relays to ping
 
-    relaysToPing := make([]routing.RelayPingData, 0)
+    relayIds, relayAddresses := backend.GetRelays()
 
-    // todo: get relays to ping from relay manager
-
-    // ...
+    numRelays = uint32(len(relayIds))
 
     // write response packet
 
@@ -354,11 +352,11 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
 
-    encoding.WriteUint32(responseData, &index, uint32(len(relaysToPing)))
+    encoding.WriteUint32(responseData, &index, uint32(numRelays))
 
-    for i := range relaysToPing {
-        encoding.WriteUint64(responseData, &index, relaysToPing[i].ID)
-        encoding.WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
+    for i := range relayIds {
+        encoding.WriteUint64(responseData, &index, relayIds[i])
+        encoding.WriteString(responseData, &index, relayAddresses[i].String(), MaxRelayAddressLength)
     }
 
     encoding.WriteString(responseData, &index, relayVersion, uint32(32))
@@ -663,12 +661,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
     numRelays := len(relayIds)
 
-    if numRelays > packets.SDK5_MaxNearRelays {
-    	numRelays = packets.SDK5_MaxNearRelays
-    	relayIds = relayIds[:numRelays]
-    	relayAddresses = relayAddresses[:numRelays]
-    }
-
     // decide if we should take network next or not
 
     takeNetworkNext := numRelays > 0
@@ -771,7 +763,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         for i := 0; i < numRelays; i++ {
            	responsePacket.NearRelayIds[i] = relayIds[i]
-           	responsePacket.NearRelayAddresses[i] = *relayAddresses[i]
+           	responsePacket.NearRelayAddresses[i] = relayAddresses[i]
         }
 
     } else {
