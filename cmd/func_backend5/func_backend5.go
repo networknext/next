@@ -795,6 +795,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         // build token data
 
+        // todo: this should be a function in common
+
         routerPrivateKey := [crypto.KeySize]byte{}
         copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
