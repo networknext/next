@@ -51,7 +51,7 @@
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -65,7 +65,7 @@
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
-#define NEXT_SERVER_INIT_TIMEOUT                                     10.0
+#define NEXT_SERVER_INIT_TIMEOUT                                     30.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -14303,6 +14303,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
+    	next_printf( NEXT_LOG_LEVEL_DEBUG, "server backend hostname is an address" );
         next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
         address.port = uint16_t( atoi(port) );
         success = true;
