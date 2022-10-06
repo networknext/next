@@ -214,6 +214,10 @@ blocks:
             - bigquery-emulator --project="local" --dataset="local" &
             - cd ./dist && ./func_tests_backend test_google_bigquery
 
+        - name: "test_redis_selector"
+          commands:
+            - cd ./dist && ./func_tests_backend test_redis_selector
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
