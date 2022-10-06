@@ -27,7 +27,6 @@ import (
     "github.com/networknext/backend/modules/packets"
 
     "github.com/networknext/backend/modules-old/crypto"
-    "github.com/networknext/backend/modules-old/routing"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -220,6 +219,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
+    relayId := common.RelayId(relay_address)
+
     var token []byte
     if !encoding.ReadBytes(body, &index, &token, RelayTokenBytes) {
         fmt.Printf("bad token\n")
@@ -232,52 +233,46 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
-    relay := &routing.RelayData{
-        ID:             common.RelayId(relay_address),
-        Addr:           *udpAddr,
-        PublicKey:      token,
-        LastUpdateTime: time.Now(),
-    }
-
-    var numRelays uint32
-    if !encoding.ReadUint32(body, &index, &numRelays) {
-        fmt.Printf("could not read num relays\n")
+    var numSamples uint32
+    if !encoding.ReadUint32(body, &index, &numSamples) {
+        fmt.Printf("could not read num samples\n")
         return
     }
 
-    if numRelays > MaxRelays {
-        fmt.Printf("too many relays\n")
-        return
-    }
+	sampleRelayId := make([]uint64, numSamples)
+	sampleRTT := make([]float32, numSamples)
+	sampleJitter := make([]float32, numSamples)
+	samplePacketLoss := make([]float32, numSamples)
 
-    statsUpdate := &routing.RelayStatsUpdate{}
-    statsUpdate.ID = relay.ID
+    for i := 0; i < int(numSamples); i++ {
 
-    for i := 0; i < int(numRelays); i++ {
         var id uint64
         var rtt, jitter, packetLoss float32
+
         if !encoding.ReadUint64(body, &index, &id) {
             fmt.Printf("bad relay id\n")
             return
         }
+
         if !encoding.ReadFloat32(body, &index, &rtt) {
             fmt.Printf("bad relay rtt\n")
             return
         }
+
         if !encoding.ReadFloat32(body, &index, &jitter) {
             fmt.Printf("bad relay jitter\n")
             return
         }
+
         if !encoding.ReadFloat32(body, &index, &packetLoss) {
             fmt.Printf("bad relay packet loss\n")
             return
         }
-        ping := routing.RelayStatsPing{}
-        ping.RelayID = id
-        ping.RTT = rtt
-        ping.Jitter = jitter
-        ping.PacketLoss = packetLoss
-        statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
+
+        sampleRelayId[i] = id
+        sampleRTT[i] = rtt
+        sampleJitter[i] = jitter
+        samplePacketLoss[i] = packetLoss
     }
 
     var sessionCount uint64
@@ -330,15 +325,19 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     // process the relay update
 
-    // todo: relay update -> relay manager
+    relayPort := udpAddr.Port
 
-    // ...
+    relayName := fmt.Sprintf("local.%d", relayPort)
+
+	backend.mutex.Lock()
+	backend.relayManager.ProcessRelayUpdate(relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+	backend.mutex.Unlock()
 
     // get relays to ping
 
     relayIds, relayAddresses := backend.GetRelays()
 
-    numRelays = uint32(len(relayIds))
+    numRelays := uint32(len(relayIds))
 
     // write response packet
 
