@@ -65,7 +65,7 @@
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
-#define NEXT_SERVER_INIT_TIMEOUT                                     30.0
+#define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
