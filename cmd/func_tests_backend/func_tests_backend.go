@@ -918,6 +918,148 @@ func test_redis_streams() {
     core.Debug("done")
 }
 
+func test_redis_selector() {
+    fmt.Printf("test_redis_selector\n")
+
+    cancelContext, _ := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+
+    redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+        RedisHostname: "127.0.0.1:6379",
+        RedisPassword: "",
+        Timeout:       time.Second * 5,
+    })
+    if err != nil {
+        core.Error("failed to setup redis selector 1")
+        os.Exit(1)
+    }
+
+    redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+        RedisHostname: "127.0.0.1:6379",
+        RedisPassword: "",
+        Timeout:       time.Second * 5,
+    })
+    if err != nil {
+        core.Error("failed to setup redis selector 2")
+        os.Exit(1)
+    }
+
+    dataStore := []common.DataStoreConfig{
+        {
+            Name: "store1",
+            Data: []byte("1"),
+        },
+        {
+            Name: "store2",
+            Data: []byte("2"),
+        },
+        {
+            Name: "store3",
+            Data: []byte("3"),
+        },
+    }
+
+    dataStore2 := []common.DataStoreConfig{
+        {
+            Name: "store1",
+            Data: []byte("4"),
+        },
+        {
+            Name: "store2",
+            Data: []byte("5"),
+        },
+        {
+            Name: "store3",
+            Data: []byte("6"),
+        },
+    }
+
+    go func() {
+
+        ticker := time.NewTicker(time.Second)
+
+        iterationNum := 0
+
+        for {
+            select {
+            case <-cancelContext.Done():
+                return
+            case <-ticker.C:
+                if redisSelector.IsLeader() {
+                    iterationNum++
+                    if iterationNum%5 == 0 {
+                        continue
+                    }
+                }
+                redisSelector.Store(cancelContext, dataStore)
+                newDataStore := redisSelector.Load(cancelContext)
+
+                if redisSelector.IsLeader() {
+                    for i, store := range dataStore {
+                        if string(store.Data) != string(newDataStore[i].Data) {
+                            core.Error("selector 1: data loaded was not from selector 1: %s != %s", string(store.Data), string(newDataStore[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+                } else {
+                    for i, store := range dataStore2 {
+                        if string(store.Data) != string(newDataStore[i].Data) {
+                            core.Error("selector 1: data loaded was not from selector 2: %s != %s", string(store.Data), string(newDataStore[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+
+                }
+            }
+        }
+    }()
+
+    time.Sleep(time.Second * 2)
+
+    go func() {
+
+        ticker := time.NewTicker(time.Second)
+
+        iterationNum := 0
+
+        for {
+            select {
+            case <-cancelContext.Done():
+                return
+            case <-ticker.C:
+                if redisSelector2.IsLeader() {
+                    iterationNum++
+                    if iterationNum%5 == 0 {
+                        continue
+                    }
+                }
+                redisSelector2.Store(cancelContext, dataStore2)
+                newDataStore2 := redisSelector2.Load(cancelContext)
+
+                if redisSelector2.IsLeader() {
+                    for i, store := range dataStore2 {
+                        if string(store.Data) != string(newDataStore2[i].Data) {
+                            core.Error("selector 2: data loaded was not from selector 2: %s != %s", string(store.Data), string(newDataStore2[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+                } else {
+                    for i, store := range dataStore {
+                        if string(store.Data) != string(newDataStore2[i].Data) {
+                            core.Error("selector 2: data loaded was not from selector 1: %s != %s", string(store.Data), string(newDataStore2[i].Data))
+                            os.Exit(1)
+                        }
+                    }
+
+                }
+            }
+        }
+    }()
+
+    time.Sleep(time.Second * 30)
+
+    core.Debug("done")
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -930,6 +1072,7 @@ func main() {
         test_magic_backend,
         test_redis_pubsub,
         test_redis_streams,
+        test_redis_selector,
         test_google_pubsub,
         test_google_bigquery,
     }
