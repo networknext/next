@@ -7,6 +7,7 @@ package main
 
 import (
     "context"
+    "encoding/base64"
     "fmt"
     "io/ioutil"
     "math/rand"
@@ -18,7 +19,6 @@ import (
     "sync"
     "syscall"
     "time"
-    "encoding/base64"
 
     "github.com/gorilla/mux"
 
@@ -756,70 +756,57 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         // next
 
-        const MaxRelays = packets.SDK5_MaxRelaysPerRoute
+        const MaxRouteRelays = packets.SDK5_MaxRelaysPerRoute
 
-        if numRelays > MaxRelays {
-            numRelays = MaxRelays
-            relayIds = relayIds[:numRelays]
-            relayAddresses = relayAddresses[:numRelays]
+        var routeRelayIds [MaxRouteRelays]uint64
+        var routeRelayAddresses [MaxRouteRelays]net.UDPAddr
+        var routeRelayPublicKeys [MaxRouteRelays][]byte
+
+        numRouteRelays := numRelays
+        if numRouteRelays > MaxRouteRelays {
+            numRouteRelays = MaxRouteRelays
         }
 
-        var relayPublicKeys = [MaxRelays][]byte{}
-        for i := 0; i < MaxRelays; i++ {
-        	relayPublicKeys[i] = relayPublicKey
+        for i := 0; i < numRouteRelays; i++ {
+            routeRelayIds[i] = relayIds[i]
+            routeRelayAddresses[i] = relayAddresses[i]
+            routeRelayPublicKeys[i] = relayPublicKey
         }
 
-        nextRoute := routing.Route{
-            NumRelays:       numRelays,
-            RelayPublicKeys: relayPublicKeys,
-        }
-
-        for i := 0; i < MaxRelays; i++ {
-            nextRoute.RelayIDs[i] = relayIds[i]
-            nextRoute.RelayAddrs[i] = relayAddresses[i]
-        }
-
-        relayTokens := make([]routing.RelayToken, nextRoute.NumRelays)
-        for i := range relayTokens {
-            relayTokens[i] = routing.RelayToken{
-                ID:        nextRoute.RelayIDs[i],
-                Addr:      nextRoute.RelayAddrs[i],
-                PublicKey: nextRoute.RelayPublicKeys[i],
-            }
-        }
-
-        // is this a continue route, or a new next route?
+        // is this a continue route, or a new route?
 
         var routeType int32
-        sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIds
+
+        sameRoute := numRouteRelays == int(sessionData.RouteNumRelays) && routeRelayIds == sessionData.RouteRelayIds
 
         // build token data
-
-        // todo: this should be a function in common
 
         routerPrivateKey := [crypto.KeySize]byte{}
         copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
-        tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
+        tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
         tokenAddresses[0] = &requestPacket.ClientAddress
         tokenAddresses[len(tokenAddresses)-1] = &requestPacket.ServerAddress
-        for i := 0; i < nextRoute.NumRelays; i++ {
+        for i := 0; i < numRouteRelays; i++ {
             tokenAddresses[1+i] = &relayAddresses[i]
         }
 
-        tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
+        tokenPublicKeys := make([][]byte, numRouteRelays+2)
         tokenPublicKeys[0] = requestPacket.ClientRoutePublicKey[:]
         tokenPublicKeys[len(tokenPublicKeys)-1] = requestPacket.ServerRoutePublicKey[:]
-        for i := 0; i < nextRoute.NumRelays; i++ {
-            tokenPublicKeys[1+i] = relayPublicKeys[i]
+        for i := 0; i < numRouteRelays; i++ {
+            tokenPublicKeys[1+i] = relayPublicKey
         }
 
-        numTokens := nextRoute.NumRelays + 2
+        numTokens := numRouteRelays + 2
 
         var tokenData []byte
+
+        // todo: remove any "routing.*" below
+
         if sameRoute {
             tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-            core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
+            core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey)
             routeType = routing.RouteTypeContinue
         } else {
             sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
@@ -831,20 +818,27 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
         }
 
         // contruct the session update response packet
-        
+
         responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
             SessionId:          requestPacket.SessionId,
             SliceNumber:        requestPacket.SliceNumber,
-            // todo: need to stash near relays somewhere
-            // NumNearRelays:      int32(numRelays),
-            // NearRelayIds:       nearRelayIds[:len(nearRelays)],
-            // NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
             RouteType:          routeType,
             Multipath:          multipath,
             Committed:          committed,
             NumTokens:          int32(numTokens),
             Tokens:             tokenData,
             HighFrequencyPings: true,
+        }
+
+        if numRelays > packets.SDK5_MaxNearRelays {
+            numRelays = packets.SDK5_MaxNearRelays
+        }
+
+        responsePacket.NumNearRelays = int32(numRelays)
+
+        for i := 0; i < numRelays; i++ {
+            responsePacket.NearRelayIds[i] = relayIds[i]
+            responsePacket.NearRelayAddresses[i] = relayAddresses[i]
         }
     }
 
