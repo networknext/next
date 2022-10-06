@@ -164,7 +164,7 @@ func (stream *WriteStream) SerializeString(value *string, maxSize int) {
         return
     }
     min := int32(0)
-    max := int32(maxSize)
+    max := int32(maxSize) - 1
     stream.SerializeInteger(&length, min, max)
     if length > 0 {
         stream.SerializeBytes([]byte(*value))
