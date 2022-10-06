@@ -99,21 +99,17 @@ func OptimizeThread() {
 
         backend.mutex.Lock()
 
-        relayIds := make([]uint64, 0)
-        relayDatacenterIds := make([]uint64, 0)
+        activeRelays := backend.relayManager.GetActiveRelays()
 
-        // todo: get set of relay ids and datacenter ids from relay manager
-
-        /*
-           for _, relayData := range backend.relayMap.GetAllRelayData() {
-              relayIDs = append(relayIDs, relayData.ID)
-              relayDatacenterIDs = append(relayDatacenterIDs, common.DatacenterId("local"))
-           }
-        */
+        numRelays := len(activeRelays)
+        relayIds := make([]uint64, numRelays)
+        relayDatacenterIds := make([]uint64, numRelays)
+        for i := 0; i < numRelays; i++ {
+        	relayIds[i] = activeRelays[i].Id
+        	relayDatacenterIds[i] = common.DatacenterId("local")
+        }
 
         costMatrix := backend.relayManager.GetCosts(relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
-
-        numRelays := len(relayIds)
 
         numCPUs := runtime.NumCPU()
         numSegments := numRelays
