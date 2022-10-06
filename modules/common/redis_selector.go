@@ -6,6 +6,7 @@ import (
     "encoding/gob"
     "fmt"
     "sort"
+    "strings"
     "sync"
     "time"
 
@@ -19,29 +20,30 @@ const RedisSelectorVersion = 0 // IMPORTANT: bump this anytime you change the re
 type RedisSelectorConfig struct {
     RedisHostname string
     RedisPassword string
+    Timeout       time.Duration
 }
 
 type RedisSelector struct {
-    config          RedisSelectorConfig
-    redisClient     *redis.Client
-    startTime       time.Time
-    instanceId      string
-    relaysData      []byte
-    costMatrixData  []byte
-    routeMatrixData []byte
-    storeCounter    uint64
+    config       RedisSelectorConfig
+    redisClient  *redis.Client
+    startTime    time.Time
+    instanceId   string
+    storeCounter uint64
 
     leaderMutex sync.RWMutex
     isLeader    bool
 }
 
 type InstanceEntry struct {
-    InstanceId     string
-    Uptime         uint64
-    Timestamp      uint64
-    RelaysKey      string
-    CostMatrixKey  string
-    RouteMatrixKey string
+    InstanceId string
+    Uptime     uint64
+    Timestamp  uint64
+    Keys       []string
+}
+
+type DataStoreConfig struct {
+    Name string
+    Data []byte
 }
 
 func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*RedisSelector, error) {
@@ -67,7 +69,7 @@ func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*Redi
     return selector, nil
 }
 
-func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, costMatrixData []byte, routeMatrixData []byte) {
+func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStoreConfig) {
 
     selector.storeCounter++
 
@@ -75,9 +77,13 @@ func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, cos
     instanceEntry.InstanceId = selector.instanceId
     instanceEntry.Uptime = uint64(time.Since(selector.startTime))
     instanceEntry.Timestamp = uint64(time.Now().Unix())
-    instanceEntry.RelaysKey = fmt.Sprintf("relays-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
-    instanceEntry.CostMatrixKey = fmt.Sprintf("cost_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
-    instanceEntry.RouteMatrixKey = fmt.Sprintf("route_matrix-%d/%s-%d", RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+
+    numStores := len(dataStores)
+    instanceEntry.Keys = make([]string, numStores)
+
+    for i := 0; i < numStores; i++ {
+        instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s-%d", dataStores[i].Name, RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+    }
 
     var buffer bytes.Buffer
     encoder := gob.NewEncoder(&buffer)
@@ -90,32 +96,35 @@ func (selector *RedisSelector) Store(ctx context.Context, relaysData []byte, cos
     timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
     pipe := selector.redisClient.TxPipeline()
-    pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.RelaysKey, relaysData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.CostMatrixKey, costMatrixData[:], 10*time.Second)
-    pipe.Set(timeoutContext, instanceEntry.RouteMatrixKey, routeMatrixData[:], 10*time.Second)
-    _, err = pipe.Exec(timeoutContext)
+    pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], selector.config.Timeout)
 
+    for i := 0; i < numStores; i++ {
+        pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], selector.config.Timeout)
+    }
+
+    _, err = pipe.Exec(timeoutContext)
     if err != nil {
         core.Error("failed to store instance data: %v", err)
         return
     }
 }
 
-func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte) {
+func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
     timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
     // get all "instance/*" keys via scan to be safe
 
     instanceKeys := []string{}
+    dataStores := []DataStoreConfig{}
     itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
     for itor.Next(timeoutContext) {
         instanceKeys = append(instanceKeys, itor.Val())
     }
     if err := itor.Err(); err != nil {
         core.Error("failed to get instance keys: %v", err)
-        return nil, nil, nil
+        return dataStores
+
     }
 
     // query all instance data
@@ -128,7 +137,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
 
     if err != nil {
         core.Error("failed to get instance entries: %v", err)
-        return nil, nil, nil
+        return dataStores
     }
 
     // convert instance data to instance entries
@@ -158,7 +167,7 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
 
     if len(instanceEntries) == 0 {
         core.Error("no instance entries found")
-        return nil, nil, nil
+        return dataStores
     }
 
     // select master instance (most uptime, instance id as tie breaker)
@@ -186,21 +195,26 @@ func (selector *RedisSelector) Load(ctx context.Context) ([]byte, []byte, []byte
     // get data for master instance
 
     pipe = selector.redisClient.Pipeline()
-    pipe.Get(timeoutContext, masterInstance.RelaysKey)
-    pipe.Get(timeoutContext, masterInstance.CostMatrixKey)
-    pipe.Get(timeoutContext, masterInstance.RouteMatrixKey)
-    cmds, err = pipe.Exec(timeoutContext)
 
-    if err != nil {
-        core.Error("failed to get data from redis: %v", err)
-        return nil, nil, nil
+    dataStores = make([]DataStoreConfig, len(masterInstance.Keys))
+
+    for i := 0; i < len(dataStores); i++ {
+        key := masterInstance.Keys[i]
+        dataStores[i].Name = strings.Split(key, "-")[0]
+        pipe.Get(timeoutContext, key)
     }
 
-    selector.relaysData = []byte(cmds[0].(*redis.StringCmd).Val())
-    selector.costMatrixData = []byte(cmds[1].(*redis.StringCmd).Val())
-    selector.routeMatrixData = []byte(cmds[2].(*redis.StringCmd).Val())
+    cmds, err = pipe.Exec(timeoutContext)
+    if err != nil {
+        core.Error("failed to get data from redis: %v", err)
+        return dataStores
+    }
 
-    return selector.relaysData, selector.costMatrixData, selector.routeMatrixData
+    for i := 0; i < len(dataStores); i++ {
+        dataStores[i].Data = []byte(cmds[i].(*redis.StringCmd).Val())
+    }
+
+    return dataStores
 }
 
 func (selector *RedisSelector) IsLeader() bool {
