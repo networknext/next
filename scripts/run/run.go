@@ -255,6 +255,7 @@ func func_backend4() {
 
 func func_backend5() {
     bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
+}
 
 func func_tests_backend() {
     bash("make ./dist/func_tests_backend && ./dist/func_tests_backend")

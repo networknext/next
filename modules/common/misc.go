@@ -56,8 +56,8 @@ func Clamp[T Number](value *T, min T, max T) bool {
 func ClampString(value *string, maxLength int) bool {
     // IMPORTANT: only on simple ascii strings please
     byteArray := []byte(*value)
-    if len(byteArray) > maxLength {
-        *value = string(byteArray[:maxLength])
+    if len(byteArray) > maxLength - 1 {
+        *value = string(byteArray[:maxLength-1]) // IMPORTANT: -1 is for compatibility with C null terminated strings
         return true
     }
     return false
