@@ -943,6 +943,16 @@ func test_redis_selector() {
         os.Exit(1)
     }
 
+    redisObserver, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+        RedisHostname: "127.0.0.1:6379",
+        RedisPassword: "",
+        Timeout:       time.Second * 5,
+    })
+    if err != nil {
+        core.Error("failed to setup redis observer")
+        os.Exit(1)
+    }
+
     dataStore := []common.DataStoreConfig{
         {
             Name: "store1",
@@ -1050,6 +1060,37 @@ func test_redis_selector() {
                         }
                     }
 
+                }
+            }
+        }
+    }()
+
+    time.Sleep(time.Second * 2)
+
+    go func() {
+
+        ticker := time.NewTicker(time.Second)
+
+        for {
+            select {
+            case <-cancelContext.Done():
+                return
+            case <-ticker.C:
+                observedData := redisObserver.Load(cancelContext)
+
+                if redisObserver.IsLeader() {
+                    core.Error("observer should never be leader")
+                    os.Exit(1)
+                }
+
+                if len(observedData) == 0 {
+                    core.Error("failed to successfully observe data store")
+                    os.Exit(1)
+                }
+
+                if !redisSelector.IsLeader() && !redisSelector2.IsLeader() {
+                    core.Error("failed to have an elected leader")
+                    os.Exit(1)
                 }
             }
         }
