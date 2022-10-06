@@ -15,7 +15,7 @@ import (
     "os"
     "os/signal"
     "runtime"
-    "sort"
+    // "sort"
     "sync"
     "syscall"
     "time"
@@ -171,16 +171,18 @@ func UpdateMagic() {
     }
 }
 
-func (backend *Backend) GetNearRelays() []routing.RelayData {
+func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []*net.UDPAddr) {
     backend.mutex.Lock()
     // todo: fill all relay data from relay manager
-    allRelayData := make([]routing.RelayData, 0)
+    // allRelayData := make([]routing.RelayData, 0)
     backend.mutex.Unlock()
+    /*
     sort.SliceStable(allRelayData, func(i, j int) bool { return allRelayData[i].ID < allRelayData[j].ID })
     if len(allRelayData) > int(core.MaxNearRelays) {
         allRelayData = allRelayData[:core.MaxNearRelays]
     }
-    return allRelayData
+    */
+    return nil, nil
 }
 
 // -----------------------------------------------------------
@@ -328,7 +330,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     // process the relay update
 
-    // todo
+    // todo: relay update -> relay manager
 
     // ...
 
@@ -336,7 +338,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
     relaysToPing := make([]routing.RelayPingData, 0)
 
-    // todo
+    // todo: get relays to ping from relay manager
 
     // ...
 
@@ -442,10 +444,6 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
         return
     }
 
-    // todo: check buyer id and packet signature
-
-    // ...
-
     // process the packet according to type
 
     packetData = packetData[16:]
@@ -494,8 +492,6 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 }
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
-
-    // todo: we should not be running the func test with the real backend private key...
 
     packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, crypto.BackendPrivateKey)
     if err != nil {
@@ -661,11 +657,21 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
         sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
     }
 
+    // get data about all active relays on the relay backend
+
+    relayIds, relayAddresses := backend.GetRelays()
+
+    numRelays := len(relayIds)
+
+    if numRelays > packets.SDK5_MaxNearRelays {
+    	numRelays = packets.SDK5_MaxNearRelays
+    	relayIds = relayIds[:numRelays]
+    	relayAddresses = relayAddresses[:numRelays]
+    }
+
     // decide if we should take network next or not
 
-    nearRelays := backend.GetNearRelays()
-
-    takeNetworkNext := len(nearRelays) > 0
+    takeNetworkNext := numRelays > 0
 
     if backend.mode == BACKEND_MODE_FORCE_DIRECT {
         takeNetworkNext = false
@@ -690,14 +696,15 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
     }
 
     if backend.mode == BACKEND_MODE_ROUTE_SWITCHING {
-        rand.Shuffle(len(nearRelays), func(i, j int) {
-            nearRelays[i], nearRelays[j] = nearRelays[j], nearRelays[i]
+        rand.Shuffle(numRelays, func(i, j int) {
+            relayIds[i], relayIds[j] = relayIds[j], relayIds[i]
+            relayAddresses[i], relayAddresses[j] = relayAddresses[j], relayAddresses[i]
         })
     }
 
     // run various checks and prints for special func test modes
 
-    multipath := len(nearRelays) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
+    multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
     committed := true
 
@@ -736,14 +743,17 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
     var responsePacket *packets.SDK5_SessionUpdateResponsePacket
 
+    // todo: fill these
+    /*
     var nearRelayIds = [MaxRelays]uint64{}
     var nearRelayAddresses = [MaxRelays]net.UDPAddr{}
     var nearRelayPublicKeys = [MaxRelays][]byte{}
-    for i, relay := range nearRelays {
+    for i, relay := range relayIds {
         nearRelayIds[i] = relay.ID
         nearRelayAddresses[i] = relay.Addr
         nearRelayPublicKeys[i] = relay.PublicKey
     }
+    */
 
     if !takeNetworkNext {
 
@@ -752,14 +762,16 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
         responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
             SessionId:     requestPacket.SessionId,
             SliceNumber:   requestPacket.SliceNumber,
-            NumNearRelays: int32(len(nearRelays)),
-            // todo: need to fill out near relay ids etc.
-            // NearRelayIds:       nearRelayIds[:len(nearRelays)],
-            // NearRelayAddresses: nearRelayAddresses[:len(nearRelays)],
+            NumNearRelays: int32(numRelays),
             RouteType:          int32(packets.SDK5_RouteTypeDirect),
             NumTokens:          0,
             Tokens:             nil,
             HighFrequencyPings: true,
+        }
+
+        for i := 0; i < numRelays; i++ {
+           	responsePacket.NearRelayIds[i] = relayIds[i]
+           	responsePacket.NearRelayAddresses[i] = *relayAddresses[i]
         }
 
     } else {
@@ -884,30 +896,6 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, request
 
     SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
 }
-
-// todo: incorporate
-/*
-   // check packet signature
-
-   var buyerId uint64
-   index := 16 + 3
-   encoding.ReadUint64(packetData, &index, &buyerId)
-
-   buyer, ok := handler.Database.BuyerMap[buyerId]
-   if !ok {
-       core.Error("unknown buyer id: %016x", buyerId)
-       handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
-       return
-   }
-
-   publicKey := buyer.PublicKey
-
-   if !SDK5_CheckPacketSignature(packetData, publicKey) {
-       core.Debug("packet signature check failed")
-       handler.Events[SDK5_HandlerEvent_SignatureCheckFailed] = true
-       return
-   }
-*/
 
 func excludeNearRelays(sessionResponse *packets.SDK5_SessionUpdateResponsePacket, routeState core.RouteState) {
     numExcluded := 0
