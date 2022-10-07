@@ -71,7 +71,7 @@ func run(action string, log string, env ...string) *bytes.Buffer {
 	return &stdout
 }
 
-func happy_path() int {
+func happy_path(wait bool) int {
 
 	if envvar.GetString("ENV", "") != "local" {
 		core.Error("happy path only works in local env. please run 'next select local' first")
@@ -459,9 +459,10 @@ func happy_path() int {
 
 	fmt.Printf("\nsuccess!\n\n")
 
-	waitDuration := envvar.GetDuration("WAIT_DURATION", 24*time.Hour)
-
-	time.Sleep(waitDuration)
+	if wait {
+		waitDuration := envvar.GetDuration("WAIT_DURATION", 24*time.Hour)
+		time.Sleep(waitDuration)
+	}
 
 	return 0
 }
@@ -476,6 +477,11 @@ func cleanup() {
 
 func main() {
 
+	wait := true
+	if len(os.Args) > 1 {
+		wait = false
+	}
+
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -484,7 +490,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	result := happy_path()
+	result := happy_path(wait)
 
 	cleanup()
 

@@ -120,6 +120,8 @@ func main() {
 		server_backend5()
 	} else if command == "happy-path" {
 		happy_path()
+	} else if command == "happy-path-no-wait" {
+		happy_path_no_wait()
 	} else if command == "server4" {
 		server4()
 	} else if command == "server5" {
@@ -206,13 +208,13 @@ func server_backend5() {
 }
 
 func happy_path() {
-	var arg string
-	if len(os.Args) >= 3 {
-		arg = os.Args[2]
-	}
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	os.Setenv("WAIT_DURATION", arg)
 	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
+}
+
+func happy_path_no_wait() {
+	fmt.Printf("\ndon't worry. be happy.\n\n")
+	bash("./build.sh && go run ./scripts/happy_path/happy_path.go 1")
 }
 
 func server4() {
