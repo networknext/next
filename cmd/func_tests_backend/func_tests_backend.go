@@ -1150,9 +1150,9 @@ func test_redis_selector_migration() {
 	core.Debug("done")
 }
 
-func test_redis_selector_flap() {
+func test_redis_selector_no_flap() {
 
-	fmt.Printf("test_redis_selector_flap\n")
+	fmt.Printf("test_redis_selector_no_flap\n")
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
@@ -1415,9 +1415,9 @@ func test_redis_leader_election_migration() {
 	core.Debug("done")
 }
 
-func test_redis_leader_election_flap() {
+func test_redis_leader_election_no_flap() {
 
-	fmt.Printf("test_redis_leader_election_flap\n")
+	fmt.Printf("test_redis_leader_election_no_flap\n")
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
@@ -1506,9 +1506,9 @@ func main() {
 		test_redis_pubsub,
 		test_redis_streams,
 		test_redis_selector_migration,
-		test_redis_selector_flap,
+		test_redis_selector_no_flap,
 		test_redis_leader_election_migration,
-		test_redis_leader_election_flap,
+		test_redis_leader_election_no_flap,
 		test_google_pubsub,
 		test_google_bigquery,
 	}
