@@ -1,11 +1,11 @@
 package metrics
 
 import (
-    "context"
-    "time"
+	"context"
+	"time"
 
-    "github.com/go-kit/kit/log"
-    "github.com/go-kit/kit/metrics"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics"
 )
 
 // NoOpHandler is a metric handler that doesn't do anything. Useful for testing and error handling.
@@ -15,13 +15,13 @@ func (handler *NoOpHandler) Open(ctx context.Context) error { return nil }
 func (handler *NoOpHandler) WriteLoop(ctx context.Context, logger log.Logger, duration time.Duration, maxMetricsIncrement int) {
 }
 func (handler *NoOpHandler) NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error) {
-    return &EmptyCounter{}, nil
+	return &EmptyCounter{}, nil
 }
 func (handler *NoOpHandler) NewGauge(ctx context.Context, descriptor *Descriptor) (Gauge, error) {
-    return &EmptyGauge{}, nil
+	return &EmptyGauge{}, nil
 }
 func (handler *NoOpHandler) NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error) {
-    return &EmptyHistogram{}, nil
+	return &EmptyHistogram{}, nil
 }
 func (handler *NoOpHandler) Close() error { return nil }
 

@@ -1,89 +1,89 @@
 package common
 
 import (
-    "context"
-    "fmt"
-    "net"
-    "syscall"
+	"context"
+	"fmt"
+	"net"
+	"syscall"
 
-    "golang.org/x/sys/unix"
+	"golang.org/x/sys/unix"
 )
 
 type UDPServerConfig struct {
-    Port              int
-    NumThreads        int
-    SocketReadBuffer  int
-    SocketWriteBuffer int
-    MaxPacketSize     int
+	Port              int
+	NumThreads        int
+	SocketReadBuffer  int
+	SocketWriteBuffer int
+	MaxPacketSize     int
 }
 
 type UDPServer struct {
-    config UDPServerConfig
-    conn   []*net.UDPConn
+	config UDPServerConfig
+	conn   []*net.UDPConn
 }
 
 func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler func(conn *net.UDPConn, from *net.UDPAddr, packet []byte)) *UDPServer {
 
-    udpServer := UDPServer{}
-    udpServer.config = config
-    udpServer.conn = make([]*net.UDPConn, config.NumThreads)
+	udpServer := UDPServer{}
+	udpServer.config = config
+	udpServer.conn = make([]*net.UDPConn, config.NumThreads)
 
-    lc := net.ListenConfig{
-        Control: func(network string, address string, c syscall.RawConn) error {
-            err := c.Control(func(fileDescriptor uintptr) {
-                err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-                if err != nil {
-                    panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
-                }
+	lc := net.ListenConfig{
+		Control: func(network string, address string, c syscall.RawConn) error {
+			err := c.Control(func(fileDescriptor uintptr) {
+				err := unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse address socket option: %v", err))
+				}
 
-                err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-                if err != nil {
-                    panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
-                }
-            })
+				err = unix.SetsockoptInt(int(fileDescriptor), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				if err != nil {
+					panic(fmt.Sprintf("failed to set reuse port socket option: %v", err))
+				}
+			})
 
-            return err
-        },
-    }
+			return err
+		},
+	}
 
-    for i := 0; i < config.NumThreads; i++ {
+	for i := 0; i < config.NumThreads; i++ {
 
-        lp, err := lc.ListenPacket(ctx, "udp", fmt.Sprintf("0.0.0.0:%d", config.Port))
-        if err != nil {
-            panic(fmt.Sprintf("could not bind socket: %v", err))
-        }
+		lp, err := lc.ListenPacket(ctx, "udp", fmt.Sprintf("0.0.0.0:%d", config.Port))
+		if err != nil {
+			panic(fmt.Sprintf("could not bind socket: %v", err))
+		}
 
-        udpServer.conn[i] = lp.(*net.UDPConn)
+		udpServer.conn[i] = lp.(*net.UDPConn)
 
-        if err := udpServer.conn[i].SetReadBuffer(config.SocketReadBuffer); err != nil {
-            panic(fmt.Sprintf("could not set socket read buffer size: %v", err))
-        }
+		if err := udpServer.conn[i].SetReadBuffer(config.SocketReadBuffer); err != nil {
+			panic(fmt.Sprintf("could not set socket read buffer size: %v", err))
+		}
 
-        if err := udpServer.conn[i].SetWriteBuffer(config.SocketWriteBuffer); err != nil {
-            panic(fmt.Sprintf("could not set socket write buffer size: %v", err))
-        }
+		if err := udpServer.conn[i].SetWriteBuffer(config.SocketWriteBuffer); err != nil {
+			panic(fmt.Sprintf("could not set socket write buffer size: %v", err))
+		}
 
-        go func(thread int) {
+		go func(thread int) {
 
-            for {
+			for {
 
-                // read packet
+				// read packet
 
-                receiveBuffer := make([]byte, config.MaxPacketSize)
+				receiveBuffer := make([]byte, config.MaxPacketSize)
 
-                receivePacketBytes, from, err := udpServer.conn[thread].ReadFromUDP(receiveBuffer[:])
-                if err != nil {
-                    fmt.Printf("udp receive error: %v\n", err)
-                    break
-                }
+				receivePacketBytes, from, err := udpServer.conn[thread].ReadFromUDP(receiveBuffer[:])
+				if err != nil {
+					fmt.Printf("udp receive error: %v\n", err)
+					break
+				}
 
-                packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
-            }
+				packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
+			}
 
-            udpServer.conn[thread].Close()
+			udpServer.conn[thread].Close()
 
-        }(i)
-    }
+		}(i)
+	}
 
-    return &udpServer
+	return &udpServer
 }

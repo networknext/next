@@ -5,17 +5,17 @@ package routing
 type Nibblin uint64
 
 func CentsToNibblins(cents float64) Nibblin {
-    return Nibblin(cents * 1e9)
+	return Nibblin(cents * 1e9)
 }
 
 func DollarsToNibblins(dollars float64) Nibblin {
-    return Nibblin(dollars * 1e11)
+	return Nibblin(dollars * 1e11)
 }
 
 func (n Nibblin) ToCents() float64 {
-    return float64(n) / 1e9
+	return float64(n) / 1e9
 }
 
 func (n Nibblin) ToDollars() float64 {
-    return float64(n) / 1e11
+	return float64(n) / 1e11
 }

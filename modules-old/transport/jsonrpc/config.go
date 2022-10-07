@@ -1,36 +1,36 @@
 package jsonrpc
 
 import (
-    "net/http"
+	"net/http"
 
-    "github.com/networknext/backend/modules-old/storage"
+	"github.com/networknext/backend/modules-old/storage"
 )
 
 type ConfigService struct {
-    Storage storage.Storer
+	Storage storage.Storer
 }
 
 type FeatureFlag struct {
-    Name        string `json:"name"`
-    Value       bool   `json:"value"`
-    Description string `json:"description"`
+	Name        string `json:"name"`
+	Value       bool   `json:"value"`
+	Description string `json:"description"`
 }
 
 type FeatureFlagArgs struct {
-    Name  string `json:"name"`
-    Value bool   `json:"value"`
+	Name  string `json:"name"`
+	Value bool   `json:"value"`
 }
 
 type FeatureFlagReply struct {
-    Flags map[string]bool `json:"flags"`
+	Flags map[string]bool `json:"flags"`
 }
 
 // These are just stubbed out for the time being until postgres is implemented
 
 func (s *ConfigService) AllFeatureFlags(r *http.Request, args *FeatureFlagArgs, reply *FeatureFlagReply) error {
-    return nil
+	return nil
 }
 
 func (s *ConfigService) FeatureFlagByName(r *http.Request, args *FeatureFlagArgs, reply *FeatureFlagReply) error {
-    return nil
+	return nil
 }

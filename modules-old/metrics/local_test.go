@@ -1,29 +1,29 @@
 package metrics_test
 
 import (
-    "context"
-    "testing"
+	"context"
+	"testing"
 
-    "github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/metrics"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLocalMetrics(t *testing.T) {
-    // Test metric creation
-    {
-        localHandler := &metrics.LocalHandler{}
+	// Test metric creation
+	{
+		localHandler := &metrics.LocalHandler{}
 
-        counter, err := localHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "test-metric"})
-        assert.NoError(t, err)
-        assert.NotNil(t, counter)
+		counter, err := localHandler.NewCounter(context.Background(), &metrics.Descriptor{ID: "test-metric"})
+		assert.NoError(t, err)
+		assert.NotNil(t, counter)
 
-        gauge, err := localHandler.NewGauge(context.Background(), &metrics.Descriptor{ID: "test-metric"})
-        assert.NoError(t, err)
-        assert.NotNil(t, gauge)
+		gauge, err := localHandler.NewGauge(context.Background(), &metrics.Descriptor{ID: "test-metric"})
+		assert.NoError(t, err)
+		assert.NotNil(t, gauge)
 
-        histogram, err := localHandler.NewHistogram(context.Background(), &metrics.Descriptor{ID: "test-metric"}, 50)
-        assert.NoError(t, err)
-        assert.NotNil(t, histogram)
-    }
+		histogram, err := localHandler.NewHistogram(context.Background(), &metrics.Descriptor{ID: "test-metric"}, 50)
+		assert.NoError(t, err)
+		assert.NotNil(t, histogram)
+	}
 }
