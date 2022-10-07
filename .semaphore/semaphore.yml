@@ -804,7 +804,7 @@ blocks:
           os_image: ubuntu2004
       jobs:
 
-        - name: "run happy-path"
+        - name: "run happy-path-no-wait"
 
           commands:
 
@@ -814,7 +814,7 @@ blocks:
             - cd ~/backend
             - ./next select local
             - make clean
-            - ./run happy-path
+            - ./run happy-path-no-wait
 
 
   - name: "Happy Path (WSL)"
@@ -832,7 +832,7 @@ blocks:
          - chmod 600 /home/semaphore/.ssh/id_rsa_build
          - ssh-add /home/semaphore/.ssh/id_rsa_build
       jobs:
-        - name: "run happy-path"
+        - name: "run happy-path-no-wait"
           commands:
            - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh backend happy-path"
 
@@ -852,7 +852,7 @@ blocks:
 #         - chmod 600 /home/semaphore/.ssh/id_rsa_build
 #         - ssh-add /home/semaphore/.ssh/id_rsa_build
 #      jobs:
-#        - name: "run happy-path"
+#        - name: "run happy-path-no-wait"
 #          commands:
 #           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "cd build && ./build.sh backend happy-path"
 
