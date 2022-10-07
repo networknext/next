@@ -157,6 +157,36 @@ func GenerateRandomServerUpdateResponsePacket() packets.SDK5_ServerUpdateRespons
 	return packet
 }
 
+func GenerateRandomMatchDataRequestPacket() packets.SDK5_MatchDataRequestPacket {
+
+	packet := packets.SDK5_MatchDataRequestPacket{
+		Version:        packets.SDKVersion{1, 2, 3},
+		BuyerId:        12341241,
+		ServerAddress:  *core.ParseAddress("127.0.0.1:44444"),
+		DatacenterId:   184283418,
+		UserHash:       210987451,
+		SessionId:      987249128471,
+		RetryNumber:    4,
+		MatchId:        1234209487198,
+		NumMatchValues: 10,
+	}
+
+	for i := 0; i < int(packet.NumMatchValues); i++ {
+		packet.MatchValues[i] = float64(i) * 34852.0
+	}
+
+	return packet
+}
+
+func GenerateRandomMatchDataResponsePacket() packets.SDK5_MatchDataResponsePacket {
+
+	return packets.SDK5_MatchDataResponsePacket{
+		SessionId:     rand.Uint64(),
+	}
+}
+
+// ------------------------------------------------------------
+
 const NumIterations = 10000
 
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
@@ -214,6 +244,38 @@ func Test_SDK5_ServerUpdateResponsePacket(t *testing.T) {
 		PacketSerializationTest[*packets.SDK5_ServerUpdateResponsePacket](&writePacket, &readPacket, t)
 	}
 }
+
+func Test_SDK5_MatchDataRequestPacket(t *testing.T) {
+
+	t.Parallel()
+
+	for i := 0; i < NumIterations; i++ {
+
+		writePacket := GenerateRandomMatchDataRequestPacket()
+
+		readPacket := packets.SDK5_MatchDataRequestPacket{}
+
+		PacketSerializationTest[*packets.SDK5_MatchDataRequestPacket](&writePacket, &readPacket, t)
+	}
+}
+
+func Test_SDK5_MatchDataResponsePacket(t *testing.T) {
+
+	t.Parallel()
+
+	for i := 0; i < NumIterations; i++ {
+
+		writePacket := GenerateRandomMatchDataResponsePacket()
+
+		readPacket := packets.SDK5_MatchDataResponsePacket{}
+
+		PacketSerializationTest[*packets.SDK5_MatchDataResponsePacket](&writePacket, &readPacket, t)
+	}
+}
+
+// -----------------------------
+
+// dragons below...
 
 func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 
@@ -481,41 +543,6 @@ func Test_SDK5_SessionData(t *testing.T) {
 	readPacket := packets.SDK5_SessionData{}
 
 	PacketSerializationTest[*packets.SDK5_SessionData](&writePacket, &readPacket, t)
-}
-
-func Test_SDK5_MatchDataRequestPacket(t *testing.T) {
-
-	writePacket := packets.SDK5_MatchDataRequestPacket{
-		Version:        packets.SDKVersion{1, 2, 3},
-		BuyerId:        12341241,
-		ServerAddress:  *core.ParseAddress("127.0.0.1:44444"),
-		DatacenterId:   184283418,
-		UserHash:       210987451,
-		SessionId:      987249128471,
-		RetryNumber:    4,
-		MatchId:        1234209487198,
-		NumMatchValues: 10,
-	}
-
-	for i := 0; i < int(writePacket.NumMatchValues); i++ {
-		writePacket.MatchValues[i] = float64(i) * 34852.0
-	}
-
-	readPacket := packets.SDK5_MatchDataRequestPacket{}
-
-	PacketSerializationTest[*packets.SDK5_MatchDataRequestPacket](&writePacket, &readPacket, t)
-}
-
-func Test_SDK5_MatchDataResponsePacket(t *testing.T) {
-
-	writePacket := packets.SDK5_MatchDataResponsePacket{
-		SessionId: 1234141,
-		Response:  1,
-	}
-
-	readPacket := packets.SDK5_MatchDataResponsePacket{}
-
-	PacketSerializationTest[*packets.SDK5_MatchDataResponsePacket](&writePacket, &readPacket, t)
 }
 
 // ------------------------------------------------------------------------

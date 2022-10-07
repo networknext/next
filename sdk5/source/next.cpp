@@ -10035,12 +10035,10 @@ struct NextBackendMatchDataRequestPacket
 struct NextBackendMatchDataResponsePacket
 {
     uint64_t session_id;
-    uint32_t response;
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, session_id );
-        serialize_bits( stream, response, 8 );
         return true;
     }
 };

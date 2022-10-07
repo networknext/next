@@ -680,12 +680,10 @@ func (packet *SDK5_MatchDataRequestPacket) Serialize(stream encoding.Stream) err
 
 type SDK5_MatchDataResponsePacket struct {
 	SessionId uint64
-	Response  uint32
 }
 
 func (packet *SDK5_MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.SessionId)
-	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }
 
