@@ -25,9 +25,15 @@ func RandomInt(min int, max int) int {
 	return value - min
 }
 
+func RandomBytes(array []byte) {
+	for i := range array {
+		array[i] = byte(rand.Intn(256))
+	}
+}
+
 func RandomString(length int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	b := make([]rune, length)
+	b := make([]rune, length-1) // IMPORTANT: for compatibility with NULL terminated C-strings in the SDK
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}

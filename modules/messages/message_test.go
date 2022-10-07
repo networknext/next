@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func MessageReadWriteTest[M messages.Message](writeMessage messages.Message, readMessage messages.Message, t *testing.T) {
+func MessageReadWriteTest[M messages.Message](writeMessage M, readMessage M, t *testing.T) {
 
 	const BufferSize = 10 * 1024
 
