@@ -1145,8 +1145,8 @@ func main() {
 		test_redis_pubsub,
 		test_redis_streams,
 		test_redis_selector,
-		// test_google_pubsub,
-		// test_google_bigquery,
+		test_google_pubsub,
+		test_google_bigquery,
 	}
 
 	var tests []test_function
