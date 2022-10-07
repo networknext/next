@@ -40,7 +40,7 @@ func main() {
 		core.Log("http timeout: %s", timeout)
 	*/
 
-	StartStatCollection()
+	StartStatCollection(service, time.Second*30)
 
 	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet)
 
@@ -62,18 +62,47 @@ func getAllStats(w http.ResponseWriter, r *http.Request) {
 // -----------------------------------------------------------------------------------------
 
 // todo - setup in service
-type LiveStats struct{}
+type LiveStats struct {
+	UniquePlayers             int64 `json:"unique_players"`
+	AcceleratedPlayTime       int64 `json:"accelerated_play_time"`
+	AcceleratedBandwidth      int64 `json:"accelerated_bandwidth"`
+	UniquePlayersDelta        int64 `json:"unique_players_delta"`
+	AcceleratedPlayTimeDelta  int64 `json:"accelerated_play_time_delta"`
+	AcceleratedBandwidthDelta int64 `json:"accelerated_bandwidth_delta"`
+}
 
-func StartStatCollection() {
+func StartStatCollection(service *common.Service, refreshRate time.Duration) {
 	go func() {
 
-		newStats := LiveStats{}
+		ticker := time.NewTicker(refreshRate)
 
-		// todo - grab stats from somewhere (looker, redis, etc)
+		for {
 
-		WebsiteStatsMutex.Lock()
-		WebsiteStats = newStats
-		WebsiteStatsMutex.Unlock()
+			select {
+			case <-service.Context.Done():
+				return
+			case <-ticker.C:
+
+				if !service.IsLeader() {
+					continue
+				}
+
+				newStats := LiveStats{}
+
+				// todo - grab stats from somewhere (looker, redis, etc)
+				newStats.UniquePlayers = 0
+				newStats.AcceleratedBandwidth = 0
+				newStats.AcceleratedPlayTime = 0
+				newStats.UniquePlayersDelta = 0
+				newStats.AcceleratedBandwidthDelta = 0
+				newStats.AcceleratedPlayTimeDelta = 0
+
+				WebsiteStatsMutex.Lock()
+				WebsiteStats = newStats
+				WebsiteStatsMutex.Unlock()
+
+			}
+		}
 	}()
 }
 
