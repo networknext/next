@@ -141,7 +141,7 @@ func main() {
 	} else if command == "func-backend5" {
 		func_backend5()
 	} else if command == "func-tests-backend" {
-		func_tests_backend()
+		func_tests_backend(args[2:])
 	}
 
 	cleanup()
@@ -264,6 +264,14 @@ func func_backend5() {
 	bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
 }
 
-func func_tests_backend() {
-	bash("make ./dist/func_tests_backend && ./dist/func_tests_backend")
+func func_tests_backend(tests []string) {
+	command := "make ./dist/func_tests_backend && ./dist/func_tests_backend"
+
+	if len(tests) > 0 {
+		for _, test := range tests {
+			bash(fmt.Sprintf("%s %s", command, test))
+		}
+	} else {
+		bash(command)
+	}
 }
