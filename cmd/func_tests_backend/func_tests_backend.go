@@ -1143,7 +1143,7 @@ func main() {
 	allTests := []test_function{
 		// test_magic_backend,
 		// test_redis_pubsub,
-		// test_redis_streams,
+		test_redis_streams,
 		test_redis_selector,
 		// test_google_pubsub,
 		// test_google_bigquery,
