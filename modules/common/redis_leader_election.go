@@ -19,6 +19,7 @@ type RedisLeaderElectionConfig struct {
 	RedisHostname string
 	RedisPassword string
 	ServiceName   string
+	Timeout       time.Duration
 }
 
 type RedisLeaderElection struct {
@@ -47,6 +48,10 @@ func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionCo
 	}
 
 	leaderElection := &RedisLeaderElection{}
+
+	if config.Timeout == 0 {
+		config.Timeout = time.Second * 10
+	}
 
 	leaderElection.config = config
 	leaderElection.redisClient = redisClient
@@ -80,7 +85,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
 	pipe := leaderElection.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("leader-election-%s-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], 10*time.Second)
+	pipe.Set(timeoutContext, fmt.Sprintf("leader-election-%s-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], leaderElection.config.Timeout)
 	_, err = pipe.Exec(timeoutContext)
 
 	if err != nil {

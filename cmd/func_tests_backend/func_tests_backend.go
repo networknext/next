@@ -1150,9 +1150,9 @@ func test_redis_selector_migration() {
 	core.Debug("done")
 }
 
-func test_redis_selector_flap() {
+func test_redis_selector_no_flap() {
 
-	fmt.Printf("test_redis_selector_flap\n")
+	fmt.Printf("test_redis_selector_no_flap\n")
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
@@ -1268,6 +1268,245 @@ func test_redis_selector_flap() {
 	core.Debug("done")
 }
 
+func test_redis_leader_election_migration() {
+
+	fmt.Printf("test_redis_leader_election_migration\n")
+
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+
+	redisElector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   "migration",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis elector 1")
+		os.Exit(1)
+	}
+
+	electorMutex := sync.RWMutex{}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		iterationNum := 0
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				electorMutex.Lock()
+				isLeader := redisElector.IsLeader()
+				electorMutex.Unlock()
+
+				if isLeader {
+					iterationNum++
+					if iterationNum%5 == 0 {
+						continue
+					}
+				}
+
+				electorMutex.Lock()
+				redisElector.Update(cancelContext)
+				isLeader = redisElector.IsLeader()
+				electorMutex.Unlock()
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	electorMutex2 := sync.RWMutex{}
+
+	redisElector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   "migration",
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 2")
+		os.Exit(1)
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		iterationNum := 0
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				electorMutex2.Lock()
+				isLeader := redisElector2.IsLeader()
+				electorMutex2.Unlock()
+
+				if isLeader {
+					iterationNum++
+					if iterationNum%5 == 0 {
+						continue
+					}
+				}
+
+				electorMutex2.Lock()
+				redisElector2.Update(cancelContext)
+				isLeader = redisElector2.IsLeader()
+				electorMutex2.Unlock()
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	redisObserver, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   "migration",
+	})
+	if err != nil {
+		core.Error("failed to setup redis observer")
+		os.Exit(1)
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				if redisObserver.IsLeader() {
+					core.Error("observer should never be leader")
+					os.Exit(1)
+				}
+
+				electorMutex.Lock()
+				isLeader1 := redisElector.IsLeader()
+				electorMutex.Unlock()
+
+				electorMutex2.Lock()
+				isLeader2 := redisElector2.IsLeader()
+				electorMutex2.Unlock()
+
+				if cancelContext.Err() != nil {
+					return
+				}
+
+				if !isLeader1 && !isLeader2 {
+					core.Error("failed to have an elected leader")
+					os.Exit(1)
+				}
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 18)
+
+	cancelFunc()
+
+	// Make sure all keys expire
+	time.Sleep(time.Second * 7)
+
+	core.Debug("done")
+}
+
+func test_redis_leader_election_no_flap() {
+
+	fmt.Printf("test_redis_leader_election_no_flap\n")
+
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+
+	redisElector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   "flap",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 1")
+		os.Exit(1)
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				redisElector.Update(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
+
+				if !redisElector.IsLeader() {
+					core.Error("elector 1 should always be leader")
+					os.Exit(1)
+				}
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	redisElector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   "flap",
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 2")
+		os.Exit(1)
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				redisElector2.Update(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
+
+				if redisElector2.IsLeader() {
+					core.Error("elector 2 should never be leader")
+					os.Exit(1)
+				}
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 20)
+
+	cancelFunc()
+
+	// Make sure keys expire
+	time.Sleep(time.Second * 7)
+
+	core.Debug("done")
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1281,9 +1520,9 @@ func main() {
 		test_redis_pubsub,
 		test_redis_streams,
 		test_redis_selector_migration,
-		test_redis_selector_flap,
-		// test_redis_leader_election_migration,
-		// test_redis_leader_election_flap,
+		test_redis_selector_no_flap,
+		test_redis_leader_election_migration,
+		test_redis_leader_election_no_flap,
 		test_google_pubsub,
 		test_google_bigquery,
 	}
