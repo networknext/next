@@ -1141,7 +1141,7 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		// test_magic_backend,
+		test_magic_backend,
 		// test_redis_pubsub,
 		test_redis_streams,
 		test_redis_selector,
