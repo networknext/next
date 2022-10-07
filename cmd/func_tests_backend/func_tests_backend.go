@@ -1277,15 +1277,15 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		// test_magic_backend,
-		// test_redis_pubsub,
-		// test_redis_streams,
+		test_magic_backend,
+		test_redis_pubsub,
+		test_redis_streams,
 		test_redis_selector_migration,
 		test_redis_selector_flap,
 		// test_redis_leader_election_migration,
 		// test_redis_leader_election_flap,
-		// test_google_pubsub,
-		// test_google_bigquery,
+		test_google_pubsub,
+		test_google_bigquery,
 	}
 
 	var tests []test_function
