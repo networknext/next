@@ -32,7 +32,7 @@ var redisSelectorTimeout time.Duration
 func main() {
 	service := common.CreateService("collector")
 
-	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Second*10)
+	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 	redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
@@ -57,6 +57,15 @@ func getAllStats(w http.ResponseWriter, r *http.Request) {
 	websiteStatsMutex.RUnlock()
 
 	json.NewEncoder(w).Encode(stats)
+}
+
+func currentStats() LiveStats {
+
+	websiteStatsMutex.RLock()
+	stats := websiteStats
+	websiteStatsMutex.RUnlock()
+
+	return stats
 }
 
 // -----------------------------------------------------------------------------------------
@@ -100,13 +109,17 @@ func StartStatCollection(service *common.Service) {
 
 				newStats := LiveStats{}
 
+				currentStats := currentStats()
+
 				// todo - grab stats from somewhere (looker, redis, etc)
-				newStats.UniquePlayers = int64(common.RandomInt(0, 1000))
-				newStats.AcceleratedBandwidth = int64(common.RandomInt(0, 1000))
-				newStats.AcceleratedPlayTime = int64(common.RandomInt(0, 1000))
-				newStats.UniquePlayersDelta = int64(common.RandomInt(0, 1000))
-				newStats.AcceleratedBandwidthDelta = int64(common.RandomInt(0, 1000))
-				newStats.AcceleratedPlayTimeDelta = int64(common.RandomInt(0, 1000))
+				newStats.UniquePlayers = int64(common.RandomInt(int(currentStats.UniquePlayers), int(currentStats.UniquePlayers)+1000))
+				newStats.UniquePlayersDelta = newStats.UniquePlayers - currentStats.UniquePlayers
+
+				newStats.AcceleratedBandwidth = int64(common.RandomInt(int(currentStats.AcceleratedBandwidth), int(currentStats.AcceleratedBandwidth)+1000))
+				newStats.AcceleratedBandwidthDelta = newStats.AcceleratedBandwidth - currentStats.AcceleratedBandwidth
+
+				newStats.AcceleratedPlayTime = int64(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
+				newStats.AcceleratedPlayTimeDelta = newStats.AcceleratedPlayTime - currentStats.AcceleratedPlayTime
 
 				var buffer bytes.Buffer
 				encoder := gob.NewEncoder(&buffer)
