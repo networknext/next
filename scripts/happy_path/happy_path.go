@@ -459,7 +459,9 @@ func happy_path() int {
 
 	fmt.Printf("\nsuccess!\n\n")
 
-	// time.Sleep(time.Hour)
+	waitDuration := envvar.GetDuration("WAIT_DURATION", 24*time.Hour)
+
+	time.Sleep(waitDuration)
 
 	return 0
 }

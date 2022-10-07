@@ -206,8 +206,13 @@ func server_backend5() {
 }
 
 func happy_path() {
+	var arg string
+	if len(os.Args) >= 3 {
+		arg = os.Args[2]
+	}
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
+	os.Setenv("WAIT_DURATION", arg)
+	bash("./build.sh && go run ./scripts/happy_path/happy_path.go %s")
 }
 
 func server4() {
