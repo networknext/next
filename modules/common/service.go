@@ -37,7 +37,7 @@ var (
 type RelayData struct {
 	NumRelays          int
 	RelayIds           []uint64
-	RelayHash          map[uint64]routing.Relay  // todo: don't use routing
+	RelayHash          map[uint64]routing.Relay // todo: don't use routing
 	RelayArray         []routing.Relay
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
@@ -67,7 +67,7 @@ type Service struct {
 	// ------------------
 
 	databaseMutex     sync.RWMutex
-	database          *routing.DatabaseBinWrapper      // todo: we need to copy database and overlay out of routing
+	database          *routing.DatabaseBinWrapper // todo: we need to copy database and overlay out of routing
 	databaseOverlay   *routing.OverlayBinWrapper
 	databaseRelayData *RelayData
 
@@ -498,14 +498,6 @@ func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.Overlay
 			}
 		}
 	}
-}
-
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	if err == nil {
-		return true
-	}
-	return false
 }
 
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {

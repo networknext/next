@@ -92,6 +92,7 @@ func main() {
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis password: %s", redisPassword)
+	core.Log("redis selector timeout: %s", redisSelectorTimeout)
 	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
 	core.Log("ping stats pubsub channel: %s", pingStatsPubsubTopic)

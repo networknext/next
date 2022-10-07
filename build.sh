@@ -25,6 +25,7 @@ parallel ::: \
 "cd ./dist && g++ ${CFLAGS} -I../sdk4/include -shared -o libnext4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
 "cd ./dist && g++ ${CFLAGS} -I../sdk5/include -shared -o libnext5.so ../sdk5/source/*.cpp ${LDFLAGS}" \
 "cd ./dist && g++ ${CFLAGS} -o reference_relay ../reference/relay/*.cpp ${LDFLAGS}" \
+"go build -o ./run ./scripts/run/run.go" \
 "go build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go" \
 "go build -o ./dist/func_tests_sdk4 ./cmd/func_tests_sdk4/*.go" \
 "go build -o ./dist/func_tests_sdk5 ./cmd/func_tests_sdk5/*.go" \
@@ -38,5 +39,6 @@ parallel ::: \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/server_backend4 ./cmd/server_backend4/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/server_backend5 ./cmd/server_backend5/*.go" \
 "go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/new_pusher ./cmd/pusher/*.go" \
+"go build -ldflags \"-s -w -X ${MODULE}.buildTime=${BUILD_TIME} -X ${MODULE}.commitHash=${COMMIT_HASH} -X '${MODULE}.commitMessage=${COMMIT_MESSAGE}' \" -o ./dist/website_cruncher ./cmd/website_cruncher/*.go" \
 
 cd dist && touch *
