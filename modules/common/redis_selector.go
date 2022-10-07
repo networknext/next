@@ -59,6 +59,10 @@ func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*Redi
 
 	selector := &RedisSelector{}
 
+	if config.Timeout == 0 {
+		config.Timeout = time.Second * 10
+	}
+
 	selector.config = config
 	selector.redisClient = redisClient
 	selector.startTime = time.Now()

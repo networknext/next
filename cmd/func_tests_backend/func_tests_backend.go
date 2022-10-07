@@ -1278,6 +1278,7 @@ func test_redis_leader_election_migration() {
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
 		ServiceName:   "migration",
+		Timeout:       time.Second * 5,
 	})
 	if err != nil {
 		core.Error("failed to setup redis elector 1")
@@ -1397,6 +1398,10 @@ func test_redis_leader_election_migration() {
 				isLeader2 := redisElector2.IsLeader()
 				electorMutex2.Unlock()
 
+				if cancelContext.Err() != nil {
+					return
+				}
+
 				if !isLeader1 && !isLeader2 {
 					core.Error("failed to have an elected leader")
 					os.Exit(1)
@@ -1425,6 +1430,7 @@ func test_redis_leader_election_no_flap() {
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
 		ServiceName:   "flap",
+		Timeout:       time.Second * 5,
 	})
 	if err != nil {
 		core.Error("failed to setup redis selector 1")
@@ -1442,6 +1448,10 @@ func test_redis_leader_election_no_flap() {
 			case <-ticker.C:
 
 				redisElector.Update(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
 
 				if !redisElector.IsLeader() {
 					core.Error("elector 1 should always be leader")
@@ -1474,6 +1484,10 @@ func test_redis_leader_election_no_flap() {
 			case <-ticker.C:
 
 				redisElector2.Update(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
 
 				if redisElector2.IsLeader() {
 					core.Error("elector 2 should never be leader")
