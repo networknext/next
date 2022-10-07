@@ -14,12 +14,14 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 )
 
+/* todo
 const (
 	BASE_URL                = "https://networknextexternal.cloud.looker.com"
 	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
 	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
 	LOOKER_PROD_MODEL       = "network_next_prod"
 )
+*/
 
 var websiteStatsMutex sync.RWMutex
 var websiteStats LiveStats
@@ -30,7 +32,7 @@ var redisSelector *common.RedisSelector
 var redisSelectorTimeout time.Duration
 
 func main() {
-	service := common.CreateService("collector")
+	service := common.CreateService("website cruncher")
 
 	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
