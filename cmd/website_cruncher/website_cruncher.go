@@ -2,21 +2,16 @@ package main
 
 import (
 	"bytes"
+	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/looker-open-source/sdk-codegen/go/rtl"
-	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 	"github.com/networknext/backend/modules/common"
-)
-
-// todo - setup in service
-var (
-	WebsiteStatsMutex sync.RWMutex
-	WebsiteStats      LiveStats
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
 )
 
 const (
@@ -26,25 +21,30 @@ const (
 	LOOKER_PROD_MODEL       = "network_next_prod"
 )
 
+var websiteStatsMutex sync.RWMutex
+var websiteStats LiveStats
+var statsRefreshInterval time.Duration
+var redisHostname string
+var redisPassword string
+var redisSelector *common.RedisSelector
+var redisSelectorTimeout time.Duration
+
 func main() {
 	service := common.CreateService("collector")
 
-	/*
-		allowedOrigins := envvar.GetList("ALLOWED_ORIGINS", []string{"127.0.0.1:3000", "127.0.0.1:8080", "127.0.0.1:80"})
-		timeout := envvar.GetDuration("HTTP_TIMEOUT", time.Second*30)
+	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Second*10)
+	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+	redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
 
-		core.Log("allowed origins: ")
-		for _, origin := range allowedOrigins {
-			core.Log("%s", origin)
-		}
-		core.Log("http timeout: %s", timeout)
-	*/
+	core.Log("stats refresh interval: %s", statsRefreshInterval)
+	core.Log("redis hostname: %s", redisHostname)
+	core.Log("redis password: %s", redisPassword)
+	core.Log("redis selector timeout: %s", redisSelectorTimeout)
 
-	StartStatCollection(service, time.Second*30)
+	StartStatCollection(service)
 
 	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet)
-
-	service.LeaderElection()
 
 	service.StartWebServer()
 
@@ -52,9 +52,9 @@ func main() {
 }
 
 func getAllStats(w http.ResponseWriter, r *http.Request) {
-	WebsiteStatsMutex.RLock()
-	stats := WebsiteStats
-	WebsiteStatsMutex.RUnlock()
+	websiteStatsMutex.RLock()
+	stats := websiteStats
+	websiteStatsMutex.RUnlock()
 
 	json.NewEncoder(w).Encode(stats)
 }
@@ -71,10 +71,25 @@ type LiveStats struct {
 	AcceleratedBandwidthDelta int64 `json:"accelerated_bandwidth_delta"`
 }
 
-func StartStatCollection(service *common.Service, refreshRate time.Duration) {
-	go func() {
+func StartStatCollection(service *common.Service) {
 
-		ticker := time.NewTicker(refreshRate)
+	var err error
+
+	ticker := time.NewTicker(statsRefreshInterval)
+
+	config := common.RedisSelectorConfig{}
+
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.Timeout = redisSelectorTimeout
+
+	redisSelector, err = common.CreateRedisSelector(service.Context, config)
+	if err != nil {
+		core.Error("failed to create redis selector: %v", err)
+		os.Exit(1)
+	}
+
+	go func() {
 
 		for {
 
@@ -83,23 +98,48 @@ func StartStatCollection(service *common.Service, refreshRate time.Duration) {
 				return
 			case <-ticker.C:
 
-				if !service.IsLeader() {
-					continue
-				}
-
 				newStats := LiveStats{}
 
 				// todo - grab stats from somewhere (looker, redis, etc)
-				newStats.UniquePlayers = 0
-				newStats.AcceleratedBandwidth = 0
-				newStats.AcceleratedPlayTime = 0
-				newStats.UniquePlayersDelta = 0
-				newStats.AcceleratedBandwidthDelta = 0
-				newStats.AcceleratedPlayTimeDelta = 0
+				newStats.UniquePlayers = int64(common.RandomInt(0, 1000))
+				newStats.AcceleratedBandwidth = int64(common.RandomInt(0, 1000))
+				newStats.AcceleratedPlayTime = int64(common.RandomInt(0, 1000))
+				newStats.UniquePlayersDelta = int64(common.RandomInt(0, 1000))
+				newStats.AcceleratedBandwidthDelta = int64(common.RandomInt(0, 1000))
+				newStats.AcceleratedPlayTimeDelta = int64(common.RandomInt(0, 1000))
 
-				WebsiteStatsMutex.Lock()
-				WebsiteStats = newStats
-				WebsiteStatsMutex.Unlock()
+				var buffer bytes.Buffer
+				encoder := gob.NewEncoder(&buffer)
+				if err := encoder.Encode(newStats); err != nil {
+					core.Error("failed to encode new stats")
+					continue
+				}
+
+				newStatsData := buffer.Bytes()
+
+				dataStores := []common.DataStoreConfig{
+					{
+						Name: "live_stats",
+						Data: newStatsData,
+					},
+				}
+
+				redisSelector.Store(service.Context, dataStores)
+
+				dataStores = redisSelector.Load(service.Context)
+
+				newLiveStats := LiveStats{}
+
+				decoder := gob.NewDecoder(bytes.NewBuffer(dataStores[0].Data))
+				err := decoder.Decode(&newLiveStats)
+				if err != nil {
+					core.Debug("could not decode live stats data: %v", err)
+					continue
+				}
+
+				websiteStatsMutex.Lock()
+				websiteStats = newLiveStats
+				websiteStatsMutex.Unlock()
 
 			}
 		}
@@ -109,6 +149,7 @@ func StartStatCollection(service *common.Service, refreshRate time.Duration) {
 // -----------------------------------------------------------------------------------------
 
 // todo - move into a common module
+/*
 type LookerClient struct {
 	APISettings rtl.ApiSettings
 }
@@ -211,3 +252,4 @@ func (l *LookerClient) getWebsiteStats() error {
 
 	return nil
 }
+*/
