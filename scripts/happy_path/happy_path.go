@@ -403,7 +403,7 @@ func happy_path() int {
 	fmt.Printf("\n")
 
 	client4_stdout := run("client4", "logs/client4")
-	client5_stdout := run("client5", "logs/client5")
+	// client5_stdout := run("client5", "logs/client5")
 
 	fmt.Printf("\n")
 
@@ -430,6 +430,7 @@ func happy_path() int {
 		return 1
 	}
 
+	/*
 	// initialize client5
 
 	fmt.Printf("initializing client 5\n")
@@ -452,6 +453,7 @@ func happy_path() int {
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
+	*/
 
 	// ==================================================================================
 
