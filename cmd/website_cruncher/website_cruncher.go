@@ -123,6 +123,9 @@ func StartStatCollection(service *common.Service) {
 				newStats.AcceleratedPlayTime = int64(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
 				newStats.AcceleratedPlayTimeDelta = newStats.AcceleratedPlayTime - currentStats.AcceleratedPlayTime
 
+				/* todo: extrapolation will be easier and safer to do server side
+				 */
+
 				var buffer bytes.Buffer
 				encoder := gob.NewEncoder(&buffer)
 				if err := encoder.Encode(newStats); err != nil {
