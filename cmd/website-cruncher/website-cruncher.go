@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/looker-open-source/sdk-codegen/go/rtl"
 	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 	"github.com/networknext/backend/modules/common"
 )
@@ -16,6 +17,13 @@ import (
 var (
 	WebsiteStatsMutex sync.RWMutex
 	WebsiteStats      LiveStats
+)
+
+const (
+	BASE_URL                = "https://networknextexternal.cloud.looker.com"
+	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
+	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
+	LOOKER_PROD_MODEL       = "network_next_prod"
 )
 
 func main() {
@@ -72,7 +80,9 @@ func StartStatCollection() {
 // -----------------------------------------------------------------------------------------
 
 // todo - move into a common module
-type LookerClient struct{}
+type LookerClient struct {
+	APISettings rtl.ApiSettings
+}
 
 type LookerAuthResponse struct {
 	AccessToken string `json:"access_token"`
@@ -82,7 +92,7 @@ type LookerAuthResponse struct {
 
 func setupLookerClient() {}
 
-func fetchLookerAuthToken() (string, error) {
+func (l *LookerClient) fetchLookerAuthToken() (string, error) {
 	authURL := fmt.Sprintf(LOOKER_AUTH_URI, l.APISettings.BaseUrl, l.APISettings.ClientId, l.APISettings.ClientSecret)
 	req, err := http.NewRequest(http.MethodPost, authURL, nil)
 	if err != nil {
@@ -111,32 +121,26 @@ func fetchLookerAuthToken() (string, error) {
 	return authResponse.AccessToken, nil
 }
 
-func getWebsiteStats() {
+func (l *LookerClient) getWebsiteStats() error {
 	// Looker API always passes back an array - "this is the rows for that query - # rows >= 0"
 	queryWebsiteStats := make([]LiveStats, 0)
 
-	token, err := l.FetchAuthToken()
+	token, err := l.fetchLookerAuthToken()
 	if err != nil {
-		return LookerSessionTimestampLookup{}, err
+		return err
 	}
 
 	// Fetch Meta data for session
 
 	requiredFields := []string{
-		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
-		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_date",
-		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
-		LOOKER_SESSION_SUMMARY_VIEW + ".buyer_id",
+		// todo: work with alex for table and field names
 	}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
 
-	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
-	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
-
 	query := v4.WriteQuery{
-		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SESSION_LOOK_UP_VIEW,
+		Model: LOOKER_PROD_MODEL,
+		// View:    , todo - work with alex for view name
 		Fields:  &requiredFields,
 		Filters: &requiredFilters,
 		Sorts:   &sorts,
@@ -144,12 +148,12 @@ func getWebsiteStats() {
 
 	lookerBody, err := json.Marshal(query)
 	if err != nil {
-		return LookerSessionTimestampLookup{}, err
+		return err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
-		return LookerSessionTimestampLookup{}, err
+		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -157,24 +161,24 @@ func getWebsiteStats() {
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return LookerSessionTimestampLookup{}, err
+		return err
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return LookerSessionTimestampLookup{}, err
+		return err
 	}
 
-	if err = json.Unmarshal(buf.Bytes(), &querySessionLookup); err != nil {
-		return LookerSessionTimestampLookup{}, err
+	if err = json.Unmarshal(buf.Bytes(), &queryWebsiteStats); err != nil {
+		return err
 	}
 
 	resp.Body.Close()
 
-	if len(querySessionLookup) == 0 {
-		return LookerSessionTimestampLookup{}, fmt.Errorf("failed to look up session meta data")
+	if len(queryWebsiteStats) == 0 {
+		return fmt.Errorf("failed to look up site data")
 	}
 
-	return querySessionLookup[0], nil
+	return nil
 }
