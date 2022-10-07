@@ -837,24 +837,24 @@ blocks:
            - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh backend happy-path"
 
 
-  - name: "Happy Path (Mac)"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
-      secrets:
-        - name: build-machine-access
-        - name: build-machine-known-hosts
-      prologue:
-        commands:
-         - chmod 600 /home/semaphore/.ssh/id_rsa_build
-         - ssh-add /home/semaphore/.ssh/id_rsa_build
-      jobs:
-        - name: "run happy-path"
-          commands:
-           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "cd build && ./build.sh backend happy-path"
+#  - name: "Happy Path (Mac)"
+#    dependencies: []
+#    task:
+#      agent:
+#        machine:
+#          type: e1-standard-2
+#          os_image: ubuntu2004
+#      secrets:
+#        - name: build-machine-access
+#        - name: build-machine-known-hosts
+#      prologue:
+#        commands:
+#         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+#         - ssh-add /home/semaphore/.ssh/id_rsa_build
+#      jobs:
+#        - name: "run happy-path"
+#          commands:
+#           - ssh -J glenn@34.67.51.93 build@aquaman -p 22 "cd build && ./build.sh backend happy-path"
 
 
 promotions:
