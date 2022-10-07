@@ -214,9 +214,13 @@ blocks:
             - bigquery-emulator --project="local" --dataset="local" &
             - cd ./dist && ./func_tests_backend test_google_bigquery
 
-        - name: "test_redis_selector"
+        - name: "test_redis_selector_flap"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_selector
+            - cd ./dist && ./func_tests_backend test_redis_selector_flap
+
+        - name: "test_redis_selector_migration"
+          commands:
+            - cd ./dist && ./func_tests_backend test_redis_selector_migration
 
 
   - name: "Build Functional Tests (sdk4)"
