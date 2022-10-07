@@ -1,62 +1,62 @@
 package routing_test
 
 import (
-    "fmt"
-    "math/rand"
-    "strings"
-    "testing"
+	"fmt"
+	"math/rand"
+	"strings"
+	"testing"
 
-    "github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/routing"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Move this somewhere more accesible
 func testRoutingStats() routing.Stats {
-    data := routing.Stats{
-        RTT:        rand.Float64(),
-        Jitter:     rand.Float64(),
-        PacketLoss: rand.Float64(),
-    }
+	data := routing.Stats{
+		RTT:        rand.Float64(),
+		Jitter:     rand.Float64(),
+		PacketLoss: rand.Float64(),
+	}
 
-    return data
+	return data
 }
 
 func TestClientStats_RedisString(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
-    t.Run("test to redis string", func(t *testing.T) {
-        clientStats := testRoutingStats()
-        clientStatsString := clientStats.RedisString()
-        assert.NotEqual(t, "", clientStatsString)
+	t.Run("test to redis string", func(t *testing.T) {
+		clientStats := testRoutingStats()
+		clientStatsString := clientStats.RedisString()
+		assert.NotEqual(t, "", clientStatsString)
 
-        clientStatsStringTokens := strings.Split(clientStatsString, "|")
+		clientStatsStringTokens := strings.Split(clientStatsString, "|")
 
-        index := 0
-        assert.Equal(t, fmt.Sprintf("%.2f", clientStats.RTT), clientStatsStringTokens[index])
-        index++
-        assert.Equal(t, fmt.Sprintf("%.2f", clientStats.Jitter), clientStatsStringTokens[index])
-        index++
-        assert.Equal(t, fmt.Sprintf("%.2f", clientStats.PacketLoss), clientStatsStringTokens[index])
-        index++
+		index := 0
+		assert.Equal(t, fmt.Sprintf("%.2f", clientStats.RTT), clientStatsStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", clientStats.Jitter), clientStatsStringTokens[index])
+		index++
+		assert.Equal(t, fmt.Sprintf("%.2f", clientStats.PacketLoss), clientStatsStringTokens[index])
+		index++
 
-        assert.Equal(t, index, len(clientStatsStringTokens))
-    })
+		assert.Equal(t, index, len(clientStatsStringTokens))
+	})
 
-    t.Run("test parse redis string", func(t *testing.T) {
-        clientStats := testRoutingStats()
-        expectedClientStats := routing.Stats{}
+	t.Run("test parse redis string", func(t *testing.T) {
+		clientStats := testRoutingStats()
+		expectedClientStats := routing.Stats{}
 
-        clientStatsString := clientStats.RedisString()
+		clientStatsString := clientStats.RedisString()
 
-        clientStatsStringTokens := strings.Split(clientStatsString, "|")
-        err := expectedClientStats.ParseRedisString(clientStatsStringTokens)
-        assert.NoError(t, err)
+		clientStatsStringTokens := strings.Split(clientStatsString, "|")
+		err := expectedClientStats.ParseRedisString(clientStatsStringTokens)
+		assert.NoError(t, err)
 
-        assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.RTT), fmt.Sprintf("%.2f", clientStats.RTT))
-        assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.Jitter), fmt.Sprintf("%.2f", clientStats.Jitter))
-        assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.PacketLoss), fmt.Sprintf("%.2f", clientStats.PacketLoss))
-    })
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.RTT), fmt.Sprintf("%.2f", clientStats.RTT))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.Jitter), fmt.Sprintf("%.2f", clientStats.Jitter))
+		assert.Equal(t, fmt.Sprintf("%.2f", expectedClientStats.PacketLoss), fmt.Sprintf("%.2f", clientStats.PacketLoss))
+	})
 }
 
 // MarshalBinary and UnmarshalBinary no longer used in code

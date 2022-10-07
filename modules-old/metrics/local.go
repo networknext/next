@@ -1,28 +1,28 @@
 package metrics
 
 import (
-    "context"
-    "expvar"
-    "sync"
-    "time"
+	"context"
+	"expvar"
+	"sync"
+	"time"
 
-    "github.com/go-kit/kit/log"
-    "github.com/go-kit/kit/metrics"
-    "github.com/go-kit/kit/metrics/generic"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/kit/metrics/generic"
 )
 
 // LocalHandler handles metrics for local development by using gokit's metrics expvar package,
 // creating a local endpoint to view all metrics as JSON in the browser.
 type LocalHandler struct {
-    counters   map[string]counterMapData
-    gauges     map[string]gaugeMapData
-    histograms map[string]histogramMapData
+	counters   map[string]counterMapData
+	gauges     map[string]gaugeMapData
+	histograms map[string]histogramMapData
 
-    counterMapMutex   sync.Mutex
-    gaugeMapMutex     sync.Mutex
-    histogramMapMutex sync.Mutex
+	counterMapMutex   sync.Mutex
+	gaugeMapMutex     sync.Mutex
+	histogramMapMutex sync.Mutex
 
-    customMetricsMap *expvar.Map
+	customMetricsMap *expvar.Map
 }
 
 // Open is a no-op.
@@ -36,119 +36,119 @@ func (local *LocalHandler) WriteLoop(ctx context.Context, logger log.Logger, dur
 // It is automatically updated by the expvar package so calling WriteLoop() is unnecessary.
 // If the metric already exists, NewCounter will return the counter to update it. The error is not used.
 func (local *LocalHandler) NewCounter(ctx context.Context, descriptor *Descriptor) (Counter, error) {
-    if local.counters == nil || local.customMetricsMap == nil {
-        local.init()
-    }
+	if local.counters == nil || local.customMetricsMap == nil {
+		local.init()
+	}
 
-    local.counterMapMutex.Lock()
-    defer local.counterMapMutex.Unlock()
+	local.counterMapMutex.Lock()
+	defer local.counterMapMutex.Unlock()
 
-    if mapData, contains := local.counters[descriptor.ID]; contains {
-        return mapData.counter, nil
-    }
+	if mapData, contains := local.counters[descriptor.ID]; contains {
+		return mapData.counter, nil
+	}
 
-    value := new(expvar.Float)
-    local.customMetricsMap.Set(descriptor.ID, value)
+	value := new(expvar.Float)
+	local.customMetricsMap.Set(descriptor.ID, value)
 
-    counter := &LocalCounter{f: value}
-    local.counters[descriptor.ID] = counterMapData{
-        descriptor: descriptor,
-        counter:    counter,
-    }
+	counter := &LocalCounter{f: value}
+	local.counters[descriptor.ID] = counterMapData{
+		descriptor: descriptor,
+		counter:    counter,
+	}
 
-    return counter, nil
+	return counter, nil
 }
 
 // NewGauge creates a local metric that is visible as JSON in the browser update by the returned gauge.
 // It is automatically updated by the expvar package so calling WriteLoop() is unnecessary.
 // If the metric already exists, NewGauge will return the gauge to update it. The error is not used.
 func (local *LocalHandler) NewGauge(ctx context.Context, descriptor *Descriptor) (Gauge, error) {
-    if local.gauges == nil || local.customMetricsMap == nil {
-        local.init()
-    }
+	if local.gauges == nil || local.customMetricsMap == nil {
+		local.init()
+	}
 
-    local.gaugeMapMutex.Lock()
-    defer local.gaugeMapMutex.Unlock()
+	local.gaugeMapMutex.Lock()
+	defer local.gaugeMapMutex.Unlock()
 
-    if mapData, contains := local.gauges[descriptor.ID]; contains {
-        return mapData.gauge, nil
-    }
+	if mapData, contains := local.gauges[descriptor.ID]; contains {
+		return mapData.gauge, nil
+	}
 
-    value := new(expvar.Float)
-    local.customMetricsMap.Set(descriptor.ID, value)
+	value := new(expvar.Float)
+	local.customMetricsMap.Set(descriptor.ID, value)
 
-    gauge := &LocalGauge{f: value}
-    local.gauges[descriptor.ID] = gaugeMapData{
-        descriptor: descriptor,
-        gauge:      gauge,
-    }
+	gauge := &LocalGauge{f: value}
+	local.gauges[descriptor.ID] = gaugeMapData{
+		descriptor: descriptor,
+		gauge:      gauge,
+	}
 
-    return gauge, nil
+	return gauge, nil
 }
 
 // NewHistogram creates a local metric that is visible as JSON in the browser observed by the returned histogram.
 // It is automatically updated by the expvar package so calling WriteLoop() is unnecessary.
 // If the metric already exists, NewHistogram will return the histogram observing it. The error is not used.
 func (local *LocalHandler) NewHistogram(ctx context.Context, descriptor *Descriptor, buckets int) (Histogram, error) {
-    if local.histograms == nil || local.customMetricsMap == nil {
-        local.init()
-    }
+	if local.histograms == nil || local.customMetricsMap == nil {
+		local.init()
+	}
 
-    local.histogramMapMutex.Lock()
-    defer local.histogramMapMutex.Unlock()
+	local.histogramMapMutex.Lock()
+	defer local.histogramMapMutex.Unlock()
 
-    if mapData, contains := local.histograms[descriptor.ID]; contains {
-        return mapData.histogram, nil
-    }
+	if mapData, contains := local.histograms[descriptor.ID]; contains {
+		return mapData.histogram, nil
+	}
 
-    p50 := new(expvar.Float)
-    p90 := new(expvar.Float)
-    p95 := new(expvar.Float)
-    p99 := new(expvar.Float)
+	p50 := new(expvar.Float)
+	p90 := new(expvar.Float)
+	p95 := new(expvar.Float)
+	p99 := new(expvar.Float)
 
-    local.customMetricsMap.Set(descriptor.ID+".p50", p50)
-    local.customMetricsMap.Set(descriptor.ID+".p90", p90)
-    local.customMetricsMap.Set(descriptor.ID+".p95", p95)
-    local.customMetricsMap.Set(descriptor.ID+".p99", p99)
+	local.customMetricsMap.Set(descriptor.ID+".p50", p50)
+	local.customMetricsMap.Set(descriptor.ID+".p90", p90)
+	local.customMetricsMap.Set(descriptor.ID+".p95", p95)
+	local.customMetricsMap.Set(descriptor.ID+".p99", p99)
 
-    histogram := &LocalHistogram{
-        h:       generic.NewHistogram(descriptor.ID, buckets),
-        buckets: buckets,
-        p50:     p50,
-        p90:     p90,
-        p95:     p95,
-        p99:     p99,
-    }
+	histogram := &LocalHistogram{
+		h:       generic.NewHistogram(descriptor.ID, buckets),
+		buckets: buckets,
+		p50:     p50,
+		p90:     p90,
+		p95:     p95,
+		p99:     p99,
+	}
 
-    local.histograms[descriptor.ID] = histogramMapData{
-        descriptor: descriptor,
-        histogram:  histogram,
-        buckets:    buckets,
-    }
+	local.histograms[descriptor.ID] = histogramMapData{
+		descriptor: descriptor,
+		histogram:  histogram,
+		buckets:    buckets,
+	}
 
-    return histogram, nil
+	return histogram, nil
 }
 
 // Close is a no-op.
 func (local *LocalHandler) Close() error { return nil }
 
 func (local *LocalHandler) init() {
-    local.counters = make(map[string]counterMapData)
-    local.gauges = make(map[string]gaugeMapData)
-    local.histograms = make(map[string]histogramMapData)
+	local.counters = make(map[string]counterMapData)
+	local.gauges = make(map[string]gaugeMapData)
+	local.histograms = make(map[string]histogramMapData)
 
-    result := expvar.Get("Local Metrics")
-    if result != nil {
-        local.customMetricsMap = result.(*expvar.Map)
-    } else {
-        local.customMetricsMap = expvar.NewMap("Local Metrics")
-    }
+	result := expvar.Get("Local Metrics")
+	if result != nil {
+		local.customMetricsMap = result.(*expvar.Map)
+	} else {
+		local.customMetricsMap = expvar.NewMap("Local Metrics")
+	}
 }
 
 // LocalCounter mimics go-kit's expvar.Counter, but adds methods to satisfy this package's Counter.
 // Label values aren't supported.
 type LocalCounter struct {
-    f *expvar.Float
+	f *expvar.Float
 }
 
 // With is a no-op.
@@ -162,9 +162,9 @@ func (c *LocalCounter) Value() float64 { return c.f.Value() }
 
 // ValueReset returns the counter's current value and resets the counter.
 func (c *LocalCounter) ValueReset() float64 {
-    v := c.f.Value()
-    c.f.Set(0)
-    return v
+	v := c.f.Value()
+	c.f.Set(0)
+	return v
 }
 
 // LabelValues is a no-op.
@@ -176,7 +176,7 @@ func (c *LocalCounter) Reset() { c.f.Set(0) }
 // LocalGauge mimics go-kit's expvar.Gauge, but adds methods to satisfy this package's Gauge.
 // Label values aren't supported.
 type LocalGauge struct {
-    f *expvar.Float
+	f *expvar.Float
 }
 
 // With is a no-op.
@@ -200,13 +200,13 @@ func (g *LocalGauge) Reset() { g.f.Set(0) }
 // LocalHistogram mimics go-kit's expvar.Histogram, but adds methods to satisfy this package's Histogram.
 // Label values aren't supported.
 type LocalHistogram struct {
-    mtx     sync.Mutex
-    h       *generic.Histogram
-    buckets int
-    p50     *expvar.Float
-    p90     *expvar.Float
-    p95     *expvar.Float
-    p99     *expvar.Float
+	mtx     sync.Mutex
+	h       *generic.Histogram
+	buckets int
+	p50     *expvar.Float
+	p90     *expvar.Float
+	p95     *expvar.Float
+	p99     *expvar.Float
 }
 
 // With is a no-op.
@@ -214,19 +214,19 @@ func (h *LocalHistogram) With(labelValues ...string) metrics.Histogram { return 
 
 // Observe adds the given value to the histogram.
 func (h *LocalHistogram) Observe(value float64) {
-    h.h.Observe(value)
+	h.h.Observe(value)
 
-    h.mtx.Lock()
-    defer h.mtx.Unlock()
-    h.p50.Set(h.Quantile(0.50))
-    h.p90.Set(h.Quantile(0.90))
-    h.p95.Set(h.Quantile(0.95))
-    h.p99.Set(h.Quantile(0.99))
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	h.p50.Set(h.Quantile(0.50))
+	h.p90.Set(h.Quantile(0.90))
+	h.p95.Set(h.Quantile(0.95))
+	h.p99.Set(h.Quantile(0.99))
 }
 
 // Quantile returns the value of the quantile, between 0.0 and 1.0
 func (h *LocalHistogram) Quantile(q float64) float64 {
-    return h.h.Quantile(q)
+	return h.h.Quantile(q)
 }
 
 // LabelValues is a no-op.

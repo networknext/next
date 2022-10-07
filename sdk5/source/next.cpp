@@ -50,8 +50,8 @@
 #define NEXT_SERVER_BACKEND_PORT                                  "45000"
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
-#define NEXT_SERVER_AUTODETECT_TIMEOUT                                   9.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
+#define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -146,7 +146,7 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-#define NEXT_MAX_SESSION_DATA_BYTES                                   511
+#define NEXT_MAX_SESSION_DATA_BYTES                                   500
 
 #define NEXT_MAX_SESSION_UPDATE_RETRIES                                10
 
@@ -10130,6 +10130,7 @@ struct next_session_entry_t
     double update_last_send_time;
     uint8_t update_type;
     int update_num_tokens;
+    bool session_update_timed_out;
 
     NEXT_DECLARE_SENTINEL(7)
 
@@ -13036,17 +13037,17 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. packet failed to read" );
             return;
         }
 
         if ( packet.request_id != server->server_update_request_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. request id does not match" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. request id does not match" );
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server update response packet from backend" );
 
         server->server_update_request_id = 0;
         server->server_update_resend_time = 0.0;
@@ -13101,26 +13102,26 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. packet failed to read" );
             return;
         }
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. could not find session %" PRIx64, packet.session_id );
             return;
         }
 
         if ( !entry->waiting_for_update_response )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. not waiting for session response" );
             return;
         }
 
         if ( packet.slice_number != entry->update_sequence - 1 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. wrong sequence number" );
             return;
         }
 
@@ -13133,7 +13134,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session update response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
 
         bool multipath = packet.multipath;
 
@@ -14302,6 +14303,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server backend hostname is an address" );
         next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
         address.port = uint16_t( atoi(port) );
         success = true;
@@ -14716,7 +14718,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     bool first_server_update = server->server_update_first;
 
-    if ( server->server_update_last_time + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
+    if ( server->state != NEXT_SERVER_STATE_DIRECT_ONLY && server->server_update_last_time + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         if ( server->server_update_request_id != 0 )
         {
@@ -14835,7 +14837,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->session_update_flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) )
+        if ( !session->session_update_timed_out && ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->session_update_flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) ) )
         {
             NextBackendSessionUpdateRequestPacket packet;
 
@@ -14991,11 +14993,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
 
-        if ( session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
+        if ( !session->session_update_timed_out && session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
+            session->session_update_timed_out = true;
 
             // IMPORTANT: Send packets direct from now on for this session
             session->committed = false;
