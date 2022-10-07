@@ -28,7 +28,6 @@ import (
     "github.com/networknext/backend/modules/packets"
 
     "github.com/networknext/backend/modules-old/crypto"
-    "github.com/networknext/backend/modules-old/routing"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -781,7 +780,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         // build token data
 
-        routerPrivateKey := [crypto.KeySize]byte{}
+        routerPrivateKey := [packets.SDK5_KeyBytes]byte{}
         copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
         tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
@@ -802,19 +801,17 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
         var tokenData []byte
 
-        // todo: remove any "routing.*" below
-
         if sameRoute {
-            tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+            tokenData = make([]byte, numTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
             core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey)
-            routeType = routing.RouteTypeContinue
+            routeType = packets.SDK5_RouteTypeContinue
         } else {
             sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
             sessionData.SessionVersion++
 
-            tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+            tokenData = make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
             core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
-            routeType = routing.RouteTypeNew
+            routeType = packets.SDK5_RouteTypeNew
         }
 
         // contruct the session update response packet

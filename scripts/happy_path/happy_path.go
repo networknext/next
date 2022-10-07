@@ -381,28 +381,22 @@ func happy_path() int {
 
     server5_initialized := false
 
-    // todo
-    _ = server5_stdout
-    _ = server5_initialized
+    for i := 0; i < 100; i++ {
+        if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
+            strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
+            server5_initialized = true
+            break
+        }
+        time.Sleep(100 * time.Millisecond)
+    }
 
-    /*
-       for i := 0; i < 100; i++ {
-           if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
-               strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
-               server5_initialized = true
-               break
-           }
-           time.Sleep(100 * time.Millisecond)
-       }
-
-       if !server5_initialized {
-           fmt.Printf("\nerror: server 5 failed to initialize\n\n")
-           fmt.Printf("----------------------------------------------------\n")
-           fmt.Printf("%s", server5_stdout)
-           fmt.Printf("----------------------------------------------------\n")
-           return 1
-       }
-    */
+    if !server5_initialized {
+        fmt.Printf("\nerror: server 5 failed to initialize\n\n")
+        fmt.Printf("----------------------------------------------------\n")
+        fmt.Printf("%s", server5_stdout)
+        fmt.Printf("----------------------------------------------------\n")
+        return 1
+    }
 
     // ==================================================================================
 
@@ -442,27 +436,22 @@ func happy_path() int {
 
     client5_initialized := false
 
-    _ = client5_initialized
-    _ = client5_stdout
+    for i := 0; i < 30; i++ {
+        if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+            strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+            client5_initialized = true
+            break
+        }
+        time.Sleep(time.Second)
+    }
 
-    /*
-       for i := 0; i < 30; i++ {
-           if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-               strings.Contains(client5_stdout.String(), "client continues route (committed)") {
-               client5_initialized = true
-               break
-           }
-           time.Sleep(time.Second)
-       }
-
-       if !client5_initialized {
-           fmt.Printf("\nerror: client 5 failed to initialize\n\n")
-           fmt.Printf("----------------------------------------------------\n")
-           fmt.Printf("%s", client5_stdout)
-           fmt.Printf("----------------------------------------------------\n")
-           return 1
-       }
-    */
+    if !client5_initialized {
+        fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+        fmt.Printf("----------------------------------------------------\n")
+        fmt.Printf("%s", client5_stdout)
+        fmt.Printf("----------------------------------------------------\n")
+        return 1
+    }
 
     // ==================================================================================
 
