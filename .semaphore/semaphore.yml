@@ -827,7 +827,7 @@ blocks:
       secrets:
         - name: build-machine-access
         - name: build-machine-known-hosts
-     prologue:
+      prologue:
         commands:
          - chmod 600 /home/semaphore/.ssh/id_rsa_build
          - ssh-add /home/semaphore/.ssh/id_rsa_build
