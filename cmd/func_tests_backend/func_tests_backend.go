@@ -918,11 +918,11 @@ func test_redis_streams() {
 	core.Debug("done")
 }
 
-func test_redis_selector() {
+func test_redis_selector_migration() {
 
-	fmt.Printf("test_redis_selector\n")
+	fmt.Printf("test_redis_selector_migration\n")
 
-	cancelContext, _ := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
@@ -935,28 +935,6 @@ func test_redis_selector() {
 	}
 
 	selectorMutex1 := sync.RWMutex{}
-
-	redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
-		RedisHostname: "127.0.0.1:6379",
-		RedisPassword: "",
-		Timeout:       time.Second * 5,
-	})
-	if err != nil {
-		core.Error("failed to setup redis selector 2")
-		os.Exit(1)
-	}
-
-	selectorMutex2 := sync.RWMutex{}
-
-	redisObserver, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
-		RedisHostname: "127.0.0.1:6379",
-		RedisPassword: "",
-		Timeout:       time.Second * 5,
-	})
-	if err != nil {
-		core.Error("failed to setup redis observer")
-		os.Exit(1)
-	}
 
 	dataStore := []common.DataStoreConfig{
 		{
@@ -1017,6 +995,10 @@ func test_redis_selector() {
 				isLeader = redisSelector.IsLeader()
 				selectorMutex1.Unlock()
 
+				if cancelContext.Err() != nil {
+					return
+				}
+
 				if isLeader {
 					for i, store := range dataStore {
 						if string(store.Data) != string(newDataStore[i].Data) {
@@ -1038,6 +1020,18 @@ func test_redis_selector() {
 	}()
 
 	time.Sleep(time.Second * 2)
+
+	selectorMutex2 := sync.RWMutex{}
+
+	redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 2")
+		os.Exit(1)
+	}
 
 	go func() {
 
@@ -1068,6 +1062,10 @@ func test_redis_selector() {
 				isLeader = redisSelector2.IsLeader()
 				selectorMutex2.Unlock()
 
+				if cancelContext.Err() != nil {
+					return
+				}
+
 				if isLeader {
 					for i, store := range dataStore2 {
 						if string(store.Data) != string(newDataStore2[i].Data) {
@@ -1090,6 +1088,16 @@ func test_redis_selector() {
 
 	time.Sleep(time.Second * 2)
 
+	redisObserver, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis observer")
+		os.Exit(1)
+	}
+
 	go func() {
 
 		ticker := time.NewTicker(time.Second)
@@ -1099,7 +1107,12 @@ func test_redis_selector() {
 			case <-cancelContext.Done():
 				return
 			case <-ticker.C:
+
 				observedData := redisObserver.Load(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
 
 				if redisObserver.IsLeader() {
 					core.Error("observer should never be leader")
@@ -1127,7 +1140,130 @@ func test_redis_selector() {
 		}
 	}()
 
+	time.Sleep(time.Second * 18)
+
+	cancelFunc()
+
+	// Make sure all keys expire
+	time.Sleep(time.Second * 7)
+
+	core.Debug("done")
+}
+
+func test_redis_selector_flap() {
+
+	fmt.Printf("test_redis_selector_flap\n")
+
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+
+	redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 1")
+		os.Exit(1)
+	}
+
+	dataStore := []common.DataStoreConfig{
+		{
+			Name: "store1",
+			Data: []byte("1"),
+		},
+		{
+			Name: "store2",
+			Data: []byte("2"),
+		},
+		{
+			Name: "store3",
+			Data: []byte("3"),
+		},
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				redisSelector.Store(cancelContext, dataStore)
+				redisSelector.Load(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
+
+				if !redisSelector.IsLeader() {
+					core.Error("selector 1 should always be leader")
+					os.Exit(1)
+				}
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+
+	redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis selector 2")
+		os.Exit(1)
+	}
+
+	dataStore2 := []common.DataStoreConfig{
+		{
+			Name: "store1",
+			Data: []byte("4"),
+		},
+		{
+			Name: "store2",
+			Data: []byte("5"),
+		},
+		{
+			Name: "store3",
+			Data: []byte("6"),
+		},
+	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				return
+			case <-ticker.C:
+
+				redisSelector2.Store(cancelContext, dataStore2)
+				redisSelector2.Load(cancelContext)
+
+				if cancelContext.Err() != nil {
+					return
+				}
+
+				if redisSelector2.IsLeader() {
+					core.Error("selector 2 should never be leader")
+					os.Exit(1)
+				}
+			}
+		}
+	}()
+
 	time.Sleep(time.Second * 20)
+
+	cancelFunc()
+
+	// Make sure keys expire
+	time.Sleep(time.Second * 7)
 
 	core.Debug("done")
 }
@@ -1141,12 +1277,15 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		test_magic_backend,
-		test_redis_pubsub,
-		test_redis_streams,
-		test_redis_selector,
-		test_google_pubsub,
-		test_google_bigquery,
+		// test_magic_backend,
+		// test_redis_pubsub,
+		// test_redis_streams,
+		test_redis_selector_migration,
+		test_redis_selector_flap,
+		// test_redis_leader_election_migration,
+		// test_redis_leader_election_flap,
+		// test_google_pubsub,
+		// test_google_bigquery,
 	}
 
 	var tests []test_function
