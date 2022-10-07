@@ -42,7 +42,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength) // todo
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -55,7 +55,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	for i := uint32(0); i < costsLength; i++ {
-		stream.SerializeInteger(&m.Costs[i], -1, routing.InvalidRouteValue)
+		stream.SerializeInteger(&m.Costs[i], -1, routing.InvalidRouteValue) // todo
 	}
 
 	if m.Version >= 2 {

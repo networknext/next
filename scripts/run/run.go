@@ -212,7 +212,7 @@ func happy_path() {
 	}
 	fmt.Printf("\ndon't worry. be happy.\n\n")
 	os.Setenv("WAIT_DURATION", arg)
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go %s")
+	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
 }
 
 func server4() {

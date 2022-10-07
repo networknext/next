@@ -53,7 +53,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)  // todo: don't use routing
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -73,11 +73,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numEntries; i++ {
 		entry := &m.RouteEntries[i]
 
-		stream.SerializeInteger(&entry.DirectCost, -1, routing.InvalidRouteValue)
+		stream.SerializeInteger(&entry.DirectCost, -1, routing.InvalidRouteValue) // todo
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], -1, routing.InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteCost[i], -1, routing.InvalidRouteValue) // todo
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
@@ -86,10 +86,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, routing.MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, routing.MaxDatabaseBinWrapperSize) // todo
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
-			m.BinFileData = make([]byte, routing.MaxDatabaseBinWrapperSize)
+			m.BinFileData = make([]byte, routing.MaxDatabaseBinWrapperSize) // todo
 		}
 		binFileData := m.BinFileData[:m.BinFileBytes]
 		stream.SerializeBytes(binFileData)

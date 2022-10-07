@@ -37,7 +37,7 @@ var (
 type RelayData struct {
 	NumRelays          int
 	RelayIds           []uint64
-	RelayHash          map[uint64]routing.Relay
+	RelayHash          map[uint64]routing.Relay  // todo: don't use routing
 	RelayArray         []routing.Relay
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
@@ -67,7 +67,7 @@ type Service struct {
 	// ------------------
 
 	databaseMutex     sync.RWMutex
-	database          *routing.DatabaseBinWrapper
+	database          *routing.DatabaseBinWrapper      // todo: we need to copy database and overlay out of routing
 	databaseOverlay   *routing.OverlayBinWrapper
 	databaseRelayData *RelayData
 
@@ -116,9 +116,11 @@ func CreateService(serviceName string) *Service {
 	core.Log("commit hash: %s", service.CommitHash)
 	core.Log("build time: %s", service.BuildTime)
 
+	// todo: we don't need to use the transport.VersionHandlerFunc
 	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 
+	// todo: don't use transport HealthHandlerFunc
 	service.healthHandler = transport.HealthHandlerFunc()
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())

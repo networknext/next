@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+
+	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/option"
 )
 
