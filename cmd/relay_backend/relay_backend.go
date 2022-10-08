@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
 
-	"github.com/networknext/backend/modules-old/crypto_old"
+	// todo: we want to remove dependencies on these
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )
@@ -317,6 +317,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 			case message := <-consumer.MessageChannel:
 
+				// todo: remove dependency on transport
+				// todo: this should become a new packet type, defined in module/packets/relay_packets.go
 				var relayUpdate transport.RelayUpdateRequest
 				if err = relayUpdate.UnmarshalBinary(message); err != nil {
 					core.Error("could not read relay update")
@@ -325,7 +327,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				relayData := service.RelayData()
 
-				relayId := crypto_old.HashID(relayUpdate.Address.String())
+				relayId := common.RelayId(relayUpdate.Address.String())
 				relayIndex, ok := relayData.RelayIdToIndex[relayId]
 				if !ok {
 					core.Error("unknown relay id %016x", relayId)
@@ -363,6 +365,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					sampleJitter[i] = jitter
 					samplePacketLoss[i] = pl
 
+					// todo: remove dependency on routing
 					if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
 						if jitter <= maxJitter && pl <= maxPacketLoss {
 							numRoutable++

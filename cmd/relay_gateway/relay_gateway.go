@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
-	"github.com/networknext/backend/modules-old/crypto_old"
+	// todo: remove these
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )
@@ -55,6 +55,7 @@ func main() {
 	service.WaitForShutdown()
 }
 
+// todo: remove dependency on routing structs
 func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) []routing.RelayPingData {
 
 	sellerName := relay.Seller.Name
@@ -80,8 +81,10 @@ func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay
 	return relaysToPing
 }
 
+// todo: remove dependency on routing structs
 func WriteRelayUpdateResponse(getMagicValues func() ([]byte, []byte, []byte), relay *routing.Relay, relayUpdateRequest *transport.RelayUpdateRequest, relaysToPing []routing.RelayPingData) ([]byte, error) {
 
+	// todo: RelayUpdateResponse should become a new packet in module/packets/relay_packets.go
 	response := transport.RelayUpdateResponse{}
 
 	response.Version = transport.VersionNumberUpdateResponse
@@ -161,7 +164,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayData := getRelayData()
 
-		id := crypto_old.HashID(relayUpdateRequest.Address.String())
+		id := common.RelayId(relayUpdateRequest.Address.String())
 
 		relay, ok := relayData.RelayHash[id]
 		if !ok {
