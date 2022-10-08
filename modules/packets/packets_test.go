@@ -261,9 +261,68 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 	return packet
 }
 
+func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateResponsePacket {
+
+	packet := packets.SDK5_SessionUpdateResponsePacket{
+		SessionId:          rand.Uint64(),
+		SliceNumber:        rand.Uint32(),
+		SessionDataBytes:   int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
+		NearRelaysChanged:  common.RandomBool(),
+		HasDebug:           common.RandomBool(),
+		ExcludeNearRelays:  common.RandomBool(),
+		HighFrequencyPings: common.RandomBool(),
+	}
+
+	if packet.HasDebug {
+		packet.Debug = common.RandomString(packets.SDK5_MaxSessionDebug)
+	}
+
+	for i := 0; i < int(packet.SessionDataBytes); i++ {
+		packet.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	if packet.NearRelaysChanged {
+		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
+		for i := 0; i < int(packet.NumNearRelays); i++ {
+			packet.NearRelayIds[i] = uint64(i * 32)
+			packet.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
+		}
+	}
+
+	if packet.ExcludeNearRelays {
+		for i := 0; i < int(packets.SDK5_MaxNearRelays); i++ {
+			packet.NearRelayExcluded[i] = common.RandomBool()
+		}
+	}
+
+	packet.RouteType = int32(common.RandomInt(packets.SDK5_RouteTypeDirect, packets.SDK5_RouteTypeContinue))
+
+	if packet.RouteType != packets.SDK5_RouteTypeDirect {
+		packet.Multipath = common.RandomBool()
+		packet.Committed = common.RandomBool()
+		packet.NumTokens = int32(common.RandomInt(1, packets.SDK5_MaxTokens))
+	}
+
+	if packet.RouteType == packets.SDK5_RouteTypeNew {
+		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+		for i := range packet.Tokens {
+			packet.Tokens[i] = byte(common.RandomInt(0,255))
+		}
+	}
+
+	if packet.RouteType == packets.SDK5_RouteTypeContinue {
+		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+		for i := range packet.Tokens {
+			packet.Tokens[i] = byte(common.RandomInt(0,255))
+		}
+	}
+
+	return packet
+}
+
 // ------------------------------------------------------------
 
-const NumIterations = 10000 // todo
+const NumIterations = 10000
 
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
@@ -363,206 +422,16 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 	}
 }
 
-// -----------------------------
+func Test_SDK5_SessionUpdateResponsePacket(t *testing.T) {
 
-// dragons below...
+	t.Parallel()
 
-/*
-func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
+	for i := 0; i < NumIterations; i++ {
 
-	writePacket := packets.SDK5_SessionUpdateResponsePacket{
-		SessionId:          123412341243,
-		SliceNumber:        10234,
-		SessionDataBytes:   100,
-		RouteType:          packets.SDK5_RouteTypeDirect,
-		NearRelaysChanged:  true,
-		NumNearRelays:      10,
-		HasDebug:           true,
-		Debug:              "I am a debug string",
-		ExcludeNearRelays:  true,
-		HighFrequencyPings: true,
+		writePacket := GenerateRandomSessionUpdateResponsePacket()
+
+		readPacket := packets.SDK5_SessionUpdateResponsePacket{}
+
+		PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
 	}
-
-	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
-		writePacket.SessionData[i] = uint8((i + 17) % 256)
-	}
-
-	for i := 0; i < int(writePacket.NumNearRelays); i++ {
-		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
-		writePacket.NearRelayExcluded[i] = (i % 2) == 0
-	}
-
-	readPacket := packets.SDK5_SessionUpdateResponsePacket{}
-
-	PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
 }
-
-func Test_SDK5_SessionUpdateResponsePacket_NewRoute(t *testing.T) {
-
-	writePacket := packets.SDK5_SessionUpdateResponsePacket{
-		SessionId:          123412341243,
-		SliceNumber:        10234,
-		SessionDataBytes:   100,
-		RouteType:          packets.SDK5_RouteTypeNew,
-		Multipath:          true,
-		Committed:          true,
-		NumTokens:          5,
-		NearRelaysChanged:  true,
-		NumNearRelays:      10,
-		HasDebug:           true,
-		Debug:              "I am a debug string",
-		ExcludeNearRelays:  true,
-		HighFrequencyPings: true,
-	}
-
-	tokenBytes := writePacket.NumTokens * packets.SDK5_EncryptedNextRouteTokenSize
-	writePacket.Tokens = make([]byte, tokenBytes)
-	for i := 0; i < int(tokenBytes); i++ {
-		writePacket.Tokens[i] = uint8(i + 3)
-	}
-
-	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
-		writePacket.SessionData[i] = uint8((i + 17) % 256)
-	}
-
-	for i := 0; i < int(writePacket.NumNearRelays); i++ {
-		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
-		writePacket.NearRelayExcluded[i] = (i % 2) == 0
-	}
-
-	readPacket := packets.SDK5_SessionUpdateResponsePacket{}
-
-	PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
-}
-
-func Test_SDK5_SessionResponsePacket_ContinueRoute(t *testing.T) {
-
-	writePacket := packets.SDK5_SessionUpdateResponsePacket{
-		SessionId:          123412341243,
-		SliceNumber:        10234,
-		SessionDataBytes:   100,
-		RouteType:          packets.SDK5_RouteTypeContinue,
-		Multipath:          true,
-		Committed:          true,
-		NumTokens:          5,
-		NearRelaysChanged:  true,
-		NumNearRelays:      10,
-		HasDebug:           true,
-		Debug:              "I am a debug string",
-		ExcludeNearRelays:  true,
-		HighFrequencyPings: true,
-	}
-
-	tokenBytes := writePacket.NumTokens * packets.SDK5_EncryptedContinueRouteTokenSize
-	writePacket.Tokens = make([]byte, tokenBytes)
-	for i := 0; i < int(tokenBytes); i++ {
-		writePacket.Tokens[i] = uint8(i + 3)
-	}
-
-	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
-		writePacket.SessionData[i] = uint8((i + 17) % 256)
-	}
-
-	for i := 0; i < int(writePacket.NumNearRelays); i++ {
-		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
-		writePacket.NearRelayExcluded[i] = (i % 2) == 0
-	}
-
-	readPacket := packets.SDK5_SessionUpdateResponsePacket{}
-
-	PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
-}
-
-func Test_SDK5_SessionData(t *testing.T) {
-
-	routeState := core.RouteState{
-		UserID:              123213131,
-		Next:                true,
-		Veto:                false,
-		Banned:              false,
-		Disabled:            false,
-		NotSelected:         false,
-		ABTest:              true,
-		A:                   true,
-		B:                   false,
-		ForcedNext:          false,
-		ReduceLatency:       true,
-		ReducePacketLoss:    true,
-		ProMode:             false,
-		Multipath:           true,
-		Committed:           true,
-		CommitVeto:          false,
-		CommitCounter:       0,
-		LatencyWorse:        false,
-		LocationVeto:        false,
-		MultipathOverload:   false,
-		NoRoute:             false,
-		NextLatencyTooHigh:  false,
-		NumNearRelays:       32,
-		RelayWentAway:       false,
-		RouteLost:           false,
-		DirectJitter:        5,
-		Mispredict:          false,
-		LackOfDiversity:     false,
-		MispredictCounter:   0,
-		LatencyWorseCounter: 0,
-		MultipathRestricted: false,
-		PLSustainedCounter:  0,
-	}
-
-	for i := 0; i < packets.SDK5_MaxNearRelays; i++ {
-		routeState.NearRelayRTT[i] = int32(i + 10)
-		routeState.NearRelayJitter[i] = int32(i + 5)
-		routeState.NearRelayPLHistory[i] = (uint32(1123414100) >> i) & 0xFF
-		routeState.NearRelayPLCount[i] = uint32(500) + uint32(i)
-	}
-
-	routeState.DirectPLHistory = 127
-	routeState.DirectPLCount = 5
-	routeState.PLHistoryIndex = 3
-	routeState.PLHistorySamples = 5
-
-	writePacket := packets.SDK5_SessionData{
-		Version:                       packets.SDK5_SessionDataVersion,
-		SessionId:                     123123131,
-		SessionVersion:                5,
-		SliceNumber:                   10001,
-		ExpireTimestamp:               3249823948198,
-		Initial:                       false,
-		Location:                      packets.SDK5_LocationData{Latitude: 100.2, Longitude: 95.0, ISP: "Comcast", ASN: 12313},
-		RouteChanged:                  true,
-		RouteNumRelays:                5,
-		RouteCost:                     105,
-		RouteState:                    routeState,
-		EverOnNext:                    true,
-		FellBackToDirect:              false,
-		PrevPacketsSentClientToServer: 100000,
-		PrevPacketsSentServerToClient: 100234,
-		PrevPacketsLostClientToServer: 100021,
-		PrevPacketsLostServerToClient: 100005,
-		HoldNearRelays:                true,
-		WroteSummary:                  false,
-		TotalPriceSum:                 123213111,
-		NextEnvelopeBytesUpSum:        12313123,
-		NextEnvelopeBytesDownSum:      238129381,
-		DurationOnNext:                5000,
-	}
-
-	for i := 0; i < int(writePacket.RouteNumRelays); i++ {
-		writePacket.RouteRelayIds[i] = uint64(i + 1000)
-	}
-
-	for i := 0; i < packets.SDK5_MaxNearRelays; i++ {
-		writePacket.HoldNearRelayRTT[i] = int32(i + 100)
-	}
-
-	readPacket := packets.SDK5_SessionData{}
-
-	PacketSerializationTest[*packets.SDK5_SessionData](&writePacket, &readPacket, t)
-}
-*/
-
-// ------------------------------------------------------------------------
