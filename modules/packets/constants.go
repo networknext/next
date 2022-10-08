@@ -27,7 +27,7 @@ const (
 	SDK5_MaxTags                 = 8
 	SDK5_MaxTokens               = core.NEXT_MAX_NODES
 	SDK5_MaxRelaysPerRoute       = core.NEXT_MAX_NODES - 2
-	SDK5_MaxNearRelays           = core.MaxNearRelays
+	SDK5_MaxNearRelays           = int(core.MaxNearRelays)
 	SDK5_MaxSessionUpdateRetries = 10
 	SDK5_MaxSessionDebug         = 1024
 
@@ -103,4 +103,8 @@ const (
 	SDK5_MacBytes   = 16
 	SDK5_NonceBytes = 24
 	SDK5_KeyBytes   = 32
+
+	SDK5_MaxNearRelayRTT = 255
+	SDK5_MaxNearRelayJitter = 255
+	SDK5_MaxNearRelayPacketLoss = 100
 )

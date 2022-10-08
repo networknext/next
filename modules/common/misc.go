@@ -22,7 +22,7 @@ func RandomBool() bool {
 func RandomInt(min int, max int) int {
 	difference := max - min
 	value := rand.Intn(difference + 1)
-	return value - min
+	return value + min
 }
 
 func RandomBytes(array []byte) {

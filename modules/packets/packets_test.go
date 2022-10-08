@@ -91,7 +91,7 @@ func TestVersionAtLeast(t *testing.T) {
 
 func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *testing.T) {
 
-	const BufferSize = 1024
+	const BufferSize = 10 * 1024
 
 	buffer := [BufferSize]byte{}
 
@@ -185,9 +185,86 @@ func GenerateRandomMatchDataResponsePacket() packets.SDK5_MatchDataResponsePacke
 	}
 }
 
+func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateRequestPacket {
+
+	packet := packets.SDK5_SessionUpdateRequestPacket{
+		Version:                         packets.SDKVersion{1, 2, 3},
+		BuyerId:                         rand.Uint64(),
+		DatacenterId:                    rand.Uint64(),
+		SessionId:                       rand.Uint64(),
+		SliceNumber:                     rand.Uint32(),
+		RetryNumber:                     int32(common.RandomInt(0, packets.SDK5_MaxSessionUpdateRetries)),
+		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
+		ClientAddress:                   *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
+		ServerAddress:                   *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
+		UserHash:                        rand.Uint64(),
+		HasNearRelayPings:               common.RandomBool(),
+		Next:                            common.RandomBool(),
+		Committed:                       common.RandomBool(),
+		Reported:                        common.RandomBool(),
+		FallbackToDirect:                common.RandomBool(),
+		ClientBandwidthOverLimit:        common.RandomBool(),
+		ServerBandwidthOverLimit:        common.RandomBool(),
+		ClientPingTimedOut:              common.RandomBool(),
+		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
+		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
+		ServerEvents:                    rand.Uint64(),
+		NumNearRelays:                   int32(common.RandomInt(0, packets.SDK5_MaxNearRelays)),
+
+		// todo
+		/*
+		DirectMinRTT:                    10.0,
+		DirectMaxRTT:                    20.0,
+		DirectPrimeRTT:                  19.0,
+		DirectJitter:                    5.2,
+		DirectPacketLoss:                0.1,
+		NextRTT:                         5.0,
+		NextJitter:                      0.5,
+		NextPacketLoss:                  0.01,
+		NextKbpsUp:                      100,
+		NextKbpsDown:                    256,
+		PacketsSentClientToServer:       10000,
+		PacketsSentServerToClient:       10500,
+		PacketsLostClientToServer:       5,
+		PacketsLostServerToClient:       10,
+		PacketsOutOfOrderClientToServer: 8,
+		PacketsOutOfOrderServerToClient: 9,
+		JitterClientToServer:            8.2,
+		JitterServerToClient:            9.6,
+		*/
+	}
+
+	if packet.SliceNumber == 0 {
+		packet.NumTags = int32(common.RandomInt(1, packets.SDK5_MaxTags))
+		for i := 0; i < int(packet.NumTags); i++ {
+			packet.Tags[i] = rand.Uint64()
+		}
+	}
+
+	for i := 0; i < int(packet.SessionDataBytes); i++ {
+		packet.SessionData[i] = uint8((i + 17) % 256)
+	}
+
+	for i := 0; i < int(crypto.KeySize); i++ {
+		packet.ClientRoutePublicKey[i] = uint8((i + 7) % 256)
+		packet.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
+	}
+
+	for i := 0; i < int(packet.NumNearRelays); i++ {
+		packet.NearRelayIds[i] = rand.Uint64()
+		if packet.HasNearRelayPings {
+			packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
+			packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
+			packet.NearRelayPacketLoss[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayPacketLoss))
+		}
+	}
+
+	return packet
+}
+
 // ------------------------------------------------------------
 
-const NumIterations = 10000
+const NumIterations = 10000 // todo
 
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
@@ -273,82 +350,25 @@ func Test_SDK5_MatchDataResponsePacket(t *testing.T) {
 	}
 }
 
-// -----------------------------
-
-// dragons below...
-
 func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
-	writePacket := packets.SDK5_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 3},
-		BuyerId:                         123414,
-		DatacenterId:                    1234123491,
-		SessionId:                       120394810984109,
-		SliceNumber:                     0,
-		RetryNumber:                     1,
-		SessionDataBytes:                100,
-		ClientAddress:                   *core.ParseAddress("127.0.0.1:50000"),
-		ServerAddress:                   *core.ParseAddress("127.0.0.1:40000"),
-		UserHash:                        12341298742,
-		PlatformType:                    packets.SDK5_PlatformTypePS4,
-		ConnectionType:                  packets.SDK5_ConnectionTypeWired,
-		Next:                            true,
-		Committed:                       true,
-		Reported:                        false,
-		FallbackToDirect:                false,
-		ClientBandwidthOverLimit:        false,
-		ServerBandwidthOverLimit:        false,
-		ClientPingTimedOut:              false,
-		HasNearRelayPings:               true,
-		NumTags:                         2,
-		ServerEvents:                    3152384721,
-		DirectMinRTT:                    10.0,
-		DirectMaxRTT:                    20.0,
-		DirectPrimeRTT:                  19.0,
-		DirectJitter:                    5.2,
-		DirectPacketLoss:                0.1,
-		NextRTT:                         5.0,
-		NextJitter:                      0.5,
-		NextPacketLoss:                  0.01,
-		NumNearRelays:                   10,
-		NextKbpsUp:                      100,
-		NextKbpsDown:                    256,
-		PacketsSentClientToServer:       10000,
-		PacketsSentServerToClient:       10500,
-		PacketsLostClientToServer:       5,
-		PacketsLostServerToClient:       10,
-		PacketsOutOfOrderClientToServer: 8,
-		PacketsOutOfOrderServerToClient: 9,
-		JitterClientToServer:            8.2,
-		JitterServerToClient:            9.6,
+	for i := 0; i < NumIterations; i++ {
+
+		writePacket := GenerateRandomSessionUpdateRequestPacket()
+
+		readPacket := packets.SDK5_SessionUpdateRequestPacket{}
+
+		PacketSerializationTest[*packets.SDK5_SessionUpdateRequestPacket](&writePacket, &readPacket, t)
 	}
-
-	for i := 0; i < int(writePacket.SessionDataBytes); i++ {
-		writePacket.SessionData[i] = uint8((i + 17) % 256)
-	}
-
-	for i := 0; i < int(crypto.KeySize); i++ {
-		writePacket.ClientRoutePublicKey[i] = uint8((i + 7) % 256)
-		writePacket.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
-	}
-
-	writePacket.Tags[0] = 12342151
-	writePacket.Tags[1] = 134614111111
-
-	for i := 0; i < int(writePacket.NumNearRelays); i++ {
-		writePacket.NearRelayIds[i] = uint64(i * 32)
-		writePacket.NearRelayRTT[i] = int32(i)
-		writePacket.NearRelayJitter[i] = int32(i + 1)
-		writePacket.NearRelayPacketLoss[i] = int32(i + 2)
-	}
-
-	readPacket := packets.SDK5_SessionUpdateRequestPacket{}
-
-	PacketSerializationTest[*packets.SDK5_SessionUpdateRequestPacket](&writePacket, &readPacket, t)
 }
 
+// -----------------------------
+
+// dragons below...
+
+/*
 func Test_SDK5_SessionUpdateResponsePacket_Direct(t *testing.T) {
 
 	writePacket := packets.SDK5_SessionUpdateResponsePacket{
@@ -544,5 +564,6 @@ func Test_SDK5_SessionData(t *testing.T) {
 
 	PacketSerializationTest[*packets.SDK5_SessionData](&writePacket, &readPacket, t)
 }
+*/
 
 // ------------------------------------------------------------------------
