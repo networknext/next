@@ -210,28 +210,19 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
 		ServerEvents:                    rand.Uint64(),
 		NumNearRelays:                   int32(common.RandomInt(0, packets.SDK5_MaxNearRelays)),
-
-		// todo
-		/*
-		DirectMinRTT:                    10.0,
-		DirectMaxRTT:                    20.0,
-		DirectPrimeRTT:                  19.0,
-		DirectJitter:                    5.2,
-		DirectPacketLoss:                0.1,
-		NextRTT:                         5.0,
-		NextJitter:                      0.5,
-		NextPacketLoss:                  0.01,
-		NextKbpsUp:                      100,
-		NextKbpsDown:                    256,
-		PacketsSentClientToServer:       10000,
-		PacketsSentServerToClient:       10500,
-		PacketsLostClientToServer:       5,
-		PacketsLostServerToClient:       10,
-		PacketsOutOfOrderClientToServer: 8,
-		PacketsOutOfOrderServerToClient: 9,
-		JitterClientToServer:            8.2,
-		JitterServerToClient:            9.6,
-		*/
+		DirectMinRTT:                    rand.Float32(),
+		DirectMaxRTT:                    rand.Float32(),
+		DirectPrimeRTT:                  rand.Float32(),
+		DirectJitter:                    rand.Float32(),
+		DirectPacketLoss:                rand.Float32(),
+		PacketsSentClientToServer:       rand.Uint64(),
+		PacketsSentServerToClient:       rand.Uint64(),
+		PacketsLostClientToServer:       rand.Uint64(),
+		PacketsLostServerToClient:       rand.Uint64(),
+		PacketsOutOfOrderClientToServer: rand.Uint64(),
+		PacketsOutOfOrderServerToClient: rand.Uint64(),
+		JitterClientToServer:            rand.Float32(),
+		JitterServerToClient:            rand.Float32(),
 	}
 
 	if packet.SliceNumber == 0 {
@@ -257,6 +248,14 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 			packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
 			packet.NearRelayPacketLoss[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayPacketLoss))
 		}
+	}
+
+	if packet.Next {
+		packet.NextRTT = rand.Float32()
+		packet.NextJitter = rand.Float32()
+		packet.NextPacketLoss = rand.Float32()
+		packet.NextKbpsUp = rand.Uint32()
+		packet.NextKbpsDown = rand.Uint32()
 	}
 
 	return packet
