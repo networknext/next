@@ -5,12 +5,11 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
-
-	"github.com/networknext/backend/modules-old/crypto_old"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -236,7 +235,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		packet.SessionData[i] = uint8((i + 17) % 256)
 	}
 
-	for i := 0; i < int(crypto_old.KeySize); i++ {
+	for i := 0; i < int(crypto.Box_KeySize); i++ {
 		packet.ClientRoutePublicKey[i] = uint8((i + 7) % 256)
 		packet.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
 	}

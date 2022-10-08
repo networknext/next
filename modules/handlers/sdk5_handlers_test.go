@@ -16,7 +16,6 @@ import (
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
-	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -375,7 +374,7 @@ func TestUnknownBuyer_SDK5(t *testing.T) {
 	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move database to common
 
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 
@@ -431,7 +430,7 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move database to common
 
 	buyerId := uint64(0x1111111122222222)
 
@@ -439,8 +438,9 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
+	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer) // todo: move database to common
 
+	// todo: move into database
 	buyer := routing.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -512,7 +512,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move into common
 
 	buyerId := uint64(0x1111111122222222)
 
@@ -520,6 +520,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
+	// todo: buyer into common with database
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
 	buyer := routing.Buyer{}
@@ -697,7 +698,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move into common
 
 	buyerId := uint64(0x1111111122222222)
 
@@ -705,6 +706,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
+	// todo: buyer etc. goes into database with common
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
 	buyer := routing.Buyer{}
@@ -785,7 +787,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	// setup a buyer in the database with keypair
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{}
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move into common
 
 	buyerId := uint64(0x1111111122222222)
 
@@ -793,6 +795,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
+	// todo: move buyer to common w. database
 	harness.handler.Database.BuyerMap = make(map[uint64]routing.Buyer)
 
 	buyer := routing.Buyer{}
@@ -803,7 +806,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto_old.HashID("local")
+	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -825,7 +828,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        buyerId,
 		RequestId:      requestId,
-		DatacenterId:   crypto_old.HashID("local"),
+		DatacenterId:   common.DatacenterId("local"),
 		DatacenterName: "local",
 	}
 
@@ -1310,7 +1313,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto_old.HashID("local")
+	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -1332,7 +1335,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 		Version:      packets.SDKVersion{5, 0, 0},
 		BuyerId:      buyerId,
 		RequestId:    requestId,
-		DatacenterId: crypto_old.HashID("local"),
+		DatacenterId: common.DatacenterId("local"),
 	}
 
 	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
@@ -1733,7 +1736,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto_old.HashID("local")
+	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -1753,7 +1756,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        buyerId,
 		ServerAddress:  *core.ParseAddress("127.0.0.1:10000"),
-		DatacenterId:   crypto_old.HashID("local"),
+		DatacenterId:   common.DatacenterId("local"),
 		UserHash:       uint64(123456789213),
 		SessionId:      uint64(5213412421413),
 		RetryNumber:    2,
