@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )
@@ -161,7 +161,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayData := getRelayData()
 
-		id := crypto.HashID(relayUpdateRequest.Address.String())
+		id := crypto_old.HashID(relayUpdateRequest.Address.String())
 
 		relay, ok := relayData.RelayHash[id]
 		if !ok {

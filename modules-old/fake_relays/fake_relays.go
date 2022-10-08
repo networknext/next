@@ -13,7 +13,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
@@ -276,7 +276,7 @@ func newRoutingRelay(index int, relayPublicKey []byte) (routing.Relay, error) {
 
 	return routing.Relay{
 		Name:      fmt.Sprintf("staging.relay.%d", index+1),
-		ID:        crypto.HashID(ipAddress),
+		ID:        crypto_old.HashID(ipAddress),
 		Addr:      *udpAddr,
 		PublicKey: relayPublicKey,
 	}, nil

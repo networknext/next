@@ -6,7 +6,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/transport"
 
 	"github.com/stretchr/testify/assert"
@@ -26,12 +26,12 @@ func (env *TestEnvironment) GenerateServerInitRequestPacket(sdkVersion transport
 	// If a private key is passed in, sign the packet
 	if len(privateKey) > 0 {
 		// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
-		requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto.PacketHashSize)...)
+		requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto_old.PacketHashSize)...)
 		requestData = append(requestDataHeader, requestData...)
-		requestData = crypto.SignPacket(privateKey, requestData)
+		requestData = crypto_old.SignPacket(privateKey, requestData)
 
 		// Once we have the signature, we need to take off the header before passing to the handler
-		requestData = requestData[1+crypto.PacketHashSize:]
+		requestData = requestData[1+crypto_old.PacketHashSize:]
 	}
 
 	return requestData
@@ -52,12 +52,12 @@ func (env *TestEnvironment) GenerateServerUpdatePacket(sdkVersion transport.SDKV
 	// If a private key is passed in, sign the packet
 	if len(privateKey) > 0 {
 		// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
-		requestDataHeader := append([]byte{transport.PacketTypeServerUpdate}, make([]byte, crypto.PacketHashSize)...)
+		requestDataHeader := append([]byte{transport.PacketTypeServerUpdate}, make([]byte, crypto_old.PacketHashSize)...)
 		requestData = append(requestDataHeader, requestData...)
-		requestData = crypto.SignPacket(privateKey, requestData)
+		requestData = crypto_old.SignPacket(privateKey, requestData)
 
 		// Once we have the signature, we need to take off the header before passing to the handler
-		requestData = requestData[1+crypto.PacketHashSize:]
+		requestData = requestData[1+crypto_old.PacketHashSize:]
 	}
 
 	return requestData
@@ -76,14 +76,14 @@ func (env *TestEnvironment) GenerateEmptySessionUpdatePacket(privateKey []byte) 
 
 	if len(privateKey) > 0 {
 		// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
-		requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
+		requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto_old.PacketHashSize)...)
 		requestData = append(requestDataHeader, requestData...)
 
 		// Break the crypto check by not passing in full privat key
-		requestData = crypto.SignPacket(privateKey, requestData)
+		requestData = crypto_old.SignPacket(privateKey, requestData)
 
 		// Once we have the signature, we need to take off the header before passing to the handler
-		requestData = requestData[1+crypto.PacketHashSize:]
+		requestData = requestData[1+crypto_old.PacketHashSize:]
 	}
 
 	return requestData
@@ -184,14 +184,14 @@ func (env *TestEnvironment) GenerateSessionUpdatePacket(config SessionUpdatePack
 
 	if len(config.PrivateKey) > 0 {
 		// Add the packet type byte and hash bytes to the request data so we can sign it properly
-		requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
+		requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto_old.PacketHashSize)...)
 		requestData = append(requestDataHeader, requestData...)
 
 		// Sign the packet
-		requestData = crypto.SignPacket(config.PrivateKey, requestData)
+		requestData = crypto_old.SignPacket(config.PrivateKey, requestData)
 
 		// Once the packet is signed, we need to remove the header before passing to the session update handler
-		requestData = requestData[1+crypto.PacketHashSize:]
+		requestData = requestData[1+crypto_old.PacketHashSize:]
 	}
 
 	return requestData
@@ -262,12 +262,12 @@ func (env *TestEnvironment) GenerateMatchDataRequestPacket(config MatchDataPacke
 	// If a private key is passed in, sign the packet
 	if len(config.PrivateKey) > 0 {
 		// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
-		requestDataHeader := append([]byte{transport.PacketTypeMatchDataRequest}, make([]byte, crypto.PacketHashSize)...)
+		requestDataHeader := append([]byte{transport.PacketTypeMatchDataRequest}, make([]byte, crypto_old.PacketHashSize)...)
 		requestData = append(requestDataHeader, requestData...)
-		requestData = crypto.SignPacket(config.PrivateKey, requestData)
+		requestData = crypto_old.SignPacket(config.PrivateKey, requestData)
 
 		// Once we have the signature, we need to take off the header before passing to the handler
-		requestData = requestData[1+crypto.PacketHashSize:]
+		requestData = requestData[1+crypto_old.PacketHashSize:]
 	}
 
 	return requestData

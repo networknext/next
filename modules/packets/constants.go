@@ -3,7 +3,7 @@ package packets
 import (
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto" // todo: we don't want this
+	"github.com/networknext/backend/modules-old/crypto_old" // todo: we don't want this
 )
 
 // -------------------------------------------------
@@ -74,10 +74,10 @@ const (
 	SDK5_RouteTypeContinue = 2
 
 	SDK5_NextRouteTokenSize          = 100
-	SDK5_EncryptedNextRouteTokenSize = SDK5_NextRouteTokenSize + crypto.MACSize
+	SDK5_EncryptedNextRouteTokenSize = SDK5_NextRouteTokenSize + crypto_old.MACSize // todo: don't use crypto here
 
 	SDK5_ContinueRouteTokenSize          = 41
-	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.MACSize
+	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto_old.MACSize // todo
 
 	SDK5_SessionDataVersion = 15
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/billing"
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +49,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 	return &billing.BillingEntry2{
 		Version:                         uint32(billing.BillingEntryVersion2),
 		Timestamp:                       uint32(time.Now().Unix()),
-		SessionID:                       crypto.GenerateSessionID(),
+		SessionID:                       crypto_old.GenerateSessionID(),
 		SliceNumber:                     5,
 		DirectMinRTT:                    int32(rand.Intn(1024)),
 		DirectMaxRTT:                    int32(rand.Intn(1024)),

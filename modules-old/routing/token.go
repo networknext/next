@@ -8,7 +8,7 @@ import (
 
 	"github.com/networknext/backend/modules/encoding"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 )
 
 const (
@@ -17,10 +17,10 @@ const (
 	RouteTypeContinue = 2
 
 	NextRouteTokenSize          = 100
-	EncryptedNextRouteTokenSize = NextRouteTokenSize + crypto.MACSize
+	EncryptedNextRouteTokenSize = NextRouteTokenSize + crypto_old.MACSize
 
 	ContinueRouteTokenSize          = 41
-	EncryptedContinueRouteTokenSize = ContinueRouteTokenSize + crypto.MACSize
+	EncryptedContinueRouteTokenSize = ContinueRouteTokenSize + crypto_old.MACSize
 )
 
 type Token interface {
@@ -63,7 +63,7 @@ func (r *ContinueRouteToken) Type() int {
 }
 
 func (r *ContinueRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
-	r.privateKey = make([]byte, crypto.KeySize)
+	r.privateKey = make([]byte, crypto_old.KeySize)
 	rand.Read(r.privateKey)
 
 	r.tokens = make([]byte, EncryptedContinueRouteTokenSize*(len(r.Relays)+2))
@@ -100,7 +100,7 @@ func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []
 	tokenend := r.offset + ContinueRouteTokenSize
 
 	noncestart := tokenstart
-	nonceend := noncestart + crypto.NonceSize
+	nonceend := noncestart + crypto_old.NonceSize
 
 	datastart := nonceend
 	dataend := tokenend
@@ -113,7 +113,7 @@ func (r *ContinueRouteToken) encryptToken(addr net.UDPAddr, receiverPublicKey []
 	encoding.WriteUint64(r.tokens[nonceend:], &index, r.SessionID)
 	encoding.WriteUint8(r.tokens[nonceend:], &index, r.SessionVersion)
 
-	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
+	enc := crypto_old.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
 	copy(r.tokens[datastart:], enc)
 
 	r.offset += EncryptedContinueRouteTokenSize
@@ -144,7 +144,7 @@ func (r *NextRouteToken) Encrypt(privateKey []byte) ([]byte, int, error) {
 		return nil, 0, errors.New("at least 1 relay is required")
 	}
 
-	r.privateKey = make([]byte, crypto.KeySize)
+	r.privateKey = make([]byte, crypto_old.KeySize)
 	rand.Read(r.privateKey)
 
 	r.tokens = make([]byte, EncryptedNextRouteTokenSize*(len(r.Relays)+2))
@@ -194,7 +194,7 @@ func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byt
 	tokenend := r.offset + NextRouteTokenSize
 
 	noncestart := tokenstart
-	nonceend := noncestart + crypto.NonceSize
+	nonceend := noncestart + crypto_old.NonceSize
 
 	datastart := nonceend
 	dataend := tokenend
@@ -211,9 +211,9 @@ func (r *NextRouteToken) encryptToken(addr *net.UDPAddr, receiverPublicKey []byt
 	byteaddr_index := 0
 	encoding.WriteAddress(byteaddr, &byteaddr_index, addr)
 	encoding.WriteBytes(r.tokens[nonceend:], &index, byteaddr, encoding.AddressSize)
-	encoding.WriteBytes(r.tokens[nonceend:], &index, r.privateKey, crypto.KeySize)
+	encoding.WriteBytes(r.tokens[nonceend:], &index, r.privateKey, crypto_old.KeySize)
 
-	enc := crypto.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
+	enc := crypto_old.Seal(r.tokens[datastart:dataend], r.tokens[noncestart:nonceend], receiverPublicKey, senderPrivateKey)
 	copy(r.tokens[datastart:], enc)
 
 	r.offset += EncryptedNextRouteTokenSize

@@ -13,7 +13,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -218,7 +218,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 
-		publicKey := make([]byte, crypto.KeySize)
+		publicKey := make([]byte, crypto_old.KeySize)
 		_, err = rand.Read(publicKey)
 		if err != nil {
 			return fmt.Errorf("Error generating buyer public key: %v", err)
@@ -311,7 +311,7 @@ func SeedSQLStorage(
 		var localDCID uint64
 		for i := uint64(0); i < 10; i++ {
 			dcName := "local." + fmt.Sprintf("%d", i)
-			localDCID = crypto.HashID(dcName)
+			localDCID = crypto_old.HashID(dcName)
 			localDatacenter2 := routing.Datacenter{
 				ID:   localDCID,
 				Name: dcName,
@@ -328,7 +328,7 @@ func SeedSQLStorage(
 
 		// fmt.Println("Adding datacenters")
 		// req for happy path
-		localDCID = crypto.HashID("local")
+		localDCID = crypto_old.HashID("local")
 		localDatacenter := routing.Datacenter{
 			ID:   localDCID,
 			Name: "local",
@@ -342,7 +342,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding local datacenter: %w", err)
 		}
 
-		ghostDCID := crypto.HashID("ghost-army.local.name")
+		ghostDCID := crypto_old.HashID("ghost-army.local.name")
 		ghostDatacenter := routing.Datacenter{
 			ID:   ghostDCID,
 			Name: "ghost-army.local.name",
@@ -402,14 +402,14 @@ func SeedSQLStorage(
 
 		for i := uint64(0); i < numRelays; i++ {
 			// fmt.Printf("\tSeedSQLStorage adding relay %d\n", i)
-			updateKey := make([]byte, crypto.KeySize)
+			updateKey := make([]byte, crypto_old.KeySize)
 			_, err = rand.Read(updateKey)
 			if err != nil {
 				return fmt.Errorf("Error generating relay update key: %v", err)
 			}
 
 			addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2000 + int(i)}
-			rid := crypto.HashID(addr.String())
+			rid := crypto_old.HashID(addr.String())
 
 			internalAddr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 2000 + int(i)}
 
@@ -445,20 +445,20 @@ func SeedSQLStorage(
 			}
 
 			// ghost
-			publicKey = make([]byte, crypto.KeySize)
+			publicKey = make([]byte, crypto_old.KeySize)
 			_, err = rand.Read(publicKey)
 			if err != nil {
 				return fmt.Errorf("Error generating ghost relay public key: %v", err)
 			}
 
-			updateKey = make([]byte, crypto.KeySize)
+			updateKey = make([]byte, crypto_old.KeySize)
 			_, err = rand.Read(updateKey)
 			if err != nil {
 				return fmt.Errorf("Error generating ghost relay update key: %v", err)
 			}
 
 			addr = net.UDPAddr{IP: net.ParseIP("127.0.0.2"), Port: 10000 + int(i)}
-			rid = crypto.HashID(addr.String())
+			rid = crypto_old.HashID(addr.String())
 
 			internalAddr = net.UDPAddr{IP: net.ParseIP("127.0.0.3"), Port: 10000 + int(i)}
 

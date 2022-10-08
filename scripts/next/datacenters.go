@@ -8,7 +8,7 @@ import (
 
 	"github.com/modood/table"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
@@ -115,7 +115,7 @@ func addDatacenter(env Environment, dc datacenter) {
 		return
 	}
 
-	did := crypto.HashID(dc.Name)
+	did := crypto_old.HashID(dc.Name)
 	datacenter := routing.Datacenter{
 		ID:   did,
 		Name: dc.Name,

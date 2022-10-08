@@ -16,7 +16,7 @@ import (
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -803,7 +803,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto.HashID("local")
+	localDatacenterId := crypto_old.HashID("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -825,7 +825,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        buyerId,
 		RequestId:      requestId,
-		DatacenterId:   crypto.HashID("local"),
+		DatacenterId:   crypto_old.HashID("local"),
 		DatacenterName: "local",
 	}
 
@@ -1310,7 +1310,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto.HashID("local")
+	localDatacenterId := crypto_old.HashID("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -1332,7 +1332,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 		Version:      packets.SDKVersion{5, 0, 0},
 		BuyerId:      buyerId,
 		RequestId:    requestId,
-		DatacenterId: crypto.HashID("local"),
+		DatacenterId: crypto_old.HashID("local"),
 	}
 
 	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
@@ -1733,7 +1733,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
 	// setup "local" datacenter in the database
 
-	localDatacenterId := crypto.HashID("local")
+	localDatacenterId := crypto_old.HashID("local")
 
 	localDatacenter := routing.Datacenter{
 		ID:   localDatacenterId,
@@ -1753,7 +1753,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        buyerId,
 		ServerAddress:  *core.ParseAddress("127.0.0.1:10000"),
-		DatacenterId:   crypto.HashID("local"),
+		DatacenterId:   crypto_old.HashID("local"),
 		UserHash:       uint64(123456789213),
 		SessionId:      uint64(5213412421413),
 		RetryNumber:    2,

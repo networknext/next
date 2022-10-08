@@ -11,7 +11,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )
@@ -143,7 +143,7 @@ func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
 		BuyerID:        server.buyerID,
-		DatacenterID:   crypto.HashID(server.dcName),
+		DatacenterID:   crypto_old.HashID(server.dcName),
 		RequestID:      rand.Uint64(),
 		DatacenterName: server.dcName,
 	}
@@ -186,7 +186,7 @@ func (server *FakeServer) sendServerUpdatePacket() error {
 	requestPacket := transport.ServerUpdatePacket{
 		Version:       server.sdkVersion,
 		BuyerID:       server.buyerID,
-		DatacenterID:  crypto.HashID(server.dcName),
+		DatacenterID:  crypto_old.HashID(server.dcName),
 		NumSessions:   uint32(len(server.sessions)),
 		ServerAddress: *server.publicAddress,
 	}
@@ -212,7 +212,7 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session, clientPingTim
 	requestPacket := transport.SessionUpdatePacket{
 		Version:                         server.sdkVersion,
 		BuyerID:                         server.buyerID,
-		DatacenterID:                    crypto.HashID(server.dcName),
+		DatacenterID:                    crypto_old.HashID(server.dcName),
 		SessionID:                       session.sessionID,
 		SliceNumber:                     session.sliceNumber,
 		SessionDataBytes:                session.sessionDataBytes,
@@ -307,12 +307,12 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session, clientPingTim
 
 // sendPacket sends a given packet type to the server backend.
 func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
-	packetDataHeader := make([]byte, 1+crypto.PacketHashSize)
+	packetDataHeader := make([]byte, 1+crypto_old.PacketHashSize)
 	packetDataHeader[0] = packetType
 	packetData = append(packetDataHeader, packetData...)
 
-	packetData = crypto.SignPacket(server.customerPrivateKey[8:], packetData)
-	crypto.HashPacket(crypto.PacketHashKey, packetData)
+	packetData = crypto_old.SignPacket(server.customerPrivateKey[8:], packetData)
+	crypto_old.HashPacket(crypto_old.PacketHashKey, packetData)
 
 	if err := server.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
 		return err
@@ -345,12 +345,12 @@ func (server FakeServer) readPacket() (byte, []byte, error) {
 
 	incomingPacketData = incomingPacketDataArray[:n]
 
-	if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, incomingPacketData) {
+	if !crypto_old.IsNetworkNextPacket(crypto_old.PacketHashKey, incomingPacketData) {
 		return 0, nil, errors.New("received non network next packet")
 	}
 
 	incomingPacketType := incomingPacketData[0]
-	incomingPacketData = incomingPacketData[crypto.PacketHashSize+1 : n]
+	incomingPacketData = incomingPacketData[crypto_old.PacketHashSize+1 : n]
 
 	return incomingPacketType, incomingPacketData, nil
 }

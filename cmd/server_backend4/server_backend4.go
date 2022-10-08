@@ -38,7 +38,7 @@ import (
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/billing"
 	"github.com/networknext/backend/modules-old/config"
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	md "github.com/networknext/backend/modules-old/match_data"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/routing"
@@ -141,7 +141,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	routerPrivateKey := [crypto.KeySize]byte{}
+	routerPrivateKey := [crypto_old.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
 	maxmindCityFile := envvar.GetString("MAXMIND_CITY_DB_FILE", "")
@@ -918,12 +918,12 @@ func mainReturnWithCode() int {
 
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
-				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+				if !crypto_old.IsNetworkNextPacket(crypto_old.PacketHashKey, data) {
 					continue
 				}
 
 				packetType := data[0]
-				data = data[crypto.PacketHashSize+1 : size]
+				data = data[crypto_old.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
 				packet := transport.UDPPacket{From: *fromAddr, Data: data}
@@ -943,8 +943,8 @@ func mainReturnWithCode() int {
 					response := buffer.Bytes()
 
 					// Sign and hash the response
-					response = crypto.SignPacket(privateKey, response)
-					crypto.HashPacket(crypto.PacketHashKey, response)
+					response = crypto_old.SignPacket(privateKey, response)
+					crypto_old.HashPacket(crypto_old.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						core.Error("failed to write udp response packet: %v", err)

@@ -18,7 +18,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/storage"
 	"github.com/networknext/backend/modules-old/transport/looker"
@@ -147,7 +147,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
-	if len(publicKey) != crypto.KeySize+8 {
+	if len(publicKey) != crypto_old.KeySize+8 {
 		core.Error("%v", err)
 		return err
 	}
@@ -1607,7 +1607,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	rid := crypto.HashID(args.Addr)
+	rid := crypto_old.HashID(args.Addr)
 
 	existingRelay, err := s.Storage.Relay(ctx, rid)
 	if err == nil && existingRelay.ID == rid {
@@ -2114,7 +2114,7 @@ func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs,
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	dcID := crypto.HashID(args.Name)
+	dcID := crypto_old.HashID(args.Name)
 
 	seller, err := s.Storage.Seller(r.Context(), args.SellerID)
 	if err != nil {
@@ -2157,7 +2157,7 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	id := crypto.HashID(args.Name)
+	id := crypto_old.HashID(args.Name)
 
 	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
 		err = fmt.Errorf("RemoveDatacenter() error: %w", err)
@@ -2264,7 +2264,7 @@ func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddr
 		return err
 	}
 
-	internalIdFromIpAddress := crypto.HashID(addr.String())
+	internalIdFromIpAddress := crypto_old.HashID(addr.String())
 	if internalIDFromHexID != internalIdFromIpAddress {
 		reply.Valid = false
 		return fmt.Errorf("CheckRelayIPAddress(): internal ID from Hex ID (%016x) does not match internal ID from IP Address (%016x)", internalIDFromHexID, internalIdFromIpAddress)

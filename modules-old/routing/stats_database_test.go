@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,9 +48,9 @@ func TestHistory(t *testing.T) {
 }
 
 func TestStatsDatabase(t *testing.T) {
-	sourceID := crypto.HashID("127.0.0.1")
-	relay1ID := crypto.HashID("127.9.9.9")
-	relay2ID := crypto.HashID("999.999.9.9")
+	sourceID := crypto_old.HashID("127.0.0.1")
+	relay1ID := crypto_old.HashID("127.9.9.9")
+	relay2ID := crypto_old.HashID("999.999.9.9")
 
 	makeBasicStats := func() *routing.StatsEntryRelay {
 		entry := routing.NewStatsEntryRelay()
@@ -248,9 +248,9 @@ func TestStatsDatabase(t *testing.T) {
 
 func TestDeleteEntry(t *testing.T) {
 	db := routing.NewStatsDatabase()
-	sourceID := crypto.HashID("127.0.0.1")
-	relay1ID := crypto.HashID("127.9.9.9")
-	relay2ID := crypto.HashID("999.999.9.9")
+	sourceID := crypto_old.HashID("127.0.0.1")
+	relay1ID := crypto_old.HashID("127.9.9.9")
+	relay2ID := crypto_old.HashID("999.999.9.9")
 
 	update := routing.RelayStatsUpdate{
 		ID: sourceID,
@@ -291,9 +291,9 @@ func TestDeleteEntry(t *testing.T) {
 
 func TestGetCosts(t *testing.T) {
 	db := routing.NewStatsDatabase()
-	sourceID := crypto.HashID("127.0.0.1")
-	relay1ID := crypto.HashID("127.9.9.9")
-	relay2ID := crypto.HashID("999.999.9.9")
+	sourceID := crypto_old.HashID("127.0.0.1")
+	relay1ID := crypto_old.HashID("127.9.9.9")
+	relay2ID := crypto_old.HashID("999.999.9.9")
 
 	update := routing.RelayStatsUpdate{
 		ID: sourceID,
@@ -337,9 +337,9 @@ func TestGetCosts(t *testing.T) {
 
 func TestGetCostsLocal(t *testing.T) {
 	db := routing.NewStatsDatabase()
-	sourceID := crypto.HashID("127.0.0.1")
-	relay1ID := crypto.HashID("127.9.9.9")
-	relay2ID := crypto.HashID("999.999.9.9")
+	sourceID := crypto_old.HashID("127.0.0.1")
+	relay1ID := crypto_old.HashID("127.9.9.9")
+	relay2ID := crypto_old.HashID("999.999.9.9")
 
 	update := routing.RelayStatsUpdate{
 		ID: sourceID,

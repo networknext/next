@@ -5,7 +5,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func (env *TestEnvironment) AddBuyer(companyCode string, live bool, analysisOnly
 		InternalConfig: core.NewInternalConfig(),
 	}
 
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	publicKey, privateKey, err := crypto_old.GenerateCustomerKeyPair()
 	assert.NoError(env.TestContext, err)
 
 	buyerID := binary.LittleEndian.Uint64(publicKey[:8])

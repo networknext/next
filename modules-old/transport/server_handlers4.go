@@ -13,7 +13,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/networknext/backend/modules-old/billing"
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	md "github.com/networknext/backend/modules-old/match_data"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/routing"
@@ -84,7 +84,7 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 	if err != nil {
 		return err
 	}
-	packetHeader := append([]byte{PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{PacketTypeServerInitResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
@@ -101,7 +101,7 @@ func writeMatchDataResponse(w io.Writer, packet *MatchDataRequestPacket, respons
 	if err != nil {
 		return err
 	}
-	packetHeader := append([]byte{PacketTypeMatchDataResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{PacketTypeMatchDataResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
@@ -165,7 +165,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Serve
 			return
 		}
 
-		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+		if !crypto_old.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
 			responseType = InitResponseSignatureCheckFailed
@@ -265,7 +265,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 			return
 		}
 
-		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+		if !crypto_old.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
 			return
@@ -280,7 +280,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 		// Send the number of sessions on the server to the portal cruncher
 		countData := &SessionCountData{
 			Version:     SessionCountDataVersion,
-			ServerID:    crypto.HashID(packet.ServerAddress.String()),
+			ServerID:    crypto_old.HashID(packet.ServerAddress.String()),
 			BuyerID:     buyer.ID,
 			NumSessions: packet.NumSessions,
 		}
@@ -374,7 +374,7 @@ func BuildNextTokens(
 	routeNumRelays int32,
 	routeRelays []int32,
 	allRelayIDs []uint64,
-	routerPrivateKey [crypto.KeySize]byte,
+	routerPrivateKey [crypto_old.KeySize]byte,
 	response *SessionResponsePacket,
 ) {
 	/*
@@ -439,7 +439,7 @@ func BuildContinueTokens(
 	routeNumRelays int32,
 	routeRelays []int32,
 	allRelayIDs []uint64,
-	routerPrivateKey [crypto.KeySize]byte,
+	routerPrivateKey [crypto_old.KeySize]byte,
 	response *SessionResponsePacket,
 ) {
 
@@ -570,7 +570,7 @@ type SessionHandlerState struct {
 	Debug              *string
 	IpLocator          *routing.MaxmindDB
 	StaleDuration      time.Duration
-	RouterPrivateKey   [crypto.KeySize]byte
+	RouterPrivateKey   [crypto_old.KeySize]byte
 	PostSessionHandler *PostSessionHandler
 
 	// flags
@@ -642,7 +642,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	if !crypto.VerifyPacket(state.Buyer.PublicKey, state.PacketData) {
+	if !crypto_old.VerifyPacket(state.Buyer.PublicKey, state.PacketData) {
 		core.Debug("signature check failed")
 		state.Metrics.SignatureCheckFailed.Add(1)
 		state.SignatureCheckFailed = true
@@ -766,7 +766,7 @@ func SessionPre(state *SessionHandlerState) bool {
 	}
 
 	for i := int32(0); i < state.Packet.NumTags; i++ {
-		if state.Packet.Tags[i] == crypto.HashID("pro") {
+		if state.Packet.Tags[i] == crypto_old.HashID("pro") {
 			core.Debug("pro mode enabled")
 			state.Buyer.RouteShader.ProMode = true
 		}
@@ -1953,7 +1953,7 @@ func WriteSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	if err != nil {
 		return err
 	}
-	packetHeader := append([]byte{PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{PacketTypeSessionResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 
 	if sessionData.RouteState.Next {
@@ -1976,7 +1976,7 @@ func SessionUpdateHandlerFunc(
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,
 	getDatabase func() *routing.DatabaseBinWrapper,
-	routerPrivateKey [crypto.KeySize]byte,
+	routerPrivateKey [crypto_old.KeySize]byte,
 	PostSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
 	staleDuration time.Duration,
@@ -2170,7 +2170,7 @@ func MatchDataHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSe
 			return
 		}
 
-		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+		if !crypto_old.VerifyPacket(buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
 			metrics.SignatureCheckFailed.Add(1)
 			responseType = MatchDataResponseSignatureCheckFailed

@@ -8,7 +8,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/storage"
 
@@ -487,7 +487,7 @@ func TestInMemoryGetRelay(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 		}
@@ -532,7 +532,7 @@ func TestInMemoryGetRelays(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 		}
@@ -567,7 +567,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 		}
@@ -627,7 +627,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 			InternalAddressClientRoutable: true,
@@ -659,7 +659,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 			InternalAddressClientRoutable: true,
@@ -704,7 +704,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 					Name: "seller name",
 				},
 				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("datacenter name"),
+					ID:   crypto_old.HashID("datacenter name"),
 					Name: "datadcenter name",
 				},
 			},
@@ -716,7 +716,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 					Name: "seller name",
 				},
 				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("datacenter name"),
+					ID:   crypto_old.HashID("datacenter name"),
 					Name: "datadcenter name",
 				},
 			},
@@ -753,7 +753,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 					Name: "seller name",
 				},
 				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("datacenter name"),
+					ID:   crypto_old.HashID("datacenter name"),
 					Name: "datadcenter name",
 				},
 			},
@@ -765,7 +765,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 					Name: "seller name",
 				},
 				Datacenter: routing.Datacenter{
-					ID:   crypto.HashID("datacenter name"),
+					ID:   crypto_old.HashID("datacenter name"),
 					Name: "datadcenter name",
 				},
 			},
@@ -819,7 +819,7 @@ func TestInMemorySetRelay(t *testing.T) {
 				Name: "seller name",
 			},
 			Datacenter: routing.Datacenter{
-				ID:   crypto.HashID("datacenter name"),
+				ID:   crypto_old.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
 		}
@@ -1593,7 +1593,7 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 			DatabaseID: 1,
 		},
 		Datacenter: routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
+			ID:   crypto_old.HashID("datacenter name"),
 			Name: "datadcenter name",
 		},
 	}
@@ -2435,7 +2435,7 @@ func TestInMemoryUpdateDatacenter(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
+			ID:   crypto_old.HashID("datacenter name"),
 			Name: "datadcenter name",
 		}
 
@@ -2450,7 +2450,7 @@ func TestInMemoryUpdateDatacenter(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
+			ID:   crypto_old.HashID("datacenter name"),
 			Name: "datadcenter name",
 		}
 
@@ -2467,7 +2467,7 @@ func TestInMemoryUpdateDatacenter(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
+			ID:   crypto_old.HashID("datacenter name"),
 			Name: "datadcenter name",
 		}
 
@@ -2484,7 +2484,7 @@ func TestInMemoryUpdateDatacenter(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		expected := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
+			ID:   crypto_old.HashID("datacenter name"),
 			Name: "datadcenter name",
 		}
 

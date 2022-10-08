@@ -7,7 +7,7 @@ import (
 
 	"github.com/networknext/backend/modules/encoding"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -64,7 +64,7 @@ func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
 		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
 	}
 
-	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) {
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto_old.KeySize) {
 		return errors.New("could not read relay token")
 	}
 
@@ -114,7 +114,7 @@ func (r *RelayUpdateRequest) unmarshalBinaryV4(buff []byte, index int) error {
 		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
 	}
 
-	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) {
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto_old.KeySize) {
 		return errors.New("could not read relay token")
 	}
 
@@ -168,7 +168,7 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
 	}
 
-	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) {
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto_old.KeySize) {
 		return errors.New("could not read relay token")
 	}
 
@@ -244,7 +244,7 @@ func (r *RelayUpdateRequest) marshalBinaryV3() ([]byte, error) {
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
-	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+	encoding.WriteBytes(data, &index, r.Token, crypto_old.KeySize)
 
 	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
 	for i := 0; i < len(r.PingStats); i++ {
@@ -269,7 +269,7 @@ func (r *RelayUpdateRequest) marshalBinaryV4() ([]byte, error) {
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
-	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+	encoding.WriteBytes(data, &index, r.Token, crypto_old.KeySize)
 
 	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
 	for i := 0; i < len(r.PingStats); i++ {
@@ -296,7 +296,7 @@ func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
 	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
-	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+	encoding.WriteBytes(data, &index, r.Token, crypto_old.KeySize)
 
 	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
 	for i := 0; i < len(r.PingStats); i++ {
@@ -325,7 +325,7 @@ func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
 func (r *RelayUpdateRequest) sizeV3() int {
 	return (4 + // version
 		len(r.Address.String()) + // address
-		crypto.KeySize + // public key
+		crypto_old.KeySize + // public key
 		4 + // number of ping stats
 		len(r.PingStats)*(8+4+4+4) + // ping stats list
 		8 + // session count
@@ -336,7 +336,7 @@ func (r *RelayUpdateRequest) sizeV3() int {
 func (r *RelayUpdateRequest) sizeV4() int {
 	return (4 + // version
 		len(r.Address.String()) + // address
-		crypto.KeySize + // public key
+		crypto_old.KeySize + // public key
 		4 + // number of ping stats
 		len(r.PingStats)*(8+4+4+4) + // ping stats list
 		8 + // session count
@@ -348,7 +348,7 @@ func (r *RelayUpdateRequest) sizeV4() int {
 func (r *RelayUpdateRequest) sizeV5() int {
 	return (4 + // version
 		len(r.Address.String()) + // address
-		crypto.KeySize + // public key
+		crypto_old.KeySize + // public key
 		4 + // number of ping stats
 		len(r.PingStats)*(8+4+4+4) + // ping stats list
 		8 + // session count

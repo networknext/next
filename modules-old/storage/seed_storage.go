@@ -10,7 +10,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -103,7 +103,7 @@ func SeedStorage(
 			Name:                     "Valve",
 			EgressPriceNibblinsPerGB: 0.5 * 1e9,
 		}
-		did := crypto.HashID("local")
+		did := crypto_old.HashID("local")
 		datacenter := routing.Datacenter{
 			ID:   did,
 			Name: "local",
@@ -132,7 +132,7 @@ func SeedStorage(
 			}
 			for i := uint64(0); i < numRelays; i++ {
 				addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000 + int(i)}
-				id := crypto.HashID(addr.String())
+				id := crypto_old.HashID(addr.String())
 				if err := db.AddRelay(ctx, routing.Relay{
 					Name:                          fmt.Sprintf("local.test_relay.%d", i),
 					ID:                            id,
@@ -167,7 +167,7 @@ func SeedStorage(
 			}
 		} else {
 			addr1 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10000}
-			rid1 := crypto.HashID(addr1.String())
+			rid1 := crypto_old.HashID(addr1.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:                "local.test_relay.a",
 				ID:                  rid1,
@@ -192,7 +192,7 @@ func SeedStorage(
 				return fmt.Errorf("AddRelay() err: %w", err)
 			}
 			addr2 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10001}
-			rid2 := crypto.HashID(addr2.String())
+			rid2 := crypto_old.HashID(addr2.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "local.test_relay.b",
 				ID:             rid2,
@@ -209,7 +209,7 @@ func SeedStorage(
 				return fmt.Errorf("AddRelay() err: %w", err)
 			}
 			addr3 := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 10002}
-			rid3 := crypto.HashID(addr3.String())
+			rid3 := crypto_old.HashID(addr3.String())
 			if err := db.AddRelay(ctx, routing.Relay{
 				Name:           "abc.xyz",
 				ID:             rid3,

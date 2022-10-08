@@ -12,7 +12,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 )
 
 // ------------------------------------------------------------
@@ -180,8 +180,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 	SessionData                     [SDK5_MaxSessionDataSize]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
-	ClientRoutePublicKey            [crypto.KeySize]byte
-	ServerRoutePublicKey            [crypto.KeySize]byte
+	ClientRoutePublicKey            [crypto_old.KeySize]byte // todo: we don't want to use crypto here
+	ServerRoutePublicKey            [crypto_old.KeySize]byte // todo
 	UserHash                        uint64
 	PlatformType                    int32
 	ConnectionType                  int32

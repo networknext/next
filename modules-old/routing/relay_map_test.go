@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules-old/backend"
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func testRelayData(t *testing.T) *routing.RelayData {
 	relay.Name = backend.GenerateRandomStringSequence(routing.MaxRelayNameLength)
 
 	relay.Addr = *addr
-	relay.PublicKey = make([]byte, crypto.KeySize)
+	relay.PublicKey = make([]byte, crypto_old.KeySize)
 	relay.MaxSessions = 0
 	relay.SessionCount = rand.Int()
 	relay.ShuttingDown = false

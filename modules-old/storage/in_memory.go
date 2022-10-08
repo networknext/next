@@ -10,7 +10,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport/looker"
 )
@@ -409,7 +409,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(ctx context.Context, id uint64) map
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto_old.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -421,7 +421,7 @@ func (m *InMemory) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto_old.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1361,7 +1361,7 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 			return fmt.Errorf("PublicKey: failed to decode string public key: %v", err)
 		}
 
-		if len(newPublicKey) != crypto.KeySize+8 {
+		if len(newPublicKey) != crypto_old.KeySize+8 {
 			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
 		}
 

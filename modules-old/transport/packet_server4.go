@@ -8,7 +8,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -364,8 +364,8 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeAddress(&packet.ServerAddress)
 
 	if stream.IsReading() {
-		packet.ClientRoutePublicKey = make([]byte, crypto.KeySize)
-		packet.ServerRoutePublicKey = make([]byte, crypto.KeySize)
+		packet.ClientRoutePublicKey = make([]byte, crypto_old.KeySize)
+		packet.ServerRoutePublicKey = make([]byte, crypto_old.KeySize)
 	}
 
 	stream.SerializeBytes(packet.ClientRoutePublicKey)

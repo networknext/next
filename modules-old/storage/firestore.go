@@ -16,7 +16,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport/looker"
 
@@ -1137,7 +1137,7 @@ func (fs *Firestore) AddRelay(ctx context.Context, r routing.Relay) error {
 		}
 
 		// If the datacenter is the one associated with this relay, set the relay's datacenter reference
-		if crypto.HashID(d.Name) == r.Datacenter.ID {
+		if crypto_old.HashID(d.Name) == r.Datacenter.ID {
 			datacenterRef = ddoc.Ref
 			break
 		}
@@ -1230,7 +1230,7 @@ func (fs *Firestore) RemoveRelay(ctx context.Context, id uint64) error {
 			continue
 		}
 
-		rid := crypto.HashID(relayInRemoteStorage.Address)
+		rid := crypto_old.HashID(relayInRemoteStorage.Address)
 		if rid == id {
 			// Delete the relay in remote storage
 			if _, err := rdoc.Ref.Delete(ctx); err != nil {
@@ -1284,7 +1284,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		}
 
 		// If the relay is the one we want to update, update it with the new data
-		rid := crypto.HashID(relayInRemoteStorage.Address)
+		rid := crypto_old.HashID(relayInRemoteStorage.Address)
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
@@ -1325,7 +1325,7 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(ctx context.Context, buyerID uint
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto_old.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1368,7 +1368,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// update local store
 	fs.datacenterMapMutex.Lock()
-	id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto_old.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
@@ -1385,7 +1385,7 @@ func (fs *Firestore) ListDatacenterMaps(ctx context.Context, dcID uint64) map[ui
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto_old.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1434,7 +1434,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 			// delete local copy as well
 			fs.datacenterMapMutex.Lock()
-			id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+			id := crypto_old.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 			delete(fs.datacenterMaps, id)
 			fs.datacenterMapMutex.Unlock()
 
@@ -1471,7 +1471,7 @@ func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing
 		}
 
 		// If the relay is the one we want to update, update it with the new data
-		rid := crypto.HashID(relayInRemoteStorage.Address)
+		rid := crypto_old.HashID(relayInRemoteStorage.Address)
 		if rid == modifiedRelay.ID {
 			// Update the relay in firestore
 			if _, err := rdoc.Ref.Set(ctx, modifiedRelay, firestore.MergeAll); err != nil {
@@ -1570,7 +1570,7 @@ func (fs *Firestore) RemoveDatacenter(ctx context.Context, id uint64) error {
 			continue
 		}
 
-		if crypto.HashID(datacenterInRemoteStorage.Name) == id {
+		if crypto_old.HashID(datacenterInRemoteStorage.Name) == id {
 			// Delete the datacenter in remote storage
 			if _, err := ddoc.Ref.Delete(ctx); err != nil {
 				return &FirestoreError{err: err}
@@ -1622,7 +1622,7 @@ func (fs *Firestore) SetDatacenter(ctx context.Context, d routing.Datacenter) er
 		}
 
 		// If the datacenter is the one we want to update, update it with the new data
-		if crypto.HashID(datacenterInRemoteStorage.Name) == d.ID {
+		if crypto_old.HashID(datacenterInRemoteStorage.Name) == d.ID {
 			// Set the data to update the datacenter with
 			newDatacenterData := map[string]interface{}{
 				"name":      d.Name,
@@ -1759,7 +1759,7 @@ func (fs *Firestore) syncDatacenters(ctx context.Context) error {
 			continue
 		}
 
-		did := crypto.HashID(d.Name)
+		did := crypto_old.HashID(d.Name)
 		datacenters[did] = routing.Datacenter{
 			ID:   did,
 			Name: d.Name,
@@ -1800,7 +1800,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			continue
 		}
 
-		rid := crypto.HashID(r.Address)
+		rid := crypto_old.HashID(r.Address)
 
 		host, port, err := net.SplitHostPort(r.Address)
 		if err != nil {
@@ -1906,7 +1906,7 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		datacenter := routing.Datacenter{
-			ID:   crypto.HashID(d.Name),
+			ID:   crypto_old.HashID(d.Name),
 			Name: d.Name,
 			Location: routing.Location{
 				Latitude:  d.Latitude,
@@ -2087,7 +2087,7 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 		dcMap.BuyerID = buyerID
 		dcMap.DatacenterID = datacenterID
 
-		id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+		id := crypto_old.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 

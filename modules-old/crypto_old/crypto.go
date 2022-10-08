@@ -1,4 +1,4 @@
-package crypto
+package crypto_old
 
 import (
 	"crypto/ed25519"
@@ -135,18 +135,4 @@ func HashPacket(key []byte, data []byte) {
 // code linting
 func IsNetworkNextPacket(key []byte, data []byte) bool {
 	return sodiumIsNetworkNextPacket(data, key)
-}
-
-// SignPacketSDK5 wraps sodiumSignPacketSDK5 with is a wrapper around libsodium
-// We wrap this to avoid including C in other libs breaking
-// code linting
-func SignPacketSDK5(key []byte, data []byte, serializeBytes int) []byte {
-	return sodiumSignPacketSDK5(data, serializeBytes, key)
-}
-
-// VerifyPacketSDK5 wraps sodiumVerifyPacketSDK5 with is a wrapper around libsodium
-// We wrap this to avoid including C in other libs breaking
-// code linting
-func VerifyPacketSDK5(publicKey []byte, data []byte) bool {
-	return sodiumVerifyPacketSDK5(data, publicKey)
 }

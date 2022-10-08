@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
 )
@@ -325,7 +325,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				relayData := service.RelayData()
 
-				relayId := crypto.HashID(relayUpdate.Address.String())
+				relayId := crypto_old.HashID(relayUpdate.Address.String())
 				relayIndex, ok := relayData.RelayIdToIndex[relayId]
 				if !ok {
 					core.Error("unknown relay id %016x", relayId)

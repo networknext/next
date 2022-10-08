@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 )
 
 const (
 	// EncryptedRelayTokenSize ...
-	EncryptedRelayTokenSize = crypto.KeySize + crypto.MACSize
+	EncryptedRelayTokenSize = crypto_old.KeySize + crypto_old.MACSize
 
 	RelayTimeout = 30 * time.Second
 

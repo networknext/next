@@ -1,13 +1,13 @@
 package test
 
 import (
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 )
 
 func (env *TestEnvironment) AddDatacenter(datacenterName string) routing.Datacenter {
 	datacenter := routing.Datacenter{
-		ID:   crypto.HashID(datacenterName),
+		ID:   crypto_old.HashID(datacenterName),
 		Name: datacenterName,
 	}
 

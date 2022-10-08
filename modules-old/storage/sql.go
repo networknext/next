@@ -15,7 +15,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport/looker"
 )
@@ -1941,7 +1941,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	if err != nil {
 		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
-	rid := crypto.HashID(r.Addr.String())
+	rid := crypto_old.HashID(r.Addr.String())
 
 	relays := db.Relays(ctx)
 
@@ -2465,7 +2465,7 @@ func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 			return []routing.Datacenter{}
 		}
 
-		did := crypto.HashID(dc.Name)
+		did := crypto_old.HashID(dc.Name)
 
 		d := routing.Datacenter{
 			ID:   did,
@@ -2657,7 +2657,7 @@ func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]r
 			DatacenterID: dcID,
 		}
 
-		id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
+		id := crypto_old.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 
@@ -2719,7 +2719,7 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	did := fmt.Sprintf("%016x", crypto.HashID(datacenter.Name))
+	did := fmt.Sprintf("%016x", crypto_old.HashID(datacenter.Name))
 	dc := sqlDatacenter{
 		Name:      datacenter.Name,
 		HexID:     did,
@@ -3701,7 +3701,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
 		}
 
-		if len(newPublicKey) != crypto.KeySize+8 {
+		if len(newPublicKey) != crypto_old.KeySize+8 {
 			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
 		}
 

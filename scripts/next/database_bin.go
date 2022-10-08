@@ -23,7 +23,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/networknext/backend/modules-old/backend"
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
@@ -256,7 +256,7 @@ func createStagingDatabaseBin(numRelays int) {
 	for i := 0; i < 80; i++ {
 		name := fmt.Sprintf("staging.%d", i+1)
 		dc := routing.Datacenter{
-			ID:         crypto.HashID(name),
+			ID:         crypto_old.HashID(name),
 			Name:       name,
 			Location:   generateRandomLocation(),
 			SellerID:   1,
@@ -286,7 +286,7 @@ func createStagingDatabaseBin(numRelays int) {
 		var datacenter routing.Datacenter
 
 		dcName := fmt.Sprintf("staging.%d", i+1)
-		dcID := crypto.HashID(dcName)
+		dcID := crypto_old.HashID(dcName)
 		dc, exists := dbWrapper.DatacenterMap[dcID]
 		if exists {
 			// Use one of the pre-made 80 datacenters
@@ -312,7 +312,7 @@ func createStagingDatabaseBin(numRelays int) {
 		}
 
 		// Create the fake relay
-		relayID := crypto.HashID(ipAddress)
+		relayID := crypto_old.HashID(ipAddress)
 		relay := routing.Relay{
 			ID:                  relayID,
 			Name:                fmt.Sprintf("staging.relay.%d", i+1),
@@ -382,7 +382,7 @@ func createStagingDatabaseBin(numRelays int) {
 
 func generateRandomLocation() routing.Location {
 	// Create a random sessionID because it has 8 bytes
-	sessionID := crypto.GenerateSessionID()
+	sessionID := crypto_old.GenerateSessionID()
 
 	// Generate a random lat/long from the session ID
 	sessionIDBytes := [8]byte{}

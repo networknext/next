@@ -28,7 +28,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 
@@ -850,7 +850,7 @@ func main() {
 				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
 			}
 
-			hashValue := crypto.HashID(args[0])
+			hashValue := crypto_old.HashID(args[0])
 			hexStr := fmt.Sprintf("%016x\n", hashValue)
 
 			fmt.Printf("unsigned: %d\n", hashValue)
@@ -1669,7 +1669,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintf("Could not get buyer ID from public key: %v\n", err), 1)
 					}
 
-					if len(publicKey) != crypto.KeySize+8 {
+					if len(publicKey) != crypto_old.KeySize+8 {
 						handleRunTimeError(fmt.Sprintf("Invalid public key length %d\n", len(publicKey)), 1)
 					}
 

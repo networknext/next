@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/modules-old/crypto"
+	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 
 	"github.com/stretchr/testify/assert"
@@ -174,7 +174,7 @@ func TestEncryptContinueRouteDecision(t *testing.T) {
 			},
 		}
 
-		enctoken, _, err := token.Encrypt(crypto.RouterPrivateKey)
+		enctoken, _, err := token.Encrypt(crypto_old.RouterPrivateKey)
 		assert.NoError(t, err)
 		assert.Equal(t, 285, len(enctoken))
 	})
@@ -191,11 +191,11 @@ func BenchmarkEncryptNextRouteToken(b *testing.B) {
 
 			Client: routing.Client{
 				Addr:      net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 13},
-				PublicKey: make([]byte, crypto.KeySize),
+				PublicKey: make([]byte, crypto_old.KeySize),
 			},
 			Server: routing.Server{
 				Addr:      net.UDPAddr{IP: net.ParseIP("10.0.0.1"), Port: 13},
-				PublicKey: make([]byte, crypto.KeySize),
+				PublicKey: make([]byte, crypto_old.KeySize),
 			},
 			Relays: []routing.RelayToken{
 				{
@@ -213,6 +213,6 @@ func BenchmarkEncryptNextRouteToken(b *testing.B) {
 			},
 		}
 
-		token.Encrypt(crypto.RouterPrivateKey)
+		token.Encrypt(crypto_old.RouterPrivateKey)
 	}
 }
