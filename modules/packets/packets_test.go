@@ -2,11 +2,11 @@ package packets_test
 
 import (
 	"fmt"
-	"testing"
 	"math/rand"
+	"testing"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 
@@ -123,8 +123,8 @@ func GenerateRandomServerInitRequestPacket() packets.SDK5_ServerInitRequestPacke
 func GenerateRandomServerInitResponsePacket() packets.SDK5_ServerInitResponsePacket {
 
 	packet := packets.SDK5_ServerInitResponsePacket{
-		RequestId:     rand.Uint64(),
-		Response:      uint32(common.RandomInt(0,255)),
+		RequestId: rand.Uint64(),
+		Response:  uint32(common.RandomInt(0, 255)),
 	}
 
 	common.RandomBytes(packet.UpcomingMagic[:])
@@ -137,17 +137,17 @@ func GenerateRandomServerInitResponsePacket() packets.SDK5_ServerInitResponsePac
 func GenerateRandomServerUpdateRequestPacket() packets.SDK5_ServerUpdateRequestPacket {
 
 	return packets.SDK5_ServerUpdateRequestPacket{
-		Version:        packets.SDKVersion{5, 0, 0},
-		BuyerId:        rand.Uint64(),
-		RequestId:      rand.Uint64(),
-		DatacenterId:   rand.Uint64(),
+		Version:      packets.SDKVersion{5, 0, 0},
+		BuyerId:      rand.Uint64(),
+		RequestId:    rand.Uint64(),
+		DatacenterId: rand.Uint64(),
 	}
 }
 
 func GenerateRandomServerUpdateResponsePacket() packets.SDK5_ServerUpdateResponsePacket {
 
 	packet := packets.SDK5_ServerUpdateResponsePacket{
-		RequestId:     rand.Uint64(),
+		RequestId: rand.Uint64(),
 	}
 
 	common.RandomBytes(packet.UpcomingMagic[:])
@@ -181,7 +181,7 @@ func GenerateRandomMatchDataRequestPacket() packets.SDK5_MatchDataRequestPacket 
 func GenerateRandomMatchDataResponsePacket() packets.SDK5_MatchDataResponsePacket {
 
 	return packets.SDK5_MatchDataResponsePacket{
-		SessionId:     rand.Uint64(),
+		SessionId: rand.Uint64(),
 	}
 }
 
@@ -306,14 +306,14 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 	if packet.RouteType == packets.SDK5_RouteTypeNew {
 		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 		for i := range packet.Tokens {
-			packet.Tokens[i] = byte(common.RandomInt(0,255))
+			packet.Tokens[i] = byte(common.RandomInt(0, 255))
 		}
 	}
 
 	if packet.RouteType == packets.SDK5_RouteTypeContinue {
 		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
 		for i := range packet.Tokens {
-			packet.Tokens[i] = byte(common.RandomInt(0,255))
+			packet.Tokens[i] = byte(common.RandomInt(0, 255))
 		}
 	}
 

@@ -104,7 +104,7 @@ const (
 	SDK5_NonceBytes = 24
 	SDK5_KeyBytes   = 32
 
-	SDK5_MaxNearRelayRTT = 255
-	SDK5_MaxNearRelayJitter = 255
+	SDK5_MaxNearRelayRTT        = 255
+	SDK5_MaxNearRelayJitter     = 255
 	SDK5_MaxNearRelayPacketLoss = 100
 )

@@ -431,28 +431,28 @@ func happy_path(wait bool) int {
 	}
 
 	/*
-	// initialize client5
+		// initialize client5
 
-	fmt.Printf("initializing client 5\n")
+		fmt.Printf("initializing client 5\n")
 
-	client5_initialized := false
+		client5_initialized := false
 
-	for i := 0; i < 30; i++ {
-		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
-			client5_initialized = true
-			break
+		for i := 0; i < 30; i++ {
+			if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+				strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+				client5_initialized = true
+				break
+			}
+			time.Sleep(time.Second)
 		}
-		time.Sleep(time.Second)
-	}
 
-	if !client5_initialized {
-		fmt.Printf("\nerror: client 5 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", client5_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
+		if !client5_initialized {
+			fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+			fmt.Printf("----------------------------------------------------\n")
+			fmt.Printf("%s", client5_stdout)
+			fmt.Printf("----------------------------------------------------\n")
+			return 1
+		}
 	*/
 
 	// ==================================================================================
