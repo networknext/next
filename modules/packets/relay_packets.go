@@ -96,10 +96,22 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 	}
 
 	for i := 0; i < int(packet.NumSamples); i++ {
-		encoding.ReadUint64(buffer, &index, &packet.SampleRelayId[i])
-		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayRTT[i])
-		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayJitter[i])
-		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayPacketLoss[i])
+
+		if !encoding.ReadUint64(buffer, &index, &packet.SampleRelayId[i]) {
+			return errors.New("could not read sample relay id")
+		}
+		
+		if !encoding.ReadFloat32(buffer, &index, &packet.SampleRTT[i]) {
+			return errors.New("could not read sample rtt")			
+		}
+		
+		if !encoding.ReadFloat32(buffer, &index, &packet.SampleJitter[i]) {
+			return errors.New("could not read sample jitter")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &packet.SamplePacketLoss[i]) {
+			return errors.New("could not read sample packet loss")			
+		}
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &packet.SessionCount) {
