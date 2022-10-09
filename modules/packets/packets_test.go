@@ -434,3 +434,95 @@ func Test_SDK5_SessionUpdateResponsePacket(t *testing.T) {
 		PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
 	}
 }
+
+// -------------------------------------------------------------------
+
+const NumRelayPacketIterations = 10//00
+
+func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P, t *testing.T) {
+
+	const BufferSize = 1024 * 1024
+
+	buffer := make([]byte, BufferSize)
+
+	buffer = writePacket.Write(buffer[:])
+
+	err := readPacket.Read(buffer)
+	assert.Nil(t, err)
+
+	assert.Equal(t, writePacket, readPacket)
+}
+
+func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
+
+	packet := packets.RelayUpdateRequestPacket{
+		Version: packets.VersionNumberRelayUpdateRequest,
+		Address: common.RandomAddress(),
+		Token: make([]byte, packets.RelayTokenSize),
+		NumSamples: uint32(common.RandomInt(0, packets.MaxRelays-1)),
+	}
+
+	for i := 0; i < int(packet.NumSamples); i++ {
+		packet.SampleRelayId[i] = rand.Uint64()
+		packet.SampleRTT[i] = rand.Float32()
+		packet.SampleJitter[i] = rand.Float32()
+		packet.SamplePacketLoss[i] = rand.Float32()
+	}
+
+	packet.SessionCount = rand.Uint64()
+	packet.ShuttingDown = common.RandomBool()
+	packet.RelayVersion = common.RandomString(packets.MaxRelayVersionStringLength)
+	packet.CPU = uint8(common.RandomInt(0,100))
+	packet.EnvelopeUpKbps = rand.Uint64()
+	packet.EnvelopeDownKbps = rand.Uint64()
+	packet.BandwidthSentKbps = rand.Uint64()
+	packet.BandwidthRecvKbps = rand.Uint64()
+
+	return packet
+}
+
+func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket {
+
+	packet := packets.RelayUpdateResponsePacket{
+		Version: packets.VersionNumberRelayUpdateResponse,
+		Timestamp: rand.Uint64(),
+		NumRelays: uint32(common.RandomInt(0, packets.MaxRelays)),
+		UpcomingMagic: make([]byte, 8),
+		CurrentMagic: make([]byte, 8),
+		PreviousMagic: make([]byte, 8),
+	}
+
+	for i := 0; i < int(packet.NumRelays); i++ {
+		packet.RelayId[i] = rand.Uint64()
+		packet.RelayAddress[i] = common.RandomString(packets.MaxRelayAddressLength)
+		// packet.InternalAddresses[i] = common.RandomString(packets.MaxRelayAddressLength)
+	}
+	
+	packet.TargetVersion = common.RandomString(packets.MaxRelayVersionStringLength)
+
+	common.RandomBytes(packet.UpcomingMagic)
+	common.RandomBytes(packet.CurrentMagic)
+	common.RandomBytes(packet.PreviousMagic)
+
+	return packet
+}
+
+func TestRelayUpdateRequestPacket(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumRelayPacketIterations; i++ {
+		writeMessage := GenerateRandomRelayUpdateRequestPacket()
+		readMessage := packets.RelayUpdateRequestPacket{}
+		RelayPacketReadWriteTest[*packets.RelayUpdateRequestPacket](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestRelayUpdateResponsePacket(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumRelayPacketIterations; i++ {
+		writeMessage := GenerateRandomRelayUpdateResponsePacket()
+		readMessage := packets.RelayUpdateResponsePacket{}
+		RelayPacketReadWriteTest[*packets.RelayUpdateResponsePacket](&writeMessage, &readMessage, t)
+	}
+}
+
+// ------------------------------------------------------------------

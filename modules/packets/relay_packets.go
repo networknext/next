@@ -14,8 +14,17 @@ const (
 	MaxRelayVersionStringLength      = 32
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
-	MaxNearRelays                    = 32
+	MaxRelays                        = 1024
 )
+
+// --------------------------------------------------------------------------
+
+type RelayPacket interface {
+
+	Write(buffer []byte) []byte
+
+	Read(buffer []byte) error
+}
 
 // --------------------------------------------------------------------------
 
@@ -24,10 +33,10 @@ type RelayUpdateRequestPacket struct {
 	Address           net.UDPAddr
 	Token             []byte
 	NumSamples        uint32
-	SampleRelayId     []uint64
-	SampleRTT         []float32
-	SampleJitter      []float32
-	SamplePacketLoss  []float32
+	SampleRelayId     [MaxRelays]uint64
+	SampleRTT         [MaxRelays]float32
+	SampleJitter      [MaxRelays]float32
+	SamplePacketLoss  [MaxRelays]float32
 	SessionCount      uint64
 	ShuttingDown      bool
 	RelayVersion      string
@@ -41,6 +50,7 @@ type RelayUpdateRequestPacket struct {
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	index := 0
+
 	encoding.WriteUint32(buffer, &index, packet.Version)
 	encoding.WriteString(buffer, &index, packet.Address.String(), MaxRelayAddressLength)
 	encoding.WriteBytes(buffer, &index, packet.Token, RelayTokenSize)
@@ -72,6 +82,12 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 	index := 0
 
+	encoding.ReadUint32(buffer, &index, &packet.Version)
+
+	if packet.Version != VersionNumberRelayUpdateRequest {
+		return errors.New("invalid relay update request packet version")
+	}
+
 	var address string
 	if !encoding.ReadString(buffer, &index, &address, MaxRelayAddressLength) {
 		return errors.New("could not read relay address")
@@ -91,7 +107,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read num samples")
 	}
 
-	if packet.NumSamples < 0 || packet.NumSamples > MaxNearRelays {
+	if packet.NumSamples < 0 || packet.NumSamples > MaxRelays {
 		return errors.New("invalid num samples")
 	}
 
@@ -153,121 +169,109 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 type RelayUpdateResponsePacket struct {
 	Version           uint32
-	Timestamp         int64
-	NumRelays         int32
-	RelayId           uint64
-	RelayAddress      string
+	Timestamp         uint64
+	NumRelays         uint32
+	RelayId           [MaxRelays]uint64
+	RelayAddress      [MaxRelays]string
+	InternalAddresses [MaxRelays]string
 	TargetVersion     string
 	UpcomingMagic     []byte
 	CurrentMagic      []byte
 	PreviousMagic     []byte
-	InternalAddresses []string
 }
 
 func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
-	// todo
-	return nil
+
+	index := 0
+
+	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteUint64(buffer, &index, uint64(packet.Timestamp))
+	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays))
+	
+	for i := 0; i < int(packet.NumRelays); i++ {
+		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
+		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength)
+	}
+	
+	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)
+
+	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
+	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
+	encoding.WriteBytes(buffer, &index, packet.PreviousMagic, 8)
+
+	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays)) // redundant, but hey
+	for i := range packet.InternalAddresses {
+		encoding.WriteString(buffer, &index, packet.InternalAddresses[i], MaxRelayAddressLength)
+	}
+
+	return buffer[:index]
 }
 
 func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
-	// todo
-	return nil
-}
-
-// ---------------------------------------------------------------
-
-/*
-func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
-	index := 0
-	responseData := make([]byte, r.Size())
-	encoding.WriteUint32(responseData, &index, r.Version)
-	encoding.WriteUint64(responseData, &index, uint64(r.Timestamp))
-	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
-	for i := range r.RelaysToPing {
-		encoding.WriteUint64(responseData, &index, r.RelaysToPing[i].ID)
-		encoding.WriteString(responseData, &index, r.RelaysToPing[i].Address, routing.MaxRelayAddressLength)
-	}
-	encoding.WriteString(responseData, &index, r.TargetVersion, MaxVersionStringLength)
-
-	if r.Version >= 1 {
-		encoding.WriteBytes(responseData, &index, r.UpcomingMagic, 8)
-		encoding.WriteBytes(responseData, &index, r.CurrentMagic, 8)
-		encoding.WriteBytes(responseData, &index, r.PreviousMagic, 8)
-
-		encoding.WriteUint32(responseData, &index, uint32(len(r.InternalAddrs)))
-		for i := range r.InternalAddrs {
-			encoding.WriteString(responseData, &index, r.InternalAddrs[i], routing.MaxRelayAddressLength)
-		}
-	}
-
-	return responseData[:index], nil
-}
-
-func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
+	
 	index := 0
 
-	if !encoding.ReadUint32(buff, &index, &r.Version) {
+	if !encoding.ReadUint32(buffer, &index, &packet.Version) {
 		return errors.New("could not read version")
 	}
-	if r.Version > VersionNumberUpdateResponse {
-		return errors.New("invalid version number")
+
+	if packet.Version > VersionNumberRelayUpdateResponse {
+		return errors.New("invalid relay update response version")
 	}
 
-	var timestamp uint64
-	if !encoding.ReadUint64(buff, &index, &timestamp) {
+	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
 		return errors.New("could not read timestamp")
 	}
 
-	r.Timestamp = int64(timestamp)
-
-	var numRelaysToPing uint32
-	if !encoding.ReadUint32(buff, &index, &numRelaysToPing) {
-		return errors.New("could not read num relays to ping")
+	if !encoding.ReadUint32(buffer, &index, &packet.NumRelays) {
+		return errors.New("could not read num relays")
 	}
 
-	r.RelaysToPing = make([]routing.RelayPingData, int32(numRelaysToPing))
-	for i := 0; i < int(numRelaysToPing); i++ {
-		stats := &r.RelaysToPing[i]
+	if packet.NumRelays < 0 || packet.NumRelays > MaxRelays {
+		return errors.New("invalid num relays")
+	}
 
-		// todo: these could be much more efficient as byte values [0,255]
-		if !encoding.ReadUint64(buff, &index, &stats.ID) {
-			return errors.New("could not read relay ID")
+	for i := 0; i < int(packet.NumRelays); i++ {
+
+		if !encoding.ReadUint64(buffer, &index, &packet.RelayId[i]) {
+			return errors.New("could not read relay id")
 		}
-		if !encoding.ReadString(buff, &index, &stats.Address, routing.MaxRelayAddressLength) {
+
+		if !encoding.ReadString(buffer, &index, &packet.RelayAddress[i], MaxRelayAddressLength) {
 			return errors.New("could not read relay address")
 		}
 	}
 
-	if !encoding.ReadString(buff, &index, &r.TargetVersion, MaxVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, MaxRelayVersionStringLength) {
 		return errors.New("could not read target version")
 	}
 
-	if r.Version >= 1 {
-		if !encoding.ReadBytes(buff, &index, &r.UpcomingMagic, 8) {
-			return errors.New("could not read upcoming magic")
-		}
+	if !encoding.ReadBytes(buffer, &index, &packet.UpcomingMagic, 8) {
+		return errors.New("could not read upcoming magic")
+	}
 
-		if !encoding.ReadBytes(buff, &index, &r.CurrentMagic, 8) {
-			return errors.New("could not read current magic")
-		}
+	if !encoding.ReadBytes(buffer, &index, &packet.CurrentMagic, 8) {
+		return errors.New("could not read current magic")
+	}
 
-		if !encoding.ReadBytes(buff, &index, &r.PreviousMagic, 8) {
-			return errors.New("could not read previous magic")
-		}
+	if !encoding.ReadBytes(buffer, &index, &packet.PreviousMagic, 8) {
+		return errors.New("could not read previous magic")
+	}
 
-		var numInternalAddrs uint32
-		if !encoding.ReadUint32(buff, &index, &numInternalAddrs) {
-			return errors.New("could not read num internal addrs")
-		}
+	var numInternalAddresses uint32
+	if !encoding.ReadUint32(buffer, &index, &numInternalAddresses) {
+		return errors.New("could not read num internal addresses")
+	}
 
-		r.InternalAddrs = make([]string, int32(numInternalAddrs))
-		for i := 0; i < int(numInternalAddrs); i++ {
-			if !encoding.ReadString(buff, &index, &r.InternalAddrs[i], routing.MaxRelayAddressLength) {
-				return errors.New("could not read relay internal address")
-			}
+	if numInternalAddresses != packet.NumRelays {
+		return errors.New("invalid num internal addresses")
+	}
+
+	for i := 0; i < int(numInternalAddresses); i++ {
+		if !encoding.ReadString(buffer, &index, &packet.InternalAddresses[i], MaxRelayAddressLength) {
+			return errors.New("could not read relay internal address")
 		}
 	}
 
 	return nil
 }
-*/
