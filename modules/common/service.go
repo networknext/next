@@ -500,14 +500,6 @@ func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.Overlay
 	}
 }
 
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	if err == nil {
-		return true
-	}
-	return false
-}
-
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
 
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)

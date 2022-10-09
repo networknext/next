@@ -110,6 +110,8 @@ func main() {
 		relay_backend()
 	} else if command == "analytics" {
 		analytics()
+	} else if command == "website-cruncher" {
+		website_cruncher()
 	} else if command == "pusher" {
 		pusher()
 	} else if command == "relay" {
@@ -205,6 +207,10 @@ func server_backend4() {
 
 func server_backend5() {
 	bash("make ./dist/server_backend5 && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
+}
+
+func website_cruncher() {
+	bash("make ./dist/website_cruncher && HTTP_PORT=40010 ./dist/website_cruncher")
 }
 
 func happy_path() {
