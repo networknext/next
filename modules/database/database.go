@@ -1,10 +1,10 @@
 package database
 
 import (
-	// "bytes"
-	// "encoding/gob"
-	// "io/ioutil"
-	// "os"
+// "bytes"
+// "encoding/gob"
+// "io/ioutil"
+// "os"
 )
 
 type Relay struct {
@@ -35,7 +35,7 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap              // todo: datacenter maps design strikes me as bad
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as bad
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
 }
 

@@ -3,13 +3,15 @@ package packets
 import (
 	"net"
 
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
 	VersionNumberRelayUpdateRequest  = 5
 	VersionNumberRelayUpdateResponse = 1
 	MaxRelayVersionStringLength      = 32
+	MaxRelayAddressLength            = 256
 )
 
 // --------------------------------------------------------------------------
@@ -18,8 +20,11 @@ type RelayUpdateRequestPacket struct {
 	Version           uint32
 	Address           net.UDPAddr
 	Token             []byte
-	// todo: SoA
-	// PingStats         []routing.RelayStatsPing
+	NumSamples        uint32
+	SampleRelayId     []uint64
+	SampleRTT         []float32
+	SampleJitter      []float32
+	SamplePacketLoss  []float32
 	SessionCount      uint64
 	ShuttingDown      bool
 	RelayVersion      string
@@ -31,44 +36,38 @@ type RelayUpdateRequestPacket struct {
 }
 
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
-	// todo
-	return nil
+
+	index := 0
+	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteString(buffer, &index, packet.Address.String(), MaxRelayAddressLength)
+	encoding.WriteBytes(buffer, &index, packet.Token, crypto.Box_KeySize)
+
+	encoding.WriteUint32(buffer, &index, packet.NumSamples)
+
+	for i := 0; i < int(packet.NumSamples); i++ {
+		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
+		encoding.WriteFloat32(buffer, &index, packet.SampleRTT[i])
+		encoding.WriteFloat32(buffer, &index, packet.SampleJitter[i])
+		encoding.WriteFloat32(buffer, &index, packet.SamplePacketLoss[i])
+	}
+
+	encoding.WriteUint64(buffer, &index, packet.SessionCount)
+	encoding.WriteBool(buffer, &index, packet.ShuttingDown)
+	encoding.WriteString(buffer, &index, packet.RelayVersion, MaxRelayVersionStringLength)
+
+	encoding.WriteUint8(buffer, &index, packet.CPU)
+
+	encoding.WriteUint64(buffer, &index, packet.EnvelopeUpKbps)
+	encoding.WriteUint64(buffer, &index, packet.EnvelopeDownKbps)
+	encoding.WriteUint64(buffer, &index, packet.BandwidthSentKbps)
+	encoding.WriteUint64(buffer, &index, packet.BandwidthRecvKbps)
+
+	return buffer[:index]
 }
 
 func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
-	// todo
-	return nil
-}
-
-// --------------------------------------------------------------------------
-
-type RelayUpdateResponsePacket struct {
-	Version       uint32
-	Timestamp     int64
-	// todo: structure of arrays for relay ping data
-	// RelaysToPing  []routing.RelayPingData
-	TargetVersion string
-	UpcomingMagic []byte
-	CurrentMagic  []byte
-	PreviousMagic []byte
-	InternalAddrs []string
-}
-
-func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
-	// todo
-	return nil
-}
-
-func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
-	// todo
-	return nil
-}
-
-// --------------------------------------------------------------------------
 
 /*
-func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
-
 	var numRelays uint32
 
 	var addr string
@@ -134,42 +133,34 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 	if !encoding.ReadUint64(buff, &index, &r.BandwidthRecvKbps) {
 		return errors.New("could not read bandwidth received kbps")
 	}
-
+*/
 	return nil
 }
 
-func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
-	data := make([]byte, r.sizeV5())
+// --------------------------------------------------------------------------
 
-	index := 0
-	encoding.WriteUint32(data, &index, r.Version)
-	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
-	encoding.WriteBytes(data, &index, r.Token, crypto_old.KeySize)
-
-	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
-	for i := 0; i < len(r.PingStats); i++ {
-		stats := r.PingStats[i]
-
-		encoding.WriteUint64(data, &index, stats.RelayID)
-		encoding.WriteFloat32(data, &index, stats.RTT)
-		encoding.WriteFloat32(data, &index, stats.Jitter)
-		encoding.WriteFloat32(data, &index, stats.PacketLoss)
-	}
-
-	encoding.WriteUint64(data, &index, r.SessionCount)
-	encoding.WriteBool(data, &index, r.ShuttingDown)
-	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
-
-	encoding.WriteUint8(data, &index, r.CPU)
-
-	encoding.WriteUint64(data, &index, r.EnvelopeUpKbps)
-	encoding.WriteUint64(data, &index, r.EnvelopeDownKbps)
-	encoding.WriteUint64(data, &index, r.BandwidthSentKbps)
-	encoding.WriteUint64(data, &index, r.BandwidthRecvKbps)
-
-	return data[:index], nil
+type RelayUpdateResponsePacket struct {
+	Version           uint32
+	Timestamp         int64
+	NumRelays         int32
+	RelayId           uint64
+	RelayAddress      string
+	TargetVersion     string
+	UpcomingMagic     []byte
+	CurrentMagic      []byte
+	PreviousMagic     []byte
+	InternalAddresses []string
 }
-*/
+
+func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
+	// todo
+	return nil
+}
+
+func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
+	// todo
+	return nil
+}
 
 // ---------------------------------------------------------------
 
