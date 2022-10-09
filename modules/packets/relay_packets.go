@@ -2,8 +2,9 @@ package packets
 
 import (
 	"net"
+	"fmt"
+	"errors"
 
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -12,6 +13,8 @@ const (
 	VersionNumberRelayUpdateResponse = 1
 	MaxRelayVersionStringLength      = 32
 	MaxRelayAddressLength            = 256
+	RelayTokenSize                   = 32
+	MaxNearRelays                    = 32
 )
 
 // --------------------------------------------------------------------------
@@ -40,7 +43,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	index := 0
 	encoding.WriteUint32(buffer, &index, packet.Version)
 	encoding.WriteString(buffer, &index, packet.Address.String(), MaxRelayAddressLength)
-	encoding.WriteBytes(buffer, &index, packet.Token, crypto.Box_KeySize)
+	encoding.WriteBytes(buffer, &index, packet.Token, RelayTokenSize)
 
 	encoding.WriteUint32(buffer, &index, packet.NumSamples)
 
@@ -67,73 +70,70 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
-/*
-	var numRelays uint32
+	index := 0
 
-	var addr string
-	if !encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) {
+	var address string
+	if !encoding.ReadString(buffer, &index, &address, MaxRelayAddressLength) {
 		return errors.New("could not read relay address")
 	}
 
-	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
-		r.Address = *udp
+	if udp, err := net.ResolveUDPAddr("udp", address); udp != nil && err == nil {
+		packet.Address = *udp
 	} else {
-		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
+		return fmt.Errorf("could not resolve udp address '%s': %v", address, err)
 	}
 
-	if !encoding.ReadBytes(buff, &index, &r.Token, crypto_old.KeySize) {
+	if !encoding.ReadBytes(buffer, &index, &packet.Token, RelayTokenSize) {
 		return errors.New("could not read relay token")
 	}
 
-	if !encoding.ReadUint32(buff, &index, &numRelays) {
-		return errors.New("could not read num relays")
+	if !encoding.ReadUint32(buffer, &index, &packet.NumSamples) {
+		return errors.New("could not read num samples")
 	}
 
-	r.PingStats = make([]routing.RelayStatsPing, numRelays)
-
-	for i := 0; i < int(numRelays); i++ {
-
-		stats := &r.PingStats[i]
-
-		// todo: these could be much more efficient as byte values [0,255]
-		encoding.ReadUint64(buff, &index, &stats.RelayID)
-		encoding.ReadFloat32(buff, &index, &stats.RTT)
-		encoding.ReadFloat32(buff, &index, &stats.Jitter)
-		encoding.ReadFloat32(buff, &index, &stats.PacketLoss)
+	if packet.NumSamples < 0 || packet.NumSamples > MaxNearRelays {
+		return errors.New("invalid num samples")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.SessionCount) {
+	for i := 0; i < int(packet.NumSamples); i++ {
+		encoding.ReadUint64(buffer, &index, &packet.SampleRelayId[i])
+		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayRTT[i])
+		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayJitter[i])
+		encoding.ReadFloat32(buffer, &index, &packet.SampleRelayPacketLoss[i])
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &packet.SessionCount) {
 		return errors.New("could not read session count")
 	}
 
-	if !encoding.ReadBool(buff, &index, &r.ShuttingDown) {
+	if !encoding.ReadBool(buffer, &index, &packet.ShuttingDown) {
 		return errors.New("could not read shutdown flag")
 	}
 
-	if !encoding.ReadString(buff, &index, &r.RelayVersion, MaxVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, MaxRelayVersionStringLength) {
 		return errors.New("could not read relay version string")
 	}
 
-	if !encoding.ReadUint8(buff, &index, &r.CPU) {
+	if !encoding.ReadUint8(buffer, &index, &packet.CPU) {
 		return errors.New("could not read cpu")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.EnvelopeUpKbps) {
+	if !encoding.ReadUint64(buffer, &index, &packet.EnvelopeUpKbps) {
 		return errors.New("could not read envelope up kpbs")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.EnvelopeDownKbps) {
+	if !encoding.ReadUint64(buffer, &index, &packet.EnvelopeDownKbps) {
 		return errors.New("could not read envelope down kpbs")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BandwidthSentKbps) {
+	if !encoding.ReadUint64(buffer, &index, &packet.BandwidthSentKbps) {
 		return errors.New("could not read bandwidth sent kbps")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BandwidthRecvKbps) {
+	if !encoding.ReadUint64(buffer, &index, &packet.BandwidthRecvKbps) {
 		return errors.New("could not read bandwidth received kbps")
 	}
-*/
+
 	return nil
 }
 
