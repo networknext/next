@@ -1,10 +1,10 @@
 package database
 
 import (
+	"encoding/gob"
+	"os"
+
 // "bytes"
-// "encoding/gob"
-// "io/ioutil"
-// "os"
 )
 
 type Relay struct {
@@ -42,6 +42,22 @@ type Database struct {
 type Overlay struct {
 	CreationTime string
 	BuyerMap     map[uint64]Buyer
+}
+
+func LoadDatabase(filename string) (*Database, error) {
+
+	databaseFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	defer databaseFile.Close()
+
+	database := &Database{}
+
+	err = gob.NewDecoder(databaseFile).Decode(database)
+
+	return database, err
 }
 
 /*

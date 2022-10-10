@@ -8,6 +8,9 @@ import (
 	"syscall"
 	"time"
 
+	// todo: temporary
+	"github.com/networknext/backend/modules/database"
+
 	"github.com/joho/godotenv"
 )
 
@@ -142,8 +145,10 @@ func main() {
 		func_backend4()
 	} else if command == "func-backend5" {
 		func_backend5()
-	} else if command == "func-tests-backend" {
-		func_tests_backend(args[2:])
+	} else if command == "func-test-backend" || command == "func-tests-backend" {
+		func_test_backend(args[2:])
+	} else if command == "test-new-database" {
+		test_new_database()
 	}
 
 	cleanup()
@@ -270,9 +275,8 @@ func func_backend5() {
 	bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
 }
 
-func func_tests_backend(tests []string) {
+func func_test_backend(tests []string) {
 	command := "make ./dist/func_tests_backend && ./dist/func_tests_backend"
-
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
@@ -280,4 +284,14 @@ func func_tests_backend(tests []string) {
 	} else {
 		bash(command)
 	}
+}
+
+// todo: temporary
+func test_new_database() {
+	fmt.Printf("loading new database\n")
+	new_database, err := database.LoadDatabase("./database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database: %v\n", err)
+	}
+	fmt.Printf("successfully loaded database\n%v+\n", new_database)
 }
