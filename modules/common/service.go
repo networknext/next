@@ -13,19 +13,16 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"sort"
+	// "sort"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/database"
 
-	// todo: we want to remove these
-	"github.com/networknext/backend/modules-old/backend"
-	"github.com/networknext/backend/modules-old/routing"
-
-	// todo: we want to move this to a new module ("middleware"?) as needed
+	// todo: we want to move this to a new module ("middleware"?) or common as needed
 	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
@@ -40,8 +37,8 @@ var (
 type RelayData struct {
 	NumRelays          int
 	RelayIds           []uint64
-	RelayHash          map[uint64]routing.Relay // todo: don't use routing
-	RelayArray         []routing.Relay
+	RelayHash          map[uint64]database.Relay
+	RelayArray         []database.Relay
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
 	RelayLatitudes     []float32
@@ -70,8 +67,8 @@ type Service struct {
 	// ------------------
 
 	databaseMutex     sync.RWMutex
-	database          *routing.DatabaseBinWrapper // todo: we need to copy database and overlay out of routing
-	databaseOverlay   *routing.OverlayBinWrapper
+	database          *database.Database
+	databaseOverlay   *database.Overlay
 	databaseRelayData *RelayData
 
 	statusMutex sync.RWMutex
@@ -91,7 +88,7 @@ type Service struct {
 
 	routeMatrixMutex    sync.RWMutex
 	routeMatrix         *RouteMatrix
-	routeMatrixDatabase *routing.DatabaseBinWrapper
+	routeMatrixDatabase *database.Database
 
 	googleProjectId    string
 	googleCloudStorage *GoogleCloudStorage
@@ -158,7 +155,7 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
-func (service *Service) Database() *routing.DatabaseBinWrapper {
+func (service *Service) Database() *database.Database {
 	service.databaseMutex.RLock()
 	database := service.database
 	service.databaseMutex.RUnlock()
@@ -342,7 +339,7 @@ func (service *Service) UpdateRouteMatrix() {
 					continue
 				}
 
-				var newDatabase routing.DatabaseBinWrapper
+				var newDatabase database.Database
 
 				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
 				decoder := gob.NewDecoder(databaseBuffer)
@@ -363,7 +360,7 @@ func (service *Service) UpdateRouteMatrix() {
 	}()
 }
 
-func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *routing.DatabaseBinWrapper) {
+func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *database.Database) {
 	service.routeMatrixMutex.RLock()
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
@@ -391,8 +388,12 @@ func (service *Service) WaitForShutdown() {
 
 // -----------------------------------------------------------------------
 
-func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBinWrapper, *routing.OverlayBinWrapper) {
+func loadDatabase(databasePath string, overlayPath string) (*database.Database, *database.Overlay) {
 
+	// todo
+	return nil, nil
+
+	/*
 	// load the database (required)
 
 	databaseFile, err := os.Open(databasePath)
@@ -433,12 +434,15 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	core.Debug("loaded overlay: '%s'", overlayPath)
 
 	return database, overlay
+	*/
 }
 
-func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
+func generateRelayData(database *database.Database) *RelayData {
 
 	relayData := &RelayData{}
 
+	// todo
+	/*
 	numRelays := len(database.Relays)
 
 	relayData.NumRelays = numRelays
@@ -517,11 +521,12 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	encoder.Encode(database)
 
 	relayData.DatabaseBinFile = databaseBuffer.Bytes()
+	*/
 
 	return relayData
 }
 
-func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.OverlayBinWrapper) {
+func applyOverlay(database *database.Database, overlay *database.Overlay) {
 	if overlay != nil {
 		for _, buyer := range overlay.BuyerMap {
 			_, ok := database.BuyerMap[buyer.ID]

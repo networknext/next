@@ -7,7 +7,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/handlers"
+	// "github.com/networknext/backend/modules/handlers"
 )
 
 var service *common.Service
@@ -56,6 +56,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
+	// todo
+	/*
 	handler := handlers.SDK5_Handler{}
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
@@ -66,4 +68,5 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	}
 
 	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
+	*/
 }

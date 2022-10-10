@@ -121,7 +121,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		responsePacket.Version = packets.VersionNumberRelayUpdateResponse
 		responsePacket.Timestamp = uint64(time.Now().Unix())
-		responsePacket.TargetVersion = relay.Version
+
+		// todo: we need version
+		// responsePacket.TargetVersion = relay.Version
 
 		sellerName := relay.Seller.Name
 
