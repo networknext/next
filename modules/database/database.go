@@ -15,6 +15,7 @@ type Relay struct {
 	Name         string
 	Addr         net.UDPAddr
 	InternalAddr net.UDPAddr
+	Version      string
 	PublicKey    []byte
 	Seller       Seller
 	Datacenter   Datacenter

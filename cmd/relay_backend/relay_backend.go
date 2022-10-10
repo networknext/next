@@ -13,8 +13,8 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	_ "github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
+	_ "github.com/networknext/backend/modules/messages"
 )
 
 var googleProjectId string
