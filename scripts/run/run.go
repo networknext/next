@@ -294,4 +294,10 @@ func test_new_database() {
 		fmt.Printf("error: could not load database: %v\n", err)
 	}
 	fmt.Printf("successfully loaded database\n%#v\n", new_database)
+	fmt.Printf("loading new overlay\n")
+	overlay, err := database.LoadOverlay("./overlay.bin")
+	if err != nil {
+		fmt.Printf("error: could not load overlay: %v\n", err)
+	}
+	fmt.Printf("successfully loaded overlay\n%#v\n", overlay)
 }

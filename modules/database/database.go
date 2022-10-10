@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	// "github.com/networknext/backend/modules-old/routing" // todo: temporary hack	
+	"github.com/networknext/backend/modules/core"
 )
 
 type Relay struct {
@@ -22,22 +22,30 @@ type Relay struct {
 }
 
 type Buyer struct {
-	// todo
+	ID             uint64
+	Live           bool
+	Debug          bool
+	PublicKey      []byte
+	RouteShader    core.RouteShader
+	InternalConfig core.InternalConfig
 }
 
 type Seller struct {
-	// todo
+	Name string
 }
 
 type Datacenter struct {
-	ID         uint64
-	Name       string
-	Latitude    float32        // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
-	Longitude   float32
+	ID        uint64
+	Name      string
+	Latitude  float32 // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
+	Longitude float32
 }
 
+// todo: what's really going on here? It's a per-buyer, per-datacenter struct? or something?
 type DatacenterMap struct {
-	// todo: whut
+	BuyerID            uint64
+	DatacenterID       uint64
+	EnableAcceleration bool
 }
 
 type Database struct {
@@ -48,8 +56,8 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as bad
-	//                 ^ Buyer.ID   ^ DatacenterMap map index
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as a bit weird? Wtf?
+	//                   ^ Buyer.ID  ^ DatacenterMap map index
 }
 
 func CreateDatabase() *Database {
@@ -101,7 +109,7 @@ func (database *Database) Save(filename string) error {
 }
 
 func (database *Database) IsEmpty() bool {
-	
+
 	if database.CreationTime == "" {
 		return false
 	}
@@ -139,49 +147,55 @@ func (database *Database) IsEmpty() bool {
 
 // ---------------------------------------------------------------------
 
-/*
 type Overlay struct {
 	CreationTime string
 	BuyerMap     map[uint64]Buyer
 }
-*/
 
-/*
-func CreateEmptyOverlayBinWrapper() *OverlayBinWrapper {
-	wrapper := &OverlayBinWrapper{
-		BuyerMap: make(map[uint64]Buyer),
+func CreateOverlay() *Overlay {
+
+	overlay := &Overlay{
+		CreationTime:   "",
+		BuyerMap:       make(map[uint64]Buyer),
 	}
 
-	return wrapper
+	return overlay
 }
 
-func (wrapper OverlayBinWrapper) IsEmpty() bool {
-	return len(wrapper.BuyerMap) == 0
+func LoadOverlay(filename string) (*Overlay, error) {
+
+	overlayFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	defer overlayFile.Close()
+
+	overlay := &Overlay{}
+
+	err = gob.NewDecoder(overlayFile).Decode(overlay)
+
+	return overlay, err
 }
 
-func (wrapper OverlayBinWrapper) WriteOverlayBinFile(outputPath string) error {
+func (overlay *Overlay) Save(filename string) error {
+
 	var buffer bytes.Buffer
 
-	err := gob.NewEncoder(&buffer).Encode(wrapper)
+	err := gob.NewEncoder(&buffer).Encode(overlay)
 	if err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// This function is essentially the same as DecodeOverlayWrapper in modules/backend/helpers.go
-func (wrapper *OverlayBinWrapper) ReadOverlayBinFile(overlayFilePath string) error {
-	overlayFile, err := os.Open(overlayFilePath)
-	if err != nil {
-		return err
-	}
-	defer overlayFile.Close()
-
-	return gob.NewDecoder(overlayFile).Decode(wrapper)
+func (overlay Overlay) IsEmpty() bool {
+	return len(overlay.BuyerMap) == 0
 }
-*/
+
+// ---------------------------------------------------------------------
