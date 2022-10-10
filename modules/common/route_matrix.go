@@ -14,8 +14,7 @@ import (
 
 const (
 	RouteMatrixSerializeVersion = 7
-
-	MaxDatabaseBinWrapperSize = 100000000 // todo: the database should never be 100MB large. This is crazy.
+	MaxDatabaseBinWrapperSize = 100000000
 )
 
 type RouteMatrix struct {
