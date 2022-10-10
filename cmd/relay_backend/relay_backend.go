@@ -13,11 +13,8 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/messages"
-
-	// todo: we want to remove dependencies on these
-	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules/packets"
+	_ "github.com/networknext/backend/modules/messages"
 )
 
 var googleProjectId string
@@ -288,6 +285,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
+	// todo
+	/*
 	pingStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
 		ProjectId:          googleProjectId,
 		Topic:              pingStatsPubsubTopic,
@@ -307,6 +306,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		core.Error("could not create relay stats producer")
 		os.Exit(1)
 	}
+	*/
 
 	go func() {
 
@@ -318,40 +318,61 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 			case message := <-consumer.MessageChannel:
 
-				// todo: remove dependency on transport
-				// todo: this should become a new packet type, defined in module/packets/relay_packets.go
-				var relayUpdate transport.RelayUpdateRequest
-				if err = relayUpdate.UnmarshalBinary(message); err != nil {
-					core.Error("could not read relay update")
+				// read the relay update request packet
+
+				var relayUpdateRequest packets.RelayUpdateRequestPacket
+
+				err = relayUpdateRequest.Read(message)
+				if err != nil {
+					core.Error("could not read relay update: %v", err)
 					return
 				}
 
+				if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
+					core.Error("relay update version mismatch")
+					return
+				}
+
+				// look up the relay in the database
+
 				relayData := service.RelayData()
 
-				relayId := common.RelayId(relayUpdate.Address.String())
+				relayId := common.RelayId(relayUpdateRequest.Address.String())
 				relayIndex, ok := relayData.RelayIdToIndex[relayId]
 				if !ok {
 					core.Error("unknown relay id %016x", relayId)
 					return
 				}
 
-				// todo: bring back relay crypto check here
-
 				relayName := relayData.RelayNames[relayIndex]
 
 				core.Debug("received relay update for '%s'", relayName)
 
-				numSamples := len(relayUpdate.PingStats)
+				// process samples in the relay update
 
-				sampleRelayIds := make([]uint64, numSamples)
-				sampleRTT := make([]float32, numSamples)
-				sampleJitter := make([]float32, numSamples)
-				samplePacketLoss := make([]float32, numSamples)
-				sampleRoutable := make([]bool, numSamples)
+				numSamples := int(relayUpdateRequest.NumSamples)
+
+				relayManager.ProcessRelayUpdate(relayId,
+					relayName,
+					relayUpdateRequest.Address,
+					int(relayUpdateRequest.SessionCount),
+					relayUpdateRequest.RelayVersion,
+					relayUpdateRequest.ShuttingDown,
+					numSamples,
+					relayUpdateRequest.SampleRelayId[:numSamples],
+					relayUpdateRequest.SampleRTT[:numSamples],
+					relayUpdateRequest.SampleJitter[:numSamples],
+					relayUpdateRequest.SamplePacketLoss[:numSamples],
+				)
+
+				// Build relay stats
+
+				// todo: below needs to be fixed up (Andrew)
+
+				/*
+				numRoutable := 0
 
 				pingStatsMessages := make([]messages.PingStatsMessage, numSamples)
-
-				numRoutable := 0
 
 				for i := 0; i < numSamples; i++ {
 
@@ -385,9 +406,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						Routable:   sampleRoutable[i],
 					}
 				}
+				*/
 
-				// Build missing relay stats
-
+				/*
 				numUnroutable := numSamples - numRoutable
 
 				bwSentPercent := float32(0)
@@ -435,24 +456,11 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					EnvelopeReceivedMbps:     float32(relayUpdate.EnvelopeDownKbps),
 				}
 
-				relayManager.ProcessRelayUpdate(relayId,
-					relayName,
-					relayUpdate.Address,
-					int(relayUpdate.SessionCount),
-					relayUpdate.RelayVersion,
-					relayUpdate.ShuttingDown,
-					numSamples,
-					sampleRelayIds,
-					sampleRTT,
-					sampleJitter,
-					samplePacketLoss,
-				)
-
 				// update relay stats
 
 				if redisSelector.IsLeader() {
 
-					messageBuffer := make([]byte, relayStatsChannelSize)
+					messageBuffer := make([]byte, relayStatsChannelSize) // todo: WUT
 
 					message := relayStatsMessage.Write(messageBuffer[:])
 
@@ -463,13 +471,14 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				if redisSelector.IsLeader() {
 
-					messageBuffer := make([]byte, pingStatsChannelSize)
+					messageBuffer := make([]byte, pingStatsChannelSize) // todo: WUT!!!
 
 					for i := 0; i < len(pingStatsMessages); i++ {
 						message := pingStatsMessages[i].Write(messageBuffer[:])
 						pingStatsProducer.MessageChannel <- message
 					}
 				}
+				*/
 			}
 		}
 	}()
