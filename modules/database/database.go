@@ -3,8 +3,8 @@ package database
 import (
 	"encoding/gob"
 	"os"
-
-// "bytes"
+	"bytes"
+	"io/ioutil"
 )
 
 type Relay struct {
@@ -44,6 +44,22 @@ type Overlay struct {
 	BuyerMap     map[uint64]Buyer
 }
 
+func CreateDatabase() *Database {
+	
+	database := &Database{
+		CreationTime:   "",
+		Creator:        "",
+		Relays:         []Relay{},
+		RelayMap:       make(map[uint64]Relay),
+		BuyerMap:       make(map[uint64]Buyer),
+		SellerMap:      make(map[string]Seller),
+		DatacenterMap:  make(map[uint64]Datacenter),
+		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
+	}
+
+	return database
+}
+
 func LoadDatabase(filename string) (*Database, error) {
 
 	databaseFile, err := os.Open(filename)
@@ -60,70 +76,43 @@ func LoadDatabase(filename string) (*Database, error) {
 	return database, err
 }
 
-/*
-func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
-	wrapper := &DatabaseBinWrapper{
-		CreationTime:   "",
-		Creator:        "",
-		Relays:         []Relay{},
-		RelayMap:       make(map[uint64]Relay),
-		BuyerMap:       make(map[uint64]Buyer),
-		SellerMap:      make(map[string]Seller),
-		DatacenterMap:  make(map[uint64]Datacenter),
-		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
-	}
+func (database *Database) Save(filename string) error {
 
-	return wrapper
-}
-
-func (wrapper DatabaseBinWrapper) IsEmpty() bool {
-	if len(wrapper.RelayMap) != 0 {
-		return false
-	} else if len(wrapper.BuyerMap) != 0 {
-		return false
-	} else if len(wrapper.SellerMap) != 0 {
-		return false
-	} else if len(wrapper.DatacenterMap) != 0 {
-		return false
-	} else if len(wrapper.DatacenterMaps) != 0 {
-		return false
-	} else if wrapper.CreationTime == "" {
-		return false
-	} else if wrapper.Creator == "" {
-		return false
-	} else if len(wrapper.Relays) != 0 {
-		return false
-	}
-
-	return true
-}
-
-func (wrapper DatabaseBinWrapper) WriteDatabaseBinFile(outputPath string) error {
 	var buffer bytes.Buffer
 
-	err := gob.NewEncoder(&buffer).Encode(wrapper)
+	err := gob.NewEncoder(&buffer).Encode(database)
 	if err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// This function is essentially the same as DecodeDatabaseWrapper in modules/backend/helpers.go
-func (wrapper *DatabaseBinWrapper) ReadDatabaseBinFile(databaseFilePath string) error {
-	databaseFile, err := os.Open(databaseFilePath)
-	if err != nil {
-		return err
+func (database *Database) IsEmpty() bool {
+	if len(database.RelayMap) != 0 {
+		return false
+	} else if len(database.BuyerMap) != 0 {
+		return false
+	} else if len(database.SellerMap) != 0 {
+		return false
+	} else if len(database.DatacenterMap) != 0 {
+		return false
+	} else if len(database.DatacenterMaps) != 0 {
+		return false
+	} else if database.CreationTime == "" {
+		return false
+	} else if database.Creator == "" {
+		return false
+	} else if len(database.Relays) != 0 {
+		return false
 	}
-	defer databaseFile.Close()
 
-	return gob.NewDecoder(databaseFile).Decode(wrapper)
+	return true
 }
-*/
 
 // overlay
 
