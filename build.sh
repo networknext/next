@@ -25,7 +25,6 @@ parallel ::: \
 "cd ./dist && g++ ${CFLAGS} -I../sdk4/include -shared -o libnext4.so ../sdk4/source/*.cpp ${LDFLAGS}" \
 "cd ./dist && g++ ${CFLAGS} -I../sdk5/include -shared -o libnext5.so ../sdk5/source/*.cpp ${LDFLAGS}" \
 "cd ./dist && g++ ${CFLAGS} -o reference_relay ../reference/relay/*.cpp ${LDFLAGS}" \
-"go build -o ./run ./scripts/run/run.go" \
 "go build -o ./dist/func_tests_backend ./cmd/func_tests_backend/*.go" \
 "go build -o ./dist/func_tests_sdk4 ./cmd/func_tests_sdk4/*.go" \
 "go build -o ./dist/func_tests_sdk5 ./cmd/func_tests_sdk5/*.go" \
