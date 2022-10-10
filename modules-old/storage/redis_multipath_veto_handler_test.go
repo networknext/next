@@ -1,7 +1,5 @@
 package storage_test
 
-// todo: these need to be converted to functional tests
-
 /*
 import (
     "fmt"

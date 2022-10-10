@@ -1,6 +1,5 @@
 package transport_test
 
-// todo: no
 /*
 import (
     "context"

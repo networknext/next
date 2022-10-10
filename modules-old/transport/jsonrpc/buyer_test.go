@@ -1,7 +1,5 @@
 package jsonrpc_test
 
-// todo: convert to functional test
-
 /*
 import (
     "context"

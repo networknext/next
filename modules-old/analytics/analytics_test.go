@@ -1,6 +1,6 @@
 package analytics_test
 
-// todo: old test. disable
+// old test. disable
 /*
 import (
     "context"

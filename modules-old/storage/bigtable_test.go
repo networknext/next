@@ -1,7 +1,5 @@
 package storage_test
 
-// todo: this needs to be conveted to a functional test
-
 /*
 import (
     "context"

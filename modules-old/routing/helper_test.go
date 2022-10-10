@@ -1,6 +1,5 @@
 package routing_test
 
-// todo: not today
 /*
 import (
     "math/rand"

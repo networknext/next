@@ -1,7 +1,5 @@
 package reference
 
-// todo: not today, friends
-
 /*
 import (
     "encoding/base64"

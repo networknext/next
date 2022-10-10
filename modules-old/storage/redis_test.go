@@ -1,7 +1,5 @@
 package storage_test
 
-// todo: convert to functional test
-
 /*
 import (
     "testing"

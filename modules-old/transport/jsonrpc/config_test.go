@@ -1,7 +1,5 @@
 package jsonrpc_test
 
-// todo: maybe convert to functional test
-
 /*
 import (
     "net/http"

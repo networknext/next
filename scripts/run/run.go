@@ -8,9 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	// todo: temporary
-	"github.com/networknext/backend/modules/database"
-
 	"github.com/joho/godotenv"
 )
 
@@ -147,8 +144,6 @@ func main() {
 		func_backend5()
 	} else if command == "func-test-backend" || command == "func-tests-backend" {
 		func_test_backend(args[2:])
-	} else if command == "test-new-database" {
-		test_new_database()
 	}
 
 	cleanup()
@@ -284,20 +279,4 @@ func func_test_backend(tests []string) {
 	} else {
 		bash(command)
 	}
-}
-
-// todo: temporary
-func test_new_database() {
-	fmt.Printf("loading new database\n")
-	new_database, err := database.LoadDatabase("./database.bin")
-	if err != nil {
-		fmt.Printf("error: could not load database: %v\n", err)
-	}
-	fmt.Printf("successfully loaded database\n%#v\n", new_database)
-	fmt.Printf("loading new overlay\n")
-	overlay, err := database.LoadOverlay("./overlay.bin")
-	if err != nil {
-		fmt.Printf("error: could not load overlay: %v\n", err)
-	}
-	fmt.Printf("successfully loaded overlay\n%#v\n", overlay)
 }

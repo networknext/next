@@ -140,8 +140,6 @@ func sessions(env Environment, sessionID string, sessionCount int64) {
 			return
 		}
 
-		// todo: want the datacenter id directly, without going through hops. lets us check available routes even for direct
-
 		if len(reply.Meta.Hops) == 0 {
 			return
 		}
@@ -152,8 +150,6 @@ func sessions(env Environment, sessionID string, sessionCount int64) {
 		}
 
 		availableRoutes := make([]AvailableRoute, 0)
-
-		// todo: get datacenter for relay. iterate across all relays in datacenter
 
 		destRelayId := reply.Meta.Hops[len(reply.Meta.Hops)-1].ID
 
