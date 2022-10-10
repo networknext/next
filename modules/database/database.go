@@ -39,13 +39,11 @@ type Database struct {
 	CreationTime   string
 	Creator        string
 	Relays         []Relay
-	/*
 	RelayMap       map[uint64]Relay
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
 	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as bad
-	*/
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
 }
 
@@ -55,13 +53,11 @@ func CreateDatabase() *Database {
 		CreationTime:   "",
 		Creator:        "",
 		Relays:         []Relay{},
-		/*
 		RelayMap:       make(map[uint64]Relay),
 		BuyerMap:       make(map[uint64]Buyer),
 		SellerMap:      make(map[string]Seller),
 		DatacenterMap:  make(map[uint64]Datacenter),
 		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
-		*/
 	}
 
 	return database
@@ -113,11 +109,11 @@ func (database *Database) IsEmpty() bool {
 		return false
 	}
 
-	/*
 	if len(database.RelayMap) != 0 {
 		return false
 	}
 
+	/*
 	if len(database.BuyerMap) != 0 {
 		return false
 	}
