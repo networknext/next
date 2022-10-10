@@ -437,7 +437,7 @@ func Test_SDK5_SessionUpdateResponsePacket(t *testing.T) {
 
 // -------------------------------------------------------------------
 
-const NumRelayPacketIterations = 10//00
+const NumRelayPacketIterations = 1000
 
 func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P, t *testing.T) {
 
@@ -495,7 +495,6 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	for i := 0; i < int(packet.NumRelays); i++ {
 		packet.RelayId[i] = rand.Uint64()
 		packet.RelayAddress[i] = common.RandomString(packets.MaxRelayAddressLength)
-		// packet.InternalAddresses[i] = common.RandomString(packets.MaxRelayAddressLength)
 	}
 	
 	packet.TargetVersion = common.RandomString(packets.MaxRelayVersionStringLength)

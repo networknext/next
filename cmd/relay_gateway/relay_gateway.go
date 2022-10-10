@@ -9,10 +9,7 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-
-	// todo: remove these
-	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules/packets"
 )
 
 var redisHostname string
@@ -55,64 +52,6 @@ func main() {
 	service.WaitForShutdown()
 }
 
-// todo: remove dependency on routing structs
-func GetRelaysToPing(id uint64, relay *routing.Relay, relayArray []routing.Relay) []routing.RelayPingData {
-
-	sellerName := relay.Seller.Name
-
-	relaysToPing := make([]routing.RelayPingData, 0, len(relayArray)-1)
-
-	for i := range relayArray {
-
-		if relayArray[i].ID == id {
-			continue
-		}
-
-		var address string
-		if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
-			address = relayArray[i].InternalAddr.String()
-		} else {
-			address = relayArray[i].Addr.String()
-		}
-
-		relaysToPing = append(relaysToPing, routing.RelayPingData{ID: uint64(relayArray[i].ID), Address: address})
-	}
-
-	return relaysToPing
-}
-
-// todo: remove dependency on routing structs
-func WriteRelayUpdateResponse(getMagicValues func() ([]byte, []byte, []byte), relay *routing.Relay, relayUpdateRequest *transport.RelayUpdateRequest, relaysToPing []routing.RelayPingData) ([]byte, error) {
-
-	// todo: RelayUpdateResponse should become a new packet in module/packets/relay_packets.go
-	response := transport.RelayUpdateResponse{}
-
-	response.Version = transport.VersionNumberUpdateResponse
-	response.Timestamp = time.Now().Unix()
-
-	for i := range relaysToPing {
-		response.RelaysToPing = append(response.RelaysToPing, routing.RelayPingData{
-			ID:      relaysToPing[i].ID,
-			Address: relaysToPing[i].Address,
-		})
-	}
-
-	response.TargetVersion = relay.Version
-
-	upcomingMagic, currentMagic, previousMagic := getMagicValues()
-
-	response.UpcomingMagic = upcomingMagic
-	response.CurrentMagic = currentMagic
-	response.PreviousMagic = previousMagic
-
-	responseData, err := response.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	return responseData, nil
-}
-
 func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([]byte, []byte, []byte)) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -142,51 +81,84 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 		defer request.Body.Close()
 
-		var relayUpdateRequest transport.RelayUpdateRequest
-		err = relayUpdateRequest.UnmarshalBinary(body)
+		var relayUpdateRequest packets.RelayUpdateRequestPacket
+
+		err = relayUpdateRequest.Peek(body)
 		if err != nil {
-			core.Error("%s - relay update could not read relay update request", request.RemoteAddr)
+			core.Error("%s - relay update could not peek relay update request", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
-		if relayUpdateRequest.Version > transport.VersionNumberUpdateRequest {
-			core.Error("%s - relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, transport.VersionNumberUpdateRequest)
-			writer.WriteHeader(http.StatusBadRequest) // 400
-			return
-		}
-
-		if len(relayUpdateRequest.PingStats) > core.MaxNearRelays {
-			core.Error("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, core.MaxNearRelays)
+		if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
+			core.Error("%s - relay update version mismatch: %d != %d", request.RemoteAddr, relayUpdateRequest.Version, packets.VersionNumberRelayUpdateRequest)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		relayData := getRelayData()
 
-		id := common.RelayId(relayUpdateRequest.Address.String())
+		relayId := common.RelayId(relayUpdateRequest.Address.String())
 
-		relay, ok := relayData.RelayHash[id]
+		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Error("%s - could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
+			core.Error("%s - could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), relayId)
 			writer.WriteHeader(http.StatusNotFound) // 404
 			return
 		}
 
+		// todo: we should run crypto check here
+
+		// ...
+
+		// forward to the relay backend
+
 		producer.MessageChannel <- body
 
-		relaysToPing := GetRelaysToPing(id, &relay, relayData.RelayArray)
+		// build the response packet
 
-		response, err := WriteRelayUpdateResponse(getMagicValues, &relay, &relayUpdateRequest, relaysToPing)
-		if err != nil {
-			core.Error("%s - relay update could not write relay update response: %v", request.RemoteAddr, err)
-			writer.WriteHeader(http.StatusInternalServerError) // 500
-			return
+		var responsePacket packets.RelayUpdateResponsePacket
+
+		responsePacket.Version = packets.VersionNumberRelayUpdateResponse
+		responsePacket.Timestamp = uint64(time.Now().Unix())
+		responsePacket.TargetVersion = relay.Version
+
+		sellerName := relay.Seller.Name
+
+		index := 0
+
+		for i := range relayData.RelayIds {
+
+			if relayData.RelayIds[i] == relayId {
+				continue
+			}
+
+			var address string
+			if sellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddr.String() != ":0" {
+				address = relayData.RelayArray[i].InternalAddr.String()
+			} else {
+				address = relayData.RelayArray[i].Addr.String()
+			}
+
+			responsePacket.RelayId[index] = relayData.RelayIds[i]
+			responsePacket.RelayAddress[index] = address
+
+			index++
 		}
+
+		responsePacket.NumRelays = uint32(index)
+
+		responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = getMagicValues()
+
+		// send the response packet
+
+		responseData := make([]byte, 1024 * 1024)
+
+		responseData = responsePacket.Write(responseData)
 
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 
-		writer.Write(response)
+		writer.Write(responseData)
 	}
 }
 

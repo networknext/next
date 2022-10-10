@@ -285,8 +285,8 @@ void relay_write_string( uint8_t ** p, const char * string_data, uint32_t max_le
 {
     uint32_t length = strlen( string_data );
     assert( length <= max_length );
-    if ( length > max_length )
-        length = max_length;
+    if ( length > max_length - 1 )
+        length = max_length - 1;
     relay_write_uint32( p, length );
     for ( uint32_t i = 0; i < length; ++i )
     {

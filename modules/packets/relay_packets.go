@@ -165,6 +165,32 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 	return nil
 }
 
+func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
+
+	index := 0
+
+	encoding.ReadUint32(buffer, &index, &packet.Version)
+
+	if packet.Version != VersionNumberRelayUpdateRequest {
+		return errors.New("invalid relay update request packet version")
+	}
+
+	var address string
+	if !encoding.ReadString(buffer, &index, &address, MaxRelayAddressLength) {
+		return errors.New("could not read relay address")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", address); udp != nil && err == nil {
+		packet.Address = *udp
+	} else {
+		return fmt.Errorf("could not resolve udp address '%s': %v", address, err)
+	}
+
+	// todo: probably need to read in the token here too
+
+	return nil
+}
+
 // --------------------------------------------------------------------------
 
 type RelayUpdateResponsePacket struct {
@@ -173,7 +199,6 @@ type RelayUpdateResponsePacket struct {
 	NumRelays         uint32
 	RelayId           [MaxRelays]uint64
 	RelayAddress      [MaxRelays]string
-	InternalAddresses [MaxRelays]string
 	TargetVersion     string
 	UpcomingMagic     []byte
 	CurrentMagic      []byte
@@ -199,10 +224,8 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.PreviousMagic, 8)
 
-	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays)) // redundant, but hey
-	for i := range packet.InternalAddresses {
-		encoding.WriteString(buffer, &index, packet.InternalAddresses[i], MaxRelayAddressLength)
-	}
+	// todo: remove this. we don't need internal addresses array anymore (as far as I can tell...)
+	encoding.WriteUint32(buffer, &index, 0)
 
 	return buffer[:index]
 }
@@ -246,6 +269,10 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read target version")
 	}
 
+	packet.UpcomingMagic = make([]byte, 8)
+	packet.CurrentMagic = make([]byte, 8)
+	packet.PreviousMagic = make([]byte, 8)
+
 	if !encoding.ReadBytes(buffer, &index, &packet.UpcomingMagic, 8) {
 		return errors.New("could not read upcoming magic")
 	}
@@ -258,17 +285,20 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read previous magic")
 	}
 
+	// todo: remove internal addresses. as far as I can tell they're no longer needed
+
 	var numInternalAddresses uint32
 	if !encoding.ReadUint32(buffer, &index, &numInternalAddresses) {
 		return errors.New("could not read num internal addresses")
 	}
 
-	if numInternalAddresses != packet.NumRelays {
+	if numInternalAddresses > MaxRelays {
 		return errors.New("invalid num internal addresses")
 	}
 
 	for i := 0; i < int(numInternalAddresses); i++ {
-		if !encoding.ReadString(buffer, &index, &packet.InternalAddresses[i], MaxRelayAddressLength) {
+		var dummy string
+		if !encoding.ReadString(buffer, &index, &dummy, MaxRelayAddressLength) {
 			return errors.New("could not read relay internal address")
 		}
 	}
