@@ -22,8 +22,8 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 
 	// todo: we want to remove these
-	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/routing"
 
 	// todo: we want to move this to a new module ("middleware"?) as needed
 	"github.com/networknext/backend/modules-old/transport/middleware"
@@ -403,7 +403,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	defer databaseFile.Close()
 
 	database := routing.CreateEmptyDatabaseBinWrapper()
-	err = backend.DecodeBinWrapper(databaseFile, database)   // todo: port this over when we move database to its own file
+	err = backend.DecodeBinWrapper(databaseFile, database) // todo: port this over when we move database to its own file
 	if err != nil || database.IsEmpty() {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil

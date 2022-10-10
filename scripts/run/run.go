@@ -293,5 +293,5 @@ func test_new_database() {
 	if err != nil {
 		fmt.Printf("error: could not load database: %v\n", err)
 	}
-	fmt.Printf("successfully loaded database\n%v+\n", new_database)
+	fmt.Printf("successfully loaded database\n%#v\n", new_database)
 }

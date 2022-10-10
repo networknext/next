@@ -456,9 +456,9 @@ func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P
 func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 
 	packet := packets.RelayUpdateRequestPacket{
-		Version: packets.VersionNumberRelayUpdateRequest,
-		Address: common.RandomAddress(),
-		Token: make([]byte, packets.RelayTokenSize),
+		Version:    packets.VersionNumberRelayUpdateRequest,
+		Address:    common.RandomAddress(),
+		Token:      make([]byte, packets.RelayTokenSize),
 		NumSamples: uint32(common.RandomInt(0, packets.MaxRelays-1)),
 	}
 
@@ -472,7 +472,7 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 	packet.SessionCount = rand.Uint64()
 	packet.ShuttingDown = common.RandomBool()
 	packet.RelayVersion = common.RandomString(packets.MaxRelayVersionStringLength)
-	packet.CPU = uint8(common.RandomInt(0,100))
+	packet.CPU = uint8(common.RandomInt(0, 100))
 	packet.EnvelopeUpKbps = rand.Uint64()
 	packet.EnvelopeDownKbps = rand.Uint64()
 	packet.BandwidthSentKbps = rand.Uint64()
@@ -484,11 +484,11 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket {
 
 	packet := packets.RelayUpdateResponsePacket{
-		Version: packets.VersionNumberRelayUpdateResponse,
-		Timestamp: rand.Uint64(),
-		NumRelays: uint32(common.RandomInt(0, packets.MaxRelays)),
+		Version:       packets.VersionNumberRelayUpdateResponse,
+		Timestamp:     rand.Uint64(),
+		NumRelays:     uint32(common.RandomInt(0, packets.MaxRelays)),
 		UpcomingMagic: make([]byte, 8),
-		CurrentMagic: make([]byte, 8),
+		CurrentMagic:  make([]byte, 8),
 		PreviousMagic: make([]byte, 8),
 	}
 
@@ -496,7 +496,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 		packet.RelayId[i] = rand.Uint64()
 		packet.RelayAddress[i] = common.RandomString(packets.MaxRelayAddressLength)
 	}
-	
+
 	packet.TargetVersion = common.RandomString(packets.MaxRelayVersionStringLength)
 
 	common.RandomBytes(packet.UpcomingMagic)

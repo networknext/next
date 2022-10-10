@@ -16,7 +16,7 @@ import (
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
-	// todo: move database to its own module	
+	// todo: move database to its own module
 	"github.com/networknext/backend/modules-old/routing"
 )
 

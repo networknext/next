@@ -1,14 +1,22 @@
 package database
 
 import (
-	"encoding/gob"
-	"os"
 	"bytes"
+	"encoding/gob"
 	"io/ioutil"
+	"net"
+	"os"
 )
 
 type Relay struct {
-	// todo
+	ID           uint64
+	Name         string
+	Addr         net.UDPAddr
+	InternalAddr net.UDPAddr
+	PublicKey    []byte
+	Seller       Seller
+	Datacenter   Datacenter
+	MaxSessions  uint32
 }
 
 type Buyer struct {
@@ -31,30 +39,29 @@ type Database struct {
 	CreationTime   string
 	Creator        string
 	Relays         []Relay
+	/*
 	RelayMap       map[uint64]Relay
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
 	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as bad
+	*/
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
 }
 
-type Overlay struct {
-	CreationTime string
-	BuyerMap     map[uint64]Buyer
-}
-
 func CreateDatabase() *Database {
-	
+
 	database := &Database{
 		CreationTime:   "",
 		Creator:        "",
 		Relays:         []Relay{},
+		/*
 		RelayMap:       make(map[uint64]Relay),
 		BuyerMap:       make(map[uint64]Buyer),
 		SellerMap:      make(map[string]Seller),
 		DatacenterMap:  make(map[uint64]Datacenter),
 		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
+		*/
 	}
 
 	return database
@@ -93,28 +100,52 @@ func (database *Database) Save(filename string) error {
 }
 
 func (database *Database) IsEmpty() bool {
-	if len(database.RelayMap) != 0 {
-		return false
-	} else if len(database.BuyerMap) != 0 {
-		return false
-	} else if len(database.SellerMap) != 0 {
-		return false
-	} else if len(database.DatacenterMap) != 0 {
-		return false
-	} else if len(database.DatacenterMaps) != 0 {
-		return false
-	} else if database.CreationTime == "" {
-		return false
-	} else if database.Creator == "" {
-		return false
-	} else if len(database.Relays) != 0 {
+	
+	if database.CreationTime == "" {
 		return false
 	}
+
+	if database.Creator == "" {
+		return false
+	}
+
+	if len(database.Relays) != 0 {
+		return false
+	}
+
+	/*
+	if len(database.RelayMap) != 0 {
+		return false
+	}
+
+	if len(database.BuyerMap) != 0 {
+		return false
+	}
+
+	if len(database.SellerMap) != 0 {
+		return false
+	}
+
+	if len(database.DatacenterMap) != 0 {
+		return false
+	}
+
+	if len(database.DatacenterMaps) != 0 {
+		return false
+	}
+	*/
 
 	return true
 }
 
-// overlay
+// ---------------------------------------------------------------------
+
+/*
+type Overlay struct {
+	CreationTime string
+	BuyerMap     map[uint64]Buyer
+}
+*/
 
 /*
 func CreateEmptyOverlayBinWrapper() *OverlayBinWrapper {
