@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+
+	// "github.com/networknext/backend/modules-old/routing" // todo: temporary hack	
 )
 
 type Relay struct {
@@ -27,15 +29,11 @@ type Seller struct {
 	// todo
 }
 
-type Location struct {
-	Latitude    float32
-	Longitude   float32
-}
-
 type Datacenter struct {
 	ID         uint64
 	Name       string
-	Location   Location
+	Latitude    float32        // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
+	Longitude   float32
 }
 
 type DatacenterMap struct {
