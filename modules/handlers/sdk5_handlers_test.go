@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 
+	// todo: move database to its own module	
 	"github.com/networknext/backend/modules-old/routing"
 )
 
@@ -374,7 +375,7 @@ func TestUnknownBuyer_SDK5(t *testing.T) {
 	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
-	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move database to common
+	harness.handler.Database = &routing.DatabaseBinWrapper{} // todo: move database to its own module
 
 	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
 

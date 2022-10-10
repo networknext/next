@@ -11,7 +11,7 @@ const (
 
 	CostMatrixSerializeVersion = 2
 
-	MaxRelayNameLength = 64
+	MaxRelayNameLength = 63
 
 	InvalidRouteValue = 10000
 )

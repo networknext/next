@@ -21,9 +21,12 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
-	"github.com/networknext/backend/modules-old/backend"
+	// todo: we want to remove these
 	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/backend"
+
+	// todo: we want to move this to a new module ("middleware"?) as needed
+	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
 )
@@ -104,7 +107,7 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("%s", service.ServiceName)
 
-	env := backend.GetEnv()
+	env := envvar.GetString("ENV", "local")
 
 	core.Log("env: %s", env)
 
@@ -116,12 +119,10 @@ func CreateService(serviceName string) *Service {
 	core.Log("commit hash: %s", service.CommitHash)
 	core.Log("build time: %s", service.BuildTime)
 
-	// todo: we don't need to use the transport.VersionHandlerFunc
-	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 
-	// todo: don't use transport HealthHandlerFunc
-	service.healthHandler = transport.HealthHandlerFunc()
+	service.healthHandler = healthHandlerFunc()
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
@@ -196,6 +197,37 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 
 func (service *Service) OverrideHealthHandler(healthHandler func(w http.ResponseWriter, r *http.Request)) {
 	service.healthHandler = healthHandler
+}
+
+func healthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func versionHandlerFunc(buildTime string, commitMessage string, commitHash string, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
+
+	version := map[string]string{
+		"build_time":     buildTime,
+		"commit_message": commitMessage,
+		"commit_hash":    commitHash,
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		middleware.CORSControlHandlerFunc(allowedOrigins, w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(version); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func (service *Service) StartWebServer() {
@@ -371,7 +403,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	defer databaseFile.Close()
 
 	database := routing.CreateEmptyDatabaseBinWrapper()
-	err = backend.DecodeBinWrapper(databaseFile, database)
+	err = backend.DecodeBinWrapper(databaseFile, database)   // todo: port this over when we move database to its own file
 	if err != nil || database.IsEmpty() {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil
