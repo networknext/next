@@ -1,7 +1,5 @@
 package jsonrpc_test
 
-// todo: disable test. it doesn't work on macosx
-
 /*
 import (
     "context"

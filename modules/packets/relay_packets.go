@@ -1,9 +1,9 @@
 package packets
 
 import (
-	"net"
-	"fmt"
 	"errors"
+	"fmt"
+	"net"
 
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -20,7 +20,6 @@ const (
 // --------------------------------------------------------------------------
 
 type RelayPacket interface {
-
 	Write(buffer []byte) []byte
 
 	Read(buffer []byte) error
@@ -116,17 +115,17 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		if !encoding.ReadUint64(buffer, &index, &packet.SampleRelayId[i]) {
 			return errors.New("could not read sample relay id")
 		}
-		
+
 		if !encoding.ReadFloat32(buffer, &index, &packet.SampleRTT[i]) {
-			return errors.New("could not read sample rtt")			
+			return errors.New("could not read sample rtt")
 		}
-		
+
 		if !encoding.ReadFloat32(buffer, &index, &packet.SampleJitter[i]) {
 			return errors.New("could not read sample jitter")
 		}
 
 		if !encoding.ReadFloat32(buffer, &index, &packet.SamplePacketLoss[i]) {
-			return errors.New("could not read sample packet loss")			
+			return errors.New("could not read sample packet loss")
 		}
 	}
 
@@ -194,15 +193,15 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 // --------------------------------------------------------------------------
 
 type RelayUpdateResponsePacket struct {
-	Version           uint32
-	Timestamp         uint64
-	NumRelays         uint32
-	RelayId           [MaxRelays]uint64
-	RelayAddress      [MaxRelays]string
-	TargetVersion     string
-	UpcomingMagic     []byte
-	CurrentMagic      []byte
-	PreviousMagic     []byte
+	Version       uint32
+	Timestamp     uint64
+	NumRelays     uint32
+	RelayId       [MaxRelays]uint64
+	RelayAddress  [MaxRelays]string
+	TargetVersion string
+	UpcomingMagic []byte
+	CurrentMagic  []byte
+	PreviousMagic []byte
 }
 
 func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
@@ -212,12 +211,12 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, uint64(packet.Timestamp))
 	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays))
-	
+
 	for i := 0; i < int(packet.NumRelays); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
 		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength)
 	}
-	
+
 	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)
 
 	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
@@ -231,7 +230,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 }
 
 func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
-	
+
 	index := 0
 
 	if !encoding.ReadUint32(buffer, &index, &packet.Version) {

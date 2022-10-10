@@ -13,9 +13,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
-
-	// todo: move database to its own module
-	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules/database"
 )
 
 const (
@@ -55,7 +53,7 @@ const (
 )
 
 type SDK5_Handler struct {
-	Database             *routing.DatabaseBinWrapper // todo: we want to move database into its own module
+	Database             *database.Database
 	RouteMatrix          *common.RouteMatrix
 	MaxPacketSize        int
 	ServerBackendAddress net.UDPAddr

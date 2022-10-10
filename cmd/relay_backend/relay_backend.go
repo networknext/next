@@ -287,25 +287,25 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 	// todo
 	/*
-	pingStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              pingStatsPubsubTopic,
-		MessageChannelSize: pingStatsChannelSize,
-	})
-	if err != nil {
-		core.Error("could not create ping stats producer")
-		os.Exit(1)
-	}
+		pingStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              pingStatsPubsubTopic,
+			MessageChannelSize: pingStatsChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create ping stats producer")
+			os.Exit(1)
+		}
 
-	relayStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              relayStatsPubsubTopic,
-		MessageChannelSize: relayStatsChannelSize,
-	})
-	if err != nil {
-		core.Error("could not create relay stats producer")
-		os.Exit(1)
-	}
+		relayStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              relayStatsPubsubTopic,
+			MessageChannelSize: relayStatsChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create relay stats producer")
+			os.Exit(1)
+		}
 	*/
 
 	go func() {
@@ -370,114 +370,114 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				// todo: below needs to be fixed up (Andrew)
 
 				/*
-				numRoutable := 0
+					numRoutable := 0
 
-				pingStatsMessages := make([]messages.PingStatsMessage, numSamples)
+					pingStatsMessages := make([]messages.PingStatsMessage, numSamples)
 
-				for i := 0; i < numSamples; i++ {
+					for i := 0; i < numSamples; i++ {
 
-					rtt := relayUpdate.PingStats[i].RTT
-					jitter := relayUpdate.PingStats[i].Jitter
-					pl := relayUpdate.PingStats[i].PacketLoss
+						rtt := relayUpdate.PingStats[i].RTT
+						jitter := relayUpdate.PingStats[i].Jitter
+						pl := relayUpdate.PingStats[i].PacketLoss
 
-					sampleRelayId := relayUpdate.PingStats[i].RelayID
+						sampleRelayId := relayUpdate.PingStats[i].RelayID
 
-					sampleRelayIds[i] = sampleRelayId
-					sampleRTT[i] = rtt
-					sampleJitter[i] = jitter
-					samplePacketLoss[i] = pl
+						sampleRelayIds[i] = sampleRelayId
+						sampleRTT[i] = rtt
+						sampleJitter[i] = jitter
+						samplePacketLoss[i] = pl
 
-					// todo: remove dependency on routing
-					if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-						if jitter <= maxJitter && pl <= maxPacketLoss {
-							numRoutable++
-							sampleRoutable[i] = true
+						// todo: remove dependency on routing
+						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+							if jitter <= maxJitter && pl <= maxPacketLoss {
+								numRoutable++
+								sampleRoutable[i] = true
+							}
+						}
+
+						pingStatsMessages[i] = messages.PingStatsMessage{
+							Version:    messages.PingStatsMessageVersion,
+							Timestamp:  uint64(time.Now().Unix()),
+							RelayA:     relayId,
+							RelayB:     sampleRelayId,
+							RTT:        rtt,
+							Jitter:     jitter,
+							PacketLoss: pl,
+							Routable:   sampleRoutable[i],
 						}
 					}
-
-					pingStatsMessages[i] = messages.PingStatsMessage{
-						Version:    messages.PingStatsMessageVersion,
-						Timestamp:  uint64(time.Now().Unix()),
-						RelayA:     relayId,
-						RelayB:     sampleRelayId,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
-						Routable:   sampleRoutable[i],
-					}
-				}
 				*/
 
 				/*
-				numUnroutable := numSamples - numRoutable
+					numUnroutable := numSamples - numRoutable
 
-				bwSentPercent := float32(0)
-				bwRecvPercent := float32(0)
+					bwSentPercent := float32(0)
+					bwRecvPercent := float32(0)
 
-				if relayData.RelayArray[relayIndex].NICSpeedMbps > 0 {
-					bwSentPercent = float32(relayUpdate.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
-					bwRecvPercent = float32(relayUpdate.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
-				}
-
-				envSentPercent := float32(0)
-				envRecvPercent := float32(0)
-
-				if relayUpdate.EnvelopeUpKbps > 0 {
-					envSentPercent = float32(relayUpdate.BandwidthSentKbps/relayUpdate.EnvelopeUpKbps) * 100.0
-				}
-
-				if relayUpdate.EnvelopeUpKbps > 0 {
-					envRecvPercent = float32(relayUpdate.BandwidthRecvKbps/relayUpdate.EnvelopeDownKbps) * 100.0
-				}
-
-				cpuUsage := relayUpdate.CPU
-
-				maxSessions := relayData.RelayArray[relayIndex].MaxSessions
-				numSessions := relayUpdate.SessionCount
-
-				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
-
-				relayStatsMessage := messages.RelayStatsMessage{
-					Version:                  messages.RelayStatsMessageVersion,
-					Timestamp:                uint64(time.Now().Unix()),
-					NumSessions:              uint32(numSessions),
-					MaxSessions:              maxSessions,
-					NumRoutable:              uint32(numRoutable),
-					NumUnroutable:            uint32(numUnroutable),
-					Full:                     full,
-					CPUUsage:                 float32(cpuUsage),
-					BandwidthSentPercent:     bwSentPercent,
-					BandwidthReceivedPercent: bwRecvPercent,
-					EnvelopeSentPercent:      envSentPercent,
-					EnvelopeReceivedPercent:  envRecvPercent,
-					BandwidthSentMbps:        float32(relayUpdate.BandwidthSentKbps),
-					BandwidthReceivedMbps:    float32(relayUpdate.BandwidthRecvKbps),
-					EnvelopeSentMbps:         float32(relayUpdate.EnvelopeUpKbps),
-					EnvelopeReceivedMbps:     float32(relayUpdate.EnvelopeDownKbps),
-				}
-
-				// update relay stats
-
-				if redisSelector.IsLeader() {
-
-					messageBuffer := make([]byte, relayStatsChannelSize) // todo: WUT
-
-					message := relayStatsMessage.Write(messageBuffer[:])
-
-					relayStatsProducer.MessageChannel <- message
-				}
-
-				// update ping stats
-
-				if redisSelector.IsLeader() {
-
-					messageBuffer := make([]byte, pingStatsChannelSize) // todo: WUT!!!
-
-					for i := 0; i < len(pingStatsMessages); i++ {
-						message := pingStatsMessages[i].Write(messageBuffer[:])
-						pingStatsProducer.MessageChannel <- message
+					if relayData.RelayArray[relayIndex].NICSpeedMbps > 0 {
+						bwSentPercent = float32(relayUpdate.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
+						bwRecvPercent = float32(relayUpdate.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
 					}
-				}
+
+					envSentPercent := float32(0)
+					envRecvPercent := float32(0)
+
+					if relayUpdate.EnvelopeUpKbps > 0 {
+						envSentPercent = float32(relayUpdate.BandwidthSentKbps/relayUpdate.EnvelopeUpKbps) * 100.0
+					}
+
+					if relayUpdate.EnvelopeUpKbps > 0 {
+						envRecvPercent = float32(relayUpdate.BandwidthRecvKbps/relayUpdate.EnvelopeDownKbps) * 100.0
+					}
+
+					cpuUsage := relayUpdate.CPU
+
+					maxSessions := relayData.RelayArray[relayIndex].MaxSessions
+					numSessions := relayUpdate.SessionCount
+
+					full := maxSessions != 0 && numSessions >= uint64(maxSessions)
+
+					relayStatsMessage := messages.RelayStatsMessage{
+						Version:                  messages.RelayStatsMessageVersion,
+						Timestamp:                uint64(time.Now().Unix()),
+						NumSessions:              uint32(numSessions),
+						MaxSessions:              maxSessions,
+						NumRoutable:              uint32(numRoutable),
+						NumUnroutable:            uint32(numUnroutable),
+						Full:                     full,
+						CPUUsage:                 float32(cpuUsage),
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
+						BandwidthSentMbps:        float32(relayUpdate.BandwidthSentKbps),
+						BandwidthReceivedMbps:    float32(relayUpdate.BandwidthRecvKbps),
+						EnvelopeSentMbps:         float32(relayUpdate.EnvelopeUpKbps),
+						EnvelopeReceivedMbps:     float32(relayUpdate.EnvelopeDownKbps),
+					}
+
+					// update relay stats
+
+					if redisSelector.IsLeader() {
+
+						messageBuffer := make([]byte, relayStatsChannelSize) // todo: WUT
+
+						message := relayStatsMessage.Write(messageBuffer[:])
+
+						relayStatsProducer.MessageChannel <- message
+					}
+
+					// update ping stats
+
+					if redisSelector.IsLeader() {
+
+						messageBuffer := make([]byte, pingStatsChannelSize) // todo: WUT!!!
+
+						for i := 0; i < len(pingStatsMessages); i++ {
+							message := pingStatsMessages[i].Write(messageBuffer[:])
+							pingStatsProducer.MessageChannel <- message
+						}
+					}
 				*/
 			}
 		}

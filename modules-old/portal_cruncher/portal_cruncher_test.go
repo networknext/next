@@ -1,7 +1,5 @@
 package portalcruncher_test
 
-// todo: this needs to become a functional test
-
 /*
 import (
     "bufio"

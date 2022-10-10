@@ -257,8 +257,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 			stream.SerializeFloat32(&entry.Latitude)
 			stream.SerializeFloat32(&entry.Longitude)
 			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
-			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3)
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)
 			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
 			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
 			for i := 0; i < int(entry.NumTags); i++ {
@@ -279,8 +279,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 			stream.SerializeFloat32(&entry.Latitude)
 			stream.SerializeFloat32(&entry.Longitude)
 			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
-			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3)
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)
 			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
 			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
 			for i := 0; i < int(entry.NumTags); i++ {

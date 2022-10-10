@@ -78,7 +78,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
 
 		stats := &r.PingStats[i]
 
-		// todo: these could be much more efficient as byte values [0,255]
 		encoding.ReadUint64(buff, &index, &stats.RelayID)
 		encoding.ReadFloat32(buff, &index, &stats.RTT)
 		encoding.ReadFloat32(buff, &index, &stats.Jitter)
@@ -128,7 +127,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV4(buff []byte, index int) error {
 
 		stats := &r.PingStats[i]
 
-		// todo: these could be much more efficient as byte values [0,255]
 		encoding.ReadUint64(buff, &index, &stats.RelayID)
 		encoding.ReadFloat32(buff, &index, &stats.RTT)
 		encoding.ReadFloat32(buff, &index, &stats.Jitter)
@@ -182,7 +180,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 
 		stats := &r.PingStats[i]
 
-		// todo: these could be much more efficient as byte values [0,255]
 		encoding.ReadUint64(buff, &index, &stats.RelayID)
 		encoding.ReadFloat32(buff, &index, &stats.RTT)
 		encoding.ReadFloat32(buff, &index, &stats.Jitter)
@@ -424,7 +421,6 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 	for i := 0; i < int(numRelaysToPing); i++ {
 		stats := &r.RelaysToPing[i]
 
-		// todo: these could be much more efficient as byte values [0,255]
 		if !encoding.ReadUint64(buff, &index, &stats.ID) {
 			return errors.New("could not read relay ID")
 		}

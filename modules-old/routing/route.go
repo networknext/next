@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-// todo: is this still used?
 type Route struct {
 	NumRelays       int                                 `json:"numRelays"`
 	RelayIDs        [core.MaxRelaysPerRoute]uint64      `json:"relayIDs"`
