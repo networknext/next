@@ -27,8 +27,15 @@ type Seller struct {
 	// todo
 }
 
+type Location struct {
+	Latitude    float32
+	Longitude   float32
+}
+
 type Datacenter struct {
-	// todo
+	ID         uint64
+	Name       string
+	Location   Location
 }
 
 type DatacenterMap struct {
@@ -113,7 +120,6 @@ func (database *Database) IsEmpty() bool {
 		return false
 	}
 
-	/*
 	if len(database.BuyerMap) != 0 {
 		return false
 	}
@@ -129,7 +135,6 @@ func (database *Database) IsEmpty() bool {
 	if len(database.DatacenterMaps) != 0 {
 		return false
 	}
-	*/
 
 	return true
 }
