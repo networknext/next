@@ -5,11 +5,16 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/encoding"
-
-	"github.com/networknext/backend/modules-old/routing"
 )
 
-const CostMatrixSerializeVersion = 2
+const (
+
+	CostMatrixSerializeVersion = 2
+
+	MaxRelayNameLength = 64
+
+	InvalidRouteValue = 10000
+)
 
 type CostMatrix struct {
 	Version            uint32
@@ -42,7 +47,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength) // todo
+		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -55,7 +60,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	for i := uint32(0); i < costsLength; i++ {
-		stream.SerializeInteger(&m.Costs[i], -1, routing.InvalidRouteValue) // todo
+		stream.SerializeInteger(&m.Costs[i], -1, InvalidRouteValue)
 	}
 
 	if m.Version >= 2 {

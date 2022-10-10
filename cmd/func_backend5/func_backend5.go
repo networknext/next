@@ -26,9 +26,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
-
-	// todo: we want to remove this
-	"github.com/networknext/backend/modules-old/crypto_old"
+	"github.com/networknext/backend/modules/crypto"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -493,7 +491,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, crypto_old.BackendPrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, crypto.BackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -782,7 +780,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// build token data
 
 		routerPrivateKey := [packets.SDK5_KeyBytes]byte{}
-		copy(routerPrivateKey[:], crypto_old.RouterPrivateKey)
+		copy(routerPrivateKey[:], crypto.RouterPrivateKey)
 
 		tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
 		tokenAddresses[0] = &requestPacket.ClientAddress

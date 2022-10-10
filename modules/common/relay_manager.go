@@ -11,8 +11,6 @@ import (
 
 const HistorySize = 300 // 5 minutes @ one relay update per-second
 
-const InvalidRouteValue = float32(1000000000.0)
-
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }
@@ -171,13 +169,13 @@ func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName s
 
 func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
-	sourceRTT := InvalidRouteValue
-	sourceJitter := InvalidRouteValue
-	sourcePacketLoss := InvalidRouteValue
+	sourceRTT := float32(InvalidRouteValue)
+	sourceJitter := float32(InvalidRouteValue)
+	sourcePacketLoss := float32(InvalidRouteValue)
 
-	destRTT := InvalidRouteValue
-	destJitter := InvalidRouteValue
-	destPacketLoss := InvalidRouteValue
+	destRTT := float32(InvalidRouteValue)
+	destJitter := float32(InvalidRouteValue)
+	destPacketLoss := float32(InvalidRouteValue)
 
 	// get source ping values
 	{
