@@ -1,6 +1,5 @@
 package transport_test
 
-// todo: not today
 /*
 import (
     crand "crypto/rand"

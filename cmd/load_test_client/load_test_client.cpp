@@ -89,7 +89,6 @@ int main()
         return 1;
     }
 
-    // todo: oh my god you are seriously using exceptions to parse a string into a number?! LOL
     int cores;
     try
     {

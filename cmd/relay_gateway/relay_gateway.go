@@ -152,7 +152,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// send the response packet
 
-		responseData := make([]byte, 1024 * 1024)
+		responseData := make([]byte, 1024*1024)
 
 		responseData = responsePacket.Write(responseData)
 

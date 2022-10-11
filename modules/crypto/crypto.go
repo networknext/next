@@ -10,7 +10,6 @@ import (
 )
 
 const (
-
 	Box_MACSize   = poly1305.TagSize
 	Box_NonceSize = chacha20poly1305.NonceSizeX
 	Box_KeySize   = chacha20poly1305.KeySize
