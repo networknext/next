@@ -1,30 +1,53 @@
 package database
 
 import (
-// "bytes"
-// "encoding/gob"
-// "io/ioutil"
-// "os"
+	"bytes"
+	"encoding/gob"
+	"io/ioutil"
+	"net"
+	"os"
+
+	"github.com/networknext/backend/modules/core"
 )
 
 type Relay struct {
-	// todo
+	ID           uint64
+	Name         string
+	Addr         net.UDPAddr
+	InternalAddr net.UDPAddr
+	Version      string
+	PublicKey    []byte
+	Seller       Seller
+	Datacenter   Datacenter
+	MaxSessions  uint32
+	NICSpeedMbps int32
 }
 
 type Buyer struct {
-	// todo
+	ID             uint64
+	Live           bool
+	Debug          bool
+	PublicKey      []byte
+	RouteShader    core.RouteShader
+	InternalConfig core.InternalConfig
 }
 
 type Seller struct {
-	// todo
+	Name string
 }
 
 type Datacenter struct {
-	// todo
+	ID        uint64
+	Name      string
+	Latitude  float32 // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
+	Longitude float32
 }
 
+// todo: what's really going on here? It's a per-buyer, per-datacenter struct? or something?
 type DatacenterMap struct {
-	// todo: whut
+	BuyerID            uint64
+	DatacenterID       uint64
+	EnableAcceleration bool
 }
 
 type Database struct {
@@ -35,18 +58,13 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as bad
-	//                 ^ Buyer.ID   ^ DatacenterMap map index
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as a bit weird? Wtf?
+	//                   ^ Buyer.ID  ^ DatacenterMap map index
 }
 
-type Overlay struct {
-	CreationTime string
-	BuyerMap     map[uint64]Buyer
-}
+func CreateDatabase() *Database {
 
-/*
-func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
-	wrapper := &DatabaseBinWrapper{
+	database := &Database{
 		CreationTime:   "",
 		Creator:        "",
 		Relays:         []Relay{},
@@ -57,96 +75,129 @@ func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
 		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
 	}
 
-	return wrapper
+	return database
 }
 
-func (wrapper DatabaseBinWrapper) IsEmpty() bool {
-	if len(wrapper.RelayMap) != 0 {
+func LoadDatabase(filename string) (*Database, error) {
+
+	databaseFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	defer databaseFile.Close()
+
+	database := &Database{}
+
+	err = gob.NewDecoder(databaseFile).Decode(database)
+
+	return database, err
+}
+
+func (database *Database) Save(filename string) error {
+
+	var buffer bytes.Buffer
+
+	err := gob.NewEncoder(&buffer).Encode(database)
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (database *Database) IsEmpty() bool {
+
+	if database.CreationTime == "" {
 		return false
-	} else if len(wrapper.BuyerMap) != 0 {
+	}
+
+	if database.Creator == "" {
 		return false
-	} else if len(wrapper.SellerMap) != 0 {
+	}
+
+	if len(database.Relays) != 0 {
 		return false
-	} else if len(wrapper.DatacenterMap) != 0 {
+	}
+
+	if len(database.RelayMap) != 0 {
 		return false
-	} else if len(wrapper.DatacenterMaps) != 0 {
+	}
+
+	if len(database.BuyerMap) != 0 {
 		return false
-	} else if wrapper.CreationTime == "" {
+	}
+
+	if len(database.SellerMap) != 0 {
 		return false
-	} else if wrapper.Creator == "" {
+	}
+
+	if len(database.DatacenterMap) != 0 {
 		return false
-	} else if len(wrapper.Relays) != 0 {
+	}
+
+	if len(database.DatacenterMaps) != 0 {
 		return false
 	}
 
 	return true
 }
 
-func (wrapper DatabaseBinWrapper) WriteDatabaseBinFile(outputPath string) error {
-	var buffer bytes.Buffer
+// ---------------------------------------------------------------------
 
-	err := gob.NewEncoder(&buffer).Encode(wrapper)
+type Overlay struct {
+	CreationTime string
+	BuyerMap     map[uint64]Buyer
+}
+
+func CreateOverlay() *Overlay {
+
+	overlay := &Overlay{
+		CreationTime: "",
+		BuyerMap:     make(map[uint64]Buyer),
+	}
+
+	return overlay
+}
+
+func LoadOverlay(filename string) (*Overlay, error) {
+
+	overlayFile, err := os.Open(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := ioutil.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// This function is essentially the same as DecodeDatabaseWrapper in modules/backend/helpers.go
-func (wrapper *DatabaseBinWrapper) ReadDatabaseBinFile(databaseFilePath string) error {
-	databaseFile, err := os.Open(databaseFilePath)
-	if err != nil {
-		return err
-	}
-	defer databaseFile.Close()
-
-	return gob.NewDecoder(databaseFile).Decode(wrapper)
-}
-*/
-
-// overlay
-
-/*
-func CreateEmptyOverlayBinWrapper() *OverlayBinWrapper {
-	wrapper := &OverlayBinWrapper{
-		BuyerMap: make(map[uint64]Buyer),
-	}
-
-	return wrapper
-}
-
-func (wrapper OverlayBinWrapper) IsEmpty() bool {
-	return len(wrapper.BuyerMap) == 0
-}
-
-func (wrapper OverlayBinWrapper) WriteOverlayBinFile(outputPath string) error {
-	var buffer bytes.Buffer
-
-	err := gob.NewEncoder(&buffer).Encode(wrapper)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(outputPath, buffer.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// This function is essentially the same as DecodeOverlayWrapper in modules/backend/helpers.go
-func (wrapper *OverlayBinWrapper) ReadOverlayBinFile(overlayFilePath string) error {
-	overlayFile, err := os.Open(overlayFilePath)
-	if err != nil {
-		return err
-	}
 	defer overlayFile.Close()
 
-	return gob.NewDecoder(overlayFile).Decode(wrapper)
+	overlay := &Overlay{}
+
+	err = gob.NewDecoder(overlayFile).Decode(overlay)
+
+	return overlay, err
 }
-*/
+
+func (overlay *Overlay) Save(filename string) error {
+
+	var buffer bytes.Buffer
+
+	err := gob.NewEncoder(&buffer).Encode(overlay)
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (overlay Overlay) IsEmpty() bool {
+	return len(overlay.BuyerMap) == 0
+}
+
+// ---------------------------------------------------------------------

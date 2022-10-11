@@ -8,7 +8,6 @@ import (
 )
 
 const (
-
 	CostMatrixSerializeVersion = 2
 
 	MaxRelayNameLength = 63

@@ -920,8 +920,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	key := relay_address
 
-	// todo: crypto check here
-
 	backend.mutex.RLock()
 	_, ok := backend.relayDatabase[key]
 	if !ok {

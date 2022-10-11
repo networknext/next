@@ -20,12 +20,9 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	db "github.com/networknext/backend/modules/database"
 
-	// todo: we want to remove these
-	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/backend"
-
-	// todo: we want to move this to a new module ("middleware"?) as needed
+	// todo: we want to move this to a new module ("middleware"?) or common as needed
 	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
@@ -40,8 +37,8 @@ var (
 type RelayData struct {
 	NumRelays          int
 	RelayIds           []uint64
-	RelayHash          map[uint64]routing.Relay // todo: don't use routing
-	RelayArray         []routing.Relay
+	RelayHash          map[uint64]db.Relay
+	RelayArray         []db.Relay
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
 	RelayLatitudes     []float32
@@ -70,8 +67,8 @@ type Service struct {
 	// ------------------
 
 	databaseMutex     sync.RWMutex
-	database          *routing.DatabaseBinWrapper // todo: we need to copy database and overlay out of routing
-	databaseOverlay   *routing.OverlayBinWrapper
+	database          *db.Database
+	databaseOverlay   *db.Overlay
 	databaseRelayData *RelayData
 
 	statusMutex sync.RWMutex
@@ -91,7 +88,7 @@ type Service struct {
 
 	routeMatrixMutex    sync.RWMutex
 	routeMatrix         *RouteMatrix
-	routeMatrixDatabase *routing.DatabaseBinWrapper
+	routeMatrixDatabase *db.Database
 
 	googleProjectId    string
 	googleCloudStorage *GoogleCloudStorage
@@ -158,7 +155,7 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
-func (service *Service) Database() *routing.DatabaseBinWrapper {
+func (service *Service) Database() *db.Database {
 	service.databaseMutex.RLock()
 	database := service.database
 	service.databaseMutex.RUnlock()
@@ -342,7 +339,7 @@ func (service *Service) UpdateRouteMatrix() {
 					continue
 				}
 
-				var newDatabase routing.DatabaseBinWrapper
+				var newDatabase db.Database
 
 				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
 				decoder := gob.NewDecoder(databaseBuffer)
@@ -363,7 +360,7 @@ func (service *Service) UpdateRouteMatrix() {
 	}()
 }
 
-func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *routing.DatabaseBinWrapper) {
+func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 	service.routeMatrixMutex.RLock()
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
@@ -385,42 +382,34 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
-	// todo: wait group
+	// todo: some system to wait for registered (named) subsystems to complete before we shut down
+
 	core.Log("successfully shutdown")
 }
 
 // -----------------------------------------------------------------------
 
-func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBinWrapper, *routing.OverlayBinWrapper) {
+func loadDatabase(databasePath string, overlayPath string) (*db.Database, *db.Overlay) {
 
-	// load the database (required)
+	// load database (required)
 
-	databaseFile, err := os.Open(databasePath)
+	database, err := db.LoadDatabase(databasePath)
+
 	if err != nil {
-		core.Error("could not load database: %v", err)
-		return nil, nil
-	}
-	defer databaseFile.Close()
-
-	database := routing.CreateEmptyDatabaseBinWrapper()
-	err = backend.DecodeBinWrapper(databaseFile, database)   // todo: port this over when we move database to its own file
-	if err != nil || database.IsEmpty() {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil
 	}
 
+	if database.IsEmpty() {
+		core.Error("error: database is empty")
+	}
+
 	core.Debug("loaded database: '%s'", databasePath)
 
-	// load the overlay if it exists
+	// load overlay (optional)
 
-	overlayFile, err := os.Open(overlayPath)
-	if err != nil {
-		return database, nil
-	}
-	defer overlayFile.Close()
+	overlay, err := db.LoadOverlay(overlayPath)
 
-	overlay := routing.CreateEmptyOverlayBinWrapper()
-	err = backend.DecodeOverlayWrapper(overlayFile, overlay)
 	if err != nil || overlay.IsEmpty() {
 		return database, nil
 	}
@@ -435,7 +424,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	return database, overlay
 }
 
-func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
+func generateRelayData(database *db.Database) *RelayData {
 
 	relayData := &RelayData{}
 
@@ -443,7 +432,7 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 
 	relayData.NumRelays = numRelays
 	relayData.RelayIds = make([]uint64, numRelays)
-	relayData.RelayHash = make(map[uint64]routing.Relay)
+	relayData.RelayHash = make(map[uint64]db.Relay)
 	relayData.RelayArray = database.Relays
 
 	sort.SliceStable(relayData.RelayArray, func(i, j int) bool {
@@ -451,10 +440,6 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	})
 
 	for i := range relayData.RelayArray {
-		if relayData.RelayArray[i].State != routing.RelayStateEnabled {
-			core.Error("generateRelayData: database.bin must contain only enabled relays!")
-			return nil
-		}
 		relayData.RelayHash[relayData.RelayArray[i].ID] = relayData.RelayArray[i]
 	}
 
@@ -468,8 +453,8 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 		relayData.RelayIds[i] = relayData.RelayArray[i].ID
 		relayData.RelayAddresses[i] = relayData.RelayArray[i].Addr
 		relayData.RelayNames[i] = relayData.RelayArray[i].Name
-		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Latitude)
-		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Longitude)
+		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Latitude)
+		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)
 		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.ID
 	}
 
@@ -521,7 +506,7 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	return relayData
 }
 
-func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.OverlayBinWrapper) {
+func applyOverlay(database *db.Database, overlay *db.Overlay) {
 	if overlay != nil {
 		for _, buyer := range overlay.BuyerMap {
 			_, ok := database.BuyerMap[buyer.ID]

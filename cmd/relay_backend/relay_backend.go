@@ -381,7 +381,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				sampleJitter := make([]float32, numSamples)
 				samplePacketLoss := make([]float32, numSamples)
 				sampleRoutable := make([]bool, numSamples)
-
 				for i := 0; i < numSamples; i++ {
 
 					rtt := relayUpdateRequest.SampleRTT[i]
@@ -400,17 +399,17 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 							numRoutable++
 							sampleRoutable[i] = true
 						}
-					}
 
-					pingStatsMessages[i] = messages.PingStatsMessage{
-						Version:    messages.PingStatsMessageVersion,
-						Timestamp:  uint64(time.Now().Unix()),
-						RelayA:     relayId,
-						RelayB:     sampleRelayId,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
-						Routable:   sampleRoutable[i],
+						pingStatsMessages[i] = messages.PingStatsMessage{
+							Version:    messages.PingStatsMessageVersion,
+							Timestamp:  uint64(time.Now().Unix()),
+							RelayA:     relayId,
+							RelayB:     sampleRelayId,
+							RTT:        rtt,
+							Jitter:     jitter,
+							PacketLoss: pl,
+							Routable:   sampleRoutable[i],
+						}
 					}
 				}
 

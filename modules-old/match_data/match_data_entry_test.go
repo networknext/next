@@ -1,6 +1,6 @@
 package match_data_test
 
-// todo: tests disabled. there is a heisenbug in one of these tests
+// tests disabled. there is a heisenbug in one of these tests
 /*
 import (
     "math"

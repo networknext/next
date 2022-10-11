@@ -95,7 +95,6 @@ func (relayMap *RelayMap) GetActiveRelayData() ([]uint64, []int, []string) {
 	return relayIds, relaySessionCounts, relayVersions
 }
 
-// todo: this is really a pretty naff function and we should deprecate it
 func (relayMap *RelayMap) GetAllRelayData() []RelayData {
 	relays := make([]RelayData, len(relayMap.relays))
 	relayMap.RLock()

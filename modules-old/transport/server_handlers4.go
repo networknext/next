@@ -615,11 +615,6 @@ type SessionHandlerState struct {
 
 	// for convenience
 	UnmarshaledSessionData bool
-
-	// todo
-	/*
-	   multipathVetoHandler storage.MultipathVetoHandler
-	*/
 }
 
 func SessionPre(state *SessionHandlerState) bool {
@@ -1192,7 +1187,6 @@ func SessionFilterNearRelays(state *SessionHandlerState) {
 
 func SessionMakeRouteDecision(state *SessionHandlerState) {
 
-	// todo: why would we copy such a potentially large map here? really bad idea...
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
 	multipathVetoMap := map[uint64]bool{}
 
@@ -1510,7 +1504,6 @@ func SessionPost(state *SessionHandlerState) {
 	   After this time elapses, they are allowed to try multipath again.
 	*/
 
-	// todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
 	/*
 	   if packet.Next && sessionData.RouteState.MultipathOverload {
 	       if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
@@ -1633,13 +1626,11 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 
 	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
-	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelayPrice := [core.MaxRelaysPerRoute]uint64{}
 	for i := 0; i < core.MaxRelaysPerRoute; i++ {
 		nextRelayPrice[i] = uint64(routeRelayPrices[i])
 	}
 
-	// todo: not really sure why we need to do this...
 	var routeCost int32 = state.Input.RouteCost
 	if state.Input.RouteCost == math.MaxInt32 {
 		routeCost = 0
@@ -1814,7 +1805,6 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 	   Build the relay hops for the portal
 	*/
 
-	// todo: we should try to avoid allocations
 	hops := make([]RelayHop, state.Input.RouteNumRelays)
 	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
 		hops[i] = RelayHop{
@@ -1828,7 +1818,6 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 	   Build the near relay data for the portal
 	*/
 
-	// todo: we should try to avoid allocations
 	nearRelayPortalData := make([]NearRelayPortalData, state.PostNearRelayCount)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
