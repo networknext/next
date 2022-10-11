@@ -53,7 +53,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
-		(void) result;
+        (void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
@@ -224,7 +224,7 @@ void server_packet_received( next_server_t * server, void * _context, const next
     next_assert( context->server_data == 0x12345678 );
 
     if ( !next_server_ready( server ) )
-    	return;
+        return;
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
     

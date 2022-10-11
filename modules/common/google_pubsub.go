@@ -7,12 +7,14 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
+	"google.golang.org/api/option"
 )
 
 type GooglePubsubConfig struct {
 	ProjectId          string
 	Topic              string
 	Subscription       string
+	ClientOptions      []option.ClientOption
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
@@ -44,7 +46,7 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 		config.BatchSize = 100
 	}
 
-	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId)
+	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId, config.ClientOptions...)
 	if err != nil {
 		core.Error("failed to create google pubsub client: %v", err)
 		return nil, err

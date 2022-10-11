@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
+
+	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/option"
 )
 
@@ -32,6 +34,13 @@ type GoogleBigQueryPublisher struct {
 }
 
 func CreateGoogleBigQueryPublisher(ctx context.Context, config GoogleBigQueryConfig) (*GoogleBigQueryPublisher, error) {
+
+	if config.ProjectId == "local" {
+		config.ClientOptions = []option.ClientOption{
+			option.WithEndpoint(envvar.GetString("BIGQUERY_EMULATOR_HOST", "http://127.0.0.1:9050")),
+			option.WithoutAuthentication(),
+		}
+	}
 
 	bigqueryClient, err := bigquery.NewClient(ctx, config.ProjectId, config.ClientOptions...)
 	if err != nil {
@@ -106,6 +115,10 @@ func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 	publisher.NumEntriesPublished += uint64(batchNumMessages)
 
 	publisher.messageBatch = []bigquery.ValueSaver{}
+}
+
+func (publisher *GoogleBigQueryPublisher) Close() error {
+	return publisher.bigqueryClient.Close()
 }
 
 // Test entry for making func testing easier

@@ -51,7 +51,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
-		(void) result;
+        (void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
@@ -445,11 +445,11 @@ int main()
 
         if ( next_client_ready( client ) )
         {
-	        int packet_bytes = 0;
-	        uint8_t packet_data[NEXT_MTU];
-	        generate_packet( packet_data, packet_bytes );
-	        next_client_send_packet( client, packet_data, packet_bytes );
-	    }
+            int packet_bytes = 0;
+            uint8_t packet_data[NEXT_MTU];
+            generate_packet( packet_data, packet_bytes );
+            next_client_send_packet( client, packet_data, packet_bytes );
+        }
         
         if ( next_time() > 60.0 && !reported )
         {
