@@ -32,9 +32,9 @@ var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateChannelSize int
 var pingStatsPubsubTopic string
-var maxPingStatsMessageBytes int
+var maxPingStatsMessages int
 var relayStatsPubsubTopic string
-var maxRelayStatsMessageBytes int
+var maxRelayStatsMessages int
 var readyDelay time.Duration
 
 var relaysMutex sync.RWMutex
@@ -77,9 +77,9 @@ func main() {
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
 	pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "ping_stats")
-	maxPingStatsMessageBytes = envvar.GetInt("MAX_CHANNEL_MESSAGE_BYTES", 1024)
+	maxPingStatsMessages = envvar.GetInt("MAX_PING_STATS_CHANNEL_SIZE", 1024)
 	relayStatsPubsubTopic = envvar.GetString("RELAY_STATS_PUBSUB_TOPIC", "relay_stats")
-	maxRelayStatsMessageBytes = envvar.GetInt("MAX_CHANNEL_MESSAGE_BYTES", 1024)
+	maxRelayStatsMessages = envvar.GetInt("MAX_RELAY_STATS_CHANNEL_SIZE", 1024)
 	readyDelay = envvar.GetDuration("READY_DELAY", 6*time.Minute)
 	startTime = time.Now()
 
@@ -96,9 +96,9 @@ func main() {
 	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
 	core.Log("ping stats pubsub channel: %s", pingStatsPubsubTopic)
-	core.Log("max ping stats message size (bytes): %d", maxPingStatsMessageBytes)
+	core.Log("max ping stats channel size: %d", maxPingStatsMessages)
 	core.Log("relay stats pubsub channel: %s", relayStatsPubsubTopic)
-	core.Log("max relay stats message size (bytes): %d", maxRelayStatsMessageBytes)
+	core.Log("max relay stats channel: %d", maxRelayStatsMessages)
 	core.Log("ready delay: %s", readyDelay.String())
 	core.Log("start time: %s", startTime.String())
 
@@ -291,7 +291,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 	pingStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
 		ProjectId:          googleProjectId,
 		Topic:              pingStatsPubsubTopic,
-		MessageChannelSize: maxPingStatsMessageBytes,
+		MessageChannelSize: maxPingStatsMessages,
 	})
 	if err != nil {
 		core.Error("could not create ping stats producer")
@@ -301,7 +301,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 	relayStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
 		ProjectId:          googleProjectId,
 		Topic:              relayStatsPubsubTopic,
-		MessageChannelSize: maxRelayStatsMessageBytes,
+		MessageChannelSize: maxRelayStatsMessages,
 	})
 	if err != nil {
 		core.Error("could not create relay stats producer")
@@ -459,7 +459,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				if redisSelector.IsLeader() {
 
-					messageBuffer := make([]byte, maxRelayStatsMessageBytes)
+					messageBuffer := make([]byte, maxRelayStatsMessages)
 
 					message := relayStatsMessage.Write(messageBuffer[:])
 
@@ -470,7 +470,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				if redisSelector.IsLeader() {
 
-					messageBuffer := make([]byte, maxPingStatsMessageBytes)
+					messageBuffer := make([]byte, maxPingStatsMessages)
 
 					for i := 0; i < len(pingStatsMessages); i++ {
 						message := pingStatsMessages[i].Write(messageBuffer[:])
