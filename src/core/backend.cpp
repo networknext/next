@@ -382,8 +382,6 @@ namespace core
       encoding::write_uint64(req, index, bandwidth_recv);
     }
 
-    // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
-    
     LOG(DEBUG, "sending relay update");
     util::Clock timeout;
     double elapsed_seconds = timeout.elapsed<Second>();
