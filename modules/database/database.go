@@ -20,6 +20,7 @@ type Relay struct {
 	Seller       Seller
 	Datacenter   Datacenter
 	MaxSessions  uint32
+	NICSpeedMbps int32
 }
 
 type Buyer struct {
@@ -156,8 +157,8 @@ type Overlay struct {
 func CreateOverlay() *Overlay {
 
 	overlay := &Overlay{
-		CreationTime:   "",
-		BuyerMap:       make(map[uint64]Buyer),
+		CreationTime: "",
+		BuyerMap:     make(map[uint64]Buyer),
 	}
 
 	return overlay
