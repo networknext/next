@@ -47,8 +47,8 @@
 	pull = squash never
 	ref = if refs/heads/master sync refs/heads/main
 	url = agnostic://gh/399961391
-[map "202e5682-047b-3940-a07e-7ae574558a2a"]
-	object = 6fb58b98a54f9e6afaddbbddfb9d65661d698811
+[map "638e2c3a-b347-3cbb-80f4-bdd71d99cb6b"]
+	object = 588911404b05bab2bf6ab35b66fbee665fe9a7e9
 	path = relay
 	type = extract module
 [map "98ce737b-cb9a-336e-bc90-f264081d0220"]
