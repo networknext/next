@@ -482,8 +482,8 @@ int main( int argc, char ** argv )
 
         if ( duration_seconds > 0 )
         {
-        	if ( (int) next_time() > duration_seconds )
-        		quit = true;
+            if ( (int) next_time() > duration_seconds )
+                quit = true;
         }
 
         next_sleep( 0.01 );
