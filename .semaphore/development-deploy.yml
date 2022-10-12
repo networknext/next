@@ -55,7 +55,7 @@ blocks:
             - sudo ldconfig
 
             - cd ~/backend
-          
+
             - cache restore
 
       jobs:
@@ -64,63 +64,67 @@ blocks:
           commands:
             - make dist/analytics.dev.tar.gz
             - artifact push workflow dist/analytics.dev.tar.gz
-        
+
         - name: "Portal"
           commands:
             - make dist/portal.dev.tar.gz
             - artifact push workflow dist/portal.dev.tar.gz
-        
+
         - name: "Portal Cruncher"
           commands:
             - make dist/portal_cruncher.dev.tar.gz
             - artifact push workflow dist/portal_cruncher.dev.tar.gz
-        
+
         - name: "Relay Gateway"
           commands:
             - make dist/relay_gateway.dev.tar.gz
             - artifact push workflow dist/relay_gateway.dev.tar.gz
-        
+
         - name: "Relay Backend"
           commands:
             - make dist/relay_backend.dev.tar.gz
             - artifact push workflow dist/relay_backend.dev.tar.gz
-        
+
         - name: "Server Backend 4"
           commands:
             - make dist/server_backend4.dev.tar.gz
             - artifact push workflow dist/server_backend4.dev.tar.gz
-        
+
         - name: "Server Backend 5"
           commands:
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
-        
-        - name: "New Server Backend 4"
-          commands:
-            - make dist/new_server_backend4.dev.tar.gz
-            - artifact push workflow dist/new_server_backend4.dev.tar.gz
-        
-        - name: "New Server Backend 5"
-          commands:
-            - make dist/new_server_backend5.dev.tar.gz
-            - artifact push workflow dist/new_server_backend5.dev.tar.gz
-        
+
+        # - name: "New Server Backend 4"
+          # commands:
+            # - make dist/new_server_backend4.dev.tar.gz
+            # - artifact push workflow dist/new_server_backend4.dev.tar.gz
+
+        # - name: "New Server Backend 5"
+          # commands:
+            # - make dist/new_server_backend5.dev.tar.gz
+            # - artifact push workflow dist/new_server_backend5.dev.tar.gz
 
         - name: "Ghost Army"
           commands:
             - make dist/ghost_army.dev.tar.gz
             - artifact push workflow dist/ghost_army.dev.tar.gz
-        
+
         - name: "Relay Pusher"
           commands:
             - make dist/relay_pusher.dev.tar.gz
             - artifact push workflow dist/relay_pusher.dev.tar.gz
-        
+
+        - name: "Pusher"
+          commands:
+            - make dist/pusher.dev.tar.gz
+            - artifact push workflow dist/pusher.dev.tar.gz
+
         - name: "Pingdom"
           commands:
             - make dist/pingdom.dev.tar.gz
             - artifact push workflow dist/pingdom.dev.tar.gz
-        
+
         - name: "Magic Backend"
           commands:
             - make dist/magic_backend.dev.tar.gz
@@ -130,6 +134,11 @@ blocks:
           commands:
             - make dist/redis_monitor.dev.tar.gz
             - artifact push workflow dist/redis_monitor.dev.tar.gz
+
+        - name: "Website Cruncher"
+          commands:
+            - make dist/website_cruncher.dev.tar.gz
+            - artifact push workflow dist/website_cruncher.dev.tar.gz
 
 
   - name: "Build Artifacts (Native)"
@@ -156,19 +165,19 @@ blocks:
 
         - name: "Test Server 4"
           commands:
-            - make -j32 build-test-server4-artifacts-dev
+            - make -j32 dist/test_server4.dev.tar.gz
             - artifact push workflow dist/test_server4.dev.tar.gz
 
         - name: "Test Server 5"
           commands:
-            - make -j32 build-test-server5-artifacts-dev
+            - make -j32 dist/test_server5.dev.tar.gz
             - artifact push workflow dist/test_server5.dev.tar.gz
 
 
   - name: "Publish Artifacts"
-    
+
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
-    
+
     task:
 
       prologue:
@@ -217,16 +226,15 @@ blocks:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
 
-        - name: "New Server Backend 4"
-          commands:
-            - artifact pull workflow new_server_backend4.dev.tar.gz
-            - gsutil cp new_server_backend4.dev.tar.gz gs://development_artifacts/
+        # - name: "New Server Backend 4"
+          # commands:
+            # - artifact pull workflow new_server_backend4.dev.tar.gz
+            # - gsutil cp new_server_backend4.dev.tar.gz gs://development_artifacts/
 
-        - name: "New Server Backend 5"
-          commands:
-            - artifact pull workflow new_server_backend5.dev.tar.gz
-            - gsutil cp new_server_backend5.dev.tar.gz gs://development_artifacts/
-
+        # - name: "New Server Backend 5"
+          # commands:
+            # - artifact pull workflow new_server_backend5.dev.tar.gz
+            # - gsutil cp new_server_backend5.dev.tar.gz gs://development_artifacts/
 
         - name: "Ghost Army"
           commands:
@@ -237,6 +245,11 @@ blocks:
           commands:
             - artifact pull workflow relay_pusher.dev.tar.gz
             - gsutil cp relay_pusher.dev.tar.gz gs://development_artifacts/
+
+        - name: "Pusher"
+          commands:
+            - artifact pull workflow pusher.dev.tar.gz
+            - gsutil cp pusher.dev.tar.gz gs://development_artifacts/
 
         - name: "Pingdom"
           commands:
@@ -252,6 +265,11 @@ blocks:
           commands:
             - artifact pull workflow redis_monitor.dev.tar.gz
             - gsutil cp redis_monitor.dev.tar.gz gs://development_artifacts/
+
+        - name: "Website Cruncher"
+          commands:
+            - artifact pull workflow website_cruncher
+            - gsutil cp website_cruncher gs://development_artifacts/website_cruncher
 
         - name: "Test Server 4"
           commands:
