@@ -27,7 +27,7 @@ var websiteStats LiveStats
 var statsRefreshInterval time.Duration
 
 func main() {
-	service := common.CreateService("website cruncher")
+	service := common.CreateService("website_cruncher")
 
 	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
 
