@@ -160,16 +160,19 @@ blocks:
             - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
             - git submodule init
             - git submodule update
+            - mkdir dist
 
       jobs:
 
         - name: "Test Server 4"
           commands:
+            - artifact pull workflow libnext4.so
             - make -j32 dist/test_server4.dev.tar.gz
             - artifact push workflow dist/test_server4.dev.tar.gz
 
         - name: "Test Server 5"
           commands:
+            - artifact pull workflow libnext5.so
             - make -j32 dist/test_server5.dev.tar.gz
             - artifact push workflow dist/test_server5.dev.tar.gz
 
