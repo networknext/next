@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -26,23 +25,15 @@ const (
 var websiteStatsMutex sync.RWMutex
 var websiteStats LiveStats
 var statsRefreshInterval time.Duration
-var redisHostname string
-var redisPassword string
-var redisSelector *common.RedisSelector
-var redisSelectorTimeout time.Duration
 
 func main() {
 	service := common.CreateService("website cruncher")
 
 	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
-	redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
 
 	core.Log("stats refresh interval: %s", statsRefreshInterval)
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
-	core.Log("redis selector timeout: %s", redisSelectorTimeout)
+
+	service.Selector()
 
 	StartStatCollection(service)
 
@@ -110,21 +101,7 @@ type LiveStats struct {
 
 func StartStatCollection(service *common.Service) {
 
-	var err error
-
 	ticker := time.NewTicker(statsRefreshInterval)
-
-	config := common.RedisSelectorConfig{}
-
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
-	config.Timeout = redisSelectorTimeout
-
-	redisSelector, err = common.CreateRedisSelector(service.Context, config)
-	if err != nil {
-		core.Error("failed to create redis selector: %v", err)
-		os.Exit(1)
-	}
 
 	go func() {
 
@@ -165,9 +142,9 @@ func StartStatCollection(service *common.Service) {
 					},
 				}
 
-				redisSelector.Store(service.Context, dataStores)
+				service.UpdateSelectorStore(dataStores)
 
-				dataStores = redisSelector.Load(service.Context)
+				dataStores = service.LoadSelectorStore()
 
 				newLiveStats := LiveStats{}
 
