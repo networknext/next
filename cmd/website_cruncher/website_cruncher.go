@@ -37,7 +37,7 @@ func main() {
 
 	StartStatCollection(service)
 
-	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet)
+	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet, http.MethodOptions)
 
 	service.StartWebServer()
 
