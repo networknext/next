@@ -272,7 +272,7 @@ blocks:
         - name: "Website Cruncher"
           commands:
             - artifact pull workflow website_cruncher
-            - gsutil cp website_cruncher gs://development_artifacts/website_cruncher
+            - gsutil cp website_cruncher.dev.tar.gz gs://development_artifacts/website_cruncher
 
         - name: "Test Server 4"
           commands:
