@@ -54,11 +54,37 @@ func main() {
 }
 
 func getAllStats(w http.ResponseWriter, r *http.Request) {
+
 	websiteStatsMutex.RLock()
 	stats := websiteStats
 	websiteStatsMutex.RUnlock()
 
-	json.NewEncoder(w).Encode(stats)
+	numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
+
+	oldUniquePlayers := stats.UniquePlayers
+	oldBandwidth := stats.AcceleratedBandwidth
+	oldPlaytime := stats.AcceleratedPlayTime
+
+	deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
+	deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
+	deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
+
+	currentMinute := time.Now().UTC().Minute()
+
+	newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
+	newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
+	newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
+
+	newStats := LiveStats{
+		UniquePlayers:             newUniquePlayers,
+		AcceleratedBandwidth:      newBanwidth,
+		AcceleratedPlayTime:       newPlaytime,
+		UniquePlayersDelta:        stats.UniquePlayersDelta,
+		AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
+		AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
+	}
+
+	json.NewEncoder(w).Encode(newStats)
 }
 
 func currentStats() LiveStats {
@@ -122,9 +148,6 @@ func StartStatCollection(service *common.Service) {
 
 				newStats.AcceleratedPlayTime = int64(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
 				newStats.AcceleratedPlayTimeDelta = newStats.AcceleratedPlayTime - currentStats.AcceleratedPlayTime
-
-				/* todo: extrapolation will be easier and safer to do server side
-				 */
 
 				var buffer bytes.Buffer
 				encoder := gob.NewEncoder(&buffer)
