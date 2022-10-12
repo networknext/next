@@ -94,7 +94,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
     nn::os::InitializeMutex( &mutex->handle, true, 0 );
-	return NEXT_OK;
+    return NEXT_OK;
 }
 
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
@@ -113,7 +113,7 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
     nn::os::FinalizeMutex( &mutex->handle );
-	memset( mutex, 0, sizeof(next_platform_mutex_t) );
+    memset( mutex, 0, sizeof(next_platform_mutex_t) );
 }
 
 // time
@@ -283,7 +283,7 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
     s->timeout_seconds = timeout_seconds;
     s->send_buffer_size = send_buffer_size;
     s->receive_buffer_size = receive_buffer_size;
-	s->enable_packet_tagging = enable_packet_tagging;
+    s->enable_packet_tagging = enable_packet_tagging;
 
     if ( s->handle == nn::socket::InvalidSocket )
     {
@@ -371,25 +371,25 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
 
 #if NEXT_PACKET_TAGGING
 
-	// tag as latency sensitive
+    // tag as latency sensitive
 
-	if ( enable_packet_tagging )
-	{
-		next_assert( address->type == NEXT_ADDRESS_IPV4 );
-		int tos = 0xA0;
-		if ( nn::socket::SetSockOpt( s->handle, IPPROTO_IP, IP_TOS, (const char*) &tos, sizeof(tos) ) != 0)
-		{
-			next_printf(NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)");
-		}
-	}
+    if ( enable_packet_tagging )
+    {
+        next_assert( address->type == NEXT_ADDRESS_IPV4 );
+        int tos = 0xA0;
+        if ( nn::socket::SetSockOpt( s->handle, IPPROTO_IP, IP_TOS, (const char*) &tos, sizeof(tos) ) != 0)
+        {
+            next_printf(NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)");
+        }
+    }
 
 #else // If NEXT_PACKET_TAGGING
 
     (void) enable_packet_tagging;
 
 #endif // #if NEXT_PACKET_TAGGING
-	
-	return NEXT_OK;
+    
+    return NEXT_OK;
 }
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
@@ -484,7 +484,7 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
         float timeout_seconds = socket->timeout_seconds;
         int send_buffer_size = socket->send_buffer_size;
         int receive_buffer_size = socket->receive_buffer_size;
-		bool enable_packet_tagging = socket->enable_packet_tagging;
+        bool enable_packet_tagging = socket->enable_packet_tagging;
 
         if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_packet_tagging ) == NEXT_ERROR )
         {
