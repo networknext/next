@@ -1,6 +1,6 @@
 /*
-	Network Next Reference Backend (SDK4)
-	Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
+   Network Next Reference Backend (SDK4)
+   Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -919,8 +919,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	key := relay_address
-
-	// todo: crypto check here
 
 	backend.mutex.RLock()
 	_, ok := backend.relayDatabase[key]

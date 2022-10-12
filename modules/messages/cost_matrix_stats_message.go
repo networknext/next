@@ -1,11 +1,14 @@
 package messages
 
 import (
+	"fmt"
+
 	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const CostMatrixStatsMessageVersion = byte(0) // IMPORTANT: increase this each time you change the data structure
+const CostMatrixStatsMessageVersion = 0 // IMPORTANT: increase this each time you change the data structure
 
 type CostMatrixStatsMessage struct {
 	Version        byte
@@ -28,13 +31,33 @@ func (message *CostMatrixStatsMessage) Write(buffer []byte) []byte {
 }
 
 func (message *CostMatrixStatsMessage) Read(buffer []byte) error {
+
 	index := 0
-	encoding.ReadUint8(buffer, &index, &message.Version)
-	encoding.ReadUint64(buffer, &index, &message.Timestamp)
-	encoding.ReadInt(buffer, &index, &message.Bytes)
-	encoding.ReadInt(buffer, &index, &message.NumRelays)
-	encoding.ReadInt(buffer, &index, &message.NumDestRelays)
-	encoding.ReadInt(buffer, &index, &message.NumDatacenters)
+
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read cost matrix stats Version")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read cost matrix stats Timestamp")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.Bytes) {
+		return fmt.Errorf("failed to read cost matrix stats Bytes")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumRelays) {
+		return fmt.Errorf("failed to read cost matrix stats NumRelays")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumDestRelays) {
+		return fmt.Errorf("failed to read cost matrix stats NumDestRelays")
+	}
+
+	if !encoding.ReadInt(buffer, &index, &message.NumDatacenters) {
+		return fmt.Errorf("failed to read cost matrix stats NumDatacenters")
+	}
+
 	return nil
 }
 

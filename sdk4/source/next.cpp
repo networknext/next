@@ -3932,9 +3932,9 @@ int next_init( void * context, next_config_t * config_in )
     const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME_SDK4" );
 
     if ( !next_server_backend_hostname_override ) 
-	{
-		next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
-	}
+    {
+        next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    }
 
     if ( !next_server_backend_hostname_override )
     {
@@ -4298,7 +4298,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     }
     else
     {
-    	stats->packet_loss = 100.0f;
+        stats->packet_loss = 100.0f;
     }
 
     // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
@@ -4348,8 +4348,8 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_pings == 0 || min_rtt == FLT_MAX )
     {
-    	// no data
-    	return;
+        // no data
+        return;
     }
 
     next_assert( min_rtt >= 0.0 );
@@ -5977,7 +5977,7 @@ void next_client_internal_destroy( next_client_internal_t * client );
 
 next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string, void (*wake_up_callback)( void * context ) )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create" );
 
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
@@ -6109,14 +6109,14 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
 
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create (completed)" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create (completed)" );
 
     return client;
 }
 
 void next_client_internal_destroy( next_client_internal_t * client )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy" );
 
     next_client_internal_verify_sentinels( client );
 
@@ -6149,7 +6149,7 @@ void next_client_internal_destroy( next_client_internal_t * client )
 
     clear_and_free( client->context, client, sizeof(next_client_internal_t) );
 
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy (completed)" );    
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy (completed)" );    
 }
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
@@ -6324,7 +6324,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
-		if ( !client->sending_upgrade_response )
+        if ( !client->sending_upgrade_response )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
             return;
@@ -6405,7 +6405,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response packet" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response packet" );
 
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
@@ -6532,7 +6532,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response packet" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response packet" );
 
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
@@ -6780,7 +6780,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
-		next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet" );
 
         if ( client->fallback_to_direct )
         {
@@ -7494,15 +7494,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-    	char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
@@ -7645,7 +7645,7 @@ void next_client_destroy( next_client_t * client );
 
 next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_create" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_create" );
 
     next_assert( bind_address );
     next_assert( packet_received_callback );
@@ -7702,7 +7702,7 @@ uint16_t next_client_port( next_client_t * client )
 
 void next_client_destroy( next_client_t * client )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy" );
 
     next_client_verify_sentinels( client );
 
@@ -7731,12 +7731,12 @@ void next_client_destroy( next_client_t * client )
 
     clear_and_free( client->context, client, sizeof(next_client_t) );
 
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy (completed)" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy (completed)" );
 }
 
 void next_client_open_session( next_client_t * client, const char * server_address_string )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_open_session: %s", server_address_string );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_open_session: %s", server_address_string );
 
     next_client_verify_sentinels( client );
 
@@ -7789,7 +7789,7 @@ int next_client_state( next_client_t * client )
 
 void next_client_close_session( next_client_t * client )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_close_session" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_close_session" );
 
     next_client_verify_sentinels( client );
 
@@ -7886,7 +7886,7 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_READY:
             {
-				next_printf( NEXT_LOG_LEVEL_DEBUG, "client is ready" );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client is ready" );
                 client->ready = true;
             }
             break;
@@ -8077,7 +8077,7 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
 
 void next_client_report_session( next_client_t * client )
 {
-	next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_report_session" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_report_session" );
 
     next_client_verify_sentinels( client );
 
@@ -13111,11 +13111,11 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT_SDK4" );
     if ( !override_port )
     {
-	    override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+        override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
     }
     if ( !override_port )
     {
-	    override_port = next_platform_getenv( "NEXT_PORT" );
+        override_port = next_platform_getenv( "NEXT_PORT" );
     }
     if ( override_port )
     {

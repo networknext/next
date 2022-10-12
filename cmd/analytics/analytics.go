@@ -19,6 +19,7 @@ var routeMatrixURI string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
 var googleProjectId string
+var bigqueryDataset string
 
 var logMutex sync.Mutex
 
@@ -31,28 +32,24 @@ func main() {
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", service.Env)
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("google project id: %s", googleProjectId)
+	core.Log("bigquery dataset: %s", bigqueryDataset)
 
 	ProcessCostMatrix(service)
 
 	ProcessRouteMatrix(service)
 
-	// todo
-	/*
-		Process[messages.BillingEntry](service, "billing")
-		Process[messages.SummaryEntry](service, "summary")
-		Process[messages.MatchDataEntry](service, "match_data")
-		Process[messages.PingStatsEntry](service, "ping_stats")
-		Process[messages.RelayStatsEntry](service, "relay_stats")
-	*/
-
-	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats")
-	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats")
+	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
+	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
+	Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
+	Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
+	Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
 
 	service.StartWebServer()
 
@@ -63,22 +60,42 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T messages.Message](service *common.Service, name string) {
+func Process[T messages.Message](service *common.Service, name string, message messages.Message, important bool) {
 
-	envPrefix := strings.ToUpper(name) + "_"
+	namePrefix := strings.ToUpper(name) + "_"
 
-	pubsubTopic := envvar.GetString(envPrefix+"PUBSUB_TOPIC", name)
-	bigqueryTable := envvar.GetString(envPrefix+"BIGQUERY_TABLE", name)
+	pubsubTopic := envvar.GetString(namePrefix+"PUBSUB_TOPIC", name)
+	pubsubSubscription := envvar.GetString(namePrefix+"PUBSUB_SUBSCRIPTION", name)
+	bigqueryTable := envvar.GetString(namePrefix+"BIGQUERY_TABLE", name)
 
 	core.Debug("%s pubsub topic: %s", name, pubsubTopic)
+	core.Debug("%s pubsub subscription: %s", name, pubsubSubscription)
 	core.Debug("%s bigquery table: %s", name, bigqueryTable)
 
-	config := common.GooglePubsubConfig{Topic: pubsubTopic, BatchDuration: 10 * time.Second}
+	consumerConfig := common.GooglePubsubConfig{
+		ProjectId:     googleProjectId,
+		Subscription:  pubsubSubscription,
+		Topic:         pubsubTopic,
+		BatchDuration: 10 * time.Second,
+	}
 
-	consumer, err := common.CreateGooglePubsubConsumer(service.Context, config)
+	publisherConfig := common.GoogleBigQueryConfig{
+		ProjectId:     googleProjectId,
+		Dataset:       bigqueryDataset,
+		TableName:     bigqueryTable,
+		BatchSize:     100,
+		BatchDuration: 10 * time.Second,
+	}
+
+	consumer, err := common.CreateGooglePubsubConsumer(service.Context, consumerConfig)
 	if err != nil {
 		core.Error("could not create google pubsub consumer for %s: %v", name, err)
 		os.Exit(1)
+	}
+
+	publisher, err := common.CreateGoogleBigQueryPublisher(service.Context, publisherConfig)
+	if err != nil {
+		core.Error("could not create google bigquery publisher for %s: %v", name, err)
 	}
 
 	core.Debug("processing %s messages", name)
@@ -95,20 +112,23 @@ func Process[T messages.Message](service *common.Service, name string) {
 				core.Debug("received %s message", name)
 
 				messageData := pubsubMessage.Data
-				var message T
+
 				err := message.Read(messageData)
 				if err != nil {
+					if !important {
+						core.Error("could not read %s message - dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
 					core.Error("could not read %s message", name)
+					pubsubMessage.Nack()
 					break
 				}
 
-				// todo: insert into bigquery
-				insert_ok := true
-				if insert_ok {
-					pubsubMessage.Ack()
-				} else {
-					pubsubMessage.Nack()
-				}
+				publisher.PublishChannel <- message
+
+				pubsubMessage.Ack()
 			}
 		}
 	}()
@@ -120,11 +140,9 @@ func ProcessCostMatrix(service *common.Service) {
 
 	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
 	pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
-	pubsubSubscription := envvar.GetString("COST_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "cost_matrix_stats")
 
 	core.Log("cost matrix stats message max bytes: %d", maxBytes)
 	core.Log("cost matrix stats message pubsub topic: %s", pubsubTopic)
-	core.Log("cost matrix stats message pubsub subscription: %s", pubsubSubscription)
 
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
@@ -133,7 +151,6 @@ func ProcessCostMatrix(service *common.Service) {
 	config := common.GooglePubsubConfig{
 		ProjectId:          googleProjectId,
 		Topic:              pubsubTopic,
-		Subscription:       pubsubSubscription,
 		MessageChannelSize: 10 * 1024,
 	}
 
@@ -228,15 +245,12 @@ func ProcessCostMatrix(service *common.Service) {
 func ProcessRouteMatrix(service *common.Service) {
 
 	pubsubTopic := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_TOPIC", "route_matrix_stats")
-	pubsubSubscription := envvar.GetString("ROUTE_MATRIX_STATS_PUBSUB_SUBSCRIPTION", "route_matrix_stats")
 
 	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
-	core.Log("route matrix stats entry pubsub subscription: %s", pubsubSubscription)
 
 	config := common.GooglePubsubConfig{
 		ProjectId:          googleProjectId,
 		Topic:              pubsubTopic,
-		Subscription:       pubsubSubscription,
 		MessageChannelSize: 10 * 1024,
 	}
 
@@ -246,9 +260,9 @@ func ProcessRouteMatrix(service *common.Service) {
 		os.Exit(1)
 	}
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
+	maxBytes := envvar.GetInt("ROUTE_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
 
-	core.Log("cost matrix stats message max bytes: %d", maxBytes)
+	core.Log("route matrix stats message max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -370,8 +384,26 @@ func ProcessRouteMatrix(service *common.Service) {
 				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
 				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
 				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+				routeMatrixStatsEntry.TotalRoutes = analysis.TotalRoutes
+				routeMatrixStatsEntry.AverageNumRoutes = analysis.AverageNumRoutes
+				routeMatrixStatsEntry.AverageRouteLength = analysis.AverageRouteLength
+				routeMatrixStatsEntry.NoRoutePercent = analysis.NoRoutePercent
+				routeMatrixStatsEntry.OneRoutePercent = analysis.OneRoutePercent
+				routeMatrixStatsEntry.NoDirectRoutePercent = analysis.NoDirectRoutePercent
+				routeMatrixStatsEntry.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
+				routeMatrixStatsEntry.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
+				routeMatrixStatsEntry.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
+				routeMatrixStatsEntry.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
+				routeMatrixStatsEntry.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
+				routeMatrixStatsEntry.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
+				routeMatrixStatsEntry.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
+				routeMatrixStatsEntry.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
+				routeMatrixStatsEntry.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
+				routeMatrixStatsEntry.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
+				routeMatrixStatsEntry.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
+				routeMatrixStatsEntry.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
 
-				message := routeMatrixStatsEntry.Write(make([]byte, maxBytes))
+				message := routeMatrixStatsEntry.Write(make([]byte, routeMatrixBytes))
 
 				statsPubsubProducer.MessageChannel <- message
 			}

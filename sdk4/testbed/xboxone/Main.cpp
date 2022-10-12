@@ -47,16 +47,16 @@ void xbox_printf( int level, const char * format, ... )
     char buffer[1024];
     vsnprintf( buffer, sizeof( buffer ), format, args );
     const char * level_str = next_log_level_str( level );
-	char buffer2[1024];
-	if (level != NEXT_LOG_LEVEL_NONE)
-	{
-		snprintf(buffer2, sizeof(buffer2), "%0.2f %s: %s\n", next_time(), level_str, buffer);
-	}
-	else
-	{
-		snprintf(buffer2, sizeof(buffer2), "%s\n", buffer);
-	}
-	OutputDebugStringA( buffer2 );
+    char buffer2[1024];
+    if (level != NEXT_LOG_LEVEL_NONE)
+    {
+        snprintf(buffer2, sizeof(buffer2), "%0.2f %s: %s\n", next_time(), level_str, buffer);
+    }
+    else
+    {
+        snprintf(buffer2, sizeof(buffer2), "%s\n", buffer);
+    }
+    OutputDebugStringA( buffer2 );
     va_end( args );
 }
 
@@ -86,19 +86,19 @@ public:
 
         CoreApplication::DisableKinectGpuReservation = true;
 
-		next_config_t config;
-		next_default_config(&config);
-		strncpy_s(config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1);
+        next_config_t config;
+        next_default_config(&config);
+        strncpy_s(config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1);
 
-		next_init(NULL, &config);
+        next_init(NULL, &config);
 
-		next_log_function( xbox_printf );
+        next_log_function( xbox_printf );
     }
 
     virtual void Uninitialize()
     {
-		next_term();
-	}
+        next_term();
+    }
 
     virtual void SetWindow(CoreWindow^ window)
     {
@@ -110,23 +110,23 @@ public:
     {
     }
 
-	virtual void Run()
-	{
-		OutputDebugStringA("\nRunning tests...\n\n");
+    virtual void Run()
+    {
+        OutputDebugStringA("\nRunning tests...\n\n");
 
-		next_log_level(NEXT_LOG_LEVEL_NONE);
+        next_log_level(NEXT_LOG_LEVEL_NONE);
 
-		next_test();
+        next_test();
 
-		OutputDebugStringA("\nAll tests passed successfully!\n\n");
+        OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
-		next_log_level(NEXT_LOG_LEVEL_INFO);
+        next_log_level(NEXT_LOG_LEVEL_INFO);
 
-		OutputDebugStringA("Starting client...\n\n");
+        OutputDebugStringA("Starting client...\n\n");
 
-		client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
-		if ( !client)
-			return;
+        client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
+        if ( !client)
+            return;
 
         next_client_open_session( client, "173.255.241.176:50000" );
 
@@ -143,7 +143,7 @@ public:
             CoreWindow::GetForCurrentThread()->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
         }
 
-		OutputDebugStringA("\nShutting down...\n\n");
+        OutputDebugStringA("\nShutting down...\n\n");
 
         next_client_destroy( client );
     }

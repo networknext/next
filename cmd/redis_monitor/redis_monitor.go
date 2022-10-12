@@ -1,11 +1,11 @@
 package main
 
 import (
-	"time"
 	"github.com/go-redis/redis/v8"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"time"
 )
 
 func main() {

@@ -1,0 +1,36 @@
+
+# Visual Studio
+.vs
+*.db
+*.opendb
+*.vcxproj.user
+*.csproj.user
+*.vcxproj.filter
+*.vcxproj.filters
+*.log
+*.tlog
+*.ilk
+*.tmp
+int
+
+# Xcode
+xcuserdata
+
+# Makefiles
+Makefile
+*.make
+
+# Misc
+.DS_Store
+.gdb_history
+
+# Sublime text
+*.sublime-project
+*.sublime-workspace
+
+# Annoying
+.DS_Store
+
+# Build Artifacts
+Intermediate
+Binaries

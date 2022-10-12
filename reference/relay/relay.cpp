@@ -185,11 +185,11 @@ int relay_initialize()
         relay_debug = atoi( relay_debug_env );
         if ( relay_debug )
         {
-        	printf( "    relay debug is on\n" );
+            printf( "    relay debug is on\n" );
         }
         else
         {
-        	printf( "    relay debug is off\n" );
+            printf( "    relay debug is off\n" );
         }
     }
 
@@ -285,8 +285,8 @@ void relay_write_string( uint8_t ** p, const char * string_data, uint32_t max_le
 {
     uint32_t length = strlen( string_data );
     assert( length <= max_length );
-    if ( length > max_length )
-        length = max_length;
+    if ( length > max_length - 1 )
+        length = max_length - 1;
     relay_write_uint32( p, length );
     for ( uint32_t i = 0; i < length; ++i )
     {
@@ -3907,7 +3907,7 @@ struct TestObject
 
         serialize_bool( stream, data.g );
 
-	    serialize_int( stream, data.numItems, 0, MaxItems - 1 );
+        serialize_int( stream, data.numItems, 0, MaxItems - 1 );
         for ( int i = 0; i < data.numItems; ++i )
             serialize_bits( stream, data.items[i], 8 );
 
@@ -5696,8 +5696,6 @@ void relay_test()
     RUN_TEST( test_session_ping_packet_sdk5 );
     RUN_TEST( test_session_pong_packet_sdk5 );
     RUN_TEST( test_pong_packet_sdk5 );
-
-    printf( "\n" );
 
     fflush( stdout );
 

@@ -17,14 +17,16 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/gorilla/mux"
-	"github.com/networknext/backend/modules/backend"
+
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
-	ghostarmy "github.com/networknext/backend/modules/ghost_army"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/networknext/backend/modules-old/backend"
+	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
+	"github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/transport"
+	// "github.com/networknext/backend/modules-old/transport/pubsub"
 )
 
 const (
@@ -273,28 +275,31 @@ func mainReturnWithCode() int {
 
 	publishChan := make(chan transport.SessionPortalData)
 
-	portalPublishers := make([]pubsub.Publisher, 0)
+	// portalPublishers := make([]pubsub.Publisher, 0)
 	{
 		fmt.Println("setting up portal cruncher")
 
-		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
+		// todo: need to update to redis streams
+		/*
+		   portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
 
-		if !envvar.Exists("POST_SESSION_PORTAL_SEND_BUFFER_SIZE") {
-			core.Error("POST_SESSION_PORTAL_SEND_BUFFER_SIZE not set")
-			return 1
-		}
+		   if !envvar.Exists("POST_SESSION_PORTAL_SEND_BUFFER_SIZE") {
+		       core.Error("POST_SESSION_PORTAL_SEND_BUFFER_SIZE not set")
+		       return 1
+		   }
 
-		postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
+		   postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 
-		for _, host := range portalCruncherHosts {
-			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, int(postSessionPortalSendBufferSize))
-			if err != nil {
-				core.Error("could not create portal cruncher publisher: %v", err)
-				return 1
-			}
+		   for _, host := range portalCruncherHosts {
+		       portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, int(postSessionPortalSendBufferSize))
+		       if err != nil {
+		           core.Error("could not create portal cruncher publisher: %v", err)
+		           return 1
+		       }
 
-			portalPublishers = append(portalPublishers, portalCruncherPublisher)
-		}
+		       portalPublishers = append(portalPublishers, portalCruncherPublisher)
+		   }
+		*/
 
 		fmt.Println("portal cruncher setup complete")
 	}
@@ -306,27 +311,30 @@ func mainReturnWithCode() int {
 	go func() {
 		defer wg.Done()
 
-		publisherIndex := 0
+		// publisherIndex := 0
 
 		for {
 			select {
-			case slice := <-publishChan:
-				// TODO: switch to serialization instead of binary encoding
-				sessionBytes, err := slice.MarshalBinary()
-				if err != nil {
-					ghostArmyMetrics.ErrorMetrics.SessionEntryMarshalFailure.Add(1)
-					core.Error("could not marshal binary for slice session id %d", slice.Meta.ID)
-					continue
-				}
+			// todo: need to update to redis streams
+			/*
+			   case slice := <-publishChan:
+			       // TODO: switch to serialization instead of binary encoding
+			       sessionBytes, err := slice.MarshalBinary()
+			       if err != nil {
+			           ghostArmyMetrics.ErrorMetrics.SessionEntryMarshalFailure.Add(1)
+			           core.Error("could not marshal binary for slice session id %d", slice.Meta.ID)
+			           continue
+			       }
 
-				if _, err := portalPublishers[publisherIndex].Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes); err != nil {
-					ghostArmyMetrics.ErrorMetrics.SessionEntryPublishFailure.Add(1)
-					core.Error("failed to publish ghost army session: %v", err)
-				} else {
-					ghostArmyMetrics.SuccessMetrics.SessionEntriesPublished.Add(1)
-				}
+			       if _, err := portalPublishers[publisherIndex].Publish(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes); err != nil {
+			           ghostArmyMetrics.ErrorMetrics.SessionEntryPublishFailure.Add(1)
+			           core.Error("failed to publish ghost army session: %v", err)
+			       } else {
+			           ghostArmyMetrics.SuccessMetrics.SessionEntriesPublished.Add(1)
+			       }
 
-				publisherIndex = (publisherIndex + 1) % len(portalPublishers)
+			       publisherIndex = (publisherIndex + 1) % len(portalPublishers)
+			*/
 			case <-ctx.Done():
 				return
 			}
