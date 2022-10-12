@@ -928,6 +928,7 @@ func test_redis_selector_migration() {
 	redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
+		ServiceName:   "migration",
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -967,6 +968,9 @@ func test_redis_selector_migration() {
 		},
 	}
 
+	waitGroup := sync.WaitGroup{}
+	waitGroup.Add(3)
+
 	go func() {
 
 		ticker := time.NewTicker(time.Second)
@@ -976,6 +980,7 @@ func test_redis_selector_migration() {
 		for {
 			select {
 			case <-cancelContext.Done():
+				waitGroup.Done()
 				return
 			case <-ticker.C:
 
@@ -1043,6 +1048,7 @@ func test_redis_selector_migration() {
 		for {
 			select {
 			case <-cancelContext.Done():
+				waitGroup.Done()
 				return
 			case <-ticker.C:
 
@@ -1106,6 +1112,7 @@ func test_redis_selector_migration() {
 		for {
 			select {
 			case <-cancelContext.Done():
+				waitGroup.Done()
 				return
 			case <-ticker.C:
 
@@ -1145,8 +1152,7 @@ func test_redis_selector_migration() {
 
 	cancelFunc()
 
-	// Make sure all keys expire
-	time.Sleep(time.Second * 7)
+	waitGroup.Wait()
 
 	core.Debug("done")
 }
@@ -1160,6 +1166,7 @@ func test_redis_selector_no_flap() {
 	redisSelector, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
+		ServiceName:   "flap",
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1182,6 +1189,9 @@ func test_redis_selector_no_flap() {
 		},
 	}
 
+	waitGroup := sync.WaitGroup{}
+	waitGroup.Add(2)
+
 	go func() {
 
 		ticker := time.NewTicker(time.Second)
@@ -1189,6 +1199,7 @@ func test_redis_selector_no_flap() {
 		for {
 			select {
 			case <-cancelContext.Done():
+				waitGroup.Done()
 				return
 			case <-ticker.C:
 
@@ -1241,6 +1252,7 @@ func test_redis_selector_no_flap() {
 		for {
 			select {
 			case <-cancelContext.Done():
+				waitGroup.Done()
 				return
 			case <-ticker.C:
 
@@ -1263,8 +1275,7 @@ func test_redis_selector_no_flap() {
 
 	cancelFunc()
 
-	// Make sure keys expire
-	time.Sleep(time.Second * 7)
+	waitGroup.Wait()
 
 	core.Debug("done")
 }
