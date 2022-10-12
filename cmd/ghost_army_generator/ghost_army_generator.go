@@ -15,7 +15,8 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
-	ghostarmy "github.com/networknext/backend/modules/ghost_army"
+
+	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
 )
 
 type sortableEntries []ghostarmy.Entry

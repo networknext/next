@@ -148,40 +148,40 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
 
-	memset( mutex, 0, sizeof(next_platform_mutex_t) );
+    memset( mutex, 0, sizeof(next_platform_mutex_t) );
 
     if ( !InitializeCriticalSectionAndSpinCount( (LPCRITICAL_SECTION)&mutex->handle, 0xFF ) )
     {
-		return NEXT_ERROR;
+        return NEXT_ERROR;
     }
 
-	mutex->ok = true;
+    mutex->ok = true;
 
-	return NEXT_OK;
+    return NEXT_OK;
 }
 
 void next_platform_mutex_acquire( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
+    next_assert( mutex->ok );
     EnterCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
 }
 
 void next_platform_mutex_release( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	next_assert( mutex->ok );
+    next_assert( mutex->ok );
     LeaveCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
 }
 
 void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 {
     next_assert( mutex );
-	if ( mutex->ok )
-	{
-		DeleteCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
-		memset(mutex, 0, sizeof(next_platform_mutex_t));
-	}
+    if ( mutex->ok )
+    {
+        DeleteCriticalSection( (LPCRITICAL_SECTION)&mutex->handle );
+        memset(mutex, 0, sizeof(next_platform_mutex_t));
+    }
 }
 
 // time
@@ -315,17 +315,17 @@ void next_platform_socket_destroy( next_platform_socket_t * );
 
 int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_FLOWID flowId, PSOCKADDR addr ) 
 {
-	QOS_VERSION QosVersion = { 1 , 0 };
-	HANDLE qosHandle;
-	if ( QOSCreateHandle( &QosVersion, &qosHandle ) == FALSE )
-	{
-		return GetLastError();
-	}
-	if ( QOSAddSocketToFlow( qosHandle, socket, addr, trafficType, QOS_NON_ADAPTIVE_FLOW, &flowId ) == FALSE )
-	{
-		return GetLastError();
-	}
-	return 0;
+    QOS_VERSION QosVersion = { 1 , 0 };
+    HANDLE qosHandle;
+    if ( QOSCreateHandle( &QosVersion, &qosHandle ) == FALSE )
+    {
+        return GetLastError();
+    }
+    if ( QOSAddSocketToFlow( qosHandle, socket, addr, trafficType, QOS_NON_ADAPTIVE_FLOW, &flowId ) == FALSE )
+    {
+        return GetLastError();
+    }
+    return 0;
 }
 
 #endif // #if NEXT_PACKET_TAGGING
@@ -422,14 +422,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     // if bound to port 0 find the actual port we got
 
-	sockaddr_in sin4;
-	sockaddr_in6 sin6;
-	sockaddr * addr = NULL;
+    sockaddr_in sin4;
+    sockaddr_in6 sin6;
+    sockaddr * addr = NULL;
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-		addr = (sockaddr*) &sin6;
-		socklen_t len = sizeof( sin6 );
+        addr = (sockaddr*) &sin6;
+        socklen_t len = sizeof( sin6 );
         if ( getsockname( s->handle, addr, &len ) == -1 )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "failed to get socket address (ipv6)" );
@@ -440,7 +440,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else
     {
-		addr = (sockaddr*) &sin4;
+        addr = (sockaddr*) &sin4;
         socklen_t len = sizeof( sin4 );
         if ( getsockname( s->handle, addr, &len ) == -1 )
         {
@@ -480,7 +480,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
 #if NEXT_PACKET_TAGGING
 
-	// tag as latency sensitive
+    // tag as latency sensitive
 
     if ( enable_packet_tagging )
     {

@@ -27,11 +27,12 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/sys/unix"
 
-	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
+
+	"github.com/networknext/backend/modules-old/billing"
+	"github.com/networknext/backend/modules-old/crypto_old"
+	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/transport"
 )
 
 const NEXT_RELAY_BACKEND_PORT = 30000
@@ -109,7 +110,7 @@ func OptimizeThread() {
 		relayDatacenterIDs := make([]uint64, 0)
 		for _, relayData := range backend.relayMap.GetAllRelayData() {
 			relayIDs = append(relayIDs, relayData.ID)
-			relayDatacenterIDs = append(relayDatacenterIDs, crypto.HashID("local"))
+			relayDatacenterIDs = append(relayDatacenterIDs, crypto_old.HashID("local"))
 		}
 
 		costMatrix := backend.statsDatabase.GetCosts(relayIDs, MaxJitter, MaxPacketLoss)
@@ -218,7 +219,7 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{transport.PacketTypeServerInitResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, initResponseData...)
 	if _, err := w.Write(responseData); err != nil {
 		fmt.Printf("error: failed to write server init response: %v\n", err)
@@ -480,8 +481,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		var routeType int32
 		sameRoute := nextRoute.NumRelays == int(sessionData.RouteNumRelays) && nextRoute.RelayIDs == sessionData.RouteRelayIDs
 
-		routerPrivateKey := [crypto.KeySize]byte{}
-		copy(routerPrivateKey[:], crypto.RouterPrivateKey)
+		routerPrivateKey := [crypto_old.KeySize]byte{}
+		copy(routerPrivateKey[:], crypto_old.RouterPrivateKey)
 
 		tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
 		tokenAddresses[0] = &sessionUpdate.ClientAddress
@@ -556,7 +557,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{transport.PacketTypeSessionResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, sessionResponseData...)
 	if _, err := w.Write(responseData); err != nil {
 		fmt.Printf("error: failed to write session response: %v\n", err)
@@ -596,7 +597,7 @@ func MatchDataHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	packetHeader := append([]byte{transport.PacketTypeMatchDataResponse}, make([]byte, crypto.PacketHashSize)...)
+	packetHeader := append([]byte{transport.PacketTypeMatchDataResponse}, make([]byte, crypto_old.PacketHashSize)...)
 	responseData := append(packetHeader, matchDataResponseData...)
 	if _, err := w.Write(responseData); err != nil {
 		fmt.Printf("error: failed to write match data response: %v\n", err)
@@ -765,7 +766,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	relay := &routing.RelayData{
-		ID:             crypto.HashID(relay_address),
+		ID:             crypto_old.HashID(relay_address),
 		Addr:           *udpAddr,
 		PublicKey:      token,
 		LastUpdateTime: time.Now(),
@@ -881,9 +882,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	relayData := routing.RelayData{
-		ID:                crypto.HashID(relay_address),
+		ID:                crypto_old.HashID(relay_address),
 		Addr:              *udpAddr,
-		PublicKey:         crypto.RelayPublicKey[:],
+		PublicKey:         crypto_old.RelayPublicKey[:],
 		SessionCount:      int(sessionCount),
 		ShuttingDown:      shutdown,
 		LastUpdateTime:    time.Now(),
@@ -996,13 +997,13 @@ func UDPServer() {
 
 			// Check the packet hash is legit and remove the hash from the beginning of the packet
 			// to continue processing the packet as normal
-			if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+			if !crypto_old.IsNetworkNextPacket(crypto_old.PacketHashKey, data) {
 				fmt.Println("received non network next packet")
 				continue
 			}
 
 			packetType := data[0]
-			data = data[crypto.PacketHashSize+1 : size]
+			data = data[crypto_old.PacketHashSize+1 : size]
 
 			var buffer bytes.Buffer
 			packet := transport.UDPPacket{From: *fromAddr, Data: data}
@@ -1024,8 +1025,8 @@ func UDPServer() {
 				response := buffer.Bytes()
 
 				// Sign and hash the response
-				response = crypto.SignPacket(crypto.BackendPrivateKey, response)
-				crypto.HashPacket(crypto.PacketHashKey, response)
+				response = crypto_old.SignPacket(crypto_old.BackendPrivateKey, response)
+				crypto_old.HashPacket(crypto_old.PacketHashKey, response)
 
 				if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 					fmt.Printf("failed to write UDP response: %v\n", err)

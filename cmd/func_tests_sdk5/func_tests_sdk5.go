@@ -384,8 +384,8 @@ func server_check(server_stdout *bytes.Buffer, backend_stdout *bytes.Buffer, con
 }
 
 /*
-	Test that when a client connects to a server with no backend running, and with no customer public or private
-	keys set on either client and server, that packets are sent and received direct. This is network next in direct mode.
+   Test that when a client connects to a server with no backend running, and with no customer public or private
+   keys set on either client and server, that packets are sent and received direct. This is network next in direct mode.
 */
 
 func test_passthrough() {
@@ -428,8 +428,8 @@ func test_passthrough() {
 }
 
 /*
-	Run a backend but no relays. Make sure that we send and receive all packets direct.
-	This tests the path where we prefix upgraded session direct packets with [1][sequence]
+   Run a backend but no relays. Make sure that we send and receive all packets direct.
+   This tests the path where we prefix upgraded session direct packets with [1][sequence]
 */
 
 func test_direct_upgraded() {
@@ -481,9 +481,9 @@ func test_direct_upgraded() {
 }
 
 /*
-	Run a backend and several relays. Verify that the session is upgraded and starts sending and receiving packets
-	over network next. This is the first test that will likely fail if something is wrong with the backend or the
-	relays.
+   Run a backend and several relays. Verify that the session is upgraded and starts sending and receiving packets
+   over network next. This is the first test that will likely fail if something is wrong with the backend or the
+   relays.
 */
 
 func test_network_next_route() {
@@ -551,9 +551,9 @@ func test_network_next_route() {
 }
 
 /*
-	Test that once we have upgraded a session and start sending packets over network next, that if the backend goes down
-	we fallback to direct. Verify that we don't lose any packets when we do this. This is a critical test. It ensures that
-	when our backend goes down in production we don't drop packets or disconnect players.
+   Test that once we have upgraded a session and start sending packets over network next, that if the backend goes down
+   we fallback to direct. Verify that we don't lose any packets when we do this. This is a critical test. It ensures that
+   when our backend goes down in production we don't drop packets or disconnect players.
 */
 
 func test_fallback_to_direct_backend() {
@@ -689,10 +689,10 @@ func test_fallback_to_direct_client_side() {
 }
 
 /*
-	Verify that the client falls back to direct and exchanges passthrough packets with the server
-	after the server is restarted. Without this client side fallback to direct, it is possible
-	for the client to get stuck in a state where it keep sending direct (upgraded) packets which
-	won't get through to the server post restart.
+   Verify that the client falls back to direct and exchanges passthrough packets with the server
+   after the server is restarted. Without this client side fallback to direct, it is possible
+   for the client to get stuck in a state where it keep sending direct (upgraded) packets which
+   won't get through to the server post restart.
 */
 
 func test_fallback_to_direct_server_restart() {
@@ -738,8 +738,8 @@ func test_fallback_to_direct_server_restart() {
 }
 
 /*
-	Have network next enabled on a client, but disable it on a server.
-	Verify that the client is still able to connect to the server, but all packets are sent as passthrough.
+   Have network next enabled on a client, but disable it on a server.
+   Verify that the client is still able to connect to the server, but all packets are sent as passthrough.
 */
 
 func test_disable_on_server() {
@@ -802,8 +802,8 @@ func test_disable_on_server() {
 }
 
 /*
-	Have network next enabled on the server, but disable network next via config bool in the SDK on the client.
-	Verify that the client is still able to connect to the server, but all packets are sent direct.
+   Have network next enabled on the server, but disable network next via config bool in the SDK on the client.
+   Verify that the client is still able to connect to the server, but all packets are sent direct.
 */
 
 func test_disable_on_client() {
@@ -866,8 +866,8 @@ func test_disable_on_client() {
 }
 
 /*
-	Put the backend into a mode where it randomly switches routes every slice.
-	Verify that the SDK is able to properly handle route switches without dropping packets.
+   Put the backend into a mode where it randomly switches routes every slice.
+   Verify that the SDK is able to properly handle route switches without dropping packets.
 */
 
 func test_route_switching() {
@@ -929,8 +929,8 @@ func test_route_switching() {
 }
 
 /*
-	Put the backend into a mode where it serves up even slices on network next, and odd slices going direct.
-	Verify that the SDK is able to handle transitioning from direct -> next, and next -> direct without dropping packets.
+   Put the backend into a mode where it serves up even slices on network next, and odd slices going direct.
+   Verify that the SDK is able to handle transitioning from direct -> next, and next -> direct without dropping packets.
 */
 
 func test_on_off() {
@@ -996,8 +996,8 @@ func test_on_off() {
 }
 
 /*
-	Put the backend into a mode where every three slices, it serves two slices on network next, and the third slice going direct.
-	Verify that the SDK is able to handle transitioning from direct -> next -> continue -> direct without dropping packets or falling back to direct.
+   Put the backend into a mode where every three slices, it serves two slices on network next, and the third slice going direct.
+   Verify that the SDK is able to handle transitioning from direct -> next -> continue -> direct without dropping packets or falling back to direct.
 */
 
 func test_on_on_off() {
@@ -1063,9 +1063,9 @@ func test_on_on_off() {
 }
 
 /*
-	Test that a client is able to connect to a server direct, and then reconnect without problems.
-	This verifies that our code in the SDK to distinguish the old session from the new one is working properly for
-	upgraded direct packets (1 prefix).
+   Test that a client is able to connect to a server direct, and then reconnect without problems.
+   This verifies that our code in the SDK to distinguish the old session from the new one is working properly for
+   upgraded direct packets (1 prefix).
 */
 
 func test_reconnect_direct() {
@@ -1110,8 +1110,8 @@ func test_reconnect_direct() {
 }
 
 /*
-	Test that a client is able to connect to a server direct, and then reconnect (without upgrading) without problems.
-	This verifies that the previous session doesn't interfere with passthrough packets sent in the reconnect session.
+   Test that a client is able to connect to a server direct, and then reconnect (without upgrading) without problems.
+   This verifies that the previous session doesn't interfere with passthrough packets sent in the reconnect session.
 */
 
 func test_reconnect_direct_no_upgrade() {
@@ -1161,9 +1161,9 @@ func test_reconnect_direct_no_upgrade() {
 }
 
 /*
-	Connect to a server over network next, and then reconnect to that server over network next.
-	This verifies that our sequence numbers are working properly for network next packets across reconnect.
-	We've had a lot of problems in the past with this not working properly, so this test locks in correct behavior.
+   Connect to a server over network next, and then reconnect to that server over network next.
+   This verifies that our sequence numbers are working properly for network next packets across reconnect.
+   We've had a lot of problems in the past with this not working properly, so this test locks in correct behavior.
 */
 
 func test_reconnect_next() {
@@ -1229,7 +1229,7 @@ func test_reconnect_next() {
 }
 
 /*
-	Make sure a client can connect direct to one server, and then connect direct to another without problems.
+   Make sure a client can connect direct to one server, and then connect direct to another without problems.
 */
 
 func test_connect_to_another_server_direct() {
@@ -1288,7 +1288,7 @@ func test_connect_to_another_server_direct() {
 }
 
 /*
-	Make sure a client can connect over network next to one server, and then connect to another server over network next.
+   Make sure a client can connect over network next to one server, and then connect to another server over network next.
 */
 
 func test_connect_to_another_server_next() {
@@ -1361,8 +1361,8 @@ func test_connect_to_another_server_next() {
 }
 
 /*
-	Multipath feature sends packets across network next and direct at the same time.
-	Verify that it actually works as advertised, by making sure we see send and received packets across both network next and direct.
+   Multipath feature sends packets across network next and direct at the same time.
+   Verify that it actually works as advertised, by making sure we see send and received packets across both network next and direct.
 */
 
 func test_multipath() {
@@ -1423,9 +1423,9 @@ func test_multipath() {
 }
 
 /*
-	Verify that we can connect and go multipath, and weather 100% packet loss on the network next route.
-	This means that the direct route successfully acts as a backup, greatly reducing risk for players (eg. ESL pros)
-	that are getting Network Next acceleration. At worst case, NN route is broken, but direct takes over!
+   Verify that we can connect and go multipath, and weather 100% packet loss on the network next route.
+   This means that the direct route successfully acts as a backup, greatly reducing risk for players (eg. ESL pros)
+   that are getting Network Next acceleration. At worst case, NN route is broken, but direct takes over!
 */
 
 func test_multipath_next_packet_loss() {
@@ -1491,7 +1491,7 @@ func test_multipath_next_packet_loss() {
 }
 
 /*
-	Make sure that fallback to direct works if the backend goes down while in multipath.
+   Make sure that fallback to direct works if the backend goes down while in multipath.
 */
 
 func test_multipath_fallback_to_direct() {
@@ -1560,8 +1560,8 @@ func test_multipath_fallback_to_direct() {
 }
 
 /*
-	Put the backend into a mode where it sets "committed" flag to false in routes returned to the SDK.
-	Verify that the SDK gets network next routes, but doesn't actually send packets across them if committed is false.
+   Put the backend into a mode where it sets "committed" flag to false in routes returned to the SDK.
+   Verify that the SDK gets network next routes, but doesn't actually send packets across them if committed is false.
 */
 
 func test_uncommitted() {
@@ -1623,10 +1623,10 @@ func test_uncommitted() {
 }
 
 /*
-	Test that the SDK is able to transition from uncommitted to comitted state.
-	This is what we use to implement "try before you buy" feature in the backend, eg. get a route, trial it first for a slice or more
-	before actually sending packets over network next. This test makes sure that packets are actually sent over network next after
-	we transition from committed = false to committed = true for a session.
+   Test that the SDK is able to transition from uncommitted to comitted state.
+   This is what we use to implement "try before you buy" feature in the backend, eg. get a route, trial it first for a slice or more
+   before actually sending packets over network next. This test makes sure that packets are actually sent over network next after
+   we transition from committed = false to committed = true for a session.
 */
 
 func test_uncommitted_to_committed() {
@@ -1688,8 +1688,8 @@ func test_uncommitted_to_committed() {
 }
 
 /*
-	Simulate packet loss between the client, server and backend.
-	Make sure we can still get a direct route.
+   Simulate packet loss between the client, server and backend.
+   Make sure we can still get a direct route.
 */
 
 func test_packet_loss_direct() {
@@ -1738,8 +1738,8 @@ func test_packet_loss_direct() {
 }
 
 /*
-	Simulate packet loss between the client, server and backend.
-	Make sure we can still get a network next route.
+   Simulate packet loss between the client, server and backend.
+   Make sure we can still get a network next route.
 */
 
 func test_packet_loss_next() {
@@ -1803,9 +1803,9 @@ func test_packet_loss_next() {
 }
 
 /*
-	Run a bunch of clients and make sure that we are able to connect to the server and exchange packets over network next.
-	This is sort of a miniature load test, it verifies that the server SDK is able to handle multiple client connections
-	without dropping packets or getting confused (eg. crossed wires).
+   Run a bunch of clients and make sure that we are able to connect to the server and exchange packets over network next.
+   This is sort of a miniature load test, it verifies that the server SDK is able to handle multiple client connections
+   without dropping packets or getting confused (eg. crossed wires).
 */
 
 func test_server_under_load() {
@@ -1881,8 +1881,8 @@ func test_server_under_load() {
 }
 
 /*
-	Put the backend in a mode where it ignores session update packets until the final retry.
-	Verify that the network next route works perfectly even though retries are necessary.
+   Put the backend in a mode where it ignores session update packets until the final retry.
+   Verify that the network next route works perfectly even though retries are necessary.
 */
 
 func test_session_update_retry() {
@@ -1949,10 +1949,10 @@ func test_session_update_retry() {
 }
 
 /*
-	Send bandwidth over the limit between client and server.
-	Make sure the backends sees both client and server going over the bandwidth limit.
-	This way we can be sure that whenever real customers go over the limit, the SDK uploads that data
-	to the backend so we can analyze it.
+   Send bandwidth over the limit between client and server.
+   Make sure the backends sees both client and server going over the bandwidth limit.
+   This way we can be sure that whenever real customers go over the limit, the SDK uploads that data
+   to the backend so we can analyze it.
 */
 
 func test_bandwidth_over_limit() {
@@ -2019,8 +2019,8 @@ func test_bandwidth_over_limit() {
 }
 
 /*
-	Create fake packet loss between the client and server.
-	Make sure the packet loss is reported up to the backend.
+   Create fake packet loss between the client and server.
+   Make sure the packet loss is reported up to the backend.
 */
 
 func test_packet_loss() {
@@ -2091,7 +2091,7 @@ func test_packet_loss() {
 }
 
 /*
-	Make sure that the backend sees non-zero bandwidth up/down reported from the SDK.
+   Make sure that the backend sees non-zero bandwidth up/down reported from the SDK.
 */
 
 func test_bandwidth() {
@@ -2157,7 +2157,7 @@ func test_bandwidth() {
 }
 
 /*
-	Make sure that the backend sees non-zero jitter reported from the SDK.
+   Make sure that the backend sees non-zero jitter reported from the SDK.
 */
 
 func test_jitter() {
@@ -2223,7 +2223,7 @@ func test_jitter() {
 }
 
 /*
-	Make sure the backend sees the tag applied on the server.
+   Make sure the backend sees the tag applied on the server.
 */
 
 func test_tags() {
@@ -2279,7 +2279,7 @@ func test_tags() {
 }
 
 /*
-	Make sure the backend sees multiple tags applied on the server.
+   Make sure the backend sees multiple tags applied on the server.
 */
 
 func test_tags_multi() {
@@ -2338,7 +2338,7 @@ func test_tags_multi() {
 }
 
 /*
-	Make sure all the direct stats (RTT, jitter, PL) are uploaded to the backend.
+   Make sure all the direct stats (RTT, jitter, PL) are uploaded to the backend.
 */
 
 func test_direct_stats() {
@@ -2393,7 +2393,7 @@ func test_direct_stats() {
 }
 
 /*
-	Make sure all the next stats (RTT, jitter, PL) are uploaded to the backend.
+   Make sure all the next stats (RTT, jitter, PL) are uploaded to the backend.
 */
 
 func test_next_stats() {
@@ -2457,7 +2457,7 @@ func test_next_stats() {
 }
 
 /*
-	Test that the backend sees the client report a session
+   Test that the backend sees the client report a session
 */
 
 func test_report_session() {
@@ -2526,7 +2526,7 @@ func test_report_session() {
 }
 
 /*
-	Test that the backend sees the client ping timeout on the server when the client is stopped.
+   Test that the backend sees the client ping timeout on the server when the client is stopped.
 */
 
 func test_client_ping_timed_out() {

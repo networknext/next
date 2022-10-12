@@ -72,8 +72,7 @@ The tool chain used for development is kept simple to make it easy for any opera
   - [libcurl](https://curl.haxx.se/libcurl/)
   - [libsodium](https://libsodium.gitbook.io)
   - [libpthread](https://www.gnu.org/software/hurd/libpthread.html)
-  - [libzmq3-dev](https://zeromq.org/download/)
-
+  
 Developers should install these requirements however they need to be installed based on your operating system. Windows users can leverage WSL to get all of these.
 
 ## Recommended Setup
@@ -105,13 +104,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	Mac:
 	`brew install libsodium`
 
-5. Install libzmq3-dev
-	Linux:
-	`sudo apt install libzmq3-dev`
-	Mac:
-	`brew install zeromq`
-
-6. Install Go (must be 1.13+)
+5. Install Go (must be 1.13+)
 	`cd /usr/local/`
 	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
 	Add Go to PATH:
@@ -119,10 +112,10 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-7. Install Redis
+6. Install Redis
 	`sudo apt install redis-server`
 
-8. Clone the repo with an SSH key
+7. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -134,7 +127,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-9. Run tests to confirm everything is working properly
+8. Run tests to confirm everything is working properly
 	`make test`
 
 ## Running the "Happy Path"

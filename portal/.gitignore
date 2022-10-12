@@ -1,0 +1,8 @@
+node_modules
+dist
+videos
+.env.local
+portal-dist*
+test_data
+portal.nginx.conf
+coverage
