@@ -20,6 +20,7 @@ const RedisSelectorVersion = 0 // IMPORTANT: bump this anytime you change the re
 type RedisSelectorConfig struct {
 	RedisHostname string
 	RedisPassword string
+	ServiceName   string
 	Timeout       time.Duration
 }
 
@@ -100,7 +101,7 @@ func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStore
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
 	pipe := selector.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("instance-%d/%s", RedisSelectorVersion, selector.instanceId), instanceData[:], selector.config.Timeout)
+	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", selector.config.ServiceName, RedisSelectorVersion, selector.instanceId), instanceData[:], selector.config.Timeout)
 
 	for i := 0; i < numStores; i++ {
 		pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], selector.config.Timeout)
@@ -121,7 +122,7 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
 	instanceKeys := []string{}
 	dataStores := []DataStoreConfig{}
-	itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("instance-%d/*", RedisSelectorVersion), 0).Iterator()
+	itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-instance-%d/*", selector.config.ServiceName, RedisSelectorVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
