@@ -5,13 +5,17 @@ import (
 	"math"
 	"net"
 
-	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
+
+	// todo: we want to remove this
+	"github.com/networknext/backend/modules-old/analytics"
 )
 
-const RouteMatrixSerializeVersion = 7
+const (
+	RouteMatrixSerializeVersion = 7
+	MaxDatabaseBinWrapperSize = 100000000
+)
 
 type RouteMatrix struct {
 	RelayIds           []uint64
@@ -28,7 +32,7 @@ type RouteMatrix struct {
 	Version            uint32
 	DestRelays         []bool
 	FullRelayIds       []uint64
-	FullRelayIndexSet  map[int32]bool // this should just be an array of bools?
+	FullRelayIndexSet  map[int32]bool // todo: this should probably just be an array of bools? why do we need a map?
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
@@ -52,7 +56,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -72,11 +76,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numEntries; i++ {
 		entry := &m.RouteEntries[i]
 
-		stream.SerializeInteger(&entry.DirectCost, -1, routing.InvalidRouteValue)
+		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], -1, routing.InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
@@ -85,10 +89,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, routing.MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
-			m.BinFileData = make([]byte, routing.MaxDatabaseBinWrapperSize)
+			m.BinFileData = make([]byte, MaxDatabaseBinWrapperSize)
 		}
 		binFileData := m.BinFileData[:m.BinFileBytes]
 		stream.SerializeBytes(binFileData)
@@ -110,6 +114,8 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		numRelayEntries := uint32(0)
 
 		stream.SerializeUint32(&numRelayEntries)
+
+		// todo: we don't want to use the old "analytics" module here
 
 		var relayStats []analytics.RelayStatsEntry
 
@@ -245,10 +251,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
-	ws, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create write stream for route matrix: %v", err)
-	}
+	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
 		return nil, fmt.Errorf("failed to serialize route matrix: %v", err)
 	}

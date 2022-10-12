@@ -18,11 +18,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport"
+	db "github.com/networknext/backend/modules/database"
+
+	// todo: we want to move this to a new module ("middleware"?) or common as needed
+	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
 )
@@ -36,8 +37,8 @@ var (
 type RelayData struct {
 	NumRelays          int
 	RelayIds           []uint64
-	RelayHash          map[uint64]routing.Relay
-	RelayArray         []routing.Relay
+	RelayHash          map[uint64]db.Relay
+	RelayArray         []db.Relay
 	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
 	RelayLatitudes     []float32
@@ -51,6 +52,7 @@ type RelayData struct {
 }
 
 type Service struct {
+	Env           string
 	ServiceName   string
 	BuildTime     string
 	CommitMessage string
@@ -65,8 +67,8 @@ type Service struct {
 	// ------------------
 
 	databaseMutex     sync.RWMutex
-	database          *routing.DatabaseBinWrapper
-	databaseOverlay   *routing.OverlayBinWrapper
+	database          *db.Database
+	databaseOverlay   *db.Overlay
 	databaseRelayData *RelayData
 
 	statusMutex sync.RWMutex
@@ -81,6 +83,15 @@ type Service struct {
 	leaderElection *RedisLeaderElection
 
 	healthHandler func(w http.ResponseWriter, r *http.Request)
+
+	udpServer *UDPServer
+
+	routeMatrixMutex    sync.RWMutex
+	routeMatrix         *RouteMatrix
+	routeMatrixDatabase *db.Database
+
+	googleProjectId    string
+	googleCloudStorage *GoogleCloudStorage
 }
 
 func CreateService(serviceName string) *Service {
@@ -93,24 +104,30 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("%s", service.ServiceName)
 
-	core.Log("commit message: %s", service.CommitMessage)
-	core.Log("commit hash: %s", service.CommitHash)
-	core.Log("build time: %s", service.BuildTime)
-
-	env := backend.GetEnv()
+	env := envvar.GetString("ENV", "local")
 
 	core.Log("env: %s", env)
 
 	service.Local = env == "local"
 
-	service.Router.HandleFunc("/version", transport.VersionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+	service.Env = env
+
+	core.Log("commit message: %s", service.CommitMessage)
+	core.Log("commit hash: %s", service.CommitHash)
+	core.Log("build time: %s", service.BuildTime)
+
+	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 
-	service.healthHandler = transport.HealthHandlerFunc()
+	service.healthHandler = healthHandlerFunc()
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
 	service.runStatusUpdateLoop()
+
+	service.googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+
+	core.Log("google project id: %s", service.googleProjectId)
 
 	return &service
 }
@@ -138,7 +155,7 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
-func (service *Service) Database() *routing.DatabaseBinWrapper {
+func (service *Service) Database() *db.Database {
 	service.databaseMutex.RLock()
 	database := service.database
 	service.databaseMutex.RUnlock()
@@ -179,6 +196,37 @@ func (service *Service) OverrideHealthHandler(healthHandler func(w http.Response
 	service.healthHandler = healthHandler
 }
 
+func healthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func versionHandlerFunc(buildTime string, commitMessage string, commitHash string, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
+
+	version := map[string]string{
+		"build_time":     buildTime,
+		"commit_message": commitMessage,
+		"commit_hash":    commitHash,
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		middleware.CORSControlHandlerFunc(allowedOrigins, w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(version); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func (service *Service) StartWebServer() {
 	port := envvar.GetString("HTTP_PORT", "80")
 	core.Log("starting http server on port %s", port)
@@ -190,6 +238,22 @@ func (service *Service) StartWebServer() {
 			os.Exit(1)
 		}
 	}()
+}
+
+func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, from *net.UDPAddr, packet []byte)) {
+	config := UDPServerConfig{}
+	config.Port = envvar.GetInt("UDP_PORT", 40000)
+	config.NumThreads = envvar.GetInt("UDP_NUM_THREADS", 16)
+	config.SocketReadBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
+	config.SocketWriteBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
+	config.MaxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
+	core.Log("udp port: %d", config.Port)
+	core.Log("udp num threads: %d", config.NumThreads)
+	core.Log("udp socket read buffer: %d", config.SocketReadBuffer)
+	core.Log("udp socket write buffer: %d", config.SocketWriteBuffer)
+	core.Log("udp max packet size: %d", config.MaxPacketSize)
+	core.Log("starting udp server on port %d", config.Port)
+	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
 func (service *Service) LeaderElection() {
@@ -219,8 +283,97 @@ func (service *Service) LeaderElection() {
 	}()
 }
 
+func (service *Service) UpdateRouteMatrix() {
+
+	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+
+	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("route matrix interval: %s", routeMatrixInterval.String())
+
+	httpClient := &http.Client{
+		Timeout: routeMatrixInterval,
+	}
+
+	ticker := time.NewTicker(routeMatrixInterval)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				service.routeMatrixMutex.RLock()
+				currentRouteMatrix := service.routeMatrix
+				service.routeMatrixMutex.RUnlock()
+
+				if currentRouteMatrix != nil && time.Now().Unix()-int64(currentRouteMatrix.CreatedAt) > 30 {
+					core.Error("route matrix is stale")
+					service.routeMatrixMutex.Lock()
+					service.routeMatrix = nil
+					service.routeMatrixMutex.Unlock()
+				}
+
+				response, err := httpClient.Get(routeMatrixURI)
+				if err != nil {
+					core.Error("failed to http get route matrix: %v", err)
+					continue
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				response.Body.Close()
+
+				newRouteMatrix := RouteMatrix{}
+
+				err = newRouteMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					continue
+				}
+
+				var newDatabase db.Database
+
+				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+				decoder := gob.NewDecoder(databaseBuffer)
+				err = decoder.Decode(&newDatabase)
+				if err != nil {
+					core.Error("failed to read database: %v", err)
+					continue
+				}
+
+				service.routeMatrixMutex.Lock()
+				service.routeMatrix = &newRouteMatrix
+				service.routeMatrixDatabase = &newDatabase
+				service.routeMatrixMutex.Unlock()
+
+				core.Debug("updated route matrix: %d relays", len(newRouteMatrix.RelayIds))
+			}
+		}
+	}()
+}
+
+func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
+	service.routeMatrixMutex.RLock()
+	routeMatrix := service.routeMatrix
+	database := service.routeMatrixDatabase
+	service.routeMatrixMutex.RUnlock()
+	return routeMatrix, database
+}
+
 func (service *Service) IsLeader() bool {
-	return service.leaderElection.IsLeader()
+	if service.leaderElection != nil {
+		return service.leaderElection.IsLeader()
+	} else {
+		return false
+	}
 }
 
 func (service *Service) WaitForShutdown() {
@@ -228,42 +381,35 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Log("received shutdown signal")
-	// todo: wait group
+
+	// todo: some system to wait for registered (named) subsystems to complete before we shut down
+
 	core.Log("successfully shutdown")
 }
 
 // -----------------------------------------------------------------------
 
-func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBinWrapper, *routing.OverlayBinWrapper) {
+func loadDatabase(databasePath string, overlayPath string) (*db.Database, *db.Overlay) {
 
-	// load the database (required)
+	// load database (required)
 
-	databaseFile, err := os.Open(databasePath)
+	database, err := db.LoadDatabase(databasePath)
+
 	if err != nil {
-		core.Error("could not load database: %v", err)
-		return nil, nil
-	}
-	defer databaseFile.Close()
-
-	database := routing.CreateEmptyDatabaseBinWrapper()
-	err = backend.DecodeBinWrapper(databaseFile, database)
-	if err != nil || database.IsEmpty() {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil
 	}
 
+	if database.IsEmpty() {
+		core.Error("error: database is empty")
+	}
+
 	core.Debug("loaded database: '%s'", databasePath)
 
-	// load the overlay if it exists
+	// load overlay (optional)
 
-	overlayFile, err := os.Open(overlayPath)
-	if err != nil {
-		return database, nil
-	}
-	defer overlayFile.Close()
+	overlay, err := db.LoadOverlay(overlayPath)
 
-	overlay := routing.CreateEmptyOverlayBinWrapper()
-	err = backend.DecodeOverlayWrapper(overlayFile, overlay)
 	if err != nil || overlay.IsEmpty() {
 		return database, nil
 	}
@@ -278,7 +424,7 @@ func loadDatabase(databasePath string, overlayPath string) (*routing.DatabaseBin
 	return database, overlay
 }
 
-func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
+func generateRelayData(database *db.Database) *RelayData {
 
 	relayData := &RelayData{}
 
@@ -286,7 +432,7 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 
 	relayData.NumRelays = numRelays
 	relayData.RelayIds = make([]uint64, numRelays)
-	relayData.RelayHash = make(map[uint64]routing.Relay)
+	relayData.RelayHash = make(map[uint64]db.Relay)
 	relayData.RelayArray = database.Relays
 
 	sort.SliceStable(relayData.RelayArray, func(i, j int) bool {
@@ -294,10 +440,6 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	})
 
 	for i := range relayData.RelayArray {
-		if relayData.RelayArray[i].State != routing.RelayStateEnabled {
-			core.Error("generateRelayData: database.bin must contain only enabled relays!")
-			return nil
-		}
 		relayData.RelayHash[relayData.RelayArray[i].ID] = relayData.RelayArray[i]
 	}
 
@@ -311,8 +453,8 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 		relayData.RelayIds[i] = relayData.RelayArray[i].ID
 		relayData.RelayAddresses[i] = relayData.RelayArray[i].Addr
 		relayData.RelayNames[i] = relayData.RelayArray[i].Name
-		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Latitude)
-		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Location.Longitude)
+		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Latitude)
+		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)
 		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.ID
 	}
 
@@ -364,7 +506,7 @@ func generateRelayData(database *routing.DatabaseBinWrapper) *RelayData {
 	return relayData
 }
 
-func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.OverlayBinWrapper) {
+func applyOverlay(database *db.Database, overlay *db.Overlay) {
 	if overlay != nil {
 		for _, buyer := range overlay.BuyerMap {
 			_, ok := database.BuyerMap[buyer.ID]
@@ -373,14 +515,6 @@ func applyOverlay(database *routing.DatabaseBinWrapper, overlay *routing.Overlay
 			}
 		}
 	}
-}
-
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	if err == nil {
-		return true
-	}
-	return false
 }
 
 func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
@@ -598,3 +732,28 @@ func (service *Service) updateMagicLoop() {
 }
 
 // ----------------------------------------------------------
+
+func isLeaderFunc(service *Service) func() bool {
+	return func() bool {
+		return service.IsLeader()
+	}
+}
+
+func (service *Service) setupStorage() {
+
+	googleCloudStorage, err := NewGoogleCloudStorage(service.Context, service.googleProjectId)
+	if err != nil {
+		core.Error("failed to create google cloud storage: %v", err)
+		os.Exit(1)
+	}
+
+	service.googleCloudStorage = googleCloudStorage
+}
+
+func (service *Service) SyncFiles(config *FileSyncConfig) {
+	config.Print()
+	service.setupStorage()
+	StartFileSync(service.Context, config, service.googleCloudStorage, isLeaderFunc(service))
+}
+
+// ---------------------------------------------------------------------------------------------------

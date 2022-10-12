@@ -6,8 +6,6 @@ import (
 	"unsafe"
 )
 
-// ---------------------------------------------------
-
 func Log2(x uint32) int {
 	a := x | (x >> 1)
 	b := a | (a >> 2)
@@ -63,25 +61,27 @@ type BitWriter struct {
 	numWords    int
 }
 
-func CreateBitWriter(buffer []byte) (*BitWriter, error) {
+func CreateBitWriter(buffer []byte) *BitWriter {
 	bytes := len(buffer)
 	if bytes%4 != 0 {
-		return nil, fmt.Errorf("bitwriter bytes must be a multiple of 4")
+		panic("bitwriter bytes must be a multiple of 4")
 	}
 	numWords := bytes / 4
 	return &BitWriter{
 		buffer:   buffer,
 		numBits:  numWords * 32,
 		numWords: numWords,
-	}, nil
+	}
 
 }
 
 func HostToNetwork(x uint32) uint32 {
+	// todo: no...
 	return x
 }
 
 func NetworkToHost(x uint32) uint32 {
+	// todo: no...
 	return x
 }
 
@@ -304,5 +304,3 @@ func (reader *BitReader) GetBitsRead() int {
 func (reader *BitReader) GetBitsRemaining() int {
 	return reader.numBits - reader.bitsRead
 }
-
-// --------------------------------------------------------

@@ -31,20 +31,21 @@ import (
 	// FUCK this logging system. FUCK IT. Marked for death!!!
 	"github.com/go-kit/kit/log"
 
-	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/billing"
-	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
-	md "github.com/networknext/backend/modules/match_data"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/transport"
-	"github.com/networknext/backend/modules/transport/middleware"
-	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/billing"
+	"github.com/networknext/backend/modules-old/config"
+	"github.com/networknext/backend/modules-old/crypto_old"
+	md "github.com/networknext/backend/modules-old/match_data"
+	"github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/routing"
+	"github.com/networknext/backend/modules-old/storage"
+	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/transport/middleware"
+	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"golang.org/x/sys/unix"
 
@@ -140,7 +141,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	routerPrivateKey := [crypto.KeySize]byte{}
+	routerPrivateKey := [crypto_old.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
 	maxmindCityFile := envvar.GetString("MAXMIND_CITY_DB_FILE", "")
@@ -481,23 +482,26 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	// Start portal cruncher publisher
+	// todo: update to redis streams
 	portalPublishers := make([]pubsub.Publisher, 0)
-	{
-		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
+	/*
+	   // Start portal cruncher publisher
+	   {
+	       portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
 
-		postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
+	       postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 
-		for _, host := range portalCruncherHosts {
-			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
-			if err != nil {
-				core.Error("could not create portal cruncher publisher: %v", err)
-				return 1
-			}
+	       for _, host := range portalCruncherHosts {
+	           portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
+	           if err != nil {
+	               core.Error("could not create portal cruncher publisher: %v", err)
+	               return 1
+	           }
 
-			portalPublishers = append(portalPublishers, portalCruncherPublisher)
-		}
-	}
+	           portalPublishers = append(portalPublishers, portalCruncherPublisher)
+	       }
+	   }
+	*/
 
 	numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 
@@ -814,9 +818,9 @@ func mainReturnWithCode() int {
 					case <-ticker.C:
 						// Get metadata value for connection drain
 						/*val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
-						if err != nil {
-							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
-						}
+						  if err != nil {
+						      core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+						  }
 						*/
 						MIGInstancesStatusList, err := getMIGInstancesStatusList(gcpProjectID, serverBackendMIGName)
 						if err != nil {
@@ -914,12 +918,12 @@ func mainReturnWithCode() int {
 
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
-				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
+				if !crypto_old.IsNetworkNextPacket(crypto_old.PacketHashKey, data) {
 					continue
 				}
 
 				packetType := data[0]
-				data = data[crypto.PacketHashSize+1 : size]
+				data = data[crypto_old.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
 				packet := transport.UDPPacket{From: *fromAddr, Data: data}
@@ -939,8 +943,8 @@ func mainReturnWithCode() int {
 					response := buffer.Bytes()
 
 					// Sign and hash the response
-					response = crypto.SignPacket(privateKey, response)
-					crypto.HashPacket(crypto.PacketHashKey, response)
+					response = crypto_old.SignPacket(privateKey, response)
+					crypto_old.HashPacket(crypto_old.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
 						core.Error("failed to write udp response packet: %v", err)

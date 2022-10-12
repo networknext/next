@@ -5,10 +5,15 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
 )
 
-const CostMatrixSerializeVersion = 2
+const (
+	CostMatrixSerializeVersion = 2
+
+	MaxRelayNameLength = 63
+
+	InvalidRouteValue = 10000
+)
 
 type CostMatrix struct {
 	Version            uint32
@@ -41,7 +46,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], routing.MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -54,7 +59,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	for i := uint32(0); i < costsLength; i++ {
-		stream.SerializeInteger(&m.Costs[i], -1, routing.InvalidRouteValue)
+		stream.SerializeInteger(&m.Costs[i], -1, InvalidRouteValue)
 	}
 
 	if m.Version >= 2 {
@@ -71,10 +76,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
-	ws, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create write stream for cost matrix: %v", err)
-	}
+	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
 		return nil, fmt.Errorf("failed to serialize cost matrix: %v", err)
 	}

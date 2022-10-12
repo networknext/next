@@ -14,12 +14,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/pingdom"
-	"github.com/networknext/backend/modules/transport"
+
+	"github.com/networknext/backend/modules-old/backend"
+	"github.com/networknext/backend/modules-old/metrics"
+	"github.com/networknext/backend/modules-old/pingdom"
+	"github.com/networknext/backend/modules-old/transport"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/go-kit/kit/log"

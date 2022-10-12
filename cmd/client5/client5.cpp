@@ -93,11 +93,11 @@ int main()
 
         if ( next_client_ready( client ) ) 
         {
-	        int packet_bytes = 0;
-	        uint8_t packet_data[NEXT_MTU];
-	        generate_packet( packet_data, packet_bytes );
-	        next_client_send_packet( client, packet_data, packet_bytes );
-	    }
+            int packet_bytes = 0;
+            uint8_t packet_data[NEXT_MTU];
+            generate_packet( packet_data, packet_bytes );
+            next_client_send_packet( client, packet_data, packet_bytes );
+        }
 
         next_sleep( 1.0 / 60.0 );
 

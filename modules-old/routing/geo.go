@@ -1,0 +1,442 @@
+package routing
+
+import (
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/networknext/backend/modules/encoding"
+
+	"github.com/networknext/backend/modules-old/metrics"
+
+	"github.com/oschwald/geoip2-golang"
+)
+
+const (
+	LocationVersion = 1
+
+	MaxContinentLength   = 16
+	MaxCountryLength     = 64
+	MaxCountryCodeLength = 16
+	MaxRegionLength      = 64
+	MaxCityLength        = 128
+	MaxISPNameLength     = 64
+
+	MaxLocationSize = 128
+)
+
+// Location represents a lat/long on Earth with additional metadata
+type Location struct {
+	Continent   string  `json:"continent"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"country_code"`
+	Region      string  `json:"region"`
+	City        string  `json:"city"`
+	Latitude    float32 `json:"latitude"`
+	Longitude   float32 `json:"longitude"`
+	ISP         string  `json:"isp"`
+	ASN         int     `json:"asn"`
+}
+
+var LocationNullIsland = Location{
+	ISP: "Water",
+}
+
+func (l *Location) UnmarshalBinary(data []byte) error {
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
+		return errors.New("[Location] invalid read at version number")
+	}
+
+	if version > LocationVersion {
+		return fmt.Errorf("unknown location version: %d", version)
+	}
+
+	if version == 0 {
+		if !encoding.ReadString(data, &index, &l.Continent, math.MaxInt32) {
+			return errors.New("[Location] invalid read at continent")
+		}
+
+		if !encoding.ReadString(data, &index, &l.Country, math.MaxInt32) {
+			return errors.New("[Location] invalid read at country")
+		}
+
+		if !encoding.ReadString(data, &index, &l.CountryCode, math.MaxInt32) {
+			return errors.New("[Location] invalid read at country code")
+		}
+
+		if !encoding.ReadString(data, &index, &l.Region, math.MaxInt32) {
+			return errors.New("[Location] invalid read at region")
+		}
+
+		if !encoding.ReadString(data, &index, &l.City, math.MaxInt32) {
+			return errors.New("[Location] invalid read at city")
+		}
+	}
+
+	if version == 0 {
+		var lat float64
+		if !encoding.ReadFloat64(data, &index, &lat) {
+			return errors.New("[Location] invalid read at latitude")
+		}
+		l.Latitude = float32(lat)
+
+		var long float64
+		if !encoding.ReadFloat64(data, &index, &long) {
+			return errors.New("[Location] invalid read at longitude")
+		}
+		l.Longitude = float32(long)
+
+		if !encoding.ReadString(data, &index, &l.ISP, math.MaxInt32) {
+			return errors.New("[Location] invalid read at ISP")
+		}
+	} else {
+		if !encoding.ReadFloat32(data, &index, &l.Latitude) {
+			return errors.New("[Location] invalid read at latitude")
+		}
+
+		if !encoding.ReadFloat32(data, &index, &l.Longitude) {
+			return errors.New("[Location] invalid read at longitude")
+		}
+
+		if !encoding.ReadString(data, &index, &l.ISP, MaxISPNameLength) {
+			return errors.New("[Location] invalid read at ISP")
+		}
+	}
+
+	var asn uint32
+	if !encoding.ReadUint32(data, &index, &asn) {
+		return errors.New("[Location] invalid read at ASN")
+	}
+	l.ASN = int(asn)
+
+	return nil
+}
+
+func (l Location) MarshalBinary() ([]byte, error) {
+	data := make([]byte, l.Size())
+	index := 0
+
+	encoding.WriteUint32(data, &index, LocationVersion)
+	encoding.WriteFloat32(data, &index, l.Latitude)
+	encoding.WriteFloat32(data, &index, l.Longitude)
+	encoding.WriteString(data, &index, l.ISP, MaxISPNameLength)
+	encoding.WriteUint32(data, &index, uint32(l.ASN))
+
+	return data, nil
+}
+
+func (l *Location) Serialize(stream encoding.Stream) error {
+	var version int32
+	if stream.IsWriting() {
+		version = int32(LocationVersion)
+	}
+	stream.SerializeInteger(&version, 0, LocationVersion)
+
+	stream.SerializeFloat32(&l.Latitude)
+	stream.SerializeFloat32(&l.Longitude)
+
+	stream.SerializeString(&l.ISP, MaxISPNameLength)
+
+	var asn uint64
+	if stream.IsWriting() {
+		asn = uint64(l.ASN)
+	}
+	stream.SerializeUint64(&asn)
+	if stream.IsReading() {
+		l.ASN = int(asn)
+	}
+
+	return stream.Error()
+}
+
+func (l Location) Size() uint64 {
+	ispLength := len(l.ISP)
+	if ispLength > MaxISPNameLength {
+		ispLength = MaxISPNameLength
+	}
+
+	return uint64(4 + 4 + 4 + 4 + ispLength + 4)
+}
+
+func WriteLocation(entry *Location) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during Location packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxLocationSize)
+
+	ws := encoding.CreateWriteStream(buffer[:])
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadLocation(entry *Location, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
+func (l *Location) IsZero() bool {
+	return l.Latitude == 0 && l.Longitude == 0
+}
+
+func (l Location) RedisString() string {
+	return fmt.Sprintf("%.2f|%.2f|%s", l.Latitude, l.Longitude, l.ISP)
+}
+
+func (l *Location) ParseRedisString(values []string) error {
+	var index int
+	var err error
+
+	var lat float64
+	if lat, err = strconv.ParseFloat(values[index], 32); err != nil {
+		return fmt.Errorf("[Location] failed to read latitude from redis data: %v", err)
+	}
+	l.Latitude = float32(lat)
+	index++
+
+	var long float64
+	if long, err = strconv.ParseFloat(values[index], 32); err != nil {
+		return fmt.Errorf("[Location] failed to read longitude from redis data: %v", err)
+	}
+	l.Longitude = float32(long)
+	index++
+
+	l.ISP = values[index]
+	index++
+
+	return nil
+}
+
+// MaxmindDB embeds the unofficial MaxmindDB reader so we can satisfy the IPLocator interface
+type MaxmindDB struct {
+	CityFile string
+	IspFile  string
+
+	IsStaging bool
+
+	cityReader *geoip2.Reader
+	ispReader  *geoip2.Reader
+}
+
+func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
+	metrics.Invocations.Add(1)
+	durationStart := time.Now()
+
+	if err := mmdb.OpenCity(ctx); err != nil {
+		metrics.ErrorMetrics.FailedToSync.Add(1)
+		return fmt.Errorf("could not open maxmind db uri: %v", err)
+	}
+	if err := mmdb.OpenISP(ctx); err != nil {
+		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
+		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
+	}
+
+	duration := time.Since(durationStart)
+	metrics.DurationGauge.Set(float64(duration.Milliseconds()))
+
+	return nil
+}
+
+func (mmdb *MaxmindDB) OpenCity(ctx context.Context) error {
+	reader, err := mmdb.openMaxmindDB(ctx, mmdb.CityFile)
+	if err != nil {
+		return err
+	}
+
+	mmdb.cityReader = reader
+
+	return nil
+}
+
+func (mmdb *MaxmindDB) CloseCity() error {
+	return mmdb.cityReader.Close()
+}
+
+func (mmdb *MaxmindDB) OpenISP(ctx context.Context) error {
+	reader, err := mmdb.openMaxmindDB(ctx, mmdb.IspFile)
+	if err != nil {
+		return err
+	}
+
+	mmdb.ispReader = reader
+
+	return nil
+}
+
+func (mmdb *MaxmindDB) CloseISP() error {
+	return mmdb.ispReader.Close()
+}
+
+func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.Reader, error) {
+	// If there is a local file at this uri then just open it
+	if _, err := os.Stat(file); err != nil {
+		return nil, err
+	}
+
+	// Read in the file from disk into memory
+	maxmindBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return geoip2.FromBytes(maxmindBytes)
+}
+
+func (mmdb *MaxmindDB) LocateISP(ip net.IP) (*geoip2.ISP, error) {
+	if mmdb.ispReader == nil {
+		return &geoip2.ISP{}, errors.New("not configured with a Maxmind ISP DB")
+	}
+
+	ispres, err := mmdb.ispReader.ISP(ip)
+
+	if err != nil {
+		return &geoip2.ISP{}, err
+	}
+
+	return ispres, nil
+}
+
+func (mmdb *MaxmindDB) LocateCity(ip net.IP) (*geoip2.City, error) {
+	if mmdb.cityReader == nil {
+		return &geoip2.City{}, errors.New("not configured with a Maxmind City DB")
+	}
+
+	cityres, err := mmdb.cityReader.City(ip)
+
+	if err != nil {
+		return &geoip2.City{}, err
+	}
+
+	return cityres, nil
+}
+
+// LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
+func (mmdb *MaxmindDB) LocateIP(ip net.IP, sessionID uint64) (Location, error) {
+	if mmdb.IsStaging {
+		return mmdb.LocateStagingIP(sessionID)
+	}
+
+	cityres, err := mmdb.LocateCity(ip)
+	if err != nil {
+		return LocationNullIsland, err
+	}
+
+	ispres, err := mmdb.LocateISP(ip)
+	if err != nil {
+		return LocationNullIsland, err
+	}
+
+	return Location{
+		Latitude:  float32(cityres.Location.Latitude),
+		Longitude: float32(cityres.Location.Longitude),
+		ISP:       ispres.ISP,
+		ASN:       int(ispres.AutonomousSystemNumber),
+	}, nil
+}
+
+func (mmdb *MaxmindDB) LocateStagingIP(sessionID uint64) (Location, error) {
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], sessionID)
+
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float32(latBits)) / 0xFFFFFFFF
+	long := (float32(longBits)) / 0xFFFFFFFF
+
+	return Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
+	}, nil
+}
+
+// Helper function for relay pusher
+func (mmdb *MaxmindDB) ValidateISP() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("ValidateISP(): failed to create test IP %s", ipStr)
+	}
+
+	ispres, err := mmdb.LocateISP(testIP)
+	if err != nil {
+		return fmt.Errorf("ValidateISP(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+
+	location := Location{
+		ISP: ispres.ISP,
+		ASN: int(ispres.AutonomousSystemNumber),
+	}
+
+	if location == LocationNullIsland {
+		return fmt.Errorf("ValidateISP(): location is null island: %v", location)
+	}
+
+	return nil
+}
+
+// Helper function for relay pusher
+func (mmdb *MaxmindDB) ValidateCity() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("ValidateCity(): failed to create test IP %s", ipStr)
+	}
+
+	cityres, err := mmdb.LocateCity(testIP)
+	if err != nil {
+		return fmt.Errorf("ValidateCity(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+
+	location := Location{
+		Latitude:  float32(cityres.Location.Latitude),
+		Longitude: float32(cityres.Location.Longitude),
+	}
+
+	if location == LocationNullIsland {
+		return fmt.Errorf("ValidateCity(): location is null island: %v", location)
+	}
+
+	return nil
+}
+
+// Checks if the Maxmind DB can locate an IP
+func (mmdb *MaxmindDB) Validate() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("Validate(): failed to create test IP %s", ipStr)
+	}
+
+	loc, err := mmdb.LocateIP(testIP, 0)
+	if err != nil {
+		return fmt.Errorf("Validate(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+	if loc == LocationNullIsland {
+		return fmt.Errorf("Validate(): location is null island: %v", loc)
+	}
+
+	return nil
+}

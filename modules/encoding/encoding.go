@@ -78,30 +78,34 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 	}
 }
 
-func WriteAddress(buffer []byte, address *net.UDPAddr) {
+func WriteAddress(data []byte, index *int, address *net.UDPAddr) {
 	if address == nil {
-		buffer[0] = IPAddressNone
+		data[*index] = IPAddressNone
+		*index += 1
 		return
 	}
 	ipv4 := address.IP.To4()
 	port := address.Port
 	if ipv4 != nil {
-		buffer[0] = IPAddressIPv4
-		buffer[1] = ipv4[0]
-		buffer[2] = ipv4[1]
-		buffer[3] = ipv4[2]
-		buffer[4] = ipv4[3]
-		buffer[5] = (byte)(port & 0xFF)
-		buffer[6] = (byte)(port >> 8)
+		data[*index] = IPAddressIPv4
+		data[*index+1] = ipv4[0]
+		data[*index+2] = ipv4[1]
+		data[*index+3] = ipv4[2]
+		data[*index+4] = ipv4[3]
+		data[*index+5] = (byte)(port & 0xFF)
+		data[*index+6] = (byte)(port >> 8)
+		*index += 7
 	} else {
-		buffer[0] = IPAddressIPv6
-		copy(buffer[1:], address.IP)
-		buffer[17] = (byte)(port & 0xFF)
-		buffer[18] = (byte)(port >> 8)
+		data[0] = IPAddressIPv6
+		copy(data[*index+1:], address.IP)
+		data[*index+17] = (byte)(port & 0xFF)
+		data[*index+18] = (byte)(port >> 8)
+		*index += 19
 	}
 }
 
 func ReadBool(data []byte, index *int, value *bool) bool {
+
 	if *index+1 > len(data) {
 		return false
 	}
@@ -211,13 +215,26 @@ func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
 	return true
 }
 
-func ReadAddress(buffer []byte) *net.UDPAddr {
-	addressType := buffer[0]
+func ReadAddress(data []byte, index *int, address *net.UDPAddr) bool {
+	addressType := data[*index]
 	switch addressType {
+	case IPAddressNone:
+		*address = net.UDPAddr{}
+		*index += 1
 	case IPAddressIPv4:
-		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+		if *index+7 > len(data) {
+			return false
+		}
+		*address = net.UDPAddr{IP: net.IPv4(data[*index+1], data[*index+2], data[*index+3], data[*index+4]), Port: ((int)(binary.LittleEndian.Uint16(data[*index+5:])))}
+		*index += 7
+		return true
 	case IPAddressIPv6:
-		return &net.UDPAddr{IP: buffer[1:], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:])))}
+		if *index+19 > len(data) {
+			return false
+		}
+		*address = net.UDPAddr{IP: data[*index+1:], Port: ((int)(binary.LittleEndian.Uint16(data[*index+17:])))}
+		*index += 19
+		return true
 	}
-	return nil
+	return false
 }
