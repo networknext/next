@@ -13,8 +13,8 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/packets"
 	_ "github.com/networknext/backend/modules/messages"
+	"github.com/networknext/backend/modules/packets"
 )
 
 var googleProjectId string
@@ -24,8 +24,6 @@ var maxPacketLoss float32
 var costMatrixBufferSize int
 var routeMatrixBufferSize int
 var routeMatrixInterval time.Duration
-var redisHostname string
-var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateChannelSize int
 var pingStatsPubsubTopic string
@@ -54,9 +52,6 @@ var ready bool
 
 var startTime time.Time
 
-var redisSelector *common.RedisSelector
-var redisSelectorTimeout time.Duration
-
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -68,9 +63,6 @@ func main() {
 	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 1*1024*1024)
 	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 10*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
-	redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
 	pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "ping_stats")
@@ -87,9 +79,6 @@ func main() {
 	core.Log("cost matrix buffer size: %d bytes", costMatrixBufferSize)
 	core.Log("route matrix buffer size: %d bytes", routeMatrixBufferSize)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
-	core.Log("redis selector timeout: %s", redisSelectorTimeout)
 	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
 	core.Log("ping stats pubsub channel: %s", pingStatsPubsubTopic)
@@ -109,6 +98,8 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
+
+	service.Selector()
 
 	service.OverrideHealthHandler(healthHandler)
 
@@ -273,8 +264,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 	config := common.RedisPubsubConfig{}
 
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
 	config.PubsubChannelName = redisPubsubChannelName
 	config.MessageChannelSize = relayUpdateChannelSize
 
@@ -458,7 +447,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 					// update relay stats
 
-					if redisSelector.IsLeader() {
+					if service.IsLeader() {
 
 						messageBuffer := make([]byte, relayStatsChannelSize) // todo: WUT
 
@@ -469,7 +458,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 					// update ping stats
 
-					if redisSelector.IsLeader() {
+					if service.IsLeader() {
 
 						messageBuffer := make([]byte, pingStatsChannelSize) // todo: WUT!!!
 
@@ -486,21 +475,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
-	var err error
-
 	ticker := time.NewTicker(routeMatrixInterval)
-
-	config := common.RedisSelectorConfig{}
-
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
-	config.Timeout = redisSelectorTimeout
-
-	redisSelector, err = common.CreateRedisSelector(service.Context, config)
-	if err != nil {
-		core.Error("failed to create redis selector: %v", err)
-		os.Exit(1)
-	}
 
 	go func() {
 
@@ -606,11 +581,11 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					},
 				}
 
-				redisSelector.Store(service.Context, dataStores)
+				service.UpdateSelectorStore(dataStores)
 
 				// load the master cost and route matrix from redis (leader election)
 
-				dataStores = redisSelector.Load(service.Context)
+				dataStores = service.LoadSelectorStore()
 
 				if len(dataStores) == 0 {
 					core.Error("failed to get data stores from redis selector")
@@ -659,12 +634,4 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 			}
 		}
 	}()
-}
-
-func IsLeader() bool {
-	if redisSelector != nil {
-		return redisSelector.IsLeader()
-	} else {
-		return false
-	}
 }
