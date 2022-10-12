@@ -408,10 +408,10 @@ func (service *Service) IsLeader() bool {
 	}
 
 	if service.selector != nil {
-		return service.selector.isLeader
-	} else {
-		return false
+		return service.selector.IsLeader()
 	}
+
+	return false
 }
 
 func (service *Service) WaitForShutdown() {
@@ -606,6 +606,7 @@ type ServiceStatus struct {
 	Uptime          string  `json:"uptime"`
 	Goroutines      int     `json:"goroutines"`
 	MemoryAllocated float64 `json:"mb_allocated"`
+	IsLeader        bool    `json:"is_leader"`
 }
 
 func (service *Service) updateStatus(startTime time.Time) {
@@ -626,6 +627,7 @@ func (service *Service) updateStatus(startTime time.Time) {
 	newStatusData.Uptime = time.Since(startTime).String()
 	newStatusData.Goroutines = int(runtime.NumGoroutine())
 	newStatusData.MemoryAllocated = memoryAllocatedMB()
+	newStatusData.IsLeader = service.IsLeader()
 
 	service.statusMutex.Lock()
 	service.statusData = newStatusData
