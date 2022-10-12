@@ -1002,6 +1002,7 @@ func test_redis_selector_migration() {
 				selectorMutex1.Unlock()
 
 				if cancelContext.Err() != nil {
+					waitGroup.Done()
 					return
 				}
 
@@ -1032,6 +1033,7 @@ func test_redis_selector_migration() {
 	redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
+		ServiceName:   "migration",
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1070,6 +1072,7 @@ func test_redis_selector_migration() {
 				selectorMutex2.Unlock()
 
 				if cancelContext.Err() != nil {
+					waitGroup.Done()
 					return
 				}
 
@@ -1098,6 +1101,7 @@ func test_redis_selector_migration() {
 	redisObserver, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
+		ServiceName:   "migration",
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1119,6 +1123,7 @@ func test_redis_selector_migration() {
 				observedData := redisObserver.Load(cancelContext)
 
 				if cancelContext.Err() != nil {
+					waitGroup.Done()
 					return
 				}
 
@@ -1207,6 +1212,7 @@ func test_redis_selector_no_flap() {
 				redisSelector.Load(cancelContext)
 
 				if cancelContext.Err() != nil {
+					waitGroup.Done()
 					return
 				}
 
@@ -1223,6 +1229,7 @@ func test_redis_selector_no_flap() {
 	redisSelector2, err := common.CreateRedisSelector(cancelContext, common.RedisSelectorConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
+		ServiceName:   "flap",
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1260,6 +1267,7 @@ func test_redis_selector_no_flap() {
 				redisSelector2.Load(cancelContext)
 
 				if cancelContext.Err() != nil {
+					waitGroup.Done()
 					return
 				}
 
