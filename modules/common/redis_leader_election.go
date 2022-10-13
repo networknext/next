@@ -95,7 +95,7 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 
 func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	leaderElection.Store(ctx)
-	leaderElection.Store(ctx)
+	leaderElection.Load(ctx)
 }
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores ...DataStoreConfig) {
