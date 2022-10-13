@@ -107,7 +107,7 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	service.Selector()
+	service.LeaderElection(false)
 
 	service.OverrideHealthHandler(healthHandler)
 
@@ -583,11 +583,11 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					},
 				}
 
-				service.UpdateSelectorStore(dataStores)
+				service.UpdateLeaderStore(dataStores)
 
 				// load the master cost and route matrix from redis (leader election)
 
-				dataStores = service.LoadSelectorStore()
+				dataStores = service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
 					core.Error("failed to get data stores from redis selector")

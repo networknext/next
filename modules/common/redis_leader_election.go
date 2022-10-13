@@ -15,17 +15,17 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-const RedisSelectorVersion = 0 // IMPORTANT: bump this anytime you change the redis data structures!
+const RedisLeaderElectionVersion = 0 // IMPORTANT: bump this anytime you change the redis data structures!
 
-type RedisSelectorConfig struct {
+type RedisLeaderElectionConfig struct {
 	RedisHostname string
 	RedisPassword string
 	ServiceName   string
 	Timeout       time.Duration
 }
 
-type RedisSelector struct {
-	config       RedisSelectorConfig
+type RedisLeaderElection struct {
+	config       RedisLeaderElectionConfig
 	redisClient  *redis.Client
 	startTime    time.Time
 	instanceId   string
@@ -33,6 +33,8 @@ type RedisSelector struct {
 
 	leaderMutex sync.RWMutex
 	isLeader    bool
+
+	autoRefresh bool
 }
 
 type InstanceEntry struct {
@@ -47,7 +49,7 @@ type DataStoreConfig struct {
 	Data []byte
 }
 
-func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*RedisSelector, error) {
+func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
@@ -58,36 +60,58 @@ func CreateRedisSelector(ctx context.Context, config RedisSelectorConfig) (*Redi
 		return nil, err
 	}
 
-	selector := &RedisSelector{}
+	leaderElection := &RedisLeaderElection{}
 
 	if config.Timeout == 0 {
 		config.Timeout = time.Second * 10
 	}
 
-	selector.config = config
-	selector.redisClient = redisClient
-	selector.startTime = time.Now()
-	selector.instanceId = uuid.New().String()
+	leaderElection.config = config
+	leaderElection.redisClient = redisClient
+	leaderElection.startTime = time.Now()
+	leaderElection.instanceId = uuid.New().String()
 
-	core.Debug("redis selector instance id: %s", selector.instanceId)
+	core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
 
-	return selector, nil
+	return leaderElection, nil
 }
 
-func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStoreConfig) {
+func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 
-	selector.storeCounter++
+	leaderElection.autoRefresh = true
+
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				leaderElection.Update(ctx)
+			}
+		}
+	}()
+}
+
+func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
+	leaderElection.Store(ctx)
+	leaderElection.Store(ctx)
+}
+
+func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores ...DataStoreConfig) {
+
+	leaderElection.storeCounter++
 
 	instanceEntry := InstanceEntry{}
-	instanceEntry.InstanceId = selector.instanceId
-	instanceEntry.Uptime = uint64(time.Since(selector.startTime))
+	instanceEntry.InstanceId = leaderElection.instanceId
+	instanceEntry.Uptime = uint64(time.Since(leaderElection.startTime))
 	instanceEntry.Timestamp = uint64(time.Now().Unix())
 
 	numStores := len(dataStores)
 	instanceEntry.Keys = make([]string, numStores)
 
 	for i := 0; i < numStores; i++ {
-		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s-%d", dataStores[i].Name, RedisSelectorVersion, selector.instanceId, selector.storeCounter)
+		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s-%d", dataStores[i].Name, RedisLeaderElectionVersion, leaderElection.instanceId, leaderElection.storeCounter)
 	}
 
 	var buffer bytes.Buffer
@@ -100,11 +124,11 @@ func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStore
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
-	pipe := selector.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", selector.config.ServiceName, RedisSelectorVersion, selector.instanceId), instanceData[:], selector.config.Timeout)
+	pipe := leaderElection.redisClient.TxPipeline()
+	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], leaderElection.config.Timeout)
 
 	for i := 0; i < numStores; i++ {
-		pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], selector.config.Timeout)
+		pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], leaderElection.config.Timeout)
 	}
 
 	_, err = pipe.Exec(timeoutContext)
@@ -114,7 +138,7 @@ func (selector *RedisSelector) Store(ctx context.Context, dataStores []DataStore
 	}
 }
 
-func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
+func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStoreConfig {
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
@@ -122,7 +146,7 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
 	instanceKeys := []string{}
 	dataStores := []DataStoreConfig{}
-	itor := selector.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-instance-%d/*", selector.config.ServiceName, RedisSelectorVersion), 0).Iterator()
+	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-instance-%d/*", leaderElection.config.ServiceName, RedisLeaderElectionVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
@@ -134,7 +158,7 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
 	// query all instance data
 
-	pipe := selector.redisClient.Pipeline()
+	pipe := leaderElection.redisClient.Pipeline()
 	for i := range instanceKeys {
 		pipe.Get(timeoutContext, instanceKeys[i])
 	}
@@ -185,11 +209,11 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
 	// are we the leader?
 
-	selector.leaderMutex.Lock()
-	previousValue := selector.isLeader
-	currentValue := masterInstance.InstanceId == selector.instanceId
-	selector.isLeader = currentValue
-	selector.leaderMutex.Unlock()
+	leaderElection.leaderMutex.Lock()
+	previousValue := leaderElection.isLeader
+	currentValue := masterInstance.InstanceId == leaderElection.instanceId
+	leaderElection.isLeader = currentValue
+	leaderElection.leaderMutex.Unlock()
 
 	if !previousValue && currentValue {
 		core.Log("we became the leader")
@@ -199,7 +223,7 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 
 	// get data for master instance
 
-	pipe = selector.redisClient.Pipeline()
+	pipe = leaderElection.redisClient.Pipeline()
 
 	dataStores = make([]DataStoreConfig, len(masterInstance.Keys))
 
@@ -222,9 +246,9 @@ func (selector *RedisSelector) Load(ctx context.Context) []DataStoreConfig {
 	return dataStores
 }
 
-func (selector *RedisSelector) IsLeader() bool {
-	selector.leaderMutex.RLock()
-	value := selector.isLeader
-	selector.leaderMutex.RUnlock()
+func (leaderElection *RedisLeaderElection) IsLeader() bool {
+	leaderElection.leaderMutex.RLock()
+	value := leaderElection.isLeader
+	leaderElection.leaderMutex.RUnlock()
 	return value
 }

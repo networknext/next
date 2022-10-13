@@ -35,7 +35,7 @@ func main() {
 
 	core.Log("stats refresh interval: %s", statsRefreshInterval)
 
-	service.Selector()
+	service.LeaderElection(false)
 
 	StartStatCollection(service)
 
@@ -164,9 +164,9 @@ func StartStatCollection(service *common.Service) {
 					},
 				}
 
-				service.UpdateSelectorStore(dataStores)
+				service.UpdateLeaderStore(dataStores)
 
-				dataStores = service.LoadSelectorStore()
+				dataStores = service.LoadLeaderStore()
 
 				newLiveStats := LiveStats{}
 
