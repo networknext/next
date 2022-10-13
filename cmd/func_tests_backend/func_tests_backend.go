@@ -923,12 +923,14 @@ func test_redis_leader_store_migration() {
 
 	fmt.Printf("test_redis_leader_store_migration\n")
 
+	serviceName := "store_migration"
+
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	redisElector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1033,7 +1035,7 @@ func test_redis_leader_store_migration() {
 	redisElector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1101,7 +1103,7 @@ func test_redis_leader_store_migration() {
 	redisObserver, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1166,12 +1168,14 @@ func test_redis_leader_store_no_flap() {
 
 	fmt.Printf("test_redis_leader_store_no_flap\n")
 
+	serviceName := "store_flap"
+
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	redielector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "flap",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1229,7 +1233,7 @@ func test_redis_leader_store_no_flap() {
 	redielector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "flap",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1292,12 +1296,14 @@ func test_redis_leader_election_migration() {
 
 	fmt.Printf("test_redis_leader_election_migration\n")
 
+	serviceName := "migration"
+
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	redisElector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1345,7 +1351,7 @@ func test_redis_leader_election_migration() {
 	redisElector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 	})
 	if err != nil {
 		core.Error("failed to setup redis elector 2")
@@ -1388,7 +1394,7 @@ func test_redis_leader_election_migration() {
 	redisObserver, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "migration",
+		ServiceName:   serviceName,
 	})
 	if err != nil {
 		core.Error("failed to setup redis observer")
@@ -1444,12 +1450,14 @@ func test_redis_leader_election_no_flap() {
 
 	fmt.Printf("test_redis_leader_election_no_flap\n")
 
+	serviceName := "falp"
+
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
 	redielector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "flap",
+		ServiceName:   serviceName,
 		Timeout:       time.Second * 5,
 	})
 	if err != nil {
@@ -1486,7 +1494,7 @@ func test_redis_leader_election_no_flap() {
 	redielector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 		RedisHostname: "127.0.0.1:6379",
 		RedisPassword: "",
-		ServiceName:   "flap",
+		ServiceName:   serviceName,
 	})
 	if err != nil {
 		core.Error("failed to setup redis elector 2")
