@@ -321,7 +321,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 
 // ------------------------------------------------------------
 
-const NumIterations = 10000
+const NumIterations = 1000
 
 func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
@@ -441,13 +441,13 @@ const NumRelayPacketIterations = 1000
 
 func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P, t *testing.T) {
 
-	const BufferSize = 1024 * 1024
+	const BufferSize = 150 * 1024
 
-	buffer := make([]byte, BufferSize)
+	var buffer [BufferSize]byte
 
-	buffer = writePacket.Write(buffer[:])
+	output := writePacket.Write(buffer[:])
 
-	err := readPacket.Read(buffer)
+	err := readPacket.Read(output)
 	assert.Nil(t, err)
 
 	assert.Equal(t, writePacket, readPacket)
