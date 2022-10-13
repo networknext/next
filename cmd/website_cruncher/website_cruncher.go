@@ -5,13 +5,14 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/rs/cors"
 )
 
 /* todo
@@ -26,65 +27,64 @@ const (
 var websiteStatsMutex sync.RWMutex
 var websiteStats LiveStats
 var statsRefreshInterval time.Duration
-var redisHostname string
-var redisPassword string
-var redisSelector *common.RedisSelector
-var redisSelectorTimeout time.Duration
 
 func main() {
-	service := common.CreateService("website cruncher")
+	service := common.CreateService("website_cruncher")
 
-	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
-	redisSelectorTimeout = envvar.GetDuration("REDIS_SELECTOR_TIMEOUT", time.Second*10)
+	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Minute*5)
 
 	core.Log("stats refresh interval: %s", statsRefreshInterval)
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
-	core.Log("redis selector timeout: %s", redisSelectorTimeout)
+
+	service.LeaderElection(false)
 
 	StartStatCollection(service)
 
-	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet)
+	service.Router.HandleFunc("/stats", getAllStats())
 
 	service.StartWebServer()
 
 	service.WaitForShutdown()
 }
 
-func getAllStats(w http.ResponseWriter, r *http.Request) {
+func getAllStats() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-	websiteStatsMutex.RLock()
-	stats := websiteStats
-	websiteStatsMutex.RUnlock()
+		websiteStatsMutex.RLock()
+		stats := websiteStats
+		websiteStatsMutex.RUnlock()
 
-	numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
+		numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
 
-	oldUniquePlayers := stats.UniquePlayers
-	oldBandwidth := stats.AcceleratedBandwidth
-	oldPlaytime := stats.AcceleratedPlayTime
+		oldUniquePlayers := stats.UniquePlayers
+		oldBandwidth := stats.AcceleratedBandwidth
+		oldPlaytime := stats.AcceleratedPlayTime
 
-	deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
-	deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
-	deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
+		deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
+		deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
+		deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
 
-	currentMinute := time.Now().UTC().Minute()
+		currentMinute := time.Now().UTC().Minute()
 
-	newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
-	newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
-	newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
+		newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
+		newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
+		newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
 
-	newStats := LiveStats{
-		UniquePlayers:             newUniquePlayers,
-		AcceleratedBandwidth:      newBanwidth,
-		AcceleratedPlayTime:       newPlaytime,
-		UniquePlayersDelta:        stats.UniquePlayersDelta,
-		AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
-		AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
+		newStats := LiveStats{
+			UniquePlayers:             newUniquePlayers,
+			AcceleratedBandwidth:      newBanwidth,
+			AcceleratedPlayTime:       newPlaytime,
+			UniquePlayersDelta:        stats.UniquePlayersDelta,
+			AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
+			AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
+		}
+
+		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(newStats); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
-
-	json.NewEncoder(w).Encode(newStats)
 }
 
 func currentStats() LiveStats {
@@ -94,6 +94,19 @@ func currentStats() LiveStats {
 	websiteStatsMutex.RUnlock()
 
 	return stats
+}
+
+func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
+	cors.New(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
+	}).HandlerFunc(w, r)
 }
 
 // -----------------------------------------------------------------------------------------
@@ -110,21 +123,7 @@ type LiveStats struct {
 
 func StartStatCollection(service *common.Service) {
 
-	var err error
-
 	ticker := time.NewTicker(statsRefreshInterval)
-
-	config := common.RedisSelectorConfig{}
-
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
-	config.Timeout = redisSelectorTimeout
-
-	redisSelector, err = common.CreateRedisSelector(service.Context, config)
-	if err != nil {
-		core.Error("failed to create redis selector: %v", err)
-		os.Exit(1)
-	}
 
 	go func() {
 
@@ -165,9 +164,9 @@ func StartStatCollection(service *common.Service) {
 					},
 				}
 
-				redisSelector.Store(service.Context, dataStores)
+				service.UpdateLeaderStore(dataStores)
 
-				dataStores = redisSelector.Load(service.Context)
+				dataStores = service.LoadLeaderStore()
 
 				newLiveStats := LiveStats{}
 

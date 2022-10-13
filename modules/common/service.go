@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/envvar"
 
 	// todo: we want to move this to a new module ("middleware"?) or common as needed
 	"github.com/networknext/backend/modules-old/transport/middleware"
@@ -256,31 +256,46 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
-func (service *Service) LeaderElection() {
+func (service *Service) LeaderElection(autoRefresh bool) {
 	core.Log("started leader election")
+
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+
 	config := RedisLeaderElectionConfig{}
 	config.RedisHostname = redisHostname
 	config.RedisPassword = redisPassword
+	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
+
 	var err error
 	service.leaderElection, err = CreateRedisLeaderElection(service.Context, config)
 	if err != nil {
 		core.Error("could not create redis leader election: %v")
 		os.Exit(1)
 	}
-	ticker := time.NewTicker(time.Second)
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case <-ticker.C:
-				service.leaderElection.Update(service.Context)
-			}
-		}
-	}()
+
+	if autoRefresh {
+		service.leaderElection.Start(service.Context)
+	}
+}
+
+func (service *Service) UpdateLeaderStore(dataStores []DataStoreConfig) {
+
+	if service.leaderElection.autoRefresh {
+		return
+	}
+
+	service.leaderElection.Store(service.Context, dataStores...)
+}
+
+func (service *Service) LoadLeaderStore() []DataStoreConfig {
+
+	if service.leaderElection.autoRefresh {
+		return []DataStoreConfig{}
+	}
+
+	return service.leaderElection.Load(service.Context)
 }
 
 func (service *Service) UpdateRouteMatrix() {
@@ -371,9 +386,9 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 func (service *Service) IsLeader() bool {
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
-	} else {
-		return false
 	}
+
+	return false
 }
 
 func (service *Service) WaitForShutdown() {
@@ -568,6 +583,7 @@ type ServiceStatus struct {
 	Uptime          string  `json:"uptime"`
 	Goroutines      int     `json:"goroutines"`
 	MemoryAllocated float64 `json:"mb_allocated"`
+	IsLeader        bool    `json:"is_leader"`
 }
 
 func (service *Service) updateStatus(startTime time.Time) {
@@ -588,6 +604,7 @@ func (service *Service) updateStatus(startTime time.Time) {
 	newStatusData.Uptime = time.Since(startTime).String()
 	newStatusData.Goroutines = int(runtime.NumGoroutine())
 	newStatusData.MemoryAllocated = memoryAllocatedMB()
+	newStatusData.IsLeader = service.IsLeader()
 
 	service.statusMutex.Lock()
 	service.statusData = newStatusData
