@@ -63,7 +63,7 @@ func main() {
 
 	service.SyncFiles(fileSyncConfig)
 
-	service.LeaderElection()
+	service.LeaderElection(true)
 
 	service.StartWebServer()
 

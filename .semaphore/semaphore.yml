@@ -214,13 +214,13 @@ blocks:
             - bigquery-emulator --project="local" --dataset="local" &
             - cd ./dist && ./func_tests_backend test_google_bigquery
 
-        - name: "test_redis_selector_no_flap"
+        - name: "test_redis_leader_store_no_flap"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_selector_no_flap
+            - cd ./dist && ./func_tests_backend test_redis_leader_store_no_flap
 
-        - name: "test_redis_selector_migration"
+        - name: "test_redis_leader_store_migration"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_selector_migration
+            - cd ./dist && ./func_tests_backend test_redis_leader_store_migration
 
         - name: "test_redis_leader_election_no_flap"
           commands:
@@ -820,7 +820,7 @@ blocks:
 
           commands:
 
-            - checkout            
+            - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - sudo apt-get install google-cloud-sdk-pubsub-emulator
             - cd ~/backend
