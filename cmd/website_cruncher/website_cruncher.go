@@ -8,9 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/rs/cors"
 )
 
 /* todo
@@ -29,7 +31,7 @@ var statsRefreshInterval time.Duration
 func main() {
 	service := common.CreateService("website_cruncher")
 
-	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Hour*24)
+	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Minute*5)
 
 	core.Log("stats refresh interval: %s", statsRefreshInterval)
 
@@ -37,14 +39,14 @@ func main() {
 
 	StartStatCollection(service)
 
-	service.Router.HandleFunc("/stats", getAllStats).Methods(http.MethodGet, http.MethodOptions)
+	service.Router.HandleFunc("/stats", getAllStats())
 
 	service.StartWebServer()
 
 	service.WaitForShutdown()
 }
 
-func getAllStats(w http.ResponseWriter, r *http.Request) {
+func getAllStats() func(w http.ResponseWriter, r *http.Request) {
 
 	websiteStatsMutex.RLock()
 	stats := websiteStats
@@ -75,7 +77,14 @@ func getAllStats(w http.ResponseWriter, r *http.Request) {
 		AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
 	}
 
-	json.NewEncoder(w).Encode(newStats)
+	return func(w http.ResponseWriter, r *http.Request) {
+		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(newStats); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func currentStats() LiveStats {
@@ -85,6 +94,19 @@ func currentStats() LiveStats {
 	websiteStatsMutex.RUnlock()
 
 	return stats
+}
+
+func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
+	cors.New(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
+	}).HandlerFunc(w, r)
 }
 
 // -----------------------------------------------------------------------------------------
