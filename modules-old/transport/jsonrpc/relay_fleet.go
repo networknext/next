@@ -485,17 +485,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			// Unmarshal the status into the corresponding service's status struct
 			switch args.ServiceName {
-			case "Analytics":
-				var status metrics.AnalyticsStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-
-			case "AnalyticsPusher":
-				var status metrics.AnalyticsPusherStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
 			case "Billing":
 				var status metrics.BillingStatus
 				json.Unmarshal(b, &status)
@@ -513,16 +502,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				values = reflect.ValueOf(status)
 			case "PortalCruncher":
 				var status metrics.PortalCruncherStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "RelayBackend":
-				var status metrics.RelayBackendStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "RelayPusher":
-				var status metrics.RelayPusherStatus
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)
