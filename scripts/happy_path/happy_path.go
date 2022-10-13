@@ -109,7 +109,7 @@ func happy_path(wait bool) int {
 
 	magic_backend_initialized := false
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 500; i++ {
 		if strings.Contains(magic_backend_stdout.String(), "starting http server on port 41007") &&
 			strings.Contains(magic_backend_stdout.String(), "served magic values") {
 			magic_backend_initialized = true
