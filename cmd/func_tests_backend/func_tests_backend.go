@@ -1539,10 +1539,10 @@ func main() {
 		test_magic_backend,
 		test_redis_pubsub,
 		test_redis_streams,
-		test_redis_leader_store_migration,
 		test_redis_leader_store_no_flap,
-		test_redis_leader_election_migration,
+		test_redis_leader_store_migration,
 		test_redis_leader_election_no_flap,
+		test_redis_leader_election_migration,
 		test_google_pubsub,
 		test_google_bigquery,
 	}
