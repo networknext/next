@@ -95,25 +95,10 @@ blocks:
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
 
-        # - name: "New Server Backend 4"
-          # commands:
-            # - make dist/new_server_backend4.dev.tar.gz
-            # - artifact push workflow dist/new_server_backend4.dev.tar.gz
-
-        # - name: "New Server Backend 5"
-          # commands:
-            # - make dist/new_server_backend5.dev.tar.gz
-            # - artifact push workflow dist/new_server_backend5.dev.tar.gz
-
         - name: "Ghost Army"
           commands:
             - make dist/ghost_army.dev.tar.gz
             - artifact push workflow dist/ghost_army.dev.tar.gz
-
-        - name: "Relay Pusher"
-          commands:
-            - make dist/relay_pusher.dev.tar.gz
-            - artifact push workflow dist/relay_pusher.dev.tar.gz
 
         - name: "Pusher"
           commands:
@@ -229,25 +214,10 @@ blocks:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
 
-        # - name: "New Server Backend 4"
-          # commands:
-            # - artifact pull workflow new_server_backend4.dev.tar.gz
-            # - gsutil cp new_server_backend4.dev.tar.gz gs://development_artifacts/
-
-        # - name: "New Server Backend 5"
-          # commands:
-            # - artifact pull workflow new_server_backend5.dev.tar.gz
-            # - gsutil cp new_server_backend5.dev.tar.gz gs://development_artifacts/
-
         - name: "Ghost Army"
           commands:
             - artifact pull workflow ghost_army.dev.tar.gz
             - gsutil cp ghost_army.dev.tar.gz gs://development_artifacts/
-
-        - name: "Relay Pusher"
-          commands:
-            - artifact pull workflow relay_pusher.dev.tar.gz
-            - gsutil cp relay_pusher.dev.tar.gz gs://development_artifacts/
 
         - name: "Pusher"
           commands:
