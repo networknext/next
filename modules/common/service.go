@@ -82,8 +82,6 @@ type Service struct {
 
 	leaderElection *RedisLeaderElection
 
-	selector *RedisSelector
-
 	healthHandler func(w http.ResponseWriter, r *http.Request)
 
 	udpServer *UDPServer
@@ -258,7 +256,7 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
-func (service *Service) LeaderElection() {
+func (service *Service) LeaderElection(autoRefresh bool) {
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
@@ -276,45 +274,28 @@ func (service *Service) LeaderElection() {
 		core.Error("could not create redis leader election: %v")
 		os.Exit(1)
 	}
-	ticker := time.NewTicker(time.Second)
-	go func() {
-		for {
-			select {
-			case <-service.Context.Done():
-				return
-			case <-ticker.C:
-				service.leaderElection.Update(service.Context)
-			}
-		}
-	}()
-}
 
-func (service *Service) Selector() {
-	core.Log("started redis selector")
-
-	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
-
-	config := RedisSelectorConfig{}
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
-	config.Timeout = time.Second * 10
-	config.ServiceName = service.ServiceName
-
-	var err error
-	service.selector, err = CreateRedisSelector(service.Context, config)
-	if err != nil {
-		core.Error("could not create redis selector: %v")
-		os.Exit(1)
+	if autoRefresh {
+		service.leaderElection.Start(service.Context)
 	}
 }
 
-func (service *Service) UpdateSelectorStore(dataStore []DataStoreConfig) {
-	service.selector.Store(service.Context, dataStore)
+func (service *Service) UpdateLeaderStore(dataStores []DataStoreConfig) {
+
+	if service.leaderElection.autoRefresh {
+		return
+	}
+
+	service.leaderElection.Store(service.Context, dataStores...)
 }
 
-func (service *Service) LoadSelectorStore() []DataStoreConfig {
-	return service.selector.Load(service.Context)
+func (service *Service) LoadLeaderStore() []DataStoreConfig {
+
+	if service.leaderElection.autoRefresh {
+		return []DataStoreConfig{}
+	}
+
+	return service.leaderElection.Load(service.Context)
 }
 
 func (service *Service) UpdateRouteMatrix() {
@@ -405,10 +386,6 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 func (service *Service) IsLeader() bool {
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
-	}
-
-	if service.selector != nil {
-		return service.selector.IsLeader()
 	}
 
 	return false
