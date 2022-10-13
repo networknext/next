@@ -47,37 +47,37 @@ func main() {
 }
 
 func getAllStats() func(w http.ResponseWriter, r *http.Request) {
-
-	websiteStatsMutex.RLock()
-	stats := websiteStats
-	websiteStatsMutex.RUnlock()
-
-	numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
-
-	oldUniquePlayers := stats.UniquePlayers
-	oldBandwidth := stats.AcceleratedBandwidth
-	oldPlaytime := stats.AcceleratedPlayTime
-
-	deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
-	deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
-	deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
-
-	currentMinute := time.Now().UTC().Minute()
-
-	newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
-	newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
-	newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
-
-	newStats := LiveStats{
-		UniquePlayers:             newUniquePlayers,
-		AcceleratedBandwidth:      newBanwidth,
-		AcceleratedPlayTime:       newPlaytime,
-		UniquePlayersDelta:        stats.UniquePlayersDelta,
-		AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
-		AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		websiteStatsMutex.RLock()
+		stats := websiteStats
+		websiteStatsMutex.RUnlock()
+
+		numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
+
+		oldUniquePlayers := stats.UniquePlayers
+		oldBandwidth := stats.AcceleratedBandwidth
+		oldPlaytime := stats.AcceleratedPlayTime
+
+		deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
+		deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
+		deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
+
+		currentMinute := time.Now().UTC().Minute()
+
+		newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
+		newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
+		newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
+
+		newStats := LiveStats{
+			UniquePlayers:             newUniquePlayers,
+			AcceleratedBandwidth:      newBanwidth,
+			AcceleratedPlayTime:       newPlaytime,
+			UniquePlayersDelta:        stats.UniquePlayersDelta,
+			AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
+			AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
+		}
+
 		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(newStats); err != nil {
