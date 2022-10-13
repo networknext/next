@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/envvar"
 
 	// todo: we want to move this to a new module ("middleware"?) or common as needed
 	"github.com/networknext/backend/modules-old/transport/middleware"
@@ -81,6 +81,8 @@ type Service struct {
 	previousMagic []byte
 
 	leaderElection *RedisLeaderElection
+
+	selector *RedisSelector
 
 	healthHandler func(w http.ResponseWriter, r *http.Request)
 
@@ -258,12 +260,16 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 
 func (service *Service) LeaderElection() {
 	core.Log("started leader election")
+
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+
 	config := RedisLeaderElectionConfig{}
 	config.RedisHostname = redisHostname
 	config.RedisPassword = redisPassword
+	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
+
 	var err error
 	service.leaderElection, err = CreateRedisLeaderElection(service.Context, config)
 	if err != nil {
@@ -281,6 +287,34 @@ func (service *Service) LeaderElection() {
 			}
 		}
 	}()
+}
+
+func (service *Service) Selector() {
+	core.Log("started redis selector")
+
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+
+	config := RedisSelectorConfig{}
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.Timeout = time.Second * 10
+	config.ServiceName = service.ServiceName
+
+	var err error
+	service.selector, err = CreateRedisSelector(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis selector: %v")
+		os.Exit(1)
+	}
+}
+
+func (service *Service) UpdateSelectorStore(dataStore []DataStoreConfig) {
+	service.selector.Store(service.Context, dataStore)
+}
+
+func (service *Service) LoadSelectorStore() []DataStoreConfig {
+	return service.selector.Load(service.Context)
 }
 
 func (service *Service) UpdateRouteMatrix() {
@@ -371,9 +405,13 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 func (service *Service) IsLeader() bool {
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
-	} else {
-		return false
 	}
+
+	if service.selector != nil {
+		return service.selector.IsLeader()
+	}
+
+	return false
 }
 
 func (service *Service) WaitForShutdown() {
@@ -568,6 +606,7 @@ type ServiceStatus struct {
 	Uptime          string  `json:"uptime"`
 	Goroutines      int     `json:"goroutines"`
 	MemoryAllocated float64 `json:"mb_allocated"`
+	IsLeader        bool    `json:"is_leader"`
 }
 
 func (service *Service) updateStatus(startTime time.Time) {
@@ -588,6 +627,7 @@ func (service *Service) updateStatus(startTime time.Time) {
 	newStatusData.Uptime = time.Since(startTime).String()
 	newStatusData.Goroutines = int(runtime.NumGoroutine())
 	newStatusData.MemoryAllocated = memoryAllocatedMB()
+	newStatusData.IsLeader = service.IsLeader()
 
 	service.statusMutex.Lock()
 	service.statusData = newStatusData
