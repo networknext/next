@@ -105,6 +105,17 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 	}
 }
 
+func GenerateRandomUptimeStatMessage() messages.UptimeStatsMessage {
+
+	return messages.UptimeStatsMessage{
+		Version:      messages.UptimeStatsMessageVersion,
+		Timestamp:    uint64(time.Now().Unix()),
+		ServiceName:  common.RandomString(messages.MaxServiceNameLength),
+		Up:           common.RandomBool(),
+		ResponseTime: common.RandomInt(0, 10000),
+	}
+}
+
 func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
 	numMatchValues := rand.Intn(65)
@@ -335,6 +346,15 @@ func TestRelayStatsMessage(t *testing.T) {
 		writeMessage := GenerateRandomRelayStatMessage()
 		readMessage := messages.RelayStatsMessage{}
 		MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestUptimeStatsMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomUptimeStatMessage()
+		readMessage := messages.UptimeStatsMessage{}
+		MessageReadWriteTest[*messages.UptimeStatsMessage](&writeMessage, &readMessage, t)
 	}
 }
 
