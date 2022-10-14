@@ -58,6 +58,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumSamples); i++ {
 		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
+		// todo: these need to become uint8 values
 		encoding.WriteFloat32(buffer, &index, packet.SampleRTT[i])
 		encoding.WriteFloat32(buffer, &index, packet.SampleJitter[i])
 		encoding.WriteFloat32(buffer, &index, packet.SamplePacketLoss[i])
@@ -115,6 +116,8 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		if !encoding.ReadUint64(buffer, &index, &packet.SampleRelayId[i]) {
 			return errors.New("could not read sample relay id")
 		}
+
+		// todo: these need to become uint8 values
 
 		if !encoding.ReadFloat32(buffer, &index, &packet.SampleRTT[i]) {
 			return errors.New("could not read sample rtt")
@@ -214,7 +217,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumRelays); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
-		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength)
+		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength)    // todo: this needs to be optimized
 	}
 
 	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)
