@@ -53,26 +53,26 @@ func getAllStats() func(w http.ResponseWriter, r *http.Request) {
 		stats := websiteStats
 		websiteStatsMutex.RUnlock()
 
-		numMinutesPerInterval := (int64(statsRefreshInterval.Seconds()) / 60)
+		numSecondsPerInterval := statsRefreshInterval.Seconds()
 
-		oldUniquePlayers := stats.UniquePlayers
-		oldBandwidth := stats.AcceleratedBandwidth
-		oldPlaytime := stats.AcceleratedPlayTime
+		oldUniquePlayers := float64(stats.UniquePlayers)
+		oldBandwidth := float64(stats.AcceleratedBandwidth)
+		oldPlaytime := float64(stats.AcceleratedPlayTime)
 
-		deltaUniquePerMinute := stats.UniquePlayersDelta / numMinutesPerInterval
-		deltaBanwidthPerMinute := stats.AcceleratedBandwidthDelta / numMinutesPerInterval
-		deltaPlaytimePerMinute := stats.AcceleratedPlayTimeDelta / numMinutesPerInterval
+		deltaUniquePerSecond := float64(stats.UniquePlayersDelta) / numSecondsPerInterval
+		deltaBanwidthPerSecond := float64(stats.AcceleratedBandwidthDelta) / numSecondsPerInterval
+		deltaPlaytimePerSecond := float64(stats.AcceleratedPlayTimeDelta) / numSecondsPerInterval
 
-		currentMinute := time.Now().UTC().Minute()
+		currentSecond := float64(time.Now().UTC().Second())
 
-		newUniquePlayers := oldUniquePlayers + (deltaUniquePerMinute * int64(currentMinute))
-		newBanwidth := oldBandwidth + (deltaBanwidthPerMinute * int64(currentMinute))
-		newPlaytime := oldPlaytime + (deltaPlaytimePerMinute * int64(currentMinute))
+		newUniquePlayers := oldUniquePlayers + (deltaUniquePerSecond * currentSecond)
+		newBanwidth := oldBandwidth + (deltaBanwidthPerSecond * currentSecond)
+		newPlaytime := oldPlaytime + (deltaPlaytimePerSecond * currentSecond)
 
 		newStats := LiveStats{
-			UniquePlayers:             newUniquePlayers,
-			AcceleratedBandwidth:      newBanwidth,
-			AcceleratedPlayTime:       newPlaytime,
+			UniquePlayers:             int64(newUniquePlayers),
+			AcceleratedBandwidth:      int64(newBanwidth),
+			AcceleratedPlayTime:       int64(newPlaytime),
 			UniquePlayersDelta:        stats.UniquePlayersDelta,
 			AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
 			AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
