@@ -33,7 +33,8 @@ func RandomBytes(array []byte) {
 
 func RandomString(length int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	b := make([]rune, length-1) // IMPORTANT: for compatibility with NULL terminated C-strings in the SDK
+	length = RandomInt(0, length-1) // IMPORTANT: for compatibility with NULL terminated C-strings in the SDK
+	b := make([]rune, length)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}

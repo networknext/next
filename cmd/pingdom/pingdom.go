@@ -1,5 +1,17 @@
 package main
 
+// todo: need to rebulid this off the new service architecture, only the leader does the uptime check
+// should write the uptime check results out to analytics service via pubsub
+
+import (
+	"os"
+)
+
+func main() {
+	os.Exit(0)
+}
+
+/*
 import (
 	"context"
 	"encoding/json"
@@ -17,9 +29,9 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
+	// todo: we don't want to use any old stuff here
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/metrics"
-	"github.com/networknext/backend/modules-old/pingdom"
 	"github.com/networknext/backend/modules-old/transport"
 
 	"cloud.google.com/go/bigquery"
@@ -255,3 +267,4 @@ func mainReturnWithCode() int {
 		return 1
 	}
 }
+*/

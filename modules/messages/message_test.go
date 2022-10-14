@@ -300,7 +300,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 // -----------------------------------------------------------
 
-const NumIterations = 10000
+const NumIterations = 1000
 
 func TestCostMatrixStatsMessage(t *testing.T) {
 	t.Parallel()
