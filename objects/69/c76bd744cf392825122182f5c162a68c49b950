@@ -57,8 +57,8 @@
 	path = portal
 	stage = sync
 	type = extract module
-[map "79c6d284-709e-3072-a662-e1cdaeea78b5"]
-	object = baa12a28e163f8e9dadc77c43e0c0a12592bdf06
+[map "aadab53d-1821-3a8d-9e41-c5303b9c8834"]
+	object = 5efea4324bd057ab55ed395d552f1984e8a83f1a
 	path = relay
 	stage = sync
 	type = extract module
