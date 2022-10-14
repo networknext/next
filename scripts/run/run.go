@@ -114,6 +114,8 @@ func main() {
 		website_cruncher()
 	} else if command == "pusher" {
 		pusher()
+	} else if command == "pingdom" {
+		pingdom()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend4" {
@@ -191,6 +193,10 @@ func analytics() {
 
 func pusher() {
 	bash("make ./dist/pusher && HTTP_PORT=40010 ./dist/pusher")
+}
+
+func pingdom() {
+	bash("make ./dist/pingdom && HTTP_PORT=40011 ./dist/pingdom")
 }
 
 func relay() {

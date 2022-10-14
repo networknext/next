@@ -134,6 +134,30 @@
               ]
             },
             {
+              "id": "uptime_stats",
+              "columns": [
+                {
+                  "name": "timestamp",
+                  "type": "INTEGER",
+                  "mode": "REQUIRED"
+                },
+                {
+                  "name": "service_name",
+                  "type": "STRING",
+                  "mode": "REQUIRED"
+                },
+                {
+                  "name": "up",
+                  "type": "BOOLEAN",
+                  "mode": "REQUIRED"
+                },
+                {
+                  "name": "response_time",
+                  "type": "INTEGER"
+                }
+              ]
+            },
+            {
               "id": "relay_pings",
               "columns": [
                 {
