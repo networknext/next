@@ -92,7 +92,7 @@ func StartUptimeCheck(service *common.Service) {
 			responses, err := pingdomClient.Checks.List()
 			if err != nil {
 				core.Error("failed to get check list from pingdom: %v", err)
-				os.Exit(1)
+				continue
 			}
 
 			for _, response := range responses {
