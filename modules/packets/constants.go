@@ -78,12 +78,14 @@ const (
 	SDK5_ContinueRouteTokenSize          = 41
 	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.Box_MACSize
 
+	// todo: we need separate read and write versions
 	SDK5_SessionDataVersion = 15
 
 	SDK5_MaxMatchValues = 64
 
 	SDK5_InvalidRouteValue = 10000
 
+	// todo: we need separate read and write versions
 	SDK5_LocationVersion = 1
 
 	SDK5_MaxContinentLength   = 16

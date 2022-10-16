@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	// todo: we need separate read and write versions
 	CostMatrixSerializeVersion = 2
 
 	MaxRelayNameLength = 63
@@ -73,6 +74,10 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
+
+// todo: we need read and write unit tests for the cost matrix
+
+// todo: tests should include writing with the new codebase, and reading with the old codebase
 
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)

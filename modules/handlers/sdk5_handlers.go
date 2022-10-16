@@ -433,7 +433,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	defer func() {
 		milliseconds := float64(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
-			// todo: set long duration 
+			// todo: set long duration bool to true
 		}
 		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 	}()
