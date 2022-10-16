@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"math/rand"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -432,4 +433,71 @@ func (routeMatrix *RouteMatrix) GetDatacenterRelays(datacenterId uint64) []uint6
 		}
 	}
 	return relayIds
+}
+
+func GenerateRandomRouteMatrix() RouteMatrix {
+
+	routeMatrix := RouteMatrix{
+		Version: uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max)),
+	}
+
+	numRelays := RandomInt(0, 64)
+
+	routeMatrix.RelayIds = make([]uint64, numRelays)
+	routeMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
+	routeMatrix.RelayNames = make([]string, numRelays)
+	routeMatrix.RelayLatitudes = make([]float32, numRelays)
+	routeMatrix.RelayLongitudes = make([]float32, numRelays)
+	routeMatrix.RelayDatacenterIds = make([]uint64, numRelays)
+	routeMatrix.DestRelays = make([]bool, numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		routeMatrix.RelayIds[i] = rand.Uint64()
+		routeMatrix.RelayAddresses[i] = RandomAddress()
+		routeMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		routeMatrix.RelayLatitudes[i] = rand.Float32()
+		routeMatrix.RelayLongitudes[i] = rand.Float32()
+		routeMatrix.RelayDatacenterIds[i] = rand.Uint64()
+		routeMatrix.DestRelays[i] = RandomBool()
+	}
+
+	routeMatrix.RelayIdToIndex = make(map[uint64]int32)
+	for i := range routeMatrix.RelayIds {
+		routeMatrix.RelayIdToIndex[routeMatrix.RelayIds[i]] = int32(i)
+	}
+
+	routeMatrix.BinFileBytes = int32(RandomInt(100, 10000))
+	routeMatrix.BinFileData = make([]byte, routeMatrix.BinFileBytes)
+	RandomBytes(routeMatrix.BinFileData)
+
+	routeMatrix.CreatedAt = rand.Uint64()
+	routeMatrix.Version = uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max))
+
+	numFullRelays := RandomInt(0, numRelays)
+
+	routeMatrix.FullRelayIds = make([]uint64, numFullRelays)
+	routeMatrix.FullRelayIndexSet = make(map[int32]bool)
+	for i := range routeMatrix.FullRelayIds {
+		routeMatrix.FullRelayIds[i] = routeMatrix.RelayIds[i]
+		routeMatrix.FullRelayIndexSet[int32(i)] = true
+	}
+
+	numEntries := RandomInt(0, 1000)
+
+	routeMatrix.RouteEntries = make([]core.RouteEntry, numEntries)
+
+	for i := range routeMatrix.RouteEntries {
+		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1,1000))
+		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0,core.MaxRoutesPerEntry))
+		for j := 0; j < int(routeMatrix.RouteEntries[i].NumRoutes); j++ {
+			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1,1000))
+			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1,core.MaxRelaysPerRoute))
+			for k := 0; k < int(routeMatrix.RouteEntries[i].RouteNumRelays[j]); k++ {
+				routeMatrix.RouteEntries[i].RouteRelays[j][k] = int32(k)
+			}
+			routeMatrix.RouteEntries[i].RouteHash[j] = core.RouteHash(routeMatrix.RouteEntries[i].RouteRelays[j][:]...)
+		}
+	}
+
+	return routeMatrix
 }

@@ -1535,6 +1535,68 @@ func test_redis_leader_election_no_flap() {
 	core.Debug("done")
 }
 
+func test_cost_matrix_read_write() {
+
+	fmt.Printf("test_cost_matrix_read_write\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60 * time.Second {
+			break
+		}
+
+		writeMessage := common.GenerateRandomCostMatrix()
+	
+		readMessage := common.CostMatrix{}
+
+		const BufferSize = 100 * 1024
+
+		buffer, err := writeMessage.Write(BufferSize)
+		if err != nil {
+			panic(err)
+		}
+
+		err = readMessage.Read(buffer)
+
+		if !reflect.DeepEqual(writeMessage, readMessage) {
+			panic("cost matrix serialize failure")
+		}
+	}
+}
+
+func test_route_matrix_read_write() {
+
+	fmt.Printf("test_route_matrix_read_write\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60 * time.Second {
+			break
+		}
+
+		writeMessage := common.GenerateRandomRouteMatrix()
+	
+		readMessage := common.RouteMatrix{}
+
+		const BufferSize = 1024 * 1024
+
+		buffer, err := writeMessage.Write(BufferSize)
+		if err != nil {
+			panic(err)
+		}
+
+		err = readMessage.Read(buffer)
+
+		if !reflect.DeepEqual(writeMessage, readMessage) {
+			panic("route matrix serialize failure")
+		}
+	}
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1553,6 +1615,8 @@ func main() {
 		test_redis_leader_election_migration,
 		test_google_pubsub,
 		test_google_bigquery,
+		test_cost_matrix_read_write,
+		test_route_matrix_read_write,
 	}
 
 	var tests []test_function

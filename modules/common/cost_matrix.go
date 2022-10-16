@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net"
+	"math/rand"
 
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -98,4 +99,38 @@ func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 func (m *CostMatrix) Read(buffer []byte) error {
 	readStream := encoding.CreateReadStream(buffer)
 	return m.Serialize(readStream)
+}
+
+func GenerateRandomCostMatrix() CostMatrix {
+
+	costMatrix := CostMatrix{
+		Version: uint32(RandomInt(CostMatrixVersion_Min, CostMatrixVersion_Max)),
+	}
+
+	numRelays := RandomInt(0, 64)
+
+	costMatrix.RelayIds = make([]uint64, numRelays)
+	costMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
+	costMatrix.RelayNames = make([]string, numRelays)
+	costMatrix.RelayLatitudes = make([]float32, numRelays)
+	costMatrix.RelayLongitudes = make([]float32, numRelays)
+	costMatrix.RelayDatacenterIds = make([]uint64, numRelays)
+	costMatrix.DestRelays = make([]bool, numRelays)
+	costMatrix.Costs = make([]int32, numRelays*numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		costMatrix.RelayIds[i] = rand.Uint64()
+		costMatrix.RelayAddresses[i] = RandomAddress()
+		costMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		costMatrix.RelayLatitudes[i] = rand.Float32()
+		costMatrix.RelayLongitudes[i] = rand.Float32()
+		costMatrix.RelayDatacenterIds[i] = rand.Uint64()
+		costMatrix.DestRelays[i] = RandomBool()
+	}
+
+	for i := 0; i < numRelays*numRelays; i++ {
+		costMatrix.Costs[i] = int32(RandomInt(-1, 1000))
+	}
+
+	return costMatrix
 }
