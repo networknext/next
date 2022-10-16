@@ -80,6 +80,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 // todo: tests should include writing with the new codebase, and reading with the old codebase
 
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
+	// todo: do we really want to allocate this here?
 	buffer := make([]byte, bufferSize)
 	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {

@@ -17,12 +17,9 @@ func GenerateRandomCostMatrix() common.CostMatrix {
 
 func CostMatrixReadWriteTest(writeMessage *common.CostMatrix, readMessage *common.CostMatrix, t *testing.T) {
 
-	const BufferSize = 10 * 1024
+	const BufferSize = 100 * 1024
 
-	buffer := make([]byte, BufferSize)
-
-	var err error
-	buffer, err = writeMessage.Write(buffer[:])
+	buffer, err := writeMessage.Write(BufferSize)
 	assert.Nil(t, err)
 
 	err = readMessage.Read(buffer)
