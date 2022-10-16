@@ -25,8 +25,8 @@ type CostMatrix struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
-	Costs              []int32
 	DestRelays         []bool
+	Costs              []int32
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
