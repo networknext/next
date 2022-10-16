@@ -502,7 +502,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				costs := relayManager.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
 				costMatrixNew := &common.CostMatrix{
-					Version:            common.CostMatrixSerializeVersion,
+					Version:            common.CostMatrixVersion_Write,
 					RelayIds:           relayData.RelayIds,
 					RelayAddresses:     relayData.RelayAddresses,
 					RelayNames:         relayData.RelayNames,

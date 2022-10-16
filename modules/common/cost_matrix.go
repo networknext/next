@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	// todo: we need separate read and write versions
-	CostMatrixSerializeVersion = 2
+	CostMatrixVersion_Min = 2      // the minimum version we can read
+	CostMatrixVersion_Max = 2      // the maximum version we can read
+	CostMatrixVersion_Write = 2    // the version we write
 
 	MaxRelayNameLength = 63
 
@@ -31,6 +32,10 @@ type CostMatrix struct {
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint32(&m.Version)
+
+	if stream.IsReading() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
+		return fmt.Errorf("invalid cost matrix version: %d", m.Version)
+	}
 
 	numRelays := uint32(len(m.RelayIds))
 	stream.SerializeUint32(&numRelays)
