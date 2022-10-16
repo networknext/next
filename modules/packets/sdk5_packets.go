@@ -476,7 +476,7 @@ type SDK5_SessionData struct {
 	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
 	RouteState                    core.RouteState
 	EverOnNext                    bool
-	FellBackToDirect              bool
+	FallbackToDirect              bool
 	PrevPacketsSentClientToServer uint64
 	PrevPacketsSentServerToClient uint64
 	PrevPacketsLostClientToServer uint64
@@ -569,7 +569,7 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 	stream.SerializeBool(&sessionData.EverOnNext)
-	stream.SerializeBool(&sessionData.FellBackToDirect)
+	stream.SerializeBool(&sessionData.FallbackToDirect)
 
 	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
 

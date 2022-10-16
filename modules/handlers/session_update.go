@@ -370,86 +370,11 @@ func SessionHandleFallbackToDirect(state *SessionUpdateState) bool {
 	   Fallback to direct is a state where the SDK has met some fatal error condition.
 
 	   When this happens, the session will go direct from that point forward.
-
-	   Here we look at flags sent up from the SDK, so we can diagnose what caused any fallback to directs to happen.
 	*/
 
-	if state.Request.FallbackToDirect && !state.Output.FellBackToDirect {
-
+	if state.Request.FallbackToDirect && !state.Output.FallbackToDirect {
 		core.Debug("fallback to direct")
-
-		// todo: rename to "FallbackToDirect" wtf
-		state.Output.FellBackToDirect = true
-
-		// todo: just store the packet flags instead of below
-
-		// todo: laaaaaame
-		/*
-		if state.Packet.Flags&FallbackFlagsBadRouteToken != 0 {
-			state.Metrics.FallbackToDirectBadRouteToken.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsNoNextRouteToContinue != 0 {
-			state.Metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsPreviousUpdateStillPending != 0 {
-			state.Metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsBadContinueToken != 0 {
-			state.Metrics.FallbackToDirectBadContinueToken.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsRouteExpired != 0 {
-			state.Metrics.FallbackToDirectRouteExpired.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsRouteRequestTimedOut != 0 {
-			state.Metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsContinueRequestTimedOut != 0 {
-			state.Metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsClientTimedOut != 0 {
-			state.Metrics.FallbackToDirectClientTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsUpgradeResponseTimedOut != 0 {
-			state.Metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsRouteUpdateTimedOut != 0 {
-			state.Metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsDirectPongTimedOut != 0 {
-			state.Metrics.FallbackToDirectDirectPongTimedOut.Add(1)
-			reported = true
-		}
-
-		if state.Packet.Flags&FallbackFlagsNextPongTimedOut != 0 {
-			state.Metrics.FallbackToDirectNextPongTimedOut.Add(1)
-			reported = true
-		}
-
-		if !reported {
-			state.Metrics.FallbackToDirectUnknownReason.Add(1)
-		}
-		*/
-
+		state.Output.FallbackToDirect = true
 		return true
 	}
 
@@ -524,7 +449,7 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	return true
 }
 
-func SessionUpdateNearRelayStats(state *SessionUpdateState) bool {
+func SessionUpdateNearRelays(state *SessionUpdateState) bool {
 
 	/*
 	   This function is called once every seconds for all slices
@@ -557,23 +482,7 @@ func SessionUpdateNearRelayStats(state *SessionUpdateState) bool {
 		return false
 	}
 
-	routeState := &state.Output.RouteState
-
-	directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
-	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-	directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
-	nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
-
-	// todo
-	_ = routeState
-	_ = directLatency
-	_ = directJitter
-	_ = directPacketLoss
-	_ = nextPacketLoss
-
-	// todo
-	// destRelayIds := state.RouteMatrix.GetDatacenterRelayIDs(state.Datacenter.ID)
-	destRelayIds := make([]uint64, 0)
+	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
 
 	if len(destRelayIds) == 0 {
 		core.Debug("no relays in datacenter %x", state.Datacenter.ID)
@@ -582,13 +491,7 @@ func SessionUpdateNearRelayStats(state *SessionUpdateState) bool {
 		return false
 	}
 
-	// todo: ideally don't allocate
 	state.DestRelays = make([]int32, len(destRelayIds))
-
-	sliceNumber := int32(state.Request.SliceNumber)
-
-	// todo
-	_ = sliceNumber
 
 	/*
 	   If we are holding near relays, use the held near relay RTT as input
@@ -608,6 +511,13 @@ func SessionUpdateNearRelayStats(state *SessionUpdateState) bool {
 	   Reframe the near relays to get them in a relay index form relative to the current route matrix.
 	*/
 
+	routeState := &state.Output.RouteState
+
+	directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
+	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
+	directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
+	nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
+
 	core.ReframeRelays(
 
 		// input
@@ -618,7 +528,7 @@ func SessionUpdateNearRelayStats(state *SessionUpdateState) bool {
 		directJitter,
 		directPacketLoss,
 		nextPacketLoss,
-		sliceNumber,
+		int32(state.Request.SliceNumber),
 		state.Request.NearRelayIds[:],
 		state.Request.NearRelayRTT[:],
 		state.Request.NearRelayJitter[:],
@@ -884,8 +794,7 @@ func SessionPost(state *SessionUpdateState) {
 	*/
 
 	if state.Request.SliceNumber == 0 {
-		// todo
-		// SessionGetNearRelays(state)
+		SessionGetNearRelays(state)
 		core.Debug("first slice always goes direct")
 	}
 

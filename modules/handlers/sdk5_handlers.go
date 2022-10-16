@@ -453,23 +453,13 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	var state SessionUpdateState
 
 	state.Request = requestPacket
-
-	/*
-	state.Database = getDatabase()
-	state.Datacenter = routing.UnknownDatacenter
-	state.PacketData = incoming.Data
-	state.IpLocator = getIPLocator()
-	state.RouteMatrix = getRouteMatrix()
-	state.StaleDuration = staleDuration
-	state.RouterPrivateKey = routerPrivateKey
-	state.Response = SessionResponsePacket{
-		Version:     state.Packet.Version,
-		SessionID:   state.Packet.SessionID,
-		SliceNumber: state.Packet.SliceNumber,
-		RouteType:   routing.RouteTypeDirect,
+	state.Database = handler.Database
+	state.RouteMatrix = handler.RouteMatrix
+	state.Response = packets.SDK5_SessionUpdateResponsePacket{
+		SessionId:   state.Request.SessionId,
+		SliceNumber: state.Request.SliceNumber,
+		RouteType:   packets.SDK5_RouteTypeDirect,
 	}
-	state.PostSessionHandler = PostSessionHandler
-	*/
 
 	/*
 	   Session post *always* runs at the end of this function
@@ -531,7 +521,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   We use near relay latency, jitter and packet loss for route planning.
 	*/
 
-	SessionUpdateNearRelayStats(&state)
+	SessionUpdateNearRelays(&state)
 
 	/*
 	   Decide whether we should take network next or not.
