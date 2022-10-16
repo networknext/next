@@ -541,7 +541,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
-					Version:            common.RouteMatrixSerializeVersion,
+					Version:            common.RouteMatrixVersion_Write,
 					RelayIds:           costMatrixNew.RelayIds,
 					RelayAddresses:     costMatrixNew.RelayAddresses,
 					RelayNames:         costMatrixNew.RelayNames,

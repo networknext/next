@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	// todo: we need separate read and write versions
-	RouteMatrixSerializeVersion = 7
+	RouteMatrixVersion_Min   = 7
+	RouteMatrixVersion_Max   = 7
+	RouteMatrixVersion_Write = 7
 
-	MaxDatabaseBinWrapperSize   = 100000000     // todo: 100mb seems overkill :)
+	MaxDatabaseBinWrapperSize = 100000000 // todo: 100mb seems overkill :)
 )
 
 type RouteMatrix struct {
@@ -27,12 +28,12 @@ type RouteMatrix struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
+	DestRelays         []bool
 	RouteEntries       []core.RouteEntry
 	BinFileBytes       int32
 	BinFileData        []byte
 	CreatedAt          uint64
 	Version            uint32
-	DestRelays         []bool
 	FullRelayIds       []uint64
 	FullRelayIndexSet  map[int32]bool // todo: this should probably just be an array of bools? why do we need a map?
 }

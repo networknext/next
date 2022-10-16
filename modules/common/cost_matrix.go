@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	CostMatrixVersion_Min = 2      // the minimum version we can read
-	CostMatrixVersion_Max = 2      // the maximum version we can read
-	CostMatrixVersion_Write = 2    // the version we write
+	CostMatrixVersion_Min   = 2 // the minimum version we can read
+	CostMatrixVersion_Max   = 2 // the maximum version we can read
+	CostMatrixVersion_Write = 2 // the version we write
 
 	MaxRelayNameLength = 63
 

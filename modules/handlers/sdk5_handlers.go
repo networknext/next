@@ -3,7 +3,7 @@ package handlers
 import (
 	"net"
 	"time"
-	
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
@@ -481,7 +481,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	if SessionPre(&state) {
 		return
 	}
-	
+
 	/*
 	   Update the session
 

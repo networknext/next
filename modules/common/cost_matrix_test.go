@@ -1,9 +1,9 @@
 package common_test
 
 import (
+	"math/rand"
 	"net"
 	"testing"
-	"math/rand"
 
 	"github.com/networknext/backend/modules/common"
 
