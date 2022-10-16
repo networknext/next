@@ -21,9 +21,11 @@ func CostMatrixReadWriteTest(writeMessage *common.CostMatrix, readMessage *commo
 
 	buffer := make([]byte, BufferSize)
 
-	buffer = writeMessage.Write(buffer[:])
+	var err error
+	buffer, err = writeMessage.Write(buffer[:])
+	assert.Nil(t, err)
 
-	err := readMessage.Read(buffer)
+	err = readMessage.Read(buffer)
 	assert.Nil(t, err)
 
 	assert.Equal(t, writeMessage, readMessage)
