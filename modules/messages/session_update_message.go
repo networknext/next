@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	SessionUpdateMessageVersion_Min   = 0
-	SessionUpdateMessageVersion_Max   = 0
-	SessionUpdateMessageVersion_Write = 0
+	SessionUpdateMessageVersion_Min   = 1
+	SessionUpdateMessageVersion_Max   = 1
+	SessionUpdateMessageVersion_Write = 1
 
 	MaxSessionUpdateMessageBytes = 4096
 
@@ -144,6 +144,10 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	   These values are serialized in every slice
 	*/
+
+	if stream.IsWriting() && (message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max) {
+		panic(fmt.Sprintf("invalid session update message version %d", message.Version))
+	}
 
 	stream.SerializeBits(&message.Version, 8)
 

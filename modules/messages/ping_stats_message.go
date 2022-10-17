@@ -74,6 +74,10 @@ func (message *PingStatsMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
+	if message.Version < PingStatsMessageVersion_Min || message.Version > PingStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid ping stats message version %d", message.Version))
+	}
+
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.RelayA)

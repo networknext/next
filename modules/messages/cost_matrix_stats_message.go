@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	CostMatrixStatsMessageVersion_Min   = 0
-	CostMatrixStatsMessageVersion_Max   = 0
-	CostMatrixStatsMessageVersion_Write = 0
+	CostMatrixStatsMessageVersion_Min   = 1
+	CostMatrixStatsMessageVersion_Max   = 1
+	CostMatrixStatsMessageVersion_Write = 1
 )
 
 type CostMatrixStatsMessage struct {
@@ -25,6 +25,9 @@ type CostMatrixStatsMessage struct {
 
 func (message *CostMatrixStatsMessage) Write(buffer []byte) []byte {
 	index := 0
+	if message.Version < CostMatrixStatsMessageVersion_Min || message.Version > CostMatrixStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid cost matrix stats version %d", message.Version))
+	}
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteInt(buffer, &index, message.Bytes)
@@ -42,7 +45,7 @@ func (message *CostMatrixStatsMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read cost matrix stats version")
 	}
 
-	if message.Version < MatchDataMessageVersion_Min || message.Version > MatchDataMessageVersion_Max {
+	if message.Version < CostMatrixStatsMessageVersion_Min || message.Version > CostMatrixStatsMessageVersion_Max {
 		return fmt.Errorf("invalid cost matrix stats version %d", message.Version)
 	}
 

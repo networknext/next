@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	UptimeStatsMessageVersion_Min   = 0
-	UptimeStatsMessageVersion_Max   = 0
-	UptimeStatsMessageVersion_Write = 0
+	UptimeStatsMessageVersion_Min   = 1
+	UptimeStatsMessageVersion_Max   = 1
+	UptimeStatsMessageVersion_Write = 1
 
 	MaxUptimeStatsMessageBytes = 1024
 
@@ -60,6 +60,10 @@ func (message *UptimeStatsMessage) Read(buffer []byte) error {
 func (message *UptimeStatsMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < UptimeStatsMessageVersion_Min || message.Version > UptimeStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid uptime stats message version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)

@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	RouteMatrixStatsMessageVersion_Min   = 0
-	RouteMatrixStatsMessageVersion_Max   = 0
-	RouteMatrixStatsMessageVersion_Write = 0
+	RouteMatrixStatsMessageVersion_Min   = 1
+	RouteMatrixStatsMessageVersion_Max   = 1
+	RouteMatrixStatsMessageVersion_Write = 1
 )
 
 type RouteMatrixStatsMessage struct {
@@ -44,6 +44,9 @@ type RouteMatrixStatsMessage struct {
 
 func (message *RouteMatrixStatsMessage) Write(buffer []byte) []byte {
 	index := 0
+	if message.Version < RouteMatrixStatsMessageVersion_Min || message.Version > RouteMatrixStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid route matrix stats version %d", message.Version))
+	}
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteInt(buffer, &index, message.Bytes)

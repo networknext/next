@@ -7,11 +7,11 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"net"
 	"math/rand"
+	"net"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -388,7 +388,7 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.Multipath = common.RandomBool()
 	sessionData.RouteState.Committed = common.RandomBool()
 	sessionData.RouteState.CommitVeto = common.RandomBool()
-	sessionData.RouteState.CommitCounter = int32(common.RandomInt(0,4))
+	sessionData.RouteState.CommitCounter = int32(common.RandomInt(0, 4))
 	sessionData.RouteState.LatencyWorse = common.RandomBool()
 	sessionData.RouteState.MultipathOverload = common.RandomBool()
 	sessionData.RouteState.NoRoute = common.RandomBool()
@@ -397,16 +397,16 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.NumNearRelays = int32(common.RandomInt(0, core.MaxNearRelays))
 
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0,255))
-		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0,255))
-		sessionData.RouteState.NearRelayPLHistory[i] = uint32(common.RandomInt(0,255))
+		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0, 255))
+		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0, 255))
+		sessionData.RouteState.NearRelayPLHistory[i] = uint32(common.RandomInt(0, 255))
 		sessionData.RouteState.NearRelayPLCount[i] = rand.Uint32()
 	}
 
 	sessionData.RouteState.DirectPLCount = rand.Uint32()
-	sessionData.RouteState.DirectPLHistory = uint32(common.RandomInt(0,255))
-	sessionData.RouteState.PLHistoryIndex = int32(common.RandomInt(0,7))
-	sessionData.RouteState.PLHistorySamples = int32(common.RandomInt(0,8))
+	sessionData.RouteState.DirectPLHistory = uint32(common.RandomInt(0, 255))
+	sessionData.RouteState.PLHistoryIndex = int32(common.RandomInt(0, 7))
+	sessionData.RouteState.PLHistorySamples = int32(common.RandomInt(0, 8))
 
 	sessionData.RouteState.RelayWentAway = common.RandomBool()
 	sessionData.RouteState.RouteLost = common.RandomBool()

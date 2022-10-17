@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	MatchDataMessageVersion_Min   = 0
-	MatchDataMessageVersion_Max   = 0
-	MatchDataMessageVersion_Write = 0
+	MatchDataMessageVersion_Min   = 1
+	MatchDataMessageVersion_Max   = 1
+	MatchDataMessageVersion_Write = 1
 
 	MaxMatchDataMessageBytes = 2048
 
@@ -88,6 +88,10 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 func (message *MatchDataMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < MatchDataMessageVersion_Min || message.Version > MatchDataMessageVersion_Max {
+		panic(fmt.Sprintf("invalid match data version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)

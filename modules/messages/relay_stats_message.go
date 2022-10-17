@@ -139,6 +139,10 @@ func (message *RelayStatsMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
+	if message.Version < RelayStatsMessageVersion_Min || message.Version > RelayStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid relay stats message version %d", message.Version))
+	}
+
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.ID)

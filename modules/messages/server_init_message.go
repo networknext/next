@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	ServerInitMessageVersion_Min   = 0
-	ServerInitMessageVersion_Max   = 0
-	ServerInitMessageVersion_Write = 0
+	ServerInitMessageVersion_Min   = 1
+	ServerInitMessageVersion_Max   = 1
+	ServerInitMessageVersion_Write = 1
 
 	MaxServerInitMessageSize = 128
 
@@ -70,6 +70,10 @@ func (message *ServerInitMessage) Read(buffer []byte) error {
 func (message *ServerInitMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < ServerInitMessageVersion_Min || message.Version > ServerInitMessageVersion_Max {
+		panic(fmt.Sprintf("invalid server init message version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)

@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	ServerUpdateMessageVersion_Min   = 0
-	ServerUpdateMessageVersion_Max   = 0
-	ServerUpdateMessageVersion_Write = 0
+	ServerUpdateMessageVersion_Min   = 1
+	ServerUpdateMessageVersion_Max   = 1
+	ServerUpdateMessageVersion_Write = 1
 
-	MaxServerUpdateMessageSize          = 128
+	MaxServerUpdateMessageSize = 128
+
 	ServerUpdateMaxDatacenterNameLength = 256
 )
 
@@ -69,6 +70,10 @@ func (message *ServerUpdateMessage) Read(buffer []byte) error {
 func (message *ServerUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < ServerUpdateMessageVersion_Min || message.Version > ServerUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid server update message version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
