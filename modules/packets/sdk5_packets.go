@@ -515,13 +515,12 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 
 	index := 0
 
-	var version uint32
-	if !encoding.ReadUint32(data, &index, &version) {
+	if !encoding.ReadUint32(data, &index, &location.Version) {
 		return errors.New("invalid read at version number")
 	}
 
-	if version < SDK5_LocationVersion_Min || version > SDK5_LocationVersion_Max {
-		return fmt.Errorf("invalid location version: %d", version)
+	if location.Version < SDK5_LocationVersion_Min || location.Version > SDK5_LocationVersion_Max {
+		return fmt.Errorf("invalid location version: %d", location.Version)
 	}
 
 	if !encoding.ReadFloat32(data, &index, &location.Latitude) {
@@ -545,6 +544,9 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 
 func (location *SDK5_LocationData) Write(buffer []byte) ([]byte, error) {
 	index := 0
+	if location.Version < SDK5_LocationVersion_Min || location.Version > SDK5_LocationVersion_Max {
+		panic(fmt.Sprintf("invalid location version: %d", location.Version))
+	}
 	encoding.WriteUint32(buffer, &index, location.Version)
 	encoding.WriteFloat32(buffer, &index, location.Latitude)
 	encoding.WriteFloat32(buffer, &index, location.Longitude)
@@ -584,6 +586,12 @@ type SDK5_SessionData struct {
 }
 
 func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
+
+	if stream.IsWriting() {
+		if sessionData.Version < SDK5_SessionDataVersion_Min || sessionData.Version > SDK5_SessionDataVersion_Max {
+			panic(fmt.Sprintf("invalid session data version"))
+		}
+	}
 
 	stream.SerializeBits(&sessionData.Version, 8)
 

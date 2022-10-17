@@ -32,6 +32,10 @@ type CostMatrix struct {
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
+	if stream.IsWriting() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
+		panic(fmt.Errorf("invalid cost matrix version: %d", m.Version))
+	}
+
 	stream.SerializeUint32(&m.Version)
 
 	if stream.IsReading() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
@@ -80,10 +84,6 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
-
-// todo: we need read and write unit tests for the cost matrix
-
-// todo: tests should include writing with the new codebase, and reading with the old codebase
 
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 	// todo: do we really want to allocate this here?

@@ -41,7 +41,15 @@ type RouteMatrix struct {
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
+	if stream.IsWriting() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
+		panic(fmt.Errorf("invalid route matrix version: %d", m.Version))
+	}
+
 	stream.SerializeUint32(&m.Version)
+
+	if stream.IsReading() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
+		return fmt.Errorf("invalid route matrix version: %d", m.Version)
+	}
 
 	numRelays := uint32(len(m.RelayIds))
 
