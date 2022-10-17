@@ -74,7 +74,7 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
@@ -726,7 +726,7 @@ func test_redis_pubsub() {
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer * NumConsumers)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
 		if messageCount > expectedCount {
-			core.Error("received too many messages!")
+			core.Error("received too many messages! %d/%d", messageCount, expectedCount)
 			os.Exit(1)
 		}
 		if i > 10 && messageCount == expectedCount {
