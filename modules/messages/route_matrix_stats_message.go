@@ -8,7 +8,11 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixStatsMessageVersion = 0 // IMPORTANT: increase this each time you change the message data structure
+const (
+	RouteMatrixStatsMessageVersion_Min   = 0
+	RouteMatrixStatsMessageVersion_Max   = 0
+	RouteMatrixStatsMessageVersion_Write = 0
+)
 
 type RouteMatrixStatsMessage struct {
 	Version                 uint8
@@ -73,55 +77,59 @@ func (message *RouteMatrixStatsMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read route matrix stats Version")
+		return fmt.Errorf("failed to read route matrix stats version")
+	}
+
+	if message.Version < RouteMatrixStatsMessageVersion_Min || message.Version > RouteMatrixStatsMessageVersion_Max {
+		return fmt.Errorf("invalid route matrix stats version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read route matrix stats Timestamp")
+		return fmt.Errorf("failed to read route matrix stats timestamp")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.Bytes) {
-		return fmt.Errorf("failed to read route matrix stats Bytes")
+		return fmt.Errorf("failed to read route matrix stats bytes")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumRelays) {
-		return fmt.Errorf("failed to read route matrix stats NumRelays")
+		return fmt.Errorf("failed to read route matrix stats num relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDestRelays) {
-		return fmt.Errorf("failed to read route matrix stats NumDestRelays")
+		return fmt.Errorf("failed to read route matrix stats num dest relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumFullRelays) {
-		return fmt.Errorf("failed to read route matrix stats NumFullRelays")
+		return fmt.Errorf("failed to read route matrix stats num full relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDatacenters) {
-		return fmt.Errorf("failed to read route matrix stats NumDatacenters")
+		return fmt.Errorf("failed to read route matrix stats num datacenters")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.TotalRoutes) {
-		return fmt.Errorf("failed to read route matrix stats TotalRoutes")
+		return fmt.Errorf("failed to read route matrix stats total routes")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.AverageNumRoutes) {
-		return fmt.Errorf("failed to read route matrix stats AverageNumRoutes")
+		return fmt.Errorf("failed to read route matrix stats average num routes")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.AverageRouteLength) {
-		return fmt.Errorf("failed to read route matrix stats AverageRouteLength")
+		return fmt.Errorf("failed to read route matrix stats average route length")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.NoRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats NoRoutePercent")
+		return fmt.Errorf("failed to read route matrix stats no route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.OneRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats OneRoutePercent")
+		return fmt.Errorf("failed to read route matrix stats one route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.NoDirectRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats NoDirectRoutePercent")
+		return fmt.Errorf("failed to read route matrix stats no direct route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_NoImprovement) {

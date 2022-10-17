@@ -1543,12 +1543,12 @@ func test_cost_matrix_read_write() {
 
 	for {
 
-		if time.Since(startTime) > 60 * time.Second {
+		if time.Since(startTime) > 60*time.Second {
 			break
 		}
 
 		writeMessage := common.GenerateRandomCostMatrix()
-	
+
 		readMessage := common.CostMatrix{}
 
 		const BufferSize = 100 * 1024
@@ -1574,12 +1574,12 @@ func test_route_matrix_read_write() {
 
 	for {
 
-		if time.Since(startTime) > 60 * time.Second {
+		if time.Since(startTime) > 60*time.Second {
 			break
 		}
 
 		writeMessage := common.GenerateRandomRouteMatrix()
-	
+
 		readMessage := common.RouteMatrix{}
 
 		const BufferSize = 1024 * 1024

@@ -8,6 +8,14 @@ import (
 // -------------------------------------------------
 
 const (
+	SDK5_SessionDataVersion_Min   = 15
+	SDK5_SessionDataVersion_Max   = 15
+	SDK5_SessionDataVersion_Write = 15
+
+	SDK5_LocationVersion_Min   = 1
+	SDK5_LocationVersion_Max   = 1
+	SDK5_LocationVersion_Write = 1
+
 	SDK5_CRYPTO_SIGN_BYTES             = 64
 	SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
 	SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
@@ -78,15 +86,9 @@ const (
 	SDK5_ContinueRouteTokenSize          = 41
 	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.Box_MACSize
 
-	// todo: we need separate read and write versions
-	SDK5_SessionDataVersion = 15
-
 	SDK5_MaxMatchValues = 64
 
 	SDK5_InvalidRouteValue = 10000
-
-	// todo: we need separate read and write versions
-	SDK5_LocationVersion = 1
 
 	SDK5_MaxContinentLength   = 16
 	SDK5_MaxCountryLength     = 64

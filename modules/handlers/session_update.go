@@ -239,12 +239,7 @@ func SessionUpdateNewSession(state *SessionUpdateState) {
 
 	core.Debug("new session")
 
-	// todo: there should be a version of the session that we WRITE, and one that we READ
-	// this way we can update what we able to read first, deploy that, and then only once
-	// all server backends are updated to be able to read the new version, we deploy again
-	// to write at that version. this way we can update session data without breaking prod.
-
-	state.Output.Version = packets.SDK5_SessionDataVersion
+	state.Output.Version = packets.SDK5_SessionDataVersion_Write
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = state.Request.SliceNumber + 1
 	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds

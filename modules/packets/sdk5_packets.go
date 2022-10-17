@@ -413,6 +413,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 // ------------------------------------------------------------
 
 type SDK5_LocationData struct {
+	Version   uint32
 	Latitude  float32
 	Longitude float32
 	ISP       string
@@ -428,8 +429,8 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 		return errors.New("invalid read at version number")
 	}
 
-	if version > SDK5_LocationVersion {
-		return fmt.Errorf("unknown location version: %d", version)
+	if version < SDK5_LocationVersion_Min || version > SDK5_LocationVersion_Max {
+		return fmt.Errorf("invalid location version: %d", version)
 	}
 
 	if !encoding.ReadFloat32(data, &index, &location.Latitude) {
@@ -453,7 +454,7 @@ func (location *SDK5_LocationData) Read(data []byte) error {
 
 func (location *SDK5_LocationData) Write(buffer []byte) ([]byte, error) {
 	index := 0
-	encoding.WriteUint32(buffer, &index, SDK5_LocationVersion)
+	encoding.WriteUint32(buffer, &index, location.Version)
 	encoding.WriteFloat32(buffer, &index, location.Latitude)
 	encoding.WriteFloat32(buffer, &index, location.Longitude)
 	encoding.WriteString(buffer, &index, location.ISP, SDK5_MaxISPNameLength)
@@ -495,10 +496,9 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
-	// todo: we should have min/max versions
 	if stream.IsReading() {
-		if sessionData.Version < 8 {
-			return errors.New("session data is too old")
+		if sessionData.Version < SDK5_SessionDataVersion_Min || sessionData.Version > SDK5_SessionDataVersion_Max {
+			return errors.New("invalid session data version")
 		}
 	}
 

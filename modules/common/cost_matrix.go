@@ -2,8 +2,8 @@ package common
 
 import (
 	"fmt"
-	"net"
 	"math/rand"
+	"net"
 
 	"github.com/networknext/backend/modules/encoding"
 )

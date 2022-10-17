@@ -3,8 +3,8 @@ package common
 import (
 	"fmt"
 	"math"
-	"net"
 	"math/rand"
+	"net"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -487,11 +487,11 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 	routeMatrix.RouteEntries = make([]core.RouteEntry, numEntries)
 
 	for i := range routeMatrix.RouteEntries {
-		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1,1000))
-		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0,core.MaxRoutesPerEntry))
+		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1, 1000))
+		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0, core.MaxRoutesPerEntry))
 		for j := 0; j < int(routeMatrix.RouteEntries[i].NumRoutes); j++ {
-			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1,1000))
-			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1,core.MaxRelaysPerRoute))
+			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1, 1000))
+			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1, core.MaxRelaysPerRoute))
 			for k := 0; k < int(routeMatrix.RouteEntries[i].RouteNumRelays[j]); k++ {
 				routeMatrix.RouteEntries[i].RouteRelays[j][k] = int32(k)
 			}

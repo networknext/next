@@ -389,7 +389,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						}
 
 						pingStatsMessages[i] = messages.PingStatsMessage{
-							Version:    messages.PingStatsMessageVersion,
+							Version:    messages.PingStatsMessageVersion_Write,
 							Timestamp:  uint64(time.Now().Unix()),
 							RelayA:     relayId,
 							RelayB:     sampleRelayId,
@@ -430,7 +430,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
 
 				relayStatsMessage := messages.RelayStatsMessage{
-					Version:                  messages.RelayStatsMessageVersion,
+					Version:                  messages.RelayStatsMessageVersion_Write,
 					Timestamp:                uint64(time.Now().Unix()),
 					NumSessions:              uint32(numSessions),
 					MaxSessions:              maxSessions,

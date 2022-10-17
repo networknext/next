@@ -525,3 +525,5 @@ func TestRelayUpdateResponsePacket(t *testing.T) {
 }
 
 // ------------------------------------------------------------------
+
+// todo: there needs to be a test for session data

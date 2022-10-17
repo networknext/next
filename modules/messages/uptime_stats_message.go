@@ -9,9 +9,13 @@ import (
 )
 
 const (
-	UptimeStatsMessageVersion  = 0
+	UptimeStatsMessageVersion_Min   = 0
+	UptimeStatsMessageVersion_Max   = 0
+	UptimeStatsMessageVersion_Write = 0
+
 	MaxUptimeStatsMessageBytes = 1024
-	MaxServiceNameLength       = 256
+
+	MaxServiceNameLength = 256
 )
 
 type UptimeStatsMessage struct {
@@ -27,7 +31,11 @@ func (message *UptimeStatsMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read match data version")
+		return fmt.Errorf("failed to read version")
+	}
+
+	if message.Version < UptimeStatsMessageVersion_Min || message.Version > UptimeStatsMessageVersion_Max {
+		return fmt.Errorf("invalid uptime stats message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
