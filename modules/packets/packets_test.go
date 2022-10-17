@@ -562,9 +562,70 @@ func GenerateRandomSessionData() packets.SDK5_SessionData {
 		}
 	}
 
-	// todo: Location
+	sessionData.Location.Version = uint32(common.RandomInt(packets.SDK5_LocationVersion_Min, packets.SDK5_LocationVersion_Min))
+	sessionData.Location.Latitude = rand.Float32()
+	sessionData.Location.Longitude = rand.Float32()
+	sessionData.Location.ISP = common.RandomString(packets.SDK5_MaxISPNameLength)
+	sessionData.Location.ASN = rand.Uint32()
 
-	// todo: RouteState (big)
+	sessionData.RouteState.UserID = rand.Uint64()
+	sessionData.RouteState.Next = common.RandomBool()
+	sessionData.RouteState.Veto = common.RandomBool()
+	sessionData.RouteState.Banned = common.RandomBool()
+	sessionData.RouteState.Disabled = common.RandomBool()
+	sessionData.RouteState.NotSelected = common.RandomBool()
+	sessionData.RouteState.ABTest = common.RandomBool()
+	sessionData.RouteState.A = common.RandomBool()
+	sessionData.RouteState.B = common.RandomBool()
+	sessionData.RouteState.ForcedNext = common.RandomBool()
+	sessionData.RouteState.ReduceLatency = common.RandomBool()
+	sessionData.RouteState.ReducePacketLoss = common.RandomBool()
+	sessionData.RouteState.ProMode = common.RandomBool()
+	sessionData.RouteState.Multipath = common.RandomBool()
+	sessionData.RouteState.Committed = common.RandomBool()
+	sessionData.RouteState.CommitVeto = common.RandomBool()
+	sessionData.RouteState.CommitCounter = int32(common.RandomInt(0,4))
+	sessionData.RouteState.LatencyWorse = common.RandomBool()
+	sessionData.RouteState.MultipathOverload = common.RandomBool()
+	sessionData.RouteState.NoRoute = common.RandomBool()
+	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
+	sessionData.RouteState.Mispredict = common.RandomBool()
+	sessionData.RouteState.NumNearRelays = int32(common.RandomInt(0, core.MaxNearRelays))
+
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0,255))
+		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0,255))
+		sessionData.RouteState.NearRelayPLHistory[i] = uint32(common.RandomInt(0,255))
+		sessionData.RouteState.NearRelayPLCount[i] = rand.Uint32()
+	}
+
+/*
+	directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
+	stream.SerializeInteger(&directPLHistory, 0, 255)
+	sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
+
+	stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
+	stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
+
+	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
+	stream.SerializeBool(&sessionData.RouteState.RouteLost)
+	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
+
+	stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
+
+	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
+	}
+
+	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
+
+	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
+
+	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+
+	stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+
+	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
+*/
 
 	return sessionData
 }
