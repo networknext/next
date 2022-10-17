@@ -487,7 +487,6 @@ func mainReturnWithCode() int {
 		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
 		StreamName:         "session-counts",
 		BatchSize:          1024,
-		BatchDuration:      time.Second,
 		MessageChannelSize: 10 * 1024,
 	})
 	if err != nil {
@@ -500,7 +499,6 @@ func mainReturnWithCode() int {
 		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
 		StreamName:         "session-data",
 		BatchSize:          1024,
-		BatchDuration:      time.Second,
 		MessageChannelSize: 10 * 1024,
 	})
 	if err != nil {
