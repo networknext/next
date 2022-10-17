@@ -31,6 +31,7 @@ func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 
 	return true
 }
+
 func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
 	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
 	return int(result)
@@ -494,8 +495,11 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBits(&sessionData.Version, 8)
 
-	if sessionData.Version < 8 {
-		return errors.New("session data is too old")
+	// todo: we should have min/max versions
+	if stream.IsReading() {
+		if sessionData.Version < 8 {
+			return errors.New("session data is too old")
+		}
 	}
 
 	stream.SerializeUint64(&sessionData.SessionId)
