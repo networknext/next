@@ -482,10 +482,23 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	redisStreamsProducer, err := common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
+	sessionCountsProducer, err := common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
 		RedisHostname:      envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379"),
 		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
-		StreamName:         "session-updates",
+		StreamName:         "session-counts",
+		BatchSize:          1024,
+		BatchDuration:      time.Second,
+		MessageChannelSize: 10 * 1024,
+	})
+	if err != nil {
+		core.Error("failed to setup streams producer: %v", err)
+		return 1
+	}
+
+	sessionDataProducer, err := common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
+		RedisHostname:      envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379"),
+		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
+		StreamName:         "session-data",
 		BatchSize:          1024,
 		BatchDuration:      time.Second,
 		MessageChannelSize: 10 * 1024,
@@ -509,7 +522,7 @@ func mainReturnWithCode() int {
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, redisStreamsProducer, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, sessionDataProducer, sessionCountsProducer, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend

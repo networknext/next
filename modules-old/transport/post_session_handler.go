@@ -18,7 +18,8 @@ type PostSessionHandler struct {
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
 	matchDataChannel           chan *md.MatchDataEntry
-	portalProducer             common.RedisStreamsProducer
+	sessionDataProducer        common.RedisStreamsProducer
+	sessionCountsProducer      common.RedisStreamsProducer
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
 	biller2                    billing.Biller
@@ -28,7 +29,7 @@ type PostSessionHandler struct {
 }
 
 func NewPostSessionHandler(
-	numGoroutines int, chanBufferSize int, portalProducer *common.RedisStreamsProducer, portalPublishMaxRetries int,
+	numGoroutines int, chanBufferSize int, sessionDataProducer *common.RedisStreamsProducer, sessionCountsProducer *common.RedisStreamsProducer, portalPublishMaxRetries int,
 	biller2 billing.Biller, featureBilling2 bool, matcher md.Matcher, metrics *metrics.PostSessionMetrics,
 ) *PostSessionHandler {
 
@@ -38,7 +39,8 @@ func NewPostSessionHandler(
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
 		matchDataChannel:           make(chan *md.MatchDataEntry, chanBufferSize),
-		portalProducer:             *portalProducer,
+		sessionDataProducer:        *sessionDataProducer,
+		sessionCountsProducer:      *sessionCountsProducer,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		biller2:                    biller2,
 		featureBilling2:            featureBilling2,
@@ -91,7 +93,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 						continue
 					}
 
-					post.portalProducer.MessageChannel <- countBytes
+					post.sessionCountsProducer.MessageChannel <- countBytes
 
 					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
@@ -116,7 +118,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 						continue
 					}
 
-					post.portalProducer.MessageChannel <- sessionBytes
+					post.sessionDataProducer.MessageChannel <- sessionBytes
 
 					post.metrics.PortalEntriesFinished.Add(1)
 
