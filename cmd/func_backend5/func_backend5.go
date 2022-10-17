@@ -640,6 +640,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
 		sessionData.RouteState.UserID = requestPacket.UserHash
+		sessionData.Location.Version = packets.SDK5_LocationVersion_Write
 
 	} else {
 
