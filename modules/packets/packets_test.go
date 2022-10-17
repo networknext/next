@@ -526,4 +526,56 @@ func TestRelayUpdateResponsePacket(t *testing.T) {
 
 // ------------------------------------------------------------------
 
-// todo: there needs to be a test for session data
+func GenerateRandomSessionData() packets.SDK5_SessionData {
+
+	sessionData := packets.SDK5_SessionData{
+		Version:                       uint32(common.RandomInt(packets.SDK5_SessionDataVersion_Min, packets.SDK5_SessionDataVersion_Max)),
+		SessionId:                     rand.Uint64(),
+		SessionVersion:                uint32(common.RandomInt(0, 255)),
+		SliceNumber:                   rand.Uint32(),
+		ExpireTimestamp:               rand.Uint64(),
+		Initial:                       common.RandomBool(),
+		RouteChanged:                  common.RandomBool(),
+		RouteNumRelays:                int32(common.RandomInt(0, packets.SDK5_MaxRelaysPerRoute)),
+		RouteCost:                     int32(common.RandomInt(0, packets.SDK5_InvalidRouteValue)),
+		EverOnNext:                    common.RandomBool(),
+		FallbackToDirect:              common.RandomBool(),
+		PrevPacketsSentClientToServer: rand.Uint64(),
+		PrevPacketsSentServerToClient: rand.Uint64(),
+		PrevPacketsLostClientToServer: rand.Uint64(),
+		PrevPacketsLostServerToClient: rand.Uint64(),
+		HoldNearRelays:                common.RandomBool(),
+		WroteSummary:                  common.RandomBool(),
+		TotalPriceSum:                 rand.Uint64(),
+		NextEnvelopeBytesUpSum:        rand.Uint64(),
+		NextEnvelopeBytesDownSum:      rand.Uint64(),
+		DurationOnNext:                rand.Uint32(),
+	}
+
+	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
+		sessionData.RouteRelayIds[i] = rand.Uint64()
+	}
+
+	if sessionData.HoldNearRelays {
+		for i := 0; i < core.MaxNearRelays; i++ {
+			sessionData.HoldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
+		}
+	}
+
+	// todo: Location
+
+	// todo: RouteState (big)
+
+	return sessionData
+}
+
+const NumSessionDataIterations = 1
+
+func TestSessionUpdate(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumSessionDataIterations; i++ {
+		writeMessage := GenerateRandomSessionData()
+		readMessage := packets.SDK5_SessionData{}
+		PacketSerializationTest[*packets.SDK5_SessionData](&writeMessage, &readMessage, t)
+	}
+}
