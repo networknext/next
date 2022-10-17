@@ -25,6 +25,8 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/encoding"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1561,7 +1563,7 @@ func test_cost_matrix_read_write() {
 		err = readMessage.Read(buffer)
 
 		if !reflect.DeepEqual(writeMessage, readMessage) {
-			panic("cost matrix serialize failure")
+			panic("cost matrix read write failure")
 		}
 	}
 }
@@ -1592,7 +1594,48 @@ func test_route_matrix_read_write() {
 		err = readMessage.Read(buffer)
 
 		if !reflect.DeepEqual(writeMessage, readMessage) {
-			panic("route matrix serialize failure")
+			panic("route matrix read write failure")
+		}
+	}
+}
+
+func test_session_data_serialize() {
+
+	fmt.Printf("test_session_data_serialize\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60*time.Second {
+			break
+		}
+
+		writePacket := packets.GenerateRandomSessionData()
+
+		readPacket := packets.SDK5_SessionData{}
+
+		const BufferSize = 10 * 1024
+
+		buffer := [BufferSize]byte{}
+
+		writeStream := encoding.CreateWriteStream(buffer[:])
+
+		err := writePacket.Serialize(writeStream)
+		if err != nil {
+			panic(err)
+		}
+		writeStream.Flush()
+		packetBytes := writeStream.GetBytesProcessed()
+
+		readStream := encoding.CreateReadStream(buffer[:packetBytes])
+		err = readPacket.Serialize(readStream)
+		if err != nil {
+			panic(err)
+		}
+
+		if !reflect.DeepEqual(writePacket, readPacket) {
+			panic("session data serialize failure")
 		}
 	}
 }
@@ -1617,6 +1660,7 @@ func main() {
 		test_google_bigquery,
 		test_cost_matrix_read_write,
 		test_route_matrix_read_write,
+		test_session_data_serialize,
 	}
 
 	var tests []test_function
