@@ -31,6 +31,7 @@ import (
 	// FUCK this logging system. FUCK IT. Marked for death!!!
 	"github.com/go-kit/kit/log"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
@@ -45,7 +46,6 @@ import (
 	"github.com/networknext/backend/modules-old/storage"
 	"github.com/networknext/backend/modules-old/transport"
 	"github.com/networknext/backend/modules-old/transport/middleware"
-	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"golang.org/x/sys/unix"
 
@@ -482,26 +482,29 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	// todo: update to redis streams
-	portalPublishers := make([]pubsub.Publisher, 0)
-	/*
-	   // Start portal cruncher publisher
-	   {
-	       portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555"})
+	sessionCountsProducer, err := common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
+		RedisHostname:      envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379"),
+		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
+		StreamName:         "session-counts",
+		BatchSize:          1024,
+		MessageChannelSize: 10 * 1024,
+	})
+	if err != nil {
+		core.Error("failed to setup streams producer: %v", err)
+		return 1
+	}
 
-	       postSessionPortalSendBufferSize := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
-
-	       for _, host := range portalCruncherHosts {
-	           portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
-	           if err != nil {
-	               core.Error("could not create portal cruncher publisher: %v", err)
-	               return 1
-	           }
-
-	           portalPublishers = append(portalPublishers, portalCruncherPublisher)
-	       }
-	   }
-	*/
+	sessionDataProducer, err := common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
+		RedisHostname:      envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379"),
+		RedisPassword:      envvar.GetString("REDIS_PASSWORD", ""),
+		StreamName:         "session-data",
+		BatchSize:          1024,
+		MessageChannelSize: 10 * 1024,
+	})
+	if err != nil {
+		core.Error("failed to setup streams producer: %v", err)
+		return 1
+	}
 
 	numPostSessionGoroutines := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 
@@ -517,7 +520,7 @@ func mainReturnWithCode() int {
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, sessionDataProducer, sessionCountsProducer, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend
