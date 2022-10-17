@@ -2,15 +2,14 @@ package transport
 
 import (
 	"context"
-	"errors"
 	"sync"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/networknext/backend/modules-old/billing"
 	md "github.com/networknext/backend/modules-old/match_data"
 	"github.com/networknext/backend/modules-old/metrics"
-	"github.com/networknext/backend/modules-old/transport/pubsub"
 )
 
 type PostSessionHandler struct {
@@ -19,7 +18,7 @@ type PostSessionHandler struct {
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
 	matchDataChannel           chan *md.MatchDataEntry
-	portalPublishers           []pubsub.Publisher
+	portalProducer             common.RedisStreamsProducer
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
 	biller2                    billing.Biller
@@ -29,7 +28,7 @@ type PostSessionHandler struct {
 }
 
 func NewPostSessionHandler(
-	numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
+	numGoroutines int, chanBufferSize int, portalProducer *common.RedisStreamsProducer, portalPublishMaxRetries int,
 	biller2 billing.Biller, featureBilling2 bool, matcher md.Matcher, metrics *metrics.PostSessionMetrics,
 ) *PostSessionHandler {
 
@@ -39,7 +38,7 @@ func NewPostSessionHandler(
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
 		matchDataChannel:           make(chan *md.MatchDataEntry, chanBufferSize),
-		portalPublishers:           portalPublishers,
+		portalProducer:             *portalProducer,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		biller2:                    biller2,
 		featureBilling2:            featureBilling2,
@@ -84,24 +83,17 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
 			for {
 				select {
-				// todo: we need to convert to redis streams
-				/*
-				   case postSessionCountData := <-post.sessionPortalCountsChannel:
-				       countBytes, err := WriteSessionCountData(postSessionCountData)
-				       if err != nil {
-				           core.Error("could not serialize count data: %v", err)
-				           post.metrics.PortalFailure.Add(1)
-				           continue
-				       }
+				case postSessionCountData := <-post.sessionPortalCountsChannel:
+					countBytes, err := WriteSessionCountData(postSessionCountData)
+					if err != nil {
+						core.Error("could not serialize count data: %v", err)
+						post.metrics.PortalFailure.Add(1)
+						continue
+					}
 
-				       _, err = post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionCounts, countBytes)
-				       if err != nil {
-				           core.Error("could not update portal counts: %v", err)
-				           post.metrics.PortalFailure.Add(1)
-				           continue
-				       }
-				       post.metrics.PortalEntriesFinished.Add(1)
-				*/
+					post.portalProducer.MessageChannel <- countBytes
+
+					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
 				}
@@ -116,25 +108,17 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
 			for {
 				select {
-				// todo: need to update to redis streams
-				/*
-				   case postSessionPortalData := <-post.sessionPortalDataChannel:
-				       sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
-				       if err != nil {
-				           core.Error("could not serialize portal data: %v", err)
-				           post.metrics.PortalFailure.Add(1)
-				           continue
-				       }
+				case postSessionPortalData := <-post.sessionPortalDataChannel:
+					sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
+					if err != nil {
+						core.Error("could not serialize portal data: %v", err)
+						post.metrics.PortalFailure.Add(1)
+						continue
+					}
 
-				       _, err = post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
-				       if err != nil {
-				           core.Error("could not update portal data: %v", err)
-				           post.metrics.PortalFailure.Add(1)
-				           continue
-				       }
+					post.portalProducer.MessageChannel <- sessionBytes
 
-				       post.metrics.PortalEntriesFinished.Add(1)
-				*/
+					post.metrics.PortalEntriesFinished.Add(1)
 
 				case <-ctx.Done():
 					return
@@ -222,49 +206,4 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 
 func (post *PostSessionHandler) MatchDataBufferSize() uint64 {
 	return uint64(len(post.matchDataChannel))
-}
-
-func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
-	var byteCount int
-	var err error
-
-	for i := range post.portalPublishers {
-		var retryCount int
-
-		// Calculate the index of the portal publisher to use for this iteration
-		index := (post.portalPublisherIndex + i) % len(post.portalPublishers)
-
-		for retryCount < post.portalPublishMaxRetries+1 { // only retry so many times
-			byteCount, err = post.portalPublishers[index].Publish(ctx, topic, data)
-			if err != nil {
-				switch err.(type) {
-				case *pubsub.ErrRetry:
-					retryCount++
-					continue
-				default:
-					return 0, err
-				}
-			}
-
-			retryCount = -1
-			break
-		}
-
-		// We published the message, break out
-		if retryCount < post.portalPublishMaxRetries {
-			break
-		}
-
-		// If we've hit the retry limit, try again using another portal publisher.
-		// If this is the last iteration and we still can't publish the message, error out.
-		if i == len(post.portalPublishers)-1 {
-			return byteCount, errors.New("exceeded retry count on portal data")
-		}
-	}
-
-	// If we've successfully published the message, increment the portal publisher index
-	// so that we evenly distribute the load across each publisher.
-	post.portalPublisherIndex = (post.portalPublisherIndex + 1) % len(post.portalPublishers)
-	return byteCount, nil
-
 }
