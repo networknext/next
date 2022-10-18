@@ -18,8 +18,8 @@ type PostSessionHandler struct {
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
 	matchDataChannel           chan *md.MatchDataEntry
-	sessionDataProducer        common.RedisStreamsProducer
-	sessionCountsProducer      common.RedisStreamsProducer
+	sessionDataProducer        *common.RedisStreamsProducer
+	sessionCountsProducer      *common.RedisStreamsProducer
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
 	biller2                    billing.Biller
@@ -39,8 +39,8 @@ func NewPostSessionHandler(
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
 		matchDataChannel:           make(chan *md.MatchDataEntry, chanBufferSize),
-		sessionDataProducer:        *sessionDataProducer,
-		sessionCountsProducer:      *sessionCountsProducer,
+		sessionDataProducer:        sessionDataProducer,
+		sessionCountsProducer:      sessionCountsProducer,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		biller2:                    biller2,
 		featureBilling2:            featureBilling2,
