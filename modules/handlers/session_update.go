@@ -9,6 +9,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 type SessionUpdateState struct {
@@ -78,7 +79,7 @@ type SessionUpdateState struct {
 	PostRealPacketLossServerToClient float32
 
 	// for convenience
-	UnmarshaledSessionData bool
+	ReadSessionData bool
 
 	// functional testing flags
 	ClientPingTimedOut                                 bool
@@ -105,6 +106,7 @@ type SessionUpdateState struct {
 	RouteNoLongerExists                                bool
 	Mispredict                                         bool
 	LatencyWorse                                       bool
+	FailedToReadSessionData                            bool
 }
 
 func SessionPre(state *SessionUpdateState) bool {
@@ -285,25 +287,28 @@ func SessionUpdateExistingSession(state *SessionUpdateState) {
 
 	core.Debug("existing session")
 
-	if !state.UnmarshaledSessionData {
+	/*
+	   Read the session data, if it has not already been read.
 
-		/*
-		   If for some reason we did not unmarshal the SessionData
-		   already, we must do it here for existing sessions.
-		*/
+	   This data contains state that persists across the session, it is sent up from the SDK,
+	   we transform it, and then send it back down -- and it gets sent up by the SDK in the next
+	   update.
 
-		// todo
-		/*
-			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+	   This way we don't have to store state per-session in the backend.
+	*/
 
-			// todo: note that the flag is not set to say that we unmarshelled it... we should set the flag
+	if !state.ReadSessionData {
 
-			if err != nil {
-				core.Error("SessionUpdateExistingSession(): could not read session data for buyer %016x:\n\n%s\n", state.Buyer.ID, err)
-				state.Metrics.ReadSessionDataFailure.Add(1)
-				return
-			}
-		*/
+		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
+		
+		err := state.Input.Serialize(readStream)
+		if err != nil {
+			core.Debug("failed to read session data: %v", err)
+			state.FailedToReadSessionData = true
+			return
+		}
+
+		state.ReadSessionData = true
 	}
 
 	/*
@@ -484,7 +489,7 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 func SessionUpdateNearRelays(state *SessionUpdateState) bool {
 
 	/*
-	   This function is called once every 10 seconds for all slices
+	   This function is CalculateNextBytesUpAndDown once every 10 seconds for all slices
 	   in a session after slice 0 (first slice).
 
 	   It takes the ping statistics for each near relay, and collates them
@@ -600,9 +605,10 @@ func SessionFilterNearRelays(state *SessionUpdateState) {
 	*/
 
 	if !state.Buyer.InternalConfig.LargeCustomer {
-		state.LargeCustomer = true
 		return
 	}
+
+	state.LargeCustomer = true
 
 	if state.Request.SliceNumber < 4 {
 		return
@@ -724,8 +730,6 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 				core.Debug("route changed")
 				state.RouteChanged = true
 				// todo
-				// state.Metrics.RouteSwitched.Add(1)
-				// todo
 				// BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 			} else {
 				core.Debug("route continued")
@@ -817,10 +821,7 @@ func SessionPost(state *SessionUpdateState) {
 	}
 
 	/*
-	   Decide if the session was ever on next.
-
-	   We avoid using route type to verify if a session was ever on next
-	   in case the route decision to take next was made on the final slice.
+	   Track if the session was ever on next.
 	*/
 
 	if state.Request.Next {
