@@ -272,6 +272,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 			errChan <- ctx.Err()
 			return
 		case message := <-cruncher.dataConsumer.MessageChannel:
+			cruncher.metrics.ReceivedMessageCount.Add(1)
 
 			var sessionPortalData transport.SessionPortalData
 			if err := transport.ReadSessionPortalData(&sessionPortalData, message); err != nil {
@@ -288,8 +289,6 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 			default:
 				errChan <- &ErrChannelFull{}
 			}
-		default:
-			errChan <- &ErrUnknownMessage{}
 		}
 
 		errChan <- nil
