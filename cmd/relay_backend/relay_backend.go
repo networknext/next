@@ -363,7 +363,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numRoutable := 0
 
-				pingStatsMessages := make([]messages.PingStatsMessage, numSamples)
+				pingStatsMessages := make([]messages.PingStatsMessage, 0)
 				sampleRelayIds := make([]uint64, numSamples)
 				sampleRTT := make([]float32, numSamples)
 				sampleJitter := make([]float32, numSamples)
@@ -388,8 +388,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 							sampleRoutable[i] = true
 						}
 
-						pingStatsMessages[i] = messages.PingStatsMessage{
-							Version:    messages.PingStatsMessageVersion,
+						pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
+							Version:    messages.PingStatsMessageVersion_Write,
 							Timestamp:  uint64(time.Now().Unix()),
 							RelayA:     relayId,
 							RelayB:     sampleRelayId,
@@ -397,7 +397,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 							Jitter:     jitter,
 							PacketLoss: pl,
 							Routable:   sampleRoutable[i],
-						}
+						})
 					}
 				}
 
@@ -430,7 +430,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
 
 				relayStatsMessage := messages.RelayStatsMessage{
-					Version:                  messages.RelayStatsMessageVersion,
+					Version:                  messages.RelayStatsMessageVersion_Write,
 					Timestamp:                uint64(time.Now().Unix()),
 					NumSessions:              uint32(numSessions),
 					MaxSessions:              maxSessions,
@@ -502,7 +502,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				costs := relayManager.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
 				costMatrixNew := &common.CostMatrix{
-					Version:            common.CostMatrixSerializeVersion,
+					Version:            common.CostMatrixVersion_Write,
 					RelayIds:           relayData.RelayIds,
 					RelayAddresses:     relayData.RelayAddresses,
 					RelayNames:         relayData.RelayNames,
@@ -541,7 +541,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
-					Version:            common.RouteMatrixSerializeVersion,
+					Version:            common.RouteMatrixVersion_Write,
 					RelayIds:           costMatrixNew.RelayIds,
 					RelayAddresses:     costMatrixNew.RelayAddresses,
 					RelayNames:         costMatrixNew.RelayNames,

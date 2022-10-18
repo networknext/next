@@ -9,7 +9,10 @@ import (
 )
 
 const (
-	PingStatsMessageVersion = 4
+	PingStatsMessageVersion_Min   = 4
+	PingStatsMessageVersion_Max   = 4
+	PingStatsMessageVersion_Write = 4
+
 	MaxPingStatsMessageSize = 128
 )
 
@@ -29,37 +32,39 @@ func (message *PingStatsMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read ping stats Version")
+		return fmt.Errorf("failed to read ping stats version")
+	}
+
+	if message.Version < PingStatsMessageVersion_Min || message.Version > PingStatsMessageVersion_Max {
+		return fmt.Errorf("invalid ping stats message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read ping stats Timestamp")
+		return fmt.Errorf("failed to read ping stats timestamp")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayA) {
-		return fmt.Errorf("failed to read ping stats RelayA")
+		return fmt.Errorf("failed to read ping stats relay a")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayB) {
-		return fmt.Errorf("failed to read ping stats RelayB")
+		return fmt.Errorf("failed to read ping stats relay b")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTT) {
-		return fmt.Errorf("failed to read ping stats RTT")
+		return fmt.Errorf("failed to read ping stats rtt")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.Jitter) {
-		return fmt.Errorf("failed to read ping stats Jitter")
+		return fmt.Errorf("failed to read ping stats jitter")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.PacketLoss) {
-		return fmt.Errorf("failed to read ping stats PacketLoss")
+		return fmt.Errorf("failed to read ping stats packet loss")
 	}
 
-	if message.Version >= 2 {
-		if !encoding.ReadBool(buffer, &index, &message.Routable) {
-			return fmt.Errorf("failed to read ping stats Routable")
-		}
+	if !encoding.ReadBool(buffer, &index, &message.Routable) {
+		return fmt.Errorf("failed to read ping stats routable")
 	}
 
 	return nil
@@ -68,6 +73,10 @@ func (message *PingStatsMessage) Read(buffer []byte) error {
 func (message *PingStatsMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < PingStatsMessageVersion_Min || message.Version > PingStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid ping stats message version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)

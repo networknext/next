@@ -326,9 +326,9 @@ type RouteEntry struct {
 	DirectCost     int32
 	NumRoutes      int32
 	RouteCost      [MaxRoutesPerEntry]int32
+	RouteHash      [MaxRoutesPerEntry]uint32
 	RouteNumRelays [MaxRoutesPerEntry]int32
 	RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
-	RouteHash      [MaxRoutesPerEntry]uint32
 }
 
 func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {

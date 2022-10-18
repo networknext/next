@@ -25,6 +25,8 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/packets"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -74,7 +76,7 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
@@ -726,7 +728,7 @@ func test_redis_pubsub() {
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer * NumConsumers)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
 		if messageCount > expectedCount {
-			core.Error("received too many messages!")
+			core.Error("received too many messages! %d/%d", messageCount, expectedCount)
 			os.Exit(1)
 		}
 		if i > 10 && messageCount == expectedCount {
@@ -1535,6 +1537,109 @@ func test_redis_leader_election_no_flap() {
 	core.Debug("done")
 }
 
+func test_cost_matrix_read_write() {
+
+	fmt.Printf("test_cost_matrix_read_write\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60*time.Second {
+			break
+		}
+
+		writeMessage := common.GenerateRandomCostMatrix()
+
+		readMessage := common.CostMatrix{}
+
+		const BufferSize = 100 * 1024
+
+		buffer, err := writeMessage.Write(BufferSize)
+		if err != nil {
+			panic(err)
+		}
+
+		err = readMessage.Read(buffer)
+
+		if !reflect.DeepEqual(writeMessage, readMessage) {
+			panic("cost matrix read write failure")
+		}
+	}
+}
+
+func test_route_matrix_read_write() {
+
+	fmt.Printf("test_route_matrix_read_write\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60*time.Second {
+			break
+		}
+
+		writeMessage := common.GenerateRandomRouteMatrix()
+
+		readMessage := common.RouteMatrix{}
+
+		const BufferSize = 1024 * 1024
+
+		buffer, err := writeMessage.Write(BufferSize)
+		if err != nil {
+			panic(err)
+		}
+
+		err = readMessage.Read(buffer)
+
+		if !reflect.DeepEqual(writeMessage, readMessage) {
+			panic("route matrix read write failure")
+		}
+	}
+}
+
+func test_session_data_serialize() {
+
+	fmt.Printf("test_session_data_serialize\n")
+
+	startTime := time.Now()
+
+	for {
+
+		if time.Since(startTime) > 60*time.Second {
+			break
+		}
+
+		writePacket := packets.GenerateRandomSessionData()
+
+		readPacket := packets.SDK5_SessionData{}
+
+		const BufferSize = 10 * 1024
+
+		buffer := [BufferSize]byte{}
+
+		writeStream := encoding.CreateWriteStream(buffer[:])
+
+		err := writePacket.Serialize(writeStream)
+		if err != nil {
+			panic(err)
+		}
+		writeStream.Flush()
+		packetBytes := writeStream.GetBytesProcessed()
+
+		readStream := encoding.CreateReadStream(buffer[:packetBytes])
+		err = readPacket.Serialize(readStream)
+		if err != nil {
+			panic(err)
+		}
+
+		if !reflect.DeepEqual(writePacket, readPacket) {
+			panic("session data serialize failure")
+		}
+	}
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1553,6 +1658,9 @@ func main() {
 		test_redis_leader_election_migration,
 		test_google_pubsub,
 		test_google_bigquery,
+		test_cost_matrix_read_write,
+		test_route_matrix_read_write,
+		test_session_data_serialize,
 	}
 
 	var tests []test_function

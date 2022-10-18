@@ -8,7 +8,11 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const CostMatrixStatsMessageVersion = 0 // IMPORTANT: increase this each time you change the data structure
+const (
+	CostMatrixStatsMessageVersion_Min   = 1
+	CostMatrixStatsMessageVersion_Max   = 1
+	CostMatrixStatsMessageVersion_Write = 1
+)
 
 type CostMatrixStatsMessage struct {
 	Version        byte
@@ -21,6 +25,9 @@ type CostMatrixStatsMessage struct {
 
 func (message *CostMatrixStatsMessage) Write(buffer []byte) []byte {
 	index := 0
+	if message.Version < CostMatrixStatsMessageVersion_Min || message.Version > CostMatrixStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid cost matrix stats version %d", message.Version))
+	}
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteInt(buffer, &index, message.Bytes)
@@ -35,27 +42,31 @@ func (message *CostMatrixStatsMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read cost matrix stats Version")
+		return fmt.Errorf("failed to read cost matrix stats version")
+	}
+
+	if message.Version < CostMatrixStatsMessageVersion_Min || message.Version > CostMatrixStatsMessageVersion_Max {
+		return fmt.Errorf("invalid cost matrix stats version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read cost matrix stats Timestamp")
+		return fmt.Errorf("failed to read cost matrix stats timestamp")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.Bytes) {
-		return fmt.Errorf("failed to read cost matrix stats Bytes")
+		return fmt.Errorf("failed to read cost matrix stats bytes")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumRelays) {
-		return fmt.Errorf("failed to read cost matrix stats NumRelays")
+		return fmt.Errorf("failed to read cost matrix stats num relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDestRelays) {
-		return fmt.Errorf("failed to read cost matrix stats NumDestRelays")
+		return fmt.Errorf("failed to read cost matrix stats num dest relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDatacenters) {
-		return fmt.Errorf("failed to read cost matrix stats NumDatacenters")
+		return fmt.Errorf("failed to read cost matrix stats num datacenters")
 	}
 
 	return nil

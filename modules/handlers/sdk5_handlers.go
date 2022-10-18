@@ -1,19 +1,15 @@
 package handlers
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"net"
 	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/database"
 )
 
 const (
@@ -368,19 +364,6 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
-
-	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
-
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received session update request packet from %s", from.String())
-	core.Debug("---------------------------------------------------------------------------")
-
-	// todo
-
-	// ...
-}
-
 func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessMatchDataRequestPacket] = true
@@ -434,4 +417,117 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 
 		handler.Events[SDK5_HandlerEvent_SentMatchDataMessage] = true
 	}
+}
+
+func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+
+	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
+
+	core.Debug("---------------------------------------------------------------------------")
+	core.Debug("received session update request packet from %s", from.String())
+	core.Debug("---------------------------------------------------------------------------")
+
+	// track the length of session update handlers
+
+	timeStart := time.Now()
+	defer func() {
+		milliseconds := float64(time.Since(timeStart).Milliseconds())
+		if milliseconds > 100 {
+			// todo: set long duration bool to true
+		}
+		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
+	}()
+
+	// log stuff we want to see with each session update (debug only)
+
+	core.Debug("buyer id is %x", requestPacket.BuyerId)
+	core.Debug("datacenter id is %x", requestPacket.DatacenterId)
+	core.Debug("session id is %x", requestPacket.SessionId)
+	core.Debug("slice number is %d", requestPacket.SliceNumber)
+	core.Debug("retry number is %d", requestPacket.RetryNumber)
+
+	/*
+	   Build session handler state. Putting everything in a struct makes calling subroutines much easier.
+	*/
+
+	var state SessionUpdateState
+
+	state.Request = requestPacket
+	state.Database = handler.Database
+	state.RouteMatrix = handler.RouteMatrix
+	state.Response = packets.SDK5_SessionUpdateResponsePacket{
+		SessionId:   state.Request.SessionId,
+		SliceNumber: state.Request.SliceNumber,
+		RouteType:   packets.SDK5_RouteTypeDirect,
+	}
+
+	/*
+	   Session post *always* runs at the end of this function
+
+	   It writes and sends the response packet back to the sender,
+	   and sends session data to billing and the portal.
+	*/
+
+	defer SessionPost(&state)
+
+	/*
+	   Call session pre function
+
+	   This function checks for early out conditions and does some setup of the handler state.
+
+	   If it returns true, one of the early out conditions has been met, so we return early.
+	*/
+
+	if SessionPre(&state) {
+		return
+	}
+
+	/*
+	   Update the session
+
+	   Do setup on slice 0, then for subsequent slices transform state.Input -> state.Output
+
+	   state.Output is sent down to the SDK in the session response packet, and next slice
+	   it is sent back up to us in the subsequent session update packet for this session.
+
+	   This is how we make this handler stateless. Without this, we need to store per-session
+	   data somewhere and this is extremely difficult at scale, given the real-time nature of
+	   this handler.
+	*/
+
+	if state.Request.SliceNumber == 0 {
+		SessionUpdateNewSession(&state)
+	} else {
+		SessionUpdateExistingSession(&state)
+	}
+
+	/*
+	   Handle fallback to direct.
+
+	   Fallback to direct is a condition where the SDK indicates that it has seen
+	   some fatal error, like not getting a session response from the backend,
+	   and has decided to go direct for the rest of the session.
+
+	   When this happens, we early out to save processing time.
+	*/
+
+	if SessionHandleFallbackToDirect(&state) {
+		return
+	}
+
+	/*
+	   Process near relay ping statistics after the first slice.
+
+	   We use near relay latency, jitter and packet loss for route planning.
+	*/
+
+	SessionUpdateNearRelays(&state)
+
+	/*
+	   Decide whether we should take network next or not.
+	*/
+
+	SessionMakeRouteDecision(&state)
+
+	core.Debug("session updated successfully")
 }

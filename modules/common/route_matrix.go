@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 
 	"github.com/networknext/backend/modules/core"
@@ -13,8 +14,11 @@ import (
 )
 
 const (
-	RouteMatrixSerializeVersion = 7
-	MaxDatabaseBinWrapperSize = 100000000
+	RouteMatrixVersion_Min   = 7
+	RouteMatrixVersion_Max   = 7
+	RouteMatrixVersion_Write = 7
+
+	MaxDatabaseBinWrapperSize = 100000000 // todo: 100mb seems overkill :)
 )
 
 type RouteMatrix struct {
@@ -25,19 +29,27 @@ type RouteMatrix struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
+	DestRelays         []bool
 	RouteEntries       []core.RouteEntry
 	BinFileBytes       int32
 	BinFileData        []byte
 	CreatedAt          uint64
 	Version            uint32
-	DestRelays         []bool
 	FullRelayIds       []uint64
 	FullRelayIndexSet  map[int32]bool // todo: this should probably just be an array of bools? why do we need a map?
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
+	if stream.IsWriting() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
+		panic(fmt.Errorf("invalid route matrix version: %d", m.Version))
+	}
+
 	stream.SerializeUint32(&m.Version)
+
+	if stream.IsReading() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
+		return fmt.Errorf("invalid route matrix version: %d", m.Version)
+	}
 
 	numRelays := uint32(len(m.RelayIds))
 
@@ -89,10 +101,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize) // todo: eventually just serialize an unbounded uint32
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
-			m.BinFileData = make([]byte, MaxDatabaseBinWrapperSize)
+			m.BinFileData = make([]byte, m.BinFileBytes)
 		}
 		binFileData := m.BinFileData[:m.BinFileBytes]
 		stream.SerializeBytes(binFileData)
@@ -248,6 +260,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
+
+// todo: there should be unit tests for route matrix read and write
+
+// todo: tests should include writing with the new codebase, and reading with the old codebase
 
 func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
@@ -413,4 +429,83 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs)
 
 	return analysis
+}
+
+// todo: this function needs to be unit tested
+func (routeMatrix *RouteMatrix) GetDatacenterRelays(datacenterId uint64) []uint64 {
+	// todo: would be good if this wasn't O(n) where n is the number of relays
+	relayIds := make([]uint64, 0, 8)
+	for i := range routeMatrix.RelayDatacenterIds {
+		if routeMatrix.RelayDatacenterIds[i] == datacenterId {
+			relayIds = append(relayIds, routeMatrix.RelayIds[i])
+		}
+	}
+	return relayIds
+}
+
+func GenerateRandomRouteMatrix() RouteMatrix {
+
+	routeMatrix := RouteMatrix{
+		Version: uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max)),
+	}
+
+	numRelays := RandomInt(0, 64)
+
+	routeMatrix.RelayIds = make([]uint64, numRelays)
+	routeMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
+	routeMatrix.RelayNames = make([]string, numRelays)
+	routeMatrix.RelayLatitudes = make([]float32, numRelays)
+	routeMatrix.RelayLongitudes = make([]float32, numRelays)
+	routeMatrix.RelayDatacenterIds = make([]uint64, numRelays)
+	routeMatrix.DestRelays = make([]bool, numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		routeMatrix.RelayIds[i] = rand.Uint64()
+		routeMatrix.RelayAddresses[i] = RandomAddress()
+		routeMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		routeMatrix.RelayLatitudes[i] = rand.Float32()
+		routeMatrix.RelayLongitudes[i] = rand.Float32()
+		routeMatrix.RelayDatacenterIds[i] = rand.Uint64()
+		routeMatrix.DestRelays[i] = RandomBool()
+	}
+
+	routeMatrix.RelayIdToIndex = make(map[uint64]int32)
+	for i := range routeMatrix.RelayIds {
+		routeMatrix.RelayIdToIndex[routeMatrix.RelayIds[i]] = int32(i)
+	}
+
+	routeMatrix.BinFileBytes = int32(RandomInt(100, 10000))
+	routeMatrix.BinFileData = make([]byte, routeMatrix.BinFileBytes)
+	RandomBytes(routeMatrix.BinFileData)
+
+	routeMatrix.CreatedAt = rand.Uint64()
+	routeMatrix.Version = uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max))
+
+	numFullRelays := RandomInt(0, numRelays)
+
+	routeMatrix.FullRelayIds = make([]uint64, numFullRelays)
+	routeMatrix.FullRelayIndexSet = make(map[int32]bool)
+	for i := range routeMatrix.FullRelayIds {
+		routeMatrix.FullRelayIds[i] = routeMatrix.RelayIds[i]
+		routeMatrix.FullRelayIndexSet[int32(i)] = true
+	}
+
+	numEntries := RandomInt(0, 1000)
+
+	routeMatrix.RouteEntries = make([]core.RouteEntry, numEntries)
+
+	for i := range routeMatrix.RouteEntries {
+		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1, 1000))
+		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0, core.MaxRoutesPerEntry))
+		for j := 0; j < int(routeMatrix.RouteEntries[i].NumRoutes); j++ {
+			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1, 1000))
+			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1, core.MaxRelaysPerRoute))
+			for k := 0; k < int(routeMatrix.RouteEntries[i].RouteNumRelays[j]); k++ {
+				routeMatrix.RouteEntries[i].RouteRelays[j][k] = int32(k)
+			}
+			routeMatrix.RouteEntries[i].RouteHash[j] = core.RouteHash(routeMatrix.RouteEntries[i].RouteRelays[j][:]...)
+		}
+	}
+
+	return routeMatrix
 }
