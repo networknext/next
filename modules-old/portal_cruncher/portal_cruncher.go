@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/ghost_army"
+	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/storage"
 	"github.com/networknext/backend/modules-old/transport"
-	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -47,9 +47,11 @@ func (e *ErrUnmarshalMessage) Error() string {
 }
 
 type PortalCruncher struct {
-	subscriber pubsub.Subscriber
-	metrics    *metrics.PortalCruncherMetrics
-	btMetrics  *metrics.BigTableMetrics
+	dataConsumer   *common.RedisStreamsConsumer
+	countsConsumer *common.RedisStreamsConsumer
+
+	metrics   *metrics.PortalCruncherMetrics
+	btMetrics *metrics.BigTableMetrics
 
 	redisCountMessageChan chan *transport.SessionCountData
 	redisDataMessageChan  chan *transport.SessionPortalData
@@ -64,7 +66,8 @@ type PortalCruncher struct {
 
 func NewPortalCruncher(
 	ctx context.Context,
-	subscriber pubsub.Subscriber,
+	dataConsumer *common.RedisStreamsConsumer,
+	countsConsumer *common.RedisStreamsConsumer,
 	redisHostname string,
 	redisPassword string,
 	redisMaxIdleConns int,
@@ -98,7 +101,8 @@ func NewPortalCruncher(
 	}
 
 	return &PortalCruncher{
-		subscriber:            subscriber,
+		dataConsumer:          dataConsumer,
+		countsConsumer:        countsConsumer,
 		metrics:               metrics,
 		btMetrics:             btMetrics,
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
@@ -244,60 +248,51 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 		case <-ctx.Done():
 			errChan <- ctx.Err()
 			return
-			// todo: update to redis streams
-			/*
-			   case messageInfo := <-cruncher.subscriber.ReceiveMessage():
-			       cruncher.metrics.ReceivedMessageCount.Add(1)
+		case message := <-cruncher.countsConsumer.MessageChannel:
+			cruncher.metrics.ReceivedMessageCount.Add(1)
 
-			       if messageInfo.Err != nil {
-			           errChan <- &ErrReceiveMessage{err: messageInfo.Err}
-			       }
+			var sessionCountData transport.SessionCountData
+			if err := transport.ReadSessionCountData(&sessionCountData, message); err != nil {
+				errChan <- &ErrUnmarshalMessage{err: err}
+			}
 
-			       switch messageInfo.Topic {
-			       case pubsub.TopicPortalCruncherSessionCounts:
-			           var sessionCountData transport.SessionCountData
-			           if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-			               errChan <- &ErrUnmarshalMessage{err: err}
-			           }
-
-			           select {
-			           case cruncher.redisCountMessageChan <- &sessionCountData:
-			           default:
-			               errChan <- &ErrChannelFull{}
-			           }
-
-			       case pubsub.TopicPortalCruncherSessionData:
-			           // First try binary decoding, and upon failure, try serialization
-			           // We need to do both because Ghost Army uses binary decoding
-			           // TODO: once Ghost Army uses serialization, remove binary decoding
-			           var sessionPortalData transport.SessionPortalData
-			           if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
-
-			               sessionPortalData = transport.SessionPortalData{}
-
-			               if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
-			                   errChan <- &ErrUnmarshalMessage{err: err}
-			               }
-			           }
-
-			           select {
-			           case cruncher.redisDataMessageChan <- &sessionPortalData:
-			           default:
-			               errChan <- &ErrChannelFull{}
-			           }
-
-			           select {
-			           case cruncher.btDataMessageChan <- &sessionPortalData:
-			           default:
-			               errChan <- &ErrChannelFull{}
-			           }
-			       default:
-			           errChan <- &ErrUnknownMessage{}
-			       }
-
-			       errChan <- nil
-			*/
+			select {
+			case cruncher.redisCountMessageChan <- &sessionCountData:
+			default:
+				errChan <- &ErrChannelFull{}
+			}
 		}
+
+		errChan <- nil
+	}()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			errChan <- ctx.Err()
+			return
+		case message := <-cruncher.dataConsumer.MessageChannel:
+
+			var sessionPortalData transport.SessionPortalData
+			if err := transport.ReadSessionPortalData(&sessionPortalData, message); err != nil {
+
+				sessionPortalData = transport.SessionPortalData{}
+
+				if err := transport.ReadSessionPortalData(&sessionPortalData, message); err != nil {
+					errChan <- &ErrUnmarshalMessage{err: err}
+				}
+			}
+
+			select {
+			case cruncher.redisDataMessageChan <- &sessionPortalData:
+			default:
+				errChan <- &ErrChannelFull{}
+			}
+		default:
+			errChan <- &ErrUnknownMessage{}
+		}
+
+		errChan <- nil
 	}()
 
 	return errChan
