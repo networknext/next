@@ -112,6 +112,10 @@ func main() {
 		analytics()
 	} else if command == "website-cruncher" {
 		website_cruncher()
+	} else if command == "portal-cruncher" {
+		portal_cruncher()
+	} else if command == "portal" {
+		portal()
 	} else if command == "pusher" {
 		pusher()
 	} else if command == "pingdom" {
@@ -217,6 +221,14 @@ func server_backend5() {
 
 func website_cruncher() {
 	bash("make ./dist/website_cruncher && HTTP_PORT=40010 ./dist/website_cruncher")
+}
+
+func portal_cruncher() {
+	bash("make ./dist/portal_cruncher && HTTP_PORT=40012 ./dist/portal_cruncher")
+}
+
+func portal() {
+	bash("make ./dist/portal && PORT=20000 ./dist/portal")
 }
 
 func happy_path() {
