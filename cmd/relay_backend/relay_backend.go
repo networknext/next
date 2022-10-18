@@ -26,6 +26,8 @@ var maxPacketLoss float32
 var costMatrixBufferSize int
 var routeMatrixBufferSize int
 var routeMatrixInterval time.Duration
+var redisHostName string
+var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateChannelSize int
 var pingStatsPubsubTopic string
@@ -75,6 +77,8 @@ func main() {
 	relayStatsPubsubTopic = envvar.GetString("RELAY_STATS_PUBSUB_TOPIC", "relay_stats")
 	maxRelayStatsChannelSize = envvar.GetInt("MAX_RELAY_STATS_CHANNEL_SIZE", 10*1024)
 	maxRelayStatsMessageBytes = envvar.GetInt("MAX_RELAY_STATS_MESSAGE_BYTES", 1024)
+	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 	readyDelay = envvar.GetDuration("READY_DELAY", 6*time.Minute)
 	startTime = time.Now()
 
@@ -85,6 +89,8 @@ func main() {
 	core.Log("cost matrix buffer size: %d bytes", costMatrixBufferSize)
 	core.Log("route matrix buffer size: %d bytes", routeMatrixBufferSize)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
+	core.Log("redis host name: %s", redisHostName)
+	core.Log("redis password: %s", redisPassword)
 	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
 	core.Log("ping stats pubsub channel: %s", pingStatsPubsubTopic)
@@ -272,6 +278,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 	config := common.RedisPubsubConfig{}
 
+	config.RedisHostname = redisHostName
+	config.RedisPassword = redisPassword
 	config.PubsubChannelName = redisPubsubChannelName
 	config.MessageChannelSize = relayUpdateChannelSize
 
