@@ -809,7 +809,7 @@ func mainReturnWithCode() int {
 			}
 		}()
 
-		if gcpProjectID != "" {
+		if gcpProjectID != "local" {
 			metadataSyncInterval := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
 			connectionDrainMetadata := envvar.GetString("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
 
