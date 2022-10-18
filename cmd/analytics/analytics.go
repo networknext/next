@@ -229,7 +229,7 @@ func ProcessCostMatrix(service *common.Service) {
 
 				costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
 
-				costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion
+				costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion_Write
 				costMatrixStatsMessage.Bytes = costMatrixBytes
 				costMatrixStatsMessage.NumRelays = costMatrixNumRelays
 				costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
@@ -380,7 +380,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
 
-				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion
+				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion_Write
 				routeMatrixStatsEntry.Bytes = routeMatrixBytes
 				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
 				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays

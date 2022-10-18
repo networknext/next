@@ -9,26 +9,23 @@ import (
 )
 
 const (
-	RelayStatsMessageVersion = 3
+	RelayStatsMessageVersion_Min   = 3
+	RelayStatsMessageVersion_Max   = 3
+	RelayStatsMessageVersion_Write = 3
+
 	MaxRelayStatsMessageSize = 128
 )
 
 type RelayStatsMessage struct {
-	Version uint8
-
-	Timestamp uint64
-
-	ID uint64
-
-	NumSessions uint32
-	MaxSessions uint32
-
+	Version       uint8
+	Timestamp     uint64
+	ID            uint64
+	NumSessions   uint32
+	MaxSessions   uint32
 	NumRoutable   uint32
 	NumUnroutable uint32
-
-	Full bool
-
-	CPUUsage float32
+	Full          bool
+	CPUUsage      float32
 
 	// percent = (sent||received) / nic speed
 	BandwidthSentPercent     float32
@@ -58,80 +55,80 @@ func (message *RelayStatsMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read relay stat Version")
+		return fmt.Errorf("failed to read relay stat version")
 	}
 
-	if message.Version < 2 {
-		return fmt.Errorf("deprecated version")
+	if message.Version < RelayStatsMessageVersion_Min || message.Version > RelayStatsMessageVersion_Max {
+		return fmt.Errorf("invalid relay stats message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read relay stat Version")
+		return fmt.Errorf("failed to read relay stat timestamp")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.ID) {
-		return fmt.Errorf("failed to read relay stat ID")
+		return fmt.Errorf("failed to read relay stat id")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.CPUUsage) {
-		return fmt.Errorf("failed to read relay stat CPUUsage")
+		return fmt.Errorf("failed to read relay stat cpu usage")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.MemUsage) {
-		return fmt.Errorf("failed to read relay stat MemUsage")
+		return fmt.Errorf("failed to read relay stat mem usage")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentPercent) {
-		return fmt.Errorf("failed to read relay stat BandwidthSentPercent")
+		return fmt.Errorf("failed to read relay stat bandwidth sent percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedPercent) {
-		return fmt.Errorf("failed to read relay stat BandwidthReceivedPercent")
+		return fmt.Errorf("failed to read relay stat bandwidth received percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentPercent) {
-		return fmt.Errorf("failed to read relay stat EnvelopeSentPercent")
+		return fmt.Errorf("failed to read relay stat envelope sent percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedPercent) {
-		return fmt.Errorf("failed to read relay stat EnvelopeReceivedPercent")
+		return fmt.Errorf("failed to read relay stat envelope received percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentMbps) {
-		return fmt.Errorf("failed to read relay stat BandwidthSentMbps")
+		return fmt.Errorf("failed to read relay stat bandwidth sent mbps")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedMbps) {
-		return fmt.Errorf("failed to read relay stat BandwidthReceivedMbps")
+		return fmt.Errorf("failed to read relay stat bandwidth received mbps")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeSentMbps) {
-		return fmt.Errorf("failed to read relay stat EnvelopeSentMbps")
+		return fmt.Errorf("failed to read relay stat envelope sent mbps")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.EnvelopeReceivedMbps) {
-		return fmt.Errorf("failed to read relay stat EnvelopeReceivedMbps")
+		return fmt.Errorf("failed to read relay stat envelope received mbps")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
-		return fmt.Errorf("failed to read relay stat NumSessions")
+		return fmt.Errorf("failed to read relay stat num sessions")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.MaxSessions) {
-		return fmt.Errorf("failed to read relay stat MaxSessions")
+		return fmt.Errorf("failed to read relay stat max sessions")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumRoutable) {
-		return fmt.Errorf("failed to read relay stat NumRoutable")
+		return fmt.Errorf("failed to read relay stat num routable")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
-		return fmt.Errorf("failed to read relay stat NumUnroutable")
+		return fmt.Errorf("failed to read relay stat num unroutable")
 	}
 
 	if message.Version >= 3 {
 		if !encoding.ReadBool(buffer, &index, &message.Full) {
-			return fmt.Errorf("failed to read relay stat Full")
+			return fmt.Errorf("failed to read relay stat full")
 		}
 	}
 
@@ -142,7 +139,11 @@ func (message *RelayStatsMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint8(buffer, &index, RelayStatsMessageVersion)
+	if message.Version < RelayStatsMessageVersion_Min || message.Version > RelayStatsMessageVersion_Max {
+		panic(fmt.Sprintf("invalid relay stats message version %d", message.Version))
+	}
+
+	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.ID)
 	encoding.WriteFloat32(buffer, &index, message.CPUUsage)

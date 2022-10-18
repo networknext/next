@@ -2,13 +2,16 @@ package common
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 
 	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	CostMatrixSerializeVersion = 2
+	CostMatrixVersion_Min   = 2 // the minimum version we can read
+	CostMatrixVersion_Max   = 2 // the maximum version we can read
+	CostMatrixVersion_Write = 2 // the version we write
 
 	MaxRelayNameLength = 63
 
@@ -23,13 +26,21 @@ type CostMatrix struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
-	Costs              []int32
 	DestRelays         []bool
+	Costs              []int32
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
+	if stream.IsWriting() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
+		panic(fmt.Errorf("invalid cost matrix version: %d", m.Version))
+	}
+
 	stream.SerializeUint32(&m.Version)
+
+	if stream.IsReading() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
+		return fmt.Errorf("invalid cost matrix version: %d", m.Version)
+	}
 
 	numRelays := uint32(len(m.RelayIds))
 	stream.SerializeUint32(&numRelays)
@@ -75,6 +86,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 }
 
 func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
+	// todo: do we really want to allocate this here?
 	buffer := make([]byte, bufferSize)
 	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
@@ -87,4 +99,38 @@ func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
 func (m *CostMatrix) Read(buffer []byte) error {
 	readStream := encoding.CreateReadStream(buffer)
 	return m.Serialize(readStream)
+}
+
+func GenerateRandomCostMatrix() CostMatrix {
+
+	costMatrix := CostMatrix{
+		Version: uint32(RandomInt(CostMatrixVersion_Min, CostMatrixVersion_Max)),
+	}
+
+	numRelays := RandomInt(0, 64)
+
+	costMatrix.RelayIds = make([]uint64, numRelays)
+	costMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
+	costMatrix.RelayNames = make([]string, numRelays)
+	costMatrix.RelayLatitudes = make([]float32, numRelays)
+	costMatrix.RelayLongitudes = make([]float32, numRelays)
+	costMatrix.RelayDatacenterIds = make([]uint64, numRelays)
+	costMatrix.DestRelays = make([]bool, numRelays)
+	costMatrix.Costs = make([]int32, numRelays*numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		costMatrix.RelayIds[i] = rand.Uint64()
+		costMatrix.RelayAddresses[i] = RandomAddress()
+		costMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		costMatrix.RelayLatitudes[i] = rand.Float32()
+		costMatrix.RelayLongitudes[i] = rand.Float32()
+		costMatrix.RelayDatacenterIds[i] = rand.Uint64()
+		costMatrix.DestRelays[i] = RandomBool()
+	}
+
+	for i := 0; i < numRelays*numRelays; i++ {
+		costMatrix.Costs[i] = int32(RandomInt(-1, 1000))
+	}
+
+	return costMatrix
 }

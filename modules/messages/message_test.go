@@ -27,20 +27,22 @@ func MessageReadWriteTest[M messages.Message](writeMessage M, readMessage M, t *
 
 func GenerateRandomCostMatrixStatMessage() messages.CostMatrixStatsMessage {
 
-	return messages.CostMatrixStatsMessage{
-		Version:        messages.CostMatrixStatsMessageVersion,
+	message := messages.CostMatrixStatsMessage{
+		Version:        byte(common.RandomInt(messages.CostMatrixStatsMessageVersion_Min, messages.CostMatrixStatsMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
 		Bytes:          rand.Int(),
 		NumRelays:      rand.Int(),
 		NumDestRelays:  rand.Int(),
 		NumDatacenters: rand.Int(),
 	}
+
+	return message
 }
 
 func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
 
-	return messages.RouteMatrixStatsMessage{
-		Version:                 messages.RouteMatrixStatsMessageVersion,
+	message := messages.RouteMatrixStatsMessage{
+		Version:                 byte(common.RandomInt(messages.RouteMatrixStatsMessageVersion_Min, messages.RouteMatrixStatsMessageVersion_Max)),
 		Timestamp:               uint64(time.Now().Unix()),
 		Bytes:                   rand.Int(),
 		NumRelays:               rand.Int(),
@@ -66,12 +68,14 @@ func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
 		RTTBucket_45_50ms:       rand.Float32(),
 		RTTBucket_50ms_Plus:     rand.Float32(),
 	}
+
+	return message
 }
 
 func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 
-	return messages.PingStatsMessage{
-		Version:    messages.PingStatsMessageVersion,
+	message := messages.PingStatsMessage{
+		Version:    byte(common.RandomInt(messages.PingStatsMessageVersion_Min, messages.PingStatsMessageVersion_Max)),
 		Timestamp:  uint64(time.Now().Unix()),
 		RelayA:     rand.Uint64(),
 		RelayB:     rand.Uint64(),
@@ -80,12 +84,14 @@ func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 		PacketLoss: rand.Float32(),
 		Routable:   common.RandomBool(),
 	}
+
+	return message
 }
 
 func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 
-	return messages.RelayStatsMessage{
-		Version:                  messages.RelayStatsMessageVersion,
+	message := messages.RelayStatsMessage{
+		Version:                  byte(common.RandomInt(messages.RelayStatsMessageVersion_Min, messages.RelayStatsMessageVersion_Max)),
 		Timestamp:                uint64(time.Now().Unix()),
 		ID:                       rand.Uint64(),
 		NumSessions:              rand.Uint32(),
@@ -103,17 +109,21 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 		EnvelopeSentMbps:         rand.Float32(),
 		EnvelopeReceivedMbps:     rand.Float32(),
 	}
+
+	return message
 }
 
 func GenerateRandomUptimeStatMessage() messages.UptimeStatsMessage {
 
-	return messages.UptimeStatsMessage{
-		Version:      messages.UptimeStatsMessageVersion,
+	message := messages.UptimeStatsMessage{
+		Version:      uint8(common.RandomInt(messages.UptimeStatsMessageVersion_Min, messages.UptimeStatsMessageVersion_Max)),
 		Timestamp:    uint64(time.Now().Unix()),
 		ServiceName:  common.RandomString(messages.MaxServiceNameLength),
 		Up:           common.RandomBool(),
 		ResponseTime: common.RandomInt(0, 10000),
 	}
+
+	return message
 }
 
 func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
@@ -127,7 +137,7 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 	}
 
 	return messages.MatchDataMessage{
-		Version:        messages.MatchDataMessageVersion,
+		Version:        byte(common.RandomInt(messages.MatchDataMessageVersion_Min, messages.MatchDataMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
 		BuyerId:        rand.Uint64(),
 		ServerAddress:  common.RandomAddress(),
@@ -142,8 +152,8 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
 func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 
-	return messages.ServerInitMessage{
-		MessageVersion:   messages.ServerInitMessageVersion,
+	message := messages.ServerInitMessage{
+		Version:          byte(common.RandomInt(messages.ServerInitMessageVersion_Min, messages.ServerInitMessageVersion_Max)),
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
@@ -151,18 +161,22 @@ func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 		DatacenterId:     rand.Uint64(),
 		DatacenterName:   common.RandomString(messages.ServerInitMaxDatacenterNameLength),
 	}
+
+	return message
 }
 
 func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 
-	return messages.ServerUpdateMessage{
-		MessageVersion:   messages.ServerInitMessageVersion,
+	message := messages.ServerUpdateMessage{
+		Version:          byte(common.RandomInt(messages.ServerUpdateMessageVersion_Min, messages.ServerUpdateMessageVersion_Max)),
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
 	}
+
+	return message
 }
 
 func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
@@ -171,7 +185,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 		// always
 
-		Version:             messages.SessionUpdateMessageVersion,
+		Version:             uint32(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Min)),
 		Timestamp:           rand.Uint64(),
 		SessionId:           rand.Uint64(),
 		SliceNumber:         rand.Uint32(),

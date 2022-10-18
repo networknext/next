@@ -525,3 +525,14 @@ func TestRelayUpdateResponsePacket(t *testing.T) {
 }
 
 // ------------------------------------------------------------------
+
+const NumSessionDataIterations = 1000
+
+func TestSessionUpdate(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumSessionDataIterations; i++ {
+		writeMessage := packets.GenerateRandomSessionData()
+		readMessage := packets.SDK5_SessionData{}
+		PacketSerializationTest[*packets.SDK5_SessionData](&writeMessage, &readMessage, t)
+	}
+}

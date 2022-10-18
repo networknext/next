@@ -42,7 +42,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 	}
 
 	routeMatrix := &common.RouteMatrix{
-		Version:            common.RouteMatrixSerializeVersion,
+		Version:            common.RouteMatrixVersion_Write,
 		RelayIds:           costMatrix.RelayIds,
 		RelayAddresses:     costMatrix.RelayAddresses,
 		RelayNames:         costMatrix.RelayNames,

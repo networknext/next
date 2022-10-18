@@ -9,13 +9,17 @@ import (
 )
 
 const (
-	ServerUpdateMessageVersion          = 0
-	MaxServerUpdateMessageSize          = 128
+	ServerUpdateMessageVersion_Min   = 1
+	ServerUpdateMessageVersion_Max   = 1
+	ServerUpdateMessageVersion_Write = 1
+
+	MaxServerUpdateMessageSize = 128
+
 	ServerUpdateMaxDatacenterNameLength = 256
 )
 
 type ServerUpdateMessage struct {
-	MessageVersion   byte
+	Version          byte
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
@@ -28,8 +32,12 @@ func (message *ServerUpdateMessage) Read(buffer []byte) error {
 
 	index := 0
 
-	if !encoding.ReadUint8(buffer, &index, &message.MessageVersion) {
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
 		return fmt.Errorf("failed to read server update message version")
+	}
+
+	if message.Version < ServerUpdateMessageVersion_Min || message.Version > ServerUpdateMessageVersion_Max {
+		return fmt.Errorf("invalid server update message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
@@ -63,7 +71,11 @@ func (message *ServerUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint8(buffer, &index, message.MessageVersion)
+	if message.Version < ServerUpdateMessageVersion_Min || message.Version > ServerUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid server update message version %d", message.Version))
+	}
+
+	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)

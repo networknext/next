@@ -10,9 +10,13 @@ import (
 )
 
 const (
-	MatchDataMessageVersion  = 0
+	MatchDataMessageVersion_Min   = 1
+	MatchDataMessageVersion_Max   = 1
+	MatchDataMessageVersion_Write = 1
+
 	MaxMatchDataMessageBytes = 2048
-	MatchDataMaxMatchValues  = 64
+
+	MatchDataMaxMatchValues = 64
 )
 
 type MatchDataMessage struct {
@@ -34,6 +38,10 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
 		return fmt.Errorf("failed to read match data version")
+	}
+
+	if message.Version < MatchDataMessageVersion_Min || message.Version > MatchDataMessageVersion_Max {
+		return fmt.Errorf("invalid match data version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
@@ -80,6 +88,10 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 func (message *MatchDataMessage) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if message.Version < MatchDataMessageVersion_Min || message.Version > MatchDataMessageVersion_Max {
+		panic(fmt.Sprintf("invalid match data version %d", message.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)

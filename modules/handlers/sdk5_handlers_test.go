@@ -12,10 +12,10 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/database"
 )
 
 // ---------------------------------------------------------------------------------------
@@ -794,8 +794,8 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:   localDatacenterId,
-		Name: "local",
+		ID:        localDatacenterId,
+		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,
 	}
@@ -1290,8 +1290,8 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:   localDatacenterId,
-		Name: "local",
+		ID:        localDatacenterId,
+		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,
 	}
@@ -1704,8 +1704,8 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:   localDatacenterId,
-		Name: "local",
+		ID:        localDatacenterId,
+		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,
 	}

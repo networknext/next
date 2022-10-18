@@ -230,6 +230,18 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend test_redis_leader_election_migration
 
+        - name: "test_cost_matrix_read_write"
+          commands:
+            - cd ./dist && ./func_tests_backend test_cost_matrix_read_write
+
+        - name: "test_route_matrix_read_write"
+          commands:
+            - cd ./dist && ./func_tests_backend test_route_matrix_read_write
+
+        - name: "test_session_data_serialize"
+          commands:
+            - cd ./dist && ./func_tests_backend test_session_data_serialize
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
