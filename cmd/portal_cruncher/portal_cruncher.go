@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/networknext/backend/modules-old/metrics"
 	portalcruncher "github.com/networknext/backend/modules-old/portal_cruncher"
 	"github.com/networknext/backend/modules-old/transport"
-	"github.com/networknext/backend/modules-old/transport/pubsub"
 
 	"github.com/gorilla/mux"
 )
@@ -47,6 +47,9 @@ func main() {
 func mainReturnWithCode() int {
 	serviceName := "portal_cruncher"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, commitHash, commitMessage)
+
+	redisHostName := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
 
 	est, _ := time.LoadLocation("EST")
 	startTime := time.Now().In(est)
@@ -103,37 +106,23 @@ func mainReturnWithCode() int {
 	})
 	featureConfig = envVarConfig
 
-	// Start portal cruncher subscriber
-	var portalSubscriber pubsub.Subscriber
-	{
-		/*
-		   cruncherPort := envvar.GetString("CRUNCHER_PORT", "5555")
-		   if cruncherPort == "" {
-		       core.Error("CRUNCHER_PORT not set")
-		       return 1
-		   }
+	sessionDataConsumer, err := common.CreateRedisStreamsConsumer(ctx, common.RedisStreamsConfig{
+		RedisHostname:      redisHostName,
+		RedisPassword:      redisPassword,
+		StreamName:         "session-data",
+		ConsumerGroup:      "session-data-consumer",
+		BatchSize:          1024,
+		MessageChannelSize: 10 * 1024,
+	})
 
-		   receiveBufferSize := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
-
-		   portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
-		   if err != nil {
-		       core.Error("failed to create portal cruncher subscriber: %v", err)
-		       return 1
-		   }
-
-		   if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
-		       core.Error("failed to subscribe to portal cruncher session data topic: %v", err)
-		       return 1
-		   }
-
-		   if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
-		       core.Error("failed to subscribe to portal cruncher session counts topic: %v", err)
-		       return 1
-		   }
-
-		   portalSubscriber = portalCruncherSubscriber
-		*/
-	}
+	sessionCountsConsumer, err := common.CreateRedisStreamsConsumer(ctx, common.RedisStreamsConfig{
+		RedisHostname:      redisHostName,
+		RedisPassword:      redisPassword,
+		StreamName:         "session-counts",
+		ConsumerGroup:      "session-counts-consumer",
+		BatchSize:          1024,
+		MessageChannelSize: 10 * 1024,
+	})
 
 	redisPingFrequency := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
 
@@ -145,8 +134,6 @@ func mainReturnWithCode() int {
 
 	messageChanSize := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
 
-	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
 	redisMaxIdleConns := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
 	redisMaxActiveConns := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 
@@ -166,8 +153,9 @@ func mainReturnWithCode() int {
 	btHistoricalPath := envvar.GetString("BIGTABLE_HISTORICAL_TXT", "./testdata/bigtable_historical.txt")
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
-		portalSubscriber,
-		redisHostname,
+		sessionDataConsumer,
+		sessionCountsConsumer,
+		redisHostName,
 		redisPassword,
 		redisMaxIdleConns,
 		redisMaxActiveConns,
