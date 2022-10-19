@@ -130,7 +130,8 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.Request.SliceNumber == 0 {
 
-		// todo
+		// todo: ip2location hook up
+
 		/*
 			state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
 
@@ -153,20 +154,20 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	} else {
 
-		// todo
-		/*
-			// todo: this defer is unnecessary
-			defer func() {
-				err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
-				if err != nil {
-					core.Error("SessionPre(): could not read session data for buyer %016x:\n\n%s\n", state.Buyer.ID, err)
-					state.Metrics.ReadSessionDataFailure.Add(1)
-				} else {
-					state.Output.Location = state.Input.Location
-					state.UnmarshaledSessionData = true
-				}
-			}()
-		*/
+		// use ip2location result stored in session data
+
+		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
+		
+		err := state.Input.Serialize(readStream)
+		if err != nil {
+			core.Debug("failed to read session data: %v", err)
+			state.FailedToReadSessionData = true
+			return true
+		}
+
+		state.ReadSessionData = true
+
+		state.Output.Location =  state.Input.Location
 	}
 
 	/*
@@ -460,24 +461,22 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude
 
-	// todo
-	_ = directLatency
-	_ = clientLatitude
-	_ = clientLongitude
-	_ = serverLatitude
-	_ = serverLongitude
+	// todo: maybe we could design get near relays to not do allocations
+	nearRelayIds, nearRelayAddresses := common.GetNearRelays(state.RouteMatrix, directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays, state.Datacenter.ID)
+	
+	numNearRelays := len(nearRelayIds)
 
-	// todo: get near relays
-
-	/*
-		state.Response.NearRelayIDs, state.Response.NearRelayAddresses = state.RouteMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays, state.Datacenter.ID)
-	*/
-
-	if state.Response.NumNearRelays == 0 {
+	if numNearRelays == 0 {
 		core.Debug("no near relays :(")
 		state.NoNearRelays = true
 		return false
 	}
+
+	// todo: store nearRelayIds and nearRelayAddresses in state.Response
+	_ = nearRelayIds
+	_ = nearRelayAddresses
+
+	// state.Response.NearRelayIDs, state.Response.NearRelayAddresses = ...
 
 	state.Response.NumNearRelays = int32(len(state.Response.NearRelayIds))
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
