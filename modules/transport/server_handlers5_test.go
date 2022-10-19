@@ -883,7 +883,7 @@ func TestSessionUpdateHandlerSDK5Func_Pre_NoRelaysInDatacenter(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 
 	state := transport.SessionHandlerStateSDK5{}
 
@@ -917,7 +917,7 @@ func TestSessionUpdateHandlerSDK5Func_Pre_NoRelaysInDatacenter_AnalysisOnly(t *t
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 
 	state := transport.SessionHandlerStateSDK5{}
 
@@ -952,7 +952,7 @@ func TestSessionUpdateHandlerSDK5Func_Pre_StaleRouteMatrix(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerStateSDK5{}
@@ -993,7 +993,7 @@ func TestSessionUpdateHandlerSDK5Func_Pre_Successs(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, false)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerStateSDK5{}
@@ -1028,7 +1028,7 @@ func TestSessionUpdateHandlerSDK5Func_Pre_Successs_AnalysisOnly(t *testing.T) {
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true, true)
 	datacenter := env.AddDatacenter("datacenter.name")
-	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name, true)
 	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
 
 	state := transport.SessionHandlerStateSDK5{}
