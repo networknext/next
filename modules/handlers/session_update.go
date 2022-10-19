@@ -8,8 +8,8 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/packets"
 )
 
 type SessionUpdateState struct {
@@ -42,7 +42,7 @@ type SessionUpdateState struct {
 	*/
 
 	// flags
-	UnknownDatacenter             bool    // todo: check that these are all passed in and actually used
+	UnknownDatacenter             bool // todo: check that these are all passed in and actually used
 	DatacenterNotEnabled          bool
 	BuyerNotLive                  bool
 	StaleRouteMatrix              bool
@@ -157,7 +157,7 @@ func SessionPre(state *SessionUpdateState) bool {
 		// use ip2location result stored in session data
 
 		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
-		
+
 		err := state.Input.Serialize(readStream)
 		if err != nil {
 			core.Debug("failed to read session data: %v", err)
@@ -167,7 +167,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 		state.ReadSessionData = true
 
-		state.Output.Location =  state.Input.Location
+		state.Output.Location = state.Input.Location
 	}
 
 	/*
@@ -301,7 +301,7 @@ func SessionUpdateExistingSession(state *SessionUpdateState) {
 	if !state.ReadSessionData {
 
 		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
-		
+
 		err := state.Input.Serialize(readStream)
 		if err != nil {
 			core.Debug("failed to read session data: %v", err)
@@ -461,9 +461,18 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude
 
-	// todo: maybe we could design get near relays to not do allocations
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(state.RouteMatrix, directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays, state.Datacenter.ID)
-	
+	const distanceThreshold = 2500
+	const latencyThreshold = 30.0
+
+	nearRelayIds, nearRelayAddresses := common.GetNearRelays(state.RouteMatrix,
+		directLatency,
+		clientLatitude, clientLongitude,
+		serverLatitude, serverLongitude,
+		core.MaxNearRelays,
+		state.Datacenter.ID,
+		distanceThreshold,
+		latencyThreshold)
+
 	numNearRelays := len(nearRelayIds)
 
 	if numNearRelays == 0 {
@@ -472,13 +481,12 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
-	// todo: store nearRelayIds and nearRelayAddresses in state.Response
-	_ = nearRelayIds
-	_ = nearRelayAddresses
+	for i := 0; i < numNearRelays; i++ {
+		state.Response.NearRelayIds[i] = nearRelayIds[i]
+		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
+	}
 
-	// state.Response.NearRelayIDs, state.Response.NearRelayAddresses = ...
-
-	state.Response.NumNearRelays = int32(len(state.Response.NearRelayIds))
+	state.Response.NumNearRelays = int32(numNearRelays)
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
 	state.Response.NearRelaysChanged = true
 
@@ -581,7 +589,7 @@ func SessionUpdateNearRelays(state *SessionUpdateState) bool {
 	state.NumNearRelays = int(numNearRelays)
 
 	for i := range state.Request.NearRelayIds {
-		relayIndex, exists := state.RouteMatrix.RelayIdToIndex[state.Request.NearRelayIds[i]]		
+		relayIndex, exists := state.RouteMatrix.RelayIdToIndex[state.Request.NearRelayIds[i]]
 		if exists {
 			state.NearRelayIndices[i] = int32(relayIndex)
 		} else {
