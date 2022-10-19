@@ -223,7 +223,9 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 				consumer.MessageChannel <- message
 			}
 
-			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.StreamName, stream.ID)
+			core.Debug("batch sent to channel")
+
+			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.ConsumerGroup, stream.ID)
 
 			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1

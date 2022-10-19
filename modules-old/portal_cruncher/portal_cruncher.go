@@ -172,6 +172,9 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 				select {
 				// Buffer up some portal count entries and only insert into redis periodically to avoid overworking redis
 				case portalCount := <-cruncher.redisCountMessageChan:
+
+					core.Debug("batching count to be sent to redis")
+
 					redisPortalCountBuffer = append(redisPortalCountBuffer, portalCount)
 
 					// If it's too early to insert into redis, early out
@@ -187,6 +190,9 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 
 				// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
 				case portalData := <-cruncher.redisDataMessageChan:
+
+					core.Debug("batching data to be sent to redis")
+
 					redisPortalDataBuffer = append(redisPortalDataBuffer, portalData)
 
 					// If it's too early to insert into redis, early out
@@ -251,6 +257,8 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 		case message := <-cruncher.countsConsumer.MessageChannel:
 			cruncher.metrics.ReceivedMessageCount.Add(1)
 
+			core.Debug("counts message recieved")
+
 			var sessionCountData transport.SessionCountData
 			if err := transport.ReadSessionCountData(&sessionCountData, message); err != nil {
 				errChan <- &ErrUnmarshalMessage{err: err}
@@ -273,6 +281,8 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 			return
 		case message := <-cruncher.dataConsumer.MessageChannel:
 			cruncher.metrics.ReceivedMessageCount.Add(1)
+
+			core.Debug("data message recieved")
 
 			var sessionPortalData transport.SessionPortalData
 			if err := transport.ReadSessionPortalData(&sessionPortalData, message); err != nil {
