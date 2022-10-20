@@ -188,6 +188,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 					cruncher.insertCountDataIntoRedis(redisPortalCountBuffer, minutes)
 					redisPortalCountBuffer = redisPortalCountBuffer[:0]
 
+					core.Debug("flushed counts to redis")
+
 				// Buffer up some portal data entries and only insert into redis periodically to avoid overworking redis
 				case portalData := <-cruncher.redisDataMessageChan:
 
@@ -205,6 +207,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 
 					cruncher.insertPortalDataIntoRedis(redisPortalDataBuffer, minutes)
 					redisPortalDataBuffer = redisPortalDataBuffer[:0]
+
+					core.Debug("flushed data to redis")
 
 				case <-ctx.Done():
 					return
