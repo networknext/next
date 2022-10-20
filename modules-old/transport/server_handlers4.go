@@ -424,6 +424,12 @@ func BuildNextTokens(
 
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 
+	core.Debug("----------------------------------------------------")
+	for index, address := range routeAddresses {
+		core.Debug("route address (%d): %s", index, address.String())
+	}
+	core.Debug("----------------------------------------------------")
+
 	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
 	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeNew
