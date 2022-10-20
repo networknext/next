@@ -2,25 +2,24 @@ package common
 
 import (
 	"net"
+	"sort"
+
+	"github.com/networknext/backend/modules/core"
 )
 
-func GetNearRelays(routeMatrix *RouteMatrix, directLatency float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32, maxNearRelays int, destDatacenterId uint64) ([]uint64, []net.UDPAddr) {
+// todo: this function needs to be unit tested
 
-	// todo: we have to port this across
+func GetNearRelays(routeMatrix *RouteMatrix, directLatency float32, sourceLatitude_in float32, sourceLongitude_in float32, destLatitude_in float32, destLongitude_in float32, maxNearRelays int, destDatacenterId uint64, distanceThreshold int, latencyThreshold float32) ([]uint64, []net.UDPAddr) {
 
-	nearRelayIds := make([]uint64, 0, maxNearRelays)
-	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
-
-	/*
 	// Quantize to integer values so we don't have noise in low bits
 
-	sourceLatitude := float64(int64(source_latitude))
-	sourceLongitude := float64(int64(source_longitude))
+	sourceLatitude := float64(int64(sourceLatitude_in))
+	sourceLongitude := float64(int64(sourceLongitude_in))
 
-	destLatitude := float64(int64(dest_latitude))
-	destLongitude := float64(int64(dest_longitude))
+	destLatitude := float64(int64(destLatitude_in))
+	destLongitude := float64(int64(destLongitude_in))
 
-	// If direct latency is 0, we don't know it yet. Approximate it via speed of light * 2
+	// If direct latency is 0, it's the first slice and we don't know it yet. Approximate it via speed of light * 2
 
 	if directLatency <= 0.0 {
 		directDistanceKilometers := core.HaversineDistance(sourceLatitude, sourceLongitude, destLatitude, destLongitude)
@@ -30,65 +29,34 @@ func GetNearRelays(routeMatrix *RouteMatrix, directLatency float32, sourceLatitu
 	// Work with the near relays as an array of structs first for easier sorting
 
 	type NearRelayData struct {
-		ID        uint64
-		Addr      net.UDPAddr
-		Name      string
-		Distance  int
+		Id        uint64
+		Address   net.UDPAddr
 		Latitude  float64
 		Longitude float64
+		Distance  int
 	}
 
-	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
+	nearRelayData := make([]NearRelayData, len(routeMatrix.RelayIds))
 
-	nearRelayIDs := make([]uint64, 0, maxNearRelays)
-	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
-
-	nearRelayIDMap := map[uint64]struct{}{}
-
-	for i, relayID := range m.RelayIDs {
-		nearRelayData[i].ID = relayID
-		nearRelayData[i].Addr = m.RelayAddresses[i]
-		nearRelayData[i].Name = m.RelayNames[i]
-		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
-		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
+	for i, relayId := range routeMatrix.RelayIds {
+		nearRelayData[i].Id = relayId
+		nearRelayData[i].Address = routeMatrix.RelayAddresses[i]
+		nearRelayData[i].Latitude = float64(int64(routeMatrix.RelayLatitudes[i]))
+		nearRelayData[i].Longitude = float64(int64(routeMatrix.RelayLongitudes[i]))
 		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
-
-		if _, isDestFirstRelay := m.DestFirstRelayIDsSet[relayID]; isDestFirstRelay && destDatacenterID == m.RelayDatacenterIDs[i] {
-			// Always add "destination first" relays if we have a relay with the flag enabled in the destination datacenter
-			if len(nearRelayIDs) == maxNearRelays {
-				break
-			}
-
-			nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-			nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
-
-			if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-				// Client should ping this relay using its internal address
-				nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-			} else {
-				nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-			}
-		}
 	}
 
-	// If we already have enough relays, stop and return them
-
-	if len(nearRelayIDs) == maxNearRelays {
-		return nearRelayIDs, nearRelayAddresses
-	}
+	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Id < nearRelayData[j].Id })
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	// Exclude any near relays whose 2/3rds speed of light * 2/3rds route through them is greater than direct + threshold
-	// or who are further than x kilometers away from the player's location
+	// Select near relays
 
-	distanceThreshold := 2500
-
-	latencyThreshold := float32(30.0)
+	relayMap := make(map[uint64]*NearRelayData)
 
 	for i := 0; i < len(nearRelayData); i++ {
 
-		if len(nearRelayIDs) == maxNearRelays {
+		if len(relayMap) == maxNearRelays {
 			break
 		}
 
@@ -96,37 +64,31 @@ func GetNearRelays(routeMatrix *RouteMatrix, directLatency float32, sourceLatitu
 			break
 		}
 
-		// don't add the same relay twice
-		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
-			continue
-		}
-
 		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
 
-		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
-
-		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-			// Client should ping this relay using its internal address
-			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-		} else {
-			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-		}
+		relayMap[nearRelayData[i].Id] = &nearRelayData[i]
 	}
 
-	// If we already have enough relays, stop and return them
+	// We already have enough relays? Just stop now and return them
 
-	if len(nearRelayIDs) == maxNearRelays {
-		return nearRelayIDs, nearRelayAddresses
+	if len(relayMap) == maxNearRelays {
+		nearRelayIds := make([]uint64, 0, maxNearRelays)
+		nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
+		index := 0
+		for k, v := range relayMap {
+			nearRelayIds[index] = k
+			nearRelayAddresses[index] = v.Address
+		}
 	}
 
 	// We need more relays. Look for near relays around the *destination*
 	// Paradoxically, this can really help, especially for cases like South America <-> Miami
 
-	for i := range m.RelayIDs {
+	for i := range nearRelayData {
 		nearRelayData[i].Distance = int(core.HaversineDistance(destLatitude, destLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
 	}
 
@@ -134,30 +96,30 @@ func GetNearRelays(routeMatrix *RouteMatrix, directLatency float32, sourceLatitu
 
 	for i := 0; i < len(nearRelayData); i++ {
 
-		if len(nearRelayIDs) == maxNearRelays {
+		if len(relayMap) == maxNearRelays {
 			break
 		}
 
-		// don't add the same relay twice
-		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
-			continue
-		}
-
 		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
 
-		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-
-		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
-			// Client should ping this relay using its internal address
-			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
-		} else {
-			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
-		}
+		relayMap[nearRelayData[i].Id] = &nearRelayData[i]
 	}
-	*/
+
+	// Return results, including -- potentially -- some relays around the destination datacenter
+
+	numNearRelays := len(relayMap)
+
+	nearRelayIds := make([]uint64, 0, numNearRelays)
+	nearRelayAddresses := make([]net.UDPAddr, 0, numNearRelays)
+	index := 0
+	for k, v := range relayMap {
+		nearRelayIds[index] = k
+		nearRelayAddresses[index] = v.Address
+	}
 
 	return nearRelayIds, nearRelayAddresses
 }
