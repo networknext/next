@@ -225,7 +225,13 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 
 			core.Debug("batch sent to channel")
 
-			consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.ConsumerGroup, stream.ID)
+			ackResponse := consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.ConsumerGroup, stream.ID)
+			if ackResponse.Err() != nil {
+				core.Error("failed to ack messagee: %v", err)
+				continue
+			}
+
+			core.Debug("acked message")
 
 			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1
