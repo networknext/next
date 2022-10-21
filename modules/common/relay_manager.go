@@ -139,7 +139,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		// this is important so that newly created relays, and relays that are stopped and restarted
 		// don't get routed across, until at least 5 minutes has passed!
 
-		if currentTime - destEntry.lastUpdateTime > 10 {
+		if currentTime-destEntry.lastUpdateTime > 10 {
 			for j := 0; j < HistorySize; j++ {
 				destEntry.historyIndex = 0
 				destEntry.historyRTT[j] = InvalidRouteValue
@@ -180,10 +180,10 @@ func (relayManager *RelayManager) GetSample(currentTime int64, sourceRelayId uin
 		sourceEntry, exists := relayManager.sourceEntries[sourceRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
-			if currentTime - sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
+			if currentTime-sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
 				destEntry, exists := sourceEntry.destEntries[destRelayId]
 				if exists {
-					if currentTime - destEntry.lastUpdateTime < 10 {
+					if currentTime-destEntry.lastUpdateTime < 10 {
 						sourceRTT = destEntry.rtt
 						sourceJitter = destEntry.jitter
 						sourcePacketLoss = destEntry.packetLoss
@@ -201,10 +201,10 @@ func (relayManager *RelayManager) GetSample(currentTime int64, sourceRelayId uin
 		sourceEntry, exists := relayManager.sourceEntries[destRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
-			if currentTime - sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
+			if currentTime-sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
 				destEntry, exists := sourceEntry.destEntries[sourceRelayId]
 				if exists {
-					if currentTime - destEntry.lastUpdateTime < 10 {
+					if currentTime-destEntry.lastUpdateTime < 10 {
 						destRTT = destEntry.rtt
 						destJitter = destEntry.jitter
 						destPacketLoss = destEntry.packetLoss
@@ -338,8 +338,8 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRel
 		activeRelay.Sessions = sourceEntry.sessions
 		activeRelay.Version = sourceEntry.relayVersion
 
-		expired := currentTime - sourceEntry.lastUpdateTime > 10
-		
+		expired := currentTime-sourceEntry.lastUpdateTime > 10
+
 		shuttingDown := sourceEntry.shuttingDown
 
 		sourceEntry.mutex.RUnlock()
