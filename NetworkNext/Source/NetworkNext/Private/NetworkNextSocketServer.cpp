@@ -149,7 +149,7 @@ bool FNetworkNextSocketServer::Bind(const FInternetAddr& Addr)
         FString MultiplayDatacenter;
         if (!bIsCloud && FParse::Value(FCommandLine::Get(), TEXT("-NetworkNext="), MultiplayDatacenter))
         {
-            UE_LOG(LogNetworkNext, Display, TEXT("Multiplay datacenter is '%s'"), MultiplayDatacenter);
+            UE_LOG(LogNetworkNext, Display, TEXT("Multiplay datacenter is '%s'"), *MultiplayDatacenter);
             DataCenter = MultiplayDatacenter;
         }
     }
@@ -209,7 +209,7 @@ bool FNetworkNextSocketServer::RecvFrom(uint8* Data, int32 BufferSize, int32& By
     if (Flags != ESocketReceiveFlags::None)
         return false;
 
-    if (!UpdatedThisFrame)
+    if (!bUpdatedThisFrame)
     {
         // make sure we update the server prior to receiving any packets this frame
         next_server_update(NetworkNextServer);
