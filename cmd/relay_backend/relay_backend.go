@@ -354,7 +354,10 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numSamples := int(relayUpdateRequest.NumSamples)
 
-				relayManager.ProcessRelayUpdate(relayId,
+				currentTime := time.Now().Unix()
+
+				relayManager.ProcessRelayUpdate(currentTime,
+					relayId,
 					relayName,
 					relayUpdateRequest.Address,
 					int(relayUpdateRequest.SessionCount),
@@ -501,13 +504,15 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build relays data
 
-				relaysDataNew := relayManager.GetRelaysCSV()
+				currentTime := time.Now().Unix()
+
+				relaysDataNew := relayManager.GetRelaysCSV(currentTime)
 
 				// build the cost matrix
 
 				relayData := service.RelayData()
 
-				costs := relayManager.GetCosts(relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

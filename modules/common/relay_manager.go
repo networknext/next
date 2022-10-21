@@ -6,7 +6,6 @@ import (
 	"net"
 	"sort"
 	"sync"
-	"time"
 )
 
 const HistorySize = 300 // 5 minutes @ one relay update per-second
@@ -31,7 +30,7 @@ func historyMean(history []float32) float32 {
 }
 
 type RelayManagerDestEntry struct {
-	lastUpdateTime    time.Time
+	lastUpdateTime    int64
 	rtt               float32
 	jitter            float32
 	packetLoss        float32
@@ -43,7 +42,7 @@ type RelayManagerDestEntry struct {
 
 type RelayManagerSourceEntry struct {
 	mutex          sync.RWMutex
-	lastUpdateTime time.Time
+	lastUpdateTime int64
 	relayId        uint64
 	relayName      string
 	relayAddress   net.UDPAddr
@@ -64,7 +63,7 @@ func CreateRelayManager() *RelayManager {
 	return relayManager
 }
 
-func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
+func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
 
 	/*
 	   Process Relay Update
@@ -116,8 +115,6 @@ func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName s
 	// iterate across all samples and insert them into the history buffer
 	// in the dest entry corresponding to their relay pair (source,dest)
 
-	currentTime := time.Now()
-
 	sourceEntry.mutex.Lock()
 
 	sourceEntry.lastUpdateTime = currentTime
@@ -142,7 +139,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName s
 		// this is important so that newly created relays, and relays that are stopped and restarted
 		// don't get routed across, until at least 5 minutes has passed!
 
-		if currentTime.Sub(destEntry.lastUpdateTime) > 10*time.Second {
+		if currentTime - destEntry.lastUpdateTime > 10 {
 			for j := 0; j < HistorySize; j++ {
 				destEntry.historyIndex = 0
 				destEntry.historyRTT[j] = InvalidRouteValue
@@ -167,7 +164,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(relayId uint64, relayName s
 	sourceEntry.mutex.Unlock()
 }
 
-func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
+func (relayManager *RelayManager) GetSample(currentTime int64, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
 	sourceRTT := float32(InvalidRouteValue)
 	sourceJitter := float32(InvalidRouteValue)
@@ -183,12 +180,14 @@ func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId
 		sourceEntry, exists := relayManager.sourceEntries[sourceRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
-			destEntry, exists := sourceEntry.destEntries[destRelayId]
-			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
-					sourceRTT = destEntry.rtt
-					sourceJitter = destEntry.jitter
-					sourcePacketLoss = destEntry.packetLoss
+			if currentTime - sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
+				destEntry, exists := sourceEntry.destEntries[destRelayId]
+				if exists {
+					if currentTime - destEntry.lastUpdateTime < 10 {
+						sourceRTT = destEntry.rtt
+						sourceJitter = destEntry.jitter
+						sourcePacketLoss = destEntry.packetLoss
+					}
 				}
 			}
 			sourceEntry.mutex.RUnlock()
@@ -202,12 +201,14 @@ func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId
 		sourceEntry, exists := relayManager.sourceEntries[destRelayId]
 		if exists {
 			sourceEntry.mutex.RLock()
-			destEntry, exists := sourceEntry.destEntries[sourceRelayId]
-			if exists {
-				if currentTime.Sub(destEntry.lastUpdateTime) < 10*time.Second {
-					destRTT = destEntry.rtt
-					destJitter = destEntry.jitter
-					destPacketLoss = destEntry.packetLoss
+			if currentTime - sourceEntry.lastUpdateTime < 10 && !sourceEntry.shuttingDown {
+				destEntry, exists := sourceEntry.destEntries[sourceRelayId]
+				if exists {
+					if currentTime - destEntry.lastUpdateTime < 10 {
+						destRTT = destEntry.rtt
+						destJitter = destEntry.jitter
+						destPacketLoss = destEntry.packetLoss
+					}
 				}
 			}
 			sourceEntry.mutex.RUnlock()
@@ -236,9 +237,7 @@ func (relayManager *RelayManager) GetSample(currentTime time.Time, sourceRelayId
 	return rtt, jitter, packetLoss
 }
 
-func (relayManager *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
-
-	currentTime := time.Now()
+func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
 
 	numRelays := len(relayIds)
 
@@ -250,7 +249,7 @@ func (relayManager *RelayManager) GetCosts(relayIds []uint64, maxRTT float32, ma
 		for i := range costs {
 			costs[i] = -1
 		}
-		activeRelayHash := relayManager.GetActiveRelayHash()
+		activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
 		for i := 0; i < numRelays; i++ {
 			sourceRelayId := uint64(relayIds[i])
 			_, sourceActive := activeRelayHash[sourceRelayId]
@@ -304,7 +303,7 @@ type ActiveRelay struct {
 	Version  string
 }
 
-func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
+func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRelay {
 
 	relayManager.mutex.RLock()
 	keys := make([]uint64, len(relayManager.sourceEntries))
@@ -317,8 +316,6 @@ func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
 
 	activeRelays := make([]ActiveRelay, 0, len(keys))
 
-	currentTime := time.Now()
-
 	for i := range keys {
 
 		relayManager.mutex.RLock()
@@ -329,26 +326,27 @@ func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
 			continue
 		}
 
-		sourceEntry.mutex.RLock()
-
 		activeRelay := ActiveRelay{}
+
+		activeRelay.Status = RELAY_STATUS_ONLINE
+
+		sourceEntry.mutex.RLock()
 
 		activeRelay.Name = sourceEntry.relayName
 		activeRelay.Address = sourceEntry.relayAddress
 		activeRelay.Id = sourceEntry.relayId
 		activeRelay.Sessions = sourceEntry.sessions
-
-		activeRelay.Status = RELAY_STATUS_ONLINE
-		if currentTime.Sub(sourceEntry.lastUpdateTime) > 10*time.Second {
-			activeRelay.Status = RELAY_STATUS_ONLINE
-		}
-		if sourceEntry.shuttingDown {
-			activeRelay.Status = RELAY_STATUS_SHUTTING_DOWN
-		}
-
 		activeRelay.Version = sourceEntry.relayVersion
 
+		expired := currentTime - sourceEntry.lastUpdateTime > 10
+		
+		shuttingDown := sourceEntry.shuttingDown
+
 		sourceEntry.mutex.RUnlock()
+
+		if expired || shuttingDown {
+			continue
+		}
 
 		activeRelays = append(activeRelays, activeRelay)
 	}
@@ -358,8 +356,8 @@ func (relayManager *RelayManager) GetActiveRelays() []ActiveRelay {
 	return activeRelays
 }
 
-func (relayManager *RelayManager) GetActiveRelayHash() map[uint64]ActiveRelay {
-	activeRelays := relayManager.GetActiveRelays()
+func (relayManager *RelayManager) GetActiveRelayHash(currentTime int64) map[uint64]ActiveRelay {
+	activeRelays := relayManager.GetActiveRelays(currentTime)
 	activeRelayHash := make(map[uint64]ActiveRelay)
 	for i := range activeRelays {
 		activeRelayHash[activeRelays[i].Id] = activeRelays[i]
@@ -367,11 +365,11 @@ func (relayManager *RelayManager) GetActiveRelayHash() map[uint64]ActiveRelay {
 	return activeRelayHash
 }
 
-func (relayManager *RelayManager) GetRelaysCSV() []byte {
+func (relayManager *RelayManager) GetRelaysCSV(currentTime int64) []byte {
 
 	relaysCSV := "name,address,id,status,sessions,version\n"
 
-	activeRelays := relayManager.GetActiveRelays()
+	activeRelays := relayManager.GetActiveRelays(currentTime)
 
 	for i := range activeRelays {
 		relay := activeRelays[i]
