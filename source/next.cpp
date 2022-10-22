@@ -11093,6 +11093,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+	    next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
         const char * separators = "\n\r\n";
         char * line = strtok( whois_buffer, separators );
         while ( line )
@@ -11100,6 +11101,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
             next_printf( "%s", line );
             line = strtok( NULL, separators );
         }
+        next_printf( "-------------------------\n" );
         return false;
     }
 
