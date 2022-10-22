@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.4"
+    #define NEXT_VERSION_FULL                              "4.20.5"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                4
+    #define NEXT_VERSION_PATCH_INT                                5
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -232,15 +232,12 @@ NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buff
 
 // -----------------------------------------
 
-#if !NEXT_ADDRESS_ALREADY_DEFINED
 struct next_address_t
 {
     union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
     uint16_t port;
     uint8_t type;
 };
-#define NEXT_ADDRESS_ALREADY_DEFINED
-#endif // #if !NEXT_ADDRESS_ALREADY_DEFINED
 
 NEXT_EXPORT_FUNC int next_address_parse( struct next_address_t * address, const char * address_string );
 
