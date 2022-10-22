@@ -32,6 +32,7 @@
 #if defined( _MSC_VER )
 #include <malloc.h>
 #endif // #if defined( _MSC_VER )
+#include <time.h>
 
 #if defined( _MSC_VER )
 #pragma warning(push)
@@ -4690,9 +4691,13 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         }
     }
 
-    if ( num_pings_sent > 0 )
+    if ( num_pings_sent > 0 && num_pongs_received > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+    else
+    {
+        stats->packet_loss = 100.0f;
     }
 
     // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
@@ -4744,8 +4749,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_pongs == 0 )
     {
-        stats->packet_loss = 100.0f;
-        return;
+    	return;
     }
 
     next_assert( min_rtt >= 0.0 );
@@ -11436,7 +11440,9 @@ bool next_autodetect_google( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
+	char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11445,7 +11451,9 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -11570,7 +11578,9 @@ bool next_autodetect_amazon( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11579,7 +11589,9 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen ( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -11851,7 +11863,9 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_line[1024];
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11894,13 +11908,15 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+	    next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
         const char * separators = "\n\r\n";
         char * line = strtok( whois_buffer, separators );
         while ( line )
         {
-        	next_printf( "%s", line );
-        	line = strtok( NULL, separators );
+            next_printf( "%s", line );
+            line = strtok( NULL, separators );
         }
+        next_printf( "-------------------------\n" );
         return false;
     }
 
@@ -13253,28 +13269,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         entry->match_data_response_received = true;
         entry->waiting_for_match_data_response = false;
-
-        if ( packet.response != NEXT_MATCH_DATA_RESPONSE_OK )
-        {
-            switch ( packet.response )
-            {
-                case NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER: 
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". unknown customer", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". signature check failed", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". customer not active", packet.session_id );
-                    return;
-
-                default:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". response type %d", packet.session_id, packet.response );
-                    return;
-            }
-        }
 
         if ( entry->match_data_flush )
         {
