@@ -42,7 +42,7 @@ struct next_platform_socket_t
     next_platform_socket_handle_t handle;
     int type;
     float timeout_seconds;
-	void * context;
+    void * context;
 };
 
 // -------------------------------------
@@ -50,7 +50,7 @@ struct next_platform_socket_t
 struct next_platform_thread_t
 {
     ScePthread handle;
-	void * context;
+    void * context;
 };
 
 typedef void * next_platform_thread_return_t;
@@ -65,7 +65,7 @@ typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_t
 
 struct next_platform_mutex_t
 {
-	bool ok;
+    bool ok;
     ScePthreadMutex handle;
 };
 
