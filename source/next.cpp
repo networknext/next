@@ -29,6 +29,7 @@
 #include <float.h>
 #include <string.h>
 #include <inttypes.h>
+#include <time.h>
 
 #if defined( _MSC_VER )
 #pragma warning(push)
