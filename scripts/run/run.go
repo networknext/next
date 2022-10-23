@@ -289,7 +289,7 @@ func func_backend5() {
 }
 
 func func_test_backend(tests []string) {
-	command := "make ./dist/func_tests_backend && ./dist/func_tests_backend"
+	command := "make ./dist/func_tests_backend && cd dist && ./func_tests_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))

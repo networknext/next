@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"net"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -1640,6 +1641,92 @@ func test_session_data_serialize() {
 	}
 }
 
+func test_relay_manager() {
+
+	fmt.Printf("test_relay_manager\n")
+
+	relayManager := common.CreateRelayManager()
+
+	ctx, contextCancelFunc := context.WithCancel(context.Background())
+
+	// setup a lot of relays
+
+	const NumRelays = 1500
+
+	relayNames := make([]string, NumRelays)
+	relayIds := make([]uint64, NumRelays)
+	relayAddresses := make([]net.UDPAddr, NumRelays)
+
+	for i := range relayIds {
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+	}
+
+	// get costs once per-second
+
+	go func() {
+		counter := 0
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				if counter < 30 {
+					panic("get costs deadlocked!")
+				}
+				return
+			case <-ticker.C:
+				const MaxRTT = 255
+				const MaxJitter = 100
+				const MaxPacketLoss = 1
+				currentTime := time.Now().Unix()
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				_ = costs
+				fmt.Printf("costs %d\n", counter)
+				counter++
+			}
+		}
+	}()
+
+	// really slam in the relay updates once per-second, randomly for 1000 relays
+
+	numSamples := NumRelays
+	sampleRelayId := make([]uint64, numSamples)
+	sampleRTT := make([]float32, numSamples)
+	sampleJitter := make([]float32, numSamples)
+	samplePacketLoss := make([]float32, numSamples)
+
+	for i := 0; i < numSamples; i++ {
+		sampleRelayId[i] = uint64(i)
+		sampleRTT[i] = 10
+		sampleJitter[i] = 5
+		samplePacketLoss[i] = 0
+	}
+
+	for i := 0; i < NumRelays; i++ {
+
+		go func(index int) {
+
+			ticker := time.NewTicker(time.Second)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					currentTime := time.Now().Unix()
+					// fmt.Printf("relay update %d\n", index)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+				}
+			}
+
+		}(i)
+
+	}
+
+	time.Sleep(60*time.Second)
+
+	contextCancelFunc()
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1661,6 +1748,7 @@ func main() {
 		test_cost_matrix_read_write,
 		test_route_matrix_read_write,
 		test_session_data_serialize,
+		test_relay_manager,
 	}
 
 	var tests []test_function
@@ -1686,6 +1774,8 @@ func main() {
 		time.Sleep(time.Duration(len(tests)*120) * time.Second)
 		panic("tests took too long!")
 	}()
+
+	fmt.Printf("\n")
 
 	for i := range tests {
 		tests[i]()
