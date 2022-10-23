@@ -5,3 +5,7 @@
 	object = 8b7cb27f8321a4836bf2cb605ee4b468b5a2ff1f
 	path = ue4
 	type = expand module
+[map "e81e4e20-bf39-3632-a9ec-33f563252be3"]
+	object = 290b056636151f764f21423cf020de38aabe7397
+	path = ue4
+	type = expand module
