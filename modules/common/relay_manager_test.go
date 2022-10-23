@@ -203,6 +203,16 @@ func TestRelayManager(t *testing.T) {
 
 	assert.Equal(t, 0, len(activeRelays))
 
+	// relays should be in the offline state 30 seconds in the future
+
+	relays = relayManager.GetRelays(currentTime + 30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+
+	assert.Equal(t, len(relays), databaseNumRelays)
+
+	for i := 0; i < databaseNumRelays; i++ {
+		assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+	}
+
 	// apply a relay update that says relay A is shutting down. routes between relay A and B should instantly go away.
 
 	relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", true, 0, nil, nil, nil, nil)
@@ -213,6 +223,44 @@ func TestRelayManager(t *testing.T) {
 
 	for i := range costs {
 		assert.Equal(t, int32(-1), costs[i])
+	}
+
+	// active relays should not include relays that are shutting down
+
+	activeRelays = relayManager.GetActiveRelays(currentTime)
+
+	assert.Equal(t, 1, len(activeRelays))
+
+	assert.Equal(t, activeRelays[0].Id, relayIds[1]) // only relay "B" is still online
+
+	// we should the shutting down relays in the relays array
+
+	relays = relayManager.GetRelays(currentTime, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+
+	assert.Equal(t, len(relays), databaseNumRelays)
+
+	for i := 0; i < databaseNumRelays; i++ {
+		if relays[i].Id == relayIds[0] {
+			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_SHUTTING_DOWN)
+		} else if relays[i].Id == relayIds[1] {
+			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_ONLINE)
+		} else {
+			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+		}
+	}
+
+	// 30 seconds in the future, shutting down should become offline
+
+	activeRelays = relayManager.GetActiveRelays(currentTime+30)
+
+	assert.Equal(t, 0, len(activeRelays))
+
+	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+
+	assert.Equal(t, len(relays), databaseNumRelays)
+
+	for i := 0; i < databaseNumRelays; i++ {
+		assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
 	}
 
 	// now restart relay A. we should need to wait another HistorySize number of updates before we see routes between A and B
@@ -269,5 +317,30 @@ func TestRelayManager(t *testing.T) {
 				}
 			}
 		}
+
+		// relays "A" and "B" should be active throughout
+
+		activeRelays = relayManager.GetActiveRelays(currentTime)
+
+		assert.Equal(t, len(activeRelays), 2)
+
+		assert.Equal(t, activeRelays[0].Id, relayIds[0])
+		assert.Equal(t, activeRelays[1].Id, relayIds[1])
+
+		relays = relayManager.GetRelays(currentTime, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+
+		assert.Equal(t, len(relays), databaseNumRelays)
+
+		numActive := 0
+		for i := 0; i < databaseNumRelays; i++ {
+			if relays[i].Id == activeRelays[0].Id || relays[i].Id == activeRelays[1].Id {
+				assert.Equal(t, relays[i].Status, common.RELAY_STATUS_ONLINE)
+				numActive++
+			} else {
+				assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+			}
+		}
+
+		assert.Equal(t, numActive, 2)
 	}
 }
