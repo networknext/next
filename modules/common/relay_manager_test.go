@@ -119,6 +119,16 @@ func TestRelayManager(t *testing.T) {
 
 	assert.Equal(t, 0, len(activeRelays))
 
+	// now get relays in the future. all relays should be in the offline status
+
+	relays = relayManager.GetRelays(currentTime + 30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+
+	assert.Equal(t, len(relays), databaseNumRelays)
+
+	for i := 0; i < databaseNumRelays; i++ {
+		assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+	}
+
 	// iterate adding samples from A <-> B. initially, they should remain unroutable until they have both been
 	// alive for at least HistorySize relay updates. this avoids sending traffic to relays when they first start
 	// and we don't necessarily know their routes are stable yet.
