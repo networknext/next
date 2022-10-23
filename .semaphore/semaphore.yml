@@ -242,6 +242,10 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend test_session_data_serialize
 
+        - name: "test_relay_manager"
+          commands:
+            - cd ./dist && ./func_tests_backend test_relay_manager
+
 
   - name: "Build Functional Tests (sdk4)"
     dependencies: []
