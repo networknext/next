@@ -287,16 +287,16 @@ const RELAY_STATUS_SHUTTING_DOWN = 2
 
 var RelayStatusStrings = [3]string{"offline", "online", "shutting down"}
 
-type ActiveRelay struct {
-	Name     string
+type Relay struct {
 	Id       uint64
+	Name     string
 	Address  net.UDPAddr
 	Status   int
 	Sessions int
 	Version  string
 }
 
-func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRelay {
+func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64, relayNames []string, relayAddresses []net.UDPAddr) []Relay {
 
 	relayManager.mutex.RLock()
 
@@ -307,7 +307,7 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRel
 		index++
 	}
 
-	activeRelays := make([]ActiveRelay, 0, len(keys))
+	relays := make([]Relay, 0, len(keys))
 
 	for i := range keys {
 
@@ -317,7 +317,81 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRel
 			continue
 		}
 
-		activeRelay := ActiveRelay{}
+		relay := Relay{}
+
+		relay.Id = sourceEntry.relayId
+		relay.Name = sourceEntry.relayName
+		relay.Address = sourceEntry.relayAddress
+		relay.Sessions = sourceEntry.sessions
+		relay.Version = sourceEntry.relayVersion
+
+		relay.Status = RELAY_STATUS_ONLINE
+
+		if sourceEntry.shuttingDown {
+			relay.Status = RELAY_STATUS_SHUTTING_DOWN
+		}
+
+		expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
+
+		if expired {
+			relay.Status = RELAY_STATUS_OFFLINE
+		}
+
+		relays = append(relays, relay)
+	}
+
+	relayManager.mutex.RUnlock()
+
+	// pick up any relays that the relay manager doesn't know about as offline
+
+	for i := 0; i < len(relayIds); i++ {
+
+		_, exists := relayManager.sourceEntries[relayIds[i]]
+		if exists {
+			continue
+		}
+
+		relay := Relay{}
+
+		relay.Id = relayIds[i]
+		relay.Name = relayNames[i]
+		relay.Address = relayAddresses[i]
+		relay.Sessions = 0
+		relay.Version = ""
+		relay.Status = RELAY_STATUS_OFFLINE
+
+		relays = append(relays, relay)
+	}
+
+	// sort to make sure the set of relays is stable order over time
+
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].Name < relays[j].Name })
+
+	return relays
+}
+
+func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
+
+	relayManager.mutex.RLock()
+
+	keys := make([]uint64, len(relayManager.sourceEntries))
+	index := 0
+	for k := range relayManager.sourceEntries {
+		keys[index] = k
+		index++
+	}
+
+	activeRelays := make([]Relay, 0, len(keys))
+
+	for i := range keys {
+
+		sourceEntry, ok := relayManager.sourceEntries[keys[i]]
+
+		if !ok {
+			continue
+		}
+
+		activeRelay := Relay{}
 		activeRelay.Status = RELAY_STATUS_ONLINE
 		activeRelay.Name = sourceEntry.relayName
 		activeRelay.Address = sourceEntry.relayAddress
@@ -343,23 +417,23 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []ActiveRel
 	return activeRelays
 }
 
-func (relayManager *RelayManager) GetActiveRelayHash(currentTime int64) map[uint64]ActiveRelay {
+func (relayManager *RelayManager) GetActiveRelayHash(currentTime int64) map[uint64]Relay {
 	activeRelays := relayManager.GetActiveRelays(currentTime)
-	activeRelayHash := make(map[uint64]ActiveRelay)
+	activeRelayHash := make(map[uint64]Relay)
 	for i := range activeRelays {
 		activeRelayHash[activeRelays[i].Id] = activeRelays[i]
 	}
 	return activeRelayHash
 }
 
-func (relayManager *RelayManager) GetRelaysCSV(currentTime int64) []byte {
+func (relayManager *RelayManager) GetRelaysCSV(currentTime int64, relayIds []uint64, relayNames []string, relayAddresses []net.UDPAddr) []byte {
 
 	relaysCSV := "name,address,id,status,sessions,version\n"
 
-	activeRelays := relayManager.GetActiveRelays(currentTime)
+	relays := relayManager.GetRelays(currentTime, relayIds, relayNames, relayAddresses)
 
-	for i := range activeRelays {
-		relay := activeRelays[i]
+	for i := range relays {
+		relay := relays[i]
 		relaysCSV += fmt.Sprintf("%s,%s,%016x,%s,%d,%s\n",
 			relay.Name,
 			relay.Address.String(),
