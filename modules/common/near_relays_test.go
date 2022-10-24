@@ -18,7 +18,7 @@ func TestGetNearRelays_Basic(t *testing.T) {
 	// setup locations
 
 	const PlayerLatitude = 0.0
-	const PlayerLongitude = -100.0
+	const PlayerLongitude = 0.0
 
 	const DestinationLatitude = 0.0
 	const DestinationLongitude = +100.0
@@ -72,7 +72,7 @@ func TestGetNearRelays_Dest(t *testing.T) {
 	// setup locations
 
 	const PlayerLatitude = 0.0
-	const PlayerLongitude = -50.0
+	const PlayerLongitude = 0.0
 
 	const DestinationLatitude = 0.0
 	const DestinationLongitude = +100.0
