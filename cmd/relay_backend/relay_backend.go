@@ -39,7 +39,7 @@ var maxRelayStatsMessageBytes int
 var readyDelay time.Duration
 
 var relaysMutex sync.RWMutex
-var relaysData []byte
+var relaysCSVData []byte
 
 var costMatrixMutex sync.RWMutex
 var costMatrixData []byte
@@ -170,7 +170,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func relaysHandler(w http.ResponseWriter, r *http.Request) {
 	relaysMutex.RLock()
-	responseData := relaysData
+	responseData := relaysCSVData
 	relaysMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
 	buffer := bytes.NewBuffer(responseData)
@@ -502,15 +502,15 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				timeStart := time.Now()
 
-				// build relays data
+				// build relays csv
 
 				currentTime := time.Now().Unix()
 
-				relaysDataNew := relayManager.GetRelaysCSV(currentTime)
+				relayData := service.RelayData()
+
+				relaysCSVDataNew := relayManager.GetRelaysCSV(currentTime, relayData.RelayIds, relayData.RelayNames, relayData.RelayAddresses)
 
 				// build the cost matrix
-
-				relayData := service.RelayData()
 
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
@@ -584,7 +584,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				dataStores := []common.DataStoreConfig{
 					{
 						Name: "relays",
-						Data: relaysDataNew,
+						Data: relaysCSVDataNew,
 					},
 					{
 						Name: "cost_matrix",
@@ -607,8 +607,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					continue
 				}
 
-				relaysDataNew = dataStores[0].Data
-				if relaysDataNew == nil {
+				relaysCSVDataNew = dataStores[0].Data
+				if relaysCSVDataNew == nil {
 					core.Error("failed to get relays from redis selector")
 					continue
 				}
@@ -628,7 +628,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				// serve up as official data
 
 				relaysMutex.Lock()
-				relaysData = relaysDataNew
+				relaysCSVData = relaysCSVDataNew
 				relaysMutex.Unlock()
 
 				costMatrixMutex.Lock()
