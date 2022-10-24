@@ -9,13 +9,13 @@ import (
 
 func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float64, relayLongitudes []float64, sourceLatitude_in float32, sourceLongitude_in float32, destLatitude_in float32, destLongitude_in float32) ([]uint64, []net.UDPAddr) {
 
-	// Quantize to integer values so we don't have noise in low bits
+	// Work in float 64
 
-	sourceLatitude := float64(int64(sourceLatitude_in))
-	sourceLongitude := float64(int64(sourceLongitude_in))
+	sourceLatitude := float64(sourceLatitude_in)
+	sourceLongitude := float64(sourceLongitude_in)
 
-	destLatitude := float64(int64(destLatitude_in))
-	destLongitude := float64(int64(destLongitude_in))
+	destLatitude := float64(destLatitude_in)
+	destLongitude := float64(destLongitude_in)
 
 	// Estimate direct latency
 
