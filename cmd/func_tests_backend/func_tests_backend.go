@@ -1026,7 +1026,6 @@ func test_redis_leader_store_migration() {
 							os.Exit(1)
 						}
 					}
-
 				}
 			}
 		}
@@ -1891,6 +1890,8 @@ func test_relay_backend() {
 
 	fmt.Printf("test_relay_backend\n")
 
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
+
 	// setup a lot of datacenters
 
 	const NumDatacenters = 100
@@ -2018,6 +2019,29 @@ func test_relay_backend() {
 
 	// hammer the relay backend with relay updates
 
+	for i := 0; i < NumRelays; i++ {
+
+		go func(index int) {
+
+			// create http client
+
+			ticker := time.NewTicker(10*time.Millisecond)
+
+			for {
+				select {
+
+				case <-cancelContext.Done():
+					return
+
+				case <-ticker.C:
+					fmt.Printf("relay update %d\n", index)
+					// todo: request/response to the relay update
+				}
+			}
+
+		}(i)
+	}
+
 	// ...
 
 	// run a goroutine to pull down the cost matrix once per-second from the relay backend
@@ -2034,7 +2058,7 @@ func test_relay_backend() {
 
 	// shut everything down
 
-	// todo: context cancel etc...
+	cancelFunc()
 
 	fmt.Printf("-----------------------------------------------\n")
 	fmt.Printf("%s", magic_backend_output.String())
