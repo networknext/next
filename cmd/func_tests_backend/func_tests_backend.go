@@ -1879,6 +1879,13 @@ func test_optimize() {
 	contextCancelFunc()
 }
 
+func test_relay_backend() {
+
+	fmt.Printf("test_relay_backend\n")
+
+	// ...
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1902,6 +1909,7 @@ func main() {
 		test_session_data_serialize,
 		test_relay_manager,
 		test_optimize,
+		test_relay_backend,
 	}
 
 	var tests []test_function
