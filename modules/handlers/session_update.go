@@ -441,6 +441,8 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	   acceleration, forcing all connected clients to go direct.
 	*/
 
+	// todo: bring this back
+	/*
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
@@ -489,6 +491,7 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	state.Response.NumNearRelays = int32(numNearRelays)
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
 	state.Response.NearRelaysChanged = true
+	*/
 
 	return true
 }
