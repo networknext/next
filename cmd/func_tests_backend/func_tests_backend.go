@@ -1727,6 +1727,165 @@ func test_relay_manager() {
 	contextCancelFunc()
 }
 
+func test_optimize() {
+
+	fmt.Printf("test_optimize\n")
+
+	relayManager := common.CreateRelayManager()
+
+	ctx, contextCancelFunc := context.WithCancel(context.Background())
+
+	// setup a lot of relays
+
+	const NumRelays = 1500
+
+	relayNames := make([]string, NumRelays)
+	relayIds := make([]uint64, NumRelays)
+	relayAddresses := make([]net.UDPAddr, NumRelays)
+	relayLatitudes := make([]float32, NumRelays)
+	relayLongitudes := make([]float32, NumRelays)
+	relayDatacenterIds := make([]uint64, NumRelays)
+	destRelays := make([]bool, NumRelays)
+
+	for i := range relayIds {
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayLatitudes[i] = float32(common.RandomInt(-90,+90))
+		relayLongitudes[i] = float32(common.RandomInt(-90,+90))
+		relayDatacenterIds[i] = uint64(common.RandomInt(0, 5))
+		destRelays[i] = true
+	}
+
+	// get costs once per-second
+
+	go func() {
+		counter := 0
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+
+			case <-ctx.Done():
+				if counter < 30 {
+					panic("optimize deadlocked!")
+				}
+				return
+
+			case <-ticker.C:
+				
+				const MaxRTT = 255
+				const MaxJitter = 100
+				const MaxPacketLoss = 1
+				
+				currentTime := time.Now().Unix()
+				
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				
+				costMatrix := &common.CostMatrix{
+					Version:            common.CostMatrixVersion_Write,
+					RelayIds:           relayIds,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIds: relayDatacenterIds,
+					DestRelays:         destRelays,
+					Costs:              costs,
+				}
+				
+				costMatrixData, err := costMatrix.Write(10*1024*1024)
+				if err != nil {
+					panic("could not write cost matrix")
+				}
+				_ = costMatrixData
+				
+				numCPUs := runtime.NumCPU()
+				numSegments := NumRelays
+				if numCPUs < NumRelays {
+					numSegments = NumRelays / 5
+					if numSegments == 0 {
+						numSegments = 1
+					}
+				}
+				
+				costThreshold := int32(1)
+
+				binFileData := make([]byte, 100*1024)
+				
+				routeMatrix := &common.RouteMatrix{
+					CreatedAt:          uint64(time.Now().Unix()),
+					Version:            common.RouteMatrixVersion_Write,
+					RelayIds:           relayIds,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIds: relayDatacenterIds,
+					DestRelays:         destRelays,
+					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, costThreshold, relayDatacenterIds, destRelays),
+					BinFileBytes:       int32(len(binFileData)),
+					BinFileData:        binFileData,
+				}
+
+				routeMatrixData, err := routeMatrix.Write(100*1024*1024)
+				if err != nil {
+					panic("could not write route matrix")
+					continue
+				}
+				_ = routeMatrixData
+
+				fmt.Printf("optimize %d\n", counter)
+				
+				counter++
+			}
+		}
+	}()
+
+	// really slam in the relay updates once per-second, randomly for lots of relays
+
+	numSamples := NumRelays
+	sampleRelayId := make([]uint64, numSamples)
+	sampleRTT := make([]float32, numSamples)
+	sampleJitter := make([]float32, numSamples)
+	samplePacketLoss := make([]float32, numSamples)
+
+	for i := 0; i < numSamples; i++ {
+		sampleRelayId[i] = uint64(i)
+		sampleRTT[i] = float32(common.RandomInt(1,100))
+		sampleJitter[i] = float32(common.RandomInt(0,50))
+		samplePacketLoss[i] = float32(common.RandomInt(0,2))
+	}
+
+	for i := 0; i < NumRelays; i++ {
+
+		go func(index int) {
+
+			ticker := time.NewTicker(time.Second)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					currentTime := time.Now().Unix()
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+				}
+			}
+
+		}(i)
+
+	}
+
+	time.Sleep(60*time.Second)
+
+	contextCancelFunc()
+}
+
+func test_relay_backend() {
+
+	fmt.Printf("test_relay_backend\n")
+
+	// ...
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1749,6 +1908,8 @@ func main() {
 		test_route_matrix_read_write,
 		test_session_data_serialize,
 		test_relay_manager,
+		test_optimize,
+		test_relay_backend,
 	}
 
 	var tests []test_function
