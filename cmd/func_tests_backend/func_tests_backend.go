@@ -28,6 +28,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
+	db "github.com/networknext/backend/modules/database"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1748,6 +1749,7 @@ func test_optimize() {
 	destRelays := make([]bool, NumRelays)
 
 	for i := range relayIds {
+		relayNames[i] = fmt.Sprintf("relay%d", i)
 		relayIds[i] = common.RelayId(relayNames[i])
 		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		relayLatitudes[i] = float32(common.RandomInt(-90,+90))
@@ -1879,11 +1881,153 @@ func test_optimize() {
 	contextCancelFunc()
 }
 
+const (
+	magicBackendBin = "./magic_backend"
+	relayGatewayBin = "./relay_gateway"
+	relayBackendBin = "./relay_backend"
+)
+
 func test_relay_backend() {
 
 	fmt.Printf("test_relay_backend\n")
 
+	// setup a lot of datacenters
+
+	const NumDatacenters = 100
+
+	datacenterIds := make([]uint64, NumDatacenters)
+	datacenterNames := make([]string, NumDatacenters)
+	datacenterLatitudes := make([]float32, NumDatacenters)
+	datacenterLongitudes := make([]float32, NumDatacenters)
+
+	for i := 0; i < NumDatacenters; i++ {
+		datacenterIds[i] = uint64(i)
+		datacenterNames[i] = fmt.Sprintf("datacenter%d", i)
+		datacenterLatitudes[i] = float32(common.RandomInt(-90,+90))
+		datacenterLongitudes[i] = float32(common.RandomInt(-90,+90))
+	}
+
+	// setup a lot of relays
+
+	const NumRelays = 1500
+
+	relayIds := make([]uint64, NumRelays)
+	relayNames := make([]string, NumRelays)
+	relayAddresses := make([]net.UDPAddr, NumRelays)
+	relayDatacenterIds := make([]uint64, NumRelays)
+	destRelays := make([]bool, NumRelays)
+
+	for i := range relayIds {
+		relayNames[i] = fmt.Sprintf("relay%d", i)
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayDatacenterIds[i] = uint64(common.RandomInt(0, NumDatacenters-1))
+		destRelays[i] = true
+	}
+
+	// setup a database containing the relays
+
+	database := db.CreateDatabase()
+
+	database.CreationTime = time.Now().String()
+	database.Creator = "test"
+
+	for i := 0; i < NumRelays; i++ {
+
+		relay := db.Relay{}
+
+		relay.ID = relayIds[i]
+		relay.Name = relayNames[i]
+		relay.Addr = relayAddresses[i]
+		relay.Version = "test"
+		relay.Datacenter.ID = relayDatacenterIds[i]
+		relay.Datacenter.Name = datacenterNames[relay.Datacenter.ID]
+		relay.Datacenter.Latitude = datacenterLatitudes[relay.Datacenter.ID]
+		relay.Datacenter.Longitude = datacenterLongitudes[relay.Datacenter.ID]
+
+		database.Relays = append(database.Relays, relay)
+
+		database.RelayMap[relay.ID] = relay
+	}
+
+	// write the database out to a temporary file
+
+	file, err := ioutil.TempFile(".", "temp-database-")
+	if err != nil {
+	    panic("could not create temporary database file")
+	}
+
+	databaseFilename := file.Name()
+
+	defer os.Remove(databaseFilename)
+
+	fmt.Println(databaseFilename)
+
+	database.Save(databaseFilename)
+
+	// start the magic backend
+
+	magic_backend_cmd := exec.Command(magicBackendBin)
+	if magic_backend_cmd == nil {
+		panic("could not create magic backend!\n")
+	}
+
+	var magic_backend_output bytes.Buffer
+	magic_backend_cmd.Stdout = &magic_backend_output
+	magic_backend_cmd.Stderr = &magic_backend_output
+	magic_backend_cmd.Start()
+
+	// run the relay gateway, such that it loads the temporary database file
+
+	relay_gateway_cmd := exec.Command(relayGatewayBin)
+	if relay_gateway_cmd == nil {
+		panic("could not create relay gateway!\n")
+	}
+
+	relay_gateway_cmd.Env = os.Environ()
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
+
+	var relay_gateway_output bytes.Buffer
+	relay_gateway_cmd.Stdout = &relay_gateway_output
+	relay_gateway_cmd.Stderr = &relay_gateway_output
+	relay_gateway_cmd.Start()
+
+	// run the relay backend, such that it loads the temporary database file
+
 	// ...
+
+	// hammer the relay backend with relay updates
+
+	// ...
+
+	// run a goroutine to pull down the cost matrix once per-second from the relay backend
+
+	// ...
+
+	// run a goroutine to pull down the route matrix once per-second from the relay backend
+
+	// ...
+
+	// wait for 60 seconds
+
+	time.Sleep(10*time.Second)//60 * time.Second)
+
+	// shut everything down
+
+	// todo: context cancel etc...
+
+	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", magic_backend_output.String())
+	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", relay_gateway_output.String())
+	fmt.Printf("-----------------------------------------------\n")
+
+	magic_backend_cmd.Process.Signal(os.Interrupt)
+	magic_backend_cmd.Wait()
+
+	relay_gateway_cmd.Process.Signal(os.Interrupt)
+	relay_gateway_cmd.Wait()
 }
 
 type test_function func()
