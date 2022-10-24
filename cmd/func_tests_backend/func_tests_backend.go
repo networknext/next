@@ -1972,6 +1972,9 @@ func test_relay_backend() {
 		panic("could not create magic backend!\n")
 	}
 
+	magic_backend_cmd.Env = os.Environ()
+	magic_backend_cmd.Env = append(magic_backend_cmd.Env, "HTTP_PORT=41007")
+
 	var magic_backend_output bytes.Buffer
 	magic_backend_cmd.Stdout = &magic_backend_output
 	magic_backend_cmd.Stderr = &magic_backend_output
@@ -1987,7 +1990,8 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = os.Environ()
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
-
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
+	
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output
 	relay_gateway_cmd.Stderr = &relay_gateway_output
@@ -1995,7 +1999,22 @@ func test_relay_backend() {
 
 	// run the relay backend, such that it loads the temporary database file
 
-	// ...
+	relay_backend_cmd := exec.Command(relayBackendBin)
+	if relay_backend_cmd == nil {
+		panic("could not create relay backend!\n")
+	}
+
+	relay_backend_cmd.Env = os.Environ()
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "OVERLAY_PATH=nopenopenope")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=1s")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DISABLE_GOOGLE_PUBSUB=1")
+
+	var relay_backend_output bytes.Buffer
+	relay_backend_cmd.Stdout = &relay_backend_output
+	relay_backend_cmd.Stderr = &relay_backend_output
+	relay_backend_cmd.Start()
 
 	// hammer the relay backend with relay updates
 
@@ -2011,7 +2030,7 @@ func test_relay_backend() {
 
 	// wait for 60 seconds
 
-	time.Sleep(10*time.Second)//60 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	// shut everything down
 
@@ -2022,12 +2041,17 @@ func test_relay_backend() {
 	fmt.Printf("-----------------------------------------------\n")
 	fmt.Printf("%s", relay_gateway_output.String())
 	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", relay_backend_output.String())
+	fmt.Printf("-----------------------------------------------\n")
 
 	magic_backend_cmd.Process.Signal(os.Interrupt)
 	magic_backend_cmd.Wait()
 
 	relay_gateway_cmd.Process.Signal(os.Interrupt)
 	relay_gateway_cmd.Wait()
+
+	relay_backend_cmd.Process.Signal(os.Interrupt)
+	relay_backend_cmd.Wait()
 }
 
 type test_function func()
