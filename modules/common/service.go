@@ -152,6 +152,8 @@ func (service *Service) LoadDatabase() {
 		os.Exit(1)
 	}
 
+	core.Log("loaded database: %s", databasePath)
+
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
