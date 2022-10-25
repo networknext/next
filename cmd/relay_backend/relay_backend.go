@@ -36,10 +36,11 @@ var maxPingStatsMessageBytes int
 var relayStatsPubsubTopic string
 var maxRelayStatsChannelSize int
 var maxRelayStatsMessageBytes int
+var disableGooglePubsub bool
 var readyDelay time.Duration
 
 var relaysMutex sync.RWMutex
-var relaysData []byte
+var relaysCSVData []byte
 
 var costMatrixMutex sync.RWMutex
 var costMatrixData []byte
@@ -66,8 +67,8 @@ func main() {
 	maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
 	maxJitter = float32(envvar.GetFloat("MAX_JITTER", 1000.0))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_JITTER", 100.0))
-	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 1*1024*1024)
-	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 10*1024*1024)
+	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 10*1024*1024)
+	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 100*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
@@ -79,8 +80,8 @@ func main() {
 	maxRelayStatsMessageBytes = envvar.GetInt("MAX_RELAY_STATS_MESSAGE_BYTES", 1024)
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
-	readyDelay = envvar.GetDuration("READY_DELAY", 6*time.Minute)
-	startTime = time.Now()
+	disableGooglePubsub = envvar.GetBool("DISABLE_GOOGLE_PUBSUB", false)
+	readyDelay = envvar.GetDuration("READY_DELAY", 1*time.Second)
 
 	core.Log("google project id: %s", googleProjectId)
 	core.Log("max rtt: %.1f", maxRTT)
@@ -99,6 +100,7 @@ func main() {
 	core.Log("relay stats pubsub channel: %s", relayStatsPubsubTopic)
 	core.Log("max relay stats channel: %d", maxRelayStatsChannelSize)
 	core.Log("max relay stats message size: %d", maxRelayStatsMessageBytes)
+	core.Log("disable google pubsub: %v", disableGooglePubsub)
 	core.Log("ready delay: %s", readyDelay.String())
 	core.Log("start time: %s", startTime.String())
 
@@ -170,7 +172,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func relaysHandler(w http.ResponseWriter, r *http.Request) {
 	relaysMutex.RLock()
-	responseData := relaysData
+	responseData := relaysCSVData
 	relaysMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
 	buffer := bytes.NewBuffer(responseData)
@@ -290,24 +292,30 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
-	pingStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              pingStatsPubsubTopic,
-		MessageChannelSize: maxPingStatsChannelSize,
-	})
-	if err != nil {
-		core.Error("could not create ping stats producer")
-		os.Exit(1)
-	}
+	var pingStatsProducer *common.GooglePubsubProducer
+	var relayStatsProducer *common.GooglePubsubProducer
 
-	relayStatsProducer, err := common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              relayStatsPubsubTopic,
-		MessageChannelSize: maxRelayStatsChannelSize,
-	})
-	if err != nil {
-		core.Error("could not create relay stats producer")
-		os.Exit(1)
+	if !disableGooglePubsub {
+	
+		pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              pingStatsPubsubTopic,
+			MessageChannelSize: maxPingStatsChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create ping stats producer")
+			os.Exit(1)
+		}
+
+		relayStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              relayStatsPubsubTopic,
+			MessageChannelSize: maxRelayStatsChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create relay stats producer")
+			os.Exit(1)
+		}
 	}
 
 	go func() {
@@ -370,7 +378,11 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.SamplePacketLoss[:numSamples],
 				)
 
-				// Build relay stats
+				if disableGooglePubsub {
+					break
+				}
+
+				// build relay stats
 
 				numRoutable := 0
 
@@ -502,15 +514,15 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				timeStart := time.Now()
 
-				// build relays data
+				// build relays csv
 
 				currentTime := time.Now().Unix()
 
-				relaysDataNew := relayManager.GetRelaysCSV(currentTime)
+				relayData := service.RelayData()
+
+				relaysCSVDataNew := relayManager.GetRelaysCSV(currentTime, relayData.RelayIds, relayData.RelayNames, relayData.RelayAddresses)
 
 				// build the cost matrix
-
-				relayData := service.RelayData()
 
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
 
@@ -584,7 +596,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				dataStores := []common.DataStoreConfig{
 					{
 						Name: "relays",
-						Data: relaysDataNew,
+						Data: relaysCSVDataNew,
 					},
 					{
 						Name: "cost_matrix",
@@ -607,8 +619,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					continue
 				}
 
-				relaysDataNew = dataStores[0].Data
-				if relaysDataNew == nil {
+				relaysCSVDataNew = dataStores[0].Data
+				if relaysCSVDataNew == nil {
 					core.Error("failed to get relays from redis selector")
 					continue
 				}
@@ -628,7 +640,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				// serve up as official data
 
 				relaysMutex.Lock()
-				relaysData = relaysDataNew
+				relaysCSVData = relaysCSVDataNew
 				relaysMutex.Unlock()
 
 				costMatrixMutex.Lock()

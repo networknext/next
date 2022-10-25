@@ -109,12 +109,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// todo: we should run crypto check here
 
-		// ...
-
-		// forward to the relay backend
-
-		producer.MessageChannel <- body
-
 		// build the response packet
 
 		var responsePacket packets.RelayUpdateResponsePacket
@@ -159,6 +153,10 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 
 		writer.Write(responseData)
+
+		// forward to the relay backend
+
+		producer.MessageChannel <- body
 	}
 }
 

@@ -14,7 +14,7 @@ const (
 	MaxRelayVersionStringLength      = 32
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
-	MaxRelays                        = 1024
+	MaxRelays                        = 1000
 )
 
 // --------------------------------------------------------------------------
