@@ -28,6 +28,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
+	db "github.com/networknext/backend/modules/database"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1025,7 +1026,6 @@ func test_redis_leader_store_migration() {
 							os.Exit(1)
 						}
 					}
-
 				}
 			}
 		}
@@ -1727,6 +1727,402 @@ func test_relay_manager() {
 	contextCancelFunc()
 }
 
+func test_optimize() {
+
+	fmt.Printf("test_optimize\n")
+
+	relayManager := common.CreateRelayManager()
+
+	ctx, contextCancelFunc := context.WithCancel(context.Background())
+
+	// setup a lot of relays
+
+	const NumRelays = 1500
+
+	relayNames := make([]string, NumRelays)
+	relayIds := make([]uint64, NumRelays)
+	relayAddresses := make([]net.UDPAddr, NumRelays)
+	relayLatitudes := make([]float32, NumRelays)
+	relayLongitudes := make([]float32, NumRelays)
+	relayDatacenterIds := make([]uint64, NumRelays)
+	destRelays := make([]bool, NumRelays)
+
+	for i := range relayIds {
+		relayNames[i] = fmt.Sprintf("relay%d", i)
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayLatitudes[i] = float32(common.RandomInt(-90,+90))
+		relayLongitudes[i] = float32(common.RandomInt(-90,+90))
+		relayDatacenterIds[i] = uint64(common.RandomInt(0, 5))
+		destRelays[i] = true
+	}
+
+	// get costs once per-second
+
+	go func() {
+		counter := 0
+		ticker := time.NewTicker(time.Second)
+		for {
+			select {
+
+			case <-ctx.Done():
+				if counter < 30 {
+					panic("optimize deadlocked!")
+				}
+				return
+
+			case <-ticker.C:
+				
+				const MaxRTT = 255
+				const MaxJitter = 100
+				const MaxPacketLoss = 1
+				
+				currentTime := time.Now().Unix()
+				
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				
+				costMatrix := &common.CostMatrix{
+					Version:            common.CostMatrixVersion_Write,
+					RelayIds:           relayIds,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIds: relayDatacenterIds,
+					DestRelays:         destRelays,
+					Costs:              costs,
+				}
+				
+				costMatrixData, err := costMatrix.Write(10*1024*1024)
+				if err != nil {
+					panic("could not write cost matrix")
+				}
+				_ = costMatrixData
+				
+				numCPUs := runtime.NumCPU()
+				numSegments := NumRelays
+				if numCPUs < NumRelays {
+					numSegments = NumRelays / 5
+					if numSegments == 0 {
+						numSegments = 1
+					}
+				}
+				
+				costThreshold := int32(1)
+
+				binFileData := make([]byte, 100*1024)
+				
+				routeMatrix := &common.RouteMatrix{
+					CreatedAt:          uint64(time.Now().Unix()),
+					Version:            common.RouteMatrixVersion_Write,
+					RelayIds:           relayIds,
+					RelayAddresses:     relayAddresses,
+					RelayNames:         relayNames,
+					RelayLatitudes:     relayLatitudes,
+					RelayLongitudes:    relayLongitudes,
+					RelayDatacenterIds: relayDatacenterIds,
+					DestRelays:         destRelays,
+					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, costThreshold, relayDatacenterIds, destRelays),
+					BinFileBytes:       int32(len(binFileData)),
+					BinFileData:        binFileData,
+				}
+
+				routeMatrixData, err := routeMatrix.Write(100*1024*1024)
+				if err != nil {
+					panic("could not write route matrix")
+					continue
+				}
+				_ = routeMatrixData
+
+				fmt.Printf("optimize %d\n", counter)
+				
+				counter++
+			}
+		}
+	}()
+
+	// really slam in the relay updates once per-second, randomly for lots of relays
+
+	numSamples := NumRelays
+	sampleRelayId := make([]uint64, numSamples)
+	sampleRTT := make([]float32, numSamples)
+	sampleJitter := make([]float32, numSamples)
+	samplePacketLoss := make([]float32, numSamples)
+
+	for i := 0; i < numSamples; i++ {
+		sampleRelayId[i] = uint64(i)
+		sampleRTT[i] = float32(common.RandomInt(1,100))
+		sampleJitter[i] = float32(common.RandomInt(0,50))
+		samplePacketLoss[i] = float32(common.RandomInt(0,2))
+	}
+
+	for i := 0; i < NumRelays; i++ {
+
+		go func(index int) {
+
+			ticker := time.NewTicker(time.Second)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					currentTime := time.Now().Unix()
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+				}
+			}
+
+		}(i)
+
+	}
+
+	time.Sleep(60*time.Second)
+
+	contextCancelFunc()
+}
+
+const (
+	magicBackendBin = "./magic_backend"
+	relayGatewayBin = "./relay_gateway"
+	relayBackendBin = "./relay_backend"
+)
+
+func test_relay_backend() {
+
+	fmt.Printf("test_relay_backend\n")
+
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
+
+	// setup a lot of datacenters
+
+	const NumDatacenters = 10//25
+
+	datacenterIds := make([]uint64, NumDatacenters)
+	datacenterNames := make([]string, NumDatacenters)
+	datacenterLatitudes := make([]float32, NumDatacenters)
+	datacenterLongitudes := make([]float32, NumDatacenters)
+
+	for i := 0; i < NumDatacenters; i++ {
+		datacenterIds[i] = uint64(i)
+		datacenterNames[i] = fmt.Sprintf("datacenter%d", i)
+		datacenterLatitudes[i] = float32(common.RandomInt(-90,+90))
+		datacenterLongitudes[i] = float32(common.RandomInt(-90,+90))
+	}
+
+	// setup a lot of relays
+
+	const NumRelays = 500//00
+
+	relayIds := make([]uint64, NumRelays)
+	relayNames := make([]string, NumRelays)
+	relayAddresses := make([]net.UDPAddr, NumRelays)
+	relayDatacenterIds := make([]uint64, NumRelays)
+	destRelays := make([]bool, NumRelays)
+
+	for i := range relayIds {
+		relayNames[i] = fmt.Sprintf("relay%d", i)
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayIds[i] = common.RelayId(relayAddresses[i].String())
+		relayDatacenterIds[i] = uint64(common.RandomInt(0, NumDatacenters-1))
+		destRelays[i] = true
+	}
+
+	// setup a database containing the relays
+
+	database := db.CreateDatabase()
+
+	database.CreationTime = time.Now().String()
+	database.Creator = "test"
+
+	for i := 0; i < NumRelays; i++ {
+
+		relay := db.Relay{}
+
+		relay.ID = relayIds[i]
+		relay.Name = relayNames[i]
+		relay.Addr = relayAddresses[i]
+		relay.Version = "test"
+		relay.Datacenter.ID = relayDatacenterIds[i]
+		relay.Datacenter.Name = datacenterNames[relay.Datacenter.ID]
+		relay.Datacenter.Latitude = datacenterLatitudes[relay.Datacenter.ID]
+		relay.Datacenter.Longitude = datacenterLongitudes[relay.Datacenter.ID]
+
+		database.Relays = append(database.Relays, relay)
+
+		database.RelayMap[relay.ID] = relay
+	}
+
+	// write the database out to a temporary file
+
+	file, err := ioutil.TempFile(".", "temp-database-")
+	if err != nil {
+	    panic("could not create temporary database file")
+	}
+
+	databaseFilename := file.Name()
+
+	defer os.Remove(databaseFilename)
+
+	fmt.Println(databaseFilename)
+
+	database.Save(databaseFilename)
+
+	// start the magic backend
+
+	magic_backend_cmd := exec.Command(magicBackendBin)
+	if magic_backend_cmd == nil {
+		panic("could not create magic backend!\n")
+	}
+
+	magic_backend_cmd.Env = os.Environ()
+	magic_backend_cmd.Env = append(magic_backend_cmd.Env, "HTTP_PORT=41007")
+
+	var magic_backend_output bytes.Buffer
+	magic_backend_cmd.Stdout = &magic_backend_output
+	magic_backend_cmd.Stderr = &magic_backend_output
+	magic_backend_cmd.Start()
+
+	// run the relay gateway, such that it loads the temporary database file
+
+	relay_gateway_cmd := exec.Command(relayGatewayBin)
+	if relay_gateway_cmd == nil {
+		panic("could not create relay gateway!\n")
+	}
+
+	relay_gateway_cmd.Env = os.Environ()
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "NEXT_DEBUG_LOGS=1")
+	
+	var relay_gateway_output bytes.Buffer
+	relay_gateway_cmd.Stdout = &relay_gateway_output
+	relay_gateway_cmd.Stderr = &relay_gateway_output
+	relay_gateway_cmd.Start()
+
+	// run the relay backend, such that it loads the temporary database file
+
+	relay_backend_cmd := exec.Command(relayBackendBin)
+	if relay_backend_cmd == nil {
+		panic("could not create relay backend!\n")
+	}
+
+	relay_backend_cmd.Env = os.Environ()
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "OVERLAY_PATH=nopenopenope")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=1s")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DISABLE_GOOGLE_PUBSUB=1")
+
+	var relay_backend_output bytes.Buffer
+	relay_backend_cmd.Stdout = &relay_backend_output
+	relay_backend_cmd.Stderr = &relay_backend_output
+	relay_backend_cmd.Start()
+
+	// hammer the relay backend with relay updates
+
+	var waitGroup sync.WaitGroup
+
+	waitGroup.Add(NumRelays)
+
+	for i := 0; i < NumRelays; i++ {
+
+		go func(index int) {
+
+			// create http client
+
+			client := http.Client{}
+
+			ticker := time.NewTicker(1*time.Second)
+
+			for {
+				select {
+
+				case <-cancelContext.Done():
+					waitGroup.Done()
+					return
+
+				case <-ticker.C:
+
+					fmt.Printf("relay update %d\n", index)
+
+					requestPacket := packets.RelayUpdateRequestPacket{}
+					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
+					requestPacket.Address = relayAddresses[index]
+					requestPacket.Token = make([]byte, packets.RelayTokenSize)
+					requestPacket.NumSamples = 0 // NumRelays
+/*
+		SampleRelayId     [MaxRelays]uint64
+		SampleRTT         [MaxRelays]float32
+		SampleJitter      [MaxRelays]float32
+		SamplePacketLoss  [MaxRelays]float32
+*/
+					body := requestPacket.Write(make([]byte, 10*1024))
+
+					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
+					if err != nil {
+						fmt.Printf("error creating http request: %v\n", err)
+						break
+					}
+
+					request.Header.Set("Content-Type", "application/octet-stream")
+
+					response, err := client.Do(request)
+				    if err != nil {
+						fmt.Printf("error running http request: %v\n", err)
+						break
+				    }
+
+				    if response.StatusCode != 200 {
+				    	fmt.Printf("bad http response %d\n", response.StatusCode)
+				    }
+
+				    response.Body.Close()
+				}
+			}
+
+		}(i)
+	}
+
+	// ...
+
+	// run a goroutine to pull down the cost matrix once per-second from the relay backend
+
+	// ...
+
+	// run a goroutine to pull down the route matrix once per-second from the relay backend
+
+	// ...
+
+	// wait for 60 seconds
+
+	time.Sleep(10 * time.Second) // 60
+
+	// wait for all goroutines to finish
+
+	cancelFunc()
+
+	waitGroup.Wait()
+
+	// print output from services
+
+	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", magic_backend_output.String())
+	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", relay_gateway_output.String())
+	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("%s", relay_backend_output.String())
+	fmt.Printf("-----------------------------------------------\n")
+
+	magic_backend_cmd.Process.Signal(os.Interrupt)
+	magic_backend_cmd.Wait()
+
+	relay_gateway_cmd.Process.Signal(os.Interrupt)
+	relay_gateway_cmd.Wait()
+
+	relay_backend_cmd.Process.Signal(os.Interrupt)
+	relay_backend_cmd.Wait()
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1749,6 +2145,8 @@ func main() {
 		test_route_matrix_read_write,
 		test_session_data_serialize,
 		test_relay_manager,
+		test_optimize,
+		test_relay_backend,
 	}
 
 	var tests []test_function
