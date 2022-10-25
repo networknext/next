@@ -179,6 +179,7 @@ blocks:
             - chmod +x func_tests_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
+            - chmod +x relay_backend
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
