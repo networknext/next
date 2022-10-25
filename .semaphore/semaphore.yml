@@ -179,6 +179,7 @@ blocks:
             - chmod +x func_tests_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
+            - chmod +x relay_backend
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
@@ -245,6 +246,14 @@ blocks:
         - name: "test_relay_manager"
           commands:
             - cd ./dist && ./func_tests_backend test_relay_manager
+
+        - name: "test_optimize"
+          commands:
+            - cd ./dist && ./func_tests_backend test_optimize
+
+        - name: "test_relay_backend"
+          commands:
+            - cd ./dist && ./func_tests_backend test_relay_backend
 
 
   - name: "Build Functional Tests (sdk4)"
