@@ -250,9 +250,9 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_backend test_optimize
 
-#        - name: "test_relay_backend"
-#          commands:
-#            - cd ./dist && ./func_tests_backend test_relay_backend
+        - name: "test_relay_backend"
+          commands:
+            - cd ./dist && ./func_tests_backend test_relay_backend
 
 
   - name: "Build Functional Tests (sdk4)"

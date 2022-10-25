@@ -2050,17 +2050,20 @@ func test_relay_backend() {
 				case <-ticker.C:
 
 					requestPacket := packets.RelayUpdateRequestPacket{}
+					
 					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
 					requestPacket.Address = relayAddresses[index]
 					requestPacket.Token = make([]byte, packets.RelayTokenSize)
-					requestPacket.NumSamples = 0 // NumRelays
-/*
-		SampleRelayId     [MaxRelays]uint64
-		SampleRTT         [MaxRelays]float32
-		SampleJitter      [MaxRelays]float32
-		SamplePacketLoss  [MaxRelays]float32
-*/
-					body := requestPacket.Write(make([]byte, 10*1024))
+					requestPacket.NumSamples = NumRelays
+
+					for i := 0; i < NumRelays; i++ {
+						requestPacket.SampleRelayId[i] = relayIds[i]
+						requestPacket.SampleRTT[i] = float32(common.RandomInt(1,100))
+						requestPacket.SampleJitter[i] = float32(common.RandomInt(1,50))
+						requestPacket.SamplePacketLoss[i] = float32(common.RandomInt(0,2))
+					}
+
+					body := requestPacket.Write(make([]byte, 100*1024))
 
 					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
 					if err != nil {
@@ -2090,13 +2093,80 @@ func test_relay_backend() {
 		}(i)
 	}
 
-	// run a goroutine to pull down the cost matrix once per-second from the relay backend
-
-	// ...
-
 	// run a goroutine to pull down the route matrix once per-second from the relay backend
 
-	// ...
+	waitGroup.Add(1)
+
+	routeMatrixCounter := 0
+
+	go func() {
+
+		transport := &http.Transport{
+	        MaxIdleConns:       	1,
+	        MaxIdleConnsPerHost:  	1,
+	    }
+	    
+	    client := &http.Client{Transport: transport}
+
+	    // wait until the relay backend is ready
+
+	    for {
+			response, err := client.Get("http://127.0.0.1:30001/health")
+			if err == nil && response.StatusCode == 200 {
+				break
+			}
+		}
+
+	    // request route matrix once per-second
+
+		ticker := time.NewTicker(1*time.Second)
+
+		for {
+			select {
+
+			case <-cancelContext.Done():
+				waitGroup.Done()
+				return
+
+			case <-ticker.C:
+
+				response, err := client.Get("http://127.0.0.1:30001/route_matrix")
+				if err != nil {
+					core.Error("failed to http get route matrix: %v", err)
+					atomic.AddUint64(&errorCount, 1)
+					break
+				}
+
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					atomic.AddUint64(&errorCount, 1)
+					break
+				}
+
+				response.Body.Close()
+
+				routeMatrix := common.RouteMatrix{}
+
+				err = routeMatrix.Read(buffer)
+				if err != nil {
+					core.Error("failed to read route matrix: %v", err)
+					atomic.AddUint64(&errorCount, 1)
+					break
+				}
+
+				if len(routeMatrix.RelayIds) != NumRelays {
+					core.Error("wrong num relays in route matrix: %d", len(routeMatrix.RelayIds))
+					atomic.AddUint64(&errorCount, 1)
+					break
+				}
+
+				fmt.Printf("route matrix %d\n", routeMatrixCounter)
+
+				routeMatrixCounter++
+			}
+		}
+	}()
 
 	// wait for 60 seconds
 
@@ -2131,9 +2201,9 @@ func test_relay_backend() {
 		panic("error count is not zero")
 	}
 
-	// todo: at least 30 valid cost matrices
-
-	// todo: at least 30 valid route matrices
+	if routeMatrixCounter < 30 {
+		panic("not enough valid route matrices")
+	}
 }
 
 type test_function func()
