@@ -1894,7 +1894,7 @@ func test_relay_backend() {
 
 	// setup a lot of datacenters
 
-	const NumDatacenters = 10//25
+	const NumDatacenters = 50
 
 	datacenterIds := make([]uint64, NumDatacenters)
 	datacenterNames := make([]string, NumDatacenters)
@@ -1910,7 +1910,7 @@ func test_relay_backend() {
 
 	// setup a lot of relays
 
-	const NumRelays = 500//00
+	const NumRelays = 1000
 
 	relayIds := make([]uint64, NumRelays)
 	relayNames := make([]string, NumRelays)
@@ -1992,7 +1992,6 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
-	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "NEXT_DEBUG_LOGS=1")
 	
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output
@@ -2024,13 +2023,20 @@ func test_relay_backend() {
 
 	waitGroup.Add(NumRelays)
 
+	var errorCount uint64
+
 	for i := 0; i < NumRelays; i++ {
 
 		go func(index int) {
 
 			// create http client
 
-			client := http.Client{}
+			transport := &http.Transport{
+		        MaxIdleConns:       	1,
+		        MaxIdleConnsPerHost:  	1,
+		    }
+		    
+		    client := &http.Client{Transport: transport}
 
 			ticker := time.NewTicker(1*time.Second)
 
@@ -2042,8 +2048,6 @@ func test_relay_backend() {
 					return
 
 				case <-ticker.C:
-
-					fmt.Printf("relay update %d\n", index)
 
 					requestPacket := packets.RelayUpdateRequestPacket{}
 					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
@@ -2061,6 +2065,7 @@ func test_relay_backend() {
 					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
 					if err != nil {
 						fmt.Printf("error creating http request: %v\n", err)
+						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
@@ -2069,11 +2074,13 @@ func test_relay_backend() {
 					response, err := client.Do(request)
 				    if err != nil {
 						fmt.Printf("error running http request: %v\n", err)
+						atomic.AddUint64(&errorCount, 1)
 						break
 				    }
 
 				    if response.StatusCode != 200 {
 				    	fmt.Printf("bad http response %d\n", response.StatusCode)
+						atomic.AddUint64(&errorCount, 1)
 				    }
 
 				    response.Body.Close()
@@ -2082,8 +2089,6 @@ func test_relay_backend() {
 
 		}(i)
 	}
-
-	// ...
 
 	// run a goroutine to pull down the cost matrix once per-second from the relay backend
 
@@ -2095,7 +2100,7 @@ func test_relay_backend() {
 
 	// wait for 60 seconds
 
-	time.Sleep(10 * time.Second) // 60
+	time.Sleep(60 * time.Second)
 
 	// wait for all goroutines to finish
 
@@ -2121,6 +2126,14 @@ func test_relay_backend() {
 
 	relay_backend_cmd.Process.Signal(os.Interrupt)
 	relay_backend_cmd.Wait()
+
+	if errorCount != 0 {
+		panic("error count is not zero")
+	}
+
+	// todo: at least 30 valid cost matrices
+
+	// todo: at least 30 valid route matrices
 }
 
 type test_function func()
