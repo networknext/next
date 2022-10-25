@@ -1737,7 +1737,7 @@ func test_optimize() {
 
 	// setup a lot of relays
 
-	const NumRelays = 1500
+	const NumRelays = 100
 
 	relayNames := make([]string, NumRelays)
 	relayIds := make([]uint64, NumRelays)
@@ -1841,7 +1841,7 @@ func test_optimize() {
 		}
 	}()
 
-	// really slam in the relay updates once per-second, randomly for lots of relays
+	// relay updates once per-second for each relay
 
 	numSamples := NumRelays
 	sampleRelayId := make([]uint64, numSamples)
@@ -1892,9 +1892,9 @@ func test_relay_backend() {
 
 	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(60*time.Second))
 
-	// setup a lot of datacenters
+	// setup datacenters
 
-	const NumDatacenters = 50
+	const NumDatacenters = 10
 
 	datacenterIds := make([]uint64, NumDatacenters)
 	datacenterNames := make([]string, NumDatacenters)
@@ -1908,9 +1908,9 @@ func test_relay_backend() {
 		datacenterLongitudes[i] = float32(common.RandomInt(-90,+90))
 	}
 
-	// setup a lot of relays
+	// setup relays
 
-	const NumRelays = 1000
+	const NumRelays = 100
 
 	relayIds := make([]uint64, NumRelays)
 	relayNames := make([]string, NumRelays)
