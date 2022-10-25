@@ -1894,7 +1894,7 @@ func test_relay_backend() {
 
 	// setup a lot of datacenters
 
-	const NumDatacenters = 100
+	const NumDatacenters = 10//25
 
 	datacenterIds := make([]uint64, NumDatacenters)
 	datacenterNames := make([]string, NumDatacenters)
@@ -1910,7 +1910,7 @@ func test_relay_backend() {
 
 	// setup a lot of relays
 
-	const NumRelays = 1500
+	const NumRelays = 500//00
 
 	relayIds := make([]uint64, NumRelays)
 	relayNames := make([]string, NumRelays)
@@ -1920,8 +1920,8 @@ func test_relay_backend() {
 
 	for i := range relayIds {
 		relayNames[i] = fmt.Sprintf("relay%d", i)
-		relayIds[i] = common.RelayId(relayNames[i])
 		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayIds[i] = common.RelayId(relayAddresses[i].String())
 		relayDatacenterIds[i] = uint64(common.RandomInt(0, NumDatacenters-1))
 		destRelays[i] = true
 	}
@@ -1992,6 +1992,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "NEXT_DEBUG_LOGS=1")
 	
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output
@@ -2019,23 +2020,63 @@ func test_relay_backend() {
 
 	// hammer the relay backend with relay updates
 
+	var waitGroup sync.WaitGroup
+
+	waitGroup.Add(NumRelays)
+
 	for i := 0; i < NumRelays; i++ {
 
 		go func(index int) {
 
 			// create http client
 
-			ticker := time.NewTicker(10*time.Millisecond)
+			client := http.Client{}
+
+			ticker := time.NewTicker(1*time.Second)
 
 			for {
 				select {
 
 				case <-cancelContext.Done():
+					waitGroup.Done()
 					return
 
 				case <-ticker.C:
+
 					fmt.Printf("relay update %d\n", index)
-					// todo: request/response to the relay update
+
+					requestPacket := packets.RelayUpdateRequestPacket{}
+					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
+					requestPacket.Address = relayAddresses[index]
+					requestPacket.Token = make([]byte, packets.RelayTokenSize)
+					requestPacket.NumSamples = 0 // NumRelays
+/*
+		SampleRelayId     [MaxRelays]uint64
+		SampleRTT         [MaxRelays]float32
+		SampleJitter      [MaxRelays]float32
+		SamplePacketLoss  [MaxRelays]float32
+*/
+					body := requestPacket.Write(make([]byte, 10*1024))
+
+					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
+					if err != nil {
+						fmt.Printf("error creating http request: %v\n", err)
+						break
+					}
+
+					request.Header.Set("Content-Type", "application/octet-stream")
+
+					response, err := client.Do(request)
+				    if err != nil {
+						fmt.Printf("error running http request: %v\n", err)
+						break
+				    }
+
+				    if response.StatusCode != 200 {
+				    	fmt.Printf("bad http response %d\n", response.StatusCode)
+				    }
+
+				    response.Body.Close()
 				}
 			}
 
@@ -2054,11 +2095,15 @@ func test_relay_backend() {
 
 	// wait for 60 seconds
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(10 * time.Second) // 60
 
-	// shut everything down
+	// wait for all goroutines to finish
 
 	cancelFunc()
+
+	waitGroup.Wait()
+
+	// print output from services
 
 	fmt.Printf("-----------------------------------------------\n")
 	fmt.Printf("%s", magic_backend_output.String())

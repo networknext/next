@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
-
+	
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -329,6 +329,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 			case message := <-consumer.MessageChannel:
 
 				// read the relay update request packet
+
+				// todo
+				fmt.Printf("*** relay update ***\n")
 
 				var relayUpdateRequest packets.RelayUpdateRequestPacket
 
