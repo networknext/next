@@ -157,6 +157,10 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Serve
 			return
 		}
 
+		if buyer.CompanyCode == "pfg" {
+			fmt.Printf("pfg server %s init '%s' [%x]", incoming.From.String(), packet.DatacenterName, packet.DatacenterID)
+		}
+
 		if !buyer.Live {
 			core.Debug("buyer not active")
 			metrics.BuyerNotActive.Add(1)
