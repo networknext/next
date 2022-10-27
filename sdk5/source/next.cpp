@@ -4755,7 +4755,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_pongs == 0 )
     {
-    	return;
+        return;
     }
 
     next_assert( min_rtt >= 0.0 );
@@ -11447,7 +11447,7 @@ bool next_autodetect_google( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-	char cmd[1024];
+    char cmd[1024];
     sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
@@ -11915,7 +11915,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
-	    next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
+        next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
         const char * separators = "\n\r\n";
         char * line = strtok( whois_buffer, separators );
         while ( line )

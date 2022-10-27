@@ -427,25 +427,6 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	core.Debug("received session update request packet from %s", from.String())
 	core.Debug("---------------------------------------------------------------------------")
 
-	// track the length of session update handlers
-
-	timeStart := time.Now()
-	defer func() {
-		milliseconds := float64(time.Since(timeStart).Milliseconds())
-		if milliseconds > 100 {
-			// todo: set long duration bool to true
-		}
-		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
-	}()
-
-	// log stuff we want to see with each session update (debug only)
-
-	core.Debug("buyer id is %x", requestPacket.BuyerId)
-	core.Debug("datacenter id is %x", requestPacket.DatacenterId)
-	core.Debug("session id is %x", requestPacket.SessionId)
-	core.Debug("slice number is %d", requestPacket.SliceNumber)
-	core.Debug("retry number is %d", requestPacket.RetryNumber)
-
 	/*
 	   Build session handler state. Putting everything in a struct makes calling subroutines much easier.
 	*/
@@ -461,6 +442,25 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 		SliceNumber: state.Request.SliceNumber,
 		RouteType:   packets.SDK5_RouteTypeDirect,
 	}
+
+	// track the length of session update handlers
+
+	timeStart := time.Now()
+	defer func() {
+		milliseconds := float64(time.Since(timeStart).Milliseconds())
+		if milliseconds > 100 {
+			state.LongDuration = true
+		}
+		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
+	}()
+
+	// log stuff we want to see with each session update (debug only)
+
+	core.Debug("buyer id is %x", requestPacket.BuyerId)
+	core.Debug("datacenter id is %x", requestPacket.DatacenterId)
+	core.Debug("session id is %x", requestPacket.SessionId)
+	core.Debug("slice number is %d", requestPacket.SliceNumber)
+	core.Debug("retry number is %d", requestPacket.RetryNumber)
 
 	/*
 	   Session post *always* runs at the end of this function

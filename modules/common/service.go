@@ -399,7 +399,7 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
-	// todo: some system to wait for registered (named) subsystems to complete before we shut down
+	// todo: we need some system to wait for registered (named) subsystems to complete before we shut down
 
 	core.Log("successfully shutdown")
 }

@@ -296,7 +296,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 	var relayStatsProducer *common.GooglePubsubProducer
 
 	if !disableGooglePubsub {
-	
+
 		pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
 			Topic:              pingStatsPubsubTopic,

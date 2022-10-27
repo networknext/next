@@ -7,7 +7,7 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/database"
+	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 )
@@ -22,16 +22,19 @@ type SessionUpdateState struct {
 	   Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
+	Connection *net.UDPConn
+	From       *net.UDPAddr
+
 	Input packets.SDK5_SessionData // sent up from the SDK. previous slice.
 
 	Output packets.SDK5_SessionData // sent down to the SDK. current slice.
 
 	Request       *packets.SDK5_SessionUpdateRequestPacket
 	Response      packets.SDK5_SessionUpdateResponsePacket
-	Database      *database.Database
+	Database      *db.Database
 	RouteMatrix   *common.RouteMatrix
-	Datacenter    database.Datacenter
-	Buyer         database.Buyer
+	Datacenter    db.Datacenter
+	Buyer         db.Buyer
 	Debug         *string
 	StaleDuration time.Duration
 
@@ -40,13 +43,6 @@ type SessionUpdateState struct {
 		RouterPrivateKey   [crypto_old.KeySize]byte
 		PostSessionHandler *PostSessionHandler
 	*/
-
-	// flags
-	UnknownDatacenter             bool // todo: check that these are all passed in and actually used
-	DatacenterNotEnabled          bool
-	BuyerNotLive                  bool
-	StaleRouteMatrix              bool
-	DatacenterAccelerationEnabled bool
 
 	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
@@ -74,21 +70,19 @@ type SessionUpdateState struct {
 	PostNearRelayJitter              [core.MaxNearRelays]float32
 	PostNearRelayPacketLoss          [core.MaxNearRelays]float32
 	PostRouteRelayNames              [core.MaxRelaysPerRoute]string
-	PostRouteRelaySellers            [core.MaxRelaysPerRoute]database.Seller
+	PostRouteRelaySellers            [core.MaxRelaysPerRoute]db.Seller
 	PostRealPacketLossClientToServer float32
 	PostRealPacketLossServerToClient float32
 
-	// for convenience
-	ReadSessionData bool
-
-	// functional testing flags
+	// flags
+	ReadSessionData                                    bool
+	LongDuration                                       bool
 	ClientPingTimedOut                                 bool
 	Pro                                                bool
 	OptOut                                             bool
 	BadSessionId                                       bool
 	BadSliceNumber                                     bool
 	AnalysisOnly                                       bool
-	DatacenterAccelerationNotEnabled                   bool
 	NoRelaysInDatacenter                               bool
 	HoldingNearRelays                                  bool
 	NearRelaysExcluded                                 bool
@@ -107,9 +101,28 @@ type SessionUpdateState struct {
 	Mispredict                                         bool
 	LatencyWorse                                       bool
 	FailedToReadSessionData                            bool
+	StaleRouteMatrix                                   bool
+	UnknownDatacenter                                  bool
+	DatacenterNotEnabled                               bool
+	TakeNetworkNext                                    bool
+	LeftNetworkNext                                    bool
+	WroteResponsePacket                                bool
+	FailedToWriteResponsePacket                        bool
+	FailedToSendResponsePacket                         bool
 }
 
 func SessionPre(state *SessionUpdateState) bool {
+
+	/*
+		If the route shader is in analysis only mode, set the analysis only flag in the state
+
+		We don't acceleration sessions in analysis only mode.
+	*/
+
+	if state.Buyer.RouteShader.AnalysisOnly {
+		core.Debug("analysis only")
+		state.AnalysisOnly = true
+	}
 
 	/*
 		When a client disconnects from the server, the server reports this up to us via the "ClientPingTimedOut" flag
@@ -171,57 +184,6 @@ func SessionPre(state *SessionUpdateState) bool {
 	}
 
 	/*
-		If the buyer is "Analysis Only", allow the session to proceed
-		even if the datacenter does not exist, is not enabled, or has zero
-		destination relays in the database.
-
-		The session will always go direct since the Route State will be disabled.
-
-		The billing entry will still contain the UnknownDatacenter flag to let
-		us know if we need to add this datacenter for the buyer.
-	*/
-
-	// todo
-	/*
-		if !datacenterExists(state.Database, state.Request.DatacenterId) {
-			core.Debug("unknown datacenter")
-			state.UnknownDatacenter = true
-			if !state.Buyer.RouteShader.AnalysisOnly {
-				return true
-			}
-		}
-	*/
-
-	// todo
-	/*
-		if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) && !state.Buyer.RouteShader.AnalysisOnly {
-			core.Debug("datacenter not enabled")
-			state.DatacenterNotEnabled = true
-			return true
-		}
-	*/
-
-	// todo
-	// state.DatacenterAccelerationEnabled = accelerateDatacenter(state.Database, state.Buyer.ID, state.Packet.DatacenterId)
-
-	// todo
-	// state.Datacenter = getDatacenter(state.Database, state.Request.DatacenterID)
-
-	// todo
-	// core.Debug("SessionPre(): Datacenter: %s will be accelerated: %v", state.Datacenter.Name, state.DatacenterAccelerationEnabled)
-
-	// todo
-	/*
-		destRelayIDs := state.RouteMatrix.GetDatacenterRelayIDs(state.Packet.DatacenterID)
-		if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly && state.DatacenterAccelerationEnabled {
-			core.Debug("no relays in datacenter %x", state.Packet.DatacenterID)
-			state.Metrics.NoRelaysInDatacenter.Add(1)
-			return true
-		}
-
-	*/
-
-	/*
 		Routing with an old route matrix runs a serious risk of sending players across routes that are WORSE
 		than their default internet route, so it's best to just go direct if the route matrix is stale.
 	*/
@@ -233,13 +195,45 @@ func SessionPre(state *SessionUpdateState) bool {
 	}
 
 	/*
-		The debug string is appended to during the rest of the handler and sent down to the SDK
-		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
+		Check if the datacenter is unknown, and flag it.
+
+		This is important so that we can quickly check if we need to add new datacenters for customers.
 	*/
 
-	if state.Buyer.Debug {
-		core.Debug("debug enabled")
-		state.Debug = new(string)
+	if !datacenterExists(state.Database, state.Request.DatacenterId) {
+		core.Debug("unknown datacenter")
+		state.UnknownDatacenter = true
+	}
+
+	/*
+		Check if the datacenter is enabled for this customer.
+
+		If the datacenter is not enabled, we just wont accelerate the player.
+	*/
+
+	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
+		core.Debug("datacenter not enabled")
+		state.DatacenterNotEnabled = true
+	}
+
+	/*
+		Get the datacenter information and store it in the handler state.
+
+		If the datacenter is unknown, this datacenter will have a zero id and be named "unknown".
+	*/
+
+	state.Datacenter = getDatacenter(state.Database, state.Request.DatacenterId)
+
+	/*
+		Get the set of relay ids that are in the destination datacenter (if applicable).
+
+		If anything goes wrong, this is an empty set.
+	*/
+
+	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Request.DatacenterId)
+	if len(destRelayIds) == 0 {
+		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
+		state.NoRelaysInDatacenter = true
 	}
 
 	/*
@@ -265,6 +259,16 @@ func SessionPre(state *SessionUpdateState) bool {
 				return true
 			}
 		}
+	}
+
+	/*
+		The debug string is appended to during the rest of the handler and sent down to the SDK
+		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
+	*/
+
+	if state.Buyer.Debug {
+		core.Debug("debug enabled")
+		state.Debug = new(string)
 	}
 
 	return false
@@ -441,21 +445,17 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	   acceleration, forcing all connected clients to go direct.
 	*/
 
-	// todo: bring this back
-	/*
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
 		return false
 	}
 
-	if !state.DatacenterAccelerationEnabled {
-		core.Debug("datacenter acceleration disabled, not getting near relays")
+	if !state.DatacenterNotEnabled {
+		core.Debug("datacenter not enabled, not getting near relays")
 		state.NotGettingNearRelaysDatacenterAccelerationDisabled = true
 		return false
 	}
-
-	directLatency := state.Request.DirectMinRTT
 
 	clientLatitude := state.Output.Location.Latitude
 	clientLongitude := state.Output.Location.Longitude
@@ -466,14 +466,18 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	const distanceThreshold = 2500
 	const latencyThreshold = 30.0
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(state.RouteMatrix,
-		directLatency,
-		clientLatitude, clientLongitude,
-		serverLatitude, serverLongitude,
-		core.MaxNearRelays,
-		state.Datacenter.ID,
+	nearRelayIds, nearRelayAddresses := common.GetNearRelays(core.MaxNearRelays,
 		distanceThreshold,
-		latencyThreshold)
+		latencyThreshold,
+		state.RouteMatrix.RelayIds,
+		state.RouteMatrix.RelayAddresses,
+		state.RouteMatrix.RelayLatitudes,
+		state.RouteMatrix.RelayLongitudes,
+		clientLatitude,
+		clientLongitude,
+		serverLatitude,
+		serverLongitude,
+	)
 
 	numNearRelays := len(nearRelayIds)
 
@@ -491,7 +495,6 @@ func SessionGetNearRelays(state *SessionUpdateState) bool {
 	state.Response.NumNearRelays = int32(numNearRelays)
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
 	state.Response.NearRelaysChanged = true
-	*/
 
 	return true
 }
@@ -515,15 +518,13 @@ func SessionUpdateNearRelays(state *SessionUpdateState) bool {
 
 	routeShader := &state.Buyer.RouteShader
 
-	if routeShader.AnalysisOnly {
+	if state.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
-		state.AnalysisOnly = true
 		return false
 	}
 
-	if !state.DatacenterAccelerationEnabled {
-		core.Debug("datacenter acceleration disabled, not updating near relay stats")
-		state.DatacenterAccelerationNotEnabled = true
+	if state.DatacenterNotEnabled {
+		core.Debug("datacenter not disabled, not updating near relay stats")
 		return false
 	}
 
@@ -661,27 +662,25 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 		return
 	}
 
-	// todo
-	// var stayOnNext bool
+	var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	// todo
-	// sliceNumber := int32(state.Request.SliceNumber)
+	sliceNumber := int32(state.Request.SliceNumber)
 
 	if !state.Input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		// todo
-		/*
-			if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 
-				// todo: state.TakeNetworkNext
+			state.TakeNetworkNext = true
 
+			// todo
+			/*
 				BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 
 				if state.Debug != nil {
@@ -696,8 +695,8 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 						}
 					}
 				}
-			}
-		*/
+			*/
+		}
 
 	} else {
 
@@ -726,11 +725,7 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 			state.RouteRelayNoLongerExists = true
 		}
 
-		// stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
-
-		// todo
-		stayOnNext := false
-		routeChanged := false
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -831,16 +826,19 @@ func SessionPost(state *SessionUpdateState) {
 	}
 
 	/*
-	   Track if the session was ever on next.
+	   Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
 	if state.Request.Next {
 		state.Output.EverOnNext = true
+		state.Output.DurationOnNext += packets.SDK5_BillingSliceSeconds
+		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
 
 	/*
-	   Store the packets sent and packets lost counters in the route state,
-	   so we can use them to calculate real packet loss next session update.
+	   Store the *previous* packets sent and packets lost counters in the route state,
+
+	   This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
@@ -849,7 +847,7 @@ func SessionPost(state *SessionUpdateState) {
 	state.Output.PrevPacketsLostServerToClient = state.Request.PacketsLostServerToClient
 
 	/*
-	   If the core routing logic generated a debug string, include it in the response.
+	   If the core routing logic generated a debug string, include it in the response packet
 	*/
 
 	if state.Debug != nil {
@@ -860,6 +858,62 @@ func SessionPost(state *SessionUpdateState) {
 	}
 
 	/*
+	   The session ends when the client ping times out.
+
+	   At this point we write a summary slice to bigquery, with more information than regular slices.
+
+	   This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
+	*/
+
+	if state.Request.ClientPingTimedOut {
+		state.Output.WroteSummary = true
+	}
+
+	// ^---- build things in the output that need to be sent back down to the caller
+
+	// =========================================================================
+
+	/*
+	   Write the session update response packet and send it back to the caller.
+	*/
+
+	buffer := [packets.SDK5_MaxPacketBytes]byte{}
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := state.Response.Serialize(writeStream)
+
+	if err == nil {
+
+		writeStream.Flush()
+
+		packetBytes := writeStream.GetBytesProcessed()
+
+		packetData := buffer[:packetBytes]
+
+		// todo: we actually need to use the sdk5 write packet method that does the whole pittle/chonkle signing thing
+
+		if _, err := state.Connection.WriteToUDP(packetData, state.From); err != nil {
+			core.Error("failed to send session update response packet: %v", err)
+			state.FailedToSendResponsePacket = true
+			return
+		}
+
+		state.WroteResponsePacket = true
+
+	} else {
+
+		core.Error("failed to write response packet: %v", err)
+
+		state.FailedToWriteResponsePacket = true
+
+	}
+
+	// =========================================================================
+
+	// below here -- things that can safely occur *AFTER* we send the response to the caller
+
+	/*
 	   Build route relay data (for portal, billing etc...).
 
 	   This is done here to get the post route relay sellers egress price override for
@@ -867,92 +921,17 @@ func SessionPost(state *SessionUpdateState) {
 	*/
 
 	// todo
-	// BuildPostRouteRelayData(state)
-
-	/*
-	   Determine if we should write the summary slice. Should only happen
-	   when the session is finished.
-
-	   The end of a session occurs when the client ping times out.
-
-	   We always set the output flag to true so that it remains recorded as true on
-	   subsequent slices where the client ping has timed out. Instead, we check
-	   the input when deciding to write billing entry 2.
-	*/
-
-	if state.Request.ClientPingTimedOut {
-		state.Output.WroteSummary = true
-	}
-
-	/*
-	   Each slice is 10 seconds long except for the first slice with a given network next route,
-	   which is 20 seconds long. Each time we change network next route, we have another 20 second
-	   slice, and we burn the 10 second tail purchased at the start of the previous route.
-
-	   IMPORTANT: The initial and summary slices must always be 10 seconds long, for ease of data science calculation.
-	*/
-
-	sliceDuration := uint64(packets.SDK5_BillingSliceSeconds)
-
-	if state.Input.RouteChanged && !state.Output.WroteSummary {
-		sliceDuration *= 2
-	}
-
-	/*
-	   Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
-	*/
-
-	// todo
-	// nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-	nextEnvelopeBytesUp := uint64(0)
-	nextEnvelopeBytesDown := uint64(0)
-
-	/*
-	   Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
-	   the output session data. Used in the summary slice.
-
-	   If this is the summary slice, then we do NOT want to include this slice's values in the
-	   cumulative sum since this session is finished.
-
-	   This saves datascience some work when analyzing sessions across days.
-	*/
-
-	if !state.Output.WroteSummary && state.Request.Next {
-		state.Output.NextEnvelopeBytesUpSum += nextEnvelopeBytesUp
-		state.Output.NextEnvelopeBytesDownSum += nextEnvelopeBytesDown
-		state.Output.DurationOnNext += packets.SDK5_BillingSliceSeconds
-	}
-
-	/*
-	   Write the session response packet and send it back to the caller.
-	*/
-
-	// todo
-	/*
-		if err := WriteSessionResponse(state.Writer, &state.Response, &state.Output, state.Metrics); err != nil {
-			core.Debug("failed to write session update response: %s", err)
-			state.Metrics.WriteResponseFailure.Add(1)
-			return
-		}
-	*/
+	// BuildPostRouteRelayData(state)     // todo: this may be needed for output. gar. if so it needs to move up
 
 	/*
 	   Build post near relay data (for portal, billing etc...)
 	*/
 
 	// todo
-	// BuildPostNearRelayData(state)
+	// BuildPostNearRelayData(state)      // todo: only on summary?
 
 	/*
-	   Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
-
-	   Check the input state to see if we wrote the summary slice since
-	   the output state is not set to input state if we early out in sessionPre()
-	   when the client ping times out.
-
-	   Doing this ensures that we only write the summary slice once since the first time the
-	   client ping times out, input flag will be false and the output flag will be true,
-	   and on the following slices, both will be true.
+		Build session update message and send it to analytics via google pubsub (non-realtime path)
 	*/
 
 	// todo
@@ -966,13 +945,10 @@ func SessionPost(state *SessionUpdateState) {
 
 	/*
 	   Send data to the portal (real-time path)
-
-	   The client times out at the end of each session, and holds on for 60 seconds.
-	   These slices at the end have no useful information for the portal.
 	*/
 
 	if state.Request.ClientPingTimedOut {
-		return
+		return // once the client ping times out, there is no point sending data to the portal...
 	}
 
 	// todo
@@ -984,6 +960,32 @@ func SessionPost(state *SessionUpdateState) {
 		}
 	*/
 }
+
+func datacenterExists(database *db.Database, datacenterId uint64) bool {
+	_, exists := database.DatacenterMap[datacenterId]
+	return exists
+}
+
+func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
+	datacenterAliases, ok := database.DatacenterMaps[buyerId]
+	if !ok {
+		return false
+	}
+	_, ok = datacenterAliases[datacenterId]
+	return ok
+}
+
+func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
+	value, exists := database.DatacenterMap[datacenterId]
+	if !exists {
+		return db.Datacenter{
+			Name: "unknown",
+		}
+	}
+	return value
+}
+
+// -----------------------------------
 
 // func BuildPostRouteRelayData(state *SessionHandlerState) {
 
@@ -1184,9 +1186,6 @@ func SessionPost(state *SessionUpdateState) {
 // 		NearRelayPacketLosses:           nearRelayPacketLosses,
 // 		EverOnNext:                      state.Input.EverOnNext,
 // 		SessionDuration:                 sessionDuration,
-// 		TotalPriceSum:                   state.Input.TotalPriceSum,
-// 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
-// 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
 // 		DurationOnNext:                  state.Input.DurationOnNext,
 // 		StartTimestamp:                  uint32(startTime.Unix()),
 // 		NextRTT:                         int32(state.Packet.NextRTT),
@@ -1197,7 +1196,6 @@ func SessionPost(state *SessionUpdateState) {
 // 		NumNextRelays:                   int32(state.Input.RouteNumRelays),
 // 		NextRelays:                      state.Input.RouteRelayIDs,
 // 		NextRelayPrice:                  nextRelayPrice,
-// 		TotalPrice:                      uint64(totalPrice),
 // 		Uncommitted:                     !state.Packet.Committed,
 // 		Multipath:                       state.Input.RouteState.Multipath,
 // 		RTTReduction:                    state.Input.RouteState.ReduceLatency,

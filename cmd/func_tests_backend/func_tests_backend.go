@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,13 +23,12 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"net"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
-	db "github.com/networknext/backend/modules/database"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1722,7 +1722,7 @@ func test_relay_manager() {
 
 	}
 
-	time.Sleep(60*time.Second)
+	time.Sleep(60 * time.Second)
 
 	contextCancelFunc()
 }
@@ -1751,8 +1751,8 @@ func test_optimize() {
 		relayNames[i] = fmt.Sprintf("relay%d", i)
 		relayIds[i] = common.RelayId(relayNames[i])
 		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
-		relayLatitudes[i] = float32(common.RandomInt(-90,+90))
-		relayLongitudes[i] = float32(common.RandomInt(-90,+90))
+		relayLatitudes[i] = float32(common.RandomInt(-90, +90))
+		relayLongitudes[i] = float32(common.RandomInt(-90, +90))
 		relayDatacenterIds[i] = uint64(common.RandomInt(0, 5))
 		destRelays[i] = true
 	}
@@ -1772,15 +1772,15 @@ func test_optimize() {
 				return
 
 			case <-ticker.C:
-				
+
 				const MaxRTT = 255
 				const MaxJitter = 100
 				const MaxPacketLoss = 1
-				
+
 				currentTime := time.Now().Unix()
-				
+
 				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
-				
+
 				costMatrix := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
 					RelayIds:           relayIds,
@@ -1792,13 +1792,13 @@ func test_optimize() {
 					DestRelays:         destRelays,
 					Costs:              costs,
 				}
-				
-				costMatrixData, err := costMatrix.Write(10*1024*1024)
+
+				costMatrixData, err := costMatrix.Write(10 * 1024 * 1024)
 				if err != nil {
 					panic("could not write cost matrix")
 				}
 				_ = costMatrixData
-				
+
 				numCPUs := runtime.NumCPU()
 				numSegments := NumRelays
 				if numCPUs < NumRelays {
@@ -1807,11 +1807,11 @@ func test_optimize() {
 						numSegments = 1
 					}
 				}
-				
+
 				costThreshold := int32(1)
 
 				binFileData := make([]byte, 100*1024)
-				
+
 				routeMatrix := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
 					Version:            common.RouteMatrixVersion_Write,
@@ -1827,7 +1827,7 @@ func test_optimize() {
 					BinFileData:        binFileData,
 				}
 
-				routeMatrixData, err := routeMatrix.Write(100*1024*1024)
+				routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
 				if err != nil {
 					panic("could not write route matrix")
 					continue
@@ -1835,7 +1835,7 @@ func test_optimize() {
 				_ = routeMatrixData
 
 				fmt.Printf("optimize %d\n", counter)
-				
+
 				counter++
 			}
 		}
@@ -1851,9 +1851,9 @@ func test_optimize() {
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
-		sampleRTT[i] = float32(common.RandomInt(1,100))
-		sampleJitter[i] = float32(common.RandomInt(0,50))
-		samplePacketLoss[i] = float32(common.RandomInt(0,2))
+		sampleRTT[i] = float32(common.RandomInt(1, 100))
+		sampleJitter[i] = float32(common.RandomInt(0, 50))
+		samplePacketLoss[i] = float32(common.RandomInt(0, 2))
 	}
 
 	for i := 0; i < NumRelays; i++ {
@@ -1875,7 +1875,7 @@ func test_optimize() {
 
 	}
 
-	time.Sleep(60*time.Second)
+	time.Sleep(60 * time.Second)
 
 	contextCancelFunc()
 }
@@ -1904,8 +1904,8 @@ func test_relay_backend() {
 	for i := 0; i < NumDatacenters; i++ {
 		datacenterIds[i] = uint64(i)
 		datacenterNames[i] = fmt.Sprintf("datacenter%d", i)
-		datacenterLatitudes[i] = float32(common.RandomInt(-90,+90))
-		datacenterLongitudes[i] = float32(common.RandomInt(-90,+90))
+		datacenterLatitudes[i] = float32(common.RandomInt(-90, +90))
+		datacenterLongitudes[i] = float32(common.RandomInt(-90, +90))
 	}
 
 	// setup relays
@@ -1955,7 +1955,7 @@ func test_relay_backend() {
 
 	file, err := ioutil.TempFile(".", "temp-database-")
 	if err != nil {
-	    panic("could not create temporary database file")
+		panic("could not create temporary database file")
 	}
 
 	databaseFilename := file.Name()
@@ -1992,7 +1992,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
-	
+
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output
 	relay_gateway_cmd.Stderr = &relay_gateway_output
@@ -2032,13 +2032,13 @@ func test_relay_backend() {
 			// create http client
 
 			transport := &http.Transport{
-		        MaxIdleConns:       	1,
-		        MaxIdleConnsPerHost:  	1,
-		    }
-		    
-		    client := &http.Client{Transport: transport}
+				MaxIdleConns:        1,
+				MaxIdleConnsPerHost: 1,
+			}
 
-			ticker := time.NewTicker(1*time.Second)
+			client := &http.Client{Transport: transport}
+
+			ticker := time.NewTicker(1 * time.Second)
 
 			for {
 				select {
@@ -2050,7 +2050,7 @@ func test_relay_backend() {
 				case <-ticker.C:
 
 					requestPacket := packets.RelayUpdateRequestPacket{}
-					
+
 					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
 					requestPacket.Address = relayAddresses[index]
 					requestPacket.Token = make([]byte, packets.RelayTokenSize)
@@ -2058,9 +2058,9 @@ func test_relay_backend() {
 
 					for i := 0; i < NumRelays; i++ {
 						requestPacket.SampleRelayId[i] = relayIds[i]
-						requestPacket.SampleRTT[i] = float32(common.RandomInt(1,100))
-						requestPacket.SampleJitter[i] = float32(common.RandomInt(1,50))
-						requestPacket.SamplePacketLoss[i] = float32(common.RandomInt(0,2))
+						requestPacket.SampleRTT[i] = float32(common.RandomInt(1, 100))
+						requestPacket.SampleJitter[i] = float32(common.RandomInt(1, 50))
+						requestPacket.SamplePacketLoss[i] = float32(common.RandomInt(0, 2))
 					}
 
 					body := requestPacket.Write(make([]byte, 100*1024))
@@ -2075,18 +2075,18 @@ func test_relay_backend() {
 					request.Header.Set("Content-Type", "application/octet-stream")
 
 					response, err := client.Do(request)
-				    if err != nil {
+					if err != nil {
 						fmt.Printf("error running http request: %v\n", err)
 						atomic.AddUint64(&errorCount, 1)
 						break
-				    }
+					}
 
-				    if response.StatusCode != 200 {
-				    	fmt.Printf("bad http response %d\n", response.StatusCode)
+					if response.StatusCode != 200 {
+						fmt.Printf("bad http response %d\n", response.StatusCode)
 						atomic.AddUint64(&errorCount, 1)
-				    }
+					}
 
-				    response.Body.Close()
+					response.Body.Close()
 				}
 			}
 
@@ -2102,24 +2102,24 @@ func test_relay_backend() {
 	go func() {
 
 		transport := &http.Transport{
-	        MaxIdleConns:       	1,
-	        MaxIdleConnsPerHost:  	1,
-	    }
-	    
-	    client := &http.Client{Transport: transport}
+			MaxIdleConns:        1,
+			MaxIdleConnsPerHost: 1,
+		}
 
-	    // wait until the relay backend is ready
+		client := &http.Client{Transport: transport}
 
-	    for {
+		// wait until the relay backend is ready
+
+		for {
 			response, err := client.Get("http://127.0.0.1:30001/health")
 			if err == nil && response.StatusCode == 200 {
 				break
 			}
 		}
 
-	    // request route matrix once per-second
+		// request route matrix once per-second
 
-		ticker := time.NewTicker(1*time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 
 		for {
 			select {
