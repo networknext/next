@@ -2017,6 +2017,17 @@ func test_relay_backend() {
 	relay_backend_cmd.Stderr = &relay_backend_output
 	relay_backend_cmd.Start()
 
+	// wait until the relay gateway and relay backend are ready
+
+	for {
+		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
+			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
 	// hammer the relay backend with relay updates
 
 	var waitGroup sync.WaitGroup
