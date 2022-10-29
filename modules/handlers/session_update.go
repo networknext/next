@@ -22,6 +22,12 @@ type SessionUpdateState struct {
 	   Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
+	RoutingPrivateKey []byte
+
+	ServerBackendAddress *net.UDPAddr
+
+	LocateIP 	func (ip net.IP) (packets.SDK5_LocationData, error)
+
 	Connection *net.UDPConn
 	From       *net.UDPAddr
 
@@ -109,6 +115,7 @@ type SessionUpdateState struct {
 	WroteResponsePacket                                bool
 	FailedToWriteResponsePacket                        bool
 	FailedToSendResponsePacket                         bool
+	LocationVeto                                       bool
 }
 
 func SessionPre(state *SessionUpdateState) bool {
@@ -143,27 +150,18 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.Request.SliceNumber == 0 {
 
-		// todo: ip2location hook up
+		var err error
 
-		/*
-			state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
+		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
 
-			if err != nil || state.Output.Location == routing.LocationNullIsland {
-				core.Error("location veto: %s\n", err)
-				state.Metrics.ClientLocateFailure.Add(1)
-				state.Input.Location = routing.LocationNullIsland
-				state.Output.RouteState.LocationVeto = true
-				// todo: state.LocationVeto
-				return true
-			}
+		if err != nil {
+			core.Error("location veto: %s\n", err)
+			state.Output.RouteState.LocationVeto = true
+			state.LocationVeto = true
+			return true
+		}
 
-			// Always assign location no matter the outcome of SessionPre() on the first slice
-
-			// todo: this defer is unnecessary
-			defer func() {
-				state.Input.Location = state.Output.Location
-			}()
-		*/
+		state.Input.Location = state.Output.Location
 
 	} else {
 
@@ -877,21 +875,13 @@ func SessionPost(state *SessionUpdateState) {
 	   Write the session update response packet and send it back to the caller.
 	*/
 
-	buffer := [packets.SDK5_MaxPacketBytes]byte{}
-
-	writeStream := encoding.CreateWriteStream(buffer[:])
-
-	err := state.Response.Serialize(writeStream)
+	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.RoutingPrivateKey[:])
+	if err != nil {
+		core.Error("failed to write session update response packet: %v", err)
+		return
+	}
 
 	if err == nil {
-
-		writeStream.Flush()
-
-		packetBytes := writeStream.GetBytesProcessed()
-
-		packetData := buffer[:packetBytes]
-
-		// todo: we actually need to use the sdk5 write packet method that does the whole pittle/chonkle signing thing
 
 		if _, err := state.Connection.WriteToUDP(packetData, state.From); err != nil {
 			core.Error("failed to send session update response packet: %v", err)
@@ -948,7 +938,7 @@ func SessionPost(state *SessionUpdateState) {
 	*/
 
 	if state.Request.ClientPingTimedOut {
-		return // once the client ping times out, there is no point sending data to the portal...
+		return
 	}
 
 	// todo
