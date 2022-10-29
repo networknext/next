@@ -4,6 +4,7 @@ import (
 	"math"
 	"net"
 	"time"
+	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -677,23 +678,20 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 
 			state.TakeNetworkNext = true
 
-			// todo
-			/*
-				BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
+			buildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
-				if state.Debug != nil {
+			if state.Debug != nil {
 
-					*state.Debug += "route relays: "
+				*state.Debug += "route relays: "
 
-					for i, routeRelay := range routeRelays[:routeNumRelays] {
-						if i != int(routeNumRelays-1) {
-							*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
-						} else {
-							*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
-						}
+				for i, routeRelay := range routeRelays[:routeNumRelays] {
+					if i != int(routeNumRelays-1) {
+						*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+					} else {
+						*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
 					}
 				}
-			*/
+			}
 		}
 
 	} else {
@@ -733,7 +731,7 @@ func SessionMakeRouteDecision(state *SessionUpdateState) {
 				core.Debug("route changed")
 				state.RouteChanged = true
 				// todo
-				// BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
+				// buildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 			} else {
 				core.Debug("route continued")
 				state.RouteContinued = true
@@ -974,6 +972,85 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	}
 	return value
 }
+
+/*
+   This is either the first network next route, or we have changed network next route.
+
+   We add an extra 10 seconds to the session expire timestamp, taking it to a total of 20 seconds.
+
+   This means that each time we get a new route, we purchase ahead an extra 10 seconds, and renew
+   the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds
+   when we continue the route.
+
+   However, this also means that each time we switch routes, we burn the tail (10 seconds),
+   so we want to minimize route switching where possible, for our customer's benefit.
+
+   We also increase the session version here. This ensures that the new route is considered
+   distinct from the old route, even if there are common relays in the old and the new routes.
+*/
+
+func buildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
+
+	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+	state.Output.SessionVersion++
+	state.Output.Initial = true      // todo: this usage of "initial" is not actually helpful
+
+	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
+
+	// todo
+	_ = numTokens
+
+	/*
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+
+	core.Debug("----------------------------------------------------")
+	for index, address := range routeAddresses {
+		core.Debug("route address (%d): %s", index, address.String())
+	}
+	core.Debug("----------------------------------------------------")
+
+	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+	
+	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+	
+	response.RouteType = routing.RouteTypeNew
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+	*/
+}
+
+/*
+   Continue tokens are used when we hold the same route from one slice to the next.
+
+   It is smaller than the full initial description of the route, and is the common case.
+
+   Continue tokens extend the expire time for the route across each relay by 10 seconds.
+*/
+
+/*
+func BuildContinueTokens(
+	sessionData *SessionData,
+	database *routing.DatabaseBinWrapper,
+	buyer *routing.Buyer,
+	packet *SessionUpdatePacket,
+	routeNumRelays int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	routerPrivateKey [crypto_old.KeySize]byte,
+	response *SessionResponsePacket,
+) {
+
+	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
+
+	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+
+	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+	response.RouteType = routing.RouteTypeContinue
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+}
+*/
 
 // -----------------------------------
 
