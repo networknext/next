@@ -172,7 +172,7 @@ func SessionPre(state *SessionUpdateState) bool {
 		err := state.Input.Serialize(readStream)
 		if err != nil {
 			core.Debug("failed to read session data: %v", err)
-			state.FailedToReadSessionData = true
+			state.FailedToReadSessionData = true        // tested
 			return true
 		}
 
@@ -200,7 +200,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if !datacenterExists(state.Database, state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
-		state.UnknownDatacenter = true
+		state.UnknownDatacenter = true                  // tested
 	}
 
 	/*
@@ -210,8 +210,8 @@ func SessionPre(state *SessionUpdateState) bool {
 	*/
 
 	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
-		core.Debug("datacenter not enabled")
-		state.DatacenterNotEnabled = true
+		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
+		state.DatacenterNotEnabled = true               // tested
 	}
 
 	/*
@@ -249,11 +249,11 @@ func SessionPre(state *SessionUpdateState) bool {
 		for i := int32(0); i < state.Request.NumTags; i++ {
 			if state.Request.Tags[i] == ProTag {
 				core.Debug("pro mode enabled")
-				state.Buyer.RouteShader.ProMode = true
+				state.Buyer.RouteShader.ProMode = true            // tested
 				state.Pro = true
 			} else if state.Request.Tags[i] == OptOutTag {
 				core.Debug("opt out")
-				state.OptOut = true
+				state.OptOut = true                               // tested
 				return true
 			}
 		}
@@ -266,7 +266,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.Buyer.Debug {
 		core.Debug("debug enabled")
-		state.Debug = new(string)
+		state.Debug = new(string)                                 // tested
 	}
 
 	return false
