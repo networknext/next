@@ -25,7 +25,7 @@ type Relay struct {
 
 type Buyer struct {
 	ID             uint64
-	Live           bool
+	Live           bool         // todo: make sure we are checking this
 	Debug          bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader
@@ -58,8 +58,8 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: datacenter maps design strikes me as a bit weird? Wtf?
-	//                   ^ Buyer.ID  ^ DatacenterMap map index
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	//                   ^ BuyerId  ^ DatacenterId
 }
 
 func CreateDatabase() *Database {

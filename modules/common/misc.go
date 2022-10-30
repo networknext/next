@@ -70,6 +70,12 @@ func ClampString(value *string, maxLength int) bool {
 	return false
 }
 
+func HashTag(tag string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(tag))
+	return hash.Sum64()
+}
+
 func DatacenterId(datacenterName string) uint64 {
 	hash := fnv.New64a()
 	hash.Write([]byte(datacenterName))
