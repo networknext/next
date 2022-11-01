@@ -16,25 +16,25 @@ import (
 	"google.golang.org/api/option"
 )
 
-type GoogleCloudStorage struct {
+type GoogleCloudHandler struct {
 	ProjectId     string
 	storageClient *storage.Client
 }
 
-func NewGoogleCloudStorage(ctx context.Context, projectId string, opts ...option.ClientOption) (*GoogleCloudStorage, error) {
+func NewGoogleCloudHandler(ctx context.Context, projectId string, opts ...option.ClientOption) (*GoogleCloudHandler, error) {
 
 	storageClient, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GoogleCloudStorage{
+	return &GoogleCloudHandler{
 		ProjectId:     projectId,
 		storageClient: storageClient,
 	}, nil
 }
 
-func (g *GoogleCloudStorage) CopyFromLocalToBucket(ctx context.Context, fileName string, storagePath string) error {
+func (g *GoogleCloudHandler) CopyFromLocalToBucket(ctx context.Context, fileName string, storagePath string) error {
 
 	currentDirectory, err := os.Getwd()
 	if err != nil {
@@ -61,7 +61,7 @@ func (g *GoogleCloudStorage) CopyFromLocalToBucket(ctx context.Context, fileName
 	return nil
 }
 
-func (g *GoogleCloudStorage) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
+func (g *GoogleCloudHandler) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
 
 	// Call gsutil to copy the tmp file over to the instance
 	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", localPath, fmt.Sprintf("%s:%s", instanceName, outputPath))
@@ -79,7 +79,7 @@ func (g *GoogleCloudStorage) CopyFromLocalToRemote(ctx context.Context, localPat
 	return nil
 }
 
-func (g *GoogleCloudStorage) CopyFromBucketToLocal(ctx context.Context, bucketURL string, outputPath string) error {
+func (g *GoogleCloudHandler) CopyFromBucketToLocal(ctx context.Context, bucketURL string, outputPath string) error {
 
 	artifactPath := strings.Trim(bucketURL, "gs://")
 	pathTokens := strings.Split(artifactPath, "/")
@@ -111,7 +111,9 @@ type InstanceInfo struct {
 	InstanceStatus string
 }
 
-func GetMIGInstanceInfo(projectId string, migName string) []InstanceInfo {
+func (g *GoogleCloudHandler) GetMIGInstanceInfo(migName string) []InstanceInfo {
+
+	projectId := g.ProjectId
 
 	if projectId == "local" {
 		return make([]InstanceInfo, 0)
@@ -136,9 +138,9 @@ func GetMIGInstanceInfo(projectId string, migName string) []InstanceInfo {
 	return instances
 }
 
-func GetMIGInstanceNames(projectId string, migName string) []string {
+func (g *GoogleCloudHandler) GetMIGInstanceNames(migName string) []string {
 
-	instances := GetMIGInstanceInfo(projectId, migName)
+	instances := g.GetMIGInstanceInfo(migName)
 
 	numInstances := len(instances)
 
@@ -151,6 +153,6 @@ func GetMIGInstanceNames(projectId string, migName string) []string {
 	return names
 }
 
-func GetMIGInstanceNamesEnv(environmentVariable string, projectId string, defaultValue string) []string {
-	return GetMIGInstanceNames(projectId, envvar.GetString(environmentVariable, defaultValue))
+func (g *GoogleCloudHandler) GetMIGInstanceNamesEnv(environmentVariable string, defaultValue string) []string {
+	return g.GetMIGInstanceNames(envvar.GetString(environmentVariable, defaultValue))
 }

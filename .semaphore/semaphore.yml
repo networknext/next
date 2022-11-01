@@ -179,6 +179,7 @@ blocks:
             - chmod +x func_tests_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
+            - chmod +x relay_backend
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
@@ -241,6 +242,18 @@ blocks:
         - name: "test_session_data_serialize"
           commands:
             - cd ./dist && ./func_tests_backend test_session_data_serialize
+
+        - name: "test_relay_manager"
+          commands:
+            - cd ./dist && ./func_tests_backend test_relay_manager
+
+        - name: "test_optimize"
+          commands:
+            - cd ./dist && ./func_tests_backend test_optimize
+
+        - name: "test_relay_backend"
+          commands:
+            - cd ./dist && ./func_tests_backend test_relay_backend
 
 
   - name: "Build Functional Tests (sdk4)"
@@ -841,24 +854,24 @@ blocks:
             - ./run happy-path-no-wait
 
 
-  - name: "Happy Path (WSL)"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
-      secrets:
-        - name: build-machine-access
-        - name: build-machine-known-hosts
-      prologue:
-        commands:
-         - chmod 600 /home/semaphore/.ssh/id_rsa_build
-         - ssh-add /home/semaphore/.ssh/id_rsa_build
-      jobs:
-        - name: "run happy-path-no-wait"
-          commands:
-           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh backend happy-path"
+#  - name: "Happy Path (WSL)"
+#    dependencies: []
+#    task:
+#      agent:
+#        machine:
+#          type: e1-standard-2
+#          os_image: ubuntu2004
+#      secrets:
+#        - name: build-machine-access
+#        - name: build-machine-known-hosts
+#      prologue:
+#        commands:
+#         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+#         - ssh-add /home/semaphore/.ssh/id_rsa_build
+#      jobs:
+#        - name: "run happy-path-no-wait"
+#          commands:
+#           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh backend happy-path"
 
 
 #  - name: "Happy Path (Mac)"
