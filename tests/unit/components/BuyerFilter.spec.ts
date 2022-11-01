@@ -142,17 +142,17 @@ describe('BuyerFilter.vue', () => {
       {
         company_name: 'Test Company',
         company_code: 'test',
-        is_live: true
+        is_verified: true
       },
       {
         company_name: 'Test Company 2',
         company_code: 'test2',
-        is_live: false
+        is_verified: false
       },
       {
         company_name: 'Test Company 3',
         company_code: 'test3',
-        is_live: true
+        is_verified: true
       }
     ])
 
@@ -191,17 +191,17 @@ describe('BuyerFilter.vue', () => {
       {
         company_name: 'Test Company',
         company_code: 'test',
-        is_live: true
+        is_verified: true
       },
       {
         company_name: 'Test Company 2',
         company_code: 'test2',
-        is_live: true
+        is_verified: true
       },
       {
         company_name: 'Test Company 3',
         company_code: 'test3',
-        is_live: true
+        is_verified: true
       }
     ])
 
