@@ -129,6 +129,8 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("google project id: %s", service.googleProjectId)
 
+	service.setupGCPHandler()
+
 	return &service
 }
 
@@ -758,7 +760,7 @@ func isLeaderFunc(service *Service) func() bool {
 	}
 }
 
-func (service *Service) setupStorage() {
+func (service *Service) setupGCPHandler() {
 
 	googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.googleProjectId)
 	if err != nil {
@@ -771,8 +773,15 @@ func (service *Service) setupStorage() {
 
 func (service *Service) SyncFiles(config *FileSyncConfig) {
 	config.Print()
-	service.setupStorage()
 	StartFileSync(service.Context, config, service.googleCloudHandler, isLeaderFunc(service))
 }
 
 // ---------------------------------------------------------------------------------------------------
+
+func (service *Service) GetInternalLoadBalancerIP(migName string) string {
+	return service.googleCloudHandler.GetLoadBalancerPrivateIP(migName)
+}
+
+func (service *Service) GetExternalLoadBalancerIP(migName string) string {
+	return service.googleCloudHandler.GetLoadBalancerPublicIP(migName)
+}
