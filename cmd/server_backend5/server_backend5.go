@@ -21,8 +21,7 @@ func main() {
 	service = common.CreateService("new_server_backend5")
 
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
-	// todo: MIGs will not like this kind of self address resolution
-	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000"))
+	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000")) // IMPORTANT: This must be the LB public address in dev/prod
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("max packet size: %d bytes", maxPacketSize)

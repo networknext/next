@@ -76,12 +76,12 @@ func CreateBitWriter(buffer []byte) *BitWriter {
 }
 
 func HostToNetwork(x uint32) uint32 {
-	// todo: no...
+	// todo: this only works on little endian machines
 	return x
 }
 
 func NetworkToHost(x uint32) uint32 {
-	// todo: no...
+	// todo: this only works on little endian machines
 	return x
 }
 

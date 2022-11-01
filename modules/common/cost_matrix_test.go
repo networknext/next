@@ -36,7 +36,6 @@ func TestCostMatrixReadWrite(t *testing.T) {
 }
 
 // todo: remove this once we remove the old cost matrix
-
 func CostMatrixReadWriteTest_NewToOld(writeMessage *common.CostMatrix, readMessage *common.CostMatrix, t *testing.T) {
 
 	const BufferSize = 100 * 1024

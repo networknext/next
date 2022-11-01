@@ -3661,7 +3661,6 @@ func (test *TestData) TakeNetworkNext() bool {
 		test.fullRelaySet,
 		&test.routeShader,
 		&test.routeState,
-		test.multipathVetoUsers,
 		&test.internal,
 		test.directLatency,
 		test.directPacketLoss,
@@ -4889,50 +4888,6 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 	assert.Equal(t, int32(1), test.routeDiversity)
 }
 
-func TestTakeNetworkNext_ReducePacketLossAndLatency_MultipathVeto(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	test := NewTestData(env)
-
-	test.directLatency = int32(100)
-	test.directPacketLoss = float32(5.0)
-
-	test.sourceRelays = []int32{0}
-	test.sourceRelayCosts = []int32{10}
-
-	test.destRelays = []int32{1}
-
-	test.routeShader.Multipath = true
-
-	test.routeState.UserID = 100
-
-	test.multipathVetoUsers[test.routeState.UserID] = true
-
-	result := test.TakeNetworkNext()
-
-	assert.True(t, result)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.Next = true
-	expectedRouteState.Multipath = false
-	expectedRouteState.MultipathRestricted = true
-	expectedRouteState.ReduceLatency = true
-	expectedRouteState.ReducePacketLoss = true
-	expectedRouteState.Committed = true
-
-	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(1), test.routeDiversity)
-}
-
 // -----------------------------------------------------------------------------
 
 func TestTakeNetworkNext_ProMode(t *testing.T) {
@@ -4975,47 +4930,6 @@ func TestTakeNetworkNext_ProMode(t *testing.T) {
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)
-}
-
-func TestTakeNetworkNext_ProMode_MultipathVeto(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-	env.AddRelay("a", "10.0.0.3")
-	env.AddRelay("b", "10.0.0.4")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	test := NewTestData(env)
-
-	test.directLatency = int32(20)
-	test.directPacketLoss = float32(0.0)
-
-	test.sourceRelays = []int32{0}
-	test.sourceRelayCosts = []int32{10}
-
-	test.destRelays = []int32{1}
-
-	test.routeShader.ProMode = true
-
-	test.routeState.UserID = 100
-
-	test.multipathVetoUsers[test.routeState.UserID] = true
-
-	result := test.TakeNetworkNext()
-
-	assert.False(t, result)
-
-	expectedRouteState := RouteState{}
-	expectedRouteState.UserID = 100
-	expectedRouteState.MultipathRestricted = true
-
-	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(0), test.routeDiversity)
 }
 
 // -----------------------------------------------------------------------------

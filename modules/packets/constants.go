@@ -102,6 +102,7 @@ const (
 	SDK5_BillingSliceSeconds = 10
 
 	SDK5_MinPacketBytes = 16 + 3 + 8 + SDK5_CRYPTO_SIGN_BYTES + 2
+	SDK5_MaxPacketBytes = 4096
 
 	SDK5_MacBytes   = 16
 	SDK5_NonceBytes = 24

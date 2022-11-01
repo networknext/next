@@ -29,6 +29,7 @@
 #include <float.h>
 #include <string.h>
 #include <inttypes.h>
+#include <time.h>
 
 #if defined( _MSC_VER )
 #pragma warning(push)
@@ -461,7 +462,11 @@ bool next_platform_getenv_bool(const char * name )
 
 double next_time()
 {
+#if NEXT_DEVELOPMENT
+    return next_platform_time() + 100000.0;
+#else // #if NEXT_DEVELOPMENT
     return next_platform_time();
+#endif // #if NEXT_DEVELOPMENT
 }
 
 void next_sleep( double time_seconds )
@@ -3925,9 +3930,13 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME_SDK4" );
 
-    // IMPORTANT: For backwards compatibility
+    if ( !next_server_backend_hostname_override ) 
+    {
+        next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    }
+
     if ( !next_server_backend_hostname_override )
     {
         next_server_backend_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
@@ -4193,8 +4202,8 @@ void next_ping_history_clear( next_ping_history_t * history )
     for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
     {
         history->entries[i].sequence = 0xFFFFFFFFFFFFFFFFULL;
-        history->entries[i].time_ping_sent = -1.0;
-        history->entries[i].time_pong_received = -1.0;
+        history->entries[i].time_ping_sent = -10000.0;
+        history->entries[i].time_pong_received = -10000.0;
     }
 
     next_ping_history_verify_sentinels( history );
@@ -4242,7 +4251,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     stats->max_rtt = 0.0f;
     stats->prime_rtt = 0.0f;
     stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
+    stats->packet_loss = 100.0f;
 
     // IMPORTANT: Instead of searching across the whole range then considering any ping with a pong older than ping safety 
     // (typically one second) to be lost, look for the time of the most recent ping that has received a pong, subtract ping
@@ -4284,9 +4293,13 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         }
     }
 
-    if ( num_pings_sent > 0 )
+    if ( num_pings_sent > 0 && num_pongs_received > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+    else
+    {
+        stats->packet_loss = 100.0f;
     }
 
     // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
@@ -4334,9 +4347,9 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         }
     }
 
-    if ( num_pongs == 0 )
+    if ( num_pings == 0 || min_rtt == FLT_MAX )
     {
-        stats->packet_loss = num_pings > 0 ? 100.0f : 0.0f;
+        // no data
         return;
     }
 
@@ -4693,7 +4706,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
         if ( !manager->relay_excluded[i] && stats->has_pings )
         {
             next_route_stats_t route_stats;
-            
+
             next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
             
             stats->relay_ids[i] = manager->relay_ids[i];
@@ -5965,6 +5978,8 @@ void next_client_internal_destroy( next_client_internal_t * client );
 
 next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string, void (*wake_up_callback)( void * context ) )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create" );
+
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
@@ -6095,11 +6110,15 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
 
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_create (completed)" );
+
     return client;
 }
 
 void next_client_internal_destroy( next_client_internal_t * client )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy" );
+
     next_client_internal_verify_sentinels( client );
 
     if ( client->socket )
@@ -6130,6 +6149,8 @@ void next_client_internal_destroy( next_client_internal_t * client )
     next_platform_mutex_destroy( &client->bandwidth_mutex );
 
     clear_and_free( client->context, client, sizeof(next_client_internal_t) );
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_internal_destroy (completed)" );    
 }
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
@@ -6385,6 +6406,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response packet" );
+
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
@@ -6510,6 +6533,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response packet" );
+
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
@@ -6756,6 +6781,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route update packet" );
+
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -7468,13 +7495,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay" );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay" );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
@@ -7617,6 +7646,8 @@ void next_client_destroy( next_client_t * client );
 
 next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_create" );
+
     next_assert( bind_address );
     next_assert( packet_received_callback );
 
@@ -7672,6 +7703,8 @@ uint16_t next_client_port( next_client_t * client )
 
 void next_client_destroy( next_client_t * client )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy" );
+
     next_client_verify_sentinels( client );
 
     if ( client->thread )
@@ -7698,10 +7731,14 @@ void next_client_destroy( next_client_t * client )
     }
 
     clear_and_free( client->context, client, sizeof(next_client_t) );
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_destroy (completed)" );
 }
 
 void next_client_open_session( next_client_t * client, const char * server_address_string )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_open_session: %s", server_address_string );
+
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
@@ -7753,6 +7790,8 @@ int next_client_state( next_client_t * client )
 
 void next_client_close_session( next_client_t * client )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_close_session" );
+
     next_client_verify_sentinels( client );
 
     next_assert( client->internal );
@@ -7848,6 +7887,7 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_READY:
             {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client is ready" );
                 client->ready = true;
             }
             break;
@@ -8038,6 +8078,8 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
 
 void next_client_report_session( next_client_t * client )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_client_report_session" );
+
     next_client_verify_sentinels( client );
 
     next_client_command_report_session_t * command = (next_client_command_report_session_t*) next_malloc( client->context, sizeof( next_client_command_report_session_t ) );
@@ -10583,8 +10625,10 @@ bool next_autodetect_google( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
-    if ( !file )
+    char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
+        if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
@@ -10592,7 +10636,9 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10717,7 +10763,9 @@ bool next_autodetect_amazon( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -10726,7 +10774,9 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen ( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10999,7 +11049,9 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_line[1024];
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11042,6 +11094,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+        next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
         const char * separators = "\n\r\n";
         char * line = strtok( whois_buffer, separators );
         while ( line )
@@ -11049,6 +11102,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
             next_printf( "%s", line );
             line = strtok( NULL, separators );
         }
+        next_printf( "-------------------------\n" );
         return false;
     }
 
@@ -13067,10 +13121,18 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     const char * hostname = next_global_config.server_backend_hostname;
     const char * port = NEXT_SERVER_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT_SDK4" );
+    if ( !override_port )
+    {
+        override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    }
+    if ( !override_port )
+    {
+        override_port = next_platform_getenv( "NEXT_PORT" );
+    }
     if ( override_port )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        next_printf( NEXT_LOG_LEVEL_INFO, "override server backend port: '%s'", override_port );
         port = override_port;
     }
 
@@ -13205,7 +13267,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     bool autodetect_result = false;
     bool autodetect_actually_did_something = false;
-    char autodetect_output[1024];
+    char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
     memset( autodetect_output, 0, sizeof(autodetect_output) );
 
     double start_time = next_time();
@@ -15108,7 +15170,7 @@ static void test_replay_protection()
 
 static void test_ping_stats()
 {
-    // default ping history should have -1 rtt, indicating "no data"
+    // default ping history should have 100% packet loss, indicating, do not route!
     {
         const double ping_safety = 1.0;
 
@@ -15118,11 +15180,11 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
         
-        next_check( route_stats.min_rtt == 0.0f );
+        next_check( route_stats.min_rtt == -0.0f );
         next_check( route_stats.max_rtt == 0.0f );
         next_check( route_stats.prime_rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
+        next_check( route_stats.packet_loss == 100.0f );
     }
 
     // add some pings without pong response, packet loss should be 100%
@@ -17139,6 +17201,7 @@ static void test_relay_manager()
     next_relay_manager_t * manager = next_relay_manager_create( NULL );
 
     // should be no relays when manager is first created
+    
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -17155,6 +17218,9 @@ static void test_relay_manager()
         for ( int i = 0; i < NumRelays; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( int(stats.relay_packet_loss[i]) == 100 );
         }
     }
 
