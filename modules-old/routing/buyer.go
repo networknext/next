@@ -19,6 +19,7 @@ type Buyer struct {
 	Analytics           bool
 	Billing             bool
 	Trial               bool
+	Verified            bool
 	ExoticLocationFee   float64
 	StandardLocationFee float64
 	PublicKey           []byte
@@ -41,6 +42,7 @@ func (b *Buyer) String() string {
 	buyer += "\tAnalytics             : " + strconv.FormatBool(b.Analytics) + "\n"
 	buyer += "\tBilling               : " + strconv.FormatBool(b.Billing) + "\n"
 	buyer += "\tTrial                 : " + strconv.FormatBool(b.Trial) + "\n"
+	buyer += "\tVerified                 : " + strconv.FormatBool(b.Verified) + "\n"
 	buyer += "\tExotic Location Fee   : " + fmt.Sprintf("%f", b.ExoticLocationFee) + "\n"
 	buyer += "\tStandard Location Fee : " + fmt.Sprintf("%f", b.StandardLocationFee) + "\n"
 	buyer += "\tPublicKey             : " + string(b.PublicKey) + "\n"
