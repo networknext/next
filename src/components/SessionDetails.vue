@@ -128,10 +128,18 @@
                 </div>
                 <div v-if="(!$store.getters.isAnonymous && meta.customer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
-                      IP Address
+                      Client IP Address
                   </dt>
                   <dd>
                       {{ meta.client_addr }}
+                  </dd>
+                </div>
+                <div v-if="(!$store.getters.isAnonymous && meta.customer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
+                  <dt>
+                      Server IP Address
+                  </dt>
+                  <dd>
+                      {{ meta.server_addr }}
                   </dd>
                 </div>
                 <dt>
