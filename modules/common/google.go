@@ -23,9 +23,15 @@ type GoogleCloudHandler struct {
 
 func NewGoogleCloudHandler(ctx context.Context, projectId string, opts ...option.ClientOption) (*GoogleCloudHandler, error) {
 
-	storageClient, err := storage.NewClient(ctx, opts...)
-	if err != nil {
-		return nil, err
+	var err error
+
+	storageClient := &storage.Client{}
+
+	if projectId != "local" {
+		storageClient, err = storage.NewClient(ctx, opts...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &GoogleCloudHandler{
