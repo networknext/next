@@ -90,6 +90,7 @@ type sqlBuyer struct {
 	Analytics           bool
 	Billing             bool
 	Trial               bool
+	Verified            bool
 	ExoticLocationFee   float64
 	StandardLocationFee float64
 	Name                string
@@ -537,7 +538,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "customer code", resourceRef: companyCode}
 	}
 
-	querySQL.Write([]byte("select id, sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	querySQL.Write([]byte("select id, sdk_generated_id, alias, is_live_customer, debug, analytics, billing, trial, verified, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where customer_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -551,6 +552,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.Analytics,
 			&buyer.Billing,
 			&buyer.Trial,
+			&buyer.Verified,
 			&buyer.ExoticLocationFee,
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
@@ -593,6 +595,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			Analytics:           buyer.Analytics,
 			Billing:             buyer.Billing,
 			Trial:               buyer.Trial,
+			Verified:            buyer.Verified,
 			ExoticLocationFee:   buyer.ExoticLocationFee,
 			StandardLocationFee: buyer.StandardLocationFee,
 			PublicKey:           buyer.PublicKey,
@@ -617,7 +620,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, alias, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
+	sql.Write([]byte("select sdk_generated_id, id, alias, is_live_customer, debug, analytics, billing, trial, verified, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -640,6 +643,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.Analytics,
 			&buyer.Billing,
 			&buyer.Trial,
+			&buyer.Verified,
 			&buyer.ExoticLocationFee,
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
@@ -681,6 +685,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			Analytics:           buyer.Analytics,
 			Billing:             buyer.Billing,
 			Trial:               buyer.Trial,
+			Verified:            buyer.Verified,
 			ExoticLocationFee:   buyer.ExoticLocationFee,
 			StandardLocationFee: buyer.StandardLocationFee,
 			PublicKey:           buyer.PublicKey,
@@ -720,6 +725,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		Analytics:           b.Analytics,
 		Billing:             b.Billing,
 		Trial:               b.Trial,
+		Verified:            b.Verified,
 		ExoticLocationFee:   b.ExoticLocationFee,
 		StandardLocationFee: b.StandardLocationFee,
 		PublicKey:           b.PublicKey,
@@ -729,8 +735,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, alias, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"))
+	sql.Write([]byte("sdk_generated_id, alias, short_name, is_live_customer, debug, analytics, billing, trial, verified, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -744,6 +750,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.Analytics,
 		buyer.Billing,
 		buyer.Trial,
+		buyer.Verified,
 		buyer.ExoticLocationFee,
 		buyer.StandardLocationFee,
 		buyer.PublicKey,
@@ -3654,6 +3661,14 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set trial=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, trial, int64(ephemeralBuyerID))
+	case "Verified":
+		verified, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Verified: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set verified=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, verified, int64(ephemeralBuyerID))
 	case "ExoticLocationFee":
 		exoticLocationFee, ok := value.(float64)
 		if !ok {

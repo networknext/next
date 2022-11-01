@@ -1804,6 +1804,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			Analytics:           false,
 			Billing:             false,
 			Trial:               true,
+			Verified:            false,
 			PublicKey:           byteKey[8:],
 			LookerSeats:         1,
 			ExoticLocationFee:   300,
@@ -1841,6 +1842,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	live := buyer.Live
 	oldBuyerID := buyer.ID
 	trial := buyer.Trial
+	verified := buyer.Verified
 
 	// Remove all dc Maps
 	dcMaps := s.Storage.GetDatacenterMapsForBuyer(r.Context(), oldBuyerID)
@@ -1886,6 +1888,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Analytics:   analytics,
 		Billing:     billing,
 		Trial:       trial,
+		Verified:    verified,
 		PublicKey:   byteKey[8:],
 	})
 	if err != nil {
@@ -1959,6 +1962,7 @@ type buyerAccount struct {
 	ID          string `json:"id"`
 	Alias       string `json:"alias"`
 	IsLive      bool   `json:"is_live"`
+	IsVerified  bool   `json:"is_verified"`
 	Analytics   bool   `json:"analytics"`
 	Billing     bool   `json:"billing"`
 	Trial       bool   `json:"trial"`
@@ -1984,6 +1988,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			Alias:       b.Alias,
 			IsLive:      b.Live,
+			IsVerified:  b.Verified,
 			Analytics:   b.Analytics,
 			Billing:     b.Billing,
 			Trial:       b.Trial,
