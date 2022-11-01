@@ -91,7 +91,7 @@ type Service struct {
 	routeMatrixDatabase *db.Database
 
 	googleProjectId    string
-	googleCloudStorage *GoogleCloudStorage
+	googleCloudHandler *GoogleCloudHandler
 }
 
 func CreateService(serviceName string) *Service {
@@ -151,6 +151,8 @@ func (service *Service) LoadDatabase() {
 		core.Error("generate relay data failed")
 		os.Exit(1)
 	}
+
+	core.Log("loaded database: %s", databasePath)
 
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
@@ -397,7 +399,7 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
-	// todo: some system to wait for registered (named) subsystems to complete before we shut down
+	// todo: we need some system to wait for registered (named) subsystems to complete before we shut down
 
 	core.Log("successfully shutdown")
 }
@@ -758,19 +760,19 @@ func isLeaderFunc(service *Service) func() bool {
 
 func (service *Service) setupStorage() {
 
-	googleCloudStorage, err := NewGoogleCloudStorage(service.Context, service.googleProjectId)
+	googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.googleProjectId)
 	if err != nil {
-		core.Error("failed to create google cloud storage: %v", err)
+		core.Error("failed to create google cloud handler: %v", err)
 		os.Exit(1)
 	}
 
-	service.googleCloudStorage = googleCloudStorage
+	service.googleCloudHandler = googleCloudHandler
 }
 
 func (service *Service) SyncFiles(config *FileSyncConfig) {
 	config.Print()
 	service.setupStorage()
-	StartFileSync(service.Context, config, service.googleCloudStorage, isLeaderFunc(service))
+	StartFileSync(service.Context, config, service.googleCloudHandler, isLeaderFunc(service))
 }
 
 // ---------------------------------------------------------------------------------------------------

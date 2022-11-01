@@ -99,7 +99,9 @@ func OptimizeThread() {
 
 		backend.mutex.Lock()
 
-		activeRelays := backend.relayManager.GetActiveRelays()
+		currentTime := time.Now().Unix()
+
+		activeRelays := backend.relayManager.GetActiveRelays(currentTime)
 
 		numRelays := len(activeRelays)
 		relayIds := make([]uint64, numRelays)
@@ -109,7 +111,7 @@ func OptimizeThread() {
 			relayDatacenterIds[i] = common.DatacenterId("local")
 		}
 
-		costMatrix := backend.relayManager.GetCosts(relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
 
 		numCPUs := runtime.NumCPU()
 		numSegments := numRelays
@@ -173,7 +175,8 @@ func UpdateMagic() {
 
 func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []net.UDPAddr) {
 	backend.mutex.Lock()
-	activeRelays := backend.relayManager.GetActiveRelays()
+	currentTime := time.Now().Unix()
+	activeRelays := backend.relayManager.GetActiveRelays(currentTime)
 	backend.mutex.Unlock()
 	if len(activeRelays) > core.MaxNearRelays {
 		activeRelays = activeRelays[:core.MaxNearRelays]
@@ -330,8 +333,10 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	relayName := fmt.Sprintf("local.%d", relayPort)
 
+	currentTime := time.Now().Unix()
+
 	backend.mutex.Lock()
-	backend.relayManager.ProcessRelayUpdate(relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
 	backend.mutex.Unlock()
 
 	// get relays to ping

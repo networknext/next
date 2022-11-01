@@ -68,6 +68,7 @@ type buyer struct {
 	AnalysisOnly        bool   `json:"analysis_only"`
 	Billing             bool   `json:"billing"`
 	Trial               bool   `json:"trial"`
+	Verified            bool   `json:"verified"`
 	ExoticLocationFee   string `json:"exotic_location_fee"`
 	StandardLocationFee string `json:"standard_location_fee"`
 	LookerSeats         int64  `json:"looker_seats"`
@@ -100,6 +101,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			AnalysisOnly:        b.RouteShader.AnalysisOnly,
 			Billing:             b.Billing,
 			Trial:               b.Trial,
+			Verified:            b.Verified,
 			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
 			StandardLocationFee: fmt.Sprintf("%f", b.StandardLocationFee),
 			LookerSeats:         b.LookerSeats,
@@ -123,6 +125,7 @@ type JSAddBuyerArgs struct {
 	Analytics           bool   `json:"analytics"`
 	Billing             bool   `json:"billing"`
 	Trial               bool   `json:"trial"`
+	Verified            bool   `json:"verified"`
 	ExoticLocationFee   string `json:"exoticLocationFee"`
 	StandardLocationFee string `json:"standardLocationFee"`
 	PublicKey           string `json:"publicKey"`
@@ -180,6 +183,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		Analytics:           args.Analytics,
 		Billing:             args.Billing,
 		Trial:               args.Trial,
+		Verified:            args.Verified,
 		ExoticLocationFee:   exoticLocationFee,
 		StandardLocationFee: standardLocationFee,
 		PublicKey:           publicKey[8:],
@@ -200,6 +204,7 @@ type AddNewBuyerAccountArgs struct {
 	Live                bool    `json:"live"`
 	Debug               bool    `json:"debug"`
 	Trial               bool    `json:"trial"`
+	Verified            bool    `json:"verified"`
 	Billing             bool    `json:"billing"`
 	Analytics           bool    `json:"analytics"`
 	Advanced            bool    `json:"advanced"`
@@ -253,6 +258,7 @@ func (s *OpsService) AddNewBuyerAccount(r *http.Request, args *AddNewBuyerAccoun
 		Analytics:   args.Analytics,
 		Billing:     args.Billing,
 		Trial:       args.Trial,
+		Verified:    args.Verified,
 		Debug:       args.Debug,
 		// Advanced: args.Advanced,
 		PublicKey:           byteKey[8:],
@@ -276,6 +282,7 @@ type UpdateBuyerAccountArgs struct {
 	StandardLocationFee float32 `json:"standard_location_fee"`
 	LookerSeats         int32   `json:"looker_seats"`
 	Live                bool    `json:"live"`
+	Verified            bool    `json:"verified"`
 	Debug               bool    `json:"debug"`
 	Trial               bool    `json:"trial"`
 	Billing             bool    `json:"billing"`
@@ -327,6 +334,13 @@ func (s *OpsService) UpdateBuyerAccount(r *http.Request, args *UpdateBuyerAccoun
 
 	if buyer.Live != args.Live {
 		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Live", args.Live); err != nil {
+			core.Error("UpdateBuyerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if buyer.Verified != args.Verified {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Verified", args.Verified); err != nil {
 			core.Error("UpdateBuyerAccount(): %v", err.Error())
 			wasError = true
 		}
@@ -422,6 +436,7 @@ type FetchBuyerInformationReply struct {
 	Analytics           bool                 `json:"analytics"`
 	Billing             bool                 `json:"billing"`
 	Trial               bool                 `json:"trial"`
+	Verified            bool                 `json:"verified"`
 	ExoticLocationFee   float32              `json:"exotic_location_fee"`
 	StandardLocationFee float32              `json:"standard_location_fee"`
 	PublicKey           string               `json:"public_key"`
@@ -457,6 +472,7 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		reply.Analytics = buyer.Analytics
 		reply.Billing = buyer.Billing
 		reply.Trial = buyer.Trial
+		reply.Verified = buyer.Verified
 		reply.ExoticLocationFee = float32(buyer.ExoticLocationFee)
 		reply.StandardLocationFee = float32(buyer.StandardLocationFee)
 		reply.PublicKey = buyer.EncodedPublicKey()

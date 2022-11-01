@@ -46,6 +46,8 @@ public class NetworkNext : ModuleRules
                 "Sockets",
                 "OnlineSubsystem",
                 "PacketHandler",
+                "Json",
+                "JsonUtilities",
             }
         );
 

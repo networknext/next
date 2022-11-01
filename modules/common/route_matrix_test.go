@@ -36,7 +36,6 @@ func TestRouteMatrixReadWrite(t *testing.T) {
 }
 
 // todo: remove this once we remove the old route matrix
-
 func RouteMatrixReadWriteTest_NewToOld(writeMessage *common.RouteMatrix, readMessage *common.RouteMatrix, t *testing.T) {
 
 	const BufferSize = 100 * 1024
