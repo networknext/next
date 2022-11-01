@@ -103,12 +103,6 @@ func (g *GoogleCloudHandler) CopyFromBucketToLocal(ctx context.Context, bucketUR
 	return nil
 }
 
-// -------------------------------------------------------
-
-// todo - maybe add a gcloud handler of sorts to store project ID in?
-
-// -------------------------------------------------------
-
 type InstanceInfo struct {
 	CurrentAction  string
 	Id             string
@@ -183,12 +177,12 @@ type ComputeAddress struct {
 const EXTERNAL_IP = "EXTERNAL"
 const INTERNAL_IP = "INTERNAL"
 
-func GetLoadBalancerPublicIP(projectId string, name string) string {
-	return getLoadBalancerIP(projectId, name, EXTERNAL_IP)
+func (g *GoogleCloudHandler) GetLoadBalancerPublicIP(name string) string {
+	return getLoadBalancerIP(g.ProjectId, name, EXTERNAL_IP)
 }
 
-func GetLoadBalancerPrivateIP(projectId string, name string) string {
-	return getLoadBalancerIP(projectId, name, INTERNAL_IP)
+func (g *GoogleCloudHandler) GetLoadBalancerPrivateIP(name string) string {
+	return getLoadBalancerIP(g.ProjectId, name, INTERNAL_IP)
 }
 
 func getLoadBalancerIP(projectId string, name string, addressType string) string {
