@@ -87,12 +87,74 @@ bool FNetworkNextSocketServer::Bind(const FInternetAddr& Addr)
     FString ServerAddressWithPort = FString::Printf(TEXT("127.0.0.1:%d"), Addr.GetPort());
     FString DataCenter = "local";
 
-    FString ServerAddressOnly;
-    if (!ExtractServerAddressOnly(ServerAddressWithPort, ServerAddressOnly))
+    // Multiplay support
     {
-        UE_LOG(LogNetworkNext, Error, TEXT("Could not extract server address only"));
-        return false;
+        FString ConfigJsonFilePath;
+        if (FParse::Value(FCommandLine::Get(), TEXT("-serverjson="), ConfigJsonFilePath))
+        {
+            FString FilePath = ConfigJsonFilePath;
+
+            // Check if the JSON file exists and has the session id
+            FString FileContents;
+            if (!FFileHelper::LoadFileToString(FileContents, *FilePath))
+            {
+                UE_LOG(LogNetworkNext, Error, TEXT("Failed to load multiplay server.json file '%s'"), *FilePath);
+            }
+            else
+            {
+                TSharedPtr<FJsonObject> JSONObject;
+
+                TSharedRef< TJsonReader<> > Reader = TJsonReaderFactory<>::Create(FileContents);
+
+                if (!FJsonSerializer::Deserialize(Reader, JSONObject) || !JSONObject.IsValid())
+                {
+                    UE_LOG(LogNetworkNext, Error, TEXT("Invalid JSON in multiplay server.json file '%s'"), *FilePath);
+                }
+                else
+                {
+                    UE_LOG(LogNetworkNext, Display, TEXT("Loaded multiplay server.json file"));
+
+                    FString ConnectionIp;
+                    FString ConnectionPort;
+
+                    if (JSONObject->HasTypedField<EJson::String>("ConnectionIP"))
+                    {
+                        ConnectionIp = JSONObject->GetStringField("ConnectionIP");
+                    }
+
+                    if (JSONObject->HasTypedField<EJson::String>("ConnectionPort"))
+                    {
+                        ConnectionPort = JSONObject->GetStringField("ConnectionPort");
+                    }
+
+                    ServerAddressWithPort = ConnectionIp + TEXT(":") + ConnectionPort;
+
+                    UE_LOG(LogNetworkNext, Display, TEXT("Multiplay server address is '%s'"), *Addr.ToString(true));
+                }
+            }
+        }
+
+        FString VirtualTypeId;
+        bool bIsCloud = false;
+        if (FParse::Value(FCommandLine::Get(), TEXT("-virtualtypeid="), VirtualTypeId))
+        {
+            if (VirtualTypeId == TEXT("3"))
+            {
+                UE_LOG(LogNetworkNext, Display, TEXT("Multiplay server is running in the cloud"));
+                DataCenter = TEXT("cloud");
+                bIsCloud = true;
+            }
+        }
+
+        FString MultiplayDatacenter;
+        if (!bIsCloud && FParse::Value(FCommandLine::Get(), TEXT("-NetworkNext="), MultiplayDatacenter))
+        {
+            UE_LOG(LogNetworkNext, Display, TEXT("Multiplay datacenter is '%s'"), *MultiplayDatacenter);
+            DataCenter = MultiplayDatacenter;
+        }
     }
+
+    // create the network next server
 
     NetworkNextServer = next_server_create(this, TCHAR_TO_ANSI(*ServerAddressWithPort), TCHAR_TO_ANSI(*BindAddress), TCHAR_TO_ANSI(*DataCenter), &FNetworkNextSocketServer::OnPacketReceived, NULL);
     if (!NetworkNextServer)
@@ -102,10 +164,6 @@ bool FNetworkNextSocketServer::Bind(const FInternetAddr& Addr)
     }
 
     UE_LOG(LogNetworkNext, Display, TEXT("Created network next server"));
-
-    UE_LOG(LogNetworkNext, Display, TEXT("Server address is %s"), *ServerAddressOnly);
-
-    UE_LOG(LogNetworkNext, Display, TEXT("Server port is %d"), GetPortNo());
 
     return true;
 }
@@ -151,7 +209,7 @@ bool FNetworkNextSocketServer::RecvFrom(uint8* Data, int32 BufferSize, int32& By
     if (Flags != ESocketReceiveFlags::None)
         return false;
 
-    if (!UpdatedThisFrame)
+    if (!bUpdatedThisFrame)
     {
         // make sure we update the server prior to receiving any packets this frame
         next_server_update(NetworkNextServer);
