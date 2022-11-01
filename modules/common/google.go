@@ -103,8 +103,6 @@ func (g *GoogleCloudHandler) CopyFromBucketToLocal(ctx context.Context, bucketUR
 	return nil
 }
 
-// -------------------------------------------------------
-
 type InstanceInfo struct {
 	CurrentAction  string
 	Id             string
@@ -156,3 +154,60 @@ func (g *GoogleCloudHandler) GetMIGInstanceNames(migName string) []string {
 func (g *GoogleCloudHandler) GetMIGInstanceNamesEnv(environmentVariable string, defaultValue string) []string {
 	return g.GetMIGInstanceNames(envvar.GetString(environmentVariable, defaultValue))
 }
+
+// -------------------------------------------------------
+
+type ComputeAddress struct {
+	Address           string   `json:"address"`
+	AddressType       string   `json:"addressType"`
+	CreationTimestamp string   `json:"creationTimestamp"`
+	Description       string   `json:"description"`
+	ID                string   `json:"id"`
+	Kind              string   `json:"kind"`
+	Name              string   `json:"name"`
+	NetworkTier       string   `json:"networkTier"`
+	Purpose           string   `json:"purpose"`
+	Region            string   `json:"region"`
+	SelfLink          string   `json:"selfLink"`
+	Status            string   `json:"status"`
+	SubNetwork        string   `json:"subnetwork"`
+	Users             []string `json:"users"`
+}
+
+const EXTERNAL_IP = "EXTERNAL"
+const INTERNAL_IP = "INTERNAL"
+
+func (g *GoogleCloudHandler) GetLoadBalancerPublicIP(name string) string {
+	return getLoadBalancerIP(g.ProjectId, name, EXTERNAL_IP)
+}
+
+func (g *GoogleCloudHandler) GetLoadBalancerPrivateIP(name string) string {
+	return getLoadBalancerIP(g.ProjectId, name, INTERNAL_IP)
+}
+
+func getLoadBalancerIP(projectId string, name string, addressType string) string {
+
+	if projectId == "local" {
+		return ""
+	}
+
+	var computeAddresses []ComputeAddress
+
+	// Get the latest instance list in the relay backend mig
+	runnable := exec.Command("gcloud", "compute", "--project", projectId, "addresses", "list", fmt.Sprintf("--filter=\"addressType=('%s') name=('%s)\"", addressType, name), "--format", "json")
+
+	addressListJson, err := runnable.CombinedOutput()
+	if err != nil {
+		core.Error("failed to get ip addresses for project %s: %v", projectId, err)
+		return ""
+	}
+
+	if err := json.Unmarshal([]byte(addressListJson), &computeAddresses); err != nil {
+		core.Error("failed to unmarshal address list json: %v", err)
+		return ""
+	}
+
+	return computeAddresses[0].Address
+}
+
+// -------------------------------------------------------
