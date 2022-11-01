@@ -66,9 +66,7 @@ func (config *FileSyncConfig) Print() {
 	}
 }
 
-func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStorage *GoogleCloudStorage, isLeader func() bool) {
-
-	googleProjectId := googleCloudStorage.ProjectId
+func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandler *GoogleCloudHandler, isLeader func() bool) {
 
 	for _, group := range config.FileGroups {
 
@@ -107,7 +105,7 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStora
 
 						core.Debug("downloading %s", syncFile.DownloadURL)
 
-						if err := DownloadFile(ctx, googleCloudStorage, syncFile.DownloadURL, fileName); err != nil {
+						if err := DownloadFile(ctx, googleCloudHandler, syncFile.DownloadURL, fileName); err != nil {
 							core.Error("failed to download %s: %v", fileName, err)
 							continue
 						}
@@ -124,17 +122,17 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStora
 
 						if group.UploadTo != "" {
 							core.Debug("uploading files to: %s", group.UploadTo)
-							if err := googleCloudStorage.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
+							if err := googleCloudHandler.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
 								core.Error("failed to upload location file to google cloud storage: %v", err)
 								continue
 							}
 						}
 
-						receivingVMs := GetMIGInstanceNames(googleProjectId, group.PushTo)
+						receivingVMs := googleCloudHandler.GetMIGInstanceNames(group.PushTo)
 
 						if len(receivingVMs) > 0 {
 							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-							if err := PushFileToVMs(ctx, googleCloudStorage, fileName, receivingVMs); err != nil {
+							if err := PushFileToVMs(ctx, googleCloudHandler, fileName, receivingVMs); err != nil {
 								core.Error("failed to upload location file to google cloud VMs: %v", err)
 							}
 						}
@@ -145,7 +143,7 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudStora
 	}
 }
 
-func DownloadFile(ctx context.Context, googleCloudStorage *GoogleCloudStorage, downloadURL string, fileName string) error {
+func DownloadFile(ctx context.Context, googleCloudHandler *GoogleCloudHandler, downloadURL string, fileName string) error {
 
 	currentDirectory, err := os.Getwd()
 	if err != nil {
@@ -159,7 +157,7 @@ func DownloadFile(ctx context.Context, googleCloudStorage *GoogleCloudStorage, d
 
 	switch urlScheme {
 	case "gs":
-		return googleCloudStorage.CopyFromBucketToLocal(ctx, downloadURL, path)
+		return googleCloudHandler.CopyFromBucketToLocal(ctx, downloadURL, path)
 	case "http", "https":
 		return DownloadFileFromURL(ctx, downloadURL, path)
 	default:
@@ -221,7 +219,7 @@ func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath strin
 	return nil
 }
 
-func PushFileToVMs(ctx context.Context, googleCloudStorage *GoogleCloudStorage, filePath string, vmNames []string) error {
+func PushFileToVMs(ctx context.Context, googleCloudHandler *GoogleCloudHandler, filePath string, vmNames []string) error {
 
 	if len(vmNames) == 0 {
 		return nil
@@ -229,7 +227,7 @@ func PushFileToVMs(ctx context.Context, googleCloudStorage *GoogleCloudStorage, 
 
 	hadError := false
 	for _, vm := range vmNames {
-		if err := googleCloudStorage.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
+		if err := googleCloudHandler.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
 			core.Error("failed to copy file to vm: %v", err)
 			hadError = true
 		}
