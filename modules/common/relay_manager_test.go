@@ -121,7 +121,7 @@ func TestRelayManager(t *testing.T) {
 
 	// now get relays in the future. all relays should be in the offline status
 
-	relays = relayManager.GetRelays(currentTime + 30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
@@ -205,7 +205,7 @@ func TestRelayManager(t *testing.T) {
 
 	// relays should be in the offline state 30 seconds in the future
 
-	relays = relayManager.GetRelays(currentTime + 30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
@@ -251,7 +251,7 @@ func TestRelayManager(t *testing.T) {
 
 	// 30 seconds in the future, shutting down should become offline
 
-	activeRelays = relayManager.GetActiveRelays(currentTime+30)
+	activeRelays = relayManager.GetActiveRelays(currentTime + 30)
 
 	assert.Equal(t, 0, len(activeRelays))
 

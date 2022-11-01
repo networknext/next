@@ -7,19 +7,11 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float64, relayLongitudes []float64, sourceLatitude_in float32, sourceLongitude_in float32, destLatitude_in float32, destLongitude_in float32) ([]uint64, []net.UDPAddr) {
-
-	// Work in float 64
-
-	sourceLatitude := float64(sourceLatitude_in)
-	sourceLongitude := float64(sourceLongitude_in)
-
-	destLatitude := float64(destLatitude_in)
-	destLongitude := float64(destLongitude_in)
+func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float32, relayLongitudes []float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32) ([]uint64, []net.UDPAddr) {
 
 	// Estimate direct latency
 
-	directLatency := float32(3.0 / 2.0 * core.SpeedOfLightTimeMilliseconds_AB(sourceLatitude, sourceLongitude, destLatitude, destLongitude))
+	directLatency := float32(3.0 / 2.0 * core.SpeedOfLightTimeMilliseconds_AB(float64(sourceLatitude), float64(sourceLongitude), float64(destLatitude), float64(destLongitude)))
 
 	// Work with the near relays as an array of structs first for easier sorting
 
@@ -38,7 +30,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 		nearRelayData[i].Address = relayAddresses[i]
 		nearRelayData[i].Latitude = float64(int64(relayLatitudes[i]))
 		nearRelayData[i].Longitude = float64(int64(relayLongitudes[i]))
-		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
+		nearRelayData[i].Distance = int(core.HaversineDistance(float64(sourceLatitude), float64(sourceLongitude), float64(nearRelayData[i].Latitude), float64(nearRelayData[i].Longitude)))
 	}
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Id < nearRelayData[j].Id })
@@ -59,7 +51,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 			break
 		}
 
-		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds_ABC(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds_ABC(float64(sourceLatitude), float64(sourceLongitude), float64(nearRelayData[i].Latitude), float64(nearRelayData[i].Longitude), float64(destLatitude), float64(destLongitude)))
 
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
@@ -86,7 +78,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 	// Paradoxically, this can really help, especially for cases like South America <-> Miami
 
 	for i := range nearRelayData {
-		nearRelayData[i].Distance = int(core.HaversineDistance(destLatitude, destLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
+		nearRelayData[i].Distance = int(core.HaversineDistance(float64(destLatitude), float64(destLongitude), float64(nearRelayData[i].Latitude), float64(nearRelayData[i].Longitude)))
 	}
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
@@ -97,7 +89,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 			break
 		}
 
-		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds_ABC(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
+		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds_ABC(float64(sourceLatitude), float64(sourceLongitude), float64(nearRelayData[i].Latitude), float64(nearRelayData[i].Longitude), float64(destLatitude), float64(destLongitude)))
 
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue

@@ -19,8 +19,7 @@ func CreateReadStream(buffer []byte) *ReadStream {
 	}
 }
 
-// todo: stupid name
-func (stream *ReadStream) error(err error) {
+func (stream *ReadStream) SetError(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))
 	}
@@ -43,26 +42,26 @@ func (stream *ReadStream) SerializeInteger(value *int32, min int32, max int32) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	if min >= max {
-		stream.error(fmt.Errorf("min (%d) should be less than max (%d)", min, max))
+		stream.SetError(fmt.Errorf("min (%d) should be less than max (%d)", min, max))
 		return
 	}
 	bits := BitsRequiredSigned(min, max)
 	if stream.reader.WouldReadPastEnd(bits) {
-		stream.error(fmt.Errorf("would read past end of buffer"))
+		stream.SetError(fmt.Errorf("would read past end of buffer"))
 		return
 	}
 	unsignedValue, err := stream.reader.ReadBits(bits)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	candidateValue := int32(unsignedValue) + min
 	if candidateValue > max {
-		stream.error(fmt.Errorf("value (%d) above max (%d)", candidateValue, max))
+		stream.SetError(fmt.Errorf("value (%d) above max (%d)", candidateValue, max))
 		return
 	}
 	*value = candidateValue
@@ -73,20 +72,20 @@ func (stream *ReadStream) SerializeBits(value *uint32, bits int) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	if bits < 0 || bits > 32 {
-		stream.error(fmt.Errorf("bits (%d) should be between 0 and 32 bits", bits))
+		stream.SetError(fmt.Errorf("bits (%d) should be between 0 and 32 bits", bits))
 		return
 	}
 	if stream.reader.WouldReadPastEnd(bits) {
-		stream.error(fmt.Errorf("would read past end of buffer"))
+		stream.SetError(fmt.Errorf("would read past end of buffer"))
 		return
 	}
 	readValue, err := stream.reader.ReadBits(bits)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	*value = readValue
@@ -101,16 +100,16 @@ func (stream *ReadStream) SerializeBool(value *bool) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	if stream.reader.WouldReadPastEnd(1) {
-		stream.error(fmt.Errorf("would read past end of buffer"))
+		stream.SetError(fmt.Errorf("would read past end of buffer"))
 		return
 	}
 	readValue, err := stream.reader.ReadBits(1)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	*value = readValue != 0
@@ -121,16 +120,16 @@ func (stream *ReadStream) SerializeFloat32(value *float32) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	if stream.reader.WouldReadPastEnd(32) {
-		stream.error(fmt.Errorf("would read past end of buffer"))
+		stream.SetError(fmt.Errorf("would read past end of buffer"))
 		return
 	}
 	readValue, err := stream.reader.ReadBits(32)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	*value = math.Float32frombits(readValue)
@@ -141,21 +140,21 @@ func (stream *ReadStream) SerializeUint64(value *uint64) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	if stream.reader.WouldReadPastEnd(64) {
-		stream.error(fmt.Errorf("would read past end of buffer"))
+		stream.SetError(fmt.Errorf("would read past end of buffer"))
 		return
 	}
 	lo, err := stream.reader.ReadBits(32)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	hi, err := stream.reader.ReadBits(32)
 	if err != nil {
-		stream.error(err)
+		stream.SetError(err)
 		return
 	}
 	*value = (uint64(hi) << 32) | uint64(lo)
@@ -166,7 +165,7 @@ func (stream *ReadStream) SerializeFloat64(value *float64) {
 		return
 	}
 	if value == nil {
-		stream.error(fmt.Errorf("value is nil"))
+		stream.SetError(fmt.Errorf("value is nil"))
 		return
 	}
 	readValue := uint64(0)
@@ -182,7 +181,7 @@ func (stream *ReadStream) SerializeBytes(data []byte) {
 		return
 	}
 	if len(data) == 0 {
-		stream.error(fmt.Errorf("buffer should contain more than 0 bytes"))
+		stream.SetError(fmt.Errorf("buffer should contain more than 0 bytes"))
 		return
 	}
 	stream.SerializeAlign()
@@ -190,10 +189,10 @@ func (stream *ReadStream) SerializeBytes(data []byte) {
 		return
 	}
 	if stream.reader.WouldReadPastEnd(len(data) * 8) {
-		stream.error(fmt.Errorf("SerializeBytes() would read past end of buffer"))
+		stream.SetError(fmt.Errorf("SerializeBytes() would read past end of buffer"))
 		return
 	}
-	stream.error(stream.reader.ReadBytes(data))
+	stream.SetError(stream.reader.ReadBytes(data))
 }
 
 func (stream *ReadStream) SerializeString(value *string, maxSize int) {
@@ -201,7 +200,7 @@ func (stream *ReadStream) SerializeString(value *string, maxSize int) {
 		return
 	}
 	if maxSize < 0 {
-		stream.error(fmt.Errorf("maxSize (%d) should be > 0", maxSize))
+		stream.SetError(fmt.Errorf("maxSize (%d) should be > 0", maxSize))
 		return
 	}
 	length := int32(0)
@@ -225,7 +224,7 @@ func (stream *ReadStream) SerializeAddress(addr *net.UDPAddr) {
 		return
 	}
 	if addr == nil {
-		stream.error(fmt.Errorf("addr is nil"))
+		stream.SetError(fmt.Errorf("addr is nil"))
 		return
 	}
 	addrType := uint32(0)
@@ -271,10 +270,10 @@ func (stream *ReadStream) SerializeAddress(addr *net.UDPAddr) {
 func (stream *ReadStream) SerializeAlign() {
 	alignBits := stream.reader.GetAlignBits()
 	if stream.reader.WouldReadPastEnd(alignBits) {
-		stream.error(fmt.Errorf("SerializeAlign() would read past end of buffer"))
+		stream.SetError(fmt.Errorf("SerializeAlign() would read past end of buffer"))
 		return
 	}
-	stream.error(stream.reader.ReadAlign())
+	stream.SetError(stream.reader.ReadAlign())
 }
 
 func (stream *ReadStream) Flush() {

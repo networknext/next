@@ -18,7 +18,7 @@ const (
 	RouteMatrixVersion_Max   = 7
 	RouteMatrixVersion_Write = 7
 
-	MaxDatabaseBinWrapperSize = 100000000 // todo: 100mb seems overkill :)
+	MaxDatabaseBinWrapperSize = 100000000
 )
 
 type RouteMatrix struct {
@@ -101,7 +101,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize) // todo: eventually just serialize an unbounded uint32
+	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
 			m.BinFileData = make([]byte, m.BinFileBytes)
@@ -260,10 +260,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
-
-// todo: there should be unit tests for route matrix read and write
-
-// todo: tests should include writing with the new codebase, and reading with the old codebase
 
 func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
 	buffer := make([]byte, bufferSize)
@@ -431,7 +427,6 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	return analysis
 }
 
-// todo: this function needs to be unit tested
 func (routeMatrix *RouteMatrix) GetDatacenterRelays(datacenterId uint64) []uint64 {
 	// todo: would be good if this wasn't O(n) where n is the number of relays
 	relayIds := make([]uint64, 0, 8)

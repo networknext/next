@@ -1693,7 +1693,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1752,10 +1752,8 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 	// should we enable pro mode?
 
-	routeState.MultipathRestricted = multipathVetoUsers[routeState.UserID]
-
 	proMode := false
-	if routeShader.ProMode && !routeState.MultipathRestricted {
+	if routeShader.ProMode {
 		if debug != nil {
 			*debug += "pro mode\n"
 		}
