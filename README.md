@@ -79,43 +79,56 @@ Developers should install these requirements however they need to be installed b
 
 The following steps outline the setup process on a standard Linux Debian/Ubuntu installation. Dependencies are aquired through the package manager for ease of use where possible.
 For Mac OSX, use the corresponding `brew` command with the equivalent package name.
+To install brew, run the following command: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
 For Windows, use WSL or WSL 2 to install a Linux environment and follow the steps accordingly.
 
 NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel free to set up in whatever way is easiest for you.
 
 1. Update package manager
-	`sudo apt update`
+	Linux: `sudo apt update`
 
-2. Install build-essential -- This will install make, gcc, and g++
+2. Install premak5
+	`cd /usr/local/bin`
+	Linux:
+	`sudo curl https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz | sudo tar -zxv`
+	Mac:
+	`sudo curl https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-macosx.tar.gz | sudo tar -zxv`
+
+3. Install build-essential -- This will install make, gcc, and g++
 	Linux:
 	`sudo apt install build-essential`
 	Mac:
 	`xcode-select --install`
 
-3. Install pkg-config
+4. Install pkg-config
 	Linux:
 	`sudo apt install pkg-config`
 	Mac:
 	`brew install pkg-config`
 
-4. Install libsodium
+5. Install libsodium
 	Linux:
 	`sudo apt install libsodium-dev`
 	Mac:
 	`brew install libsodium`
 
-5. Install Go (must be 1.13+)
+6. Install Go (must be 1.18+)
 	`cd /usr/local/`
-	`sudo curl https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz | sudo tar -zxv`
+	Linux: `sudo curl https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz | sudo tar -zxv`
+	Mac: `sudo curl https://dl.google.com/go/go1.19.3.darwin-amd64.pkg | sudo tar -zxv`
+
 	Add Go to PATH:
 		`echo 'PATH=$PATH:/usr/local/go/bin' >> ~/.profile`
 	NOTE: For changes to your `.profile` to reflect in the terminal, sign out and sign back in.
 	If you're running WSL, you can stop it by typing `wsl -t <distro>` in Powershell and start it again.
 
-6. Install Redis
+7. Install Redis
+	Linux:
 	`sudo apt install redis-server`
+	Mac:
+	`brew install redis`
 
-7. Clone the repo with an SSH key
+8. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -124,21 +137,18 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	Copy the contents of your SSH public key (in same directory as public key, ex. ~/.ssh/id_rsa.pub)
 	Add the SSH public key to your Github account
 		- Login and go to Settings > SSH and GPG Keys > New SSH Key and paste in your key
-  `git clone git@github.com:networknext/backend.git`
-  `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
+	`git clone git@github.com:networknext/backend.git`
+	`cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-8. Run tests to confirm everything is working properly
-	`make test`
+9. Run tests to confirm everything is working properly
+	`./next select local`
+	`./run test`
 
 ## Running the "Happy Path"
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following command:
-
-	make dev-happy-path
-
-## SQL Storers and the Happy Path
-
-The `FEATURE_POSTGRESQL` environment variable is used to setup SQL storers. If this variable is unset an in_memory storer will be used instead.
+	`./next select local`
+	`./run happy-path`
 
 ### SQLite3
 
