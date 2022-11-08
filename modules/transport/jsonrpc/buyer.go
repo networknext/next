@@ -243,9 +243,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						continue
 					}
 
-					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-						session.Anonymise()
-					} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 						// Don't show sessions where the company code does not match the request's
 						continue
 					}
