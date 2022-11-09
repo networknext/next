@@ -1891,7 +1891,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 		},
 		Slice: SessionSlice{
 			Version:   SessionSliceVersion,
-			Timestamp: time.Now().UTC(),
+			Timestamp: time.Now(),
 			Next: routing.Stats{
 				RTT:        float64(state.Packet.NextRTT),
 				Jitter:     float64(state.Packet.NextJitter),
