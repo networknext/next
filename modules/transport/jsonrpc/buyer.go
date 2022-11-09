@@ -3418,9 +3418,19 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 
 		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
 		if err != nil {
-			core.Error("LookerSessionDetails(): Failed to parse timestamp in UTC: %v:", err.Error())
+			core.Error("LookerSessionDetails(): Failed to parse timestamp: %v:", err.Error())
 			continue
 		}
+
+		// timestamp has a weird offset to it making it not UTC (EST was used somewhere as the slice timezone)
+		offset := -18000
+
+		estLoc, err := time.LoadLocation("EST")
+		if err != nil {
+			core.Error("failed to parse est location: %v", err)
+		}
+
+		_, offset = time.Now().In(estLoc).Zone()
 
 		envUp := 0
 		envDown := 0
@@ -3432,7 +3442,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		sessionSlices[i] = transport.SessionSlice{
-			Timestamp: timeStamp,
+			Timestamp: timeStamp.Add(time.Duration(offset/60/60) * time.Hour * -1),
 			Next: routing.Stats{
 				RTT:        slice.NextRTT,
 				Jitter:     slice.NextJitter,
