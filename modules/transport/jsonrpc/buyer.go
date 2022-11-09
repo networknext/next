@@ -383,7 +383,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 
 			userSession := UserSession{
-				Timestamp: timeStamp.UTC(),
+				Timestamp: timeStamp.Add(4 * time.Hour),
 				Meta: transport.SessionMeta{
 					ID:              uint64(session.SessionID),
 					BuyerID:         uint64(session.BuyerID),

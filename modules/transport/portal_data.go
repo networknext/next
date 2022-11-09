@@ -1497,7 +1497,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 
 	// The original data didn't have the version serialized, so it was actually the timestamp
 	if version > SessionSliceVersion {
-		s.Timestamp = time.Unix(version, 0).UTC()
+		s.Timestamp = time.Unix(version, 0)
 		version = 0
 	} else {
 		s.Version = uint32(version)
@@ -1508,7 +1508,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 		}
 		index++
 
-		s.Timestamp = time.Unix(timestamp, 0).UTC()
+		s.Timestamp = time.Unix(timestamp, 0)
 	}
 
 	if err := s.Next.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
