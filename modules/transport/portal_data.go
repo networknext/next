@@ -1013,7 +1013,13 @@ func (s SessionMeta) MarshalJSON() ([]byte, error) {
 	fields := map[string]interface{}{}
 
 	fields["id"] = fmt.Sprintf("%016x", s.ID)
-	fields["user_hash"] = fmt.Sprintf("%016x", s.UserHash)
+
+	if s.UserHash == 0 {
+		fields["user_hash"] = ""
+	} else {
+		fields["user_hash"] = fmt.Sprintf("%016x", s.UserHash)
+	}
+
 	fields["datacenter_name"] = s.DatacenterName
 	fields["datacenter_alias"] = s.DatacenterAlias
 	fields["on_network_next"] = s.OnNetworkNext
@@ -1039,6 +1045,7 @@ func (s *SessionMeta) Anonymise() {
 	s.NearbyRelays = []NearRelayPortalData{}
 	s.Hops = []RelayHop{}
 	s.DatacenterAlias = ""
+	s.UserHash = 0
 }
 
 func (s SessionMeta) RedisString() string {
