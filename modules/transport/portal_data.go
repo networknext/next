@@ -1013,7 +1013,13 @@ func (s SessionMeta) MarshalJSON() ([]byte, error) {
 	fields := map[string]interface{}{}
 
 	fields["id"] = fmt.Sprintf("%016x", s.ID)
-	fields["user_hash"] = fmt.Sprintf("%016x", s.UserHash)
+
+	if s.UserHash == 0 {
+		fields["user_hash"] = ""
+	} else {
+		fields["user_hash"] = fmt.Sprintf("%016x", s.UserHash)
+	}
+
 	fields["datacenter_name"] = s.DatacenterName
 	fields["datacenter_alias"] = s.DatacenterAlias
 	fields["on_network_next"] = s.OnNetworkNext
@@ -1039,6 +1045,7 @@ func (s *SessionMeta) Anonymise() {
 	s.NearbyRelays = []NearRelayPortalData{}
 	s.Hops = []RelayHop{}
 	s.DatacenterAlias = ""
+	s.UserHash = 0
 }
 
 func (s SessionMeta) RedisString() string {
@@ -1490,7 +1497,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 
 	// The original data didn't have the version serialized, so it was actually the timestamp
 	if version > SessionSliceVersion {
-		s.Timestamp = time.Unix(version, 0)
+		s.Timestamp = time.Unix(version, 0).UTC()
 		version = 0
 	} else {
 		s.Version = uint32(version)
@@ -1501,7 +1508,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 		}
 		index++
 
-		s.Timestamp = time.Unix(timestamp, 0)
+		s.Timestamp = time.Unix(timestamp, 0).UTC()
 	}
 
 	if err := s.Next.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
