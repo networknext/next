@@ -383,7 +383,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 
 			userSession := UserSession{
-				Timestamp: timeStamp.Add(4 * time.Hour),
+				Timestamp: timeStamp.UTC(),
 				Meta: transport.SessionMeta{
 					ID:              uint64(session.SessionID),
 					BuyerID:         uint64(session.BuyerID),
@@ -3422,7 +3422,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		sessionSlices[i] = transport.SessionSlice{
-			Timestamp: timeStamp.Add(4 * time.Hour),
+			Timestamp: timeStamp.UTC(),
 			Next: routing.Stats{
 				RTT:        slice.NextRTT,
 				Jitter:     slice.NextJitter,
