@@ -195,26 +195,24 @@ describe('SessionDetails.vue', () => {
     expect(metaPanel.exists()).toBeTruthy()
 
     const metaTitles = wrapper.findAll('dt')
-    expect(metaTitles.length).toBe(7)
+    expect(metaTitles.length).toBe(6)
 
     expect(metaTitles.at(0).text()).toBe('Datacenter')
     expect(metaTitles.at(1).text()).toBe('ISP')
-    expect(metaTitles.at(2).text()).toBe('User Hash')
-    expect(metaTitles.at(3).text()).toBe('Platform')
-    expect(metaTitles.at(4).text()).toBe('Customer')
-    expect(metaTitles.at(5).text()).toBe('SDK Version')
-    expect(metaTitles.at(6).text()).toBe('Connection Type')
+    expect(metaTitles.at(2).text()).toBe('Platform')
+    expect(metaTitles.at(3).text()).toBe('Customer')
+    expect(metaTitles.at(4).text()).toBe('SDK Version')
+    expect(metaTitles.at(5).text()).toBe('Connection Type')
 
     const metaData = wrapper.findAll('dd')
-    expect(metaData.length).toBe(7)
+    expect(metaData.length).toBe(6)
 
     expect(metaData.at(0).text()).toBe('local')
     expect(metaData.at(1).text()).toBe('local')
-    expect(metaData.at(2).text()).toBe('00000000')
-    expect(metaData.at(3).text()).toBe('Linux')
-    expect(metaData.at(4).text()).toBe('Private')
-    expect(metaData.at(5).text()).toBe('4.0.16')
-    expect(metaData.at(6).text()).toBe('Wired')
+    expect(metaData.at(2).text()).toBe('Linux')
+    expect(metaData.at(3).text()).toBe('Private')
+    expect(metaData.at(4).text()).toBe('4.0.16')
+    expect(metaData.at(5).text()).toBe('Wired')
 
     store.commit('UPDATE_IS_ANONYMOUS', true)
 

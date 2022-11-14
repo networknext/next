@@ -9,6 +9,7 @@ import VueTour from 'vue-tour'
 import { VueConstructor } from 'vue/types/umd'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { MAX_RETRIES } from '@/components/types/Constants'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 
 function topSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchTopSessions').mockImplementation((args: any) => {
@@ -33,6 +34,7 @@ describe('SessionsWorkspace.vue', () => {
         companyCode: '',
         dataRange: DateFilterType.LAST_7
       },
+      userProfile: newDefaultProfile(),
       killLoops: false,
       isAnonymous: false,
       isAdmin: false,
@@ -40,6 +42,7 @@ describe('SessionsWorkspace.vue', () => {
     },
     getters: {
       allBuyers: (state: any) => state.allBuyers,
+      userProfile: (state: any) => state.userProfile,
       currentPage: (state: any) => state.currentPage,
       currentFilter: (state: any) => state.filter,
       isAnonymous: (state: any) => state.isAnonymous,
@@ -64,6 +67,9 @@ describe('SessionsWorkspace.vue', () => {
       },
       UPDATE_IS_ANONYMOUS (state: any, isAnonymous: boolean) {
         state.isAnonymous = isAnonymous
+      },
+      UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
+        state.userProfile = userProfile
       },
       UPDATE_IS_TOUR (state: any, isTour: boolean) {
         state.isTour = isTour
@@ -167,16 +173,26 @@ describe('SessionsWorkspace.vue', () => {
     const session = {
       on_network_next: true,
       id: '123456789',
-      user_hash: '00000000',
+      user_hash: '123456789',
       datacenter_alias: 'local_alias',
       location: {
         isp: 'local'
       },
+      customer_id: '123456789',
       direct_rtt: 120,
       next_rtt: 20,
       delta_rtt: 100
     }
-    const spy = topSessionsMock(localVue, true, [session], '')
+
+    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.LAST_7 }
+    store.commit('UPDATE_CURRENT_FILTER', newFilter)
+
+    const newProfile = newDefaultProfile()
+    newProfile.companyCode = 'test'
+    newProfile.buyerID = '123456789'
+    store.commit('UPDATE_USER_PROFILE', newProfile)
+
+    const spy = topSessionsMock(localVue, true, [session], 'test')
 
     // Mount the component
     const wrapper = shallowMount(SessionsWorkspace, { localVue, store, stubs })
@@ -215,6 +231,9 @@ describe('SessionsWorkspace.vue', () => {
     expect(dataRows.at(6).text()).toBe(session.next_rtt.toFixed(2).toString())
     expect(dataRows.at(7).text()).toBe(session.delta_rtt.toFixed(2).toString())
     expect(dataRows.at(7).find('span').classes().includes('text-success')).toBeTruthy()
+
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
+    store.commit('UPDATE_USER_PROFILE', newDefaultProfile())
 
     spy.mockReset()
 
@@ -298,16 +317,26 @@ describe('SessionsWorkspace.vue', () => {
     const session = {
       on_network_next: false,
       id: '123456789',
-      user_hash: '00000000',
+      user_hash: '123456789',
       datacenter_alias: 'local_alias',
       location: {
         isp: 'local'
       },
+      customer_id: '123456789',
       direct_rtt: 0,
       next_rtt: 0,
       delta_rtt: 0
     }
-    let spy = topSessionsMock(localVue, true, [session], '')
+
+    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.LAST_7 }
+    store.commit('UPDATE_CURRENT_FILTER', newFilter)
+
+    const newProfile = newDefaultProfile()
+    newProfile.companyCode = 'test'
+    newProfile.buyerID = '123456789'
+    store.commit('UPDATE_USER_PROFILE', newProfile)
+
+    let spy = topSessionsMock(localVue, true, [session], 'test')
 
     // Mount the component
     const wrapper = shallowMount(SessionsWorkspace, { localVue, store, stubs })
@@ -350,7 +379,7 @@ describe('SessionsWorkspace.vue', () => {
     session.next_rtt = 10
     session.direct_rtt = 11
     session.on_network_next = true
-    spy = topSessionsMock(localVue, true, [session], '')
+    spy = topSessionsMock(localVue, true, [session], 'test')
 
     jest.advanceTimersByTime(10000)
 
@@ -374,7 +403,7 @@ describe('SessionsWorkspace.vue', () => {
     session.delta_rtt = 3
     session.next_rtt = 10
     session.direct_rtt = 13
-    spy = topSessionsMock(localVue, true, [session], '')
+    spy = topSessionsMock(localVue, true, [session], 'test')
 
     jest.advanceTimersByTime(10000)
 
@@ -398,7 +427,7 @@ describe('SessionsWorkspace.vue', () => {
     session.delta_rtt = 0
     session.next_rtt = 14
     session.direct_rtt = 10
-    spy = topSessionsMock(localVue, true, [session], '')
+    spy = topSessionsMock(localVue, true, [session], 'test')
 
     jest.advanceTimersByTime(10000)
 
@@ -417,6 +446,9 @@ describe('SessionsWorkspace.vue', () => {
     expect(dataRows.at(5).text()).toBe(session.direct_rtt.toFixed(2).toString())
     expect(dataRows.at(6).text()).toBe(session.next_rtt.toFixed(2).toString())
     expect(dataRows.at(7).text()).toBe('')
+
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
+    store.commit('UPDATE_USER_PROFILE', newDefaultProfile())
 
     spy.mockReset()
 
