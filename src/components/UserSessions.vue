@@ -58,7 +58,7 @@
         <tbody v-if="currentPageSessions.length > 0">
           <tr id="data-row" v-for="(session, index) in currentPageSessions" :key="index">
             <td>
-              {{ convertUTCDateToLocalDate(new Date(session.time_stamp)) }}
+              {{ convertUTCDateToLocalDateNotStandard(new Date(session.time_stamp)) }}
             </td>
             <td>
                 <router-link :to="`/session-tool/${session.meta.id}`" class="text-dark fixed-width">{{ session.meta.id }}</router-link>
@@ -338,6 +338,20 @@ export default class UserSessions extends Vue {
     newDate.setMinutes(date.getMinutes() - date.getTimezoneOffset())
 
     return newDate.toLocaleString().replace(',', '')
+  }
+
+  // Original doesn't work for daylight savings time. Found this: https://www.heady.io/blog/javascript-handle-date-in-any-timezone-with-daylight-saving-check
+  private convertUTCDateToLocalDateNotStandard (date: Date) {
+    // obtain UTC time in msec
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000)
+    let dstOffset = -5
+    const stdTimezoneOffset = Math.max(new Date(0, 1).getTimezoneOffset(), new Date(6, 1).getTimezoneOffset())
+    const today = new Date()
+    const isDSTObserved = today.getTimezoneOffset() < stdTimezoneOffset
+    if (isDSTObserved) {
+      dstOffset = -4
+    }
+    return new Date(utcTime + (60 * 60 * 1000 * dstOffset))
   }
 }
 
