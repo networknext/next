@@ -62,8 +62,8 @@
 	path = enet
 	stage = sync
 	type = extract module
-[map "e06bf896-85f3-37ea-b1f9-e03300815c3f"]
-	object = ce0645145a48a670aef8f7e8bb1520ac077f7d70
+[map "4bcb5256-bac9-3765-b35c-547efb574785"]
+	object = 45999a40d492a23cc7a84f92fe13f77b0dbd3361
 	path = portal
 	stage = sync
 	type = extract module
