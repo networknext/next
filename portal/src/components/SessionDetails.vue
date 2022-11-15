@@ -118,12 +118,12 @@
                     {{ meta.location.isp != '' ? meta.location.isp : 'Unknown' }}
                   </em>
                 </dd>
-                <div v-if="(!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus && getCustomerCode(meta.customer_id) === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
+                <div v-if="(!$store.getters.isAnonymous && meta.customer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
                     User Hash
                   </dt>
                   <dd>
-                    <router-link :to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
+                    <router-link v-if="meta.user_hash !== ''" :to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
                 <div v-if="(!$store.getters.isAnonymous && meta.customer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
@@ -602,7 +602,7 @@ export default class SessionDetails extends Vue {
     let directOnly = true
 
     this.slices.map((slice: any) => {
-      const timestamp = new Date(slice.timestamp).getTime() / 1000
+      const timestamp = this.convertUTCDateToLocalDateNotStandard(new Date(slice.timestamp)).getTime() / 1000
       const onNN = slice.on_network_next
 
       if (directOnly && onNN) {
@@ -911,6 +911,20 @@ export default class SessionDetails extends Vue {
     if (bandwidthChartElement) {
       this.bandwidthChart = new uPlot(bandwidthOpts, bandwidthData, bandwidthChartElement)
     }
+  }
+
+  // Original doesn't work for daylight savings time. Found this: https://www.heady.io/blog/javascript-handle-date-in-any-timezone-with-daylight-saving-check
+  private convertUTCDateToLocalDateNotStandard (date: Date) {
+    // obtain UTC time in msec
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000)
+    let estOffset = -5
+    const stdTimezoneOffset = Math.max(new Date(0, 1).getTimezoneOffset(), new Date(6, 1).getTimezoneOffset())
+    const today = new Date()
+    const isDSTObserved = today.getTimezoneOffset() < stdTimezoneOffset
+    if (isDSTObserved) {
+      estOffset = -4
+    }
+    return new Date(utcTime + (60 * 60 * 1000 * estOffset))
   }
 }
 

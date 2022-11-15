@@ -244,9 +244,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						continue
 					}
 
-					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-						session.Anonymise()
-					} else if !isAdmin && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 						// Don't show sessions where the company code does not match the request's
 						continue
 					}
@@ -381,12 +379,22 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		for _, session := range lookerUserSessions {
 			timeStamp, err := time.Parse("2006-01-02 15:04:05", session.Timestamp)
 			if err != nil {
-				core.Error("UserSessions(): Failed to parse timestamp in UTC: %v:", err.Error())
+				core.Error("UserSessions(): Failed to parse timestamp: %v:", err.Error())
 				continue
 			}
 
+			// timestamp has a weird offset to it making it not UTC (EST was used somewhere as the slice timezone)
+			offset := -18000
+
+			estLoc, err := time.LoadLocation("EST")
+			if err != nil {
+				core.Error("failed to parse est location: %v", err)
+			}
+
+			_, offset = time.Now().In(estLoc).Zone()
+
 			userSession := UserSession{
-				Timestamp: timeStamp.Add(4 * time.Hour),
+				Timestamp: timeStamp.Add(time.Duration(offset/60/60) * time.Hour * -1),
 				Meta: transport.SessionMeta{
 					ID:              uint64(session.SessionID),
 					BuyerID:         uint64(session.BuyerID),
@@ -2910,6 +2918,10 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 		return &err
 	}
 
+	sort.Slice(dashboards, func(i int, j int) bool {
+		return dashboards[i].Category.ParentCategoryID < dashboards[j].Category.ParentCategoryID
+	})
+
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 	subCategories := make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
@@ -2924,34 +2936,16 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				dashCustomerCode = "twenty-four-entertainment"
 			}
 
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+			if err != nil {
+				core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+				continue
+			}
+
+			categoryLabel := dashboard.Category.Label
+
 			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
-			if dashboard.Category.ParentCategoryID < 0 {
-				parentSubCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
-				if err != nil {
-					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
-					continue
-				}
-
-				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
-				if len(parentSubCategories) > 0 {
-					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
-					continue
-				}
-
-				_, ok := reply.Dashboards[dashboard.Category.Label]
-				if !ok {
-					reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
-					categories = append(categories, dashboard.Category)
-				}
-
-				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-				if err != nil {
-					core.Error("FetchAnalyticsDashboards(): %v", err.Error())
-					continue
-				}
-
-				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
-			} else {
+			if dashboard.Category.ParentCategoryID > 0 {
 				// Find the parent category information
 				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
 				if err != nil {
@@ -2959,7 +2953,15 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 					continue
 				}
 
-				categoryLabel := fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
+				// if the parent category has dashboards assigned to it, use the parent category
+				if _, ok := reply.Dashboards[parentCategory.Label]; ok {
+					// parent category dashboard
+
+					reply.Dashboards[parentCategory.Label] = append(reply.Dashboards[parentCategory.Label], url)
+					continue
+				}
+
+				categoryLabel = fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
 
 				if _, ok := subCategories[parentCategory.Label]; !ok {
 					subCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
@@ -2967,19 +2969,18 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				}
 
 				subCategories[parentCategory.Label] = append(subCategories[parentCategory.Label], dashboard.Category)
-
-				// Setup the usual system for the parent category
-				if _, ok := reply.Dashboards[categoryLabel]; !ok {
-					reply.Dashboards[categoryLabel] = make([]string, 0)
-				}
-
-				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-				if err != nil {
-					continue
-				}
-
-				reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], url)
 			}
+
+			// Setup the usual system for the parent category
+			if _, ok := reply.Dashboards[categoryLabel]; !ok {
+				reply.Dashboards[categoryLabel] = make([]string, 0)
+				if dashboard.Category.ParentCategoryID < 0 {
+					categories = append(categories, dashboard.Category)
+				}
+
+			}
+
+			reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], url)
 		}
 	}
 
@@ -3422,9 +3423,19 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 
 		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
 		if err != nil {
-			core.Error("LookerSessionDetails(): Failed to parse timestamp in UTC: %v:", err.Error())
+			core.Error("LookerSessionDetails(): Failed to parse timestamp: %v:", err.Error())
 			continue
 		}
+
+		// timestamp has a weird offset to it making it not UTC (EST was used somewhere as the slice timezone)
+		offset := -18000
+
+		estLoc, err := time.LoadLocation("EST")
+		if err != nil {
+			core.Error("failed to parse est location: %v", err)
+		}
+
+		_, offset = time.Now().In(estLoc).Zone()
 
 		envUp := 0
 		envDown := 0
@@ -3436,7 +3447,7 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 		}
 
 		sessionSlices[i] = transport.SessionSlice{
-			Timestamp: timeStamp.Add(4 * time.Hour),
+			Timestamp: timeStamp.Add(time.Duration(offset/60/60) * time.Hour * -1),
 			Next: routing.Stats{
 				RTT:        slice.NextRTT,
 				Jitter:     slice.NextJitter,
