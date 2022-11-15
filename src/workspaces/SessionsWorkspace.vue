@@ -26,6 +26,7 @@
             </th>
             <th v-if="!$store.getters.isAnonymous">
               <span
+                v-if="(!$store.getters.isAnonymous && $store.getters.currentFilter.companyCode === $store.getters.userProfile.companyCode) || $store.getters.isAdmin"
                 data-toggle="tooltip"
                 data-placement="right"
                 title="Hash of the unique user ID">User Hash</span>
@@ -100,8 +101,9 @@
                 :data-tour="index"
               >{{ session.id }}</router-link>
             </td>
-            <td v-if="!$store.getters.isAnonymous">
+            <td v-if="(!$store.getters.isAnonymous && $store.getters.currentFilter.companyCode === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
               <router-link
+                v-if="session.user_hash !== ''"
                 :to="`/user-tool/${session.user_hash}`"
                 class="text-dark fixed-width"
               >{{ session.user_hash }}</router-link>
