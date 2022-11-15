@@ -176,6 +176,9 @@ func SeedSQLStorage(
 			if err := db.AddAnalyticsDashboard(ctx, 42, "Country Analysis", true, false, 42, localCustomer.DatabaseID, countryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
+			if err := db.AddAnalyticsDashboard(ctx, 50, "Retention Parent Test", true, false, 74, localCustomer.DatabaseID, retentionCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
 			if err := db.AddAnalyticsDashboard(ctx, 42, "Retention by Latency", true, false, 62, localCustomer.DatabaseID, latencySubCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
