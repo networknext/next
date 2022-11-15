@@ -3264,7 +3264,6 @@ type FetchAdminDashboardsReply struct {
 	SubTabs    map[string][]string         `json:"sub_tabs"`
 }
 
-// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
 	ctx := r.Context()
 	reply.Dashboards = make(map[string][]AdminDashboard, 0)
@@ -3299,6 +3298,10 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		return &err
 	}
 
+	sort.Slice(dashboards, func(i int, j int) bool {
+		return dashboards[i].Category.ParentCategoryID < dashboards[j].Category.ParentCategoryID
+	})
+
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 	subCategories := make(map[string][]looker.AnalyticsDashboardCategory, 0)
 
@@ -3310,45 +3313,34 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 				dashCustomerCode = "twenty-four-entertainment"
 			}
 
-			// If the dashboard is assigned to a parent category, assign it to the normal label / dashboard system
-			if dashboard.Category.ParentCategoryID < 0 {
-				parentSubCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, dashboard.Category.ID)
-				if err != nil {
-					core.Error("FetchAdminDashboards(): %v", err.Error())
-					continue
-				}
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+			if err != nil {
+				core.Error("FetchAdminDashboards(): %v", err.Error())
+				continue
+			}
 
-				// If a category has a dashboard assigned to it before a sub category is, this get a little weird. We will prioritize the sub tabs over an individual dashboard
-				if len(parentSubCategories) > 0 {
-					// TODO: Not logging an error here because this has the potential to be really spammy. There is a better fix here at the admin tool level
-					continue
-				}
+			categoryLabel := dashboard.Category.Label
 
-				_, ok := reply.Dashboards[dashboard.Category.Label]
-				if !ok {
-					reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
-					categories = append(categories, dashboard.Category)
-				}
-
-				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-				if err != nil {
-					core.Error("FetchAdminDashboards(): %v", err.Error())
-					continue
-				}
-
-				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
-					URL:  url,
-					Live: !dashboard.Admin,
-				})
-			} else {
-				// Find the parent category information
+			if dashboard.Category.ParentCategoryID > 0 {
+				// dashboard is assigned to a sub category
 				parentCategory, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
 				if err != nil {
 					core.Error("FetchAdminDashboards(): %v", err.Error())
 					continue
 				}
 
-				categoryLabel := fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
+				// if the parent category has dashboards assigned to it, use the parent category
+				if _, ok := reply.Dashboards[parentCategory.Label]; ok {
+					// parent category dashboard
+
+					reply.Dashboards[parentCategory.Label] = append(reply.Dashboards[parentCategory.Label], AdminDashboard{
+						URL:  url,
+						Live: !dashboard.Admin,
+					})
+					continue
+				}
+
+				categoryLabel = fmt.Sprintf("%s/%s", parentCategory.Label, dashboard.Category.Label)
 
 				if _, ok := subCategories[parentCategory.Label]; !ok {
 					subCategories[parentCategory.Label] = make([]looker.AnalyticsDashboardCategory, 0)
@@ -3356,22 +3348,20 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 				}
 
 				subCategories[parentCategory.Label] = append(subCategories[parentCategory.Label], dashboard.Category)
-
-				// Setup the usual system for the parent category
-				if _, ok := reply.Dashboards[categoryLabel]; !ok {
-					reply.Dashboards[categoryLabel] = make([]AdminDashboard, 0)
-				}
-
-				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-				if err != nil {
-					continue
-				}
-
-				reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], AdminDashboard{
-					URL:  url,
-					Live: !dashboard.Admin,
-				})
 			}
+
+			// parent category dashboard
+			if _, ok := reply.Dashboards[categoryLabel]; !ok {
+				reply.Dashboards[categoryLabel] = make([]AdminDashboard, 0)
+				if dashboard.Category.ParentCategoryID < 0 {
+					categories = append(categories, dashboard.Category)
+				}
+			}
+
+			reply.Dashboards[categoryLabel] = append(reply.Dashboards[categoryLabel], AdminDashboard{
+				URL:  url,
+				Live: !dashboard.Admin,
+			})
 		}
 	}
 
