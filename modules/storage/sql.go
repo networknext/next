@@ -242,10 +242,10 @@ func (db *SQL) CustomerByID(ctx context.Context, id int64) (routing.Customer, er
 
 	switch err {
 	case context.Canceled:
-		core.Error("during", "Customer() connection with the database timed out!")
+		core.Error("during", "CustomerByID() connection with the database timed out!")
 		return routing.Customer{}, err
 	case sql.ErrNoRows:
-		core.Error("during", "Customer() no rows were returned!")
+		core.Error("during", "CustomerByID() no rows were returned!")
 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
 	case nil:
 		c := routing.Customer{
@@ -256,7 +256,7 @@ func (db *SQL) CustomerByID(ctx context.Context, id int64) (routing.Customer, er
 		}
 		return c, nil
 	default:
-		core.Error("Customer() QueryRow returned an error: %v", err)
+		core.Error("CustomerByID() QueryRow returned an error: %v", err)
 		return routing.Customer{}, err
 	}
 }
@@ -797,9 +797,8 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 		core.Error("RemoveBuyer() RowsAffected returned an error")
 		return err
 	}
-	if rows != 1 {
-		core.Error("RemoveBuyer() RowsAffected <> 1")
-		return err
+	if rows == 0 {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: ephemeralBuyerID}
 	}
 
 	return nil
@@ -3038,9 +3037,8 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		core.Error("RemoveInternalConfig() RowsAffected returned an error")
 		return err
 	}
-	if rows != 1 {
-		core.Error("RemoveInternalConfig() RowsAffected <> 1")
-		return err
+	if rows == 0 {
+		return &DoesNotExistError{resourceType: "internal config", resourceRef: ephemeralBuyerID}
 	}
 
 	return nil
@@ -3474,9 +3472,8 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 		core.Error("RemoveRouteShader() RowsAffected returned an error")
 		return err
 	}
-	if rows != 1 {
-		core.Error("RemoveRouteShader() RowsAffected <> 1")
-		return err
+	if rows == 0 {
+		return &DoesNotExistError{resourceType: "route shader", resourceRef: ephemeralBuyerID}
 	}
 
 	return nil

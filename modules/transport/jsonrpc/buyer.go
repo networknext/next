@@ -1759,12 +1759,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
-		core.Error("%v", err)
-		return err
-	}
+	companyCode := middleware.RequestUserCustomerCode(ctx)
 	if companyCode == "" {
 		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
 		core.Error("%v", err)
@@ -1777,8 +1772,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
-
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() could not decode public key string")
@@ -1787,6 +1780,13 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+
+	buyer, err = s.Storage.BuyerWithCompanyCode(ctx, companyCode)
+	if _, ok := err.(*storage.DoesNotExistError); !ok {
+		err = fmt.Errorf("UpdateGameConfiguration() failed looking up existing buyer: %v", err)
+		core.Error("%v", err)
+		return err
+	}
 
 	// Buyer not found
 	if buyer.ID == 0 {
@@ -1837,6 +1837,12 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
+		if err := s.Storage.AddInternalConfig(ctx, core.NewInternalConfig(), buyerID); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new buyer's route shader")
+			core.Error("%v", err)
+			return err
+		}
+
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 
@@ -1851,7 +1857,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	trial := buyer.Trial
 
 	// Remove all dc Maps
-	dcMaps := s.Storage.GetDatacenterMapsForBuyer(r.Context(), oldBuyerID)
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(ctx, oldBuyerID)
 	for _, dcMap := range dcMaps {
 		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
@@ -1862,7 +1868,23 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// save old route shader, internal config, and banned users to bring over to new buyer
 	routeShader, routeShaderErr := s.Storage.RouteShader(ctx, oldBuyerID)
+	if _, ok := err.(*storage.DoesNotExistError); !ok {
+		err = fmt.Errorf("UpdateGameConfiguration() failed to look up buyer route shader: %v", err)
+		core.Error("%v", err)
+		return err
+	} else {
+		routeShader = core.NewRouteShader()
+	}
+
 	internalConfig, internalConfigErr := s.Storage.InternalConfig(ctx, oldBuyerID)
+	if _, ok := err.(*storage.DoesNotExistError); !ok {
+		err = fmt.Errorf("UpdateGameConfiguration() failed to look up buyer internal config: %v", err)
+		core.Error("%v", err)
+		return err
+	} else {
+		internalConfig = core.NewInternalConfig()
+	}
+
 	bannedUsers, bannedUsersErr := s.Storage.BannedUsers(ctx, oldBuyerID)
 
 	// Remove everything that has a FK to old buyer ID
