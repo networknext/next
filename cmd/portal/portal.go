@@ -950,9 +950,10 @@ func generateOverlayBinFile(ctx context.Context, db storage.Storer, env string, 
 	// Upload to GCP for relay pusher to send over to relay backends
 	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
 
-	err = gsutilCpCommand.Run()
+	output, err := gsutilCpCommand.CombinedOutput()
 	if err != nil {
 		err := fmt.Errorf("error copying overlay.bin to %s: %v", bucketName, err)
+		core.Error(string(output))
 		return err
 	}
 
