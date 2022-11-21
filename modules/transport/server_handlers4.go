@@ -1926,7 +1926,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 			Version:   SessionMapPointVersion,
 			Latitude:  float64(state.Input.Location.Latitude),
 			Longitude: float64(state.Input.Location.Longitude),
-			SessionID: state.Input.SessionID,
+			SessionID: state.Packet.SessionID,
 		},
 		LargeCustomer: state.Buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    state.Input.EverOnNext,
