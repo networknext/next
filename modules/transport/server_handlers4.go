@@ -1932,8 +1932,6 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 		EverOnNext:    state.Input.EverOnNext,
 	}
 
-	fmt.Println("trigger sem")
-
 	return &portalData
 }
 
