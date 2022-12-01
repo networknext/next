@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -28,6 +30,22 @@ var websiteStatsMutex sync.RWMutex
 var websiteStats LiveStats
 var statsRefreshInterval time.Duration
 
+var PLATFORM_TYPES = []string{
+	"PS4",
+	"PS5",
+	"XBOX",
+	"Switch",
+	"Linux",
+	"Mac",
+	"PC",
+}
+
+var CONNECTION_TYPES = []string{
+	"Wired",
+	"WiFi",
+	"Mobile",
+}
+
 func main() {
 	service := common.CreateService("website_cruncher")
 
@@ -37,13 +55,91 @@ func main() {
 
 	service.LeaderElection(false)
 
-	StartStatCollection(service)
+	StartDataCollection(service)
 
 	service.Router.HandleFunc("/stats", getAllStats())
+	service.Router.HandleFunc("/sessions/counts", getLiveSessionCounts())
+	service.Router.HandleFunc("/sessions/list", getTopSessionsList())
 
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+func getTopSessionsList() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		topSessionsList := make([]TopSession, 10)
+
+		// TODO: call out to redis for 10 sessions
+
+		for i := 0; i < 10; i++ {
+			topSessionsList[i] = TopSession{}
+
+			numSlices := common.RandomInt(18, 60)
+
+			slices := make([]SessionSlice, numSlices)
+
+			for j := 0; j < numSlices; j++ {
+				slices[j] = SessionSlice{
+					Timestamp: time.Now().Add(time.Second * time.Duration(-10*(numSlices-i))),
+					Next: Stats{
+						RTT:        float32(common.RandomInt(0, 30)),
+						Jitter:     float32(common.RandomInt(0, 30)),
+						PacketLoss: 0,
+					},
+					Direct: Stats{
+						RTT:        float32(common.RandomInt(100, 2000)),
+						Jitter:     float32(common.RandomInt(100, 2000)),
+						PacketLoss: float32(common.RandomInt(0, 100)),
+					},
+				}
+			}
+
+			topSessionsList[i].Slices = slices
+
+			directRTT := int32(common.RandomInt(100, 2000))
+			nextRTT := int32(common.RandomInt(0, 60))
+
+			topSessionsList[i].Meta = SessionMeta{
+				ISP:            fmt.Sprintf("%s Communications", common.RandomString(6)),
+				Datacenter:     fmt.Sprintf("provider.%s", common.RandomString(6)),
+				Platform:       PLATFORM_TYPES[common.RandomInt(0, len(PLATFORM_TYPES)-1)],
+				ConnectionType: CONNECTION_TYPES[common.RandomInt(0, len(CONNECTION_TYPES)-1)],
+				DirectRTT:      directRTT,
+				NextRTT:        nextRTT,
+				Improvement:    directRTT - nextRTT,
+			}
+		}
+
+		sort.Slice(topSessionsList, func(i int, j int) bool {
+			return topSessionsList[i].Meta.Improvement > topSessionsList[j].Meta.Improvement
+		})
+
+		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(topSessionsList); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func getLiveSessionCounts() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		liveSessionCounts := LiveSessionCounts{
+			TotalOnNext:   int32(common.RandomInt(0, 1000)),
+			TotalSessions: int32(common.RandomInt(2000, 10000)),
+		}
+
+		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(liveSessionCounts); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 }
 
 func getAllStats() func(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +166,9 @@ func getAllStats() func(w http.ResponseWriter, r *http.Request) {
 		newPlaytime := oldPlaytime + (deltaPlaytimePerSecond * currentSecond)
 
 		newStats := LiveStats{
-			UniquePlayers:             int64(newUniquePlayers),
-			AcceleratedBandwidth:      int64(newBanwidth),
-			AcceleratedPlayTime:       int64(newPlaytime),
+			UniquePlayers:             int32(newUniquePlayers),
+			AcceleratedBandwidth:      int32(newBanwidth),
+			AcceleratedPlayTime:       int32(newPlaytime),
 			UniquePlayersDelta:        stats.UniquePlayersDelta,
 			AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
 			AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
@@ -94,6 +190,7 @@ func currentStats() LiveStats {
 	websiteStatsMutex.RUnlock()
 
 	return stats
+
 }
 
 func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
@@ -113,15 +210,57 @@ func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *h
 
 // todo - setup in service
 type LiveStats struct {
-	UniquePlayers             int64 `json:"unique_players"`
-	AcceleratedPlayTime       int64 `json:"accelerated_play_time"`
-	AcceleratedBandwidth      int64 `json:"accelerated_bandwidth"`
-	UniquePlayersDelta        int64 `json:"unique_players_delta"`
-	AcceleratedPlayTimeDelta  int64 `json:"accelerated_play_time_delta"`
-	AcceleratedBandwidthDelta int64 `json:"accelerated_bandwidth_delta"`
+	UniquePlayers             int32 `json:"unique_players"`
+	AcceleratedPlayTime       int32 `json:"accelerated_play_time"`
+	AcceleratedBandwidth      int32 `json:"accelerated_bandwidth"`
+	UniquePlayersDelta        int32 `json:"unique_players_delta"`
+	AcceleratedPlayTimeDelta  int32 `json:"accelerated_play_time_delta"`
+	AcceleratedBandwidthDelta int32 `json:"accelerated_bandwidth_delta"`
 }
 
-func StartStatCollection(service *common.Service) {
+type LiveSessionCounts struct {
+	TotalSessions int32 `json:"total_sessions"`
+	TotalOnNext   int32 `json:"total_on_next"`
+}
+
+// TODO: Move these somewhere else - don't want to use old routing structs
+
+type Stats struct {
+	RTT        float32 `json:"rtt"`
+	Jitter     float32 `json:"jitter"`
+	PacketLoss float32 `json:"packet_loss"`
+}
+
+type Envelope struct {
+	Up   int32 `json:"up"`
+	Down int32 `json:"down"`
+}
+type SessionSlice struct {
+	Timestamp time.Time `json:"timestamp"`
+	Next      Stats     `json:"next"`
+	Direct    Stats     `json:"direct"`
+	Envelope  Envelope  `json:"envelope"`
+}
+type SessionMeta struct {
+	ISP            string `json:"isp"`
+	Datacenter     string `json:"datacenter"`
+	Platform       string `json:"platform"`
+	ConnectionType string `json:"connection"`
+	DirectRTT      int32  `json:"direct_rtt"`
+	NextRTT        int32  `json:"next_rtt"`
+	Improvement    int32  `json:"improvement"`
+}
+type SessionPoint struct {
+	Latitude  float32 `json:"latitude"`
+	Longitude float32 `json:"longitude"`
+}
+
+type TopSession struct {
+	Slices []SessionSlice `json:"slices"`
+	Meta   SessionMeta    `json:"meta"`
+}
+
+func StartDataCollection(service *common.Service) {
 
 	ticker := time.NewTicker(statsRefreshInterval)
 
@@ -139,23 +278,23 @@ func StartStatCollection(service *common.Service) {
 				currentStats := currentStats()
 
 				// todo - grab stats from somewhere (looker, redis, etc)
-				newStats.UniquePlayers = int64(common.RandomInt(int(currentStats.UniquePlayers), int(currentStats.UniquePlayers)+1000))
+				newStats.UniquePlayers = int32(common.RandomInt(int(currentStats.UniquePlayers), int(currentStats.UniquePlayers)+1000))
 				newStats.UniquePlayersDelta = newStats.UniquePlayers - currentStats.UniquePlayers
 
-				newStats.AcceleratedBandwidth = int64(common.RandomInt(int(currentStats.AcceleratedBandwidth), int(currentStats.AcceleratedBandwidth)+1000))
+				newStats.AcceleratedBandwidth = int32(common.RandomInt(int(currentStats.AcceleratedBandwidth), int(currentStats.AcceleratedBandwidth)+1000))
 				newStats.AcceleratedBandwidthDelta = newStats.AcceleratedBandwidth - currentStats.AcceleratedBandwidth
 
-				newStats.AcceleratedPlayTime = int64(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
+				newStats.AcceleratedPlayTime = int32(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
 				newStats.AcceleratedPlayTimeDelta = newStats.AcceleratedPlayTime - currentStats.AcceleratedPlayTime
 
-				var buffer bytes.Buffer
-				encoder := gob.NewEncoder(&buffer)
+				var statsBuffer bytes.Buffer
+				encoder := gob.NewEncoder(&statsBuffer)
 				if err := encoder.Encode(newStats); err != nil {
 					core.Error("failed to encode new stats")
 					continue
 				}
 
-				newStatsData := buffer.Bytes()
+				newStatsData := statsBuffer.Bytes()
 
 				dataStores := []common.DataStoreConfig{
 					{
