@@ -201,65 +201,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	// TODO: Remove page related functions when switching over to Looker 100%
-	// Only grab the live session on the first request
-	if args.Page == 0 {
-		// Fetch live sessions if there are any
-		liveSessions, err := s.FetchCurrentTopSessions(r, "", false)
-		if err != nil {
-			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
-			core.Error("%v", err)
-			return err
-		}
-
-		for _, session := range liveSessions {
-			// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
-			if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
-				sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-				defer sessionSlicesClient.Close()
-
-				slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
-				if err != nil && err != redis.ErrNil {
-					err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
-					core.Error("%v", err)
-					err = fmt.Errorf("UserSessions() failed getting session slices")
-					return err
-				}
-
-				// If a slice exists, add the session and the timestamp
-				if len(slices) > 0 {
-					sliceString := strings.Split(slices[0], "|")
-					if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-						err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
-						core.Error("%v", err)
-						return err
-					}
-
-					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
-
-					buyer, exists := buyerMap[session.BuyerID]
-					if !exists {
-						core.Error("UserSessions() session meta buyer ID %016x does not exist", session.BuyerID)
-						continue
-					}
-
-					if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-						// Don't show sessions where the company code does not match the request's
-						continue
-					}
-
-					reply.Sessions = append(reply.Sessions, UserSession{
-						Meta:      session,
-						Timestamp: sessionSlice.Timestamp.UTC(),
-					})
-				} else {
-					// Increment counter
-					s.Metrics.NoSlicesFailure.Add(1)
-				}
-			}
-		}
-	}
-
 	useLooker := s.UseLooker
 	useBigTable := !useLooker && s.UseBigtable
 
@@ -1593,6 +1534,8 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) && anonymise {
 			meta.Anonymise()
 		}
+
+		meta.UserHash = 0 // If any hashes slip through, don't use them - GDPR compliance
 
 		// Split the sessions metas into two slices so we can sort them separately.
 		// This is necessary because if we were to force sessions next, then sorting
@@ -3355,7 +3298,6 @@ func (s *BuyersService) LookerSessionDetails(ctx context.Context, sessionID stri
 	sessionMeta := transport.SessionMeta{
 		ID:           uint64(lookupData.SessionID),
 		BuyerID:      uint64(metaEntry.BuyerID),
-		UserHash:     uint64(metaEntry.UserHash),
 		NearbyRelays: nearRelays,
 		ClientAddr:   metaEntry.ClientAddress,
 		ServerAddr:   metaEntry.ServerAddress,
