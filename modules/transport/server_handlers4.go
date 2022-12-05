@@ -1872,7 +1872,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 		Meta: SessionMeta{
 			Version:         SessionMetaVersion,
 			ID:              state.Packet.SessionID,
-			UserHash:        state.Packet.UserHash,
+			UserHash:        0, // We don't want the user hash in the live data path - GDPR compliance
 			DatacenterName:  state.Datacenter.Name,
 			DatacenterAlias: state.Datacenter.AliasName,
 			OnNetworkNext:   state.Packet.Next,
