@@ -312,3 +312,33 @@ void FNetworkNextSocketServer::UpgradeClient(TSharedPtr<const FInternetAddr> Rem
         TCHAR_TO_ANSI(*UserId)
     );
 }
+
+void FNetworkNextSocketServer::ServerEvent(TSharedPtr<const FInternetAddr> RemoteAddr, uint64 ServerEvents)
+{
+    if (!NetworkNextServer)
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("ServerEvent called before the server socket was bound."));
+        return;
+    }
+
+    if (!RemoteAddr.IsValid())
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("ServerEvent called on an invalid RemoteAddr."));
+        return;
+    }
+
+    FString ClientAddress = RemoteAddr.Get()->ToString(true);
+
+    next_address_t from;
+    if (next_address_parse(&from, TCHAR_TO_ANSI(*ClientAddress)) != NEXT_OK)
+    {
+        UE_LOG(LogNetworkNext, Warning, TEXT("ServerEvent called with unparsable IP address: %s"), *ClientAddress);
+        return;
+    }
+
+    next_server_event(
+        NetworkNextServer,
+        &from,
+        ServerEvents
+    );
+}
