@@ -1,0 +1,7 @@
+[map "73635db9-d25f-3969-93f1-048c6b4a9db4"]
+	object = d6c1a0e9785c01ce2695506818fee08003eaf29d
+	type = include + expand tree
+[map "886475c8-6f4a-3042-bb32-543b373f474d"]
+	object = 98134f9c7d074110b0ef6a43a477c7e26160ea0b
+	path = ue4
+	type = expand module
