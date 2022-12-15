@@ -121,4 +121,10 @@ public:
      */
 
     void UpgradeClient(TSharedPtr<const FInternetAddr> RemoteAddr, const FString& UserId);
+
+    /**
+     * Set server events on a player
+     */
+
+    void ServerEvent(TSharedPtr<const FInternetAddr> RemoteAddr, uint64 ServerEvents);
 };
