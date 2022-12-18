@@ -25,7 +25,7 @@ type Relay struct {
 
 type Buyer struct {
 	ID             uint64
-	Live           bool         // todo: make sure we are checking this
+	Live           bool // todo: make sure we are checking this
 	Debug          bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader

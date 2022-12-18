@@ -11,6 +11,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const TestRouterPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
+const TestBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
+
 var cmd *exec.Cmd
 
 func cleanup() {
@@ -285,7 +288,7 @@ func func_backend4() {
 }
 
 func func_backend5() {
-	bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
+	bash(fmt.Sprintf("make ./dist/func_backend5 -j && cd dist && ROUTER_PRIVATE_KEY=%s BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_test_backend(tests []string) {
