@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -214,15 +214,16 @@ int main( int argc, char ** argv )
 
     next_init( &global_allocator, &config );
     
-    int iterations = 0;
+    int duration_seconds = 0;
     if ( argc == 2 ) 
     {
-        iterations = atoi( argv[1] );
+        duration_seconds = atoi( argv[1] );
     }
 
 #if FUZZ_TEST
     Allocator fuzz_allocator;
     next_address_t fuzz_address;
+    memset( &fuzz_address, 0, sizeof(fuzz_address) );
     fuzz_address.type = NEXT_ADDRESS_IPV4;
     next_platform_socket_t * fuzz_socket = next_platform_socket_create( &fuzz_allocator, &fuzz_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 1024*1024, 1024*1024, true );
     if ( !fuzz_socket )
@@ -477,12 +478,11 @@ int main( int argc, char ** argv )
             }
         }
 
-        // optionally quit after a number of iterations
+        // optionally quit after a number of seconds
 
-        if ( iterations > 0 )
+        if ( duration_seconds > 0 )
         {
-            iterations--;
-            if ( iterations == 0 )
+            if ( (int) next_time() > duration_seconds )
                 quit = true;
         }
 

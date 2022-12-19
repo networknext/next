@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -80,8 +80,8 @@ int main()
 
         if ( next_client_ready( client ) )
         {
-	        next_client_send_packet( client, packet_data, sizeof(packet_data) );
-	    }
+            next_client_send_packet( client, packet_data, sizeof(packet_data) );
+        }
         
         next_sleep( 0.25 );
     }

@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
+size_t sceLibcHeapSize = 100*1024*1024; // give 100MB heap to libc
+
 int main()
 {
     next_quiet( true );

@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -42,30 +42,30 @@ const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/
 
 int main()
 {
-	printf( "\nRunning tests...\n\n" );
+    printf( "\nRunning tests...\n\n" );
 
-	next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level( NEXT_LOG_LEVEL_NONE );
 
-	if ( next_init(NULL, NULL) != NEXT_OK )
-	{
-		printf( "error: failed to initialize network next\n" );
-	}
+    if ( next_init(NULL, NULL) != NEXT_OK )
+    {
+        printf( "error: failed to initialize network next\n" );
+    }
 
-	next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level( NEXT_LOG_LEVEL_NONE );
 
-	next_test();
+    next_test();
 
-	next_term();
+    next_term();
 
-	fflush( stdout );
+    fflush( stdout );
 
-	printf( "\nAll tests completed successfully!\n\n" );
+    printf( "\nAll tests completed successfully!\n\n" );
 
-	printf( "Starting client...\n\n" );
+    printf( "Starting client...\n\n" );
 
-	next_log_level( NEXT_LOG_LEVEL_INFO );
-	
-	signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
+    next_log_level( NEXT_LOG_LEVEL_INFO );
+    
+    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
     
     next_config_t config;
     next_default_config( &config );

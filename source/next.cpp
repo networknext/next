@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -32,6 +32,7 @@
 #if defined( _MSC_VER )
 #include <malloc.h>
 #endif // #if defined( _MSC_VER )
+#include <time.h>
 
 #if defined( _MSC_VER )
 #pragma warning(push)
@@ -47,11 +48,11 @@
 #define NEXT_SERVER_BACKEND_HOSTNAME                 "dev5.spacecats.net"
 #define NEXT_DISABLE_ADVANCED_PACKET_FILTER                             1
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_PORT                                  "40000"
+#define NEXT_SERVER_BACKEND_PORT                                  "45000"
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
-#define NEXT_SERVER_AUTODETECT_TIMEOUT                         		  9.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                          5.0
+#define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -130,11 +131,6 @@
 #define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
 #define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
-#define NEXT_MATCH_DATA_RESPONSE_OK                                     0
-#define NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER                       1
-#define NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED                 2
-#define NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE                    3
-
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
 #define NEXT_FLAGS_PREVIOUS_UPDATE_STILL_PENDING                   (1<<2)
@@ -151,7 +147,7 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-#define NEXT_MAX_SESSION_DATA_BYTES                                   511
+#define NEXT_MAX_SESSION_DATA_BYTES                                   500
 
 #define NEXT_MAX_SESSION_UPDATE_RETRIES                                10
 
@@ -438,8 +434,6 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// #define NEXT_ENABLE_MEMORY_CHECKS 0
-
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -471,7 +465,11 @@ bool next_platform_getenv_bool(const char *name)
 
 double next_time()
 {
+#if NEXT_DEVELOPMENT
+    return next_platform_time() + 100000.0;
+#else // #if NEXT_DEVELOPMENT
     return next_platform_time();
+#endif // #if NEXT_DEVELOPMENT
 }
 
 void next_sleep( double time_seconds )
@@ -1053,7 +1051,7 @@ uint64_t next_datacenter_id( const char * name )
 uint64_t next_protocol_version()
 {
 #if !NEXT_DEVELOPMENT
-	#define VERSION_STRING(major,minor) #major #minor
+    #define VERSION_STRING(major,minor) #major #minor
     return next_hash_string( VERSION_STRING(NEXT_VERSION_MAJOR_INT, NEXT_VERSION_MINOR_INT) );
 #else // #if !NEXT_DEVELOPMENT
     return 0;
@@ -1292,8 +1290,7 @@ namespace next
         BitWriter( void * data, int bytes ) : m_data( (uint32_t*) data ), m_numWords( bytes / 4 )
         {
             next_assert( data );
-            next_assert( ( size_t(data) % 4 ) == 0 );
-            next_assert( ( bytes % 4 ) == 0 );
+            next_assert( ( bytes % 4 ) == 0 );                // IMPORTANT: buffer length should be a multiple of 4 bytes
             m_numBits = m_numWords * 32;
             m_bitsWritten = 0;
             m_wordIndex = 0;
@@ -1508,7 +1505,6 @@ namespace next
     #endif // #if NEXT_ASSERTS
         {
             next_assert( data );
-            next_assert( ( size_t(data) % 4 ) == 0 );
             m_numBits = m_numBytes * 8;
             m_bitsRead = 0;
             m_scratch = 0;
@@ -3473,17 +3469,17 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
 {
 #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
 
-	(void) data;
-	(void) magic;
-	(void) from_address;
-	(void) from_address_bytes;
-	(void) from_port;
-	(void) to_address;
-	(void) to_address_bytes;
-	(void) to_port;
-	(void) packet_length;
+    (void) data;
+    (void) magic;
+    (void) from_address;
+    (void) from_address_bytes;
+    (void) from_port;
+    (void) to_address;
+    (void) to_address_bytes;
+    (void) to_port;
+    (void) packet_length;
 
-	return true;
+    return true;
 
 #else // #if NEXT_DISABLE_ADVANCED_PACKET_FILTER
 
@@ -3952,7 +3948,7 @@ int next_read_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int e
     next::ReadStream stream( packet_data, end );
 
     uint8_t * dummy = (uint8_t*) alloca( begin );
-	serialize_bytes( stream, dummy, begin );
+    serialize_bytes( stream, dummy, begin );
 
     if ( signed_packet && signed_packet[packet_id] )
     {
@@ -4312,9 +4308,13 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME_SDK5" );
 
-    // IMPORTANT: For backwards compatibility
+    if ( !next_server_backend_hostname_override ) 
+    {
+        next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    }
+
     if ( !next_server_backend_hostname_override )
     {
         next_server_backend_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
@@ -4390,8 +4390,11 @@ int next_init( void * context, next_config_t * config_in )
     next_signed_packets[NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET] = 1;
 
     next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
     next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
@@ -4540,7 +4543,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
-	float mean_rtt;						// mean rtt (ms)
+    float mean_rtt;                        // mean rtt (ms)
     float min_rtt;                      // minimum rtt (ms)
     float max_rtt;                      // maximum rtt (ms)
     float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
@@ -4694,9 +4697,13 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         }
     }
 
-    if ( num_pings_sent > 0 )
+    if ( num_pings_sent > 0 && num_pongs_received > 0 )
     {
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
+    }
+    else
+    {
+        stats->packet_loss = 100.0f;
     }
 
     // IMPORTANT: Sometimes post route change we get some weird jitter values because we catch some pings from
@@ -4748,7 +4755,6 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
 
     if ( num_pongs == 0 )
     {
-        stats->packet_loss = 100.0f;
         return;
     }
 
@@ -6039,7 +6045,7 @@ bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_route_manager_verify_sentinels( route_manager );
 
     if ( !route_manager->route_data.current_route )
-    	return false;
+        return false;
 
     next_assert( route_manager->route_data.current_route );
     next_assert( to );
@@ -7679,13 +7685,13 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_platform_mutex_release( &client->route_manager_mutex );
 
                 // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
-			    next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
-			    next_assert( notify );
-			    notify->type = NEXT_CLIENT_NOTIFY_READY;
-			    {
-			        next_platform_mutex_guard( &client->notify_mutex );
-			        next_queue_push( client->notify_queue, notify );
-			    }
+                next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
+                next_assert( notify );
+                notify->type = NEXT_CLIENT_NOTIFY_READY;
+                {
+                    next_platform_mutex_guard( &client->notify_mutex );
+                    next_queue_push( client->notify_queue, notify );
+                }
             }
             break;
 
@@ -8190,13 +8196,15 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 
     if ( send_route_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay" );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
     }
 
     if ( send_continue_request )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay" );
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
     }
 }
@@ -8592,8 +8600,8 @@ void next_client_update( next_client_t * client )
 
 NEXT_BOOL next_client_ready( next_client_t * client )
 {
-	next_assert( client );
-	return client->ready ? NEXT_TRUE : NEXT_FALSE;
+    next_assert( client );
+    return client->ready ? NEXT_TRUE : NEXT_FALSE;
 }
 
 void next_client_send_packet( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
@@ -8694,14 +8702,14 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( result )
             {
-	            next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
-	            client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
-	        }
-	        else
-	        {
-	        	// could not send over network next. race condition with fallback to direct. send direct instead...
-	        	send_direct = true;
-	        }
+                next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+                client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
+            }
+            else
+            {
+                // could not send over network next. race condition with fallback to direct. send direct instead...
+                send_direct = true;
+            }
         }
 
         if ( send_direct )
@@ -9659,8 +9667,8 @@ struct NextBackendServerInitRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t request_id;
     uint64_t customer_id;
+    uint64_t request_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
@@ -9669,8 +9677,8 @@ struct NextBackendServerInitRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        request_id = 0;
         customer_id = 0;
+        request_id = 0;
         datacenter_id = 0;
         datacenter_name[0] = '\0';
     }
@@ -9680,8 +9688,8 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
@@ -9721,8 +9729,8 @@ struct NextBackendServerUpdateRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
-    uint64_t request_id;
     uint64_t customer_id;
+    uint64_t request_id;
     uint64_t datacenter_id;
     uint32_t num_sessions;
     next_address_t server_address;
@@ -9732,8 +9740,8 @@ struct NextBackendServerUpdateRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
-        request_id = 0;
         customer_id = 0;
+        request_id = 0;
         datacenter_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
@@ -9744,8 +9752,8 @@ struct NextBackendServerUpdateRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
@@ -10031,12 +10039,10 @@ struct NextBackendMatchDataRequestPacket
 struct NextBackendMatchDataResponsePacket
 {
     uint64_t session_id;
-    uint32_t response;
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, session_id );
-        serialize_bits( stream, response, 8 );
         return true;
     }
 };
@@ -10056,8 +10062,8 @@ struct next_session_entry_t
     uint64_t user_hash;
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
-	uint64_t previous_server_events;
-	uint64_t current_server_events;
+    uint64_t previous_server_events;
+    uint64_t current_server_events;
     uint8_t client_open_session_sequence;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -10126,6 +10132,7 @@ struct next_session_entry_t
     double update_last_send_time;
     uint8_t update_type;
     int update_num_tokens;
+    bool session_update_timed_out;
 
     NEXT_DECLARE_SENTINEL(7)
 
@@ -10264,7 +10271,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(29)
 
-	uint32_t session_flush_update_sequence;
+    uint32_t session_flush_update_sequence;
     bool session_update_flush;
     bool session_update_flush_finished;
     bool match_data_flush;
@@ -10445,6 +10452,8 @@ void next_session_manager_destroy( next_session_manager_t * session_manager )
 
 bool next_session_manager_expand( next_session_manager_t * session_manager )
 {
+    next_assert( session_manager );
+
     next_session_manager_verify_sentinels( session_manager );
 
     int new_size = session_manager->size * 2;
@@ -10453,11 +10462,11 @@ bool next_session_manager_expand( next_session_manager_t * session_manager )
     next_address_t * new_addresses = (next_address_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_address_t) );
     next_session_entry_t * new_entries = (next_session_entry_t*) next_malloc( session_manager->context, size_t(new_size) * sizeof(next_session_entry_t) );
 
-    next_assert( session_manager->session_ids );
-    next_assert( session_manager->addresses );
-    next_assert( session_manager->entries );
+    next_assert( new_session_ids );
+    next_assert( new_addresses );
+    next_assert( new_entries );
 
-    if ( session_manager->session_ids == NULL || session_manager->addresses == NULL || session_manager->entries == NULL )
+    if ( new_session_ids == NULL || new_addresses == NULL || new_entries == NULL )
     {
         next_free( session_manager->context, new_session_ids );
         next_free( session_manager->context, new_addresses );
@@ -10900,7 +10909,7 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
     {
         next_assert( sign_public_key );
 
-	    const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
         {
@@ -10917,7 +10926,7 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
             next_printf( NEXT_LOG_LEVEL_DEBUG, "signed backend packet did not verify" );
             return NEXT_ERROR;
         }
-	}
+    }
 
     switch ( packet_id )
     {
@@ -10994,11 +11003,11 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
 
 // ---------------------------------------------------------------
 
-#define NEXT_SERVER_COMMAND_UPGRADE_SESSION             			0
-#define NEXT_SERVER_COMMAND_TAG_SESSION                 			1
-#define NEXT_SERVER_COMMAND_SERVER_EVENT                			2
-#define NEXT_SERVER_COMMAND_MATCH_DATA                  			3
-#define NEXT_SERVER_COMMAND_FLUSH                       			4
+#define NEXT_SERVER_COMMAND_UPGRADE_SESSION                         0
+#define NEXT_SERVER_COMMAND_TAG_SESSION                             1
+#define NEXT_SERVER_COMMAND_SERVER_EVENT                            2
+#define NEXT_SERVER_COMMAND_MATCH_DATA                              3
+#define NEXT_SERVER_COMMAND_FLUSH                                   4
 #define NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK             5
 #define NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK     6
 #define NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK            7
@@ -11066,8 +11075,8 @@ struct next_server_command_set_payload_receive_callback_t : public next_server_c
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_INIT_TIMED_OUT                       4
-#define NEXT_SERVER_NOTIFY_READY                        		5
-#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                  		6
+#define NEXT_SERVER_NOTIFY_READY                                5
+#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                          6
 #define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        7
 
 struct next_server_notify_t
@@ -11227,14 +11236,14 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
-	void (*packet_receive_callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
-	void * packet_receive_callback_data;
+    void (*packet_receive_callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
+    void * packet_receive_callback_data;
 
-	int (*send_packet_to_address_callback)( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
-	void * send_packet_to_address_callback_data;
+    int (*send_packet_to_address_callback)( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
+    void * send_packet_to_address_callback_data;
 
-	int (*payload_receive_callback)( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
-	void * payload_receive_callback_data;
+    int (*payload_receive_callback)( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
+    void * payload_receive_callback_data;
 
     NEXT_DECLARE_SENTINEL(12)
 };
@@ -11438,7 +11447,9 @@ bool next_autodetect_google( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11447,7 +11458,9 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -11572,7 +11585,9 @@ bool next_autodetect_amazon( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11581,7 +11596,9 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
+    char cmd[1024];
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    file = _popen ( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -11811,41 +11828,41 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     bool have_cached_whois = false;
     char whois_buffer[1024*64];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-	FILE * f = fopen( "whois.txt", "r");
-	if ( f )
-	{
-		fseek( f, 0, SEEK_END );
-		size_t fsize = ftell( f );
-		fseek( f, 0, SEEK_SET );
-		if ( fsize > sizeof(whois_buffer) - 1 )
-		{
-			fsize = sizeof(whois_buffer) - 1;
-		}
-		if ( fread( whois_buffer, fsize, 1, f ) == 1 )
-		{
-			next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
-			have_cached_whois = true;
-		}
-		fclose( f );
-	}
+    FILE * f = fopen( "whois.txt", "r");
+    if ( f )
+    {
+        fseek( f, 0, SEEK_END );
+        size_t fsize = ftell( f );
+        fseek( f, 0, SEEK_SET );
+        if ( fsize > sizeof(whois_buffer) - 1 )
+        {
+            fsize = sizeof(whois_buffer) - 1;
+        }
+        if ( fread( whois_buffer, fsize, 1, f ) == 1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server successfully read cached whois.txt" );
+            have_cached_whois = true;
+        }
+        fclose( f );
+    }
 
-	// if we couldn't read whois.txt, run whois locally and store the result to whois.txt
+    // if we couldn't read whois.txt, run whois locally and store the result to whois.txt
 
-	if ( !have_cached_whois )
-	{
-		next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
-	    char * whois_output = &whois_buffer[0];
-	    size_t bytes_remaining = sizeof(whois_buffer) - 1;
-	    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
-   		FILE * f = fopen( "whois.txt", "w" );
-   		if ( f )
-   		{
-   			next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
-   			fputs( whois_buffer, f );
-   			fflush( f );
-   			fclose( f );
-   		}
-	}
+    if ( !have_cached_whois )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server running whois locally" );
+        char * whois_output = &whois_buffer[0];
+        size_t bytes_remaining = sizeof(whois_buffer) - 1;
+        next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+           FILE * f = fopen( "whois.txt", "w" );
+           if ( f )
+           {
+               next_printf( NEXT_LOG_LEVEL_INFO, "server cached whois result to whois.txt" );
+               fputs( whois_buffer, f );
+               fflush( f );
+               fclose( f );
+           }
+    }
 
     // check against multiplay supplier mappings
 
@@ -11853,7 +11870,9 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_line[1024];
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 10 -vs 2>/dev/null", "r" );
+    char cmd[1024];
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    file = popen( cmd, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11896,13 +11915,15 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+        next_printf( "-------------------------\n%s-------------------------\n", multiplay_buffer );
         const char * separators = "\n\r\n";
         char * line = strtok( whois_buffer, separators );
         while ( line )
         {
-        	next_printf( "%s", line );
-        	line = strtok( NULL, separators );
+            next_printf( "%s", line );
+            line = strtok( NULL, separators );
         }
+        next_printf( "-------------------------\n" );
         return false;
     }
 
@@ -12032,9 +12053,9 @@ void next_server_internal_initialize( next_server_internal_t * server )
         server->server_init_timeout_time = next_time() + NEXT_SERVER_INIT_TIMEOUT;
     }
     
-	next_server_internal_resolve_hostname( server );
+    next_server_internal_resolve_hostname( server );
 
-	next_server_internal_autodetect( server );
+    next_server_internal_autodetect( server );
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -12320,9 +12341,9 @@ void next_server_internal_send_packet_to_address( next_server_internal_t * serve
 
     if ( server->send_packet_to_address_callback )
     {
-    	void * callback_data = server->send_packet_to_address_callback_data;
-    	if ( server->send_packet_to_address_callback( callback_data, address, packet_data, packet_bytes ) != 0 )
-    		return;
+        void * callback_data = server->send_packet_to_address_callback_data;
+        if ( server->send_packet_to_address_callback( callback_data, address, packet_data, packet_bytes ) != 0 )
+            return;
     }
 
     next_platform_socket_send_packet( server->socket, address, packet_data, packet_bytes );
@@ -12534,7 +12555,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
     next_server_internal_verify_sentinels( server );
 
     if ( server->flushing )
-    	return;
+        return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -12611,7 +12632,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
         return;
 
     if ( server->flushing )
-    	return;
+        return;
 
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
@@ -12747,18 +12768,18 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
 void next_server_internal_update_flush( next_server_internal_t * server )
 {
-	if ( !server->flushing )
-		return;
+    if ( !server->flushing )
+        return;
 
-	if ( server->flushed )
-		return;
+    if ( server->flushed )
+        return;
 
     if ( next_global_config.disable_network_next || server->state != NEXT_SERVER_STATE_INITIALIZED || 
-    	 ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush ) )
+         ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush ) )
     {
-    	next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
-    	
-    	server->flushed = true;
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
+        
+        server->flushed = true;
 
         next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
@@ -12824,14 +12845,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memset( magic, 0, sizeof(magic) );
             if ( !next_advanced_packet_filter( packet_data + begin, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, end - begin ) )
             {
-            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
                 return;
             }
         }
     }
 
-	begin += 16;
-	end -= 2;
+    begin += 16;
+    end -= 2;
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
     {
@@ -12953,7 +12974,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET )
     {
-    	const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes <= 9 )
         {
@@ -13030,17 +13051,17 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. packet failed to read" );
             return;
         }
 
         if ( packet.request_id != server->server_update_request_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. request id does not match" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. request id does not match" );
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server update response packet from backend" );
 
         server->server_update_request_id = 0;
         server->server_update_resend_time = 0.0;
@@ -13095,26 +13116,26 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. packet failed to read" );
             return;
         }
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. could not find session %" PRIx64, packet.session_id );
             return;
         }
 
         if ( !entry->waiting_for_update_response )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. not waiting for session response" );
             return;
         }
 
         if ( packet.slice_number != entry->update_sequence - 1 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. wrong sequence number" );
             return;
         }
 
@@ -13127,7 +13148,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session update response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
 
         bool multipath = packet.multipath;
 
@@ -13255,28 +13276,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         entry->match_data_response_received = true;
         entry->waiting_for_match_data_response = false;
-
-        if ( packet.response != NEXT_MATCH_DATA_RESPONSE_OK )
-        {
-            switch ( packet.response )
-            {
-                case NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER: 
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". unknown customer", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". signature check failed", packet.session_id );
-                    return;
-
-                case NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". customer not active", packet.session_id );
-                    return;
-
-                default:
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". response type %d", packet.session_id, packet.response );
-                    return;
-            }
-        }
 
         if ( entry->match_data_flush )
         {
@@ -13478,7 +13477,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-    	const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
         {
@@ -13550,7 +13549,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( next_basic_packet_filter( response_data, response_bytes ) );
         next_assert( next_advanced_packet_filter( response_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
 
-	    next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
+        next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
 
@@ -13561,7 +13560,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-    	const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
         {
@@ -13629,7 +13628,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( next_basic_packet_filter( response_data, response_bytes ) );
         next_assert( next_advanced_packet_filter( response_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
 
-	    next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
+        next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
 
@@ -13640,7 +13639,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-    	const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes <= NEXT_HEADER_BYTES )
         {
@@ -13676,7 +13675,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-    	const int packet_bytes = end - begin;
+        const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
         {
@@ -13720,7 +13719,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( next_basic_packet_filter( pong_packet_data, pong_packet_bytes ) );
         next_assert( next_advanced_packet_filter( pong_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, pong_packet_bytes ) );
 
-	    next_server_internal_send_packet_to_address( server, from, pong_packet_data, pong_packet_bytes );
+        next_server_internal_send_packet_to_address( server, from, pong_packet_data, pong_packet_bytes );
 
         return;
     }
@@ -13890,12 +13889,12 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
 
     if ( packet_bytes > 0 && packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 )
     {
-    	if ( server->payload_receive_callback )
-    	{
-    		void * callback_data = server->payload_receive_callback_data;
-    		if ( server->payload_receive_callback( callback_data, from, packet_data, packet_bytes ) )
-	    		return;
-    	}
+        if ( server->payload_receive_callback )
+        {
+            void * callback_data = server->payload_receive_callback_data;
+            if ( server->payload_receive_callback( callback_data, from, packet_data, packet_bytes ) )
+                return;
+        }
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -13924,7 +13923,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
 
     if ( packet_bytes == 0 )
-    	return;
+        return;
 
     next_assert( packet_bytes > 0 );
 
@@ -13933,15 +13932,15 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     if ( server->packet_receive_callback )
     {
-    	void * callback_data = server->packet_receive_callback_data;
+        void * callback_data = server->packet_receive_callback_data;
 
-	    server->packet_receive_callback( callback_data, &from, packet_data, &begin, &end );
+        server->packet_receive_callback( callback_data, &from, packet_data, &begin, &end );
 
-	    next_assert( begin >= 0 );
-	    next_assert( end <= NEXT_MAX_PACKET_BYTES );
+        next_assert( begin >= 0 );
+        next_assert( end <= NEXT_MAX_PACKET_BYTES );
 
-	    if ( end - begin <= 0 )
-	        return;    	
+        if ( end - begin <= 0 )
+            return;        
     }
 
 #if NEXT_DEVELOPMENT
@@ -13953,11 +13952,11 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     if ( packet_type != NEXT_PASSTHROUGH_PACKET )
     {
-    	next_server_internal_process_network_next_packet( server, &from, packet_data, begin, end );
+        next_server_internal_process_network_next_packet( server, &from, packet_data, begin, end );
     }
     else
     {
-    	begin += 1;
+        begin += 1;
         next_server_internal_process_passthrough_packet( server, &from, packet_data + begin, end - begin );
     }
 }
@@ -13970,7 +13969,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     next_server_internal_verify_sentinels( server );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-    	return;
+        return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -14024,7 +14023,7 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_server_internal_verify_sentinels( server );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-    	return;
+        return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -14064,7 +14063,7 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
     next_server_internal_verify_sentinels( server );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-    	return;
+        return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -14090,7 +14089,7 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     next_server_internal_verify_sentinels( server );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-    	return;
+        return;
 
     if ( next_global_config.disable_network_next )
         return;
@@ -14255,24 +14254,24 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
             case NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK:
             {
                 next_server_command_set_packet_receive_callback_t * cmd = (next_server_command_set_packet_receive_callback_t*) command;
-            	server->packet_receive_callback = cmd->callback;
-            	server->packet_receive_callback_data = cmd->callback_data;
+                server->packet_receive_callback = cmd->callback;
+                server->packet_receive_callback_data = cmd->callback_data;
             }
             break;
 
             case NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK:
             {
                 next_server_command_set_send_packet_to_address_callback_t * cmd = (next_server_command_set_send_packet_to_address_callback_t*) command;
-            	server->send_packet_to_address_callback = cmd->callback;
-            	server->send_packet_to_address_callback_data = cmd->callback_data;
+                server->send_packet_to_address_callback = cmd->callback;
+                server->send_packet_to_address_callback_data = cmd->callback_data;
             }
             break;
 
             case NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK:
             {
                 next_server_command_set_payload_receive_callback_t * cmd = (next_server_command_set_payload_receive_callback_t*) command;
-            	server->payload_receive_callback = cmd->callback;
-            	server->payload_receive_callback_data = cmd->callback_data;
+                server->payload_receive_callback = cmd->callback;
+                server->payload_receive_callback_data = cmd->callback_data;
             }
             break;
 
@@ -14293,10 +14292,18 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     const char * hostname = next_global_config.server_backend_hostname;
     const char * port = NEXT_SERVER_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT_SDK5" );
+    if ( !override_port )
+    {
+        override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
+    }
+    if ( !override_port )
+    {
+        override_port = next_platform_getenv( "NEXT_PORT" );
+    }
     if ( override_port )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        next_printf( NEXT_LOG_LEVEL_INFO, "override server backend port: '%s'", override_port );
         port = override_port;
     }
 
@@ -14310,6 +14317,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     if ( next_address_parse( &address, hostname ) == NEXT_OK )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server backend hostname is an address" );
         next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
         address.port = uint16_t( atoi(port) );
         success = true;
@@ -14386,24 +14394,24 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( finished )
     {
-		next_platform_thread_join( server->resolve_hostname_thread );
+        next_platform_thread_join( server->resolve_hostname_thread );
     }
     else
     {
-    	if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
-		}
+        if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+        }
     }
-	
-	next_platform_thread_destroy( server->resolve_hostname_thread );
-	
+    
+    next_platform_thread_destroy( server->resolve_hostname_thread );
+    
     server->resolve_hostname_thread = NULL;
     server->resolving_hostname = false;
     server->backend_address = result;
@@ -14412,10 +14420,10 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( result.type != NEXT_ADDRESS_NONE )
     {
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
-	}
-	else
-	{
+        next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
+    }
+    else
+    {
         next_printf( NEXT_LOG_LEVEL_INFO, "server failed to resolve backend hostname" );
         server->resolving_hostname = false;
     }
@@ -14447,7 +14455,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     next_address_to_string( &server_address_no_port, autodetect_address );
 
     if ( !next_global_config.disable_autodetect &&
-    	 ( autodetect_input[0] == '\0' 
+         ( autodetect_input[0] == '\0' 
             ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
@@ -14479,7 +14487,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
     {
-        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 2 );
+        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 1.25 );
     }
 #endif // #if NEXT_DEVELOPMENT
 
@@ -14509,8 +14517,8 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     if ( next_global_config.disable_network_next )
         return true;
 
-    if ( server->resolving_hostname )	// IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
-    	return true;
+    if ( server->resolving_hostname )    // IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
+        return true;
 
     if ( !server->autodetecting )
         return true;
@@ -14523,41 +14531,41 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     if ( finished )
     {
-		next_platform_thread_join( server->autodetect_thread );
+        next_platform_thread_join( server->autodetect_thread );
     }
     else
     {
-    	if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
-    	{
-    		// keep waiting
-		    return false;
-		}
-		else
-		{
-			// but don't wait forever...
-	    	next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
+        if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
+        {
+            // keep waiting
+            return false;
+        }
+        else
+        {
+            // but don't wait forever...
+            next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
     }
-	
-	next_platform_thread_destroy( server->autodetect_thread );
-	
+    
+    next_platform_thread_destroy( server->autodetect_thread );
+    
     server->autodetect_thread = NULL;
     server->autodetecting = false;
 
     if ( server->autodetect_actually_did_something )
     {
-	    if ( server->autodetect_succeeded )
-	    {
-		    memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
-		    strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
-		    server->datacenter_id = next_datacenter_id( server->datacenter_name );
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-		else
-		{
-		    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-		}
-	}
+        if ( server->autodetect_succeeded )
+        {
+            memset( server->datacenter_name, 0, sizeof(server->datacenter_name) );
+            strncpy( server->datacenter_name, server->autodetect_result, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            server->datacenter_id = next_datacenter_id( server->datacenter_name );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter failed. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        }
+    }
 
     return true;
 }
@@ -14568,11 +14576,11 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     next_assert( server );
 
-	if ( next_global_config.disable_network_next )
-		return;
+    if ( next_global_config.disable_network_next )
+        return;
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
-    	return;
+        return;
 
     // check for init timeout
 
@@ -14582,53 +14590,53 @@ void next_server_internal_update_init( next_server_internal_t * server )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-	    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-	    notify->type = NEXT_SERVER_NOTIFY_READY;
-	    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
-	    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-	    {
-	        next_platform_mutex_guard( &server->notify_mutex );
-	        next_queue_push( server->notify_queue, notify );
-	    }
+        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_READY;
+        memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+        strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        {
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
         return;
     }
 
     // check for initializing -> initialized transition
 
-	if ( server->resolve_hostname_finished && server->autodetect_finished && server->received_init_response )
-	{
+    if ( server->resolve_hostname_finished && server->autodetect_finished && server->received_init_response )
+    {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
-	    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-	    notify->type = NEXT_SERVER_NOTIFY_READY;
-	    memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
-	    strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-	    {
-	        next_platform_mutex_guard( &server->notify_mutex );
-	        next_queue_push( server->notify_queue, notify );
-	    }
-	    server->state = NEXT_SERVER_STATE_INITIALIZED;
-	}
+        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_READY;
+        memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+        strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        {
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
+        server->state = NEXT_SERVER_STATE_INITIALIZED;
+    }
 
-	// wait until we have resolved the backend hostname
+    // wait until we have resolved the backend hostname
 
-	if ( !server->resolve_hostname_finished )
-		return;
+    if ( !server->resolve_hostname_finished )
+        return;
 
-	// wait until we have autodetected the datacenter
+    // wait until we have autodetected the datacenter
 
-	if ( !server->autodetect_finished )
-		return;
+    if ( !server->autodetect_finished )
+        return;
 
-	// if we have started flushing, abort the init...
+    // if we have started flushing, abort the init...
 
-	if ( server->flushing )
-	{
-		next_printf( NEXT_LOG_LEVEL_INFO, "server aborted init" );
-		server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-		return;
-	}
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server aborted init" );
+        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        return;
+    }
 
-	// send init request packets repeatedly until we get a response or time out...
+    // send init request packets repeatedly until we get a response or time out...
 
     if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
         return;
@@ -14724,7 +14732,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     bool first_server_update = server->server_update_first;
 
-    if ( server->server_update_last_time + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
+    if ( server->state != NEXT_SERVER_STATE_DIRECT_ONLY && server->server_update_last_time + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         if ( server->server_update_request_id != 0 )
         {
@@ -14843,7 +14851,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->session_update_flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) )
+        if ( !session->session_update_timed_out && ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->session_update_flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) ) )
         {
             NextBackendSessionUpdateRequestPacket packet;
 
@@ -14999,11 +15007,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
 
-        if ( session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
+        if ( !session->session_update_timed_out && session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
             session->waiting_for_update_response = false;
             session->next_session_update_time = -1.0;
+            session->session_update_timed_out = true;
 
             // IMPORTANT: Send packets direct from now on for this session
             session->committed = false;
@@ -15068,7 +15077,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
                 return;
-			}
+            }
 
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
             next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
@@ -15110,7 +15119,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
                 return;
-			}
+            }
 
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
             next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
@@ -15144,7 +15153,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
             next_server_internal_update_autodetect( server );
 
-			next_server_internal_update_init( server );
+            next_server_internal_update_init( server );
 
             next_server_internal_update_pending_upgrades( server );
 
@@ -15188,8 +15197,8 @@ struct next_server_t
     NEXT_DECLARE_SENTINEL(2)
 
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
-	int (*send_packet_to_address_callback)( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
-	void * send_packet_to_address_callback_data;
+    int (*send_packet_to_address_callback)( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
+    void * send_packet_to_address_callback_data;
 
     NEXT_DECLARE_SENTINEL(3)
 };
@@ -15579,9 +15588,9 @@ void next_server_send_packet_to_address( next_server_t * server, const next_addr
 
     if ( server->send_packet_to_address_callback )
     {
-    	void * callback_data = server->send_packet_to_address_callback_data;
-    	if ( server->send_packet_to_address_callback( callback_data, address, packet_data, packet_bytes ) != 0 )
-    		return;
+        void * callback_data = server->send_packet_to_address_callback_data;
+        if ( server->send_packet_to_address_callback( callback_data, address, packet_data, packet_bytes ) != 0 )
+            return;
     }
 
     next_platform_socket_send_packet( server->internal->socket, address, packet_data, packet_bytes );
@@ -15762,7 +15771,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
     buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
-	next_server_send_packet_to_address( server, to_address, buffer, packet_bytes + 1 );
+    next_server_send_packet_to_address( server, to_address, buffer, packet_bytes + 1 );
 }
 
 void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
@@ -15960,17 +15969,17 @@ void next_server_flush( struct next_server_t * server )
 
     if ( next_time() > flush_timeout )
     {
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server flush timed out :(" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server flush timed out :(" );
     }
     else
     {
-	    next_printf( NEXT_LOG_LEVEL_INFO, "server flush finished" );	
+        next_printf( NEXT_LOG_LEVEL_INFO, "server flush finished" );    
     }
 }
 
 void next_server_set_packet_receive_callback( struct next_server_t * server, void (*callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end ), void * callback_data )
 {
-	next_assert( server );
+    next_assert( server );
 
     next_server_command_set_packet_receive_callback_t * command = (next_server_command_set_packet_receive_callback_t*) next_malloc( server->context, sizeof( next_server_command_set_packet_receive_callback_t ) );
     if ( !command )
@@ -15991,10 +16000,10 @@ void next_server_set_packet_receive_callback( struct next_server_t * server, voi
 
 void next_server_set_send_packet_to_address_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void * callback_data )
 {
-	next_assert( server );
+    next_assert( server );
 
-	server->send_packet_to_address_callback = callback;
-	server->send_packet_to_address_callback_data = callback_data;
+    server->send_packet_to_address_callback = callback;
+    server->send_packet_to_address_callback_data = callback_data;
 
     next_server_command_set_send_packet_to_address_callback_t * command = (next_server_command_set_send_packet_to_address_callback_t*) next_malloc( server->context, sizeof( next_server_command_set_send_packet_to_address_callback_t ) );
     if ( !command )
@@ -16015,7 +16024,7 @@ void next_server_set_send_packet_to_address_callback( struct next_server_t * ser
 
 void next_server_set_payload_receive_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes ), void * callback_data )
 {
-	next_assert( server );
+    next_assert( server );
 
     next_server_command_set_payload_receive_callback_t * command = (next_server_command_set_payload_receive_callback_t*) next_malloc( server->context, sizeof( next_server_command_set_payload_receive_callback_t ) );
     if ( !command )
@@ -16826,7 +16835,7 @@ void test_ping_stats()
     }
 
     // add some pings and set them to have a pong response, but leave the last second of pings without response. 
-	// packet loss should be zero.
+    // packet loss should be zero.
     {
         const double ping_safety = 1.0;
 
@@ -17366,6 +17375,8 @@ static void test_server_packet_received_callback( next_server_t * server, void *
     num_server_packets_received++;
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 void test_server_ipv4()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
@@ -17381,6 +17392,8 @@ void test_server_ipv4()
     next_server_flush( server );
     next_server_destroy( server );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 #if defined(NEXT_PLATFORM_HAS_IPV6)
 
@@ -17398,6 +17411,8 @@ void test_client_ipv6()
     next_client_destroy( client );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 void test_server_ipv6()
 {
     next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
@@ -17413,6 +17428,8 @@ void test_server_ipv6()
     next_server_flush( server );
     next_server_destroy( server );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
@@ -17980,7 +17997,9 @@ void test_direct_pong_packet()
 void test_upgrade_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
     uint64_t iterations = 100;
+    
     for ( uint64_t i = 0; i < iterations; ++i )
     {
         uint8_t magic[8];
@@ -20004,36 +20023,36 @@ void test_match_data_request_packet()
     uint64_t iterations = 100;
     for ( uint64_t i = 0; i < iterations; ++i )
     {
-	    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-	    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-	    next_crypto_sign_keypair( public_key, private_key );
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
 
-	    uint8_t magic[8];
-	    uint8_t from_address[4];
-	    uint8_t to_address[4];
-	    next_random_bytes( magic, 8 );
-	    next_random_bytes( from_address, 4 );
-	    next_random_bytes( to_address, 4 );
-	    uint16_t from_port = uint16_t( i + 1000000 );
-	    uint16_t to_port = uint16_t( i + 5000 );
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
 
-	    static NextBackendMatchDataRequestPacket in, out;
-	    in.Reset();
-	    out.Reset();
-	    in.version_major = NEXT_VERSION_MAJOR_INT;
-	    in.version_minor = NEXT_VERSION_MINOR_INT;
-	    in.version_patch = NEXT_VERSION_PATCH_INT;
-	    in.customer_id = 1231234127431LL;
-	    next_address_parse( &in.server_address, "127.0.0.1:12345" );
-	    in.datacenter_id = next_datacenter_id( "local" );
-	    in.user_hash = 11111111;
-	    in.session_id = 1234342431431LL;
-	    in.match_id = 1234342431431LL;
-	    in.num_match_values = NEXT_MAX_MATCH_VALUES;
-	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-	    {
-	        in.match_values[j] = j + 10.0f;
-	    }
+        static NextBackendMatchDataRequestPacket in, out;
+        in.Reset();
+        out.Reset();
+        in.version_major = NEXT_VERSION_MAJOR_INT;
+        in.version_minor = NEXT_VERSION_MINOR_INT;
+        in.version_patch = NEXT_VERSION_PATCH_INT;
+        in.customer_id = 1231234127431LL;
+        next_address_parse( &in.server_address, "127.0.0.1:12345" );
+        in.datacenter_id = next_datacenter_id( "local" );
+        in.user_hash = 11111111;
+        in.session_id = 1234342431431LL;
+        in.match_id = 1234342431431LL;
+        in.num_match_values = NEXT_MAX_MATCH_VALUES;
+        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
+        {
+            in.match_values[j] = j + 10.0f;
+        }
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -20049,21 +20068,21 @@ void test_match_data_request_packet()
 
         next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
 
-	    next_check( in.version_major == out.version_major );
-	    next_check( in.version_minor == out.version_minor );
-	    next_check( in.version_patch == out.version_patch );
-	    next_check( in.customer_id == out.customer_id );
-	    next_check( next_address_equal( &in.server_address, &out.server_address ) );
-	    next_check( in.datacenter_id == out.datacenter_id );
-	    next_check( in.user_hash == out.user_hash );
-	    next_check( in.session_id == out.session_id );
-	    next_check( in.match_id == out.match_id );
-	    next_check( in.num_match_values == out.num_match_values );
-	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-	    {
-	        next_check( in.match_values[j] = out.match_values[j] );
-	    }
-	}
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.customer_id == out.customer_id );
+        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.user_hash == out.user_hash );
+        next_check( in.session_id == out.session_id );
+        next_check( in.match_id == out.match_id );
+        next_check( in.num_match_values == out.num_match_values );
+        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
+        {
+            next_check( in.match_values[j] = out.match_values[j] );
+        }
+    }
 }
 
 void test_match_data_response_packet()
@@ -20072,36 +20091,36 @@ void test_match_data_response_packet()
     uint64_t iterations = 100;
     for ( uint64_t i = 0; i < iterations; ++i )
     {
-	    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-	    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-	    next_crypto_sign_keypair( public_key, private_key );
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
 
-	    uint8_t magic[8];
-	    uint8_t from_address[4];
-	    uint8_t to_address[4];
-	    next_random_bytes( magic, 8 );
-	    next_random_bytes( from_address, 4 );
-	    next_random_bytes( to_address, 4 );
-	    uint16_t from_port = uint16_t( i + 1000000 );
-	    uint16_t to_port = uint16_t( i + 5000 );
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
 
-	    static NextBackendMatchDataRequestPacket in, out;
-	    in.Reset();
-	    out.Reset();
-	    in.version_major = NEXT_VERSION_MAJOR_INT;
-	    in.version_minor = NEXT_VERSION_MINOR_INT;
-	    in.version_patch = NEXT_VERSION_PATCH_INT;
-	    in.customer_id = 1231234127431LL;
-	    next_address_parse( &in.server_address, "127.0.0.1:12345" );
-	    in.datacenter_id = next_datacenter_id( "local" );
-	    in.user_hash = 11111111;
-	    in.session_id = 1234342431431LL;
-	    in.match_id = 1234342431431LL;
-	    in.num_match_values = NEXT_MAX_MATCH_VALUES;
-	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-	    {
-	        in.match_values[j] = j + 10.0f;
-	    }
+        static NextBackendMatchDataRequestPacket in, out;
+        in.Reset();
+        out.Reset();
+        in.version_major = NEXT_VERSION_MAJOR_INT;
+        in.version_minor = NEXT_VERSION_MINOR_INT;
+        in.version_patch = NEXT_VERSION_PATCH_INT;
+        in.customer_id = 1231234127431LL;
+        next_address_parse( &in.server_address, "127.0.0.1:12345" );
+        in.datacenter_id = next_datacenter_id( "local" );
+        in.user_hash = 11111111;
+        in.session_id = 1234342431431LL;
+        in.match_id = 1234342431431LL;
+        in.num_match_values = NEXT_MAX_MATCH_VALUES;
+        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
+        {
+            in.match_values[j] = j + 10.0f;
+        }
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -20117,21 +20136,21 @@ void test_match_data_response_packet()
 
         next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
 
-	    next_check( in.version_major == out.version_major );
-	    next_check( in.version_minor == out.version_minor );
-	    next_check( in.version_patch == out.version_patch );
-	    next_check( in.customer_id == out.customer_id );
-	    next_check( next_address_equal( &in.server_address, &out.server_address ) );
-	    next_check( in.datacenter_id == out.datacenter_id );
-	    next_check( in.user_hash == out.user_hash );
-	    next_check( in.session_id == out.session_id );
-	    next_check( in.match_id == out.match_id );
-	    next_check( in.num_match_values == out.num_match_values );
-	    for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-	    {
-	        next_check( in.match_values[j] = out.match_values[j] );
-	    }
-	}
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.customer_id == out.customer_id );
+        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.user_hash == out.user_hash );
+        next_check( in.session_id == out.session_id );
+        next_check( in.match_id == out.match_id );
+        next_check( in.num_match_values == out.num_match_values );
+        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
+        {
+            next_check( in.match_values[j] = out.match_values[j] );
+        }
+    }
 }
 
 void test_pending_session_manager()
@@ -20366,7 +20385,7 @@ void test_proxy_session_manager()
 
 void test_session_manager()
 {
-    const int InitialSize = 32;
+    const int InitialSize = 1;
 
     next_session_manager_t * session_manager = next_session_manager_create( NULL, InitialSize );
 
@@ -20507,7 +20526,10 @@ void test_relay_manager()
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
-        }
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100 );
+       }
     }
 
     // remove all relays
@@ -21055,10 +21077,14 @@ void next_test()
         RUN_TEST( test_platform_thread );
         RUN_TEST( test_platform_mutex );
         RUN_TEST( test_client_ipv4 );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_server_ipv4 );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_client_ipv6 );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_server_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_header );
         RUN_TEST( test_route_token );

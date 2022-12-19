@@ -21,14 +21,16 @@ blocks:
             - env_var: GCC_VERSION
               values: [ "6", "7", "8" ]
             - env_var: CONFIG
-              values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
+              values: [ "debug", "release", "memorycheck" ]
+            - env_var: PLATFORM
+              values: [ "portable", "x64", "avx", "avx2" ]
           commands:
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
-            - make -j32 config=$CONFIG
+            - make -j32 config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on Ubuntu 20.04 LTS"
@@ -45,13 +47,15 @@ blocks:
         - name: test
           matrix:
             - env_var: CONFIG
-              values: [ "debug_portable", "debug_x64", "debug_avx", "debug_avx2", "release_portable", "release_x64", "release_avx", "release_avx2" ]
+              values: [ "debug", "release", "memorycheck" ]
+            - env_var: PLATFORM
+              values: [ "portable", "x64", "avx", "avx2" ]
           commands:
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j32 config=$CONFIG
+            - make -j32 config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on MacOS"
@@ -93,13 +97,13 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2017", "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
            - env_var: PLATFORM
              values: [ "win32", "x64" ]
           commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
+           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh sdk5 build next $VISUAL_STUDIO $CONFIG $PLATFORM"
 
   - name: "Build XBoxOne"
     dependencies: []
@@ -167,7 +171,7 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2017", "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
@@ -239,12 +243,12 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
            - echo VISUAL_STUDIOS=$VISUAL_STUDIO CONFIG=$CONFIG
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 build win32 $VISUAL_STUDIO $CONFIG"
+           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@captainamerica -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk5 build win32 $VISUAL_STUDIO $CONFIG""
 
   - name: "Build Win64"
     dependencies: []
@@ -264,8 +268,73 @@ blocks:
         - name: build
           matrix:
            - env_var: VISUAL_STUDIO
-             values: [ "vs2017", "vs2019" ]
+             values: [ "vs2019", "vs2022" ]
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 build win64 $VISUAL_STUDIO $CONFIG"
+           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@drstrange -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk5 build win64 $VISUAL_STUDIO $CONFIG""
+
+  - name: "Test PS5"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+         - ssh-add /home/semaphore/.ssh/id_rsa_build
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: build-machine-access
+        - name: build-machine-known-hosts
+      jobs:
+        - name: build
+          commands:
+           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk5 test ps5 vs2022 release"
+
+  - name: "Soak Test"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+          - checkout
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      jobs:
+        - name: test
+          matrix:
+            - env_var: CONFIG
+              values: [ "memorycheck_portable" ]
+          commands:
+            - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
+            - chmod +x premake5
+            - ./premake5 gmake
+            - gcc --version
+            - make -j32 config=$CONFIG soak
+            - ./bin/soak 60
+
+  - name: "Fuzz Test"
+    dependencies: []
+    task:
+      prologue:
+        commands:
+          - checkout
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      jobs:
+        - name: test
+          matrix:
+            - env_var: CONFIG
+              values: [ "memorycheck_portable" ]
+          commands:
+            - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
+            - chmod +x premake5
+            - ./premake5 gmake
+            - gcc --version
+            - make -j32 config=$CONFIG fuzz
+            - ./bin/fuzz 60

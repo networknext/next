@@ -1,7 +1,7 @@
 
 solution "next"
 	platforms { "portable", "x86", "x64", "avx", "avx2" }
-	configurations { "Debug", "Release" }
+	configurations { "Debug", "Release", "MemoryCheck" }
 	targetdir "bin/"
 	rtti "Off"
 	warnings "Extra"
@@ -14,6 +14,14 @@ solution "next"
 	filter "configurations:Release"
 		optimize "Speed"
 		defines { "NDEBUG" }
+		editandcontinue "Off"
+	filter "configurations:Release"
+		optimize "Speed"
+		defines { "NDEBUG" }
+		editandcontinue "Off"
+	filter "configurations:MemoryCheck"
+		optimize "Speed"
+		defines { "NDEBUG", "NEXT_ENABLE_MEMORY_CHECKS=1", "NEXT_ASSERTS=1" }
 		editandcontinue "Off"
 	filter "system:windows"
 		location ("visualstudio")
@@ -85,6 +93,19 @@ project "soak"
 	kind "ConsoleApp"
 	links { "next", "sodium" }
 	files { "soak.cpp" }
+	includedirs { "include" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "fuzz"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "soak.cpp" }
+	defines { "FUZZ_TEST=1" }
 	includedirs { "include" }
 	filter "system:windows"
 		disablewarnings { "4324" }

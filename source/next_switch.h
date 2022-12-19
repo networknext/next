@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -44,8 +44,8 @@ struct next_platform_socket_t
     float timeout_seconds;
     int send_buffer_size;
     int receive_buffer_size;
-	bool enable_packet_tagging;
-	void * context;
+    bool enable_packet_tagging;
+    void * context;
 };
 
 // -------------------------------------
@@ -54,7 +54,7 @@ struct next_platform_thread_t
 {
     nn::os::ThreadType handle;
     char * stack;
-	void * context;
+    void * context;
 };
 
 typedef void next_platform_thread_return_t;
