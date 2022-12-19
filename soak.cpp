@@ -288,7 +288,7 @@ int main( int argc, char ** argv )
             {
                 int j = rand() % MaxServers;
                 char server_address_string[256]; 
-                sprintf( server_address_string, "127.0.0.1:%d", 20000 + j );
+                snprintf( server_address_string, sizeof(server_address_string), "127.0.0.1:%d", 20000 + j );
                 next_client_open_session( clients[i], server_address_string );
             }
         }
@@ -314,8 +314,8 @@ int main( int argc, char ** argv )
                 next_assert( server_allocator[i] );
                 char server_address_string[256]; 
                 char bind_address_string[256];
-                sprintf( server_address_string, "127.0.0.1:%d", 20000 + i );
-                sprintf( bind_address_string, "0.0.0.0:%d", 20000 + i );
+                snprintf( server_address_string, sizeof(server_address_string), "127.0.0.1:%d", 20000 + i );
+                snprintf( bind_address_string, sizeof(bind_address_string), "0.0.0.0:%d", 20000 + i );
                 servers[i] = next_server_create( server_allocator[i], server_address_string, bind_address_string, "local", server_packet_received, NULL );
                 if ( servers[i] )
                 {
