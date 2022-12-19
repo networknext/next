@@ -323,7 +323,7 @@ int main( int argc, char ** argv )
                 }
                 else
                 {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "colud not create server %d", i );
+                    next_printf( NEXT_LOG_LEVEL_INFO, "could not create server %d", i );
                     delete server_allocator[i];
                     server_allocator[i] = NULL;
                 }
