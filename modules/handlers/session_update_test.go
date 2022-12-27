@@ -340,12 +340,7 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 	assert.True(t, state.FailedToReadSessionData)
 }
 
-func generateSessionData(sessionId uint64, sliceNumber uint32) []byte {
-
-	sessionData := packets.GenerateRandomSessionData()
-
-	sessionData.SessionId = sessionId
-	sessionData.SliceNumber = sliceNumber
+func writeSessionData(sessionData packets.SDK5_SessionData) []byte {
 
 	buffer := [packets.SDK5_MaxSessionDataSize]byte{}
 
@@ -369,7 +364,9 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 
 	state := CreateState()
 
-	copy(state.Request.SessionData[:], generateSessionData(0x123, 10))
+	sessionData := packets.GenerateRandomSessionData()
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -386,7 +383,11 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
-	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -405,9 +406,13 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
-	state.Request.SessionId = sessionId
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+
+	state.Request.SessionId = sessionId
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -426,10 +431,14 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
-
-	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -439,15 +448,131 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	assert.False(t, state.BadSliceNumber)
 }
 
+func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.False(t, state.BadSessionId)
+	assert.False(t, state.BadSliceNumber)
+	assert.False(t, state.Output.Initial)
+	assert.Equal(t, state.Output.SessionId, sessionId)
+	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+}
+
 /*
-	state.Output = state.Input
-	state.Output.Initial = false
-	state.Output.SliceNumber += 1
-	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+	slicePacketsSentClientToServer := state.Request.PacketsSentClientToServer - state.Input.PrevPacketsSentClientToServer
+	slicePacketsSentServerToClient := state.Request.PacketsSentServerToClient - state.Input.PrevPacketsSentServerToClient
+
+	slicePacketsLostClientToServer := state.Request.PacketsLostClientToServer - state.Input.PrevPacketsLostClientToServer
+	slicePacketsLostServerToClient := state.Request.PacketsLostServerToClient - state.Input.PrevPacketsLostServerToClient
+
+	var RealPacketLossClientToServer float32
+	if slicePacketsSentClientToServer != uint64(0) {
+		RealPacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
+	}
+
+	var RealPacketLossServerToClient float32
+	if slicePacketsSentServerToClient != uint64(0) {
+		RealPacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
+	}
+
+	state.RealPacketLoss = RealPacketLossClientToServer
+	if RealPacketLossServerToClient > RealPacketLossClientToServer {
+		state.RealPacketLoss = RealPacketLossServerToClient
+	}
+
+	state.PostRealPacketLossClientToServer = RealPacketLossClientToServer
+	state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
 */
 
-// todo: Test_SessionUpdate_ExistingSession_RealPacketLoss
+func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 
-// todo: Test_SessionUpdate_ExistingSession_RealJitter
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+
+	state.Request.PacketsSentClientToServer = 1000
+	state.Request.PacketsSentServerToClient = 1000
+	state.Request.PacketsLostClientToServer = 100
+	state.Request.PacketsLostServerToClient = 100
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.False(t, state.BadSessionId)
+	assert.False(t, state.BadSliceNumber)
+	assert.False(t, state.Output.Initial)
+	assert.Equal(t, state.Output.SessionId, sessionId)
+	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+
+	// todo
+}
+
+func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.False(t, state.BadSessionId)
+	assert.False(t, state.BadSliceNumber)
+	assert.False(t, state.Output.Initial)
+	assert.Equal(t, state.Output.SessionId, sessionId)
+	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+
+	// todo
+}
 
 // --------------------------------------------------------------
+
+// todo

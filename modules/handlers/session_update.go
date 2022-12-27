@@ -294,6 +294,8 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	   This way we don't have to store state per-session in the backend.
 	*/
 
+	// todo: the session data must not be modifiable by the client. where is the check that ensures this is the case?
+
 	if !state.ReadSessionData {
 
 		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
