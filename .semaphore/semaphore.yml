@@ -790,6 +790,9 @@ blocks:
           type: e1-standard-2
           os_image: ubuntu2004
 
+      secrets:
+        - name: sdk5-test-keys
+
       prologue:
         commands:
 
