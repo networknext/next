@@ -557,7 +557,51 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_HandleFallbackToDirect
+func Test_SessionUpdate_HandleFallbackToDirect_FallbackToDirect(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Request.FallbackToDirect = true
+
+	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
+
+	assert.True(t, result)
+	assert.True(t, state.FallbackToDirect)
+	assert.True(t, state.Output.FallbackToDirect)
+}
+
+func Test_SessionUpdate_HandleFallbackToDirect_DoNotFallbackToDirect(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Request.FallbackToDirect = false
+
+	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
+
+	assert.False(t, result)
+	assert.False(t, state.FallbackToDirect)
+	assert.False(t, state.Output.FallbackToDirect)
+}
+
+func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Request.FallbackToDirect = false
+	state.Output.FallbackToDirect = true
+
+	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
+
+	assert.False(t, result)
+	assert.False(t, state.FallbackToDirect)
+	assert.True(t, state.Output.FallbackToDirect)
+}
 
 // --------------------------------------------------------------
 
