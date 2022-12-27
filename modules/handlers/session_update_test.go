@@ -299,7 +299,9 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 	assert.NotNil(t, state.Debug)
 }
 
-func Test_SessionUpdate_NewSession_Debug(t *testing.T) {
+// --------------------------------------------------------------
+
+func Test_SessionUpdate_NewSession(t *testing.T) {
 
 	t.Parallel()
 
@@ -324,3 +326,58 @@ func Test_SessionUpdate_NewSession_Debug(t *testing.T) {
 
 	assert.Equal(t, state.Input, state.Output)
 }
+
+// --------------------------------------------------------------
+
+func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.FailedToReadSessionData)
+}
+
+func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionData := packets.GenerateRandomSessionData()
+
+	buffer := [packets.SDK5_MaxSessionDataSize]byte{}
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := sessionData.Serialize(writeStream)
+	assert.Nil(t, err)
+	writeStream.Flush()
+	sessionDataBytes := writeStream.GetBytesProcessed()
+
+	copy(state.Request.SessionData[:], buffer[:sessionDataBytes])
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+}
+
+// todo: Test_SessionUpdate_ExistingSession_BadSessionId
+
+// todo: Test_SessionUpdate_ExistingSession_BadSliceNumber
+
+/*
+	state.Output = state.Input
+	state.Output.Initial = false
+	state.Output.SliceNumber += 1
+	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+*/
+
+// todo: Test_SessionUpdate_ExistingSession_RealPacketLoss
+
+// todo: Test_SessionUpdate_ExistingSession_RealJitter
+
+// --------------------------------------------------------------
