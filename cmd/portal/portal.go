@@ -757,7 +757,7 @@ func mainReturnWithCode() int {
 		go func() {
 			// If the port is set to 443 then build the certificates and run a TLS-enabled HTTP server
 			if port == "443" {
-				cert, err := tls.X509KeyPair(transport.TLSCertificate, transport.TLSPrivateKey)
+				cert, err := tls.X509KeyPair(transport.TLSCertificate, transport.TLSPrivateKey)     // todo: this private key must not live in source code
 				if err != nil {
 					core.Error("failed to create TSL cert: %v", err)
 					errChan <- err
