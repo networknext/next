@@ -11903,7 +11903,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
         if ( strstr( whois_buffer, substring ) )
         {
-        	next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
             snprintf( output, output_size, "%s.%s", supplier, city );
             found = true;
         }
