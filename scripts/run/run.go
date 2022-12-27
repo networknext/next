@@ -143,16 +143,16 @@ func main() {
 		client5()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-test-sdk4" {
-		func_test_sdk4()
-	} else if command == "func-test-sdk5" {
-		func_test_sdk5()
+	} else if command == "func-sdk4" {
+		func_sdk4()
+	} else if command == "func-sdk5" {
+		func_sdk5()
 	} else if command == "func-backend4" {
 		func_backend4()
 	} else if command == "func-backend5" {
 		func_backend5()
-	} else if command == "func-test-backend" || command == "func-tests-backend" {
-		func_test_backend(args[2:])
+	} else if command == "func-backend" {
+		func_backend(args[2:])
 	}
 
 	cleanup()
@@ -275,12 +275,12 @@ func setup_emulators() {
 	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
-func func_test_sdk4() {
-	bash("make func_test_sdk4 -j && cd dist && ./func_tests_sdk4")
+func func_sdk4() {
+	bash("make func-test-sdk4 -j && cd dist && ./func_tests_sdk4")
 }
 
-func func_test_sdk5() {
-	bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
+func func_sdk5() {
+	bash(fmt.Sprintf("make func-test-sdk5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_backend4() {
@@ -288,10 +288,10 @@ func func_backend4() {
 }
 
 func func_backend5() {
-	bash(fmt.Sprintf("make ./dist/func_backend5 -j && cd dist && ROUTER_PRIVATE_KEY=%s BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
+	bash(fmt.Sprintf("make ./dist/func_backend5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
-func func_test_backend(tests []string) {
+func func_backend(tests []string) {
 	command := "make ./dist/func_tests_backend && cd dist && ./func_tests_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {
