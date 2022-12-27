@@ -299,36 +299,28 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 	assert.NotNil(t, state.Debug)
 }
 
-/*
-func SessionUpdate_NewSession(state *SessionUpdateState) {
-
-	core.Debug("new session")
-
-	state.Output.Version = packets.SDK5_SessionDataVersion_Write
-	state.Output.SessionId = state.Request.SessionId
-	state.Output.SliceNumber = state.Request.SliceNumber + 1
-	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-	state.Output.RouteState.UserID = state.Request.UserHash
-	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
-
-	state.Input = state.Output
-}
-*/
-
 func Test_SessionUpdate_NewSession_Debug(t *testing.T) {
 
 	t.Parallel()
 
 	state := CreateState()
 
-	_ = state
+	sessionId := uint64(0x11223344556677)
+	userHash := uint64(0x84731298749187)
+	abTest := true
 
-	/*
-	state.Buyer.Debug = true
+	state.Request.SessionId = sessionId
+	state.Request.UserHash = userHash
+	state.Buyer.RouteShader.ABTest = abTest
 
-	result := handlers.SessionPre(state)
+	handlers.SessionUpdate_NewSession(state)
 
-	assert.False(t, result)
-	assert.NotNil(t, state.Debug)
-	*/
+	assert.Equal(t, state.Output.Version, uint32(packets.SDK5_SessionDataVersion_Write))
+	assert.Equal(t, state.Output.SessionId, sessionId)
+	assert.Equal(t, state.Output.SliceNumber, uint32(1))
+	assert.Equal(t, state.Output.RouteState.UserID, userHash)
+	assert.Equal(t, state.Output.RouteState.ABTest, abTest)
+	assert.True(t, state.Output.ExpireTimestamp > uint64(time.Now().Unix()))
+
+	assert.Equal(t, state.Input, state.Output)
 }

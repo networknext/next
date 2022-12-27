@@ -154,7 +154,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
 
 		if err != nil {
-			core.Error("location veto: %s\n", err)
+			core.Error("location veto: %s", err)
 			state.Output.RouteState.LocationVeto = true // tested
 			state.LocationVeto = true
 			return true
@@ -272,7 +272,7 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 
 	state.Output.Version = packets.SDK5_SessionDataVersion_Write
 	state.Output.SessionId = state.Request.SessionId
-	state.Output.SliceNumber = state.Request.SliceNumber + 1
+	state.Output.SliceNumber = 1
 	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
 	state.Output.RouteState.UserID = state.Request.UserHash
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
