@@ -11998,6 +11998,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     (void) input_datacenter;
     (void) public_address;
+    (void) output_size;
 
     return false;
 }
