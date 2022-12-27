@@ -478,32 +478,6 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
 }
 
-/*
-	slicePacketsSentClientToServer := state.Request.PacketsSentClientToServer - state.Input.PrevPacketsSentClientToServer
-	slicePacketsSentServerToClient := state.Request.PacketsSentServerToClient - state.Input.PrevPacketsSentServerToClient
-
-	slicePacketsLostClientToServer := state.Request.PacketsLostClientToServer - state.Input.PrevPacketsLostClientToServer
-	slicePacketsLostServerToClient := state.Request.PacketsLostServerToClient - state.Input.PrevPacketsLostServerToClient
-
-	var RealPacketLossClientToServer float32
-	if slicePacketsSentClientToServer != uint64(0) {
-		RealPacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
-	}
-
-	var RealPacketLossServerToClient float32
-	if slicePacketsSentServerToClient != uint64(0) {
-		RealPacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
-	}
-
-	state.RealPacketLoss = RealPacketLossClientToServer
-	if RealPacketLossServerToClient > RealPacketLossClientToServer {
-		state.RealPacketLoss = RealPacketLossServerToClient
-	}
-
-	state.PostRealPacketLossClientToServer = RealPacketLossClientToServer
-	state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
-*/
-
 func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 
 	t.Parallel()
@@ -516,16 +490,20 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	sessionData := packets.GenerateRandomSessionData()
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
+	sessionData.PrevPacketsSentClientToServer = 1000
+	sessionData.PrevPacketsSentServerToClient = 1000
+	sessionData.PrevPacketsLostClientToServer = 0
+	sessionData.PrevPacketsLostServerToClient = 0
 
 	copy(state.Request.SessionData[:], writeSessionData(sessionData))
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 
-	state.Request.PacketsSentClientToServer = 1000
-	state.Request.PacketsSentServerToClient = 1000
+	state.Request.PacketsSentClientToServer = 2000
+	state.Request.PacketsSentServerToClient = 2000
 	state.Request.PacketsLostClientToServer = 100
-	state.Request.PacketsLostServerToClient = 100
+	state.Request.PacketsLostServerToClient = 50
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -538,7 +516,9 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
 
-	// todo
+	assert.Equal(t, state.RealPacketLoss, float32(10.0))
+	assert.Equal(t, state.PostRealPacketLossServerToClient, float32(5.0))
+	assert.Equal(t, state.PostRealPacketLossClientToServer, float32(10.0))
 }
 
 func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
@@ -558,6 +538,8 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
+	state.Request.JitterClientToServer = 50.0
+	state.Request.JitterServerToClient = 100.0
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -570,7 +552,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
 
-	// todo
+	assert.Equal(t, state.RealJitter, float32(100.0))
 }
 
 // --------------------------------------------------------------
