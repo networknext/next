@@ -1,0 +1,84 @@
+[map "f974e6de-1dd2-313d-b7a2-8680a708bdd7"]
+	object = 0d18e328829d66f5c4e5230d5e37670db98c7bf5
+	path = ue4
+	stage = sync
+	type = extract module
+[map "3f03756a-7ef0-3de0-8aa1-c6c031b05c51"]
+	object = 8db959e14e82fdd7c4751b8888d5507e64cccb3d
+	path = enet
+	stage = sync
+	type = extract module
+[map "d95a1c4b-cbd8-3a30-9166-58e1d35946da"]
+	object = 7341a4da12492775c33648399c1b5acb5b86a261
+	path = relay
+	stage = sync
+	type = extract module
+[map "279d5529-7d61-388b-b304-cc0156caa91f"]
+	object = d813108b4914870d339616fa6474cf0174fa0316
+	path = sdk5
+	stage = sync
+	type = extract module
+[map "4bcb5256-bac9-3765-b35c-547efb574785"]
+	object = 45999a40d492a23cc7a84f92fe13f77b0dbd3361
+	path = portal
+	stage = sync
+	type = extract module
+[map "5d3a8804-1464-362a-a9bf-7a80ca486be1"]
+	object = df4d7dc6cfbf2a95818c01ee3f2cfcd75563e197
+	path = unity
+	stage = sync
+	type = extract module
+[module "331fc361-745a-3273-a1ab-db666d84b04b"]
+	conflict = request-pull
+	path = ue4
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/245724710
+[module "2d134adc-e371-313d-9dd5-f33bf521927b"]
+	conflict = request-pull
+	path = enet
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/406406852
+[module "4c6e10f2-f995-360a-9b7f-00e0afec12b9"]
+	conflict = request-pull
+	path = relay
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/284986146
+[module "e6a4a124-6b66-343f-bd51-5ce7fd4faa9b"]
+	conflict = request-pull
+	path = sdk5
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/427438480
+[module "9fa11d0d-4b98-377c-a3f4-9d676756a7ca"]
+	conflict = request-pull
+	path = portal
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/276473108
+[module "c4b1c009-b37b-33bb-893a-3bdee28d63d7"]
+	conflict = request-pull
+	path = unity
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/main
+	url = agnostic://gh/399961391
+[module "692163b9-f778-3378-aeaa-afbf4c6514b3"]
+	conflict = request-pull
+	path = sdk4
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/245644054
+[map "f389b639-74ab-300d-8bb8-174811d3661b"]
+	object = 89738fe5af3fe7110bc88873405855fa8ddcf5ae
+	path = sdk4
+	stage = sync
+	type = extract module
