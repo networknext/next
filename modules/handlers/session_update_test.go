@@ -557,4 +557,26 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo
+// todo: SessionUpdate_HandleFallbackToDirect
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_GetNearRelays
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_UpdateNearRelays
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_FilterNearRelays
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_MakeRouteDecision
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_Post
+
+// --------------------------------------------------------------
