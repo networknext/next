@@ -37,7 +37,7 @@ func CreateState() *handlers.SessionUpdateState {
 	return &state
 }
 
-func TestSessionPre_AnalysisOnly(t *testing.T) {
+func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
 
@@ -45,13 +45,13 @@ func TestSessionPre_AnalysisOnly(t *testing.T) {
 
 	state.Buyer.RouteShader.AnalysisOnly = true
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.True(t, state.AnalysisOnly)
 }
 
-func TestSessionPre_ClientPingTimedOut(t *testing.T) {
+func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 
 	t.Parallel()
 
@@ -59,19 +59,19 @@ func TestSessionPre_ClientPingTimedOut(t *testing.T) {
 
 	state.Request.ClientPingTimedOut = true
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
 	assert.True(t, state.ClientPingTimedOut)
 }
 
-func TestSessionPre_LocatedIP(t *testing.T) {
+func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 
 	t.Parallel()
 
 	state := CreateState()
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
@@ -80,20 +80,20 @@ func TestSessionPre_LocatedIP(t *testing.T) {
 	assert.Equal(t, state.Output.Location.Longitude, float32(-75))
 }
 
-func TestSessionPre_LocationVeto(t *testing.T) {
+func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	t.Parallel()
 
 	state := CreateState()
 	state.LocateIP = FailLocateIP
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
 	assert.True(t, state.LocationVeto)
 }
 
-func TestSessionPre_ReadLocation(t *testing.T) {
+func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 
 	t.Parallel()
 
@@ -121,7 +121,7 @@ func TestSessionPre_ReadLocation(t *testing.T) {
 	state.Request.SessionDataBytes = int32(packetBytes)
 	copy(state.Request.SessionData[:], packetData)
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.True(t, state.ReadSessionData)
@@ -131,7 +131,7 @@ func TestSessionPre_ReadLocation(t *testing.T) {
 	assert.Equal(t, uint32(5), state.Output.Location.ASN)
 }
 
-func TestSessionPre_StaleRouteMatrix(t *testing.T) {
+func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 
 	t.Parallel()
 
@@ -139,13 +139,13 @@ func TestSessionPre_StaleRouteMatrix(t *testing.T) {
 
 	state.RouteMatrix.CreatedAt = 0
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
 	assert.True(t, state.StaleRouteMatrix)
 }
 
-func TestSessionPre_KnownDatacenter(t *testing.T) {
+func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
 
 	t.Parallel()
 
@@ -155,13 +155,13 @@ func TestSessionPre_KnownDatacenter(t *testing.T) {
 
 	state.Database.DatacenterMap[0x12345] = database.Datacenter{}
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 }
 
-func TestSessionPre_UnknownDatacenter(t *testing.T) {
+func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
 
 	t.Parallel()
 
@@ -169,13 +169,13 @@ func TestSessionPre_UnknownDatacenter(t *testing.T) {
 
 	state.Request.DatacenterId = 0x12345
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.True(t, state.UnknownDatacenter)
 }
 
-func TestSessionPre_DatacenterNotEnabled(t *testing.T) {
+func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 
 	t.Parallel()
 
@@ -185,14 +185,14 @@ func TestSessionPre_DatacenterNotEnabled(t *testing.T) {
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = database.Datacenter{}
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 	assert.True(t, state.DatacenterNotEnabled)
 }
 
-func TestSessionPre_DatacenterEnabled(t *testing.T) {
+func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 
 	t.Parallel()
 
@@ -205,14 +205,14 @@ func TestSessionPre_DatacenterEnabled(t *testing.T) {
 	state.Database.DatacenterMaps[state.Buyer.ID] = make(map[uint64]database.DatacenterMap)
 	state.Database.DatacenterMaps[state.Buyer.ID][state.Request.DatacenterId] = database.DatacenterMap{}
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 	assert.False(t, state.DatacenterNotEnabled)
 }
 
-func TestSessionPre_FailedToReadSessionData(t *testing.T) {
+func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
@@ -220,13 +220,13 @@ func TestSessionPre_FailedToReadSessionData(t *testing.T) {
 
 	state.Request.SliceNumber = 1
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
 	assert.True(t, state.FailedToReadSessionData)
 }
 
-func TestSessionPre_NoRelaysInDatacenter(t *testing.T) {
+func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 
 	t.Parallel()
 
@@ -236,14 +236,14 @@ func TestSessionPre_NoRelaysInDatacenter(t *testing.T) {
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = database.Datacenter{}
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 	assert.True(t, state.NoRelaysInDatacenter)
 }
 
-func TestSessionPre_RelaysInDatacenter(t *testing.T) {
+func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 
 	t.Parallel()
 
@@ -263,16 +263,14 @@ func TestSessionPre_RelaysInDatacenter(t *testing.T) {
 		state.RouteMatrix.RelayDatacenterIds[i] = 0x12345
 	}
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 	assert.False(t, state.NoRelaysInDatacenter)
 }
 
-// getDatacenter
-
-func TestSessionPre_Pro(t *testing.T) {
+func Test_SessionUpdate_Pre_Pro(t *testing.T) {
 
 	t.Parallel()
 
@@ -281,30 +279,13 @@ func TestSessionPre_Pro(t *testing.T) {
 	state.Request.NumTags = 1
 	state.Request.Tags[0] = common.HashTag("pro")
 
-	result := handlers.SessionPre(state)
+	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
 	assert.True(t, state.Pro)
-	assert.False(t, state.OptOut)
 }
 
-func TestSessionPre_OptOut(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.NumTags = 1
-	state.Request.Tags[0] = common.HashTag("optout")
-
-	result := handlers.SessionPre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.OptOut)
-	assert.False(t, state.Pro)
-}
-
-func TestSessionPre_Debug(t *testing.T) {
+func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	t.Parallel()
 
@@ -312,8 +293,42 @@ func TestSessionPre_Debug(t *testing.T) {
 
 	state.Buyer.Debug = true
 
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.False(t, result)
+	assert.NotNil(t, state.Debug)
+}
+
+/*
+func SessionUpdate_NewSession(state *SessionUpdateState) {
+
+	core.Debug("new session")
+
+	state.Output.Version = packets.SDK5_SessionDataVersion_Write
+	state.Output.SessionId = state.Request.SessionId
+	state.Output.SliceNumber = state.Request.SliceNumber + 1
+	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
+	state.Output.RouteState.UserID = state.Request.UserHash
+	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
+
+	state.Input = state.Output
+}
+*/
+
+func Test_SessionUpdate_NewSession_Debug(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_ = state
+
+	/*
+	state.Buyer.Debug = true
+
 	result := handlers.SessionPre(state)
 
 	assert.False(t, result)
 	assert.NotNil(t, state.Debug)
+	*/
 }
