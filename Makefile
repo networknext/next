@@ -20,6 +20,19 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
+# Clean and rebuild
+
+.PHONY: build
+build: dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+
+.PHONY: clean
+clean: ## clean everything
+	@rm -rf dist
+	@mkdir -p dist
+
+.PHONY: rebuild
+rebuild: clean build ## rebuild everything
+
 # Build most golang services
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go')
@@ -39,19 +52,6 @@ dist/%.prod.tar.gz: dist/%
 format:
 	@gofmt -s -w .
 	@./scripts/tabs2spaces.sh
-
-# Clean and rebuild
-
-.PHONY: clean
-clean: ## clean everything
-	@rm -rf dist
-	@mkdir -p dist
-
-.PHONY: build
-build: dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
-
-.PHONY: rebuild
-rebuild: clean build ## rebuild everything
 
 # Build sdk4
 

@@ -469,7 +469,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   and sends session data to billing and the portal.
 	*/
 
-	defer SessionPost(&state)
+	defer SessionUpdate_Post(&state)
 
 	/*
 	   Call session pre function
@@ -479,7 +479,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   If it returns true, one of the early out conditions has been met, so we return early.
 	*/
 
-	if SessionPre(&state) {
+	if SessionUpdate_Pre(&state) {
 		return
 	}
 
@@ -497,9 +497,9 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	*/
 
 	if state.Request.SliceNumber == 0 {
-		SessionUpdateNewSession(&state)
+		SessionUpdate_NewSession(&state)
 	} else {
-		SessionUpdateExistingSession(&state)
+		SessionUpdate_ExistingSession(&state)
 	}
 
 	/*
@@ -512,7 +512,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   When this happens, we early out to save processing time.
 	*/
 
-	if SessionHandleFallbackToDirect(&state) {
+	if SessionUpdate_HandleFallbackToDirect(&state) {
 		return
 	}
 
@@ -522,13 +522,13 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   We use near relay latency, jitter and packet loss for route planning.
 	*/
 
-	SessionUpdateNearRelays(&state)
+	SessionUpdate_UpdateNearRelays(&state)
 
 	/*
 	   Decide whether we should take network next or not.
 	*/
 
-	SessionMakeRouteDecision(&state)
+	SessionUpdate_MakeRouteDecision(&state)
 
 	core.Debug("session updated successfully")
 }
