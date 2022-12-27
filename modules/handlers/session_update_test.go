@@ -340,24 +340,36 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 	assert.True(t, state.FailedToReadSessionData)
 }
 
-func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
+func generateSessionData(sessionId uint64, sliceNumber uint32) []byte {
 
 	sessionData := packets.GenerateRandomSessionData()
+
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
 
 	buffer := [packets.SDK5_MaxSessionDataSize]byte{}
 
 	writeStream := encoding.CreateWriteStream(buffer[:])
 
 	err := sessionData.Serialize(writeStream)
-	assert.Nil(t, err)
+	if err != nil {
+		panic(err)
+	}
+
 	writeStream.Flush()
+	
 	sessionDataBytes := writeStream.GetBytesProcessed()
 
-	copy(state.Request.SessionData[:], buffer[:sessionDataBytes])
+	return buffer[:sessionDataBytes]
+}
+
+func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	copy(state.Request.SessionData[:], generateSessionData(0x123, 10))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -365,9 +377,67 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 	assert.False(t, state.FailedToReadSessionData)
 }
 
-// todo: Test_SessionUpdate_ExistingSession_BadSessionId
+func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 
-// todo: Test_SessionUpdate_ExistingSession_BadSliceNumber
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.True(t, state.BadSessionId)
+	assert.False(t, state.BadSliceNumber)
+}
+
+func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	state.Request.SessionId = sessionId
+
+	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.False(t, state.BadSessionId)
+	assert.True(t, state.BadSliceNumber)
+}
+
+func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+
+	copy(state.Request.SessionData[:], generateSessionData(sessionId, sliceNumber))
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, state.FailedToReadSessionData)
+	assert.False(t, state.BadSessionId)
+	assert.False(t, state.BadSliceNumber)
+}
 
 /*
 	state.Output = state.Input
