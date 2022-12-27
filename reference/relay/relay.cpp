@@ -5190,7 +5190,7 @@ static void test_relay_manager()
     {
         relay_ids[i] = i;
         char address_string[256];
-        sprintf( address_string, "127.0.0.1:%d", 40000 + i );
+        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
         relay_address_parse( &relay_addresses[i], address_string );
     }
 
@@ -5812,7 +5812,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     init_response_buffer.data = (uint8_t*) alloca( init_response_buffer.max_size );
 
     char init_url[1024];
-    sprintf( init_url, "%s/relay_init", hostname );
+    snprintf( init_url, sizeof(init_url), "%s/relay_init", hostname );
 
     curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
     curl_easy_setopt( curl, CURLOPT_URL, init_url );
@@ -5937,7 +5937,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     update_response_buffer.data = (uint8_t*) update_response_memory;
 
     char update_url[1024];
-    sprintf( update_url, "%s/relay_update", hostname );
+    snprintf( update_url, sizeof(update_url), "%s/relay_update", hostname );
 
     curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
     curl_easy_setopt( curl, CURLOPT_URL, update_url );
