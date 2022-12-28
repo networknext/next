@@ -33,7 +33,7 @@ type Buyer struct {
 }
 
 type Seller struct {
-	ID   uint64
+	ID   string // todo: needs to be a string for compatibility with old database, but should be a uint64 in future
 	Name string
 }
 
