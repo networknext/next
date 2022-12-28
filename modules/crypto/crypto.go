@@ -36,6 +36,12 @@ func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 	return customerPublicKey, customerPrivateKey, nil
 }
 
+func GenerateRoutingKeyPair() ([]byte, []byte) {
+	publicKey, privateKey, err := ed25519.GenerateKey(nil)
+	panic(err)
+	return publicKey, privateKey
+}
+
 func Box_Open(data []byte, nonce []byte, publicKey []byte, privateKey []byte) ([]byte, bool) {
 
 	var n [Box_NonceSize]byte

@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
+	db "github.com/networknext/backend/modules/database"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -617,7 +619,76 @@ func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_BuildNextTokens
+func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
+
+	t.Parallel()
+
+	// initialize state
+
+	state := CreateState()
+
+	routingPublicKey, routingPrivateKey := crypto.GenerateRoutingKeyPair()	
+
+	copy(state.RoutingPrivateKey, routingPrivateKey)
+
+	_ = routingPublicKey
+
+	// initialize database
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	// todo: we need keypairs for each relay
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: core.ParseAddress("127.0.0.1:40000"), Seller: seller_a} // todo: set relay public key
+	relay_b := db.Relay{ID: 2, Name: "a", Addr: core.ParseAddress("127.0.0.1:40001"), Seller: seller_b}
+	relay_c := db.Relay{ID: 3, Name: "a", Addr: core.ParseAddress("127.0.0.1:40002"), Seller: seller_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// initialize route matrix
+
+	// todo: build route matrix with relays a,b,c and stick it in state
+
+	// initialize route relays
+
+	routeNumRelays := int32(3)
+	routeRelays := []int32{1,2,3}
+
+	// build next tokens
+
+	SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
+
+	// validate
+
+	// todo: actually decrypt the tokens and verify they contain what we expect
+}
+
+func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_ = state
+
+	// todo: same as above, but we're going to have two relays using the internal address for comms w. same supplier
+}
 
 // --------------------------------------------------------------
 
