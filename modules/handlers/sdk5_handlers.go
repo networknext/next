@@ -433,6 +433,8 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	var state SessionUpdateState
 
+	// todo: gotta pass in the routing private key here
+
 	state.Request = requestPacket
 	state.Database = handler.Database
 	state.RouteMatrix = handler.RouteMatrix
