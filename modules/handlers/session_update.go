@@ -6,8 +6,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -23,7 +24,7 @@ type SessionUpdateState struct {
 	   Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey [32]byte
+	RoutingPrivateKey [crypto.Routing_PublicKeySize]byte
 
 	ServerBackendAddress *net.UDPAddr
 
@@ -653,7 +654,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	// client node (no address specified...)
 
-	copy(routePublicKeys[0], state.Request.ClientRoutePublicKey[:])
+	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
 
 	// relay nodes
 
@@ -688,7 +689,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	// server node
 
 	routeAddresses[numTokens-1] = state.From
-	copy(routePublicKeys[numTokens-1], state.Request.ServerRoutePublicKey[:])
+	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// debug print the route
 

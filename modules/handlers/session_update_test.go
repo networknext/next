@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
@@ -629,9 +630,13 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	routingPublicKey, routingPrivateKey := crypto.GenerateRoutingKeyPair()	
 
-	copy(state.RoutingPrivateKey, routingPrivateKey)
+	clientPublicKey, clientPrivateKey, _ := core.GenerateRelayKeyPair()
 
-	_ = routingPublicKey
+	serverPublicKey, serverPrivateKey, _ := core.GenerateRelayKeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
 	// initialize database
 
@@ -643,11 +648,13 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
 	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
 
-	// todo: we need keypairs for each relay
+	relay_public_key_a, relay_private_key_a, _ := core.GenerateRelayKeyPair()
+	relay_public_key_b, relay_private_key_b, _ := core.GenerateRelayKeyPair()
+	relay_public_key_c, relay_private_key_c, _ := core.GenerateRelayKeyPair()
 
-	relay_a := db.Relay{ID: 1, Name: "a", Addr: core.ParseAddress("127.0.0.1:40000"), Seller: seller_a} // todo: set relay public key
-	relay_b := db.Relay{ID: 2, Name: "a", Addr: core.ParseAddress("127.0.0.1:40001"), Seller: seller_b}
-	relay_c := db.Relay{ID: 3, Name: "a", Addr: core.ParseAddress("127.0.0.1:40002"), Seller: seller_c}
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40000"), Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40001"), Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40002"), Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap["a"] = seller_a
 	state.Database.SellerMap["b"] = seller_b
@@ -663,20 +670,30 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	// initialize route matrix
 
-	// todo: build route matrix with relays a,b,c and stick it in state
+	state.RouteMatrix.RelayIds = make([]uint64, 3)
+	state.RouteMatrix.RelayIds[0] = 1
+	state.RouteMatrix.RelayIds[1] = 2
+	state.RouteMatrix.RelayIds[2] = 3
 
 	// initialize route relays
 
 	routeNumRelays := int32(3)
-	routeRelays := []int32{1,2,3}
+	routeRelays := []int32{0,1,2}
 
 	// build next tokens
 
-	SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
+	handlers.SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
 
 	// validate
 
 	// todo: actually decrypt the tokens and verify they contain what we expect
+
+	_ = routingPublicKey
+	_ = clientPrivateKey
+	_ = serverPrivateKey
+	_ = relay_private_key_a
+	_ = relay_private_key_b
+	_ = relay_private_key_c
 }
 
 func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {

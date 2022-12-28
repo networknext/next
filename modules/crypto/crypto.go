@@ -13,6 +13,10 @@ const (
 	Box_MACSize   = poly1305.TagSize
 	Box_NonceSize = chacha20poly1305.NonceSizeX
 	Box_KeySize   = chacha20poly1305.KeySize
+
+	Routing_PublicKeySize = ed25519.PublicKeySize
+	Routing_PrivateKeySize = ed25519.PrivateKeySize
+	Routing_SignatureSize = ed25519.SignatureSize
 )
 
 func GenerateCustomerKeyPair() ([]byte, []byte, error) {
@@ -38,7 +42,9 @@ func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 
 func GenerateRoutingKeyPair() ([]byte, []byte) {
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	panic(err)
+	if err != nil {
+		panic(err)
+	}
 	return publicKey, privateKey
 }
 

@@ -108,6 +108,7 @@ func TriMatrixIndex(i, j int) int {
 	}
 }
 
+// todo: maybe this moves into new crypto?
 func GenerateRelayKeyPair() ([]byte, []byte, error) {
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	return publicKey, privateKey, err
