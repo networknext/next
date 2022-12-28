@@ -640,6 +640,96 @@ func SessionUpdate_FilterNearRelays(state *SessionUpdateState) {
 	state.NearRelaysExcluded = true
 }
 
+func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
+
+	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+	state.Output.SessionVersion++
+	state.Output.Initial = true
+
+	numTokens := routeNumRelays + 2
+
+	var routeAddresses [core.NEXT_MAX_NODES]*net.UDPAddr
+	var routePublicKeys [core.NEXT_MAX_NODES][]byte
+
+	// client node (no address specified...)
+
+	copy(routePublicKeys[0], state.Request.ClientRoutePublicKey[:])
+
+	// relay nodes
+
+	relayAddresses := routeAddresses[1 : numTokens-1]
+	relayPublicKeys := routePublicKeys[1 : numTokens-1]
+
+	numRouteRelays := len(routeRelays)
+
+	for i := 0; i < numRouteRelays; i++ {
+
+		relayIndex := routeRelays[i]
+
+		relayId := state.RouteMatrix.RelayIds[relayIndex]
+
+		relay, _ := state.Database.RelayMap[relayId]
+
+		relayAddresses[i] = &relay.Addr
+
+		// use private address (when it exists) when sending between two relays of the same supplier
+		if i > 0 {
+			prevRelayIndex := routeRelays[i-1]
+			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
+			prev, _ := state.Database.RelayMap[prevId] // IMPORTANT: Relay DOES exist.
+			if prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
+				relayAddresses[i] = &relay.InternalAddr
+			}
+		}
+
+		relayPublicKeys[i] = relay.PublicKey
+	}
+
+	// server node
+
+	routeAddresses[numTokens-1] = state.From
+	copy(routePublicKeys[numTokens-1], state.Request.ServerRoutePublicKey[:])
+
+	// debug print the route
+
+	core.Debug("----------------------------------------------------")
+	for index, address := range routeAddresses {
+		core.Debug("route address (%d): %s", index, address.String())
+	}
+	core.Debug("----------------------------------------------------")
+
+	// write the tokens
+
+	/*
+	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+
+	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+
+	response.RouteType = routing.RouteTypeNew
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+	*/
+}
+
+func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
+
+	// todo
+
+	numTokens := routeNumRelays + 2
+
+	_ = numTokens
+
+	/*
+		_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+
+		tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+		core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+		response.RouteType = routing.RouteTypeContinue
+		response.NumTokens = numTokens
+		response.Tokens = tokenData
+	*/
+}
+
 func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 	/*
@@ -672,7 +762,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			state.TakeNetworkNext = true
 
-			buildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
+			SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 			if state.Debug != nil {
 
@@ -725,13 +815,13 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 				core.Debug("route changed")
 				state.RouteChanged = true
-				buildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
+				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 			} else {
 
 				core.Debug("route continued")
 				state.RouteContinued = true
-				buildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
+				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 			}
 
@@ -938,55 +1028,6 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 		}
 	}
 	return value
-}
-
-func buildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
-
-	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
-	state.Output.SessionVersion++
-	state.Output.Initial = true
-
-	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
-
-	// todo
-	_ = numTokens
-
-	/*
-		routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-
-		core.Debug("----------------------------------------------------")
-		for index, address := range routeAddresses {
-			core.Debug("route address (%d): %s", index, address.String())
-		}
-		core.Debug("----------------------------------------------------")
-
-		tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-
-		core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
-
-		response.RouteType = routing.RouteTypeNew
-		response.NumTokens = numTokens
-		response.Tokens = tokenData
-	*/
-}
-
-func buildContinueTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
-
-	// todo
-
-	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
-
-	_ = numTokens
-
-	/*
-		_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-
-		tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-		core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
-		response.RouteType = routing.RouteTypeContinue
-		response.NumTokens = numTokens
-		response.Tokens = tokenData
-	*/
 }
 
 func buildRouteRelayData(state *SessionUpdateState) {

@@ -617,6 +617,14 @@ func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
 
 // --------------------------------------------------------------
 
+// todo: SessionUpdate_BuildNextTokens
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_BuildContinueTokens
+
+// --------------------------------------------------------------
+
 // todo: SessionUpdate_MakeRouteDecision
 
 // --------------------------------------------------------------
