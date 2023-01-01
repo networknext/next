@@ -36,7 +36,7 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string, data
 	relay.datacenterID = datacenterID
 
 	var err error
-	relay.publicKey, relay.privateKey, err = core.GenerateRelayKeyPair()
+	relay.publicKey, relay.privateKey, err = GenerateRelayKeyPair()
 	if err != nil {
 		panic(err)
 	}
