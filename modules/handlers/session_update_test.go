@@ -6,11 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
+	db "github.com/networknext/backend/modules/database"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -617,11 +620,379 @@ func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_BuildNextTokens
+func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
+
+	t.Parallel()
+
+	// initialize state
+
+	state := CreateState()
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// initialize route matrix
+
+	state.RouteMatrix.RelayIds = make([]uint64, 3)
+	state.RouteMatrix.RelayIds[0] = 1
+	state.RouteMatrix.RelayIds[1] = 2
+	state.RouteMatrix.RelayIds[2] = 3
+
+	// initialize route relays
+
+	routeNumRelays := int32(3)
+	routeRelays := []int32{0,1,2}
+
+	// build next tokens
+
+	handlers.SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
+
+	// validate
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
+		token := core.RouteToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	}
+}
+
+func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
+
+	t.Parallel()
+
+	// initialize state
+
+	state := CreateState()
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database
+
+	seller := db.Seller{ID: "seller", Name: "seller"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+	
+	relay_address_c_internal := core.ParseAddress("35.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, InternalAddr: *relay_address_c_internal, Seller: seller, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["seller"] = seller
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// initialize route matrix
+
+	state.RouteMatrix.RelayIds = make([]uint64, 3)
+	state.RouteMatrix.RelayIds[0] = 1
+	state.RouteMatrix.RelayIds[1] = 2
+	state.RouteMatrix.RelayIds[2] = 3
+
+	// initialize route relays
+
+	routeNumRelays := int32(3)
+	routeRelays := []int32{0,1,2}
+
+	// build next tokens
+
+	handlers.SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
+
+	// validate
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
+		token := core.RouteToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else if i == 2 {
+			assert.Equal(t, token.NextAddress.String(), relay_address_c_internal.String())
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	}
+}
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_BuildContinueTokens
+func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
+
+	t.Parallel()
+
+	// initialize state
+
+	state := CreateState()
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// initialize route matrix
+
+	state.RouteMatrix.RelayIds = make([]uint64, 3)
+	state.RouteMatrix.RelayIds[0] = 1
+	state.RouteMatrix.RelayIds[1] = 2
+	state.RouteMatrix.RelayIds[2] = 3
+
+	// initialize route relays
+
+	routeNumRelays := int32(3)
+	routeRelays := []int32{0,1,2}
+
+	// build next tokens
+
+	handlers.SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays)
+
+	// validate
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeContinue))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedContinueRouteTokenSize * i
+
+		token := core.ContinueToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedContinueRouteTokenSize]
+
+		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+	}
+}
 
 // --------------------------------------------------------------
 
