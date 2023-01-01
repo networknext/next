@@ -16,6 +16,7 @@ const (
 	SDK5_LocationVersion_Max   = 1
 	SDK5_LocationVersion_Write = 1
 
+	// todo: work out which these are, and defer to crypto
 	SDK5_CRYPTO_SIGN_BYTES             = 64
 	SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
 	SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
@@ -104,6 +105,7 @@ const (
 	SDK5_MinPacketBytes = 16 + 3 + 8 + SDK5_CRYPTO_SIGN_BYTES + 2
 	SDK5_MaxPacketBytes = 4096
 
+	// todo: these are all crypto box
 	SDK5_MacBytes   = 16
 	SDK5_NonceBytes = 24
 	SDK5_KeyBytes   = 32

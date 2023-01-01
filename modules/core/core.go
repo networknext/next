@@ -6,17 +6,16 @@ import "C"
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"sync"
-	"unsafe"
+	math_rand "math/rand"
+	crypto_rand "crypto/rand"
 )
 
 const CostBias = 3
@@ -106,12 +105,6 @@ func TriMatrixIndex(i, j int) int {
 	} else {
 		return j*(j+1)/2 - j + i
 	}
-}
-
-// todo: maybe this moves into new crypto?
-func GenerateRelayKeyPair() ([]byte, []byte, error) {
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	return publicKey, privateKey, err
 }
 
 // -----------------------------------------------------
@@ -826,12 +819,18 @@ type ContinueToken struct {
 	SessionVersion  uint8
 }
 
+// todo: nasty mish-mash of crypto constants here, dep on crypto instead?
+
+// key exchange
 const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
+
+// crypto box
 const Crypto_box_PUBLICKEYBYTES = C.crypto_box_PUBLICKEYBYTES
 
-const KeyBytes = 32
-const NonceBytes = 24
-const MacBytes = C.crypto_box_MACBYTES
+const KeyBytes = 32 // crypto box
+const NonceBytes = 24 // crypto box
+const MacBytes = C.crypto_box_MACBYTES // crypto box
+
 const SignatureBytes = C.crypto_sign_BYTES
 const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
 
@@ -861,7 +860,7 @@ func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, bu
 }
 
 func RandomBytes(buffer []byte) {
-	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
+	crypto_rand.Read(buffer)
 }
 
 // -----------------------------------------------------------------------------
@@ -908,7 +907,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
 	privateKey := [KeyBytes]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
@@ -962,7 +961,7 @@ func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPu
 	return ReadContinueToken(token, tokenData)
 }
 
-func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
+func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) {
 	for i := 0; i < numNodes; i++ {
 		var token ContinueToken
 		token.ExpireTimestamp = expireTimestamp
@@ -1433,7 +1432,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 	}
 
-	randomIndex := rand.Intn(numBestRoutes)
+	randomIndex := math_rand.Intn(numBestRoutes)
 
 	*out_bestRouteCost = bestRoutes[randomIndex].Cost + CostBias
 	*out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays

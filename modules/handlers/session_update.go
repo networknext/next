@@ -24,7 +24,7 @@ type SessionUpdateState struct {
 	   Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey [crypto.Routing_PublicKeySize]byte
+	RoutingPrivateKey [crypto.Box_KeySize]byte
 
 	ServerBackendAddress *net.UDPAddr
 
@@ -696,6 +696,8 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	core.Debug("----------------------------------------------------")
 	for index, address := range routeAddresses {
 		core.Debug("route address (%d): %s", index, address.String())
+		// todo
+		fmt.Printf("public key %d: %v\n", index, routePublicKeys[index])
 	}
 	core.Debug("----------------------------------------------------")
 
@@ -709,7 +711,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], state.RoutingPrivateKey)
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], state.RoutingPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -755,7 +757,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	sessionVersion := uint8(state.Output.SessionVersion)
 	expireTimestamp := state.Output.ExpireTimestamp
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RoutingPrivateKey)
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RoutingPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeContinue
 	state.Response.NumTokens = numTokens

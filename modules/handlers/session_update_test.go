@@ -628,11 +628,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	state := CreateState()
 
-	routingPublicKey, routingPrivateKey := crypto.GenerateRoutingKeyPair()	
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
 
-	clientPublicKey, clientPrivateKey, _ := core.GenerateRelayKeyPair()
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
 
-	serverPublicKey, serverPrivateKey, _ := core.GenerateRelayKeyPair()
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
 	copy(state.RoutingPrivateKey[:], routingPrivateKey)
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
@@ -648,9 +648,9 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
 	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
 
-	relay_public_key_a, relay_private_key_a, _ := core.GenerateRelayKeyPair()
-	relay_public_key_b, relay_private_key_b, _ := core.GenerateRelayKeyPair()
-	relay_public_key_c, relay_private_key_c, _ := core.GenerateRelayKeyPair()
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
 	relay_a := db.Relay{ID: 1, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40000"), Seller: seller_a, PublicKey: relay_public_key_a}
 	relay_b := db.Relay{ID: 2, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40001"), Seller: seller_b, PublicKey: relay_public_key_b}
@@ -686,14 +686,28 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	// validate
 
-	// todo: actually decrypt the tokens and verify they contain what we expect
+	const NumTokens = 5
 
-	_ = routingPublicKey
-	_ = clientPrivateKey
-	_ = serverPrivateKey
-	_ = relay_private_key_a
-	_ = relay_private_key_b
-	_ = relay_private_key_c
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		token := core.RouteToken{}
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+		// todo: verify contents of token
+	}
 }
 
 func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
