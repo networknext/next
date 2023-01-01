@@ -673,11 +673,11 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 		relayAddresses[i] = &relay.Addr
 
-		// use private address (when it exists) when sending between two relays of the same supplier
+		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
 			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
-			prev, _ := state.Database.RelayMap[prevId] // IMPORTANT: Relay DOES exist.
+			prev, _ := state.Database.RelayMap[prevId]
 			if prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
 				relayAddresses[i] = &relay.InternalAddr
 			}
