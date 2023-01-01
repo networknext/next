@@ -695,8 +695,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	core.Debug("----------------------------------------------------")
 	for index, address := range routeAddresses[:numTokens] {
-		core.Debug("route address (%d): %s", index, address.String())
-		fmt.Printf("route address (%d): %s\n", index, address.String())
+		core.Debug("route address %d: %s", index, address.String())
 	}
 	core.Debug("----------------------------------------------------")
 
@@ -725,7 +724,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// client node
 
-	copy(routePublicKeys[0], state.Request.ClientRoutePublicKey[:])
+	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
 
 	// relay nodes
 
@@ -746,7 +745,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// server node
 
-	copy(routePublicKeys[numTokens-1], state.Request.ServerRoutePublicKey[:])
+	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// build the tokens
 
