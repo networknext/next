@@ -503,14 +503,14 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		var tokenData []byte
 		if sameRoute {
 			tokenData = make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey)
+			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey[:])
 			routeType = routing.RouteTypeContinue
 		} else {
 			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey[:])
 			routeType = routing.RouteTypeNew
 		}
 
