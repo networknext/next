@@ -13,6 +13,10 @@ const (
 	Box_KeySize   = chacha20poly1305.KeySize
 	Box_NonceSize = chacha20poly1305.NonceSizeX
 	Box_MacSize   = poly1305.TagSize
+
+	Sign_SignatureSize = 64
+	Sign_PublicKeySize = 32
+	Sign_PrivateKeySize = 64
 )
 
 func Box_KeyPair() ([]byte, []byte) {
@@ -48,7 +52,7 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 	return box.Seal(nil, data, &n, &pub, &priv)
 }
 
-// -----------
+// ----------------------------------------------------
 
 func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 
