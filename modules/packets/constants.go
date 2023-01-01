@@ -82,10 +82,10 @@ const (
 	SDK5_RouteTypeContinue = 2
 
 	SDK5_NextRouteTokenSize          = 100
-	SDK5_EncryptedNextRouteTokenSize = SDK5_NextRouteTokenSize + crypto.Box_MACSize
+	SDK5_EncryptedNextRouteTokenSize = SDK5_NextRouteTokenSize + crypto.Box_MacSize
 
 	SDK5_ContinueRouteTokenSize          = 41
-	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.Box_MACSize
+	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.Box_MacSize
 
 	SDK5_MaxMatchValues = 64
 
@@ -105,10 +105,9 @@ const (
 	SDK5_MinPacketBytes = 16 + 3 + 8 + SDK5_CRYPTO_SIGN_BYTES + 2
 	SDK5_MaxPacketBytes = 4096
 
-	// todo: these are all crypto box
-	SDK5_MacBytes   = 16
-	SDK5_NonceBytes = 24
-	SDK5_KeyBytes   = 32
+	SDK5_MacBytes   = crypto.Box_MacSize
+	SDK5_NonceBytes = crypto.Box_NonceSize
+	SDK5_KeyBytes   = crypto.Box_KeySize
 
 	SDK5_MaxNearRelayRTT        = 255
 	SDK5_MaxNearRelayJitter     = 255

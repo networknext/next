@@ -1076,7 +1076,7 @@ func TestEncrypt(t *testing.T) {
 
 	// encrypt random data and verify we can decrypt it
 
-	nonce := make([]byte, NonceBytes)
+	nonce := make([]byte, crypto.Box_NonceSize)
 	RandomBytes(nonce)
 
 	data := make([]byte, 256)
@@ -1084,11 +1084,11 @@ func TestEncrypt(t *testing.T) {
 		data[i] = byte(data[i])
 	}
 
-	encryptedData := make([]byte, 256+MacBytes)
+	encryptedData := make([]byte, 256+crypto.Box_MacSize)
 
 	encryptedBytes := Encrypt(senderPrivateKey[:], receiverPublicKey[:], nonce, encryptedData, len(data))
 
-	assert.Equal(t, 256+MacBytes, encryptedBytes)
+	assert.Equal(t, 256+crypto.Box_MacSize, encryptedBytes)
 
 	err := Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
 
@@ -1096,7 +1096,7 @@ func TestEncrypt(t *testing.T) {
 
 	// decryption should fail with garbage data
 
-	garbageData := make([]byte, 256+MacBytes)
+	garbageData := make([]byte, 256+crypto.Box_MacSize)
 	RandomBytes(garbageData[:])
 
 	err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, garbageData, encryptedBytes)
@@ -1189,7 +1189,7 @@ func TestRouteTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, PublicKeyBytes)
+		publicKeys[i] = make([]byte, crypto.Box_KeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
@@ -1292,7 +1292,7 @@ func TestContinueTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, PublicKeyBytes)
+		publicKeys[i] = make([]byte, crypto.Box_KeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 

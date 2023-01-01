@@ -2,7 +2,7 @@ package crypto
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
+	crypto_rand "crypto/rand"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	Box_MACSize   = poly1305.TagSize
-	Box_NonceSize = chacha20poly1305.NonceSizeX
 	Box_KeySize   = chacha20poly1305.KeySize
+	Box_NonceSize = chacha20poly1305.NonceSizeX
+	Box_MacSize   = poly1305.TagSize
 )
 
 func Box_KeyPair() ([]byte, []byte) {
-	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+	publicKey, privateKey, err := box.GenerateKey(crypto_rand.Reader)
 	if err != nil {
 		panic(err)
 	}
@@ -48,11 +48,13 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 	return box.Seal(nil, data, &n, &pub, &priv)
 }
 
+// -----------
+
 func GenerateCustomerKeyPair() ([]byte, []byte, error) {
 
 	customerID := make([]byte, 8)
 
-	rand.Read(customerID)
+	crypto_rand.Read(customerID)
 
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
