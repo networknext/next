@@ -638,6 +638,16 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
 	// initialize database
 
 	seller_a := db.Seller{ID: "a", Name: "a"}
@@ -648,13 +658,17 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
 	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
 
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
 	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{ID: 1, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40000"), Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{ID: 2, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40001"), Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{ID: 3, Name: "a", Addr: *core.ParseAddress("127.0.0.1:40002"), Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap["a"] = seller_a
 	state.Database.SellerMap["b"] = seller_b
@@ -692,6 +706,12 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
 	privateKeys := make([][]byte, NumTokens)
 
 	privateKeys[0] = clientPrivateKey
@@ -701,12 +721,36 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	privateKeys[4] = serverPrivateKey
 
 	for i := 0; i < NumTokens; i++ {
+
 		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
 		token := core.RouteToken{}
+
 		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
-		// todo: verify contents of token
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
 	}
 }
 

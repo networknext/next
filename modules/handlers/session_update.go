@@ -694,10 +694,9 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	// debug print the route
 
 	core.Debug("----------------------------------------------------")
-	for index, address := range routeAddresses {
+	for index, address := range routeAddresses[:numTokens] {
 		core.Debug("route address (%d): %s", index, address.String())
-		// todo
-		fmt.Printf("public key %d: %v\n", index, routePublicKeys[index])
+		fmt.Printf("route address (%d): %s\n", index, address.String())
 	}
 	core.Debug("----------------------------------------------------")
 
