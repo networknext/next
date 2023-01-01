@@ -6,17 +6,19 @@ import "C"
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"sync"
-	"unsafe"
+
+	math_rand "math/rand"
+	crypto_rand "crypto/rand"
+
+	"github.com/networknext/backend/modules/crypto"
 )
 
 const CostBias = 3
@@ -31,7 +33,6 @@ const NEXT_ROUTE_TOKEN_BYTES = 76
 const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
-const NEXT_PRIVATE_KEY_BYTES = 32
 
 var debugLogs bool
 
@@ -106,11 +107,6 @@ func TriMatrixIndex(i, j int) int {
 	} else {
 		return j*(j+1)/2 - j + i
 	}
-}
-
-func GenerateRelayKeyPair() ([]byte, []byte, error) {
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	return publicKey, privateKey, err
 }
 
 // -----------------------------------------------------
@@ -816,7 +812,7 @@ type RouteToken struct {
 	KbpsUp          uint32
 	KbpsDown        uint32
 	NextAddress     *net.UDPAddr
-	PrivateKey      [NEXT_PRIVATE_KEY_BYTES]byte
+	PrivateKey      [crypto.Box_KeySize]byte
 }
 
 type ContinueToken struct {
@@ -825,15 +821,6 @@ type ContinueToken struct {
 	SessionVersion  uint8
 }
 
-const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
-const Crypto_box_PUBLICKEYBYTES = C.crypto_box_PUBLICKEYBYTES
-
-const KeyBytes = 32
-const NonceBytes = 24
-const MacBytes = C.crypto_box_MACBYTES
-const SignatureBytes = C.crypto_sign_BYTES
-const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
-
 func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) int {
 	C.crypto_box_easy((*C.uchar)(&buffer[0]),
 		(*C.uchar)(&buffer[0]),
@@ -841,7 +828,7 @@ func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, bu
 		(*C.uchar)(&nonce[0]),
 		(*C.uchar)(&receiverPublicKey[0]),
 		(*C.uchar)(&senderPrivateKey[0]))
-	return bytes + C.crypto_box_MACBYTES
+	return bytes + crypto.Box_MacSize
 }
 
 func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
@@ -860,7 +847,7 @@ func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, bu
 }
 
 func RandomBytes(buffer []byte) {
-	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
+	crypto_rand.Read(buffer)
 }
 
 // -----------------------------------------------------------------------------
@@ -890,25 +877,25 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 }
 
 func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(tokenData[:NonceBytes])
-	WriteRouteToken(token, tokenData[NonceBytes:])
-	Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:NonceBytes], tokenData[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+	RandomBytes(tokenData[:crypto.Box_NonceSize])
+	WriteRouteToken(token, tokenData[crypto.Box_NonceSize:])
+	Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
 	if len(tokenData) < NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted route token")
 	}
-	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
-	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+	nonce := tokenData[0 : crypto.Box_NonceSize-1]
+	tokenData = tokenData[crypto.Box_NonceSize:]
+	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
-	privateKey := [KeyBytes]byte{}
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
+	privateKey := [crypto.Box_KeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
 		var token RouteToken
@@ -944,24 +931,24 @@ func ReadContinueToken(token *ContinueToken, buffer []byte) error {
 }
 
 func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(buffer[:NonceBytes])
-	WriteContinueToken(token, buffer[NonceBytes:])
-	Encrypt(senderPrivateKey, receiverPublicKey, buffer[:NonceBytes], buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
+	RandomBytes(buffer[:crypto.Box_NonceSize])
+	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
+	Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
 	if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted continue token")
 	}
-	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
-	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+	nonce := tokenData[0 : crypto.Box_NonceSize-1]
+	tokenData = tokenData[crypto.Box_NonceSize:]
+	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadContinueToken(token, tokenData)
 }
 
-func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
+func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) {
 	for i := 0; i < numNodes; i++ {
 		var token ContinueToken
 		token.ExpireTimestamp = expireTimestamp
@@ -1432,7 +1419,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 	}
 
-	randomIndex := rand.Intn(numBestRoutes)
+	randomIndex := math_rand.Intn(numBestRoutes)
 
 	*out_bestRouteCost = bestRoutes[randomIndex].Cost + CostBias
 	*out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays

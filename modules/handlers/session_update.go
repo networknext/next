@@ -6,8 +6,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -23,7 +24,7 @@ type SessionUpdateState struct {
 	   Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey [32]byte
+	RoutingPrivateKey [crypto.Box_KeySize]byte
 
 	ServerBackendAddress *net.UDPAddr
 
@@ -653,7 +654,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	// client node (no address specified...)
 
-	copy(routePublicKeys[0], state.Request.ClientRoutePublicKey[:])
+	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
 
 	// relay nodes
 
@@ -672,11 +673,11 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 		relayAddresses[i] = &relay.Addr
 
-		// use private address (when it exists) when sending between two relays of the same supplier
+		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
 			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
-			prev, _ := state.Database.RelayMap[prevId] // IMPORTANT: Relay DOES exist.
+			prev, _ := state.Database.RelayMap[prevId]
 			if prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
 				relayAddresses[i] = &relay.InternalAddr
 			}
@@ -688,13 +689,13 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	// server node
 
 	routeAddresses[numTokens-1] = state.From
-	copy(routePublicKeys[numTokens-1], state.Request.ServerRoutePublicKey[:])
+	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// debug print the route
 
 	core.Debug("----------------------------------------------------")
-	for index, address := range routeAddresses {
-		core.Debug("route address (%d): %s", index, address.String())
+	for index, address := range routeAddresses[:numTokens] {
+		core.Debug("route address %d: %s", index, address.String())
 	}
 	core.Debug("----------------------------------------------------")
 
@@ -708,7 +709,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], state.RoutingPrivateKey)
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], state.RoutingPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -723,7 +724,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// client node
 
-	copy(routePublicKeys[0], state.Request.ClientRoutePublicKey[:])
+	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
 
 	// relay nodes
 
@@ -744,7 +745,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// server node
 
-	copy(routePublicKeys[numTokens-1], state.Request.ServerRoutePublicKey[:])
+	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// build the tokens
 
@@ -754,7 +755,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	sessionVersion := uint8(state.Output.SessionVersion)
 	expireTimestamp := state.Output.ExpireTimestamp
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RoutingPrivateKey)
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RoutingPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeContinue
 	state.Response.NumTokens = numTokens
