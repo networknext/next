@@ -9,7 +9,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/crypto"
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -80,7 +80,6 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 	return routeMatrix
 }
 
-/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -2566,7 +2565,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	assert.True(t, state.RouteNoLongerExists)
 	assert.False(t, state.Output.RouteState.Next)
 }
-*/
 
 func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
@@ -2706,7 +2704,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	assert.True(t, state.Response.Committed)
 	assert.False(t, state.Response.Multipath)
 
-	// make route decision -- mispredict 3 times
+	// mispredict 3 times
 
 	state.Request.Next = true
 	state.Request.NextRTT = 100
@@ -2715,7 +2713,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 		state.Input = state.Output
 		handlers.SessionUpdate_MakeRouteDecision(state)
 		if i < 2 {
-			assert.False(t, state.Mispredict) // IMPORTANT: Only if we mispredict 3 times in a row
+			assert.False(t, state.Mispredict)
 		}
 	}
 
@@ -2725,7 +2723,167 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	assert.False(t, state.Output.RouteState.Next)
 }
 
-// todo: Test_SessionUpdate_MakeRouteDecision_LatencyWorse
+func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
+
+	t.Parallel()
+
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = false
+	state.Request.DirectMinRTT = 100
+	state.Request.SliceNumber = 100
+	state.Debug = new(string)
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, _ := crypto.Box_KeyPair()
+
+	serverPublicKey, _ := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+	
+	costMatrix := make([]int32, entryCount)
+	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0,1)] = 10
+	costMatrix[core.TriMatrixIndex(1,2)] = 10
+	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// setup route shader
+
+	state.Buyer.RouteShader = core.NewRouteShader()
+
+	state.Buyer.RouteShader.DisableNetworkNext = false
+	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	// setup internal config
+
+	state.Buyer.InternalConfig = core.NewInternalConfig()
+
+	// setup near relays
+
+	state.NumNearRelays = 3
+
+	state.NearRelayIndices[0] = 0
+	state.NearRelayIndices[1] = 1
+	state.NearRelayIndices[2] = 2
+
+	state.NearRelayRTTs[0] = 1
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
+
+	// setup dest relays
+
+	state.NumDestRelays = 1
+
+	state.DestRelays = make([]int32, 1)
+
+	state.DestRelays[0] = 2
+
+	// make the route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify output state (we should be on next now)
+
+	assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.Output.RouteState.Next)
+	assert.True(t, state.Response.Committed)
+	assert.False(t, state.Response.Multipath)
+
+	// setup a terrible route matrix with nothing but bad routes
+
+	for i := range costMatrix {
+		costMatrix[i] = 10
+	}
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// make route decision
+
+	state.Request.Next = true
+	state.Request.NextRTT = 100
+	state.Request.DirectMinRTT = 0
+
+	state.Input = state.Output
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// validate that we tripped "latency worse"
+
+	assert.True(t, state.LatencyWorse)
+	assert.False(t, state.Output.RouteState.Next)
+}
 
 // --------------------------------------------------------------
 
