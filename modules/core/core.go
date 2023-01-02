@@ -987,7 +987,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 			}
 
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
-			
+
 			entry := &routeMatrix[index]
 
 			if entry.NumRoutes > 0 {
@@ -1867,6 +1867,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
+
+	// todo
+	fmt.Printf("predicted latency = %d\n", predictedLatency)
+	fmt.Printf("next latency = %d\n", nextLatency)
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
