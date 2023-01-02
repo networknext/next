@@ -608,18 +608,6 @@ func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_GetNearRelays
-
-// --------------------------------------------------------------
-
-// todo: SessionUpdate_UpdateNearRelays
-
-// --------------------------------------------------------------
-
-// todo: SessionUpdate_FilterNearRelays
-
-// --------------------------------------------------------------
-
 func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	t.Parallel()
@@ -996,10 +984,68 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_MakeRouteDecision
+func Test_SessionUpdate_MakeRouteDecision_NoRouteRelays(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = true
+	state.Input.RouteNumRelays = 0
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	assert.False(t, state.Output.RouteState.Next)
+	assert.True(t, state.Output.RouteState.Veto)
+	assert.True(t, state.NoRouteRelays)
+}
+
+/*
+	outputs:
+
+		state.Response.Committed = state.Output.RouteState.Committed
+		state.Response.Multipath = state.Output.RouteState.Multipath
+
+		state.Output.RouteCost = routeCost
+		state.Output.RouteChanged = routeChanged
+		state.Output.RouteNumRelays = routeNumRelays
+
+		for i := int32(0); i < routeNumRelays; i++ {
+			relayId := state.RouteMatrix.RelayIds[routeRelays[i]]
+			state.Output.RouteRelayIds[i] = relayId
+		}
+*/
+
+// todo: Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext       (debug true... verify debug string...)
+
+// todo: Test_SessionUpdate_MakeRouteDecision_Aborted
+
+// todo: Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists
+
+// todo: Test_SessionUpdate_MakeRouteDecision_RouteChanged
+
+// todo: Test_SessionUpdate_MakeRouteDecision_RouteContinued
+
+// todo: Test_SessionUpdate_MakeRouteDecision_RouteContinued
+
+// todo: Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists
+
+// todo: Test_SessionUpdate_MakeRouteDecision_Mispredict
+
+// todo: Test_SessionUpdate_MakeRouteDecision_LatencyWorse
 
 // --------------------------------------------------------------
 
 // todo: SessionUpdate_Post
 
 // --------------------------------------------------------------
+
+// todo: SessionUpdate_GetNearRelays
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_UpdateNearRelays
+
+// --------------------------------------------------------------
+
+// todo: SessionUpdate_FilterNearRelays
