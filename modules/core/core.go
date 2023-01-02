@@ -961,30 +961,44 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 // -----------------------------------------------------------------------------
 
 func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32) int32 {
+
 	bestRouteCost := int32(math.MaxInt32)
+
+	// todo
+	fmt.Printf("get best route cost\n")
+	fmt.Printf("source relays = %v\n", sourceRelays)
+	fmt.Printf("source relay cost = %v\n", sourceRelayCost)
+	fmt.Printf("dest relays = %v\n", destRelays)
+
 	for i := range sourceRelays {
+	
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
+	
 		sourceRelayIndex := sourceRelays[i]
 
 		for j := range destRelays {
+	
 			destRelayIndex := destRelays[j]
 			if sourceRelayIndex == destRelayIndex {
 				continue
 			}
 
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+			
 			entry := &routeMatrix[index]
 
 			if entry.NumRoutes > 0 {
+
+			// todo: verify this code using "fullRelaySet"
 
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
 					for l := 0; l < len(entry.RouteRelays[0]); l++ {
 
-						// Do not consider routes with full relays
+						// exclude routes with full relays
 						if _, isRelayFull := fullRelaySet[entry.RouteRelays[k][l]]; isRelayFull {
 							continue routeRelayLoop
 						}
@@ -998,6 +1012,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 			}
 		}
 	}
+
 	if bestRouteCost == int32(math.MaxInt32) {
 		return bestRouteCost
 	}
@@ -1453,6 +1468,8 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
 		}
+		// todo
+		fmt.Printf("get random best route\n")
 		GetRandomBestRoute(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		routeLost = true

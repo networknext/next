@@ -9,7 +9,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/crypto"
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -39,7 +39,6 @@ func CreateState() *handlers.SessionUpdateState {
 	return &state
 }
 
-/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -1083,7 +1082,6 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 	assert.False(t, state.TakeNetworkNext)
 	assert.False(t, state.Output.RouteState.Next)
 }
-*/
 
 func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
 
@@ -1126,7 +1124,6 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 	return routeMatrix
 }
 
-/*
 func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	t.Parallel()
@@ -1199,6 +1196,10 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	
 	costMatrix := make([]int32, entryCount)
 	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
 	costMatrix[core.TriMatrixIndex(0,1)] = 10
 	costMatrix[core.TriMatrixIndex(1,2)] = 10
 	costMatrix[core.TriMatrixIndex(0,2)] = 100
@@ -1238,7 +1239,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// setup dest relays
 
-	state.NumDestRelays = 3
+	state.NumDestRelays = 1
 
 	state.DestRelays = make([]int32, 1)
 
@@ -1418,6 +1419,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	
 	costMatrix := make([]int32, entryCount)
 	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+	
 	costMatrix[core.TriMatrixIndex(0,1)] = 10
 	costMatrix[core.TriMatrixIndex(1,2)] = 10
 	costMatrix[core.TriMatrixIndex(0,2)] = 100
@@ -1457,7 +1462,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// setup dest relays
 
-	state.NumDestRelays = 3
+	state.NumDestRelays = 1
 
 	state.DestRelays = make([]int32, 1)
 
@@ -1579,30 +1584,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
 	}
 }
-*/
-
-func Test_SessionUpdate_MakeRouteDecision_Aborted(t *testing.T) {
-
-	t.Parallel()
-
-	// setup state
-
-	state := CreateState()
-
-	state.Input.RouteState.Next = true
-	state.Input.RouteNumRelays = 5
-	state.Request.Next = false
-
-	// make the route decision
-
-	handlers.SessionUpdate_MakeRouteDecision(state)
-
-	// verify output state
-
-	assert.True(t, state.Aborted)
-	assert.True(t, state.Output.RouteState.Veto)
-	assert.False(t, state.Output.RouteState.Next)
-}
 
 func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
@@ -1676,6 +1657,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	
 	costMatrix := make([]int32, entryCount)
 	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
 	costMatrix[core.TriMatrixIndex(0,1)] = 10
 	costMatrix[core.TriMatrixIndex(1,2)] = 10
 	costMatrix[core.TriMatrixIndex(0,2)] = 100
@@ -1715,7 +1700,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// setup dest relays
 
-	state.NumDestRelays = 3
+	state.NumDestRelays = 1
 
 	state.DestRelays = make([]int32, 1)
 
@@ -1881,11 +1866,705 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	}
 }
 
-// todo: Test_SessionUpdate_MakeRouteDecision_RouteChanged
+func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T) {
 
-// todo: Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists
+	t.Parallel()
 
-// todo: Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = false
+	state.Request.DirectMinRTT = 100
+	state.Request.SliceNumber = 100
+	state.Debug = new(string)
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+	
+	costMatrix := make([]int32, entryCount)
+	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0,1)] = 10
+	costMatrix[core.TriMatrixIndex(1,2)] = 10
+	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// setup route shader
+
+	state.Buyer.RouteShader = core.NewRouteShader()
+
+	state.Buyer.RouteShader.DisableNetworkNext = false
+	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	// setup internal config
+
+	state.Buyer.InternalConfig = core.NewInternalConfig()
+
+	// setup near relays
+
+	state.NumNearRelays = 3
+
+	state.NearRelayIndices[0] = 0
+	state.NearRelayIndices[1] = 1
+	state.NearRelayIndices[2] = 2
+
+	state.NearRelayRTTs[0] = 1
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
+
+	// setup dest relays
+
+	state.NumDestRelays = 1
+
+	state.DestRelays = make([]int32, 1)
+
+	state.DestRelays[0] = 2
+
+	// make the route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify output state
+
+	assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.Output.RouteState.Next)
+	assert.True(t, state.Response.Committed)
+	assert.False(t, state.Response.Multipath)
+
+	assert.Equal(t, state.Output.RouteCost, int32(24))
+	assert.False(t, state.Output.RouteChanged)
+	assert.Equal(t, state.Output.RouteNumRelays, int32(3))
+
+	assert.Equal(t, state.Output.RouteRelayIds[0], uint64(1))
+	assert.Equal(t, state.Output.RouteRelayIds[1], uint64(2))
+	assert.Equal(t, state.Output.RouteRelayIds[2], uint64(3))
+
+	// verify route tokens
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
+		token := core.RouteToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	}
+
+	// verify debug string is set
+
+	assert.NotEqual(t, *state.Debug, "")
+
+	// dummy out the route matrix so it is empty
+
+	state.Input = state.Output
+
+	state.Input.RouteState.Next = true
+	state.Input.RouteNumRelays = 3
+	state.Input.RouteRelayIds[0] = 1
+	state.Input.RouteRelayIds[1] = 2
+	state.Input.RouteRelayIds[2] = 3
+
+	state.Request.Next = true
+
+	state.NumNearRelays = 0
+
+	state.RouteMatrix = &common.RouteMatrix{}
+	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
+
+	// make route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// validate that we tripped "route relay no longer exists" *and* "route no longer exists"
+
+	assert.True(t, state.RouteRelayNoLongerExists)
+	assert.True(t, state.RouteNoLongerExists)
+}
+
+func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *testing.T) {
+
+	t.Parallel()
+
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = false
+	state.Request.DirectMinRTT = 100
+	state.Request.SliceNumber = 100
+	state.Debug = new(string)
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+	
+	costMatrix := make([]int32, entryCount)
+	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0,1)] = 10
+	costMatrix[core.TriMatrixIndex(1,2)] = 10
+	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// setup route shader
+
+	state.Buyer.RouteShader = core.NewRouteShader()
+
+	state.Buyer.RouteShader.DisableNetworkNext = false
+	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	// setup internal config
+
+	state.Buyer.InternalConfig = core.NewInternalConfig()
+
+	// setup near relays
+
+	state.NumNearRelays = 3
+
+	state.NearRelayIndices[0] = 0
+	state.NearRelayIndices[1] = 1
+	state.NearRelayIndices[2] = 2
+
+	state.NearRelayRTTs[0] = 1
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
+
+	// setup dest relays
+
+	state.NumDestRelays = 1
+
+	state.DestRelays = make([]int32, 1)
+
+	state.DestRelays[0] = 2
+
+	// make the route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify output state
+
+	assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.Output.RouteState.Next)
+	assert.True(t, state.Response.Committed)
+	assert.False(t, state.Response.Multipath)
+
+	assert.Equal(t, state.Output.RouteCost, int32(24))
+	assert.False(t, state.Output.RouteChanged)
+	assert.Equal(t, state.Output.RouteNumRelays, int32(3))
+
+	assert.Equal(t, state.Output.RouteRelayIds[0], uint64(1))
+	assert.Equal(t, state.Output.RouteRelayIds[1], uint64(2))
+	assert.Equal(t, state.Output.RouteRelayIds[2], uint64(3))
+
+	// verify route tokens
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
+		token := core.RouteToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	}
+
+	// verify debug string is set
+
+	assert.NotEqual(t, *state.Debug, "")
+
+	// make all near relays unroutable
+
+	state.Input = state.Output
+
+	state.Input.RouteState.Next = true
+	state.Input.RouteNumRelays = 3
+	state.Input.RouteRelayIds[0] = 1
+	state.Input.RouteRelayIds[1] = 2
+	state.Input.RouteRelayIds[2] = 3
+
+	state.Request.Next = true
+
+	state.NumNearRelays = 0
+
+	// make route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// validate that we tripped "route no longer exists"
+
+	assert.False(t, state.RouteRelayNoLongerExists)
+	assert.True(t, state.RouteNoLongerExists)
+	assert.False(t, state.Output.RouteState.Next)
+}
+
+func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testing.T) {
+
+	t.Parallel()
+
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = false
+	state.Request.DirectMinRTT = 100
+	state.Request.SliceNumber = 100
+	state.Debug = new(string)
+
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
+
+	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+
+	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+
+	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
+	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
+
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
+
+	state.From = serverAddress
+
+	state.Output.SessionId = 0x123457
+	state.Output.SessionVersion = 100
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+	
+	costMatrix := make([]int32, entryCount)
+	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0,1)] = 10
+	costMatrix[core.TriMatrixIndex(1,2)] = 10
+	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// setup route shader
+
+	state.Buyer.RouteShader = core.NewRouteShader()
+
+	state.Buyer.RouteShader.DisableNetworkNext = false
+	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	// setup internal config
+
+	state.Buyer.InternalConfig = core.NewInternalConfig()
+
+	// setup near relays
+
+	state.NumNearRelays = 3
+
+	state.NearRelayIndices[0] = 0
+	state.NearRelayIndices[1] = 1
+	state.NearRelayIndices[2] = 2
+
+	state.NearRelayRTTs[0] = 1
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
+
+	// setup dest relays
+
+	state.NumDestRelays = 1
+
+	state.DestRelays = make([]int32, 1)
+
+	state.DestRelays[0] = 2
+
+	// make the route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify output state
+
+	assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.Output.RouteState.Next)
+	assert.True(t, state.Response.Committed)
+	assert.False(t, state.Response.Multipath)
+
+	assert.Equal(t, state.Output.RouteCost, int32(24))
+	assert.False(t, state.Output.RouteChanged)
+	assert.Equal(t, state.Output.RouteNumRelays, int32(3))
+
+	assert.Equal(t, state.Output.RouteRelayIds[0], uint64(1))
+	assert.Equal(t, state.Output.RouteRelayIds[1], uint64(2))
+	assert.Equal(t, state.Output.RouteRelayIds[2], uint64(3))
+
+	// verify route tokens
+
+	const NumTokens = 5
+
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+
+	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses[1] = relay_address_a
+	addresses[2] = relay_address_b
+	addresses[3] = relay_address_c
+	addresses[4] = serverAddress
+
+	privateKeys := make([][]byte, NumTokens)
+
+	privateKeys[0] = clientPrivateKey
+	privateKeys[1] = relay_private_key_a
+	privateKeys[2] = relay_private_key_b
+	privateKeys[3] = relay_private_key_c
+	privateKeys[4] = serverPrivateKey
+
+	for i := 0; i < NumTokens; i++ {
+
+		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+
+		token := core.RouteToken{}
+
+		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+
+		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, err)
+
+		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
+		assert.Equal(t, token.SessionId, state.Output.SessionId)
+		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
+		assert.Equal(t, token.KbpsUp, uint32(256))
+		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 4 {
+			assert.Nil(t, nil)
+		} else {
+			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		}
+
+		found := false
+		for j := range token.PrivateKey {
+			if token.PrivateKey[j] != 0 {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found)
+	}
+
+	// verify debug string is set
+
+	assert.NotEqual(t, *state.Debug, "")
+
+	// generate new route matrix without the current route
+
+	state.Input = state.Output
+
+	state.Input.RouteState.Next = true
+	state.Input.RouteNumRelays = 3
+	state.Input.RouteRelayIds[0] = 1
+	state.Input.RouteRelayIds[1] = 2
+	state.Input.RouteRelayIds[2] = 3
+
+	state.Request.Next = true
+
+	costMatrix = make([]int32, entryCount)
+	
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0,2)] = 1000
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	// make route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// validate that we tripped "route no longer exists"
+
+	assert.False(t, state.RouteRelayNoLongerExists)
+	assert.True(t, state.RouteNoLongerExists)
+	assert.False(t, state.Output.RouteState.Next)
+}
 
 // todo: Test_SessionUpdate_MakeRouteDecision_Mispredict
 

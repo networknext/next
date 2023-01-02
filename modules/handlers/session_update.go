@@ -843,7 +843,17 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.RouteRelayNoLongerExists = true
 		}
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		sourceRelays := state.NearRelayIndices[:state.NumNearRelays]
+		sourceRelayCosts := state.NearRelayRTTs[:state.NumNearRelays]
+
+		destRelays := state.DestRelays[:state.NumDestRelays]
+
+		// todo
+		fmt.Printf("source relays = %v\n", sourceRelays)
+		fmt.Printf("source relay costs = %v\n", sourceRelayCosts)
+		fmt.Printf("dest relays = %v\n", destRelays)
+
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -868,6 +878,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			// leave network next
 
 			if state.Output.RouteState.NoRoute {
+				// todo
+				fmt.Printf("wooooooooooooop\n")
 				core.Debug("route no longer exists")
 				state.RouteNoLongerExists = true
 			}
