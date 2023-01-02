@@ -126,7 +126,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only") // tested
+		core.Debug("analysis only")
 		state.AnalysisOnly = true
 	}
 
@@ -137,7 +137,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.ClientPingTimedOut {
 		core.Debug("client ping timed out")
-		state.ClientPingTimedOut = true // tested
+		state.ClientPingTimedOut = true
 		return true
 	}
 
@@ -151,18 +151,18 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		var err error
 
-		state.LocatedIP = true // tested
+		state.LocatedIP = true
 
 		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
 
 		if err != nil {
 			core.Error("location veto: %s", err)
-			state.Output.RouteState.LocationVeto = true // tested
+			state.Output.RouteState.LocationVeto = true
 			state.LocationVeto = true
 			return true
 		}
 
-		state.Input.Location = state.Output.Location // tested
+		state.Input.Location = state.Output.Location
 
 	} else {
 
@@ -173,11 +173,11 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		err := state.Input.Serialize(readStream)
 		if err != nil {
 			core.Debug("failed to read session data: %v", err)
-			state.FailedToReadSessionData = true // tested
+			state.FailedToReadSessionData = true
 			return true
 		}
 
-		state.ReadSessionData = true // tested
+		state.ReadSessionData = true
 
 		state.Output.Location = state.Input.Location
 	}
@@ -189,7 +189,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.RouteMatrix.CreatedAt+uint64(state.StaleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
-		state.StaleRouteMatrix = true // tested
+		state.StaleRouteMatrix = true
 		return true
 	}
 
@@ -201,7 +201,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !datacenterExists(state.Database, state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
-		state.UnknownDatacenter = true // tested
+		state.UnknownDatacenter = true
 	}
 
 	/*
@@ -212,7 +212,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
 		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
-		state.DatacenterNotEnabled = true // tested
+		state.DatacenterNotEnabled = true
 	}
 
 	/*
@@ -249,7 +249,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		for i := int32(0); i < state.Request.NumTags; i++ {
 			if state.Request.Tags[i] == ProTag {
 				core.Debug("pro mode enabled")
-				state.Buyer.RouteShader.ProMode = true // tested
+				state.Buyer.RouteShader.ProMode = true
 				state.Pro = true
 			}
 		}
@@ -262,7 +262,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Buyer.Debug {
 		core.Debug("debug enabled")
-		state.Debug = new(string) // tested
+		state.Debug = new(string)
 	}
 
 	return false
