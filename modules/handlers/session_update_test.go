@@ -1320,13 +1320,34 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	assert.NotEqual(t, *state.Debug, "")
 }
 
+func Test_SessionUpdate_MakeRouteDecision_Aborted(t *testing.T) {
+
+	t.Parallel()
+
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = true
+	state.Input.RouteNumRelays = 5
+	state.Request.Next = false
+
+	// make the route decision
+
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify output state
+
+	assert.True(t, state.Aborted)
+	assert.True(t, state.Output.RouteState.Veto)
+	assert.False(t, state.Output.RouteState.Next)
+}
+
 // todo: Test_SessionUpdate_MakeRouteDecision_Aborted
 
 // todo: Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists
 
 // todo: Test_SessionUpdate_MakeRouteDecision_RouteChanged
-
-// todo: Test_SessionUpdate_MakeRouteDecision_RouteContinued
 
 // todo: Test_SessionUpdate_MakeRouteDecision_RouteContinued
 
