@@ -1053,11 +1053,11 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// setup route shader
 
-	// todo: state.Buyer.RouteShader
+	state.Buyer.RouteShader = core.NewRouteShader()
 
 	// setup internal config
 
-	// todo: state.buyer.InternalConfig
+	state.Buyer.InternalConfig = core.NewInternalConfig()
 
 	// setup near relays
 
@@ -1074,10 +1074,14 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	// setup dest relays
 
 	state.NumDestRelays = 3
+
 	state.DestRelays = make([]int32, state.NumDestRelays)
+
 	state.DestRelays[0] = 0
 	state.DestRelays[1] = 1
 	state.DestRelays[2] = 2
+
+	// setup route state
 
 	// todo: setup state.Output.RouteState
 
