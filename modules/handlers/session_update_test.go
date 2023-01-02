@@ -1000,7 +1000,7 @@ func Test_SessionUpdate_MakeRouteDecision_NoRouteRelays(t *testing.T) {
 	assert.True(t, state.NoRouteRelays)
 }
 
-func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
+func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	t.Parallel()
 
@@ -1027,9 +1027,9 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
-	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
-	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
 
 	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
 	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
@@ -1081,9 +1081,97 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state.DestRelays[1] = 1
 	state.DestRelays[2] = 2
 
-	// setup route state
+	// make the route decision
 
-	// todo: setup state.Output.RouteState
+	handlers.SessionUpdate_MakeRouteDecision(state)
+
+	// verify
+
+	assert.True(t, state.StayDirect)
+	assert.False(t, state.TakeNetworkNext)
+	assert.False(t, state.Output.RouteState.Next)
+}
+
+func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
+
+	t.Parallel()
+
+	// setup state
+
+	state := CreateState()
+
+	state.Input.RouteState.Next = false
+	state.Request.DirectMinRTT = 100
+	state.Request.SliceNumber = 100
+	state.Debug = new(string)
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup route matrix
+
+	// todo: how to setup a route matrix with the 3 relays above?
+
+	// setup route shader
+
+	state.Buyer.RouteShader = core.NewRouteShader()
+
+	// setup internal config
+
+	state.Buyer.InternalConfig = core.NewInternalConfig()
+
+	// setup near relays
+
+	state.NumNearRelays = 3
+
+	state.NearRelayIndices[0] = 0
+	state.NearRelayIndices[1] = 1
+	state.NearRelayIndices[2] = 2
+
+	state.NearRelayRTTs[0] = 10
+	state.NearRelayRTTs[1] = 10
+	state.NearRelayRTTs[2] = 10
+
+	// setup dest relays
+
+	state.NumDestRelays = 3
+
+	state.DestRelays = make([]int32, state.NumDestRelays)
+
+	state.DestRelays[0] = 0
+	state.DestRelays[1] = 1
+	state.DestRelays[2] = 2
 
 	// make the route decision
 
@@ -1091,11 +1179,8 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// verify
 
-	// todo: check outputs
-
-	_ = relay_private_key_a
-	_ = relay_private_key_b
-	_ = relay_private_key_c
+	// todo: get this to pass
+	// assert.True(t, state.TakeNetworkNext)
 }
 
 /*

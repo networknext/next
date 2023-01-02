@@ -106,6 +106,7 @@ type SessionUpdateState struct {
 	UnknownDatacenter                                  bool
 	DatacenterNotEnabled                               bool
 	TakeNetworkNext                                    bool
+	StayDirect                                         bool
 	LeftNetworkNext                                    bool
 	WroteResponsePacket                                bool
 	FailedToWriteResponsePacket                        bool
@@ -808,6 +809,11 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 					}
 				}
 			}
+
+		} else {
+
+			state.StayDirect = true
+
 		}
 
 	} else {
