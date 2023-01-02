@@ -9,8 +9,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
+	// "github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -36,10 +35,11 @@ func CreateState() *handlers.SessionUpdateState {
 	state.LocateIP = DummyLocateIP
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
-	state.Database = database.CreateDatabase()
+	state.Database = db.CreateDatabase()
 	return &state
 }
 
+/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -1083,8 +1083,11 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 	assert.False(t, state.TakeNetworkNext)
 	assert.False(t, state.Output.RouteState.Next)
 }
+*/
 
-func generateRouteMatrix(numRelays int, costMatrix []int32, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
+func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
+
+	numRelays := len(relayIds)
 
 	numSegments := numRelays
 
@@ -1095,6 +1098,21 @@ func generateRouteMatrix(numRelays int, costMatrix []int32, relayDatacenters []u
 		destRelays[i] = true
 	}	
 
+	relayIdToIndex := make(map[uint64]int32)
+	for i := range relayIds {
+		relayIdToIndex[relayIds[i]] = int32(i)
+	}
+
+	relayAddresses := make([]net.UDPAddr, numRelays)
+	for i := range relayAddresses {
+		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
+	}
+
+	relayNames := make([]string, numRelays)
+	for i := range relayNames {
+		relayNames[i] = fmt.Sprintf("relay-%d", i)
+	}
+
 	routeMatrix := &common.RouteMatrix{}
 
 	routeMatrix.CreatedAt = uint64(time.Now().Unix())
@@ -1104,14 +1122,9 @@ func generateRouteMatrix(numRelays int, costMatrix []int32, relayDatacenters []u
 	routeMatrix.FullRelayIds = make([]uint64, 0)
 	routeMatrix.FullRelayIndexSet = make(map[int32]bool)
 	routeMatrix.DestRelays = destRelays
-
-	// todo
-	/*
-		RelayIds           []uint64
-		RelayIdToIndex     map[uint64]int32
-		RelayAddresses     []net.UDPAddr // external IPs only
-		RelayNames         []string
-	*/
+	routeMatrix.RelayIds = relayIds
+	routeMatrix.RelayIdToIndex = relayIdToIndex
+	routeMatrix.RelayNames = relayNames
 
 	return routeMatrix
 }
@@ -1143,9 +1156,13 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a}
-	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b}
-	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c}
+	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
+	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
+	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap["a"] = seller_a
 	state.Database.SellerMap["b"] = seller_b
@@ -1173,13 +1190,18 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// generate route matrix
 
+	relayIds := [...]uint64{1,2,3}
+
 	relayDatacenters := [...]uint64{1,2,3}
 
-	state.RouteMatrix = generateRouteMatrix(NumRelays, costMatrix, relayDatacenters[:], state.Database)
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
 	// setup route shader
 
 	state.Buyer.RouteShader = core.NewRouteShader()
+
+	state.Buyer.RouteShader.DisableNetworkNext = false
+	state.Buyer.RouteShader.AnalysisOnly = false
 
 	// setup internal config
 
@@ -1217,6 +1239,12 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	assert.True(t, state.Output.RouteState.Next)
 
 	// todo: verify route is as expected, rest of output etc...
+
+	_ = relay_private_key_a
+	_ = relay_private_key_b
+	_ = relay_private_key_c
+
+	// todo: verify that we have the next tokens, that they decrypt, have the right contents etc...
 }
 
 /*

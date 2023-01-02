@@ -791,6 +791,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
+		// todo
+		fmt.Printf("should we take network next?\n")
+
 		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 
 			state.TakeNetworkNext = true
@@ -811,6 +814,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			}
 
 		} else {
+
+			// todo
+			fmt.Printf("stay direct\n")
 
 			state.StayDirect = true
 
