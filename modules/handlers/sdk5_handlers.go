@@ -419,6 +419,14 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 	}
 }
 
+func SDK5_LocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
+	// todo: this needs to be hooked up to the proper ip2location when we are not running in local env!!!
+	location := packets.SDK5_LocationData{}
+	location.Latitude = 43
+	location.Longitude = -75
+	return location, nil	
+}
+
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
@@ -433,7 +441,11 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	var state SessionUpdateState
 
-	// todo: gotta pass in the routing private key here
+	state.RoutingPrivateKey = handler.PrivateKey
+	state.ServerBackendAddress = &handler.ServerBackendAddress
+	state.Connection = conn
+	state.From = from
+	state.LocateIP = SDK5_LocateIP
 
 	state.Request = requestPacket
 	state.Database = handler.Database

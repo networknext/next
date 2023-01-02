@@ -25,6 +25,7 @@ func main() {
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("max packet size: %d bytes", maxPacketSize)
+	core.Log("server backend address: %s", serverBackendAddress.String())
 
 	service.UpdateRouteMatrix()
 
@@ -56,13 +57,12 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	handler := handlers.SDK5_Handler{}
+
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
 	handler.ServerBackendAddress = serverBackendAddress
 	handler.PrivateKey = serverBackendPrivateKey
-	handler.GetMagicValues = func() ([]byte, []byte, []byte) {
-		return service.GetMagicValues()
-	}
+	handler.GetMagicValues = func() ([]byte, []byte, []byte) { return service.GetMagicValues() }
 
 	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
 }

@@ -2210,6 +2210,9 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 	// this works only for IPv4
+	if address == nil {
+		panic("can't get address data for nil address!")
+	}
 	addressData := address.IP[12:16]
 	addressPort := uint16(address.Port)
 	return addressData, addressPort

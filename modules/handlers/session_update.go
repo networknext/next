@@ -8,7 +8,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
 	db "github.com/networknext/backend/modules/database"
@@ -17,14 +16,14 @@ import (
 type SessionUpdateState struct {
 
 	/*
-	   Convenience state struct for the session update handler.
+		Convenience state struct for the session update handler.
 
-	   We put all the state in here so it's easy to call out to functions to do work.
+		We put all the state in here so it's easy to call out to functions to do work.
 
-	   Otherwise we have to pass a million parameters into every function and it gets old fast.
+		Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey [crypto.Box_KeySize]byte
+	RoutingPrivateKey []byte
 
 	ServerBackendAddress *net.UDPAddr
 
@@ -287,13 +286,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	core.Debug("existing session")
 
 	/*
-	   Read the session data, if it has not already been read.
+		Read the session data, if it has not already been read.
 
-	   This data contains state that persists across the session, it is sent up from the SDK,
-	   we transform it, and then send it back down -- and it gets sent up by the SDK in the next
-	   update.
+		This data contains state that persists across the session, it is sent up from the SDK,
+		we transform it, and then send it back down -- and it gets sent up by the SDK in the next
+		update.
 
-	   This way we don't have to store state per-session in the backend.
+		This way we don't have to store state per-session in the backend.
 	*/
 
 	// todo: the session data must not be modifiable by the client. where is the check that ensures this is the case?
@@ -313,8 +312,8 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 
 	/*
-	   Check for some obviously divergent data between the session request packet
-	   and the stored session data. If there is a mismatch, just return a direct route.
+		Check for some obviously divergent data between the session request packet
+		and the stored session data. If there is a mismatch, just return a direct route.
 	*/
 
 	if state.Input.SessionId != state.Request.SessionId {
@@ -330,10 +329,10 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 
 	/*
-	   Copy input state to output and go to next slice.
+		Copy input state to output and go to next slice.
 
-	   During the rest of the session update we transform session.output in place,
-	   before sending it back to the SDK in the session response packet.
+		During the rest of the session update we transform session.output in place,
+		before sending it back to the SDK in the session response packet.
 	*/
 
 	state.Output = state.Input
@@ -342,11 +341,11 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 
 	/*
-	   Calculate real packet loss.
+		Calculate real packet loss.
 
-	   This is driven from actual game packets, not ping packets.
+		This is driven from actual game packets, not ping packets.
 
-	   This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
+		This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
 	*/
 
 	slicePacketsSentClientToServer := state.Request.PacketsSentClientToServer - state.Input.PrevPacketsSentClientToServer
@@ -374,13 +373,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
 
 	/*
-	   Calculate real jitter.
+		Calculate real jitter.
 
-	   This is driven from actual game packets, not ping packets.
+		This is driven from actual game packets, not ping packets.
 
-	   Clamp jitter between client and server at 1000.
+		Clamp jitter between client and server at 1000.
 
-	   It is meaningless beyond that...
+		It is meaningless beyond that...
 	*/
 
 	if state.Request.JitterClientToServer > 1000.0 {
@@ -400,9 +399,9 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
 
 	/*
-	   Fallback to direct is a state where the SDK has met some fatal error condition.
+		Fallback to direct is a state where the SDK has met some fatal error condition.
 
-	   When this happens, the session will go direct from that point forward.
+		When this happens, the session will go direct from that point forward.
 	*/
 
 	if state.Request.FallbackToDirect && !state.Output.FallbackToDirect {
@@ -418,27 +417,27 @@ func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
 func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	/*
-	   This function selects up to 32 near relays for the session,
-	   according to the players latitude and longitude determined by
-	   ip2location.
+		This function selects up to 32 near relays for the session,
+		according to the players latitude and longitude determined by
+		ip2location.
 
-	   These near relays are selected only on the first slice (slice 0)
-	   of a session, and are held fixed for the duration of the session.
+		These near relays are selected only on the first slice (slice 0)
+		of a session, and are held fixed for the duration of the session.
 
-	   The SDK pings the near relays, and reports up the latency, jitter
-	   and packet loss to each near relay, with each subsequent session
-	   update (every 10 seconds).
+		The SDK pings the near relays, and reports up the latency, jitter
+		and packet loss to each near relay, with each subsequent session
+		update (every 10 seconds).
 
-	   Network Next uses the relay ping statistics in route planning,
-	   by adding the latency to the first relay to the total route cost,
-	   and by excluding near relays with higher jitter or packet loss
-	   than the default internet route.
+		Network Next uses the relay ping statistics in route planning,
+		by adding the latency to the first relay to the total route cost,
+		and by excluding near relays with higher jitter or packet loss
+		than the default internet route.
 
-	   This function is skipped for "Analysis Only" buyers because sessions
-	   will always take direct.
+		This function is skipped for "Analysis Only" buyers because sessions
+		will always take direct.
 
-	   This function is skipped for datacenters that are not enabled for
-	   acceleration, forcing all connected clients to go direct.
+		This function is skipped for datacenters that are not enabled for
+		acceleration, forcing all connected clients to go direct.
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
@@ -447,7 +446,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
-	if !state.DatacenterNotEnabled {
+	if state.DatacenterNotEnabled {
 		core.Debug("datacenter not enabled, not getting near relays")
 		state.NotGettingNearRelaysDatacenterAccelerationDisabled = true
 		return false
@@ -498,18 +497,18 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	/*
-	   This function is CalculateNextBytesUpAndDown once every 10 seconds for all slices
-	   in a session after slice 0 (first slice).
+		This function is CalculateNextBytesUpAndDown once every 10 seconds for all slices
+		in a session after slice 0 (first slice).
 
-	   It takes the ping statistics for each near relay, and collates them
-	   into a format suitable for route planning later on in the session
-	   update.
+		It takes the ping statistics for each near relay, and collates them
+		into a format suitable for route planning later on in the session
+		update.
 
-	   It also runs various filters inside core.ReframeRelays, which look at
-	   the history of latency, jitter and packet loss across the entire session
-	   in order to exclude near relays with bad performance from being selected.
+		It also runs various filters inside core.ReframeRelays, which look at
+		the history of latency, jitter and packet loss across the entire session
+		in order to exclude near relays with bad performance from being selected.
 
-	   This function exits early if the session will not be accelerated.
+		This function exits early if the session will not be accelerated.
 	*/
 
 	routeShader := &state.Buyer.RouteShader
@@ -535,8 +534,8 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.DestRelays = make([]int32, len(destRelayIds))
 
 	/*
-	   If we are holding near relays, use the held near relay RTT as input
-	   instead of the near relay ping data sent up from the SDK.
+		If we are holding near relays, use the held near relay RTT as input
+		instead of the near relay ping data sent up from the SDK.
 	*/
 
 	if state.Input.HoldNearRelays {
@@ -550,7 +549,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
-	   Reframe the near relays to get them in a relay index form relative to the current route matrix.
+		Reframe the near relays to get them in a relay index form relative to the current route matrix.
 	*/
 
 	routeState := &state.Output.RouteState
@@ -605,10 +604,10 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 func SessionUpdate_FilterNearRelays(state *SessionUpdateState) {
 
 	/*
-	   Reduce the % of sessions running near relay pings for large customers.
+		Reduce the % of sessions running near relay pings for large customers.
 
-	   We do this by only running near relay pings for the first 3 slices, and then holding
-	   the near relay ping results fixed for the rest of the session.
+		We do this by only running near relay pings for the first 3 slices, and then holding
+		the near relay ping results fixed for the rest of the session.
 	*/
 
 	if !state.Buyer.InternalConfig.LargeCustomer {
@@ -766,8 +765,8 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 	/*
-	   If we are on on network next but don't have any relays in our route, something is WRONG.
-	   Veto the session and go direct.
+		If we are on on network next but don't have any relays in our route, something is WRONG.
+		Veto the session and go direct.
 	*/
 
 	if state.Input.RouteState.Next && state.Input.RouteNumRelays == 0 {
@@ -832,9 +831,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		}
 
 		/*
-		   Reframe the current route in terms of relay indices in the current route matrix
+			Reframe the current route in terms of relay indices in the current route matrix
 
-		   This is necessary because the set of relays in the route matrix change over time.
+			This is necessary because the set of relays in the route matrix change over time.
 		*/
 
 		if !core.ReframeRoute(&state.Output.RouteState, state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
@@ -890,24 +889,24 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	}
 
 	/*
-	   Stash key route parameters in the response so the SDK recieves them.
+		Stash key route parameters in the response so the SDK recieves them.
 
-	   Committed means to actually send packets across the network next route,
-	   if false, then the route just has ping packets sent across it, but no
-	   game packets.
+		Committed means to actually send packets across the network next route,
+		if false, then the route just has ping packets sent across it, but no
+		game packets.
 
-	   Multipath means to send packets across both the direct and the network
-	   next route at the same time, which reduces packet loss.
+		Multipath means to send packets across both the direct and the network
+		next route at the same time, which reduces packet loss.
 	*/
 
 	state.Response.Committed = state.Output.RouteState.Committed
 	state.Response.Multipath = state.Output.RouteState.Multipath
 
 	/*
-	   Stick the route cost, whether the route changed, and the route relay data
-	   in the output state. This output state is serialized into the route state
-	   in the route response, and sent back up to us, allowing us to know the
-	   current network next route, when we plan the next 10 second slice.
+		Stick the route cost, whether the route changed, and the route relay data
+		in the output state. This output state is serialized into the route state
+		in the route response, and sent back up to us, allowing us to know the
+		current network next route, when we plan the next 10 second slice.
 	*/
 
 	if routeCost > common.InvalidRouteValue {
@@ -927,11 +926,11 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
-	   Build the set of near relays for the SDK to ping.
+		Build the set of near relays for the SDK to ping.
 
-	   The SDK pings these near relays and reports up the results in the next session update.
+		The SDK pings these near relays and reports up the results in the next session update.
 
-	   We hold the set of near relays fixed for the session, so we only do this work on the first slice.
+		We hold the set of near relays fixed for the session, so we only do this work on the first slice.
 	*/
 
 	if state.Request.SliceNumber == 0 {
@@ -940,8 +939,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-	   Since post runs at the end of every session handler, run logic
-	   here that must run if we are taking network next vs. direct
+		Since post runs at the end of every session handler, run logic
+		here that must run if we are taking network next vs. direct
 	*/
 
 	if state.Response.RouteType != packets.SDK5_RouteTypeDirect {
@@ -951,7 +950,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-	   Track duration of time spent on network next, and if the session has ever been on network next.
+		Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
 	if state.Request.Next {
@@ -961,9 +960,9 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-	   Store the *previous* packets sent and packets lost counters in the route state,
+		Store the *previous* packets sent and packets lost counters in the route state,
 
-	   This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
+		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
@@ -972,7 +971,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.Output.PrevPacketsLostServerToClient = state.Request.PacketsLostServerToClient
 
 	/*
-	   If the core routing logic generated a debug string, include it in the response packet
+		If the core routing logic generated a debug string, include it in the response packet
 	*/
 
 	if state.Debug != nil {
@@ -983,11 +982,11 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-	   The session ends when the client ping times out.
+		The session ends when the client ping times out.
 
-	   At this point we write a summary slice to bigquery, with more information than regular slices.
+		At this point we write a summary slice to bigquery, with more information than regular slices.
 
-	   This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
+		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
 	if state.Request.ClientPingTimedOut {
@@ -995,8 +994,31 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-	   Write the session update response packet and send it back to the caller.
+		Write session data
 	*/
+
+	writeStream := encoding.CreateWriteStream(state.Response.SessionData[:])
+
+	state.Output.Version = packets.SDK5_SessionDataVersion_Write
+	state.Output.Location.Version = packets.SDK5_LocationVersion_Write
+
+	err := state.Output.Serialize(writeStream)
+	if err != nil {
+		core.Error("failed to write session data: %v", err)
+		return
+	}
+
+	writeStream.Flush()
+
+	state.Response.SessionDataBytes = int32(writeStream.GetBytesProcessed())
+
+	/*
+		Write the session update response packet and send it back to the caller.
+	*/
+
+	if state.Response.SessionDataBytes == 0 {
+		panic("no session data?!")
+	}
 
 	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.RoutingPrivateKey[:])
 	if err != nil {
