@@ -44,7 +44,7 @@ type SessionUpdateState struct {
 	Datacenter    db.Datacenter
 	Buyer         db.Buyer
 	Debug         *string
-	StaleDuration time.Duration
+	StaleDuration time.Duration      // todo: don't like this here
 
 	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
