@@ -662,7 +662,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -796,7 +796,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -932,7 +932,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1143,7 +1143,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1366,7 +1366,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1604,7 +1604,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1885,7 +1885,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2117,7 +2117,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2347,7 +2347,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2585,7 +2585,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2742,7 +2742,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
-	copy(state.RoutingPrivateKey[:], routingPrivateKey)
+	state.RoutingPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 

@@ -597,7 +597,7 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	if stream.IsReading() {
 		if sessionData.Version < SDK5_SessionDataVersion_Min || sessionData.Version > SDK5_SessionDataVersion_Max {
-			return errors.New(fmt.Sprintf("invalid session data version", sessionData.Version))
+			return errors.New(fmt.Sprintf("invalid session data version: %d", sessionData.Version))
 		}
 	}
 
