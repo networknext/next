@@ -1608,28 +1608,20 @@ func NewInternalConfig() InternalConfig {
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
-		// todo
-		fmt.Printf("A\n")
 		return true
 	}
 
 	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
-		// todo
-		fmt.Printf("B\n")
 		routeState.Disabled = true
 		return true
 	}
 
 	if routeShader.SelectionPercent == 0 || (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
-		// todo
-		fmt.Printf("C\n")
 		routeState.NotSelected = true
 		return true
 	}
 
 	if routeShader.ABTest {
-		// todo
-		fmt.Printf("D\n")
 		routeState.ABTest = true
 		if (routeState.UserID % 2) == 1 {
 			routeState.B = true
@@ -1640,8 +1632,6 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 	}
 
 	if routeShader.BannedUsers[routeState.UserID] {
-		// todo
-		fmt.Printf("E\n")
 		routeState.Banned = true
 		return true
 	}
@@ -1693,8 +1683,6 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
-		// todo
-		fmt.Printf("early out direct\n")
 		return false
 	}
 
