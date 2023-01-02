@@ -1179,8 +1179,10 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// verify
 
-	// todo: get this to pass
-	// assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.TakeNetworkNext)
+	assert.True(t, state.Output.RouteState.Next)
+
+	// todo: verify route is as expected, rest of output etc...
 }
 
 /*
