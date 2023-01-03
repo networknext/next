@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"sync"
 
-	math_rand "math/rand"
 	crypto_rand "crypto/rand"
+	math_rand "math/rand"
 
 	"github.com/networknext/backend/modules/crypto"
 )
@@ -961,30 +961,44 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 // -----------------------------------------------------------------------------
 
 func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32) int32 {
+
 	bestRouteCost := int32(math.MaxInt32)
+
+	// todo
+	fmt.Printf("get best route cost\n")
+	fmt.Printf("source relays = %v\n", sourceRelays)
+	fmt.Printf("source relay cost = %v\n", sourceRelayCost)
+	fmt.Printf("dest relays = %v\n", destRelays)
+
 	for i := range sourceRelays {
+
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
+
 		sourceRelayIndex := sourceRelays[i]
 
 		for j := range destRelays {
+
 			destRelayIndex := destRelays[j]
 			if sourceRelayIndex == destRelayIndex {
 				continue
 			}
 
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+
 			entry := &routeMatrix[index]
 
 			if entry.NumRoutes > 0 {
+
+				// todo: verify this code using "fullRelaySet"
 
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
 					for l := 0; l < len(entry.RouteRelays[0]); l++ {
 
-						// Do not consider routes with full relays
+						// exclude routes with full relays
 						if _, isRelayFull := fullRelaySet[entry.RouteRelays[k][l]]; isRelayFull {
 							continue routeRelayLoop
 						}
@@ -998,6 +1012,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 			}
 		}
 	}
+
 	if bestRouteCost == int32(math.MaxInt32) {
 		return bestRouteCost
 	}
@@ -1453,6 +1468,8 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
 		}
+		// todo
+		fmt.Printf("get random best route\n")
 		GetRandomBestRoute(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		routeLost = true
@@ -1605,18 +1622,82 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *string) bool {
 
-	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	// high frequency
+
+	if routeState.Disabled {
+		if debug != nil {
+			*debug += "disabled\n"
+		}
 		return true
 	}
 
-	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
+	if routeState.Veto {
+		if debug != nil {
+			*debug += "veto\n"
+		}
+		return true
+	}
+
+	if routeState.LocationVeto {
+		if debug != nil {
+			*debug += "location veto\n"
+		}
+		return true
+	}
+
+	if routeState.Banned {
+		if debug != nil {
+			*debug += "banned\n"
+		}
+		return true
+	}
+
+	if routeState.NotSelected {
+		if debug != nil {
+			*debug += "not selected\n"
+		}
+		return true
+	}
+
+	if routeState.B {
+		if debug != nil {
+			*debug += "b group in ab test\n"
+		}
+		return true
+	}
+
+	// low frequency
+
+	if routeShader.DisableNetworkNext {
+		if debug != nil {
+			*debug += "network next is disabled\n"
+		}
 		routeState.Disabled = true
 		return true
 	}
 
-	if routeShader.SelectionPercent == 0 || (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
+	if routeShader.AnalysisOnly {
+		if debug != nil {
+			*debug += "analysis only\n"
+		}
+		routeState.Disabled = true
+		return true
+	}
+
+	if routeShader.SelectionPercent == 0 {
+		if debug != nil {
+			*debug += "selection percent is zero\n"
+		}
+		routeState.NotSelected = true
+		return true
+	}
+
+	if (routeState.UserID % 100) > uint64(routeShader.SelectionPercent) {
+		if debug != nil {
+			*debug += "user is not selected\n"
+		}
 		routeState.NotSelected = true
 		return true
 	}
@@ -1625,6 +1706,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		routeState.ABTest = true
 		if (routeState.UserID % 2) == 1 {
 			routeState.B = true
+			if debug != nil {
+				*debug += "ab test\n"
+			}
 			return true
 		} else {
 			routeState.A = true
@@ -1633,6 +1717,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 	if routeShader.BannedUsers[routeState.UserID] {
 		routeState.Banned = true
+		if debug != nil {
+			*debug += "user is banned\n"
+		}
 		return true
 	}
 
@@ -1682,7 +1769,10 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
+		if debug != nil {
+			*debug += "early out direct\n"
+		}
 		return false
 	}
 
@@ -1837,7 +1927,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 
 	// if we early out, go direct
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
 		return false, false
 	}
 
@@ -1850,6 +1940,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
+
+	// todo
+	fmt.Printf("predicted latency = %d\n", predictedLatency)
+	fmt.Printf("next latency = %d\n", nextLatency)
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
@@ -2189,6 +2283,9 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 	// this works only for IPv4
+	if address == nil {
+		panic("can't get address data for nil address!")
+	}
 	addressData := address.IP[12:16]
 	addressPort := uint16(address.Port)
 	return addressData, addressPort

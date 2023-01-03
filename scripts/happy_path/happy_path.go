@@ -85,6 +85,8 @@ func happy_path(wait bool) int {
 	setup_emulators_stdout := run("setup-emulators", "logs/setup_emulators")
 	_ = setup_emulators_stdout // todo
 
+	// todo: initialize emulators
+
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
 	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
@@ -403,7 +405,7 @@ func happy_path(wait bool) int {
 	fmt.Printf("\n")
 
 	client4_stdout := run("client4", "logs/client4")
-	// client5_stdout := run("client5", "logs/client5")
+	client5_stdout := run("client5", "logs/client5")
 
 	fmt.Printf("\n")
 
@@ -430,30 +432,28 @@ func happy_path(wait bool) int {
 		return 1
 	}
 
-	/*
-		// initialize client5
+	// initialize client5
 
-		fmt.Printf("initializing client 5\n")
+	fmt.Printf("initializing client 5\n")
 
-		client5_initialized := false
+	client5_initialized := false
 
-		for i := 0; i < 30; i++ {
-			if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-				strings.Contains(client5_stdout.String(), "client continues route (committed)") {
-				client5_initialized = true
-				break
-			}
-			time.Sleep(time.Second)
+	for i := 0; i < 30; i++ {
+		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
+			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+			client5_initialized = true
+			break
 		}
+		time.Sleep(time.Second)
+	}
 
-		if !client5_initialized {
-			fmt.Printf("\nerror: client 5 failed to initialize\n\n")
-			fmt.Printf("----------------------------------------------------\n")
-			fmt.Printf("%s", client5_stdout)
-			fmt.Printf("----------------------------------------------------\n")
-			return 1
-		}
-	*/
+	if !client5_initialized {
+		fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", client5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
 
 	// ==================================================================================
 

@@ -25,7 +25,7 @@ type Relay struct {
 
 type Buyer struct {
 	ID             uint64
-	Live           bool // todo: make sure we are checking this
+	Live           bool
 	Debug          bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader
@@ -59,7 +59,7 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: this is really just a map from (buyerId,datacenterId) -> true/false for enabling a datacenter. surely there is a better way to express this
 	//                   ^ BuyerId  ^ DatacenterId
 }
 
