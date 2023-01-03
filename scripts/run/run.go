@@ -236,6 +236,7 @@ func portal() {
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
+	bash("./build.sh")
 	bash("go run ./scripts/happy_path/happy_path.go")
 }
 
