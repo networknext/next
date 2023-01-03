@@ -14,8 +14,8 @@ const (
 	Box_NonceSize = chacha20poly1305.NonceSizeX
 	Box_MacSize   = poly1305.TagSize
 
-	Sign_SignatureSize = 64
-	Sign_PublicKeySize = 32
+	Sign_SignatureSize  = 64
+	Sign_PublicKeySize  = 32
 	Sign_PrivateKeySize = 64
 )
 
