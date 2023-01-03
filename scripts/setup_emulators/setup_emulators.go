@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
+	// "encoding/json"
+	// "io/ioutil"
 	"os"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"google.golang.org/api/option"
+	// "google.golang.org/api/option"
 )
 
 const (
@@ -54,11 +54,13 @@ func main() {
 
 	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 
-	pubsubSetupClient, err := pubsub.NewClient(ctx, googleProjectID)
+	pubsubClient, err := pubsub.NewClient(ctx, googleProjectID)
 	if err != nil {
-		core.Error("failed to create pubsub setup client: %v", err)
+		core.Error("failed to create pubsub client: %v", err)
 		os.Exit(1)
 	}
+
+	core.Debug("created pubsub client")
 
 	pubsubMessages := []PubsubMessageType{
 		{
@@ -89,17 +91,23 @@ func main() {
 
 	for i := 0; i < len(pubsubMessages); i++ {
 		messageType := pubsubMessages[i]
-
-		pubsubSetupClient.CreateTopic(ctx, messageType.Topic)
-		pubsubSetupClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{
-			Topic: pubsubSetupClient.Topic(messageType.Topic),
+		core.Debug("created topic %s and subscription %s", messageType.Topic, messageType.Subscription)
+		pubsubClient.CreateTopic(ctx, messageType.Topic)
+		pubsubClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{
+			Topic: pubsubClient.Topic(messageType.Topic),
 		})
+		// can these calls above fail? if they can, we should catch them, and print and exit -- we need the system to be 100% reliable, and never fail silently.
 	}
 
-	pubsubSetupClient.Close()
+	pubsubClient.Close()
+
+	core.Debug("finished setting up pubsub")
 
 	// ----------------
 
+	// bring this back in later. focusing on pubsub for now
+
+	/*
 	clientOptions := []option.ClientOption{
 		option.WithEndpoint("http://127.0.0.1:9050"),
 		option.WithoutAuthentication(),
@@ -158,4 +166,5 @@ func main() {
 			}
 		}
 	}
+	*/
 }
