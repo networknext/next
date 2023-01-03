@@ -195,6 +195,7 @@
 #define NEXT_UDP_HEADER_BYTES                                           8
 #define NEXT_HEADER_BYTES                                              33
 
+// todo: this must be replaced with a new keypair
 static uint8_t next_server_backend_public_key[] =
 {
      76,  97, 202, 140,  71, 135,  62, 212,
@@ -203,14 +204,7 @@ static uint8_t next_server_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64
 };
 
-static uint8_t next_ping_backend_public_key[] =
-{
-    0x6F, 0x5A, 0x36, 0x07, 0x6F, 0xD1, 0xF7, 0xEB,
-    0x81, 0x91, 0x42, 0xE9, 0xF4, 0xA7, 0x3A, 0xFA,
-    0x80, 0xCF, 0x99, 0xD4, 0xCD, 0x23, 0x18, 0x01,
-    0x4A, 0xA8, 0x19, 0xA6, 0xC1, 0x2A, 0x06, 0x40
-};
-
+// todo: this must be replaced with a new keypair
 static uint8_t next_router_public_key[] =
 {
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34,
@@ -4331,7 +4325,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * server_backend_public_key_env = next_platform_getenv( "NEXT_SERVER_BACKEND_PUBLIC_KEY" );
     if ( server_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override: %s", server_backend_public_key_env );
 
         if ( next_base64_decode_data( server_backend_public_key_env, next_server_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
@@ -4346,28 +4340,10 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * ping_backend_public_key_env = next_platform_getenv( "NEXT_PING_BACKEND_PUBLIC_KEY" );
-    if ( ping_backend_public_key_env )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "ping backend public key override" );
-
-        if ( next_base64_decode_data( ping_backend_public_key_env, next_ping_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "valid ping backend public key" );
-        }
-        else
-        {
-            if ( ping_backend_public_key_env[0] != '\0' )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "ping backend public key is invalid: \"%s\"", ping_backend_public_key_env );
-            }
-        }
-    }
-
     const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
     if ( router_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override: %s", router_public_key_env );
 
         if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
         {
@@ -4543,7 +4519,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
-    float mean_rtt;                        // mean rtt (ms)
+    float mean_rtt;                     // mean rtt (ms)
     float min_rtt;                      // minimum rtt (ms)
     float max_rtt;                      // maximum rtt (ms)
     float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
@@ -7493,17 +7469,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
             }
 
-            if ( packet.multipath && !client->multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
-                client->multipath = true;
-                client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
-            }
-
             client->fallback_to_direct = fallback_to_direct;
 
             if ( !fallback_to_direct )
             {
+                if ( packet.multipath && !client->multipath )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
+                    client->multipath = true;
+                    client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
+                }
+
                 client->route_update_sequence = packet.sequence;
                 client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
                 client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;

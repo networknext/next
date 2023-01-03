@@ -3953,7 +3953,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * server_backend_public_key_env = next_platform_getenv( "NEXT_SERVER_BACKEND_PUBLIC_KEY" );
     if ( server_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override: %s", server_backend_public_key_env );
         
         if ( next_base64_decode_data( server_backend_public_key_env, next_server_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
@@ -3971,7 +3971,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
     if ( router_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override: %s", router_public_key_env );
         
         if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
         {

@@ -49,13 +49,14 @@ const (
 )
 
 type SDK5_Handler struct {
-	Database             *database.Database
-	RouteMatrix          *common.RouteMatrix
-	MaxPacketSize        int
-	ServerBackendAddress net.UDPAddr
-	PrivateKey           []byte
-	GetMagicValues       func() ([]byte, []byte, []byte)
-	Events               [SDK5_HandlerEvent_NumEvents]bool
+	Database                *database.Database
+	RouteMatrix             *common.RouteMatrix
+	MaxPacketSize           int
+	ServerBackendAddress    net.UDPAddr
+	ServerBackendPrivateKey []byte
+	RoutingPrivateKey       []byte
+	GetMagicValues          func() ([]byte, []byte, []byte)
+	Events                  [SDK5_HandlerEvent_NumEvents]bool
 
 	ServerInitMessageChannel    chan<- *messages.ServerInitMessage
 	ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
@@ -197,7 +198,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
 func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.PrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.ServerBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -424,7 +425,7 @@ func SDK5_LocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
 	location := packets.SDK5_LocationData{}
 	location.Latitude = 43
 	location.Longitude = -75
-	return location, nil	
+	return location, nil
 }
 
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
@@ -441,11 +442,13 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	var state SessionUpdateState
 
-	state.RoutingPrivateKey = handler.PrivateKey
+	state.RoutingPrivateKey = handler.RoutingPrivateKey
+	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress
 	state.Connection = conn
 	state.From = from
-	state.LocateIP = SDK5_LocateIP
+	state.LocateIP = SDK5_LocateIP // todo: this should be passed in from the caller via handler instead
+	state.Buyer = handler.Database.BuyerMap[requestPacket.BuyerId]
 
 	state.Request = requestPacket
 	state.Database = handler.Database

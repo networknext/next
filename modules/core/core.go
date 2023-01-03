@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"sync"
 
-	math_rand "math/rand"
 	crypto_rand "crypto/rand"
+	math_rand "math/rand"
 
 	"github.com/networknext/backend/modules/crypto"
 )
@@ -971,16 +971,16 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 	fmt.Printf("dest relays = %v\n", destRelays)
 
 	for i := range sourceRelays {
-	
+
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
-	
+
 		sourceRelayIndex := sourceRelays[i]
 
 		for j := range destRelays {
-	
+
 			destRelayIndex := destRelays[j]
 			if sourceRelayIndex == destRelayIndex {
 				continue
@@ -992,7 +992,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 
 			if entry.NumRoutes > 0 {
 
-			// todo: verify this code using "fullRelaySet"
+				// todo: verify this code using "fullRelaySet"
 
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
@@ -1624,16 +1624,11 @@ func NewInternalConfig() InternalConfig {
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *string) bool {
 
-	if routeShader.DisableNetworkNext {
-		if debug != nil {
-			*debug += "network next is disabled\n"
-		}
-		return true
-	}
+	// high frequency
 
-	if routeShader.AnalysisOnly {
+	if routeState.Disabled {
 		if debug != nil {
-			*debug += "analysis only\n"
+			*debug += "disabled\n"
 		}
 		return true
 	}
@@ -1659,13 +1654,6 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *str
 		return true
 	}
 
-	if routeState.Disabled {
-		if debug != nil {
-			*debug += "disabled\n"
-		}
-		return true
-	}
-
 	if routeState.NotSelected {
 		if debug != nil {
 			*debug += "not selected\n"
@@ -1680,18 +1668,36 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *str
 		return true
 	}
 
+	// low frequency
+
+	if routeShader.DisableNetworkNext {
+		if debug != nil {
+			*debug += "network next is disabled\n"
+		}
+		routeState.Disabled = true
+		return true
+	}
+
+	if routeShader.AnalysisOnly {
+		if debug != nil {
+			*debug += "analysis only\n"
+		}
+		routeState.Disabled = true
+		return true
+	}
+
 	if routeShader.SelectionPercent == 0 {
 		if debug != nil {
 			*debug += "selection percent is zero\n"
-		}		
+		}
 		routeState.NotSelected = true
 		return true
 	}
 
-	if (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
+	if (routeState.UserID % 100) > uint64(routeShader.SelectionPercent) {
 		if debug != nil {
 			*debug += "user is not selected\n"
-		}		
+		}
 		routeState.NotSelected = true
 		return true
 	}
@@ -1702,7 +1708,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *str
 			routeState.B = true
 			if debug != nil {
 				*debug += "ab test\n"
-			}		
+			}
 			return true
 		} else {
 			routeState.A = true
@@ -1713,7 +1719,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *str
 		routeState.Banned = true
 		if debug != nil {
 			*debug += "user is banned\n"
-		}		
+		}
 		return true
 	}
 
@@ -1766,7 +1772,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 	if EarlyOutDirect(routeShader, routeState, debug) {
 		if debug != nil {
 			*debug += "early out direct\n"
-		}		
+		}
 		return false
 	}
 
@@ -1913,10 +1919,6 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 	// should we commit to sending packets across network next?
 
 	routeState.Committed = !internal.Uncommitted && (!internal.TryBeforeYouBuy || routeState.Multipath)
-
-	if debug != nil && routeState.Committed {
-		*debug += "committted\n"
-	}		
 
 	return true
 }

@@ -6,11 +6,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
+	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
-	db "github.com/networknext/backend/modules/database"
 )
 
 type SessionUpdateState struct {
@@ -23,9 +23,9 @@ type SessionUpdateState struct {
 		Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey []byte
-
-	ServerBackendAddress *net.UDPAddr
+	RoutingPrivateKey       []byte
+	ServerBackendAddress    *net.UDPAddr
+	ServerBackendPrivateKey []byte
 
 	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
 
@@ -259,11 +259,10 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
 	*/
 
-// todo: forcing debug always
-//	if state.Buyer.Debug {
+	if state.Buyer.Debug {
 		core.Debug("debug enabled")
 		state.Debug = new(string)
-//	}
+	}
 
 	return false
 }
@@ -1063,10 +1062,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Write the session update response packet and send it back to the caller.
 	*/
 
-	if state.Response.SessionDataBytes == 0 {
-		panic("no session data?!")
-	}
-
 	if state.Debug != nil {
 		state.Response.Debug = *state.Debug
 		fmt.Printf("-------------------------------------\n")
@@ -1074,7 +1069,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		fmt.Printf("-------------------------------------\n")
 	}
 
-	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.RoutingPrivateKey[:])
+	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
 		// todo: counter

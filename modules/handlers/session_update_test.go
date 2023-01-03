@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
+	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
-	db "github.com/networknext/backend/modules/database"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -395,7 +395,7 @@ func writeSessionData(sessionData packets.SDK5_SessionData) []byte {
 	}
 
 	writeStream.Flush()
-	
+
 	sessionDataBytes := writeStream.GetBytesProcessed()
 
 	return buffer[:sessionDataBytes]
@@ -518,7 +518,7 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	assert.False(t, state.Output.Initial)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
 }
 
 func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
@@ -557,7 +557,7 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.False(t, state.Output.Initial)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
 	assert.Equal(t, state.PostRealPacketLossServerToClient, float32(5.0))
@@ -593,7 +593,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	assert.False(t, state.Output.Initial)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp + packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealJitter, float32(100.0))
 }
@@ -720,7 +720,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	// initialize route relays
 
 	routeNumRelays := int32(3)
-	routeRelays := []int32{0,1,2}
+	routeRelays := []int32{0, 1, 2}
 
 	// build next tokens
 
@@ -754,7 +754,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -821,7 +821,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-	
+
 	relay_address_c_internal := core.ParseAddress("35.0.0.1:40002")
 
 	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
@@ -852,7 +852,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 	// initialize route relays
 
 	routeNumRelays := int32(3)
-	routeRelays := []int32{0,1,2}
+	routeRelays := []int32{0, 1, 2}
 
 	// build next tokens
 
@@ -886,7 +886,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -983,7 +983,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	// initialize route relays
 
 	routeNumRelays := int32(3)
-	routeRelays := []int32{0,1,2}
+	routeRelays := []int32{0, 1, 2}
 
 	// build next tokens
 
@@ -1011,7 +1011,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 		token := core.ContinueToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedContinueRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedContinueRouteTokenSize]
 
 		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1193,22 +1193,22 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
-	relayIds := [...]uint64{1,2,3}
+	relayIds := [...]uint64{1, 2, 3}
 
-	relayDatacenters := [...]uint64{1,2,3}
+	relayDatacenters := [...]uint64{1, 2, 3}
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -1292,7 +1292,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1416,22 +1416,22 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
-	
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
-	relayIds := [...]uint64{1,2,3}
+	relayIds := [...]uint64{1, 2, 3}
 
-	relayDatacenters := [...]uint64{1,2,3}
+	relayDatacenters := [...]uint64{1, 2, 3}
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -1515,7 +1515,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1574,7 +1574,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 		token := core.ContinueToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedContinueRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedContinueRouteTokenSize]
 
 		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1654,22 +1654,22 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
-	relayIds := [...]uint64{1,2,3}
+	relayIds := [...]uint64{1, 2, 3}
 
-	relayDatacenters := [...]uint64{1,2,3}
+	relayDatacenters := [...]uint64{1, 2, 3}
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -1753,7 +1753,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1796,10 +1796,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Request.Next = true
 
 	costMatrix = make([]int32, entryCount)
-	
-	costMatrix[core.TriMatrixIndex(0,1)] = 100
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 100
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -1838,7 +1838,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1935,16 +1935,16 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
@@ -2040,7 +2040,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2167,16 +2167,16 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
@@ -2272,7 +2272,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2397,16 +2397,16 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
@@ -2502,7 +2502,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index:index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2546,12 +2546,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state.Request.Next = true
 
 	costMatrix = make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,2)] = 1000
+	costMatrix[core.TriMatrixIndex(0, 2)] = 1000
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -2635,16 +2635,16 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
@@ -2792,16 +2792,16 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	const NumRelays = 3
 
 	entryCount := core.TriMatrixLength(NumRelays)
-	
+
 	costMatrix := make([]int32, entryCount)
-	
+
 	for i := range costMatrix {
 		costMatrix[i] = -1
 	}
 
-	costMatrix[core.TriMatrixIndex(0,1)] = 10
-	costMatrix[core.TriMatrixIndex(1,2)] = 10
-	costMatrix[core.TriMatrixIndex(0,2)] = 100
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
 
 	// generate route matrix
 
