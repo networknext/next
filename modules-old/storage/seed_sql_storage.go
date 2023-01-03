@@ -555,6 +555,7 @@ func SeedSQLStorage(
 			ReducePacketLoss:          true,
 			SelectionPercent:          int(100),
 			PacketLossSustained:       float32(100),
+			Debug:                     true,
 		}
 
 		gaRouteShader := core.RouteShader{
@@ -571,6 +572,7 @@ func SeedSQLStorage(
 			ReducePacketLoss:          true,
 			SelectionPercent:          int(100),
 			PacketLossSustained:       float32(100),
+			Debug:                     true,
 		}
 
 		err = db.AddRouteShader(ctx, localRouteShader, localBuyer.ID)
