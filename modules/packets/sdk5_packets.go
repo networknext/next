@@ -182,8 +182,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 	SessionData                     [SDK5_MaxSessionDataSize]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
-	ClientRoutePublicKey            [crypto.Box_KeySize]byte   // todo: these aren't really Box_KeySize
-	ServerRoutePublicKey            [crypto.Box_KeySize]byte   // todo: ditto
+	ClientRoutePublicKey            [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
+	ServerRoutePublicKey            [crypto.Box_KeySize]byte // todo: ditto
 	UserHash                        uint64
 	PlatformType                    int32
 	ConnectionType                  int32
@@ -589,7 +589,7 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	if stream.IsWriting() {
 		if sessionData.Version < SDK5_SessionDataVersion_Min || sessionData.Version > SDK5_SessionDataVersion_Max {
-			panic(fmt.Sprintf("invalid session data version"))
+			panic(fmt.Sprintf("invalid session data version: %d", sessionData.Version))
 		}
 	}
 
@@ -597,7 +597,7 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	if stream.IsReading() {
 		if sessionData.Version < SDK5_SessionDataVersion_Min || sessionData.Version > SDK5_SessionDataVersion_Max {
-			return errors.New("invalid session data version")
+			return errors.New(fmt.Sprintf("invalid session data version: %d", sessionData.Version))
 		}
 	}
 
