@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"runtime"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -24,7 +25,7 @@ var commands []*exec.Cmd
 
 func run(action string, log string, env ...string) *bytes.Buffer {
 
-	fmt.Printf("run %s %s\n", action, strings.Join(env, " "))
+	fmt.Printf("   run %s %s\n", action, strings.Join(env, " "))
 
 	cmd := exec.Command("./run", action)
 	if cmd == nil {
@@ -80,34 +81,73 @@ func happy_path(wait bool) int {
 
 	os.Mkdir("logs", os.ModePerm)
 
-	// build and run services as a developer would
+	fmt.Printf("setting up emulators:\n\n")
+
+	// run pubsub emulator
+
+	pubsub_emulator_stdout := run("pubsub-emulator", "logs/pubsub_emulator")
+
+	if runtime.GOOS != "linux" {
+
+		pubsub_emulator_initialized := false
+
+		for i := 0; i < 50; i++ {
+			if strings.Contains(pubsub_emulator_stdout.String(), "[pubsub] INFO: Server started, listening on 9000") {
+				pubsub_emulator_initialized = true
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}	
+
+		if !pubsub_emulator_initialized {
+			fmt.Printf("\nerror: failed to initialize pubsub emulator\n")
+			fmt.Printf("-----------------------------------------\n")
+			fmt.Printf("%s", pubsub_emulator_stdout.String())
+			fmt.Printf("-----------------------------------------\n")
+			return 1
+		}
+
+	} else {
+
+		// hack: we can't reliably seem to get output from pubsub emulator via "run" on linux
+		// so this is the best we can do. probably related to python buffering stdout from inside
+		// gcloud.py
+
+		time.Sleep(1*time.Second)
+	}
+
+	// setup emulators
 
 	setup_emulators_stdout := run("setup-emulators", "logs/setup_emulators")
-	_ = setup_emulators_stdout // todo
 
-	// todo: initialize emulators
+	setup_emulators_initialized := false
+
+	for i := 0; i < 50; i++ {
+		if strings.Contains(setup_emulators_stdout.String(), "finished setting up pubsub") {
+			setup_emulators_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}	
+
+	if !setup_emulators_initialized {
+		fmt.Printf("\nerror: failed to setup emulators\n")
+		fmt.Printf("-----------------------------------------\n")
+		fmt.Printf("%s", setup_emulators_stdout.String())
+		fmt.Printf("-----------------------------------------\n")
+		return 1
+	}
+
+	// initialize relay backend services
+
+	fmt.Printf("\nstarting relay backend services:\n\n")
 
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
 	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
 	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
 
-	time.Sleep(time.Second * 10)
-
-	relay_1_stdout := run("relay", "logs/relay_1")
-	relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")
-	relay_3_stdout := run("relay", "logs/relay_3", "RELAY_PORT=2002")
-	relay_4_stdout := run("relay", "logs/relay_4", "RELAY_PORT=2003")
-	relay_5_stdout := run("relay", "logs/relay_5", "RELAY_PORT=2004")
-
-	server_backend4_stdout := run("server-backend4", "logs/server_backend4")
-	server_backend5_stdout := run("server-backend5", "logs/server_backend5")
-
-	analytics_stdout := run("analytics", "logs/analytics")
-
-	// initialize the magic backend
-
-	fmt.Printf("\ninitializing magic backend\n")
+	fmt.Printf("\nverifying magic backend ...")
 
 	magic_backend_initialized := false
 
@@ -121,16 +161,16 @@ func happy_path(wait bool) int {
 	}
 
 	if !magic_backend_initialized {
-		fmt.Printf("\nerror: failed to initialize magic backend\n")
+		fmt.Printf("\n\nerror: failed to initialize magic backend\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", magic_backend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
 
-	// initialize relay gateway
+	fmt.Printf(" OK\n")
 
-	fmt.Printf("initializing relay gateway\n")
+	fmt.Printf("verifying relay gateway ...")
 
 	relay_gateway_initialized := false
 
@@ -145,23 +185,22 @@ func happy_path(wait bool) int {
 	}
 
 	if !relay_gateway_initialized {
-		fmt.Printf("\nerror: failed to initialize relay gateway\n")
+		fmt.Printf("\n\nerror: failed to initialize relay gateway\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_gateway_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
 
-	// initialize relay backend 1
+	fmt.Printf(" OK\n")
 
 	relay_backend_1_initialized := false
 
-	fmt.Printf("initializing relay backend 1\n")
+	fmt.Printf("verifying relay backend 1 ...")
 
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
 			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "route optimization: 10 relays in") &&
 			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
 			relay_backend_1_initialized = true
 			break
@@ -170,23 +209,22 @@ func happy_path(wait bool) int {
 	}
 
 	if !relay_backend_1_initialized {
-		fmt.Printf("\nerror: failed to initialize relay backend 1\n")
+		fmt.Printf("\n\nerror: failed to initialize relay backend 1\n")
 		fmt.Printf("-----------------------------------------\n")
 		fmt.Printf("%s", relay_backend_1_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
 
-	// initialize relay backend 2
+	fmt.Printf(" OK\n")
 
 	relay_backend_2_initialized := false
 
-	fmt.Printf("initializing relay backend 2\n")
+	fmt.Printf("verifying relay backend 2 ...")
 
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
 			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "route optimization: 10 relays in") &&
 			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
 			relay_backend_2_initialized = true
 			break
@@ -202,9 +240,19 @@ func happy_path(wait bool) int {
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// initialize relays
 
-	fmt.Printf("initializing relays\n")
+	fmt.Printf("\nstarting relays:\n\n")
+
+	relay_1_stdout := run("relay", "logs/relay_1")
+	relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")
+	relay_3_stdout := run("relay", "logs/relay_3", "RELAY_PORT=2002")
+	relay_4_stdout := run("relay", "logs/relay_4", "RELAY_PORT=2003")
+	relay_5_stdout := run("relay", "logs/relay_5", "RELAY_PORT=2004")
+
+	fmt.Printf("\nverifying relays ...")
 
 	relays_initialized := false
 
@@ -245,9 +293,13 @@ func happy_path(wait bool) int {
 	}
 
 	if !relays_initialized {
-		fmt.Printf("\nerror: relays failed to initialize\n\n")
+		fmt.Printf("\n\nerror: relays failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_gateway_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
@@ -262,19 +314,91 @@ func happy_path(wait bool) int {
 		return 1
 	}
 
-	// todo: verify that both relay backends see relay updates from each relay
+	fmt.Printf(" OK\n")
 
-	/*
-	   strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
-	   strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
-	   strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
-	   strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
-	   strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
-	*/
+	fmt.Printf("verifying relay gateway sees relays ...")
 
-	// initialize server backend 4
+	relay_gateway_sees_relays := false
 
-	fmt.Printf("initializing server backend 4\n")
+	for i := 0; i < 200; i++ {
+		if strings.Contains(relay_gateway_stdout.String(), " - relay update") &&
+			strings.Contains(relay_gateway_stdout.String(), "sent batch 0 containing 5 messages") {
+			relay_gateway_sees_relays = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !relay_gateway_sees_relays {
+		fmt.Printf("\n\nerror: relay gateway does not see relays\n")
+		fmt.Printf("-----------------------------------------\n")
+		fmt.Printf("%s", relay_gateway_stdout.String())
+		fmt.Printf("-----------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying relay backend 1 sees relays ...")
+
+	relay_backend_1_sees_relays := false
+
+	for i := 0; i < 200; i++ {
+		if strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.0'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.1'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.2'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.3'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.4'") {
+			relay_backend_1_sees_relays = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !relay_backend_1_sees_relays {
+		fmt.Printf("\n\nerror: relay backend 1 does not see relays\n")
+		fmt.Printf("-----------------------------------------\n")
+		fmt.Printf("%s", relay_backend_1_stdout.String())
+		fmt.Printf("-----------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying relay backend 2 sees relays ...")
+
+	relay_backend_2_sees_relays := false
+
+	for i := 0; i < 200; i++ {
+		if strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
+			relay_backend_2_sees_relays = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !relay_backend_2_sees_relays {
+		fmt.Printf("\n\nerror: relay backend 2 does not see relays\n")
+		fmt.Printf("-----------------------------------------\n")
+		fmt.Printf("%s", relay_backend_2_stdout.String())
+		fmt.Printf("-----------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	// initialize server backends
+
+	fmt.Printf("\nstarting server backends:\n\n")
+
+	server_backend4_stdout := run("server-backend4", "logs/server_backend4")
+	server_backend5_stdout := run("server-backend5", "logs/server_backend5")
+
+	fmt.Printf("\nverifying server backend 4 ...")
 
 	server_backend4_initialized := false
 
@@ -289,16 +413,16 @@ func happy_path(wait bool) int {
 	}
 
 	if !server_backend4_initialized {
-		fmt.Printf("\nerror: server backend 4 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: server backend 4 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server_backend4_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
-	// initialize server backend 5
+	fmt.Printf(" OK\n")
 
-	fmt.Printf("initializing server backend 5\n")
+	fmt.Printf("verifying server backend 5 ...")
 
 	server_backend5_initialized := false
 
@@ -314,21 +438,28 @@ func happy_path(wait bool) int {
 	}
 
 	if !server_backend5_initialized {
-		fmt.Printf("\nerror: server backend 5 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: server backend 5 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server_backend5_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// initialize analytics
 
-	fmt.Printf("initializing analytics\n")
+	fmt.Printf("\nstarting analytics:\n\n")
+
+	analytics_stdout := run("analytics", "logs/analytics")
+
+	fmt.Printf("\nverifying analytics ...")
 
 	analytics_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
+		if strings.Contains(analytics_stdout.String(), "we became the leader") &&
+		    strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
 			strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
 			// todo: additional checks, like we see each type of pubsub message we expect being processed at least once
 			analytics_initialized = true
@@ -338,25 +469,25 @@ func happy_path(wait bool) int {
 	}
 
 	if !analytics_initialized {
-		fmt.Printf("\nerror: analytics failed to initialize\n\n")
+		fmt.Printf("\n\nerror: analytics failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", analytics_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// ==================================================================================
 
-	fmt.Printf("\n")
+	fmt.Printf("\nstarting servers:\n\n")
 
 	server4_stdout := run("server4", "logs/server4")
 	server5_stdout := run("server5", "logs/server5")
 
-	fmt.Printf("\n")
-
 	// initialize server4
 
-	fmt.Printf("initializing server 4\n")
+	fmt.Printf("\nverifying server 4 ...")
 
 	server4_initialized := false
 
@@ -370,16 +501,18 @@ func happy_path(wait bool) int {
 	}
 
 	if !server4_initialized {
-		fmt.Printf("\nerror: server 4 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: server 4 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server4_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// initialize server5
 
-	fmt.Printf("initializing server 5\n")
+	fmt.Printf("verifying server 5 ...")
 
 	server5_initialized := false
 
@@ -393,16 +526,18 @@ func happy_path(wait bool) int {
 	}
 
 	if !server5_initialized {
-		fmt.Printf("\nerror: server 5 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: server 5 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server5_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// ==================================================================================
 
-	fmt.Printf("\n")
+	fmt.Printf("\nstarting clients:\n\n")
 
 	client4_stdout := run("client4", "logs/client4")
 	client5_stdout := run("client5", "logs/client5")
@@ -411,7 +546,7 @@ func happy_path(wait bool) int {
 
 	// initialize client4
 
-	fmt.Printf("initializing client 4\n")
+	fmt.Printf("verifying client 4 ...")
 
 	client4_initialized := false
 
@@ -425,16 +560,18 @@ func happy_path(wait bool) int {
 	}
 
 	if !client4_initialized {
-		fmt.Printf("\nerror: client 4 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: client 4 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", client4_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// initialize client5
 
-	fmt.Printf("initializing client 5\n")
+	fmt.Printf("verifying client 5 ...")
 
 	client5_initialized := false
 
@@ -448,16 +585,18 @@ func happy_path(wait bool) int {
 	}
 
 	if !client5_initialized {
-		fmt.Printf("\nerror: client 5 failed to initialize\n\n")
+		fmt.Printf("\n\nerror: client 5 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", client5_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
+	fmt.Printf(" OK\n")
+
 	// ==================================================================================
 
-	fmt.Printf("\nsuccess!\n\n")
+	fmt.Printf("\n*** SUCCESS! ***\n\n")
 
 	if wait {
 		waitDuration := envvar.GetDuration("WAIT_DURATION", 24*time.Hour)
