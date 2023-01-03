@@ -259,10 +259,11 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
 	*/
 
-	if state.Buyer.Debug {
+// todo: forcing debug always
+//	if state.Buyer.Debug {
 		core.Debug("debug enabled")
 		state.Debug = new(string)
-	}
+//	}
 
 	return false
 }
@@ -774,6 +775,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		state.Output.RouteState.Next = false
 		state.Output.RouteState.Veto = true
 		state.NoRouteRelays = true
+		if state.Debug != nil {
+			*state.Debug += "no route relays?!\n"
+		}
 		return
 	}
 
@@ -798,7 +802,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Debug != nil {
 
-				*state.Debug += "route relays: "
+				*state.Debug += "take network next: "
 
 				for i, routeRelay := range routeRelays[:routeNumRelays] {
 					if i != int(routeNumRelays-1) {
@@ -812,6 +816,10 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		} else {
 
 			state.StayDirect = true
+
+			if state.Debug != nil {
+				*state.Debug += "staying direct\n"
+			}
 
 		}
 
@@ -827,6 +835,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.Output.RouteState.Next = false
 			state.Output.RouteState.Veto = true
 			state.Aborted = true
+			if state.Debug != nil {
+				*state.Debug += "aborted\n"
+			}
 			return
 		}
 
@@ -840,6 +851,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			routeRelays = [core.MaxRelaysPerRoute]int32{}
 			core.Debug("one or more relays in the route no longer exist")
 			state.RouteRelayNoLongerExists = true
+			if state.Debug != nil {
+				*state.Debug += "route relay no longer exists\n"
+			}
 		}
 
 		sourceRelays := state.NearRelayIndices[:state.NumNearRelays]
@@ -859,11 +873,27 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				state.RouteChanged = true
 				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
+				if state.Debug != nil {
+
+					*state.Debug += "route changed: "
+
+					for i, routeRelay := range routeRelays[:routeNumRelays] {
+						if i != int(routeNumRelays-1) {
+							*state.Debug += fmt.Sprintf("%s - ", state.RouteMatrix.RelayNames[routeRelay])
+						} else {
+							*state.Debug += fmt.Sprintf("%s\n", state.RouteMatrix.RelayNames[routeRelay])
+						}
+					}
+				}
+
 			} else {
 
 				core.Debug("route continued")
 				state.RouteContinued = true
 				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
+				if state.Debug != nil {
+					*state.Debug += "route continued\n"
+				}
 
 			}
 
@@ -874,16 +904,25 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			if state.Output.RouteState.NoRoute {
 				core.Debug("route no longer exists")
 				state.RouteNoLongerExists = true
+				if state.Debug != nil {
+					*state.Debug += "route no longer exists\n"
+				}
 			}
 
 			if state.Output.RouteState.Mispredict {
 				core.Debug("mispredict")
 				state.Mispredict = true
+				if state.Debug != nil {
+					*state.Debug += "mispredict\n"
+				}
 			}
 
 			if state.Output.RouteState.LatencyWorse {
 				core.Debug("latency worse")
 				state.LatencyWorse = true
+				if state.Debug != nil {
+					*state.Debug += "latency worse\n"
+				}
 			}
 		}
 	}
@@ -911,6 +950,13 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 	if routeCost > common.InvalidRouteValue {
 		routeCost = common.InvalidRouteValue
+	}
+
+	if state.Debug != nil {
+		*state.Debug += fmt.Sprintf("route cost is %d\n", routeCost)
+		if state.Response.Multipath {
+			*state.Debug += "multipath\n"
+		}
 	}
 
 	state.Output.RouteCost = routeCost
@@ -1005,6 +1051,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)
+		// todo: counter
 		return
 	}
 
@@ -1020,9 +1067,17 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		panic("no session data?!")
 	}
 
+	if state.Debug != nil {
+		state.Response.Debug = *state.Debug
+		fmt.Printf("-------------------------------------\n")
+		fmt.Printf("%s", *state.Debug)
+		fmt.Printf("-------------------------------------\n")
+	}
+
 	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.RoutingPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
+		// todo: counter
 		return
 	}
 

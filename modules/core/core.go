@@ -1622,18 +1622,76 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *string) bool {
 
-	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeShader.DisableNetworkNext {
+		if debug != nil {
+			*debug += "network next is disabled\n"
+		}
 		return true
 	}
 
-	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
-		routeState.Disabled = true
+	if routeShader.AnalysisOnly {
+		if debug != nil {
+			*debug += "analysis only\n"
+		}
 		return true
 	}
 
-	if routeShader.SelectionPercent == 0 || (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
+	if routeState.Veto {
+		if debug != nil {
+			*debug += "veto\n"
+		}
+		return true
+	}
+
+	if routeState.LocationVeto {
+		if debug != nil {
+			*debug += "location veto\n"
+		}
+		return true
+	}
+
+	if routeState.Banned {
+		if debug != nil {
+			*debug += "banned\n"
+		}
+		return true
+	}
+
+	if routeState.Disabled {
+		if debug != nil {
+			*debug += "disabled\n"
+		}
+		return true
+	}
+
+	if routeState.NotSelected {
+		if debug != nil {
+			*debug += "not selected\n"
+		}
+		return true
+	}
+
+	if routeState.B {
+		if debug != nil {
+			*debug += "b group in ab test\n"
+		}
+		return true
+	}
+
+	if routeShader.SelectionPercent == 0 {
+		if debug != nil {
+			*debug += "selection percent is zero\n"
+		}		
+		routeState.NotSelected = true
+		return true
+	}
+
+	if (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
+		if debug != nil {
+			*debug += "user is not selected\n"
+		}		
 		routeState.NotSelected = true
 		return true
 	}
@@ -1642,6 +1700,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		routeState.ABTest = true
 		if (routeState.UserID % 2) == 1 {
 			routeState.B = true
+			if debug != nil {
+				*debug += "ab test\n"
+			}		
 			return true
 		} else {
 			routeState.A = true
@@ -1650,6 +1711,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 	if routeShader.BannedUsers[routeState.UserID] {
 		routeState.Banned = true
+		if debug != nil {
+			*debug += "user is banned\n"
+		}		
 		return true
 	}
 
@@ -1699,7 +1763,10 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
+		if debug != nil {
+			*debug += "early out direct\n"
+		}		
 		return false
 	}
 
@@ -1847,6 +1914,10 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 	routeState.Committed = !internal.Uncommitted && (!internal.TryBeforeYouBuy || routeState.Multipath)
 
+	if debug != nil && routeState.Committed {
+		*debug += "committted\n"
+	}		
+
 	return true
 }
 
@@ -1854,7 +1925,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 
 	// if we early out, go direct
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
 		return false, false
 	}
 
