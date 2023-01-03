@@ -7468,7 +7468,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.has_debug )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+                next_printf( "--------------------------------------\n%s--------------------------------------", packet.debug );
             }
 
             next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
