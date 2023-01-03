@@ -468,11 +468,9 @@ func happy_path(wait bool) int {
 }
 
 func cleanup() {
-	core.Log("cleaning up")
 	for i := range commands {
 		commands[i].Process.Kill()
 	}
-	fmt.Print("\n")
 }
 
 func main() {
