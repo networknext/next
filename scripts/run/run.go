@@ -6,8 +6,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"bytes"
-	"io"
 
 	"github.com/joho/godotenv"
 )
@@ -267,17 +265,7 @@ func client5() {
 
 func pubsub_emulator() {
 	bash_ignore_result("pkill -f pubsub-emulator")
-	// bash("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000")
-	cmd := exec.Command("gcloud", "beta", "emulators", "pubsub", "start", "--project=local", "--host-port=127.0.0.1:9000")
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("error: failed to run pubsub emulator")
-	}
-	_ = stdoutBuf
-	_ = stderrBuf
+	bash("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000")
 }
 
 func bigquery_emulator() {

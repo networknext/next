@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"runtime"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -86,24 +87,33 @@ func happy_path(wait bool) int {
 
 	pubsub_emulator_stdout := run("pubsub-emulator", "logs/pubsub_emulator")
 
-	time.Sleep(1*time.Second)
+	if runtime.GOOS != "linux" {
 
-	pubsub_emulator_initialized := false
+		pubsub_emulator_initialized := false
 
-	for i := 0; i < 50; i++ {
-		if strings.Contains(pubsub_emulator_stdout.String(), "[pubsub] INFO: Server started, listening on 9000") {
-			pubsub_emulator_initialized = true
-			break
+		for i := 0; i < 50; i++ {
+			if strings.Contains(pubsub_emulator_stdout.String(), "[pubsub] INFO: Server started, listening on 9000") {
+				pubsub_emulator_initialized = true
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}	
+
+		if !pubsub_emulator_initialized {
+			fmt.Printf("\nerror: failed to initialize pubsub emulator\n")
+			fmt.Printf("-----------------------------------------\n")
+			fmt.Printf("%s", pubsub_emulator_stdout.String())
+			fmt.Printf("-----------------------------------------\n")
+			return 1
 		}
-		time.Sleep(100 * time.Millisecond)
-	}	
 
-	if !pubsub_emulator_initialized {
-		fmt.Printf("\nerror: failed to initialize pubsub emulator\n")
-		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", pubsub_emulator_stdout.String())
-		fmt.Printf("-----------------------------------------\n")
-		return 1
+	} else {
+
+		// hack: we can't reliably seem to get output from pubsub emulator via "run" on linux
+		// so this is the best we can do. probably related to python buffering stdout from inside
+		// gcloud.py
+
+		time.Sleep(1*time.Second)
 	}
 
 	// setup emulators
