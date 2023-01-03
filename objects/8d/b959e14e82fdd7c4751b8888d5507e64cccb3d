@@ -5,3 +5,7 @@
 	object = 0ecaad2cf514ba92576b3028c8c50d5f29cbd2ed
 	path = enet
 	type = expand module
+[map "3ad79803-498f-38e9-ae71-efe2b4475a3f"]
+	object = e5b6ef5bb08856faf69a5480af7c80f171dd5f09
+	path = enet
+	type = expand module

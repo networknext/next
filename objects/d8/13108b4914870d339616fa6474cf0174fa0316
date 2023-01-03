@@ -5,3 +5,7 @@
 	object = 0ecaad2cf514ba92576b3028c8c50d5f29cbd2ed
 	path = sdk5
 	type = expand module
+[map "e98d2d4f-3377-38ab-aae7-44a742ffce76"]
+	object = e5b6ef5bb08856faf69a5480af7c80f171dd5f09
+	path = sdk5
+	type = expand module
