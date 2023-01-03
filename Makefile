@@ -23,28 +23,36 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 # Clean and rebuild
 
 .PHONY: build
-build: dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+
+.PHONY: rebuild
+rebuild: ## rebuild everything
+	@make clean
+	@make build -j
 
 .PHONY: clean
 clean: ## clean everything
 	@rm -rf dist
 	@mkdir -p dist
 
-.PHONY: rebuild
-rebuild: clean build ## rebuild everything
-
 # Build most golang services
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
+ifeq ($(OS),darwin)
+	@codesign --force --deep --sign - $@
+endif
+	@echo $@
 
 # Build most artifacts
 
 dist/%.dev.tar.gz: dist/%
 	@go run scripts/artifact/artifact.go $@ dev
+	@echo $@
 
 dist/%.prod.tar.gz: dist/%
 	@go run scripts/artifact/artifact.go $@ prod
+	@echo $@
 
 # Format code
 
@@ -57,48 +65,61 @@ format:
 
 dist/$(SDKNAME4).so: $(shell find sdk4 -type f)
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk4/include -shared -o $(SDKNAME4).so ../sdk4/source/*.cpp $(LDFLAGS)
+	@echo $@
 
 dist/client4: dist/$(SDKNAME4).so cmd/client4/client4.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o client4 ../cmd/client4/client4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 dist/server4: dist/$(SDKNAME4).so cmd/server4/server4.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 dist/test_server4: dist/$(SDKNAME4).so cmd/test_server4/test_server4.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 dist/test4: dist/$(SDKNAME4).so sdk4/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 # Build sdk5
 
 dist/$(SDKNAME5).so: $(shell find sdk5 -type f)
 	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
+	@echo $@
 
 dist/client5: dist/$(SDKNAME5).so cmd/client5/client5.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client5 ../cmd/client5/client5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 dist/server5: dist/$(SDKNAME5).so cmd/server5/server5.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 dist/test_server5: dist/$(SDKNAME5).so cmd/test_server5/test_server5.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 # Build reference relay
 
 dist/reference_relay: reference/relay/*
 	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
+	@echo $@
 
 # Functional tests (sdk4)
 
 dist/func_server4: dist/$(SDKNAME4).so cmd/func_server4/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_server4 ../cmd/func_server4/func_server4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 dist/func_client4: dist/$(SDKNAME4).so cmd/func_client4/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o func_client4 ../cmd/func_client4/func_client4.cpp $(SDKNAME4).so $(LDFLAGS)
+	@echo $@
 
 .PHONY: func-test-sdk4
 func-test-sdk4: dist/reference_relay dist/func_server4 dist/func_client4 dist/func_backend4 dist/func_tests_sdk4
@@ -107,9 +128,11 @@ func-test-sdk4: dist/reference_relay dist/func_server4 dist/func_client4 dist/fu
 
 dist/func_server5: dist/$(SDKNAME5).so cmd/func_server5/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server5 ../cmd/func_server5/func_server5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 dist/func_client5: dist/$(SDKNAME5).so cmd/func_client5/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client5 ../cmd/func_client5/func_client5.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
 
 .PHONY: func-test-sdk5
 func-test-sdk5: dist/reference_relay dist/func_server5 dist/func_client5 dist/func_backend5 dist/func_tests_sdk5
