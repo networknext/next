@@ -92,7 +92,7 @@ func happy_path(wait bool) int {
 	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
 	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 10)
 
 	relay_1_stdout := run("relay", "logs/relay_1")
 	relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")

@@ -236,12 +236,12 @@ func portal() {
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
+	bash("make build && echo && go run ./scripts/happy_path/happy_path.go")
 }
 
 func happy_path_no_wait() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go 1")
+	bash("make build && echo && go run ./scripts/happy_path/happy_path.go 1")
 }
 
 func server4() {
