@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -141,6 +140,10 @@ func main() {
 		client4()
 	} else if command == "client5" {
 		client5()
+	} else if command == "pubsub-emulator" {
+		pubsub_emulator()
+	} else if command == "bigquery-emulator" {
+		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
 	} else if command == "func-sdk4" {
@@ -236,7 +239,6 @@ func portal() {
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh")
 	bash("go run ./scripts/happy_path/happy_path.go")
 }
 
@@ -261,19 +263,18 @@ func client5() {
 	bash("make ./dist/client5 -j && cd dist && ./client5")
 }
 
+func pubsub_emulator() {
+	bash_ignore_result("pkill -f pubsub-emulator")
+	bash("PYTHONUNBUFFERED=1 gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 2>&1")
+}
+
+func bigquery_emulator() {
+	bash_ignore_result("pkill -f bigquery-emulator")
+	bash("bigquery-emulator --project=local --dataset=local")
+}
+
 func setup_emulators() {
-
-	// restart pubsub emulator
-	bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
-	bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 --quiet &")
-
-	// restart bigquery emulator
-	bash_ignore_result("pkill -f \"bigquery-emulator\"")
-	bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
-
-	// setup pubsub topics, subscriptions and bigquery tables
-	time.Sleep(time.Second * 5)
-	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
+	bash("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
 func func_sdk4() {
