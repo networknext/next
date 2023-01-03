@@ -113,7 +113,7 @@ func happy_path(wait bool) int {
 		// so this is the best we can do. probably related to python buffering stdout from inside
 		// gcloud.py
 
-		time.Sleep(1*time.Second)
+		time.Sleep(5*time.Second)
 	}
 
 	// setup emulators
@@ -122,7 +122,7 @@ func happy_path(wait bool) int {
 
 	setup_emulators_initialized := false
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 200; i++ {
 		if strings.Contains(setup_emulators_stdout.String(), "finished setting up pubsub") {
 			setup_emulators_initialized = true
 			break
