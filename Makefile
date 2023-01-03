@@ -26,8 +26,8 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
 
 .PHONY: rebuild
-rebuild: ## rebuild everything
-	@make clean
+rebuild: clean ## rebuild everything
+	@echo rebuilding...
 	@make build -j
 
 .PHONY: clean
