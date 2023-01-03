@@ -86,6 +86,8 @@ func happy_path(wait bool) int {
 
 	pubsub_emulator_stdout := run("pubsub-emulator", "logs/pubsub_emulator")
 
+	time.Sleep(1*time.Second)
+
 	pubsub_emulator_initialized := false
 
 	for i := 0; i < 50; i++ {
