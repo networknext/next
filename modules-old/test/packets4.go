@@ -1,9 +1,9 @@
 package test
 
 import (
+	"crypto/ed25519"
 	"net"
 	"time"
-	"crypto/ed25519"
 
 	"github.com/networknext/backend/modules/core"
 

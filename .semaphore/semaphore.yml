@@ -856,7 +856,7 @@ blocks:
             - sudo apt-get install google-cloud-sdk-pubsub-emulator
             - cd ~/backend
             - ./next select local
-            - make clean
+            - make rebuild
             - ./run happy-path-no-wait
 
 
@@ -877,7 +877,7 @@ blocks:
 #      jobs:
 #        - name: "run happy-path-no-wait"
 #          commands:
-#           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.sh backend happy-path"
+#           - ssh -J glenn@34.67.51.93 build@hulk -p 2222 "cd /mnt/c/build && ./build.s backend happy-path"
 
 
 #  - name: "Happy Path (Mac)"
