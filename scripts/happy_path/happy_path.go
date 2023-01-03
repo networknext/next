@@ -467,9 +467,20 @@ func happy_path(wait bool) int {
 	return 0
 }
 
+func bash(command string) {
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
+	cmd.Run()
+	cmd.Wait()
+}
+
 func cleanup() {
-	for i := range commands {
-		commands[i].Process.Kill()
+	killList := [...]string{"reference_relay", "client4", "server4", "client5", "server5", "magic_backend", "relay_gateway", "relay_backend", "server_backend4", "server_backend5", "analytics"}
+	for i := range killList {
+		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}
 }
 

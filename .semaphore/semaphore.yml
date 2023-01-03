@@ -856,8 +856,7 @@ blocks:
             - sudo apt-get install google-cloud-sdk-pubsub-emulator
             - cd ~/backend
             - ./next select local
-            - make rebuild
-            - ldconfig
+            - ./build.sh
             - ./run happy-path-no-wait
 
 
