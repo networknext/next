@@ -265,7 +265,7 @@ func client5() {
 
 func pubsub_emulator() {
 	bash_ignore_result("pkill -f pubsub-emulator")
-	bash("PYTHONUNBUFFERED=true gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 2>&1")
+	bash("PYTHONUNBUFFERED=1 gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 2>&1")
 }
 
 func bigquery_emulator() {
