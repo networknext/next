@@ -1,12 +1,12 @@
 package core
 
 import (
+	"crypto/ed25519"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
 	"math"
 	"math/rand"
-	"crypto/ed25519"
 	"net"
 	"os"
 	"sort"
@@ -2641,53 +2641,55 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 
 func TestEarlyOutDirect(t *testing.T) {
 
+	var debug string
+
 	routeShader := NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeState := RouteState{}
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{Veto: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{LocationVeto: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{Banned: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{Disabled: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{NotSelected: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeState = RouteState{B: true}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeShader = NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.DisableNetworkNext = true
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = NewRouteShader()
@@ -2695,7 +2697,7 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 0
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.ABTest)
 	assert.True(t, routeState.A)
 	assert.False(t, routeState.B)
@@ -2705,7 +2707,7 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader.ABTest = true
 	routeState = RouteState{}
 	routeState.UserID = 1
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.ABTest)
 	assert.False(t, routeState.A)
 	assert.True(t, routeState.B)
@@ -2714,14 +2716,14 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeShader.AnalysisOnly = false
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
-	assert.False(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.False(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 
 	routeShader = NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.BannedUsers[1000] = true
 	routeState = RouteState{}
 	routeState.UserID = 1000
-	assert.True(t, EarlyOutDirect(&routeShader, &routeState))
+	assert.True(t, EarlyOutDirect(&routeShader, &routeState, &debug))
 	assert.True(t, routeState.Banned)
 }
 
