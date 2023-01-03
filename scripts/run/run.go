@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"bytes"
+	"io"
 
 	"github.com/joho/godotenv"
 )
@@ -31,7 +33,7 @@ func bash(command string) {
 	}
 
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.") // IMPORTANT: linux needs this to run server4 etc.
@@ -53,7 +55,7 @@ func bash_ignore_result(command string) {
 	}
 
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 
 	cmd.Run()
 
@@ -265,7 +267,17 @@ func client5() {
 
 func pubsub_emulator() {
 	bash_ignore_result("pkill -f pubsub-emulator")
-	bash("PYTHONUNBUFFERED=1 gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 2>&1")
+	// bash("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000")
+	cmd := exec.Command("gcloud", "beta", "emulators", "pubsub", "start", "--project=local", "--host-port=127.0.0.1:9000")
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("error: failed to run pubsub emulator")
+	}
+	_ = stdoutBuf
+	_ = stderrBuf
 }
 
 func bigquery_emulator() {
