@@ -4,11 +4,11 @@ import (
 	"context"
 	// "encoding/json"
 	// "io/ioutil"
+	"fmt"
 	"os"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	// "google.golang.org/api/option"
 )
@@ -56,11 +56,11 @@ func main() {
 
 	pubsubClient, err := pubsub.NewClient(ctx, googleProjectID)
 	if err != nil {
-		core.Error("failed to create pubsub client: %v", err)
+		fmt.Printf("error: failed to create pubsub client: %v", err)
 		os.Exit(1)
 	}
 
-	core.Debug("created pubsub client")
+	fmt.Printf("created pubsub client\n")
 
 	pubsubMessages := []PubsubMessageType{
 		{
@@ -90,18 +90,27 @@ func main() {
 	}
 
 	for i := 0; i < len(pubsubMessages); i++ {
+
 		messageType := pubsubMessages[i]
-		core.Debug("created topic %s and subscription %s", messageType.Topic, messageType.Subscription)
-		pubsubClient.CreateTopic(ctx, messageType.Topic)
-		pubsubClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{
-			Topic: pubsubClient.Topic(messageType.Topic),
-		})
-		// can these calls above fail? if they can, we should catch them, and print and exit -- we need the system to be 100% reliable, and never fail silently.
+
+		fmt.Printf("creating pubsub topic %s\n", messageType.Topic)
+		_, err := pubsubClient.CreateTopic(ctx, messageType.Topic)
+		if err != nil {
+			fmt.Printf("failed to create pubsub topic: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("creating pubsub subscription %s\n", messageType.Subscription)
+		_, err = pubsubClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{Topic: pubsubClient.Topic(messageType.Topic)})
+		if err != nil {
+			fmt.Printf("failed to create pubsub subscription: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	pubsubClient.Close()
 
-	core.Debug("finished setting up pubsub")
+	fmt.Printf("finished setting up pubsub\n")
 
 	// ----------------
 

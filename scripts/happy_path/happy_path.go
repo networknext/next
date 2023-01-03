@@ -91,7 +91,7 @@ func happy_path(wait bool) int {
 
 		pubsub_emulator_initialized := false
 
-		for i := 0; i < 50; i++ {
+		for i := 0; i < 100; i++ {
 			if strings.Contains(pubsub_emulator_stdout.String(), "[pubsub] INFO: Server started, listening on 9000") {
 				pubsub_emulator_initialized = true
 				break
@@ -122,7 +122,7 @@ func happy_path(wait bool) int {
 
 	setup_emulators_initialized := false
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 300; i++ {
 		if strings.Contains(setup_emulators_stdout.String(), "finished setting up pubsub") {
 			setup_emulators_initialized = true
 			break
