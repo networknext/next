@@ -125,9 +125,11 @@ func CreateService(serviceName string) *Service {
 
 	service.runStatusUpdateLoop()
 
-	service.googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
-
-	core.Log("google project id: %s", service.googleProjectId)
+	// todo: perhaps we can just autodetect we are running in google cloud, and determine the project id we are running under automatically?
+	service.googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
+	if service.googleProjectId != "" {
+		core.Log("google project id: %s", service.googleProjectId)
+	}
 
 	return &service
 }
