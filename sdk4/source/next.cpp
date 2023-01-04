@@ -46,7 +46,7 @@
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
-#define NEXT_SERVER_INIT_RESEND_TIME									1
+#define NEXT_SERVER_INIT_RESEND_TIME                                    1
 #define NEXT_SERVER_INIT_TIMEOUT                                       10
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           10
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                 10
@@ -10383,8 +10383,8 @@ struct next_server_internal_t
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
     uint64_t server_init_request_id;
-	double server_init_timeout_time;
-	double server_init_send_time;
+    double server_init_timeout_time;
+    double server_init_send_time;
     double last_backend_server_update;
     double next_resolve_hostname_time;
     next_address_t backend_address;
@@ -13425,59 +13425,59 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname && !server->autodetecting )
     {
-    	next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
+        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-    	// start the server init
+        // start the server init
 
-    	if ( server->server_init_timeout_time == 0 )
-    	{
-    		server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
-    		server->server_init_send_time = current_time;
-    	}
+        if ( server->server_init_timeout_time == 0 )
+        {
+            server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
+            server->server_init_send_time = current_time;
+        }
 
-    	// check for server init timeout
+        // check for server init timeout
 
-	    if ( server->server_init_timeout_time <= current_time )
-	    {
-	        next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
-	        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-	        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-	        notify->type = NEXT_SERVER_NOTIFY_READY;
-	        memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
-	        strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-	        {
-	            next_platform_mutex_guard( &server->notify_mutex );
-	            next_queue_push( server->notify_queue, notify );
-	        }
-	        return;
-	    }
+        if ( server->server_init_timeout_time <= current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
+            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+            notify->type = NEXT_SERVER_NOTIFY_READY;
+            memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+            strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            {
+                next_platform_mutex_guard( &server->notify_mutex );
+                next_queue_push( server->notify_queue, notify );
+            }
+            return;
+        }
 
-    	// send server init request packets
+        // send server init request packets
 
-	    if ( server->server_init_send_time <= current_time )
-	    {
-	        NextBackendServerInitRequestPacket packet;
-	        packet.request_id = next_random_uint64();
-	        packet.customer_id = server->customer_id;
-	        packet.datacenter_id = server->datacenter_id;
-	        strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-	        packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+        if ( server->server_init_send_time <= current_time )
+        {
+            NextBackendServerInitRequestPacket packet;
+            packet.request_id = next_random_uint64();
+            packet.customer_id = server->customer_id;
+            packet.datacenter_id = server->datacenter_id;
+            strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+            packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
 
-	        server->server_init_request_id = packet.request_id;
+            server->server_init_request_id = packet.request_id;
 
-	        int packet_bytes = 0;
-	        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
-	        {
-	            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
-	            return;
-	        }
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
+                return;
+            }
 
-	        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-	        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
 
-	        server->server_init_send_time = current_time + NEXT_SERVER_INIT_RESEND_TIME;
-	    }
+            server->server_init_send_time = current_time + NEXT_SERVER_INIT_RESEND_TIME;
+        }
     }
 
     // tracker updates
