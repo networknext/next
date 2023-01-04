@@ -87,7 +87,6 @@ func happy_path(wait bool) int {
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
 	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
-	time.Sleep(100*time.Millisecond)
 	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
 
 	fmt.Printf("\nverifying magic backend ...")
@@ -143,8 +142,6 @@ func happy_path(wait bool) int {
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
 			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "we became the leader") &&
-			!strings.Contains(relay_backend_1_stdout.String(), "we are no longer the leader") &&
 			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
 			relay_backend_1_initialized = true
 			break
@@ -169,7 +166,6 @@ func happy_path(wait bool) int {
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
 			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
-			!strings.Contains(relay_backend_2_stdout.String(), "we became the leader") &&
 			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
 			relay_backend_2_initialized = true
 			break
@@ -397,7 +393,6 @@ func happy_path(wait bool) int {
 	fmt.Printf("\nstarting analytics:\n\n")
 
 	analytics_1_stdout := run("analytics", "logs/analytics_1")
-	time.Sleep(100*time.Millisecond)
 	analytics_2_stdout := run("analytics", "logs/analytics_2", "HTTP_PORT=40002")
 
 	fmt.Printf("\nverifying analytics 1 ...")
@@ -405,10 +400,7 @@ func happy_path(wait bool) int {
 	analytics_1_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_1_stdout.String(), "we became the leader") &&
-			!strings.Contains(analytics_1_stdout.String(), "we are no longer the leader") &&
-			strings.Contains(analytics_1_stdout.String(), "cost matrix num relays: 10") &&
-			strings.Contains(analytics_1_stdout.String(), "route matrix num relays: 10") {
+		if strings.Contains(analytics_1_stdout.String(), "starting http server on port 40001") {
 			analytics_1_initialized = true
 			break
 		}
@@ -430,9 +422,7 @@ func happy_path(wait bool) int {
 	analytics_2_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if !strings.Contains(analytics_2_stdout.String(), "we became the leader") &&
-			!strings.Contains(analytics_2_stdout.String(), "we are no longer the leader") &&
-			strings.Contains(analytics_2_stdout.String(), "starting http server on port 40002") {
+		if strings.Contains(analytics_2_stdout.String(), "starting http server on port 40002") {
 			analytics_2_initialized = true
 			break
 		}
@@ -567,7 +557,77 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	// todo: final verification -- we should see no leader flapping on relay backend or analytics services
+	fmt.Printf("verifying leader election in relay backend ...")
+
+	relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
+	relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
+
+	if relay_backend_1_is_leader && relay_backend_2_is_leader {
+		fmt.Printf("\n\nerror: leader flap in relay backend\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	if relay_backend_1_is_leader && relay_backend_2_is_leader {
+		fmt.Printf("\n\nerror: no relay backend leader?\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying leader election in analytics ...")
+
+	analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
+	analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
+
+	if analytics_1_is_leader && analytics_2_is_leader {
+		fmt.Printf("\n\nerror: leader flap in analytics\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	if !analytics_1_is_leader && !analytics_2_is_leader {
+		fmt.Printf("\n\nerror: no analytics leader?!\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying analytics leader ...")
+
+	analytics_leader_stdout := analytics_1_stdout
+	if analytics_2_is_leader {
+		analytics_leader_stdout = analytics_2_stdout
+	}
+
+	if strings.Contains(analytics_leader_stdout.String(), "we are no longer the leader") ||
+		!strings.Contains(analytics_leader_stdout.String(), "cost matrix num relays: 10") ||
+		!strings.Contains(analytics_leader_stdout.String(), "route matrix num relays: 10") {
+		fmt.Printf("\n\nerror: analytics leader did not verify\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_leader_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
 
 	// ==================================================================================
 
