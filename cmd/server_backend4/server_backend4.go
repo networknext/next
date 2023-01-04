@@ -426,15 +426,15 @@ func mainReturnWithCode() int {
 		pubsubCtx := ctx
 
 		/*
-		if pubsubEmulatorOK {
-			gcpProjectID = "local"
+			if pubsubEmulatorOK {
+				gcpProjectID = "local"
 
-			var cancelFunc context.CancelFunc
-			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+				defer cancelFunc()
 
-			core.Debug("detected pubsub emulator")
-		}
+				core.Debug("detected pubsub emulator")
+			}
 		*/
 
 		// Google Pubsub for billing
