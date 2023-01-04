@@ -117,63 +117,63 @@ func main() {
 	// bring this back in later. focusing on pubsub for now
 
 	/*
-	clientOptions := []option.ClientOption{
-		option.WithEndpoint("http://127.0.0.1:9050"),
-		option.WithoutAuthentication(),
-	}
-
-	schemaFile, err := os.Open(envvar.GetString("BIGQUERY_SCHEMA_FILE", "./testdata/bigquery_emulator/happy_path_tables.json"))
-	if err != nil {
-		core.Error("failed to open schema file: %v", err)
-		return
-	}
-
-	defer schemaFile.Close()
-
-	schemaBytes, err := ioutil.ReadAll(schemaFile)
-	if err != nil {
-		core.Error("failed to process schema file")
-		return
-	}
-
-	bigquerySchema := BigquerySchema{}
-
-	if err := json.Unmarshal([]byte(schemaBytes), &bigquerySchema); err != nil {
-		core.Error("failed to unmarshal schema")
-		return
-	}
-
-	for _, project := range bigquerySchema.Projects {
-
-		bigqueryClient, err := bigquery.NewClient(ctx, project.ID, clientOptions...)
-		if err != nil {
-			core.Error("failed to create bigquery client for %s project", project.ID)
-			continue
+		clientOptions := []option.ClientOption{
+			option.WithEndpoint("http://127.0.0.1:9050"),
+			option.WithoutAuthentication(),
 		}
-		defer bigqueryClient.Close()
 
-		for _, dataset := range project.Datasets {
+		schemaFile, err := os.Open(envvar.GetString("BIGQUERY_SCHEMA_FILE", "./testdata/bigquery_emulator/happy_path_tables.json"))
+		if err != nil {
+			core.Error("failed to open schema file: %v", err)
+			return
+		}
 
-			bigqueryClient.Dataset(dataset.ID).Create(ctx, &bigquery.DatasetMetadata{})
+		defer schemaFile.Close()
 
-			for _, table := range dataset.Tables {
+		schemaBytes, err := ioutil.ReadAll(schemaFile)
+		if err != nil {
+			core.Error("failed to process schema file")
+			return
+		}
 
-				tableMetaData := bigquery.TableMetadata{
-					Schema: make(bigquery.Schema, len(table.Columns)),
-				}
+		bigquerySchema := BigquerySchema{}
 
-				for i, column := range table.Columns {
-					tableMetaData.Schema[i] = &bigquery.FieldSchema{
-						Name:     column.Name,
-						Type:     column.Type,
-						Required: column.Mode == REQUIRED,
-						Repeated: column.Mode == REPEATED,
+		if err := json.Unmarshal([]byte(schemaBytes), &bigquerySchema); err != nil {
+			core.Error("failed to unmarshal schema")
+			return
+		}
+
+		for _, project := range bigquerySchema.Projects {
+
+			bigqueryClient, err := bigquery.NewClient(ctx, project.ID, clientOptions...)
+			if err != nil {
+				core.Error("failed to create bigquery client for %s project", project.ID)
+				continue
+			}
+			defer bigqueryClient.Close()
+
+			for _, dataset := range project.Datasets {
+
+				bigqueryClient.Dataset(dataset.ID).Create(ctx, &bigquery.DatasetMetadata{})
+
+				for _, table := range dataset.Tables {
+
+					tableMetaData := bigquery.TableMetadata{
+						Schema: make(bigquery.Schema, len(table.Columns)),
 					}
-				}
 
-				bigqueryClient.Dataset(dataset.ID).Table(table.ID).Create(ctx, &tableMetaData)
+					for i, column := range table.Columns {
+						tableMetaData.Schema[i] = &bigquery.FieldSchema{
+							Name:     column.Name,
+							Type:     column.Type,
+							Required: column.Mode == REQUIRED,
+							Repeated: column.Mode == REPEATED,
+						}
+					}
+
+					bigqueryClient.Dataset(dataset.ID).Table(table.ID).Create(ctx, &tableMetaData)
+				}
 			}
 		}
-	}
 	*/
 }

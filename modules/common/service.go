@@ -64,7 +64,7 @@ type Service struct {
 	Context           context.Context
 	ContextCancelFunc context.CancelFunc
 
-	GoogleProjectId    string
+	GoogleProjectId string
 
 	// ------------------
 
@@ -262,6 +262,7 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 }
 
 func (service *Service) LeaderElection(autoRefresh bool) {
+
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
