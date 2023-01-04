@@ -838,6 +838,27 @@ blocks:
             - cd ./dist && ./func_tests_sdk5 test_big_packets
 
 
+  - name: "Happy Path (Mac)"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: a1-standard-4
+          os_image: macos-xcode13
+      jobs:
+
+        - name: "run happy-path-no-wait"
+
+          commands:
+
+            - checkout
+            - brew install libsodium redis
+            - cd ~/backend
+            - ./next select local
+            - ./build.sh
+            - ./run happy-path-no-wait
+
+
   - name: "Happy Path (Linux)"
     dependencies: []
     task:
@@ -857,7 +878,6 @@ blocks:
             - ./next select local
             - ./build.sh
             - ./run happy-path-no-wait
-
 
 promotions:
 
