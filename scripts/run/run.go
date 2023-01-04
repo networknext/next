@@ -170,23 +170,23 @@ func test() {
 }
 
 func test_sdk4() {
-	bash("make ./dist/test4 -j && cd ./dist && ./test4")
+	bash("cd ./dist && ./test4")
 }
 
 func test_sdk5() {
-	bash("make ./dist/test5 -j && cd ./dist && ./test5")
+	bash("cd ./dist && ./test5")
 }
 
 func test_relay() {
-	bash("make ./dist/reference_relay -j && cd dist && ./reference_relay test")
+	bash("cd dist && ./reference_relay test")
 }
 
 func magic_backend() {
-	bash("make ./dist/magic_backend -j && HTTP_PORT=41007 ./dist/magic_backend")
+	bash("HTTP_PORT=41007 ./dist/magic_backend")
 }
 
 func relay_gateway() {
-	bash("make ./dist/relay_gateway -j && HTTP_PORT=30000 ./dist/relay_gateway")
+	bash("HTTP_PORT=30000 ./dist/relay_gateway")
 }
 
 func relay_backend() {
@@ -194,19 +194,19 @@ func relay_backend() {
 	if httpPort == "" {
 		httpPort = "30001"
 	}
-	bash(fmt.Sprintf("make ./dist/relay_backend -j && HTTP_PORT=%s ./dist/relay_backend", httpPort))
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/relay_backend", httpPort))
 }
 
 func analytics() {
-	bash("make ./dist/analytics -j && HTTP_PORT=40001 ./dist/analytics")
+	bash("HTTP_PORT=40001 ./dist/analytics")
 }
 
 func pusher() {
-	bash("make ./dist/pusher -j && HTTP_PORT=40010 ./dist/pusher")
+	bash("HTTP_PORT=40010 ./dist/pusher")
 }
 
 func pingdom() {
-	bash("make ./dist/pingdom -j && HTTP_PORT=40011 ./dist/pingdom")
+	bash("HTTP_PORT=40011 ./dist/pingdom")
 }
 
 func relay() {
@@ -214,27 +214,27 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("make -j ./dist/reference_relay -j && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	bash(fmt.Sprintf("cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
 }
 
 func server_backend4() {
-	bash("make ./dist/server_backend4 -j && HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
+	bash("HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
 }
 
 func server_backend5() {
-	bash("make ./dist/server_backend5 -j && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
+	bash("HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
 }
 
 func website_cruncher() {
-	bash("make ./dist/website_cruncher -j && HTTP_PORT=40010 ./dist/website_cruncher")
+	bash("HTTP_PORT=40010 ./dist/website_cruncher")
 }
 
 func portal_cruncher() {
-	bash("make ./dist/portal_cruncher -j && HTTP_PORT=40012 ./dist/portal_cruncher")
+	bash("HTTP_PORT=40012 ./dist/portal_cruncher")
 }
 
 func portal() {
-	bash("make ./dist/portal -j && PORT=20000 ./dist/portal")
+	bash("PORT=20000 ./dist/portal")
 }
 
 func happy_path() {
@@ -248,19 +248,19 @@ func happy_path_no_wait() {
 }
 
 func server4() {
-	bash("make ./dist/server4 -j && cd dist && ./server4")
+	bash("cd dist && ./server4")
 }
 
 func server5() {
-	bash("make ./dist/server5 -j && cd dist && ./server5")
+	bash("cd dist && ./server5")
 }
 
 func client4() {
-	bash("make ./dist/client4 -j && cd dist && ./client4")
+	bash("cd dist && ./client4")
 }
 
 func client5() {
-	bash("make ./dist/client5 -j && cd dist && ./client5")
+	bash("cd dist && ./client5")
 }
 
 func pubsub_emulator() {
@@ -278,23 +278,23 @@ func setup_emulators() {
 }
 
 func func_sdk4() {
-	bash("make func-test-sdk4 -j && cd dist && ./func_tests_sdk4")
+	bash("cd dist && ./func_tests_sdk4")
 }
 
 func func_sdk5() {
-	bash(fmt.Sprintf("make func-test-sdk5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey))
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_backend4() {
-	bash("make ./dist/func_backend4 -j && cd dist && ./func_backend4")
+	bash("cd dist && ./func_backend4")
 }
 
 func func_backend5() {
-	bash(fmt.Sprintf("make ./dist/func_backend5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_backend(tests []string) {
-	command := "make ./dist/func_tests_backend && cd dist && ./func_tests_backend"
+	command := "cd dist && ./func_tests_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))

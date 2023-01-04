@@ -16,14 +16,18 @@ SDKNAME5 = libnext5
 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
-BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_TIME ?= $(shell date -u +'%Y-%m-%d|%H:%M:%S')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
-# Clean and rebuild
+# Clean, build and rebuild
 
 .PHONY: build
-build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+build:
+	@make -s build-fast -j
+
+.PHONY: build-fast
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -33,6 +37,7 @@ rebuild: clean ## rebuild everything
 .PHONY: clean
 clean: ## clean everything
 	@rm -rf dist
+	@rm -rf logs
 	@mkdir -p dist
 
 # Build most golang services
@@ -41,7 +46,7 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 	@echo $@
 
-# Build most artifacts
+# Build artifacts
 
 dist/%.dev.tar.gz: dist/%
 	@go run scripts/artifact/artifact.go $@ dev
@@ -72,10 +77,6 @@ dist/server4: dist/$(SDKNAME4).so cmd/server4/server4.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o server4 ../cmd/server4/server4.cpp $(SDKNAME4).so $(LDFLAGS)
 	@echo $@
 
-dist/test_server4: dist/$(SDKNAME4).so cmd/test_server4/test_server4.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test_server4 ../cmd/test_server4/test_server4.cpp $(SDKNAME4).so $(LDFLAGS)
-	@echo $@
-
 dist/test4: dist/$(SDKNAME4).so sdk4/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk4/include -o test4 ../sdk4/test.cpp $(SDKNAME4).so $(LDFLAGS)
 	@echo $@
@@ -92,10 +93,6 @@ dist/client5: dist/$(SDKNAME5).so cmd/client5/client5.cpp
 
 dist/server5: dist/$(SDKNAME5).so cmd/server5/server5.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server5 ../cmd/server5/server5.cpp $(SDKNAME5).so $(LDFLAGS)
-	@echo $@
-
-dist/test_server5: dist/$(SDKNAME5).so cmd/test_server5/test_server5.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test_server5 ../cmd/test_server5/test_server5.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp

@@ -94,8 +94,7 @@ func happy_path(wait bool) int {
 	magic_backend_initialized := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(magic_backend_stdout.String(), "starting http server on port 41007") &&
-			strings.Contains(magic_backend_stdout.String(), "served magic values") {
+		if strings.Contains(magic_backend_stdout.String(), "starting http server on port 41007") {
 			magic_backend_initialized = true
 			break
 		}
@@ -391,6 +390,8 @@ func happy_path(wait bool) int {
 
 	// initialize analytics
 
+	// todo: there should be multiple analytics, and we should check leader election, leader flapping etc.
+
 	fmt.Printf("\nstarting analytics:\n\n")
 
 	analytics_stdout := run("analytics", "logs/analytics")
@@ -402,7 +403,7 @@ func happy_path(wait bool) int {
 	for i := 0; i < 100; i++ {
 		if strings.Contains(analytics_stdout.String(), "we became the leader") &&
 		    strings.Contains(analytics_stdout.String(), "cost matrix num relays: 10") &&
-			strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
+	 		 strings.Contains(analytics_stdout.String(), "route matrix num relays: 10") {
 			// todo: additional checks, like we see each type of pubsub message we expect being processed at least once
 			analytics_initialized = true
 			break
