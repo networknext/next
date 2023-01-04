@@ -95,11 +95,6 @@ blocks:
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
 
-        - name: "Ghost Army"
-          commands:
-            - make dist/ghost_army.dev.tar.gz
-            - artifact push workflow dist/ghost_army.dev.tar.gz
-
         - name: "Pusher"
           commands:
             - make dist/pusher.dev.tar.gz
@@ -213,11 +208,6 @@ blocks:
           commands:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
-
-        - name: "Ghost Army"
-          commands:
-            - artifact pull workflow ghost_army.dev.tar.gz
-            - gsutil cp ghost_army.dev.tar.gz gs://development_artifacts/
 
         - name: "Pusher"
           commands:

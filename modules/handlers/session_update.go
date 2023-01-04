@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"math"
 	"net"
 	"time"
-	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -27,7 +27,7 @@ type SessionUpdateState struct {
 
 	ServerBackendAddress *net.UDPAddr
 
-	LocateIP 	func (ip net.IP) (packets.SDK5_LocationData, error)
+	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
 
 	Connection *net.UDPConn
 	From       *net.UDPAddr
@@ -125,7 +125,7 @@ func SessionPre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only")						// tested
+		core.Debug("analysis only") // tested
 		state.AnalysisOnly = true
 	}
 
@@ -136,7 +136,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.Request.ClientPingTimedOut {
 		core.Debug("client ping timed out")
-		state.ClientPingTimedOut = true                 // tested
+		state.ClientPingTimedOut = true // tested
 		return true
 	}
 
@@ -150,7 +150,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 		var err error
 
-		state.LocatedIP = true     						// tested
+		state.LocatedIP = true // tested
 
 		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
 
@@ -161,7 +161,7 @@ func SessionPre(state *SessionUpdateState) bool {
 			return true
 		}
 
-		state.Input.Location = state.Output.Location    // tested
+		state.Input.Location = state.Output.Location // tested
 
 	} else {
 
@@ -172,11 +172,11 @@ func SessionPre(state *SessionUpdateState) bool {
 		err := state.Input.Serialize(readStream)
 		if err != nil {
 			core.Debug("failed to read session data: %v", err)
-			state.FailedToReadSessionData = true        // tested
+			state.FailedToReadSessionData = true // tested
 			return true
 		}
 
-		state.ReadSessionData = true                    // tested
+		state.ReadSessionData = true // tested
 
 		state.Output.Location = state.Input.Location
 	}
@@ -188,7 +188,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.RouteMatrix.CreatedAt+uint64(state.StaleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
-		state.StaleRouteMatrix = true                   // tested
+		state.StaleRouteMatrix = true // tested
 		return true
 	}
 
@@ -200,7 +200,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if !datacenterExists(state.Database, state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
-		state.UnknownDatacenter = true                  // tested
+		state.UnknownDatacenter = true // tested
 	}
 
 	/*
@@ -211,7 +211,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
 		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
-		state.DatacenterNotEnabled = true               // tested
+		state.DatacenterNotEnabled = true // tested
 	}
 
 	/*
@@ -249,11 +249,11 @@ func SessionPre(state *SessionUpdateState) bool {
 		for i := int32(0); i < state.Request.NumTags; i++ {
 			if state.Request.Tags[i] == ProTag {
 				core.Debug("pro mode enabled")
-				state.Buyer.RouteShader.ProMode = true            // tested
+				state.Buyer.RouteShader.ProMode = true // tested
 				state.Pro = true
 			} else if state.Request.Tags[i] == OptOutTag {
 				core.Debug("opt out")
-				state.OptOut = true                               // tested
+				state.OptOut = true // tested
 				return true
 			}
 		}
@@ -266,7 +266,7 @@ func SessionPre(state *SessionUpdateState) bool {
 
 	if state.Buyer.Debug {
 		core.Debug("debug enabled")
-		state.Debug = new(string)                                 // tested
+		state.Debug = new(string) // tested
 	}
 
 	return false
@@ -899,11 +899,11 @@ func SessionPost(state *SessionUpdateState) {
 	// =========================================================================
 
 	/*
-	   	Build data needed for the billing system and the portal.
+		Build data needed for the billing system and the portal.
 
-	   	Send the data to the billing system via the non-realtime path (google pubsub).
+		Send the data to the billing system via the non-realtime path (google pubsub).
 
-	   	Send the data to the portal via the real-time path (redis streams).
+		Send the data to the portal via the real-time path (redis streams).
 	*/
 
 	buildRouteRelayData(state)
@@ -967,21 +967,21 @@ func buildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelay
 	_ = numTokens
 
 	/*
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+		routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 
-	core.Debug("----------------------------------------------------")
-	for index, address := range routeAddresses {
-		core.Debug("route address (%d): %s", index, address.String())
-	}
-	core.Debug("----------------------------------------------------")
+		core.Debug("----------------------------------------------------")
+		for index, address := range routeAddresses {
+			core.Debug("route address (%d): %s", index, address.String())
+		}
+		core.Debug("----------------------------------------------------")
 
-	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-	
-	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
-	
-	response.RouteType = routing.RouteTypeNew
-	response.NumTokens = numTokens
-	response.Tokens = tokenData
+		tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+
+		core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+
+		response.RouteType = routing.RouteTypeNew
+		response.NumTokens = numTokens
+		response.Tokens = tokenData
 	*/
 }
 
@@ -1002,13 +1002,13 @@ func buildContinueTokens(state *SessionUpdateState, routeNumRelays int32, routeR
 	_ = numTokens
 
 	/*
-	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+		_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 
-	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
-	response.RouteType = routing.RouteTypeContinue
-	response.NumTokens = numTokens
-	response.Tokens = tokenData
+		tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+		core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+		response.RouteType = routing.RouteTypeContinue
+		response.NumTokens = numTokens
+		response.Tokens = tokenData
 	*/
 }
 
@@ -1030,7 +1030,7 @@ func buildNearRelayData(state *SessionUpdateState) {
 }
 
 func sendSessionUpdateMessage(state *SessionUpdateState) {
-	
+
 	// todo
 
 	state.SentSessionUpdateMessage = true
@@ -1049,10 +1049,10 @@ func sendPortalData(state *SessionUpdateState) {
 
 	// todo
 	/*
-	portalData := buildPortalData(state)
+		portalData := buildPortalData(state)
 
-	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-		state.PostSessionHandler.SendPortalData(portalData)
-	}
+		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+			state.PostSessionHandler.SendPortalData(portalData)
+		}
 	*/
 }

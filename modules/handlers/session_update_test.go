@@ -1,16 +1,16 @@
 package handlers_test
 
 import (
-	"net"
 	"fmt"
-	"time"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/handlers"
+	"github.com/networknext/backend/modules/packets"
 
 	"github.com/stretchr/testify/assert"
 )

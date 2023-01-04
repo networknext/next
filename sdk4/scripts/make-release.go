@@ -1,5 +1,5 @@
 /*
-   Network Next. Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
+   Network Next. Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
 package main

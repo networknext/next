@@ -436,7 +436,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	state.Request = requestPacket
 	state.Database = handler.Database
 	state.RouteMatrix = handler.RouteMatrix
-	state.StaleDuration = 30 * time.Second // todo: make this configurable passed in from the handler
+	state.StaleDuration = 30 * time.Second
 	state.Response = packets.SDK5_SessionUpdateResponsePacket{
 		SessionId:   state.Request.SessionId,
 		SliceNumber: state.Request.SliceNumber,
