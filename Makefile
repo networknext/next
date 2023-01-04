@@ -16,7 +16,7 @@ SDKNAME5 = libnext5
 
 MODULE ?= "github.com/networknext/backend/modules/common"
 
-BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_TIME ?= $(shell date -u +'%Y-%m-%d %H:%M:%S')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
