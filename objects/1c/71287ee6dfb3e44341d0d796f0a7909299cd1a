@@ -1,0 +1,7 @@
+[map "fbe0877c-ba9a-3e0d-9360-be9a720bce6f"]
+	object = 68bd036ea265a731f693a0776702c985f4db4325
+	path = sdk4
+	type = expand module
+[map "641040f9-9c79-3386-9771-a2ccd524d6cb"]
+	object = 1aaea8d926bda6508a62ca9ad36d78bf568a0714
+	type = include + expand tree
