@@ -20,10 +20,14 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%d|%H:%M:%S')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
-# Clean and rebuild
+# Clean, build and rebuild
 
 .PHONY: build
-build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+build:
+	@make -s build-fast -j
+
+.PHONY: build-fast
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -33,6 +37,7 @@ rebuild: clean ## rebuild everything
 .PHONY: clean
 clean: ## clean everything
 	@rm -rf dist
+	@rm -rf logs
 	@mkdir -p dist
 
 # Build most golang services
@@ -41,7 +46,7 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
 	@echo $@
 
-# Build most artifacts
+# Build artifacts
 
 dist/%.dev.tar.gz: dist/%
 	@go run scripts/artifact/artifact.go $@ dev
