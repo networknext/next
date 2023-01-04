@@ -64,6 +64,8 @@ type Service struct {
 	Context           context.Context
 	ContextCancelFunc context.CancelFunc
 
+	GoogleProjectId    string
+
 	// ------------------
 
 	databaseMutex     sync.RWMutex
@@ -90,7 +92,6 @@ type Service struct {
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *db.Database
 
-	googleProjectId    string
 	googleCloudHandler *GoogleCloudHandler
 }
 
@@ -126,9 +127,9 @@ func CreateService(serviceName string) *Service {
 	service.runStatusUpdateLoop()
 
 	// todo: perhaps we can just autodetect we are running in google cloud, and determine the project id we are running under automatically?
-	service.googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
-	if service.googleProjectId != "" {
-		core.Log("google project id: %s", service.googleProjectId)
+	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
+	if service.GoogleProjectId != "" {
+		core.Log("google project id: %s", service.GoogleProjectId)
 	}
 
 	return &service
@@ -762,7 +763,7 @@ func isLeaderFunc(service *Service) func() bool {
 
 func (service *Service) setupStorage() {
 
-	googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.googleProjectId)
+	googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
 	if err != nil {
 		core.Error("failed to create google cloud handler: %v", err)
 		os.Exit(1)
