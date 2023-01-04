@@ -852,10 +852,10 @@ blocks:
           commands:
 
             - checkout
-            - brew install libsodium redis golang
+            - brew install libsodium redis golang parallel
             - cd ~/backend
             - ./next select local
-            - make build -j
+            - ./build.sh
             - ./run happy-path-no-wait
 
 
