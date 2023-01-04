@@ -853,7 +853,6 @@ blocks:
 
             - checkout
             - brew install libsodium redis golang parallel
-            - parallel --citation
             - cd ~/backend
             - ./next select local
             - ./build.sh
