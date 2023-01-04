@@ -853,7 +853,6 @@ blocks:
 
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
-            - sudo apt-get install google-cloud-sdk-pubsub-emulator
             - cd ~/backend
             - ./next select local
             - ./build.sh
