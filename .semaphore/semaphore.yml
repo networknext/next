@@ -24,8 +24,8 @@ blocks:
 
             - cd ~/backend/libs/sodium
             - ./configure
-            - make -j32
-            - sudo make -j32 install
+            - make -j
+            - sudo make -j install
             - sudo ldconfig
             - artifact push workflow /usr/local/lib/libsodium.so
 
@@ -47,7 +47,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev
 
             - cd ~/backend
-            - make clean
+            - make rebuild
             - ./run test
             - cache store
 
@@ -65,7 +65,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
-            - make clean
+            - make rebuild
             - ./run test-sdk4
 
   - name: "SDK5"
@@ -82,7 +82,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
-            - make clean
+            - make rebuild
             - ./run test-sdk5
 
   - name: "Relay"
@@ -98,7 +98,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
-            - make clean
+            - make rebuild
             - ./run test-relay
             - artifact push workflow ./dist/reference_relay
 
@@ -121,7 +121,7 @@ blocks:
             - cp envs/local.env .env
 
             - cd ~/backend
-            - ./build.sh
+            - make rebuild
 
             - mv dist/libnext4.so dist/func_tests_backend_libnext4.so
             - mv dist/libnext5.so dist/func_tests_backend_libnext5.so
@@ -852,10 +852,10 @@ blocks:
           commands:
 
             - checkout
-            - brew install libsodium redis golang parallel
+            - brew install libsodium redis golang
             - cd ~/backend
+            - make rebuild
             - ./next select local
-            - ./build.sh
             - ./run happy-path-no-wait
 
 
@@ -875,8 +875,8 @@ blocks:
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
+            - make rebuild
             - ./next select local
-            - ./build.sh
             - ./run happy-path-no-wait
 
 promotions:
