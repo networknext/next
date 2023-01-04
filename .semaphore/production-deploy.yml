@@ -124,39 +124,6 @@ blocks:
             - artifact push workflow dist/magic_backend.prod.tar.gz
 
 
-  - name: "Build Artifacts (Native)"
-
-    dependencies: []
-
-    task:
-
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-
-      prologue:
-        commands:
-            - sudo apt-get update
-            - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
-
-      jobs:
-
-        - name: "Test Server 4"
-          commands:
-            - make -j32 build-test-server4-artifacts-prod
-            - artifact push workflow dist/test_server4.prod.tar.gz
-
-        - name: "Test Server 5"
-          commands:
-            - make -j32 build-test-server5-artifacts-prod
-            - artifact push workflow dist/test_server5.prod.tar.gz
-
-
   - name: "Publish Artifacts"
 
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
@@ -230,16 +197,6 @@ blocks:
           commands:
             - artifact pull workflow magic_backend.prod.tar.gz
             - gsutil cp magic_backend.prod.tar.gz gs://production_artifacts/
-
-        - name: "Test Server 4"
-          commands:
-            - artifact pull workflow test_server4.prod.tar.gz
-            - gsutil cp test_server4.prod.tar.gz gs://production_artifacts/
-
-        - name: "Test Server 5"
-          commands:
-            - artifact pull workflow test_server5.prod.tar.gz
-            - gsutil cp test_server5.prod.tar.gz gs://production_artifacts/
 
         - name: "Sodium"
           commands:

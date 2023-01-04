@@ -121,42 +121,6 @@ blocks:
             - artifact push workflow dist/website_cruncher.dev.tar.gz
 
 
-  - name: "Build Artifacts (Native)"
-
-    dependencies: []
-
-    task:
-
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-
-      prologue:
-        commands:
-            - sudo apt-get update
-            - sudo apt-get install -y libsodium-dev
-            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
-            - git submodule init
-            - git submodule update
-            - mkdir dist
-
-      jobs:
-
-        - name: "Test Server 4"
-          commands:
-            - artifact pull workflow libnext4.so
-            - make -j32 dist/test_server4.dev.tar.gz
-            - artifact push workflow dist/test_server4.dev.tar.gz
-
-        - name: "Test Server 5"
-          commands:
-            - artifact pull workflow libnext5.so
-            - make -j32 dist/test_server5.dev.tar.gz
-            - artifact push workflow dist/test_server5.dev.tar.gz
-
-
   - name: "Publish Artifacts"
 
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
@@ -233,16 +197,6 @@ blocks:
           commands:
             - artifact pull workflow website_cruncher.dev.tar.gz
             - gsutil cp website_cruncher.dev.tar.gz gs://development_artifacts/
-
-        - name: "Test Server 4"
-          commands:
-            - artifact pull workflow test_server4.dev.tar.gz
-            - gsutil cp test_server4.dev.tar.gz gs://development_artifacts/
-
-        - name: "Test Server 5"
-          commands:
-            - artifact pull workflow test_server5.dev.tar.gz
-            - gsutil cp test_server5.dev.tar.gz gs://development_artifacts/
 
         - name: "Sodium"
           commands:
