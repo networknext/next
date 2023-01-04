@@ -855,7 +855,7 @@ blocks:
             - brew install libsodium redis golang
             - cd ~/backend
             - ./next select local
-            - make build
+            - make build -j
             - ./run happy-path-no-wait
 
 
