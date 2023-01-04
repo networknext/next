@@ -1,0 +1,7 @@
+[map "51c70447-f795-34ae-8e31-67b48e583ff6"]
+	object = b1a7c46969132f75e6fe8336809e98fb08e1bc43
+	path = portal
+	type = expand module
+[map "45e536a6-526f-33b6-8d75-19c4e9ccc9db"]
+	object = d35bc0fef49af38d401c583a02198215438b712e
+	type = include + expand tree

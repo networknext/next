@@ -47,3 +47,38 @@
 	pull = squash never
 	ref = if refs/heads/master sync refs/heads/main
 	url = agnostic://gh/399961391
+[map "eafa38b2-ed50-32fe-a34b-848775f93115"]
+	object = f1d19a9bd6de32dd5f4c7c1f92f079d3357f4411
+	path = sdk4
+	stage = sync
+	type = extract module
+[map "630ec88c-4c97-3c31-8cd5-4e092ea57e13"]
+	object = b7a844a4d836b7d9168aca9ed62506a1c5a53421
+	path = sdk5
+	stage = sync
+	type = extract module
+[map "98ce737b-cb9a-336e-bc90-f264081d0220"]
+	object = 04d203460379afce38fa9318f6a9718c0ba7ca70
+	path = enet
+	stage = sync
+	type = extract module
+[map "50e55d16-f2d7-349b-9cba-c00cef8ca10b"]
+	object = 48ed1cbc58c936c62a02a46fda8cee6d98a55310
+	path = portal
+	stage = sync
+	type = extract module
+[map "3d519727-3058-3347-b14e-ec1d4aca405f"]
+	object = 966d53eebd114264f0811f8b99782686d0817126
+	path = relay
+	stage = sync
+	type = extract module
+[map "982c30de-5b9b-3932-bacd-21c1ec75c096"]
+	object = 6e2353c42d9bc4936edb8745c80b19397e09aa0d
+	path = ue4
+	stage = sync
+	type = extract module
+[map "5d3a8804-1464-362a-a9bf-7a80ca486be1"]
+	object = df4d7dc6cfbf2a95818c01ee3f2cfcd75563e197
+	path = unity
+	stage = sync
+	type = extract module

@@ -1,0 +1,84 @@
+[module "2d134adc-e371-313d-9dd5-f33bf521927b"]
+	conflict = request-pull
+	path = enet
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/406406852
+[module "9fa11d0d-4b98-377c-a3f4-9d676756a7ca"]
+	conflict = request-pull
+	path = portal
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/276473108
+[module "4c6e10f2-f995-360a-9b7f-00e0afec12b9"]
+	conflict = request-pull
+	path = relay
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/284986146
+[module "692163b9-f778-3378-aeaa-afbf4c6514b3"]
+	conflict = request-pull
+	path = sdk4
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/245644054
+[module "e6a4a124-6b66-343f-bd51-5ce7fd4faa9b"]
+	conflict = request-pull
+	path = sdk5
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/427438480
+[module "331fc361-745a-3273-a1ab-db666d84b04b"]
+	conflict = request-pull
+	path = ue4
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/master
+	url = agnostic://gh/245724710
+[module "c4b1c009-b37b-33bb-893a-3bdee28d63d7"]
+	conflict = request-pull
+	path = unity
+	pull = merge subtree
+	pull = squash never
+	ref = if refs/heads/master sync refs/heads/main
+	url = agnostic://gh/399961391
+[map "bcfd2858-0e28-32e9-83f9-c134700e2a85"]
+	object = 672ee163da855c16ff7508ded1cc2aa478685ed4
+	path = sdk4
+	stage = sync
+	type = extract module
+[map "4db9cc4c-8c8a-3c8d-9674-99125875f343"]
+	object = 8ebc3f6f72c83a051ec2f16371395b5a0627a5c4
+	path = sdk5
+	stage = sync
+	type = extract module
+[map "ff4e9b85-5cee-31dd-89fa-8213e9394018"]
+	object = 8b0ed8b4b3f4a39659c74271af9db89d9c3646e5
+	path = enet
+	stage = sync
+	type = extract module
+[map "459c32c3-87b1-3fb0-babf-072fa1db5f1a"]
+	object = 65c21770839404e5a9fd8f1d4dd11beb01793de1
+	path = portal
+	stage = sync
+	type = extract module
+[map "f1e5ce7d-05b8-37fc-b58e-29910b388654"]
+	object = 165bc0327ee3c46a8a0b30b2530e93e9df4dbb21
+	path = relay
+	stage = sync
+	type = extract module
+[map "dd29db51-7d60-3ebf-aa01-32ac6b05c69e"]
+	object = 1c0f54b6bed8cd6db5affa1bc319313ee2cb7c77
+	path = ue4
+	stage = sync
+	type = extract module
+[map "5d3a8804-1464-362a-a9bf-7a80ca486be1"]
+	object = df4d7dc6cfbf2a95818c01ee3f2cfcd75563e197
+	path = unity
+	stage = sync
+	type = extract module
