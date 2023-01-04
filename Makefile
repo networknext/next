@@ -39,9 +39,6 @@ clean: ## clean everything
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
-ifeq ($(OS),darwin)
-	@codesign --force --deep --sign - $@
-endif
 	@echo $@
 
 # Build most artifacts
