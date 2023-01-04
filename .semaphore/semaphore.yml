@@ -852,7 +852,7 @@ blocks:
           commands:
 
             - checkout
-            - brew install libsodium redis-server
+            - brew install libsodium redis
             - cd ~/backend
             - ./next select local
             - ./build.sh
