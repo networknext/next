@@ -812,14 +812,14 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		if sameRoute {
 			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
-			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey)
+			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK5_RouteTypeContinue
 		} else {
 			sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK5_RouteTypeNew
 		}
 

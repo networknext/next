@@ -49,13 +49,14 @@ const (
 )
 
 type SDK5_Handler struct {
-	Database             *database.Database
-	RouteMatrix          *common.RouteMatrix
-	MaxPacketSize        int
-	ServerBackendAddress net.UDPAddr
-	PrivateKey           []byte
-	GetMagicValues       func() ([]byte, []byte, []byte)
-	Events               [SDK5_HandlerEvent_NumEvents]bool
+	Database                *database.Database
+	RouteMatrix             *common.RouteMatrix
+	MaxPacketSize           int
+	ServerBackendAddress    net.UDPAddr
+	ServerBackendPrivateKey []byte
+	RoutingPrivateKey       []byte
+	GetMagicValues          func() ([]byte, []byte, []byte)
+	Events                  [SDK5_HandlerEvent_NumEvents]bool
 
 	ServerInitMessageChannel    chan<- *messages.ServerInitMessage
 	ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
@@ -197,7 +198,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 
 func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.PrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, handler.MaxPacketSize, &handler.ServerBackendAddress, to, handler.ServerBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -419,6 +420,14 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 	}
 }
 
+func SDK5_LocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
+	// todo: this needs to be hooked up to the proper ip2location when we are not running in local env!!!
+	location := packets.SDK5_LocationData{}
+	location.Latitude = 43
+	location.Longitude = -75
+	return location, nil
+}
+
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
@@ -432,6 +441,14 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	*/
 
 	var state SessionUpdateState
+
+	state.RoutingPrivateKey = handler.RoutingPrivateKey
+	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
+	state.ServerBackendAddress = &handler.ServerBackendAddress
+	state.Connection = conn
+	state.From = from
+	state.LocateIP = SDK5_LocateIP // todo: this should be passed in from the caller via handler instead
+	state.Buyer = handler.Database.BuyerMap[requestPacket.BuyerId]
 
 	state.Request = requestPacket
 	state.Database = handler.Database
@@ -469,7 +486,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   and sends session data to billing and the portal.
 	*/
 
-	defer SessionPost(&state)
+	defer SessionUpdate_Post(&state)
 
 	/*
 	   Call session pre function
@@ -479,7 +496,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   If it returns true, one of the early out conditions has been met, so we return early.
 	*/
 
-	if SessionPre(&state) {
+	if SessionUpdate_Pre(&state) {
 		return
 	}
 
@@ -497,9 +514,9 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	*/
 
 	if state.Request.SliceNumber == 0 {
-		SessionUpdateNewSession(&state)
+		SessionUpdate_NewSession(&state)
 	} else {
-		SessionUpdateExistingSession(&state)
+		SessionUpdate_ExistingSession(&state)
 	}
 
 	/*
@@ -512,7 +529,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   When this happens, we early out to save processing time.
 	*/
 
-	if SessionHandleFallbackToDirect(&state) {
+	if SessionUpdate_HandleFallbackToDirect(&state) {
 		return
 	}
 
@@ -522,13 +539,13 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	   We use near relay latency, jitter and packet loss for route planning.
 	*/
 
-	SessionUpdateNearRelays(&state)
+	SessionUpdate_UpdateNearRelays(&state)
 
 	/*
 	   Decide whether we should take network next or not.
 	*/
 
-	SessionMakeRouteDecision(&state)
+	SessionUpdate_MakeRouteDecision(&state)
 
 	core.Debug("session updated successfully")
 }

@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
+	// "encoding/json"
+	// "io/ioutil"
+	"fmt"
 	"os"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"google.golang.org/api/option"
+	// "google.golang.org/api/option"
 )
 
 const (
@@ -54,11 +54,13 @@ func main() {
 
 	googleProjectID := envvar.GetString("GOOGLE_PROJECT_ID", "local")
 
-	pubsubSetupClient, err := pubsub.NewClient(ctx, googleProjectID)
+	pubsubClient, err := pubsub.NewClient(ctx, googleProjectID)
 	if err != nil {
-		core.Error("failed to create pubsub setup client: %v", err)
+		fmt.Printf("error: failed to create pubsub client: %v", err)
 		os.Exit(1)
 	}
+
+	fmt.Printf("created pubsub client\n")
 
 	pubsubMessages := []PubsubMessageType{
 		{
@@ -88,18 +90,33 @@ func main() {
 	}
 
 	for i := 0; i < len(pubsubMessages); i++ {
+
 		messageType := pubsubMessages[i]
 
-		pubsubSetupClient.CreateTopic(ctx, messageType.Topic)
-		pubsubSetupClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{
-			Topic: pubsubSetupClient.Topic(messageType.Topic),
-		})
+		fmt.Printf("creating pubsub topic %s\n", messageType.Topic)
+		_, err := pubsubClient.CreateTopic(ctx, messageType.Topic)
+		if err != nil {
+			fmt.Printf("failed to create pubsub topic: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("creating pubsub subscription %s\n", messageType.Subscription)
+		_, err = pubsubClient.CreateSubscription(ctx, messageType.Subscription, pubsub.SubscriptionConfig{Topic: pubsubClient.Topic(messageType.Topic)})
+		if err != nil {
+			fmt.Printf("failed to create pubsub subscription: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
-	pubsubSetupClient.Close()
+	pubsubClient.Close()
+
+	fmt.Printf("finished setting up pubsub\n")
 
 	// ----------------
 
+	// bring this back in later. focusing on pubsub for now
+
+	/*
 	clientOptions := []option.ClientOption{
 		option.WithEndpoint("http://127.0.0.1:9050"),
 		option.WithoutAuthentication(),
@@ -158,4 +175,5 @@ func main() {
 			}
 		}
 	}
+	*/
 }

@@ -73,7 +73,7 @@ func CreateTestHarness() *TestHarness {
 
 	packets.SDK5_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
 
-	harness.handler.PrivateKey = harness.signPrivateKey[:]
+	harness.handler.ServerBackendPrivateKey = harness.signPrivateKey[:]
 
 	harness.serverInitMessageChannel = make(chan *messages.ServerInitMessage, 1024)
 	harness.serverUpdateMessageChannel = make(chan *messages.ServerUpdateMessage, 1024)

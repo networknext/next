@@ -218,7 +218,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 
 	if cruncher.useBigtable {
 
-		ghostArmyBuyerID := uint64(1)
+		ghostArmyBuyerID := uint64(0)
 
 		// Start the bigtable goroutines
 		for i := 0; i < numBigtableInsertGoroutines; i++ {

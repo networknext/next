@@ -431,7 +431,7 @@ func BuildNextTokens(
 	core.Debug("----------------------------------------------------")
 
 	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey[:])
 	response.RouteType = routing.RouteTypeNew
 	response.NumTokens = numTokens
 	response.Tokens = tokenData
@@ -462,7 +462,7 @@ func BuildContinueTokens(
 	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 
 	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey[:])
 	response.RouteType = routing.RouteTypeContinue
 	response.NumTokens = numTokens
 	response.Tokens = tokenData
@@ -674,7 +674,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
-			core.Error("location veto: %s\n", err)
+			core.Error("location veto: %s", err)
 			state.Metrics.ClientLocateFailure.Add(1)
 			state.Input.Location = routing.LocationNullIsland
 			state.Output.RouteState.LocationVeto = true

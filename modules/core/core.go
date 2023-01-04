@@ -6,17 +6,19 @@ import "C"
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
 	"sync"
-	"unsafe"
+
+	crypto_rand "crypto/rand"
+	math_rand "math/rand"
+
+	"github.com/networknext/backend/modules/crypto"
 )
 
 const CostBias = 3
@@ -31,7 +33,6 @@ const NEXT_ROUTE_TOKEN_BYTES = 76
 const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
-const NEXT_PRIVATE_KEY_BYTES = 32
 
 var debugLogs bool
 
@@ -106,11 +107,6 @@ func TriMatrixIndex(i, j int) int {
 	} else {
 		return j*(j+1)/2 - j + i
 	}
-}
-
-func GenerateRelayKeyPair() ([]byte, []byte, error) {
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	return publicKey, privateKey, err
 }
 
 // -----------------------------------------------------
@@ -816,7 +812,7 @@ type RouteToken struct {
 	KbpsUp          uint32
 	KbpsDown        uint32
 	NextAddress     *net.UDPAddr
-	PrivateKey      [NEXT_PRIVATE_KEY_BYTES]byte
+	PrivateKey      [crypto.Box_KeySize]byte
 }
 
 type ContinueToken struct {
@@ -825,15 +821,6 @@ type ContinueToken struct {
 	SessionVersion  uint8
 }
 
-const Crypto_kx_PUBLICKEYBYTES = C.crypto_kx_PUBLICKEYBYTES
-const Crypto_box_PUBLICKEYBYTES = C.crypto_box_PUBLICKEYBYTES
-
-const KeyBytes = 32
-const NonceBytes = 24
-const MacBytes = C.crypto_box_MACBYTES
-const SignatureBytes = C.crypto_sign_BYTES
-const PublicKeyBytes = C.crypto_sign_PUBLICKEYBYTES
-
 func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) int {
 	C.crypto_box_easy((*C.uchar)(&buffer[0]),
 		(*C.uchar)(&buffer[0]),
@@ -841,7 +828,7 @@ func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, bu
 		(*C.uchar)(&nonce[0]),
 		(*C.uchar)(&receiverPublicKey[0]),
 		(*C.uchar)(&senderPrivateKey[0]))
-	return bytes + C.crypto_box_MACBYTES
+	return bytes + crypto.Box_MacSize
 }
 
 func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
@@ -860,7 +847,7 @@ func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, bu
 }
 
 func RandomBytes(buffer []byte) {
-	C.randombytes_buf(unsafe.Pointer(&buffer[0]), C.size_t(len(buffer)))
+	crypto_rand.Read(buffer)
 }
 
 // -----------------------------------------------------------------------------
@@ -890,25 +877,25 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 }
 
 func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(tokenData[:NonceBytes])
-	WriteRouteToken(token, tokenData[NonceBytes:])
-	Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:NonceBytes], tokenData[NonceBytes:], NEXT_ROUTE_TOKEN_BYTES)
+	RandomBytes(tokenData[:crypto.Box_NonceSize])
+	WriteRouteToken(token, tokenData[crypto.Box_NonceSize:])
+	Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
 	if len(tokenData) < NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted route token")
 	}
-	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
-	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+	nonce := tokenData[0 : crypto.Box_NonceSize-1]
+	tokenData = tokenData[crypto.Box_NonceSize:]
+	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
-	privateKey := [KeyBytes]byte{}
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
+	privateKey := [crypto.Box_KeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
 		var token RouteToken
@@ -944,24 +931,24 @@ func ReadContinueToken(token *ContinueToken, buffer []byte) error {
 }
 
 func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(buffer[:NonceBytes])
-	WriteContinueToken(token, buffer[NonceBytes:])
-	Encrypt(senderPrivateKey, receiverPublicKey, buffer[:NonceBytes], buffer[NonceBytes:], NEXT_CONTINUE_TOKEN_BYTES)
+	RandomBytes(buffer[:crypto.Box_NonceSize])
+	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
+	Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
 	if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted continue token")
 	}
-	nonce := tokenData[0 : C.crypto_box_NONCEBYTES-1]
-	tokenData = tokenData[C.crypto_box_NONCEBYTES:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+C.crypto_box_MACBYTES); err != nil {
+	nonce := tokenData[0 : crypto.Box_NonceSize-1]
+	tokenData = tokenData[crypto.Box_NonceSize:]
+	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadContinueToken(token, tokenData)
 }
 
-func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey [KeyBytes]byte) {
+func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) {
 	for i := 0; i < numNodes; i++ {
 		var token ContinueToken
 		token.ExpireTimestamp = expireTimestamp
@@ -974,30 +961,44 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 // -----------------------------------------------------------------------------
 
 func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32) int32 {
+
 	bestRouteCost := int32(math.MaxInt32)
+
+	// todo
+	fmt.Printf("get best route cost\n")
+	fmt.Printf("source relays = %v\n", sourceRelays)
+	fmt.Printf("source relay cost = %v\n", sourceRelayCost)
+	fmt.Printf("dest relays = %v\n", destRelays)
+
 	for i := range sourceRelays {
+
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
+
 		sourceRelayIndex := sourceRelays[i]
 
 		for j := range destRelays {
+
 			destRelayIndex := destRelays[j]
 			if sourceRelayIndex == destRelayIndex {
 				continue
 			}
 
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
+
 			entry := &routeMatrix[index]
 
 			if entry.NumRoutes > 0 {
+
+				// todo: verify this code using "fullRelaySet"
 
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
 					for l := 0; l < len(entry.RouteRelays[0]); l++ {
 
-						// Do not consider routes with full relays
+						// exclude routes with full relays
 						if _, isRelayFull := fullRelaySet[entry.RouteRelays[k][l]]; isRelayFull {
 							continue routeRelayLoop
 						}
@@ -1011,6 +1012,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 			}
 		}
 	}
+
 	if bestRouteCost == int32(math.MaxInt32) {
 		return bestRouteCost
 	}
@@ -1432,7 +1434,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 	}
 
-	randomIndex := rand.Intn(numBestRoutes)
+	randomIndex := math_rand.Intn(numBestRoutes)
 
 	*out_bestRouteCost = bestRoutes[randomIndex].Cost + CostBias
 	*out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays
@@ -1466,6 +1468,8 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
 		}
+		// todo
+		fmt.Printf("get random best route\n")
 		GetRandomBestRoute(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		routeLost = true
@@ -1618,18 +1622,82 @@ func NewInternalConfig() InternalConfig {
 	}
 }
 
-func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
+func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState, debug *string) bool {
 
-	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	// high frequency
+
+	if routeState.Disabled {
+		if debug != nil {
+			*debug += "disabled\n"
+		}
 		return true
 	}
 
-	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
+	if routeState.Veto {
+		if debug != nil {
+			*debug += "veto\n"
+		}
+		return true
+	}
+
+	if routeState.LocationVeto {
+		if debug != nil {
+			*debug += "location veto\n"
+		}
+		return true
+	}
+
+	if routeState.Banned {
+		if debug != nil {
+			*debug += "banned\n"
+		}
+		return true
+	}
+
+	if routeState.NotSelected {
+		if debug != nil {
+			*debug += "not selected\n"
+		}
+		return true
+	}
+
+	if routeState.B {
+		if debug != nil {
+			*debug += "b group in ab test\n"
+		}
+		return true
+	}
+
+	// low frequency
+
+	if routeShader.DisableNetworkNext {
+		if debug != nil {
+			*debug += "network next is disabled\n"
+		}
 		routeState.Disabled = true
 		return true
 	}
 
-	if routeShader.SelectionPercent == 0 || (routeState.UserID%100) > uint64(routeShader.SelectionPercent) {
+	if routeShader.AnalysisOnly {
+		if debug != nil {
+			*debug += "analysis only\n"
+		}
+		routeState.Disabled = true
+		return true
+	}
+
+	if routeShader.SelectionPercent == 0 {
+		if debug != nil {
+			*debug += "selection percent is zero\n"
+		}
+		routeState.NotSelected = true
+		return true
+	}
+
+	if (routeState.UserID % 100) > uint64(routeShader.SelectionPercent) {
+		if debug != nil {
+			*debug += "user is not selected\n"
+		}
 		routeState.NotSelected = true
 		return true
 	}
@@ -1638,6 +1706,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		routeState.ABTest = true
 		if (routeState.UserID % 2) == 1 {
 			routeState.B = true
+			if debug != nil {
+				*debug += "ab test\n"
+			}
 			return true
 		} else {
 			routeState.A = true
@@ -1646,6 +1717,9 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
 	if routeShader.BannedUsers[routeState.UserID] {
 		routeState.Banned = true
+		if debug != nil {
+			*debug += "user is banned\n"
+		}
 		return true
 	}
 
@@ -1695,7 +1769,10 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 
 func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
+		if debug != nil {
+			*debug += "early out direct\n"
+		}
 		return false
 	}
 
@@ -1850,7 +1927,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 
 	// if we early out, go direct
 
-	if EarlyOutDirect(routeShader, routeState) {
+	if EarlyOutDirect(routeShader, routeState, debug) {
 		return false, false
 	}
 
@@ -1863,6 +1940,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
+
+	// todo
+	fmt.Printf("predicted latency = %d\n", predictedLatency)
+	fmt.Printf("next latency = %d\n", nextLatency)
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
@@ -2202,6 +2283,9 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 	// this works only for IPv4
+	if address == nil {
+		panic("can't get address data for nil address!")
+	}
 	addressData := address.IP[12:16]
 	addressPort := uint16(address.Port)
 	return addressData, addressPort

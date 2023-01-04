@@ -1,6 +1,7 @@
 package test
 
 import (
+	"crypto/ed25519"
 	"net"
 	"time"
 
@@ -63,8 +64,13 @@ func (env *TestEnvironment) GenerateServerUpdatePacket(sdkVersion transport.SDKV
 	return requestData
 }
 
+func GenerateRelayKeyPair() ([]byte, []byte, error) {
+	publicKey, privateKey, err := ed25519.GenerateKey(nil)
+	return publicKey, privateKey, err
+}
+
 func (env *TestEnvironment) GenerateEmptySessionUpdatePacket(privateKey []byte) []byte {
-	routePublicKey, _, err := core.GenerateRelayKeyPair()
+	routePublicKey, _, err := GenerateRelayKeyPair()
 	assert.NoError(env.TestContext, err)
 
 	requestPacket := transport.SessionUpdatePacket{
