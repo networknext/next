@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -116,4 +116,42 @@ public:
     // Callback for packets received from the network next client
 
     static void OnPacketReceived(next_client_t* client, void* context, const next_address_t * from, const uint8_t* packet_data, int packet_bytes);
+
+    /**
+     * Report server
+     * 
+     * Call this on the client hooked up to an in-game menu so clients can report when they have a bad experience.
+     * 
+     * The report is sent up to the Network Next backend so we can perform data science showing you why players
+     * report servers and how you can reduce the frequency of reported servers.
+     * 
+     * Make sure to include a confirmation prompt, for example: "Lag means lag. Are you sure you want to report lag?"
+     * because this is typically a very noisy input, and anything that reduces the amount of noise caused by accidental
+     * reports, or confusing reporting a server with reporting another player is very helpful.
+     */
+
+    void ReportServer();
+
+    /**
+     * Gets the network next round trip latency in milliseconds.
+     * 
+     * This latency is a measurement of true network delay, and excludes any quantization effects
+     * caused by the interplay between client and server framerates.
+     * 
+     * If the client is accelerated, this latency value includes the effect of acceleration.
+     */
+
+    float GetLatency();
+
+    /**
+     * Gets the network next jitter in milliseconds.
+     */
+
+    float GetJitter();
+
+    /**
+     * Gets the network next packet loss %
+     */
+
+    float GetPacketLoss();
 };

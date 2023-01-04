@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -23,10 +23,13 @@
 #include "NetworkNextBlueprint.h"
 #include "NetworkNextNetDriver.h"
 #include "NetworkNextSocketServer.h"
+#include "NetworkNextSocketClient.h"
 #include "Runtime/Engine/Classes/GameFramework/PlayerController.h"
 #include "Runtime/Engine/Classes/Engine/NetConnection.h"
 #include "Engine/Classes/Engine/World.h"
 #include "IPAddress.h"
+
+// server events
 
 void UNetworkNextBlueprint::UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId)
 {
@@ -57,4 +60,129 @@ void UNetworkNextBlueprint::UpgradePlayer(UObject* WorldContextObject, APlayerCo
         return;
 
     ServerSocket->UpgradeClient(Connection->GetRemoteAddr(), UserId);
+}
+
+void UNetworkNextBlueprint::ServerEvent(UObject* WorldContextObject, APlayerController* PlayerController, uint64_t ServerEvents)
+{
+    if (PlayerController == nullptr)
+        return;
+
+    if (WorldContextObject == nullptr)
+        return;
+
+    UWorld* World = WorldContextObject->GetWorld();
+
+    if (World == nullptr)
+        return;
+
+    UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+    if (NetDriver == nullptr)
+        return;
+
+    FNetworkNextSocketServer* ServerSocket = NetDriver->ServerSocket;
+
+    if (ServerSocket == nullptr)
+        return;
+
+    UNetConnection* Connection = PlayerController->GetNetConnection();
+
+    if (Connection == nullptr)
+        return;
+
+    ServerSocket->ServerEvent(Connection->GetRemoteAddr(), ServerEvents);
+}
+
+// client events
+
+void UNetworkNextBlueprint::ReportServer(UObject* WorldContextObject)
+{
+    if (WorldContextObject == nullptr)
+        return;
+
+    UWorld* World = WorldContextObject->GetWorld();
+
+    if (World == nullptr)
+        return;
+
+    UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+    if (NetDriver == nullptr)
+        return;
+
+    FNetworkNextSocketClient* ClientSocket = NetDriver->ClientSocket;
+
+    if (ClientSocket == nullptr)
+        return;
+
+    ClientSocket->ReportServer();
+}
+
+float UNetworkNextBlueprint::GetLatency(UObject* WorldContextObject)
+{
+    if (WorldContextObject == nullptr)
+        return 0.0f;
+
+    UWorld* World = WorldContextObject->GetWorld();
+
+    if (World == nullptr)
+        return 0.0f;
+
+    UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+    if (NetDriver == nullptr)
+        return 0.0f;
+
+    FNetworkNextSocketClient* ClientSocket = NetDriver->ClientSocket;
+
+    if (ClientSocket == nullptr)
+        return 0.0f;
+
+    return ClientSocket->GetLatency();
+}
+
+float UNetworkNextBlueprint::GetJitter(UObject* WorldContextObject)
+{
+    if (WorldContextObject == nullptr)
+        return 0.0f;
+
+    UWorld* World = WorldContextObject->GetWorld();
+
+    if (World == nullptr)
+        return 0.0f;
+
+    UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+    if (NetDriver == nullptr)
+        return 0.0f;
+
+    FNetworkNextSocketClient* ClientSocket = NetDriver->ClientSocket;
+
+    if (ClientSocket == nullptr)
+        return 0.0f;
+
+    return ClientSocket->GetJitter();
+}
+
+float UNetworkNextBlueprint::GetPacketLoss(UObject* WorldContextObject)
+{
+    if (WorldContextObject == nullptr)
+        return 0.0f;
+
+    UWorld* World = WorldContextObject->GetWorld();
+
+    if (World == nullptr)
+        return 0.0f;
+
+    UNetworkNextNetDriver* NetDriver = Cast<UNetworkNextNetDriver>(World->GetNetDriver());
+
+    if (NetDriver == nullptr)
+        return 0.0f;
+
+    FNetworkNextSocketClient* ClientSocket = NetDriver->ClientSocket;
+
+    if (ClientSocket == nullptr)
+        return 0.0f;
+
+    return ClientSocket->GetPacketLoss();
 }
