@@ -82,7 +82,7 @@ func happy_path(wait bool) int {
 
 	// initialize relay backend services
 
-	fmt.Printf("\nstarting relay backend services:\n\n")
+	fmt.Printf("starting relay backend services:\n\n")
 
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
