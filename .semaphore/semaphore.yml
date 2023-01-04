@@ -852,7 +852,7 @@ blocks:
           commands:
 
             - checkout
-            - brew install libsodium redis
+            - brew install libsodium redis golang
             - cd ~/backend
             - ./next select local
             - ./build.sh
