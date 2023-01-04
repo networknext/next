@@ -1,6 +1,6 @@
 /*
    Network Next. You control the network.
-   Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
+   Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -24,10 +24,14 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
 )
+
+var TestRouterPrivateKey = []byte{}
+
+var TestBackendPrivateKey = []byte{}
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -496,7 +500,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, crypto.BackendPrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -786,7 +790,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// build token data
 
 		routerPrivateKey := [packets.SDK5_KeyBytes]byte{}
-		copy(routerPrivateKey[:], crypto.RouterPrivateKey)
+		copy(routerPrivateKey[:], TestRouterPrivateKey)
 
 		tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
 		tokenAddresses[0] = &requestPacket.ClientAddress
@@ -808,14 +812,14 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		if sameRoute {
 			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
-			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey)
+			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK5_RouteTypeContinue
 		} else {
 			sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey)
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK5_RouteTypeNew
 		}
 
@@ -976,6 +980,10 @@ func main() {
 	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
 		backend.mode = BACKEND_MODE_MATCH_VALUES
 	}
+
+	TestRouterPrivateKey = envvar.GetBase64("TEST_ROUTER_PRIVATE_KEY", []byte{})
+
+	TestBackendPrivateKey = envvar.GetBase64("TEST_BACKEND_PRIVATE_KEY", []byte{})
 
 	relayPublicKey, _ = base64.StdEncoding.DecodeString("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 

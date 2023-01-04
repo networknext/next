@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -46,6 +46,8 @@
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
+#define NEXT_SERVER_INIT_RESEND_TIME									1
+#define NEXT_SERVER_INIT_TIMEOUT                                       10
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           10
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                 10
 #define NEXT_ADDRESS_BYTES                                             19
@@ -601,9 +603,9 @@ void next_printf( int level, const char * format, ... )
     va_end( args );
 }
 
-const char * next_user_id_string( uint64_t user_id, char * buffer )
+const char * next_user_id_string( uint64_t user_id, char * buffer, size_t buffer_size )
 {
-    sprintf( buffer, "%" PRIx64, user_id );
+    snprintf( buffer, buffer_size, "%" PRIx64, user_id );
     return buffer;
 }
 
@@ -3953,7 +3955,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * server_backend_public_key_env = next_platform_getenv( "NEXT_SERVER_BACKEND_PUBLIC_KEY" );
     if ( server_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override: %s", server_backend_public_key_env );
         
         if ( next_base64_decode_data( server_backend_public_key_env, next_server_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
@@ -3971,7 +3973,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
     if ( router_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override: %s", router_public_key_env );
         
         if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
         {
@@ -6815,7 +6817,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.has_debug )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+                next_printf( "--------------------------------------\n%s--------------------------------------", packet.debug );
             }
 
             if ( packet.near_relays_changed )
@@ -10382,6 +10384,8 @@ struct next_server_internal_t
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
     uint64_t server_init_request_id;
+	double server_init_timeout_time;
+	double server_init_send_time;
     double last_backend_server_update;
     double next_resolve_hostname_time;
     next_address_t backend_address;
@@ -10626,7 +10630,7 @@ bool next_autodetect_google( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
         if ( !file )
     {
@@ -10637,7 +10641,7 @@ bool next_autodetect_google( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
     file = _popen( cmd, "r" );
     if ( !file )
     {
@@ -10764,7 +10768,7 @@ bool next_autodetect_amazon( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -10775,7 +10779,7 @@ bool next_autodetect_amazon( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
     file = _popen ( cmd, "r" );
     if ( !file )
     {
@@ -10957,7 +10961,7 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
     return result;
 }
 
-bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
+bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output, size_t output_size )
 {
     FILE * file;
 
@@ -11050,7 +11054,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -11083,7 +11087,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         if ( strstr( whois_buffer, substring ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
-            sprintf( output, "%s.%s", supplier, city );
+            snprintf( output, output_size, "%s.%s", supplier, city );
             found = true;
         }
     }
@@ -11111,7 +11115,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
  
-bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output, size_t output_size )
 {
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
@@ -11168,7 +11172,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
+    bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output, output_size );
     if ( multiplay_result )
     {
         return true;
@@ -11178,6 +11182,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     (void) input_datacenter;
     (void) public_address;
+    (void) output_size;
 
     return false;
 }
@@ -13306,7 +13311,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
-        autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
+        autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
         if ( autodetect_result )
         {
@@ -13421,27 +13426,59 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname && !server->autodetecting )
     {
-        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
+    	next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-        NextBackendServerInitRequestPacket packet;
-        packet.request_id = next_random_uint64();
-        packet.customer_id = server->customer_id;
-        packet.datacenter_id = server->datacenter_id;
-        strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-        packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+    	// start the server init
 
-        server->server_init_request_id = packet.request_id;
+    	if ( server->server_init_timeout_time == 0 )
+    	{
+    		server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
+    		server->server_init_send_time = current_time;
+    	}
 
-        int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
-            return;
-        }
+    	// check for server init timeout
 
-        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+	    if ( server->server_init_timeout_time <= current_time )
+	    {
+	        next_printf( NEXT_LOG_LEVEL_INFO, "server init timed out. falling back to direct mode only :(" );
+	        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+	        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+	        notify->type = NEXT_SERVER_NOTIFY_READY;
+	        memset( notify->datacenter_name, 0, sizeof(server->datacenter_name) );
+	        strncpy( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+	        {
+	            next_platform_mutex_guard( &server->notify_mutex );
+	            next_queue_push( server->notify_queue, notify );
+	        }
+	        return;
+	    }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
+    	// send server init request packets
+
+	    if ( server->server_init_send_time <= current_time )
+	    {
+	        NextBackendServerInitRequestPacket packet;
+	        packet.request_id = next_random_uint64();
+	        packet.customer_id = server->customer_id;
+	        packet.datacenter_id = server->datacenter_id;
+	        strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+	        packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+
+	        server->server_init_request_id = packet.request_id;
+
+	        int packet_bytes = 0;
+	        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+	        {
+	            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
+	            return;
+	        }
+
+	        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+	        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
+
+	        server->server_init_send_time = current_time + NEXT_SERVER_INIT_RESEND_TIME;
+	    }
     }
 
     // tracker updates
@@ -16101,8 +16138,8 @@ static void test_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -16152,8 +16189,8 @@ static void test_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -16207,8 +16244,8 @@ static void test_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_name), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -16818,8 +16855,8 @@ static void test_backend_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -16877,8 +16914,8 @@ static void test_backend_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -16940,8 +16977,8 @@ static void test_backend_packets()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", i );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + i );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", i );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + i );
             in.near_relay_ids[i] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[i], relay_address );
         }
@@ -17194,7 +17231,7 @@ static void test_relay_manager()
     {
         relay_ids[i] = i;
         char address_string[256];
-        sprintf( address_string, "127.0.0.1:%d", 40000 + i );
+        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
         next_address_parse( &relay_addresses[i], address_string );
     }
 

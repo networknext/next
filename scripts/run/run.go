@@ -6,10 +6,12 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/joho/godotenv"
 )
+
+const TestRouterPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
+const TestBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
 
 var cmd *exec.Cmd
 
@@ -29,7 +31,7 @@ func bash(command string) {
 	}
 
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.") // IMPORTANT: linux needs this to run server4 etc.
@@ -51,7 +53,7 @@ func bash_ignore_result(command string) {
 	}
 
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 
 	cmd.Run()
 
@@ -138,18 +140,22 @@ func main() {
 		client4()
 	} else if command == "client5" {
 		client5()
+	} else if command == "pubsub-emulator" {
+		pubsub_emulator()
+	} else if command == "bigquery-emulator" {
+		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-test-sdk4" {
-		func_test_sdk4()
-	} else if command == "func-test-sdk5" {
-		func_test_sdk5()
+	} else if command == "func-sdk4" {
+		func_sdk4()
+	} else if command == "func-sdk5" {
+		func_sdk5()
 	} else if command == "func-backend4" {
 		func_backend4()
 	} else if command == "func-backend5" {
 		func_backend5()
-	} else if command == "func-test-backend" || command == "func-tests-backend" {
-		func_test_backend(args[2:])
+	} else if command == "func-backend" {
+		func_backend(args[2:])
 	}
 
 	cleanup()
@@ -176,11 +182,11 @@ func test_relay() {
 }
 
 func magic_backend() {
-	bash("make ./dist/magic_backend && HTTP_PORT=41007 ./dist/magic_backend")
+	bash("make ./dist/magic_backend -j && HTTP_PORT=41007 ./dist/magic_backend")
 }
 
 func relay_gateway() {
-	bash("make ./dist/relay_gateway && HTTP_PORT=30000 ./dist/relay_gateway")
+	bash("make ./dist/relay_gateway -j && HTTP_PORT=30000 ./dist/relay_gateway")
 }
 
 func relay_backend() {
@@ -188,19 +194,19 @@ func relay_backend() {
 	if httpPort == "" {
 		httpPort = "30001"
 	}
-	bash(fmt.Sprintf("make ./dist/relay_backend && HTTP_PORT=%s ./dist/relay_backend", httpPort))
+	bash(fmt.Sprintf("make ./dist/relay_backend -j && HTTP_PORT=%s ./dist/relay_backend", httpPort))
 }
 
 func analytics() {
-	bash("make ./dist/analytics && HTTP_PORT=40001 ./dist/analytics")
+	bash("make ./dist/analytics -j && HTTP_PORT=40001 ./dist/analytics")
 }
 
 func pusher() {
-	bash("make ./dist/pusher && HTTP_PORT=40010 ./dist/pusher")
+	bash("make ./dist/pusher -j && HTTP_PORT=40010 ./dist/pusher")
 }
 
 func pingdom() {
-	bash("make ./dist/pingdom && HTTP_PORT=40011 ./dist/pingdom")
+	bash("make ./dist/pingdom -j && HTTP_PORT=40011 ./dist/pingdom")
 }
 
 func relay() {
@@ -208,37 +214,37 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("make ./dist/reference_relay -j && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	bash(fmt.Sprintf("make -j ./dist/reference_relay -j && cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
 }
 
 func server_backend4() {
-	bash("make ./dist/server_backend4 && HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
+	bash("make ./dist/server_backend4 -j && HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
 }
 
 func server_backend5() {
-	bash("make ./dist/server_backend5 && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
+	bash("make ./dist/server_backend5 -j && HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
 }
 
 func website_cruncher() {
-	bash("make ./dist/website_cruncher && HTTP_PORT=40010 ./dist/website_cruncher")
+	bash("make ./dist/website_cruncher -j && HTTP_PORT=40010 ./dist/website_cruncher")
 }
 
 func portal_cruncher() {
-	bash("make ./dist/portal_cruncher && HTTP_PORT=40012 ./dist/portal_cruncher")
+	bash("make ./dist/portal_cruncher -j && HTTP_PORT=40012 ./dist/portal_cruncher")
 }
 
 func portal() {
-	bash("make ./dist/portal && PORT=20000 ./dist/portal")
+	bash("make ./dist/portal -j && PORT=20000 ./dist/portal")
 }
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go")
+	bash("go run ./scripts/happy_path/happy_path.go")
 }
 
 func happy_path_no_wait() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("./build.sh && go run ./scripts/happy_path/happy_path.go 1")
+	bash("go run ./scripts/happy_path/happy_path.go 1")
 }
 
 func server4() {
@@ -257,27 +263,26 @@ func client5() {
 	bash("make ./dist/client5 -j && cd dist && ./client5")
 }
 
+func pubsub_emulator() {
+	bash_ignore_result("pkill -f pubsub-emulator")
+	bash("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000")
+}
+
+func bigquery_emulator() {
+	bash_ignore_result("pkill -f bigquery-emulator")
+	bash("bigquery-emulator --project=local --dataset=local")
+}
+
 func setup_emulators() {
-
-	// restart pubsub emulator
-	bash_ignore_result("pkill -f \"google-cloud-sdk/platform/pubsub-emulator\"")
-	bash_no_wait("gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 --quiet &")
-
-	// restart bigquery emulator
-	bash_ignore_result("pkill -f \"bigquery-emulator\"")
-	bash_no_wait("bigquery-emulator --project=\"local\" --dataset=\"local\" &")
-
-	// setup pubsub topics, subscriptions and bigquery tables
-	time.Sleep(time.Second * 5)
-	bash_ignore_result("go run ./scripts/setup_emulators/setup_emulators.go")
+	bash("go run ./scripts/setup_emulators/setup_emulators.go")
 }
 
-func func_test_sdk4() {
-	bash("make func_test_sdk4 -j && cd dist && ./func_tests_sdk4")
+func func_sdk4() {
+	bash("make func-test-sdk4 -j && cd dist && ./func_tests_sdk4")
 }
 
-func func_test_sdk5() {
-	bash("make func_test_sdk5 -j && cd dist && ./func_tests_sdk5")
+func func_sdk5() {
+	bash(fmt.Sprintf("make func-test-sdk5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_backend4() {
@@ -285,10 +290,10 @@ func func_backend4() {
 }
 
 func func_backend5() {
-	bash("make ./dist/func_backend5 -j && cd dist && ./func_backend5")
+	bash(fmt.Sprintf("make ./dist/func_backend5 -j && cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
-func func_test_backend(tests []string) {
+func func_backend(tests []string) {
 	command := "make ./dist/func_tests_backend && cd dist && ./func_tests_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {

@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -216,4 +216,60 @@ int32 FNetworkNextSocketClient::GetPortNo()
 {
     // Return the actual port number the socket is bound to. This may be a system assigned port if the bind port was 0.
     return NetworkNextClient ? next_client_port(NetworkNextClient) : 0;
+}
+
+void FNetworkNextSocketClient::ReportServer()
+{
+    if (NetworkNextClient)
+    {
+        next_client_report_session(NetworkNextClient);
+    }
+}
+
+float FNetworkNextSocketClient::GetLatency()
+{
+    if (NetworkNextClient)
+    {
+        const next_client_stats_t* stats = next_client_stats(NetworkNextClient);
+        if (stats->next)
+        {
+            return stats->next_rtt;
+        }
+        else
+        {
+            return stats->direct_min_rtt;
+        }
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+float FNetworkNextSocketClient::GetJitter()
+{
+    if (NetworkNextClient)
+    {
+        const next_client_stats_t* stats = next_client_stats(NetworkNextClient);
+        return (stats->jitter_client_to_server + stats->jitter_server_to_client) / 2.0f;
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+float FNetworkNextSocketClient::GetPacketLoss()
+{
+    if (NetworkNextClient)
+    {
+        const next_client_stats_t* stats = next_client_stats(NetworkNextClient);
+        double total_packets_sent = stats->packets_sent_client_to_server + stats->packets_sent_server_to_client;
+        double total_packets_lost = stats->packets_lost_client_to_server + stats->packets_lost_server_to_client;
+        if (total_packets_sent > 0)
+        {
+            return float(total_packets_lost / total_packets_sent) * 100.0f;
+        }
+    }
+    return 0.0;
 }

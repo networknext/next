@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -33,9 +33,42 @@ class NETWORKNEXT_API UNetworkNextBlueprint : public UBlueprintFunctionLibrary
 
 public:
 
+    // server functions
+
     /**
-     * Upgrades a player session on Network Next.
+     * Upgrades a player session on Network Next
      */
     UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Upgrade Player Session"))
     static void UpgradePlayer(UObject* WorldContextObject, APlayerController* PlayerController, const FString& UserId);
+
+    /**
+     * Trigger a server event (or server events) for a player
+     */
+    static void ServerEvent(UObject* WorldContextObject, APlayerController* PlayerController, uint64 ServerEvents);
+
+    // client functions
+
+    /**
+     * Report server
+     */
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Report Server"))
+    static void ReportServer(UObject* WorldContextObject);
+
+    /**
+     * Get latency
+     */
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Latency"))
+    static float GetLatency(UObject* WorldContextObject);
+
+    /**
+     * Get jitter
+     */
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Jitter"))
+    static float GetJitter(UObject* WorldContextObject);
+
+    /**
+     * Get packet loss
+     */
+    UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Network Next", meta = (WorldContext = "WorldContextObject", DisplayName = "Get Packet Loss"))
+    static float GetPacketLoss(UObject* WorldContextObject);
 };

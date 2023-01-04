@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -36,8 +35,6 @@ import (
 	"github.com/networknext/backend/modules-old/transport/looker"
 	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules-old/transport/notifications"
-
-	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
 )
 
 const (
@@ -562,28 +559,12 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	defer redisClient.Close()
 	minutes := time.Now().Unix() / 60
 
-	ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(s.Env)
-	var ghostArmyScalar uint64 = 50
-	if v, ok := os.LookupEnv("GHOST_ARMY_SCALER"); ok {
-		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
-			ghostArmyScalar = v
-		}
-	}
-
-	var ghostArmyNextScaler uint64 = 5
-	if v, ok := os.LookupEnv("GHOST_ARMY_NEXT_SCALER"); ok {
-		if v, err := strconv.ParseUint(v, 10, 64); err == nil {
-			ghostArmyNextScaler = v
-		}
-	}
-
 	switch args.CompanyCode {
 	case "":
 		buyers := s.Storage.Buyers(r.Context())
 
 		var firstNextCount int
 		var secondNextCount int
-		var ghostArmyNextCount int
 
 		for _, buyer := range buyers {
 			stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -592,7 +573,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		for _, buyer := range buyers {
+		for range buyers {
 
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -610,21 +591,10 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 
-			// If ghost army, scale the redis number and add that to the total otherwise just add the redis number to the total
-			if buyer.ID == ghostArmyBuyerID {
-				if firstCount > secondCount {
-					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
-				} else {
-					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
-				}
-
-				firstNextCount += ghostArmyNextCount
-				secondNextCount += ghostArmyNextCount
-			} else {
-				firstNextCount += firstCount
-				secondNextCount += secondCount
-			}
+			firstNextCount += firstCount
+			secondNextCount += secondCount
 		}
+
 		reply.Next = firstNextCount
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
@@ -640,13 +610,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		}
 		redisClient.Flush()
 
-		for _, buyer := range buyers {
-			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
-			if buyer.ID == ghostArmyBuyerID {
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				continue
-			}
+		for range buyers {
 
 			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
@@ -695,7 +659,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		reply.Direct = totalCount - reply.Next
 
 	default:
-		var ghostArmyNextCount int
 
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), args.CompanyCode)
 		if err != nil {
@@ -732,17 +695,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		// If ghost army, scale the number coming from redis and use that
-		if buyer.ID == ghostArmyBuyerID {
-			if firstNextCount > secondNextCount {
-				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
-			} else {
-				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
-			}
-			firstNextCount = ghostArmyNextCount
-			secondNextCount = ghostArmyNextCount
-		}
-
 		reply.Next = firstNextCount
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
@@ -751,48 +703,42 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		var firstTotalCount int
 		var secondTotalCount int
 
-		if buyer.ID == ghostArmyBuyerID {
-			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
-			firstTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-			secondTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-		} else {
-			firstCounts, err := redis.Strings(redisClient.Receive())
+		firstCounts, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+			core.Error("%v", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
+			return err
+		}
+
+		for i := 0; i < len(firstCounts); i++ {
+			firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
 			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+				err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
 				core.Error("%v", err)
-				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
 				return err
 			}
 
-			for i := 0; i < len(firstCounts); i++ {
-				firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
-				if err != nil {
-					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
-					core.Error("%v", err)
-					return err
-				}
+			firstTotalCount += int(firstCount)
+		}
 
-				firstTotalCount += int(firstCount)
-			}
+		secondCounts, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+			core.Error("%v", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
+			return err
+		}
 
-			secondCounts, err := redis.Strings(redisClient.Receive())
+		for i := 0; i < len(secondCounts); i++ {
+			secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
 			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+				err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
 				core.Error("%v", err)
-				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
 				return err
 			}
 
-			for i := 0; i < len(secondCounts); i++ {
-				secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
-				if err != nil {
-					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
-					core.Error("%v", err)
-					return err
-				}
-
-				secondTotalCount += int(secondCount)
-			}
+			secondTotalCount += int(secondCount)
 		}
 
 		totalCount := firstTotalCount

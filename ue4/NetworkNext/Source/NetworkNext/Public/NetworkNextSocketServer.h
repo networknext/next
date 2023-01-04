@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -121,4 +121,10 @@ public:
      */
 
     void UpgradeClient(TSharedPtr<const FInternetAddr> RemoteAddr, const FString& UserId);
+
+    /**
+     * Set server events on a player
+     */
+
+    void ServerEvent(TSharedPtr<const FInternetAddr> RemoteAddr, uint64 ServerEvents);
 };

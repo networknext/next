@@ -1,6 +1,6 @@
 /*
    Network Next. You control the network.
-   Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
+   Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -417,10 +417,15 @@ func mainReturnWithCode() int {
 		Metrics: backendMetrics.MatchDataMetrics,
 	}
 
-	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-	if gcpProjectID != "" || pubsubEmulatorOK {
+	// todo: disabling pubsub emulator for now, it's not reliable in happy path
+
+	//pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+
+	if gcpProjectID != "" { // && pubsubEmulatorOK {
 
 		pubsubCtx := ctx
+
+		/*
 		if pubsubEmulatorOK {
 			gcpProjectID = "local"
 
@@ -430,6 +435,7 @@ func mainReturnWithCode() int {
 
 			core.Debug("detected pubsub emulator")
 		}
+		*/
 
 		// Google Pubsub for billing
 		{

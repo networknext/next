@@ -25,7 +25,7 @@ type Relay struct {
 
 type Buyer struct {
 	ID             uint64
-	Live           bool         // todo: make sure we are checking this
+	Live           bool
 	Debug          bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader
@@ -33,6 +33,7 @@ type Buyer struct {
 }
 
 type Seller struct {
+	ID   string // todo: needs to be a string for compatibility with old database, but should be a uint64 in future
 	Name string
 }
 
@@ -58,7 +59,7 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: this is really just a map from (buyerId,datacenterId) -> true/false for enabling a datacenter. surely there is a better way to express this
 	//                   ^ BuyerId  ^ DatacenterId
 }
 

@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -36,10 +36,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.20.5"
+    #define NEXT_VERSION_FULL                              "4.20.6"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                               20
-    #define NEXT_VERSION_PATCH_INT                                5
+    #define NEXT_VERSION_PATCH_INT                                6
 
 #else // !defined(NEXT_DEVELOPMENT)
 

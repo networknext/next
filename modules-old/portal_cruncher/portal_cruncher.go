@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 
-	ghostarmy "github.com/networknext/backend/modules-old/ghost_army"
 	"github.com/networknext/backend/modules-old/metrics"
 	"github.com/networknext/backend/modules-old/storage"
 	"github.com/networknext/backend/modules-old/transport"
@@ -218,8 +217,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	}
 
 	if cruncher.useBigtable {
-		// Get the Ghost Army buyerID
-		ghostArmyBuyerID := ghostarmy.GhostArmyBuyerID(env)
+
+		ghostArmyBuyerID := uint64(0)
 
 		// Start the bigtable goroutines
 		for i := 0; i < numBigtableInsertGoroutines; i++ {

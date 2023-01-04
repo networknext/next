@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -195,6 +195,7 @@
 #define NEXT_UDP_HEADER_BYTES                                           8
 #define NEXT_HEADER_BYTES                                              33
 
+// todo: this must be replaced with a new keypair
 static uint8_t next_server_backend_public_key[] =
 {
      76,  97, 202, 140,  71, 135,  62, 212,
@@ -203,14 +204,7 @@ static uint8_t next_server_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64
 };
 
-static uint8_t next_ping_backend_public_key[] =
-{
-    0x6F, 0x5A, 0x36, 0x07, 0x6F, 0xD1, 0xF7, 0xEB,
-    0x81, 0x91, 0x42, 0xE9, 0xF4, 0xA7, 0x3A, 0xFA,
-    0x80, 0xCF, 0x99, 0xD4, 0xCD, 0x23, 0x18, 0x01,
-    0x4A, 0xA8, 0x19, 0xA6, 0xC1, 0x2A, 0x06, 0x40
-};
-
+// todo: this must be replaced with a new keypair
 static uint8_t next_router_public_key[] =
 {
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34,
@@ -604,9 +598,9 @@ void next_printf( int level, const char * format, ... )
     va_end( args );
 }
 
-const char * next_user_id_string( uint64_t user_id, char * buffer )
+const char * next_user_id_string( uint64_t user_id, char * buffer, size_t buffer_size )
 {
-    sprintf( buffer, "%" PRIx64, user_id );
+    snprintf( buffer, buffer_size, "%" PRIx64, user_id );
     return buffer;
 }
 
@@ -4331,7 +4325,7 @@ int next_init( void * context, next_config_t * config_in )
     const char * server_backend_public_key_env = next_platform_getenv( "NEXT_SERVER_BACKEND_PUBLIC_KEY" );
     if ( server_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override: %s", server_backend_public_key_env );
 
         if ( next_base64_decode_data( server_backend_public_key_env, next_server_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
@@ -4346,28 +4340,10 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * ping_backend_public_key_env = next_platform_getenv( "NEXT_PING_BACKEND_PUBLIC_KEY" );
-    if ( ping_backend_public_key_env )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "ping backend public key override" );
-
-        if ( next_base64_decode_data( ping_backend_public_key_env, next_ping_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "valid ping backend public key" );
-        }
-        else
-        {
-            if ( ping_backend_public_key_env[0] != '\0' )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "ping backend public key is invalid: \"%s\"", ping_backend_public_key_env );
-            }
-        }
-    }
-
     const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
     if ( router_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override: %s", router_public_key_env );
 
         if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
         {
@@ -4543,7 +4519,7 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
-    float mean_rtt;                        // mean rtt (ms)
+    float mean_rtt;                     // mean rtt (ms)
     float min_rtt;                      // minimum rtt (ms)
     float max_rtt;                      // maximum rtt (ms)
     float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
@@ -7468,7 +7444,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.has_debug )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+                next_printf( "--------------------------------------\n%s--------------------------------------", packet.debug );
             }
 
             next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
@@ -7493,17 +7469,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
             }
 
-            if ( packet.multipath && !client->multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
-                client->multipath = true;
-                client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
-            }
-
             client->fallback_to_direct = fallback_to_direct;
 
             if ( !fallback_to_direct )
             {
+                if ( packet.multipath && !client->multipath )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client multipath enabled" );
+                    client->multipath = true;
+                    client->counters[NEXT_CLIENT_COUNTER_MULTIPATH]++;
+                }
+
                 client->route_update_sequence = packet.sequence;
                 client->client_stats.packets_sent_server_to_client = packet.packets_sent_server_to_client;
                 client->client_stats.packets_lost_client_to_server = packet.packets_lost_client_to_server;
@@ -11448,7 +11424,7 @@ bool next_autodetect_google( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -11459,7 +11435,7 @@ bool next_autodetect_google( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
     file = _popen( cmd, "r" );
     if ( !file )
     {
@@ -11586,7 +11562,7 @@ bool next_autodetect_amazon( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -11597,7 +11573,7 @@ bool next_autodetect_amazon( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    sprintf( cmd, "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network-next-sdk/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
     file = _popen ( cmd, "r" );
     if ( !file )
     {
@@ -11778,7 +11754,7 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
     return result;
 }
 
-bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
+bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output, size_t output_size )
 {
     FILE * file;
 
@@ -11871,7 +11847,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
     char cmd[1024];
-    sprintf( cmd, "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network-next-sdk/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -11904,7 +11880,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         if ( strstr( whois_buffer, substring ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
-            sprintf( output, "%s.%s", supplier, city );
+            snprintf( output, output_size, "%s.%s", supplier, city );
             found = true;
         }
     }
@@ -11932,7 +11908,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output, size_t output_size )
 {
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
     
@@ -11988,7 +11964,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
+    bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output, output_size );
     if ( multiplay_result )
     {
         return true;
@@ -11998,6 +11974,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     (void) input_datacenter;
     (void) public_address;
+    (void) output_size;
 
     return false;
 }
@@ -14477,7 +14454,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
-        autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
+        autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
         autodetect_actually_did_something = true;
     }
@@ -18711,8 +18688,8 @@ void test_route_update_packet_direct()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -18795,8 +18772,8 @@ void test_route_update_packet_new_route()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -18883,8 +18860,8 @@ void test_route_update_packet_continue_route()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -19406,8 +19383,8 @@ void test_session_response_packet_direct_near_relays_changed()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -19489,8 +19466,8 @@ void test_session_response_packet_route_near_relays_changed()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -19576,8 +19553,8 @@ void test_session_response_packet_continue_near_relays_changed()
         {
             char relay_name[32];
             char relay_address[256];
-            sprintf( relay_name, "relay%d", j );
-            sprintf( relay_address, "127.0.0.1:%d", 40000 + j );
+            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
+            snprintf( relay_address, sizeof(relay_name), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
         }
@@ -20503,7 +20480,7 @@ void test_relay_manager()
     {
         relay_ids[i] = i;
         char address_string[256];
-        sprintf( address_string, "127.0.0.1:%d", 40000 + i );
+        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
         next_address_parse( &relay_addresses[i], address_string );
     }
 

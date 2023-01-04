@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -6788,7 +6788,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.has_debug )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
+                next_printf( NEXT_LOG_LEVEL_INFO, "--------------------------------------\n%s--------------------------------------", packet.debug );
             }
 
             if ( packet.near_relays_changed )

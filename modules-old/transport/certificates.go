@@ -1,5 +1,7 @@
 package transport
 
+// todo: private keys are not allowed in source code according to our security policy. this key must be expired and re-generated
+
 var (
 	TLSCertificate = []byte(`-----BEGIN CERTIFICATE-----
 MIIE1zCCA7+gAwIBAgIUd70JbKoF34xFfsVgeFLztlnYeOUwDQYJKoZIhvcNAQEL
@@ -53,6 +55,8 @@ hhurjcoacvRNhnjtDRM0dPeiCJ50CP3wEYuvUzDHUaowOsnLCjQIkWbR7Ni6KEIk
 MOz2U0OBSif3FTkhCgZWQKOOLo1P42jHC3ssUZAtVNXrCk3fw9/E15k8NPkBazZ6
 0iykLhH1trywrKRMVw67F44IE8Y=
 -----END CERTIFICATE-----`)
+
+	// todo: no private keys allowed in our source code as per security policy
 
 	TLSPrivateKey = []byte(`-----BEGIN PRIVATE KEY-----
 MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCgZdA+AiidIZAp
