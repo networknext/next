@@ -19,7 +19,6 @@ import (
 
 const InvalidRouteValue = 10000.0
 
-var googleProjectId string
 var maxRTT float32
 var maxJitter float32
 var maxPacketLoss float32
@@ -63,7 +62,6 @@ func main() {
 
 	service := common.CreateService("relay_backend")
 
-	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
 	maxJitter = float32(envvar.GetFloat("MAX_JITTER", 1000.0))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_JITTER", 100.0))
@@ -82,8 +80,8 @@ func main() {
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 	disableGooglePubsub = envvar.GetBool("DISABLE_GOOGLE_PUBSUB", false)
 	readyDelay = envvar.GetDuration("READY_DELAY", 1*time.Second)
+	startTime = time.Now()
 
-	core.Log("google project id: %s", googleProjectId)
 	core.Log("max rtt: %.1f", maxRTT)
 	core.Log("max jitter: %.1f", maxJitter)
 	core.Log("max packet loss: %.1f", maxPacketLoss)
@@ -298,7 +296,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 	if !disableGooglePubsub {
 
 		pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          googleProjectId,
+			ProjectId:          service.GoogleProjectId,
 			Topic:              pingStatsPubsubTopic,
 			MessageChannelSize: maxPingStatsChannelSize,
 		})
@@ -308,7 +306,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		}
 
 		relayStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          googleProjectId,
+			ProjectId:          service.GoogleProjectId,
 			Topic:              relayStatsPubsubTopic,
 			MessageChannelSize: maxRelayStatsChannelSize,
 		})

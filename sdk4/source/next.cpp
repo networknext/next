@@ -3835,7 +3835,6 @@ int next_init( void * context, next_config_t * config_in )
     const char * customer_private_key = customer_private_key_env ? customer_private_key_env : ( config_in ? config_in->customer_private_key : "" );
     if ( customer_private_key )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "customer private key is '%s'", customer_private_key );
         uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
         if ( customer_private_key && next_base64_decode_data( customer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
