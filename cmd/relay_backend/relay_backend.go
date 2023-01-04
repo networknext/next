@@ -80,6 +80,7 @@ func main() {
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 	disableGooglePubsub = envvar.GetBool("DISABLE_GOOGLE_PUBSUB", false)
 	readyDelay = envvar.GetDuration("READY_DELAY", 1*time.Second)
+	startTime = time.Now()
 
 	core.Log("max rtt: %.1f", maxRTT)
 	core.Log("max jitter: %.1f", maxJitter)

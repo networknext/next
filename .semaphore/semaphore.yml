@@ -121,7 +121,7 @@ blocks:
             - cp envs/local.env .env
 
             - cd ~/backend
-            - make -j
+            - ./build.sh
 
             - mv dist/libnext4.so dist/func_tests_backend_libnext4.so
             - mv dist/libnext5.so dist/func_tests_backend_libnext5.so
@@ -855,7 +855,7 @@ blocks:
             - brew install libsodium redis golang parallel
             - cd ~/backend
             - ./next select local
-            - make -j
+            - ./build.sh
             - ./run happy-path-no-wait
 
 
@@ -876,7 +876,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - ./next select local
-            - make -j
+            - ./build.sh
             - ./run happy-path-no-wait
 
 promotions:
