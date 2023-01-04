@@ -268,23 +268,23 @@ blocks:
            - env_var: CONFIG
              values: [ "debug", "release" ]
           commands:
-           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@drstrange -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG""
+           - ssh -J glenn@34.67.51.93 "Glenn Fiedler"@captainamerica -p 2222 "wsl --cd /mnt/c/build "./build.sh sdk4 build win64 $VISUAL_STUDIO $CONFIG""
 
-  - name: "Test PS5"
-    dependencies: []
-    task:
-      prologue:
-        commands:
-         - chmod 600 /home/semaphore/.ssh/id_rsa_build
-         - ssh-add /home/semaphore/.ssh/id_rsa_build
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
-      secrets:
-        - name: build-machine-access
-        - name: build-machine-known-hosts
-      jobs:
-        - name: build
-          commands:
-           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 test ps5 vs2022 release"
+#  - name: "Test PS5"
+#    dependencies: []
+#    task:
+#      prologue:
+#        commands:
+#         - chmod 600 /home/semaphore/.ssh/id_rsa_build
+#         - ssh-add /home/semaphore/.ssh/id_rsa_build
+#      agent:
+#        machine:
+#          type: e1-standard-2
+#          os_image: ubuntu2004
+#      secrets:
+#        - name: build-machine-access
+#        - name: build-machine-known-hosts
+#      jobs:
+#        - name: build
+#          commands:
+#           - ssh -J glenn@34.67.51.93 build@thor -p 2222 "cd /mnt/c/build && ./build.sh sdk4 test ps5 vs2022 release"
