@@ -23,7 +23,7 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 # Clean and rebuild
 
 .PHONY: build
-build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
+build: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh) ## build everything
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
