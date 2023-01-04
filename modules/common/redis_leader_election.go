@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-const RedisLeaderElectionVersion = 0 // IMPORTANT: bump this anytime you change the redis data structures!
+const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change the redis data structures!
 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
@@ -39,8 +39,7 @@ type RedisLeaderElection struct {
 
 type InstanceEntry struct {
 	InstanceId string
-	Uptime     uint64
-	Timestamp  uint64
+	StartTime  uint64
 	Keys       []string
 }
 
@@ -71,6 +70,7 @@ func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionCo
 	leaderElection.startTime = time.Now()
 	leaderElection.instanceId = uuid.New().String()
 
+	core.Debug("redis leader election start time: %s", leaderElection.startTime)
 	core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
 
 	return leaderElection, nil
@@ -104,8 +104,7 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
-	instanceEntry.Uptime = uint64(time.Since(leaderElection.startTime))
-	instanceEntry.Timestamp = uint64(time.Now().Unix())
+	instanceEntry.StartTime = uint64(leaderElection.startTime.UnixNano())
 
 	numStores := len(dataStores)
 	instanceEntry.Keys = make([]string, numStores)
@@ -142,7 +141,7 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 
 	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
-	// get all "instance/*" keys via scan to be safe
+	// get all "instance/*" keys
 
 	instanceKeys := []string{}
 	dataStores := []DataStoreConfig{}
@@ -153,7 +152,6 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 	if err := itor.Err(); err != nil {
 		core.Error("failed to get instance keys: %v", err)
 		return dataStores
-
 	}
 
 	// query all instance data
@@ -185,25 +183,27 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 			core.Debug("could not decode instance entry: %v", err)
 			continue
 		}
-
-		// IMPORTANT: ignore any instance entries more than 5 seconds old
-		if instanceEntry.Timestamp >= uint64(time.Now().Unix()-5) {
-			instanceEntries = append(instanceEntries, instanceEntry)
-		}
+		instanceEntries = append(instanceEntries, instanceEntry)
 	}
 
-	// no instance entries? we have no route matrix data...
+	// no instance entries? we have no instance data...
 
 	if len(instanceEntries) == 0 {
 		core.Error("no instance entries found")
 		return dataStores
 	}
 
-	// select master instance (most uptime, instance id as tie breaker)
+	// IMPORTANT: if there is only one entry, wait at least 10 seconds to ensure
+	// we don't flap leader when a bunch of services start close together
+
+	if len(instanceEntries) == 1 && time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
+		core.Debug("only one instance entry. waiting for other entries to join...")
+		return dataStores
+	}
+
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
-
-	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].Uptime > instanceEntries[j].Uptime })
 
 	masterInstance := instanceEntries[0]
 
@@ -221,7 +221,7 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 		core.Log("we are no longer the leader")
 	}
 
-	// get data for master instance
+	// get data from master instance
 
 	pipe = leaderElection.redisClient.Pipeline()
 

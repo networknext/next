@@ -198,7 +198,11 @@ func relay_backend() {
 }
 
 func analytics() {
-	bash("HTTP_PORT=40001 ./dist/analytics")
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40001"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/analytics", httpPort))
 }
 
 func pusher() {
@@ -206,7 +210,7 @@ func pusher() {
 }
 
 func pingdom() {
-	bash("HTTP_PORT=40011 ./dist/pingdom")
+	bash("HTTP_PORT=40020 ./dist/pingdom")
 }
 
 func relay() {
