@@ -1297,11 +1297,15 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 		}
 	}
 
-	// todo: exclude near relays with significantly higher packet loss than average
+	// exclude near relays with significantly higher packet loss than direct
+
+	for i := range sourceRelayLatency {
+		if sourceRelayPacketLoss[i] > directPacketLoss {
+			out_sourceRelayLatency[i] = 255
+		}
+	}	
 
 	// extra safety. don't let any relay report latency of zero
-
-	// todo: pretty sure this is redundant
 
 	for i := range sourceRelayLatency {
 
@@ -1406,8 +1410,6 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
 		}
-		// todo
-		fmt.Printf("get random best route\n")
 		GetRandomBestRoute(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 		routeChanged = true
 		routeLost = true
@@ -1497,15 +1499,13 @@ type RouteState struct {
 
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
-	PLSustainedCounter  int32   // todo: why not uint32
+	PLSustainedCounter  int32
 
 	// todo: do we really need all this data written and read? i don't think we do, we already hold these values elsewhere
 	DirectJitter        int32
 	NumNearRelays       int32
 	NearRelayRTT        [MaxNearRelays]int32
 	NearRelayJitter     [MaxNearRelays]int32
-	NearRelayPLHistory  [MaxNearRelays]uint32
-	NearRelayPLCount    [MaxNearRelays]uint32
 }
 
 type InternalConfig struct {

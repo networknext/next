@@ -393,8 +393,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0, 255))
 		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0, 255))
-		sessionData.RouteState.NearRelayPLHistory[i] = uint32(common.RandomInt(0, 255))
-		sessionData.RouteState.NearRelayPLCount[i] = rand.Uint32()
 	}
 
 	sessionData.RouteState.RelayWentAway = common.RandomBool()
@@ -661,18 +659,11 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
-		nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
-		stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
-		sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
 	}
 
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
-	}
 
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 

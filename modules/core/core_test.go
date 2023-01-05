@@ -6221,9 +6221,8 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 	assert.Equal(t, []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 
 }
-// todo: this is now massively overcomplicated. rework for the simple exclude high PL near relay case
-/*
-func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
+
+func TestReframeRelays_ReducePacketLoss(t *testing.T) {
 
 	t.Parallel()
 
@@ -6247,7 +6246,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 	routeState := RouteState{}
 
 	// pass in some near relay ids with a near relay that LOOKS attractive (lowest latency)
-	// but has packet loss higher than direct, and verify it gets excluded temporarily.
+	// but has packet loss higher than direct, and verify it gets excluded
 
 	directLatency := int32(100)
 	directJitter := int32(10)
@@ -6282,62 +6281,7 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 	assert.Equal(t, int32(5), routeState.NumNearRelays)
 	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
 	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// verify it remains excluded while packet loss continues
-
-	for i := 0; i < 7; i++ {
-
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-		sliceNumber++
-
-		assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-		assert.Equal(t, int32(5), out_numDestRelays)
-		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-		assert.Equal(t, int32(10), routeState.DirectJitter)
-		assert.Equal(t, int32(5), routeState.NumNearRelays)
-		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-	}
-
-	// stop the packet loss and it should recover after three slices (30 seconds)
-
-	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
-
-	for i := 0; i < 3; i++ {
-
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-		sliceNumber++
-
-		assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-		assert.Equal(t, int32(5), out_numDestRelays)
-		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-		assert.Equal(t, int32(10), routeState.DirectJitter)
-		assert.Equal(t, int32(5), routeState.NumNearRelays)
-		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-	}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	sliceNumber++
-
-	assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(10), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
 }
-*/
 
 func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 

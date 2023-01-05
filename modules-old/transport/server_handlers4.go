@@ -1730,8 +1730,6 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		NumTags:                         int32(state.Packet.NumTags),
 		Tags:                            state.Packet.Tags,
 		ABTest:                          state.Input.RouteState.ABTest,
-		// todo
-		// Pro:                             state.Buyer.RouteShader.ProMode && !state.Input.RouteState.MultipathRestricted,
 		ClientToServerPacketsSent:       state.Packet.PacketsSentClientToServer,
 		ServerToClientPacketsSent:       state.Packet.PacketsSentServerToClient,
 		ClientToServerPacketsLost:       state.Packet.PacketsLostClientToServer,
