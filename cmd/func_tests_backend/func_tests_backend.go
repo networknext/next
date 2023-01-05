@@ -1178,6 +1178,9 @@ func test_redis_leader_store_migration() {
 
 	waitGroup.Wait()
 
+	// force keys to expire
+	time.Sleep(time.Second * 5)
+
 	core.Debug("done")
 }
 
@@ -1336,6 +1339,9 @@ func test_redis_leader_store_no_flap() {
 	if fail {
 		os.Exit(1)
 	}
+
+	// force keys to expire
+	time.Sleep(time.Second * 5)
 
 	core.Debug("done")
 }
