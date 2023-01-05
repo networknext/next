@@ -22,6 +22,7 @@ func SeedStorage(
 	customerPublicKey []byte,
 ) error {
 	routeShader := core.NewRouteShader()
+	routeShader.AnalysisOnly = false
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true
 
@@ -55,7 +56,6 @@ func SeedStorage(
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
-		routeShader.AnalysisOnly = false
 		if err := db.AddBuyer(ctx, routing.Buyer{
 			ID:             customerID,
 			CompanyCode:    "local",

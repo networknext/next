@@ -24,6 +24,7 @@ func SeedSQLStorage(
 	customerID uint64,
 	customerPublicKey []byte,
 ) error {
+
 	// When using SQLite it is ok to "seed" each version of the storer
 	// and let them sync up later on. When using a local PostgreSQL server
 	// we can only seed storage once, externally (via SQL file).
@@ -535,6 +536,8 @@ func SeedSQLStorage(
 		}
 
 		localRouteShader := core.NewRouteShader()
+
+		localRouteShader.AnalysisOnly = false
 
 		err = db.AddRouteShader(ctx, localRouteShader, localBuyer.ID)
 		if err != nil {

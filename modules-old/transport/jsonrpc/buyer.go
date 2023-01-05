@@ -2534,7 +2534,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 
 	err = s.Storage.AddRouteShader(r.Context(), rs, buyerID)
 	if err != nil {
-		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
+		err = fmt.Errorf("buyer.go -- AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		core.Error("%v", err)
 		return err
 	}

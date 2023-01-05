@@ -1473,7 +1473,6 @@ func NewRouteShader() RouteShader {
 	}
 }
 
-// todo: do all these things get passed up from SDK then back down? seems overkill...
 type RouteState struct {
 	UserID              uint64
 	Next                bool

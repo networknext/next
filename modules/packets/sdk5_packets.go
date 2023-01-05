@@ -388,8 +388,8 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.NoRoute = common.RandomBool()
 	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
 	sessionData.RouteState.Mispredict = common.RandomBool()
-	sessionData.RouteState.NumNearRelays = int32(common.RandomInt(0, core.MaxNearRelays))
 
+	sessionData.RouteState.NumNearRelays = int32(common.RandomInt(0, core.MaxNearRelays))
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0, 255))
 		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0, 255))
