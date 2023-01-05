@@ -313,21 +313,6 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	assert.False(t, state.NoRelaysInDatacenter)
 }
 
-func Test_SessionUpdate_Pre_Pro(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.NumTags = 1
-	state.Request.Tags[0] = common.HashTag("pro")
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, state.Pro)
-}
-
 func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	t.Parallel()
@@ -1254,7 +1239,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -1477,7 +1462,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -1715,7 +1700,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2002,7 +1987,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2234,7 +2219,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2464,7 +2449,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2702,7 +2687,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	// mispredict 3 times
 
@@ -2823,6 +2808,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
 	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.Multipath = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2861,19 +2847,17 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	assert.True(t, state.Response.Committed)
 	assert.False(t, state.Response.Multipath)
 
-	// setup a terrible route matrix with nothing but bad routes
+	// make all near relays very expensive
 
-	for i := range costMatrix {
-		costMatrix[i] = 10
-	}
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+	state.NearRelayRTTs[0] = 100
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
 
 	// make route decision
 
 	state.Request.Next = true
 	state.Request.NextRTT = 100
-	state.Request.DirectMinRTT = 0
+	state.Request.DirectMinRTT = 1
 
 	state.Input = state.Output
 
@@ -3046,10 +3030,6 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 // --------------------------------------------------------------
 
 // todo: SessionUpdate_UpdateNearRelays
-
-// --------------------------------------------------------------
-
-// todo: SessionUpdate_FilterNearRelays
 
 // --------------------------------------------------------------
 

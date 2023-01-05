@@ -25,22 +25,7 @@ func SeedStorage(
 	internalConfig := core.NewInternalConfig()
 	internalConfig.ForceNext = true
 
-	shouldFill := false
-	switch db := db.(type) {
-	case *Firestore:
-		_, _, err := db.CheckSequenceNumber(ctx)
-		if err != nil {
-			if err := db.SetSequenceNumber(ctx, 0); err != nil {
-				return fmt.Errorf("unable to set sequence number: %w", err)
-			}
-			if err := db.IncrementSequenceNumber(ctx); err != nil {
-				return fmt.Errorf("unable to increment sequence number: %w", err)
-			}
-			shouldFill = true
-		}
-	default:
-		shouldFill = true
-	}
+	shouldFill := true
 	if shouldFill {
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Network Next",

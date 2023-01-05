@@ -375,7 +375,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.UserID = rand.Uint64()
 	sessionData.RouteState.Next = common.RandomBool()
 	sessionData.RouteState.Veto = common.RandomBool()
-	sessionData.RouteState.Banned = common.RandomBool()
 	sessionData.RouteState.Disabled = common.RandomBool()
 	sessionData.RouteState.NotSelected = common.RandomBool()
 	sessionData.RouteState.ABTest = common.RandomBool()
@@ -384,13 +383,8 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.ForcedNext = common.RandomBool()
 	sessionData.RouteState.ReduceLatency = common.RandomBool()
 	sessionData.RouteState.ReducePacketLoss = common.RandomBool()
-	sessionData.RouteState.ProMode = common.RandomBool()
 	sessionData.RouteState.Multipath = common.RandomBool()
-	sessionData.RouteState.Committed = common.RandomBool()
-	sessionData.RouteState.CommitVeto = common.RandomBool()
-	sessionData.RouteState.CommitCounter = int32(common.RandomInt(0, 4))
 	sessionData.RouteState.LatencyWorse = common.RandomBool()
-	sessionData.RouteState.MultipathOverload = common.RandomBool()
 	sessionData.RouteState.NoRoute = common.RandomBool()
 	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
 	sessionData.RouteState.Mispredict = common.RandomBool()
@@ -403,17 +397,11 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		sessionData.RouteState.NearRelayPLCount[i] = rand.Uint32()
 	}
 
-	sessionData.RouteState.DirectPLCount = rand.Uint32()
-	sessionData.RouteState.DirectPLHistory = uint32(common.RandomInt(0, 255))
-	sessionData.RouteState.PLHistoryIndex = int32(common.RandomInt(0, 7))
-	sessionData.RouteState.PLHistorySamples = int32(common.RandomInt(0, 8))
-
 	sessionData.RouteState.RelayWentAway = common.RandomBool()
 	sessionData.RouteState.RouteLost = common.RandomBool()
 	sessionData.RouteState.LackOfDiversity = common.RandomBool()
 	sessionData.RouteState.MispredictCounter = uint32(common.RandomInt(0, 3))
 	sessionData.RouteState.LatencyWorseCounter = uint32(common.RandomInt(0, 3))
-	sessionData.RouteState.MultipathRestricted = common.RandomBool()
 	sessionData.RouteState.LocationVeto = common.RandomBool()
 
 	return sessionData
@@ -652,7 +640,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
-	stream.SerializeBool(&sessionData.RouteState.Banned)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)
 	stream.SerializeBool(&sessionData.RouteState.NotSelected)
 	stream.SerializeBool(&sessionData.RouteState.ABTest)
@@ -661,13 +648,8 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
 	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
-	stream.SerializeBool(&sessionData.RouteState.ProMode)
 	stream.SerializeBool(&sessionData.RouteState.Multipath)
-	stream.SerializeBool(&sessionData.RouteState.Committed)
-	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
-	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
-	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
@@ -684,18 +666,9 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 		sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
 	}
 
-	directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
-	stream.SerializeInteger(&directPLHistory, 0, 255)
-	sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
-
-	stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
-	stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
-
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-
-	stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
 
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
@@ -706,8 +679,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
 
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
-
-	stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
 
 	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)

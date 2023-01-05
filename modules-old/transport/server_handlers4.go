@@ -766,13 +766,6 @@ func SessionPre(state *SessionHandlerState) bool {
 		state.Debug = new(string)
 	}
 
-	for i := int32(0); i < state.Packet.NumTags; i++ {
-		if state.Packet.Tags[i] == crypto_old.HashID("pro") {
-			core.Debug("pro mode enabled")
-			state.Buyer.RouteShader.ProMode = true
-		}
-	}
-
 	state.Output.Initial = false
 
 	return false
@@ -1038,7 +1031,7 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 	}
 
 	state.Response.NumNearRelays = int32(len(state.Response.NearRelayIDs))
-	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
+	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
 	state.Response.NearRelaysChanged = true
 
 	return true
@@ -1163,10 +1156,6 @@ func SessionFilterNearRelays(state *SessionHandlerState) {
 	   the near relay ping results fixed for the rest of the session.
 	*/
 
-	if !state.Buyer.InternalConfig.LargeCustomer {
-		return
-	}
-
 	if state.Packet.SliceNumber < 4 {
 		return
 	}
@@ -1286,11 +1275,6 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 				state.Metrics.NoRoute.Add(1)
 			}
 
-			if state.Output.RouteState.MultipathOverload {
-				core.Debug("multipath overload")
-				state.Metrics.MultipathOverload.Add(1)
-			}
-
 			if state.Output.RouteState.Mispredict {
 				core.Debug("mispredict")
 				state.Metrics.MispredictVeto.Add(1)
@@ -1314,7 +1298,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 	   next route at the same time, which reduces packet loss.
 	*/
 
-	state.Response.Committed = state.Output.RouteState.Committed
+	state.Response.Committed = true
 	state.Response.Multipath = state.Output.RouteState.Multipath
 
 	/*
@@ -1746,7 +1730,8 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		NumTags:                         int32(state.Packet.NumTags),
 		Tags:                            state.Packet.Tags,
 		ABTest:                          state.Input.RouteState.ABTest,
-		Pro:                             state.Buyer.RouteShader.ProMode && !state.Input.RouteState.MultipathRestricted,
+		// todo
+		// Pro:                             state.Buyer.RouteShader.ProMode && !state.Input.RouteState.MultipathRestricted,
 		ClientToServerPacketsSent:       state.Packet.PacketsSentClientToServer,
 		ServerToClientPacketsSent:       state.Packet.PacketsSentServerToClient,
 		ClientToServerPacketsLost:       state.Packet.PacketsLostClientToServer,
@@ -1782,18 +1767,15 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		NextBytesUp:                     nextBytesUp,
 		NextBytesDown:                   nextBytesDown,
 		FallbackToDirect:                state.Packet.FallbackToDirect,
-		MultipathVetoed:                 state.Input.RouteState.MultipathOverload,
 		Mispredicted:                    state.Input.RouteState.Mispredict,
 		Vetoed:                          state.Input.RouteState.Veto,
 		LatencyWorse:                    state.Input.RouteState.LatencyWorse,
 		NoRoute:                         state.Input.RouteState.NoRoute,
 		NextLatencyTooHigh:              state.Input.RouteState.NextLatencyTooHigh,
-		CommitVeto:                      state.Input.RouteState.CommitVeto,
 		UnknownDatacenter:               state.UnknownDatacenter,
 		DatacenterNotEnabled:            state.DatacenterNotEnabled,
 		BuyerNotLive:                    state.BuyerNotLive,
 		StaleRouteMatrix:                state.StaleRouteMatrix,
-		TryBeforeYouBuy:                 !state.Input.RouteState.Committed,
 	}
 
 	// Clamp any values to ensure the entry is serialized properly
@@ -1912,7 +1894,6 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 				Down: int64(state.Packet.NextKbpsDown),
 			},
 			IsMultiPath:       state.Input.RouteState.Multipath,
-			IsTryBeforeYouBuy: !state.Input.RouteState.Committed,
 			OnNetworkNext:     state.Packet.Next,
 		},
 		Point: SessionMapPoint{
@@ -1921,7 +1902,6 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 			Longitude: float64(state.Input.Location.Longitude),
 			SessionID: state.Input.SessionID,
 		},
-		LargeCustomer: state.Buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    state.Input.EverOnNext,
 	}
 

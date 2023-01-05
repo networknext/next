@@ -235,26 +235,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	}
 
 	/*
-		Check for various tags on the first slice only (tags are only set on the first slice).
-
-		These tags enable specific behavior, like "pro" mode (accelerate always)
-
-		It's an easy way for our customers to indicate that certain sessions should be treated differently.
-	*/
-
-	const ProTag = 0x77FD571956A1F7F8
-
-	if state.Request.SliceNumber == 0 {
-		for i := int32(0); i < state.Request.NumTags; i++ {
-			if state.Request.Tags[i] == ProTag {
-				core.Debug("pro mode enabled")
-				state.Buyer.RouteShader.ProMode = true
-				state.Pro = true
-			}
-		}
-	}
-
-	/*
 		The debug string is appended to during the rest of the handler and sent down to the SDK
 		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
 	*/
@@ -488,7 +468,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 	}
 
 	state.Response.NumNearRelays = int32(numNearRelays)
-	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings && !state.Buyer.InternalConfig.LargeCustomer
+	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
 	state.Response.NearRelaysChanged = true
 
 	return true
@@ -831,7 +811,13 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		destRelays := state.DestRelays[:state.NumDestRelays]
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays[:state.NumNearRelays], sourceRelayCosts[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		directLatency := int32(state.Request.DirectMinRTT)
+		nextLatency := int32(state.Request.NextRTT)
+
+		// todo: what the fuck. this should be calculated?
+		predictedLatency := state.Output.RouteCost 
+
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, directLatency, nextLatency, predictedLatency, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays[:state.NumNearRelays], sourceRelayCosts[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -898,17 +884,16 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	}
 
 	/*
-		Stash key route parameters in the response so the SDK recieves them.
+		Committed means to send packets across the network next route
+	*/
 
-		Committed means to actually send packets across the network next route,
-		if false, then the route just has ping packets sent across it, but no
-		game packets.
+	state.Response.Committed = true
 
+	/*
 		Multipath means to send packets across both the direct and the network
 		next route at the same time, which reduces packet loss.
 	*/
 
-	state.Response.Committed = state.Output.RouteState.Committed
 	state.Response.Multipath = state.Output.RouteState.Multipath
 
 	/*

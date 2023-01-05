@@ -579,13 +579,11 @@ func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteS
 		!rs.ReduceJitter &&
 		!rs.ReducePacketLoss &&
 		!rs.Multipath &&
-		!rs.ProMode &&
 		rs.AcceptableLatency == 0 &&
 		rs.LatencyThreshold == 0 &&
 		rs.AcceptablePacketLoss == 0 &&
 		rs.BandwidthEnvelopeUpKbps == 0 &&
 		rs.BandwidthEnvelopeDownKbps == 0 &&
-		len(rs.BannedUsers) == 0 &&
 		rs.PacketLossSustained == 0)
 
 	if isEmptyRouteShader {
@@ -670,20 +668,7 @@ func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, fie
 		}
 
 		buyer.InternalConfig.RTTVeto_Multipath = rttVetoMultipath
-	case "MultipathOverloadThreshold":
-		multipathOverloadThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
 
-		buyer.InternalConfig.MultipathOverloadThreshold = multipathOverloadThreshold
-	case "TryBeforeYouBuy":
-		tryBeforeYouBuy, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.TryBeforeYouBuy = tryBeforeYouBuy
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
@@ -691,20 +676,6 @@ func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, fie
 		}
 
 		buyer.InternalConfig.ForceNext = forceNext
-	case "LargeCustomer":
-		largeCustomer, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.LargeCustomer = largeCustomer
-	case "Uncommitted":
-		uncommitted, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.Uncommitted = uncommitted
 	case "HighFrequencyPings":
 		highFrequencyPings, ok := value.(bool)
 		if !ok {
@@ -712,13 +683,13 @@ func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, fie
 		}
 
 		buyer.InternalConfig.HighFrequencyPings = highFrequencyPings
-	case "MaxRTT":
-		maxRTT, ok := value.(int32)
+	case "MaxNextRTT":
+		maxNextRTT, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
+			return fmt.Errorf("MaxNextRTT: %v is not a valid int32 type (%T)", value, value)
 		}
 
-		buyer.InternalConfig.MaxRTT = maxRTT
+		buyer.InternalConfig.MaxNextRTT = maxNextRTT
 	case "RouteDiversity":
 		routeDiversity, ok := value.(int32)
 		if !ok {
@@ -726,27 +697,6 @@ func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, fie
 		}
 
 		buyer.InternalConfig.RouteDiversity = routeDiversity
-	case "MultipathThreshold":
-		multipathThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.MultipathThreshold = multipathThreshold
-	case "EnableVanityMetrics":
-		enableVanityMetrics, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.EnableVanityMetrics = enableVanityMetrics
-	case "ReducePacketLossMinSliceNumber":
-		reducePacketLossMinSliceNumber, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
-		}
-
-		buyer.InternalConfig.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}
@@ -865,13 +815,6 @@ func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field 
 		}
 
 		buyer.RouteShader.Multipath = multipath
-	case "ProMode":
-		proMode, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.RouteShader.ProMode = proMode
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
@@ -1227,42 +1170,6 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 
 	m.localRelays[idx] = relay
 	return nil
-}
-
-func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	routeShader, err := m.RouteShader(ctx, buyerID)
-	if err != nil {
-		return err
-	}
-
-	routeShader.BannedUsers[userID] = true
-
-	err = m.AddRouteShader(ctx, routeShader, buyerID)
-
-	return err
-}
-
-func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	routeShader, err := m.RouteShader(ctx, buyerID)
-	if err != nil {
-		return err
-	}
-
-	if _, exists := routeShader.BannedUsers[userID]; exists {
-		delete(routeShader.BannedUsers, userID)
-		return m.AddRouteShader(ctx, routeShader, buyerID)
-	}
-
-	return nil
-}
-
-func (m *InMemory) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error) {
-	routeShader, err := m.RouteShader(ctx, buyerID)
-	if err != nil {
-		return map[uint64]bool{}, err
-	}
-
-	return routeShader.BannedUsers, nil
 }
 
 func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
