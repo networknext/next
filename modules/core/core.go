@@ -964,12 +964,6 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 
 	bestRouteCost := int32(math.MaxInt32)
 
-	// todo
-	fmt.Printf("get best route cost\n")
-	fmt.Printf("source relays = %v\n", sourceRelays)
-	fmt.Printf("source relay cost = %v\n", sourceRelayCost)
-	fmt.Printf("dest relays = %v\n", destRelays)
-
 	for i := range sourceRelays {
 
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay

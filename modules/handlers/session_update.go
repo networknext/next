@@ -88,7 +88,7 @@ type SessionUpdateState struct {
 	NearRelaysExcluded                                 bool
 	UsingHeldNearRelays                                bool
 	NotGettingNearRelaysAnalysisOnly                   bool
-	NotGettingNearRelaysDatacenterAccelerationDisabled bool
+	NotGettingNearRelaysDatacenterNotEnabled bool
 	FallbackToDirect                                   bool
 	NoNearRelays                                       bool
 	LargeCustomer                                      bool
@@ -448,7 +448,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	if state.DatacenterNotEnabled {
 		core.Debug("datacenter not enabled, not getting near relays")
-		state.NotGettingNearRelaysDatacenterAccelerationDisabled = true
+		state.NotGettingNearRelaysDatacenterNotEnabled = true
 		return false
 	}
 
@@ -587,7 +587,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	state.NumNearRelays = int(numNearRelays)
 
-	for i := range state.Request.NearRelayIds {
+	for i := range state.Request.NearRelayIds[:numNearRelays] {
 		relayIndex, exists := state.RouteMatrix.RelayIdToIndex[state.Request.NearRelayIds[i]]
 		if exists {
 			state.NearRelayIndices[i] = int32(relayIndex)
@@ -793,7 +793,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		destRelays := state.DestRelays[:state.NumDestRelays]
+
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:state.NumNearRelays], state.NearRelayRTTs[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 
 			state.TakeNetworkNext = true
 
@@ -860,7 +862,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		destRelays := state.DestRelays[:state.NumDestRelays]
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays, sourceRelayCosts, destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), int32(state.Request.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays[:state.NumNearRelays], sourceRelayCosts[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -1064,9 +1066,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Debug != nil {
 		state.Response.Debug = *state.Debug
-		fmt.Printf("-------------------------------------\n")
-		fmt.Printf("%s", *state.Debug)
-		fmt.Printf("-------------------------------------\n")
+		core.Debug("-------------------------------------")
+		core.Debug("%s-------------------------------------", *state.Debug)
 	}
 
 	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
