@@ -518,17 +518,10 @@ func SeedSQLStorage(
 			RTTVeto_Default:                -10,
 			RTTVeto_PacketLoss:             -20,
 			RTTVeto_Multipath:              -20,
-			MultipathOverloadThreshold:     500,
-			TryBeforeYouBuy:                false,
 			ForceNext:                      true,
-			LargeCustomer:                  false,
-			Uncommitted:                    false,
-			MaxRTT:                         300,
+			MaxNextRTT:                     300,
 			HighFrequencyPings:             true,
 			RouteDiversity:                 0,
-			MultipathThreshold:             35,
-			EnableVanityMetrics:            true,
-			ReducePacketLossMinSliceNumber: 10,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)
@@ -541,80 +534,11 @@ func SeedSQLStorage(
 			return fmt.Errorf("Error adding InternalConfig for local buyer: %v", err)
 		}
 
-		localRouteShader := core.RouteShader{
-			ABTest:                    false,
-			AcceptableLatency:         int32(25),
-			AcceptablePacketLoss:      float32(0),
-			BandwidthEnvelopeDownKbps: int32(1200),
-			BandwidthEnvelopeUpKbps:   int32(500),
-			DisableNetworkNext:        false,
-			LatencyThreshold:          int32(0),
-			Multipath:                 true,
-			ProMode:                   false,
-			ReduceLatency:             true,
-			ReducePacketLoss:          true,
-			SelectionPercent:          int(100),
-			PacketLossSustained:       float32(100),
-		}
-
-		gaRouteShader := core.RouteShader{
-			ABTest:                    false,
-			AcceptableLatency:         int32(25),
-			AcceptablePacketLoss:      float32(1),
-			BandwidthEnvelopeDownKbps: int32(1200),
-			BandwidthEnvelopeUpKbps:   int32(500),
-			DisableNetworkNext:        false,
-			LatencyThreshold:          int32(5),
-			Multipath:                 false,
-			ProMode:                   false,
-			ReduceLatency:             true,
-			ReducePacketLoss:          true,
-			SelectionPercent:          int(100),
-			PacketLossSustained:       float32(100),
-		}
+		localRouteShader := core.NewRouteShader()
 
 		err = db.AddRouteShader(ctx, localRouteShader, localBuyer.ID)
 		if err != nil {
 			return fmt.Errorf("Error adding RouteShader for local buyer: %v", err)
-		}
-
-		err = db.AddRouteShader(ctx, gaRouteShader, ghostBuyer.ID)
-		if err != nil {
-			return fmt.Errorf("Error adding RouteShader for ghost army buyer: %v", err)
-		}
-
-		userID1 := rand.Uint64()
-		userID2 := rand.Uint64()
-		userID3 := rand.Uint64()
-
-		err = db.AddBannedUser(ctx, localBuyer.ID, userID1)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
-		}
-
-		err = db.AddBannedUser(ctx, localBuyer.ID, userID2)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
-		}
-
-		err = db.AddBannedUser(ctx, localBuyer.ID, userID3)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
-		}
-
-		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID1)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
-		}
-
-		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID2)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
-		}
-
-		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID3)
-		if err != nil {
-			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
 		}
 
 		// set creation time to 1.5 hours ago to avoid cooldown ticker in UI

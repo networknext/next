@@ -442,7 +442,6 @@ func getRouteShader(
 	fmt.Printf("  AnalysisOnly             : %t\n", reply.RouteShader.AnalysisOnly)
 	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
 	fmt.Printf("  ABTest                   : %t\n", reply.RouteShader.ABTest)
-	fmt.Printf("  ProMode                  : %t\n", reply.RouteShader.ProMode)
 	fmt.Printf("  ReduceLatency            : %t\n", reply.RouteShader.ReduceLatency)
 	fmt.Printf("  ReduceJitter             : %t\n", reply.RouteShader.ReduceJitter)
 	fmt.Printf("  ReducePacketLoss         : %t\n", reply.RouteShader.ReducePacketLoss)

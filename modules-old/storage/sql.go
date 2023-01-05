@@ -140,7 +140,6 @@ type sqlRouteShader struct {
 	DisableNetworkNext        bool
 	LatencyThreshold          int64
 	Multipath                 bool
-	ProMode                   bool
 	ReduceLatency             bool
 	ReducePacketLoss          bool
 	ReduceJitter              bool
@@ -2797,7 +2796,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			&sqlRS.DisableNetworkNext,
 			&sqlRS.LatencyThreshold,
 			&sqlRS.Multipath,
-			&sqlRS.ProMode,
 			&sqlRS.ReduceLatency,
 			&sqlRS.ReducePacketLoss,
 			&sqlRS.ReduceJitter,
@@ -2830,7 +2828,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			AnalysisOnly:              sqlRS.AnalysisOnly,
 			SelectionPercent:          int(sqlRS.SelectionPercent),
 			ABTest:                    sqlRS.ABTest,
-			ProMode:                   sqlRS.ProMode,
 			ReduceLatency:             sqlRS.ReduceLatency,
 			ReducePacketLoss:          sqlRS.ReducePacketLoss,
 			ReduceJitter:              sqlRS.ReduceJitter,
@@ -2842,13 +2839,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
 			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
 		}
-
-		bannedUserList, err := db.BannedUsers(ctx, ephemeralBuyerID)
-		if err != nil {
-			core.Error("RouteShader() -> BannedUsers() returned an error")
-			return core.RouteShader{}, fmt.Errorf("RouteShader() -> BannedUser() returned an error: %v for Buyer %s", err, fmt.Sprintf("%016x", ephemeralBuyerID))
-		}
-		routeShader.BannedUsers = bannedUserList
 		return routeShader, nil
 	default:
 		core.Error("RouteShader() QueryRow returned an error: %v", err)
@@ -2925,17 +2915,10 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 			RTTVeto_Default:                int32(sqlIC.RTTVetoDefault),
 			RTTVeto_PacketLoss:             int32(sqlIC.RTTVetoPacketLoss),
 			RTTVeto_Multipath:              int32(sqlIC.RTTVetoMultipath),
-			MultipathOverloadThreshold:     int32(sqlIC.MultipathOverloadThreshold),
-			TryBeforeYouBuy:                sqlIC.TryBeforeYouBuy,
 			ForceNext:                      sqlIC.ForceNext,
-			LargeCustomer:                  sqlIC.LargeCustomer,
-			Uncommitted:                    sqlIC.Uncommitted,
-			MaxRTT:                         int32(sqlIC.MaxRTT),
+			MaxNextRTT:                     int32(sqlIC.MaxRTT),
 			HighFrequencyPings:             sqlIC.HighFrequencyPings,
 			RouteDiversity:                 int32(sqlIC.RouteDiversity),
-			MultipathThreshold:             int32(sqlIC.MultipathThreshold),
-			EnableVanityMetrics:            sqlIC.EnableVanityMetrics,
-			ReducePacketLossMinSliceNumber: int32(sqlIC.ReducePacketLossMinSliceNumber),
 		}
 		return internalConfig, nil
 	default:
@@ -2959,17 +2942,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
 		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
 		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
 		ForceNext:                      ic.ForceNext,
-		LargeCustomer:                  ic.LargeCustomer,
-		Uncommitted:                    ic.Uncommitted,
-		MaxRTT:                         int64(ic.MaxRTT),
+		MaxRTT:                         int64(ic.MaxNextRTT),
 		HighFrequencyPings:             ic.HighFrequencyPings,
 		RouteDiversity:                 int64(ic.RouteDiversity),
-		MultipathThreshold:             int64(ic.MultipathThreshold),
-		EnableVanityMetrics:            ic.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -3245,7 +3221,6 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		DisableNetworkNext:        rs.DisableNetworkNext,
 		LatencyThreshold:          int64(rs.LatencyThreshold),
 		Multipath:                 rs.Multipath,
-		ProMode:                   rs.ProMode,
 		ReduceLatency:             rs.ReduceLatency,
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
@@ -3273,7 +3248,6 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.DisableNetworkNext,
 		routeShader.LatencyThreshold,
 		routeShader.Multipath,
-		routeShader.ProMode,
 		routeShader.ReduceLatency,
 		routeShader.ReducePacketLoss,
 		routeShader.ReduceJitter,
@@ -3381,14 +3355,6 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, multipath, int64(ephemeralBuyerID))
-	case "ProMode":
-		proMode, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, proMode, int64(ephemeralBuyerID))
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
@@ -3489,107 +3455,6 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 	}
 
 	return nil
-}
-
-// AddBannedUser adds a user to the banned_user table
-func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
-	var sql bytes.Buffer
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2))"))
-
-	result, err := ExecRetry(
-		ctx,
-		db,
-		sql,
-		int64(userID), int64(ephemeralBuyerID),
-	)
-	if err != nil {
-		core.Error("AddBannedUser() error adding banned user: %v", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		core.Error("AddBannedUser() RowsAffected returned an error")
-		return err
-	}
-	if rows != 1 {
-		core.Error("AddBannedUser() RowsAffected <> 1")
-		return err
-	}
-
-	return nil
-
-}
-
-// RemoveBannedUser removes a user from the banned_user table
-func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
-	var sql bytes.Buffer
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-
-	result, err := ExecRetry(
-		ctx,
-		db,
-		sql,
-		int64(userID),
-		int64(ephemeralBuyerID),
-	)
-	if err != nil {
-		core.Error("RemoveBannedUser() error removing banned user: %v", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		core.Error("RemoveBannedUser() RowsAffected returned an error")
-		return err
-	}
-	if rows != 1 {
-		core.Error("RemoveBannedUser() RowsAffected <> 1")
-		return err
-	}
-
-	return nil
-
-}
-
-// BannedUsers returns the set of banned users for the specified buyer ID.
-func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[uint64]bool, error) {
-	var sql bytes.Buffer
-	bannedUserList := make(map[uint64]bool)
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	sql.Write([]byte("select user_id from banned_users where buyer_id = "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
-
-	rows, err := QueryMultipleRowsRetry(ctx, db, sql, int64(ephemeralBuyerID))
-	if err != nil {
-		core.Error("BannedUsers(): QueryContext returned an error: %v", err)
-		return bannedUserList, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var userID int64
-		err := rows.Scan(&userID)
-		if err != nil {
-			core.Error("BannedUsers() error parsing user and buyer IDs: %v", err)
-			return bannedUserList, err
-		}
-
-		bannedUserList[uint64(userID)] = true
-	}
-
-	return bannedUserList, nil
 }
 
 type featureFlag struct {

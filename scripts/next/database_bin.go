@@ -131,7 +131,6 @@ func createStagingDatabaseBin(numRelays int) {
 		SelectionPercent:          100,
 		PacketLossSustained:       100,
 		ABTest:                    false,
-		ProMode:                   false,
 		ReduceLatency:             true,
 		ReduceJitter:              true,
 		ReducePacketLoss:          true,

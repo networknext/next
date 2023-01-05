@@ -570,13 +570,6 @@ func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRo
 		}
 	}
 
-	if buyer.RouteShader.ProMode != args.RouteShader.ProMode {
-		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ProMode", args.RouteShader.ProMode); err != nil {
-			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
-			wasError = true
-		}
-	}
-
 	if buyer.RouteShader.ReduceLatency != args.RouteShader.ReduceLatency {
 		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceLatency", args.RouteShader.ReduceLatency); err != nil {
 			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
@@ -692,22 +685,9 @@ func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuye
 	// TODO: Update functions should be using database ID here
 
 	wasError := false
-	if buyer.InternalConfig.EnableVanityMetrics != args.InternalConfig.EnableVanityMetrics {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "EnableVanityMetrics", args.InternalConfig.EnableVanityMetrics); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
 
 	if buyer.InternalConfig.ForceNext != args.InternalConfig.ForceNext {
 		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ForceNext", args.InternalConfig.ForceNext); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.LargeCustomer != args.InternalConfig.LargeCustomer {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "LargeCustomer", args.InternalConfig.LargeCustomer); err != nil {
 			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
 			wasError = true
 		}
@@ -720,20 +700,6 @@ func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuye
 		}
 	}
 
-	if buyer.InternalConfig.Uncommitted != args.InternalConfig.Uncommitted {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "Uncommitted", args.InternalConfig.Uncommitted); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.TryBeforeYouBuy != args.InternalConfig.TryBeforeYouBuy {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "TryBeforeYouBuy", args.InternalConfig.TryBeforeYouBuy); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
 	if buyer.InternalConfig.MaxLatencyTradeOff != args.InternalConfig.MaxLatencyTradeOff && (args.InternalConfig.MaxLatencyTradeOff >= 0 && args.InternalConfig.MaxLatencyTradeOff < 1024) {
 		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxLatencyTradeOff", args.InternalConfig.MaxLatencyTradeOff); err != nil {
 			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
@@ -741,15 +707,8 @@ func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuye
 		}
 	}
 
-	if buyer.InternalConfig.MaxRTT != args.InternalConfig.MaxRTT && (args.InternalConfig.MaxRTT >= 0 && args.InternalConfig.MaxRTT < 1024) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxRTT", args.InternalConfig.MaxRTT); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.ReducePacketLossMinSliceNumber != args.InternalConfig.ReducePacketLossMinSliceNumber && (args.InternalConfig.ReducePacketLossMinSliceNumber >= 0) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ReducePacketLossMinSliceNumber", args.InternalConfig.ReducePacketLossMinSliceNumber); err != nil {
+	if buyer.InternalConfig.MaxNextRTT != args.InternalConfig.MaxNextRTT && (args.InternalConfig.MaxNextRTT >= 0 && args.InternalConfig.MaxNextRTT < 1024) {
+		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxRTT", args.InternalConfig.MaxNextRTT); err != nil {
 			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
 			wasError = true
 		}
@@ -771,13 +730,6 @@ func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuye
 
 	if buyer.InternalConfig.RouteSwitchThreshold != args.InternalConfig.RouteSwitchThreshold && (args.InternalConfig.RouteSwitchThreshold >= 0) {
 		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSwitchThreshold", args.InternalConfig.RouteSwitchThreshold); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.MultipathOverloadThreshold != args.InternalConfig.MultipathOverloadThreshold && (args.InternalConfig.MultipathOverloadThreshold >= 0) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MultipathOverloadThreshold", args.InternalConfig.MultipathOverloadThreshold); err != nil {
 			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
 			wasError = true
 		}
