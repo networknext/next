@@ -496,21 +496,6 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
-	/*
-		This function is CalculateNextBytesUpAndDown once every 10 seconds for all slices
-		in a session after slice 0 (first slice).
-
-		It takes the ping statistics for each near relay, and collates them
-		into a format suitable for route planning later on in the session
-		update.
-
-		It also runs various filters inside core.ReframeRelays, which look at
-		the history of latency, jitter and packet loss across the entire session
-		in order to exclude near relays with bad performance from being selected.
-
-		This function exits early if the session will not be accelerated.
-	*/
-
 	routeShader := &state.Buyer.RouteShader
 
 	if state.AnalysisOnly {
@@ -521,31 +506,6 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	if state.DatacenterNotEnabled {
 		core.Debug("datacenter not disabled, not updating near relay stats")
 		return false
-	}
-
-	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
-
-	if len(destRelayIds) == 0 {
-		core.Debug("no relays in datacenter %x", state.Datacenter.ID)
-		state.NoRelaysInDatacenter = true
-		return false
-	}
-
-	state.DestRelays = make([]int32, len(destRelayIds))
-
-	/*
-		If we are holding near relays, use the held near relay RTT as input
-		instead of the near relay ping data sent up from the SDK.
-	*/
-
-	if state.Input.HoldNearRelays {
-		core.Debug("using held near relay RTTs")
-		for i := range state.Request.NearRelayIds {
-			state.Request.NearRelayRTT[i] = state.Input.HoldNearRelayRTT[i] // when set to 255, near relay is excluded from routing
-			state.Request.NearRelayJitter[i] = 0
-			state.Request.NearRelayPacketLoss[i] = 0
-		}
-		state.UsingHeldNearRelays = true
 	}
 
 	/*
@@ -560,6 +520,10 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
 
 	numNearRelays := state.Request.NumNearRelays
+
+	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
+
+	state.DestRelays = make([]int32, len(destRelayIds))
 
 	core.ReframeRelays(
 
@@ -596,40 +560,43 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		}
 	}
 
-	SessionUpdate_FilterNearRelays(state) // IMPORTANT: Reduce % of sessions that run near relay pings for large customers
-
-	return true
-}
-
-func SessionUpdate_FilterNearRelays(state *SessionUpdateState) {
-
 	/*
-		Reduce the % of sessions running near relay pings for large customers.
+		On slice 1, store the near relay results from slice 0 (after processing to exclude bad near relays).
 
-		We do this by only running near relay pings for the first 3 slices, and then holding
-		the near relay ping results fixed for the rest of the session.
+		On subsequent slices, just use the held near relay results.
+
+		We can't afford to ping near relays continuously during a session.
+
+		This also enabled future work where a ping token grants a certain number of ping responses 
+		to an IP address only, solving near relay ping DDoS to our relay fleet.
 	*/
 
-	if !state.Buyer.InternalConfig.LargeCustomer {
-		return
-	}
-
-	state.LargeCustomer = true
-
-	if state.Request.SliceNumber < 4 {
-		return
-	}
-
-	// IMPORTANT: On any slice after 4, if we haven't already, grab the *processed* (255 if not routable)
-	// near relay RTTs from ReframeRelays and hold them as the near relay RTTs to use from now on.
-
 	if !state.Input.HoldNearRelays {
+
+		// hold near relay RTTs
+
 		core.Debug("holding near relays")
+
 		state.Output.HoldNearRelays = true
+
 		state.HoldingNearRelays = true
+
 		for i := 0; i < len(state.Request.NearRelayIds); i++ {
 			state.Output.HoldNearRelayRTT[i] = state.NearRelayRTTs[i]
 		}
+
+	} else {
+
+		// use held near relay RTTs
+
+		core.Debug("using held near relays")
+
+		for i := range state.Request.NearRelayIds {
+			state.Request.NearRelayRTT[i] = state.Input.HoldNearRelayRTT[i] // when set to 255, near relay is excluded from routing
+			state.Request.NearRelayJitter[i] = 0
+			state.Request.NearRelayPacketLoss[i] = 0
+		}
+
 	}
 
 	// tell the SDK to stop pinging near relays
@@ -639,6 +606,8 @@ func SessionUpdate_FilterNearRelays(state *SessionUpdateState) {
 		state.Response.NearRelayExcluded[i] = true
 	}
 	state.NearRelaysExcluded = true
+
+	return true
 }
 
 func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
