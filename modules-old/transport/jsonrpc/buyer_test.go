@@ -1951,7 +1951,6 @@ func TestRouteShader(t *testing.T) {
         assert.Equal(t, rs.AnalysisOnly, reply.RouteShader.AnalysisOnly)
         assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
         assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
-        assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
         assert.Equal(t, rs.ReduceLatency, reply.RouteShader.ReduceLatency)
         assert.Equal(t, rs.ReduceJitter, reply.RouteShader.ReduceJitter)
         assert.Equal(t, rs.ReducePacketLoss, reply.RouteShader.ReducePacketLoss)
@@ -2008,7 +2007,6 @@ func TestJSAddRouteShader(t *testing.T) {
         AnalysisOnly:              true,
         SelectionPercent:          int64(rs.SelectionPercent),
         ABTest:                    rs.ABTest,
-        ProMode:                   rs.ProMode,
         ReduceLatency:             rs.ReduceLatency,
         ReduceJitter:              rs.ReduceJitter,
         ReducePacketLoss:          rs.ReducePacketLoss,
@@ -2040,7 +2038,6 @@ func TestJSAddRouteShader(t *testing.T) {
         assert.Equal(t, rs.AnalysisOnly, reply.RouteShader.AnalysisOnly)
         assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
         assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
-        assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
         assert.Equal(t, rs.ReduceLatency, reply.RouteShader.ReduceLatency)
         assert.Equal(t, rs.ReduceJitter, reply.RouteShader.ReduceJitter)
         assert.Equal(t, rs.ReducePacketLoss, reply.RouteShader.ReducePacketLoss)
@@ -2149,7 +2146,7 @@ func TestUpdateRouteShader(t *testing.T) {
     int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
         "BandwidthEnvelopeDownKbps"}
 
-    boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+    boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ReduceLatency",
         "ReduceJitter", "ReducePacketLoss", "Multipath"}
 
     float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}

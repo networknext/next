@@ -1134,11 +1134,9 @@ func TestInMemoryUpdateInternalConfig(t *testing.T) {
 
 	int32Fields := []string{"RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
-		"ReducePacketLossMinSliceNumber"}
+		"MaxNextRTT", "RouteDiversity"}
 
-	boolFields := []string{"TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
-		"HighFrequencyPings", "EnableVanityMetrics"}
+	boolFields := []string{"ForceNext", "HighFrequencyPings"}
 
 	t.Run("buyer does not exist", func(t *testing.T) {
 		inMemory := storage.InMemory{}
@@ -1357,7 +1355,7 @@ func TestInMemoryUpdateRouteShader(t *testing.T) {
 	int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
 		"BandwidthEnvelopeDownKbps"}
 
-	boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath"}
 
 	float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}
@@ -1838,177 +1836,6 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 
 		err := inMemory.UpdateRelay(ctx, 0, "BillingSupplier", "seller ID")
 		assert.NoError(t, err)
-	})
-}
-
-func TestInMemoryAddBannedUser(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	t.Run("buyer does not exist", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		err := inMemory.AddBannedUser(ctx, 0, 0)
-		assert.EqualError(t, err, "buyer with reference 0 not found")
-	})
-
-	t.Run("buyer does not have route shader", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID: 1,
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		err = inMemory.AddBannedUser(ctx, 1, 0)
-		assert.EqualError(t, err, fmt.Sprintf("%s with reference %016x not found", "RouteShader", 1))
-	})
-
-	t.Run("success", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID:          1,
-			RouteShader: core.NewRouteShader(),
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		err = inMemory.AddBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-	})
-}
-
-func TestInMemoryRemoveBannedUser(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	t.Run("buyer does not exist", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		err := inMemory.RemoveBannedUser(ctx, 0, 0)
-		assert.EqualError(t, err, "buyer with reference 0 not found")
-	})
-
-	t.Run("buyer does not have route shader", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID: 1,
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		err = inMemory.RemoveBannedUser(ctx, 1, 0)
-		assert.EqualError(t, err, fmt.Sprintf("%s with reference %016x not found", "RouteShader", 1))
-	})
-
-	t.Run("success if user does not exist", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID:          1,
-			RouteShader: core.NewRouteShader(),
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		routeShader, err := inMemory.RouteShader(ctx, expected.ID)
-		assert.NoError(t, err)
-		assert.Zero(t, len(routeShader.BannedUsers))
-
-		err = inMemory.RemoveBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-	})
-
-	t.Run("success", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID:          1,
-			RouteShader: core.NewRouteShader(),
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		err = inMemory.AddBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-
-		routeShader, err := inMemory.RouteShader(ctx, expected.ID)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(routeShader.BannedUsers))
-
-		err = inMemory.RemoveBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-
-		routeShader, err = inMemory.RouteShader(ctx, expected.ID)
-		assert.NoError(t, err)
-		assert.Zero(t, len(routeShader.BannedUsers))
-	})
-}
-
-func TestInMemoryBannedUsers(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	t.Run("buyer does not exist", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		_, err := inMemory.BannedUsers(ctx, 0)
-		assert.EqualError(t, err, "buyer with reference 0 not found")
-	})
-
-	t.Run("buyer does not have route shader", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID: 1,
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		_, err = inMemory.BannedUsers(ctx, 1)
-		assert.EqualError(t, err, fmt.Sprintf("%s with reference %016x not found", "RouteShader", 1))
-	})
-
-	t.Run("success", func(t *testing.T) {
-		inMemory := storage.InMemory{}
-
-		expected := routing.Buyer{
-			ID:          1,
-			RouteShader: core.NewRouteShader(),
-		}
-
-		err := inMemory.AddBuyer(ctx, expected)
-		assert.NoError(t, err)
-
-		bannedUsers, err := inMemory.BannedUsers(ctx, 1)
-		assert.NoError(t, err)
-		assert.Zero(t, len(bannedUsers))
-
-		err = inMemory.AddBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-
-		bannedUsers, err = inMemory.BannedUsers(ctx, 1)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(bannedUsers))
-
-		err = inMemory.RemoveBannedUser(ctx, 1, 0)
-		assert.NoError(t, err)
-
-		bannedUsers, err = inMemory.BannedUsers(ctx, 1)
-		assert.NoError(t, err)
-		assert.Zero(t, len(bannedUsers))
 	})
 }
 

@@ -1,5 +1,6 @@
 package storage
 
+/*
 import (
 	"context"
 	"fmt"
@@ -113,7 +114,6 @@ type routeShader struct {
 	DisableNetworkNext        bool            `firestore:"disableNetworkNext"`
 	SelectionPercent          int             `firestore:"selectionPercent"`
 	ABTest                    bool            `firestore:"abTest"`
-	ProMode                   bool            `firestore:"proMode"`
 	ReduceLatency             bool            `firestore:"reduceLatency"`
 	ReduceJitter              bool            `firestore:"reduceJitter"`
 	ReducePacketLoss          bool            `firestore:"reducePacketLoss"`
@@ -2185,7 +2185,6 @@ func (fs *Firestore) GetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 	rs.DisableNetworkNext = tempRS.DisableNetworkNext
 	rs.SelectionPercent = tempRS.SelectionPercent
 	rs.ABTest = tempRS.ABTest
-	rs.ProMode = tempRS.ProMode
 	rs.ReduceLatency = tempRS.ReduceLatency
 	rs.ReduceJitter = tempRS.ReduceJitter
 	rs.ReducePacketLoss = tempRS.ReducePacketLoss
@@ -2196,34 +2195,17 @@ func (fs *Firestore) GetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 	rs.BandwidthEnvelopeUpKbps = tempRS.BandwidthEnvelopeUpKbps
 	rs.BandwidthEnvelopeDownKbps = tempRS.BandwidthEnvelopeDownKbps
 
-	// Convert user IDs from string to uint64
-	for userHashString := range tempRS.BannedUsers {
-		userHash, err := strconv.ParseUint(userHashString, 16, 64)
-		if err != nil {
-			level.Warn(fs.Logger).Log("msg", "failed to parse banned user hash", "user_hash", userHashString, "err", err)
-			continue
-		}
-		rs.BannedUsers[userHash] = true
-	}
-
 	return rs, nil
 }
 
 func (fs *Firestore) SetRouteShaderForBuyerID(ctx context.Context, firestoreID string, name string, routeShader core.RouteShader) error {
 	routeShaderID := firestoreID + "_0"
 
-	// Convert user IDs from uint64 to string
-	bannedUsers := map[string]bool{}
-	for userHash := range routeShader.BannedUsers {
-		bannedUsers[fmt.Sprintf("%016x", userHash)] = true
-	}
-
 	rsFirestore := map[string]interface{}{
 		"displayName":               name,
 		"disableNetworkNext":        routeShader.DisableNetworkNext,
 		"selectionPercent":          routeShader.SelectionPercent,
 		"abTest":                    routeShader.ABTest,
-		"proMode":                   routeShader.ProMode,
 		"reduceLatency":             routeShader.ReduceLatency,
 		"reduceJitter":              routeShader.ReduceJitter,
 		"reducePacketLoss":          routeShader.ReducePacketLoss,
@@ -2231,9 +2213,9 @@ func (fs *Firestore) SetRouteShaderForBuyerID(ctx context.Context, firestoreID s
 		"acceptableLatency":         routeShader.AcceptableLatency,
 		"latencyThreshold":          routeShader.LatencyThreshold,
 		"acceptablePacketLoss":      routeShader.AcceptablePacketLoss,
+		// todo: missing sestained packet loss
 		"bandwidthEnvelopeUpKbps":   routeShader.BandwidthEnvelopeUpKbps,
 		"bandwidthEnvelopeDownKbps": routeShader.BandwidthEnvelopeDownKbps,
-		"bannedUsers":               bannedUsers,
 	}
 
 	_, err := fs.Client.Collection("RouteShader4").Doc(routeShaderID).Set(ctx, rsFirestore)
@@ -2261,16 +2243,12 @@ func (fs *Firestore) GetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	ic.RTTVeto_Default = tempIC.RTTVeto_Default
 	ic.RTTVeto_PacketLoss = tempIC.RTTVeto_PacketLoss
 	ic.RTTVeto_Multipath = tempIC.RTTVeto_Multipath
-	ic.MultipathOverloadThreshold = tempIC.MultipathOverloadThreshold
-	ic.TryBeforeYouBuy = tempIC.TryBeforeYouBuy
 	ic.ForceNext = tempIC.ForceNext
-	ic.LargeCustomer = tempIC.LargeCustomer
-	ic.Uncommitted = tempIC.Uncommitted
-	ic.MaxRTT = tempIC.MaxRTT
+	ic.MaxNextRTT = tempIC.MaxNextRTT
 	ic.HighFrequencyPings = tempIC.HighFrequencyPings
 	ic.RouteDiversity = tempIC.RouteDiversity
-	ic.MultipathThreshold = tempIC.MultipathThreshold
-	ic.EnableVanityMetrics = tempIC.EnableVanityMetrics
+
+	// todo: missing some fields
 
 	return ic, nil
 }
@@ -2516,3 +2494,4 @@ func (fs *Firestore) RemoveAnalyticsDashboardByName(ctx context.Context, name st
 func (fs *Firestore) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateAnalyticsDashboardByID not implemented in Firestore storer")
 }
+*/

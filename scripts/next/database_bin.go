@@ -131,7 +131,6 @@ func createStagingDatabaseBin(numRelays int) {
 		SelectionPercent:          100,
 		PacketLossSustained:       100,
 		ABTest:                    false,
-		ProMode:                   false,
 		ReduceLatency:             true,
 		ReduceJitter:              true,
 		ReducePacketLoss:          true,
@@ -141,44 +140,30 @@ func createStagingDatabaseBin(numRelays int) {
 		AcceptablePacketLoss:      1,
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
-		BannedUsers:               make(map[uint64]bool),
 	}
 	defaultInternalConfig := core.InternalConfig{
-		ReducePacketLossMinSliceNumber: 0,
-		RouteSelectThreshold:           2,
-		RouteSwitchThreshold:           5,
-		MaxLatencyTradeOff:             20,
-		RTTVeto_Default:                -10,
-		RTTVeto_Multipath:              -20,
-		RTTVeto_PacketLoss:             -30,
-		MultipathOverloadThreshold:     500,
-		TryBeforeYouBuy:                false,
-		ForceNext:                      false,
-		LargeCustomer:                  false,
-		Uncommitted:                    false,
-		MaxRTT:                         300,
-		HighFrequencyPings:             true,
-		RouteDiversity:                 0,
-		MultipathThreshold:             25,
-		EnableVanityMetrics:            false,
+		RouteSelectThreshold: 2,
+		RouteSwitchThreshold: 5,
+		MaxLatencyTradeOff:   20,
+		RTTVeto_Default:      -10,
+		RTTVeto_Multipath:    -20,
+		RTTVeto_PacketLoss:   -30,
+		ForceNext:            false,
+		MaxNextRTT:           300,
+		HighFrequencyPings:   true,
+		RouteDiversity:       0,
 	}
 	nextInternalConfig := core.InternalConfig{
-		RouteSelectThreshold:       0,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         10,
-		RTTVeto_Default:            -5,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -20,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  true,
-		LargeCustomer:              true,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         false,
-		RouteDiversity:             0,
-		MultipathThreshold:         0,
-		EnableVanityMetrics:        true,
+		RouteSelectThreshold: 0,
+		RouteSwitchThreshold: 5,
+		MaxLatencyTradeOff:   10,
+		RTTVeto_Default:      -5,
+		RTTVeto_Multipath:    -20,
+		RTTVeto_PacketLoss:   -20,
+		ForceNext:            true,
+		MaxNextRTT:           300,
+		HighFrequencyPings:   false,
+		RouteDiversity:       0,
 	}
 
 	buyerGhostArmy := routing.Buyer{
@@ -215,8 +200,6 @@ func createStagingDatabaseBin(numRelays int) {
 	stagingSellerRouteShader := defaultRouteShader
 	stagingSellerRouteShader.SelectionPercent = 1
 	stagingSellerInternalConfig := defaultInternalConfig
-	stagingSellerInternalConfig.LargeCustomer = true
-	stagingSellerInternalConfig.EnableVanityMetrics = true
 
 	buyerStagingSeller := routing.Buyer{
 		CompanyCode:    "stagingseller",
