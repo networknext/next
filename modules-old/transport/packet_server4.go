@@ -707,9 +707,9 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
+
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
-	stream.SerializeBool(&sessionData.RouteState.Banned)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)
 	stream.SerializeBool(&sessionData.RouteState.NotSelected)
 	stream.SerializeBool(&sessionData.RouteState.ABTest)
@@ -718,95 +718,41 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
 	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
-	stream.SerializeBool(&sessionData.RouteState.ProMode)
 	stream.SerializeBool(&sessionData.RouteState.Multipath)
-	stream.SerializeBool(&sessionData.RouteState.Committed)
-	stream.SerializeBool(&sessionData.RouteState.CommitVeto)
-	stream.SerializeInteger(&sessionData.RouteState.CommitCounter, 0, 4)
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
-	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 	stream.SerializeBool(&sessionData.EverOnNext)
 	stream.SerializeBool(&sessionData.FellBackToDirect)
-
-	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
-
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
-		nearRelayPLHistory := int32(sessionData.RouteState.NearRelayPLHistory[i])
-		stream.SerializeInteger(&nearRelayPLHistory, 0, 255)
-		sessionData.RouteState.NearRelayPLHistory[i] = uint32(nearRelayPLHistory)
-	}
-
-	directPLHistory := int32(sessionData.RouteState.DirectPLHistory)
-	stream.SerializeInteger(&directPLHistory, 0, 255)
-	sessionData.RouteState.DirectPLHistory = uint32(directPLHistory)
-
-	stream.SerializeInteger(&sessionData.RouteState.PLHistoryIndex, 0, 7)
-	stream.SerializeInteger(&sessionData.RouteState.PLHistorySamples, 0, 8)
-
-	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
-	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-
-	stream.SerializeUint32(&sessionData.RouteState.DirectPLCount)
-
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		stream.SerializeUint32(&sessionData.RouteState.NearRelayPLCount[i])
-	}
-
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 
-	if sessionData.Version >= 9 {
-		stream.SerializeBool(&sessionData.RouteState.MultipathRestricted)
+	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
+	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
+	stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
+	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 
-		stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
-		stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
-		stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
-		stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
-	}
+	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 
-	if sessionData.Version >= 10 {
-		stream.SerializeBool(&sessionData.RouteState.LocationVeto)
-	}
-
-	if sessionData.Version >= 11 {
-		stream.SerializeBool(&sessionData.HoldNearRelays)
-		if sessionData.HoldNearRelays {
-			for i := 0; i < core.MaxNearRelays; i++ {
-				stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
-			}
+	stream.SerializeBool(&sessionData.HoldNearRelays)
+	if sessionData.HoldNearRelays {
+		for i := 0; i < core.MaxNearRelays; i++ {
+			stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
 		}
 	}
 
-	// IMPORTANT: Remove this in the future. We need this to stem fall back to directs 05-27-21
-	// Done
+	stream.SerializeBits(&sessionData.RouteState.PLSustainedCounter, 2)
+	stream.SerializeBool(&sessionData.WroteSummary)
+	stream.SerializeUint64(&sessionData.TotalPriceSum)
 
-	if sessionData.Version >= 12 {
-		stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
-	}
+	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
+	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 
-	if sessionData.Version >= 13 {
-		stream.SerializeBool(&sessionData.WroteSummary)
-	}
-
-	if sessionData.Version >= 14 {
-		stream.SerializeUint64(&sessionData.TotalPriceSum)
-
-		stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
-		stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
-	}
-
-	if sessionData.Version >= 15 {
-		stream.SerializeUint32(&sessionData.DurationOnNext)
-	}
+	stream.SerializeUint32(&sessionData.DurationOnNext)
 
 	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
 

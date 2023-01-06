@@ -85,11 +85,6 @@ blocks:
             - make dist/relay_backend.dev.tar.gz
             - artifact push workflow dist/relay_backend.dev.tar.gz
 
-        - name: "Server Backend 4"
-          commands:
-            - make dist/server_backend4.dev.tar.gz
-            - artifact push workflow dist/server_backend4.dev.tar.gz
-
         - name: "Server Backend 5"
           commands:
             - make dist/server_backend5.dev.tar.gz
@@ -162,11 +157,6 @@ blocks:
           commands:
             - artifact pull workflow relay_backend.dev.tar.gz
             - gsutil cp relay_backend.dev.tar.gz gs://development_artifacts/
-
-        - name: "Server Backend 4"
-          commands:
-            - artifact pull workflow server_backend4.dev.tar.gz
-            - gsutil cp server_backend4.dev.tar.gz gs://development_artifacts/
 
         - name: "Server Backend 5"
           commands:
