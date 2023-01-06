@@ -387,14 +387,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.RouteState.NoRoute = common.RandomBool()
 	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
 	sessionData.RouteState.Mispredict = common.RandomBool()
-
-	sessionData.RouteState.NumNearRelays = int32(common.RandomInt(0, core.MaxNearRelays))
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		sessionData.RouteState.NearRelayRTT[i] = int32(common.RandomInt(0, 255))
-		sessionData.RouteState.NearRelayJitter[i] = int32(common.RandomInt(0, 255))
-	}
-
-	sessionData.RouteState.RelayWentAway = common.RandomBool()
 	sessionData.RouteState.RouteLost = common.RandomBool()
 	sessionData.RouteState.LackOfDiversity = common.RandomBool()
 	sessionData.RouteState.MispredictCounter = uint32(common.RandomInt(0, 3))
@@ -656,42 +648,21 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 	stream.SerializeBool(&sessionData.EverOnNext)
 	stream.SerializeBool(&sessionData.FallbackToDirect)
-
-	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
-		// todo: we don't need to store the relay jitter
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
-	}
-
-	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
-
-	// todo: why store this? isn't it sent up in the request each session update?
-	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
-
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
+	stream.SerializeBits(&sessionData.RouteState.PLSustainedCounter, 2)
+	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 
 	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
 	stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
-
-	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
-
-	stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
-
 	stream.SerializeBool(&sessionData.WroteSummary)
-
 	stream.SerializeUint64(&sessionData.TotalPriceSum)
-
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
-
 	stream.SerializeUint32(&sessionData.DurationOnNext)
 
 	return stream.Error()

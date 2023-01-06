@@ -1477,7 +1477,6 @@ type RouteState struct {
 	LocationVeto        bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
-	RelayWentAway       bool
 	RouteLost           bool
 	Mispredict          bool
 	LackOfDiversity     bool

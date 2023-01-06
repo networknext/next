@@ -746,7 +746,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
+	stream.SerializeBits(&sessionData.RouteState.PLSustainedCounter, 2)
 	stream.SerializeBool(&sessionData.WroteSummary)
 	stream.SerializeUint64(&sessionData.TotalPriceSum)
 
