@@ -2650,7 +2650,7 @@ func TestReframeDestRelays(t *testing.T) {
 	relayIdToIndex[5] = 4
 	relayIdToIndex[6] = 5
 
-	inputDestRelayIds := [...]uint64{4,5,6,7}
+	inputDestRelayIds := [...]uint64{4, 5, 6, 7}
 
 	outputNumDestRelays := 0
 	outputDestRelays := make([]int32, len(inputDestRelayIds))
@@ -2678,7 +2678,7 @@ func TestReframeSourceRelays(t *testing.T) {
 	relayIdToIndex[8] = 7
 	relayIdToIndex[9] = 8
 
-	inputSourceRelayIds := [...]uint64{4,5,6,7,10}
+	inputSourceRelayIds := [...]uint64{4, 5, 6, 7, 10}
 	inputSourceRelayLatency := [...]int32{100, 10, 0, 300, 10}
 
 	outputSourceRelays := make([]int32, len(inputSourceRelayIds))
@@ -5927,10 +5927,6 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 // -------------------------------------------------------------
 
 // todo: Test_FilterSourceRelays
-
-// todo: Test_ReframeDestRelays
-
-// todo: Test_ReframeSourceRelays
 
 // todo
 /*

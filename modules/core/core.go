@@ -1235,7 +1235,7 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, out_sourceRelayLatency []int32) {
 
 	// calculate average jitter
 
@@ -1260,61 +1260,52 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with latency above 255ms
 		if sourceRelayLatency[i] > 255 {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with jitter significantly higher than average
 		if sourceRelayJitter[i] > averageJitter+JitterThreshold {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with jitter significantly higher than direct
 		if sourceRelayJitter[i] > directJitter+JitterThreshold {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with PL >= 50%
 		if sourceRelayPacketLoss[i] >= 50 {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with latency > direct
 		if sourceRelayLatency[i] > directLatency {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with packet loss higher than direct
 		if sourceRelayPacketLoss[i] > directPacketLoss {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays that no longer exist
-		relayIndex, ok := relayIdToIndex[sourceRelayId[i]]
+		_, ok := relayIdToIndex[sourceRelayId[i]]
 		if !ok {
 			out_sourceRelayLatency[i] = 255
-			out_sourceRelays[i] = -1
 			continue
 		}
 
-		out_sourceRelays[i] = relayIndex
 		out_sourceRelayLatency[i] = sourceRelayLatency[i]
 	}
 }
@@ -1425,20 +1416,20 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 }
 
 type RouteShader struct {
-	DisableNetworkNext        bool            `json:"disable_network_next"`
-	AnalysisOnly              bool            `json:"analysis_only"`
-	SelectionPercent          int             `json:"selection_percentage"`
-	ABTest                    bool            `json:"ab_test"`
-	ReduceLatency             bool            `json:"reduce_latency"`
-	ReduceJitter              bool            `json:"reduce_jitter"`
-	ReducePacketLoss          bool            `json:"reduce_packet_loss"`
-	Multipath                 bool            `json:"multipath"`
-	AcceptableLatency         int32           `json:"acceptable_latency"`
-	LatencyThreshold          int32           `json:"latency_threshold"`
-	AcceptablePacketLoss      float32         `json:"acceptable_packet_loss"`
-	PacketLossSustained       float32         `json:"packet_loss_sustained"`
-	BandwidthEnvelopeUpKbps   int32           `json:"bandwidth_envelope_up_kbps"`
-	BandwidthEnvelopeDownKbps int32           `json:"bandwidth_envelope_down_kbps"`
+	DisableNetworkNext        bool    `json:"disable_network_next"`
+	AnalysisOnly              bool    `json:"analysis_only"`
+	SelectionPercent          int     `json:"selection_percentage"`
+	ABTest                    bool    `json:"ab_test"`
+	ReduceLatency             bool    `json:"reduce_latency"`
+	ReduceJitter              bool    `json:"reduce_jitter"`
+	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
+	Multipath                 bool    `json:"multipath"`
+	AcceptableLatency         int32   `json:"acceptable_latency"`
+	LatencyThreshold          int32   `json:"latency_threshold"`
+	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
+	PacketLossSustained       float32 `json:"packet_loss_sustained"`
+	BandwidthEnvelopeUpKbps   int32   `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps int32   `json:"bandwidth_envelope_down_kbps"`
 }
 
 func NewRouteShader() RouteShader {
@@ -1486,30 +1477,30 @@ type RouteState struct {
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold           int32 `json:"route_select_threshold"`
-	RouteSwitchThreshold           int32 `json:"route_switch_threshold"`
-	MaxLatencyTradeOff             int32 `json:"max_latency_trade_off"`
-	RTTVeto_Default                int32 `json:"rtt_veto_default"`
-	RTTVeto_Multipath              int32 `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss             int32 `json:"rtt_veto_packet_loss"`
-	MaxNextRTT                     int32 `json:"max_next_rtt"`
-	ForceNext                      bool  `json:"force_next"`
-	HighFrequencyPings             bool  `json:"high_frequency_pings"`
-	RouteDiversity                 int32 `json:"route_diversity"`
+	RouteSelectThreshold int32 `json:"route_select_threshold"`
+	RouteSwitchThreshold int32 `json:"route_switch_threshold"`
+	MaxLatencyTradeOff   int32 `json:"max_latency_trade_off"`
+	RTTVeto_Default      int32 `json:"rtt_veto_default"`
+	RTTVeto_Multipath    int32 `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss   int32 `json:"rtt_veto_packet_loss"`
+	MaxNextRTT           int32 `json:"max_next_rtt"`
+	ForceNext            bool  `json:"force_next"`
+	HighFrequencyPings   bool  `json:"high_frequency_pings"`
+	RouteDiversity       int32 `json:"route_diversity"`
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
-		RouteSelectThreshold:           2,
-		RouteSwitchThreshold:           5,
-		MaxLatencyTradeOff:             20,
-		RTTVeto_Default:                -10,
-		RTTVeto_Multipath:              -20,
-		RTTVeto_PacketLoss:             -30,
-		MaxNextRTT:                     300,
-		ForceNext:                      false,
-		HighFrequencyPings:             true,
-		RouteDiversity:                 0,
+		RouteSelectThreshold: 2,
+		RouteSwitchThreshold: 5,
+		MaxLatencyTradeOff:   20,
+		RTTVeto_Default:      -10,
+		RTTVeto_Multipath:    -20,
+		RTTVeto_PacketLoss:   -30,
+		MaxNextRTT:           300,
+		ForceNext:            false,
+		HighFrequencyPings:   true,
+		RouteDiversity:       0,
 	}
 }
 

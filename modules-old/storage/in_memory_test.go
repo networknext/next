@@ -1136,7 +1136,7 @@ func TestInMemoryUpdateInternalConfig(t *testing.T) {
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
 		"MaxNextRTT", "RouteDiversity"}
 
-	boolFields := []string{"ForceNext",	"HighFrequencyPings"}
+	boolFields := []string{"ForceNext", "HighFrequencyPings"}
 
 	t.Run("buyer does not exist", func(t *testing.T) {
 		inMemory := storage.InMemory{}

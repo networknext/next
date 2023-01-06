@@ -2278,16 +2278,16 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 	}
 
 	jsonIC := JSInternalConfig{
-		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
-		RTTVeto_Default:                int64(ic.RTTVeto_Default),
-		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
-		ForceNext:                      ic.ForceNext,
-		MaxRTT:                         int64(ic.MaxNextRTT),
-		HighFrequencyPings:             ic.HighFrequencyPings,
-		RouteDiversity:                 int64(ic.RouteDiversity),
+		RouteSelectThreshold: int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold: int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:   int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:      int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:    int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:   int64(ic.RTTVeto_PacketLoss),
+		ForceNext:            ic.ForceNext,
+		MaxRTT:               int64(ic.MaxNextRTT),
+		HighFrequencyPings:   ic.HighFrequencyPings,
+		RouteDiversity:       int64(ic.RouteDiversity),
 		// todo: are we passing in all internal config fields above?
 	}
 
@@ -2314,16 +2314,16 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 	}
 
 	ic := core.InternalConfig{
-		RouteSelectThreshold:           int32(arg.InternalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold:           int32(arg.InternalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:             int32(arg.InternalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:                int32(arg.InternalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:              int32(arg.InternalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:             int32(arg.InternalConfig.RTTVeto_PacketLoss),
-		ForceNext:                      arg.InternalConfig.ForceNext,
-		MaxNextRTT:                     int32(arg.InternalConfig.MaxRTT),
-		HighFrequencyPings:             arg.InternalConfig.HighFrequencyPings,
-		RouteDiversity:                 int32(arg.InternalConfig.RouteDiversity),
+		RouteSelectThreshold: int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold: int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:   int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:      int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:    int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:   int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		ForceNext:            arg.InternalConfig.ForceNext,
+		MaxNextRTT:           int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:   arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:       int32(arg.InternalConfig.RouteDiversity),
 		// todo: do we have all internal config fields above?
 	}
 

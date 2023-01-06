@@ -55,16 +55,9 @@ type SessionUpdateState struct {
 	RouteDiversity int32
 
 	// for route planning
-	DestRelays       []int32
-
-	// todo: WHUT
-	/*
-	NumNearRelays    int
-	NearRelayIndices [core.MaxNearRelays]int32
-	NearRelayRTTs    [core.MaxNearRelays]int32
-	NearRelayJitters [core.MaxNearRelays]int32
-	NumDestRelays    int32
-	*/
+	DestRelays     []int32
+	SourceRelays   []int32
+	SourceRelayRTT []int32
 
 	// for session post (billing, portal etc...)
 	PostNearRelayCount               int
@@ -80,44 +73,43 @@ type SessionUpdateState struct {
 	PostRealPacketLossServerToClient float32
 
 	// flags
-	ReadSessionData                                    bool
-	LongDuration                                       bool
-	ClientPingTimedOut                                 bool
-	Pro                                                bool
-	BadSessionId                                       bool
-	BadSliceNumber                                     bool
-	AnalysisOnly                                       bool
-	NoRelaysInDatacenter                               bool
-	HoldingNearRelays                                  bool
-	NearRelaysExcluded                                 bool
-	UsingHeldNearRelays                                bool
-	NotGettingNearRelaysAnalysisOnly                   bool
+	ReadSessionData                          bool
+	LongDuration                             bool
+	ClientPingTimedOut                       bool
+	Pro                                      bool
+	BadSessionId                             bool
+	BadSliceNumber                           bool
+	AnalysisOnly                             bool
+	NoRelaysInDatacenter                     bool
+	HoldingNearRelays                        bool
+	NearRelaysExcluded                       bool
+	NotGettingNearRelaysAnalysisOnly         bool
 	NotGettingNearRelaysDatacenterNotEnabled bool
-	FallbackToDirect                                   bool
-	NoNearRelays                                       bool
-	LargeCustomer                                      bool
-	NoRouteRelays                                      bool
-	Aborted                                            bool
-	RouteRelayNoLongerExists                           bool
-	RouteChanged                                       bool
-	RouteContinued                                     bool
-	RouteNoLongerExists                                bool
-	Mispredict                                         bool
-	LatencyWorse                                       bool
-	FailedToReadSessionData                            bool
-	StaleRouteMatrix                                   bool
-	UnknownDatacenter                                  bool
-	DatacenterNotEnabled                               bool
-	TakeNetworkNext                                    bool
-	StayDirect                                         bool
-	LeftNetworkNext                                    bool
-	WroteResponsePacket                                bool
-	FailedToWriteResponsePacket                        bool
-	FailedToSendResponsePacket                         bool
-	LocationVeto                                       bool
-	SentSessionUpdateMessage                           bool
-	SentPortalData                                     bool
-	LocatedIP                                          bool
+	FallbackToDirect                         bool
+	NoNearRelays                             bool
+	LargeCustomer                            bool
+	NoRouteRelays                            bool
+	Aborted                                  bool
+	RouteRelayNoLongerExists                 bool
+	RouteChanged                             bool
+	RouteContinued                           bool
+	RouteNoLongerExists                      bool
+	Mispredict                               bool
+	LatencyWorse                             bool
+	FailedToReadSessionData                  bool
+	StaleRouteMatrix                         bool
+	UnknownDatacenter                        bool
+	DatacenterNotEnabled                     bool
+	TakeNetworkNext                          bool
+	StayDirect                               bool
+	LeftNetworkNext                          bool
+	WroteResponsePacket                      bool
+	FailedToWriteResponsePacket              bool
+	FailedToSendResponsePacket               bool
+	LocationVeto                             bool
+	SentSessionUpdateMessage                 bool
+	SentPortalData                           bool
+	LocatedIP                                bool
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -412,19 +404,11 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		of a session, and are held fixed for the duration of the session.
 
 		The SDK pings the near relays, and reports up the latency, jitter
-		and packet loss to each near relay, with each subsequent session
-		update (every 10 seconds).
+		and packet loss to each near relay.
 
-		Network Next uses the relay ping statistics in route planning,
-		by adding the latency to the first relay to the total route cost,
-		and by excluding near relays with higher jitter or packet loss
-		than the default internet route.
-
-		This function is skipped for "Analysis Only" buyers because sessions
-		will always take direct.
-
-		This function is skipped for datacenters that are not enabled for
-		acceleration, forcing all connected clients to go direct.
+		Network Next uses this data in route planning, adding the latency
+		to the first relay to the total route cost, and by excluding near relays
+		with higher jitter or packet loss.
 	*/
 
 	if state.Buyer.RouteShader.AnalysisOnly {
@@ -506,9 +490,9 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
 	/*
-		On slice #1, we have the first near relay ping results.
+		On slice #1, we have the first near relay ping results sent up from the SDK.
 
-		Filter them and store the results in the route state as held relays.
+		Filter them and store the usable near relays in the session data as held relays.
 	*/
 
 	if state.Input.SliceNumber == 1 {
@@ -516,77 +500,46 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
 		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
 		directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
-		nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
 
-		_ = directLatency
-		_ = directJitter
-		_ = directPacketLoss
-		_ = nextPacketLoss
+		sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
+		sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
+		sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
+		sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
 
-		// todo: FilterSourceRelays
+		outputSourceRelayLatency := [core.MaxNearRelays]int32{}
 
-		return true
+		core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
+			directLatency,
+			directJitter,
+			directPacketLoss,
+			sourceRelayIds,
+			sourceRelayLatency,
+			sourceRelayJitter,
+			sourceRelayPacketLoss,
+			outputSourceRelayLatency[:])
+
+		state.Output.HeldNumNearRelays = state.Request.NumNearRelays
+		copy(state.Output.HeldNearRelayIds[:], sourceRelayIds)
+		copy(state.Output.HeldNearRelayRTT[:], outputSourceRelayLatency[:state.Request.NumNearRelays])
+
+		// todo: we may wish to store the near relay ping data somewhere
+		// by publishing a google pubsub message in the session post for slice #1
 	}
 
 	/*
-		On subsequent slices (#2  and above...) reframe the near relays 
-		to get them in a relay index form relative to the route matrix.
+		Reframe the source relays to get them in a relay index from relative to the current route matrix.
 	*/
 
-	// todo: ReframeSourceRelays
+	inputSourceRelayIds := state.Output.HeldNearRelayIds[:state.Output.HeldNumNearRelays]
+	inputSourceRelayLatency := state.Output.HeldNearRelayRTT[:state.Output.HeldNumNearRelays]
 
-	/*
-	routeState := &state.Output.RouteState
+	outputSourceRelays := make([]int32, state.Output.HeldNumNearRelays)
+	outputSourceRelayLatency := make([]int32, state.Output.HeldNumNearRelays)
 
+	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, inputSourceRelayIds, inputSourceRelayLatency, outputSourceRelays, outputSourceRelayLatency)
 
-	numNearRelays := state.Request.NumNearRelays
-
-	
-
-	state.DestRelays = make([]int32, len(destRelayIds))
-	*/
-
-	// todo: clean up and update to latest reframe source relays, reframe dest relays
-
-	/*
-	core.ReframeRelays(
-
-		// input
-		routeShader,
-		routeState,
-		state.RouteMatrix.RelayIdToIndex,
-		directLatency,
-		directJitter,
-		directPacketLoss,
-		nextPacketLoss,
-		int32(state.Request.SliceNumber),
-
-		// todo: here is the bug. near relay stuff isn't coming in the request anymore. it's stored in state...
-		state.Request.NearRelayIds[:numNearRelays],
-		state.Request.NearRelayRTT[:numNearRelays],
-		state.Request.NearRelayJitter[:numNearRelays],
-		state.Request.NearRelayPacketLoss[:numNearRelays],
-		
-		destRelayIds,
-
-		// output
-		state.NearRelayRTTs[:],
-		state.NearRelayJitters[:],
-		&state.NumDestRelays,
-		state.DestRelays,
-	)
-
-	state.NumNearRelays = int(numNearRelays)
-
-	for i := range state.Request.NearRelayIds[:numNearRelays] {
-		relayIndex, exists := state.RouteMatrix.RelayIdToIndex[state.Request.NearRelayIds[i]]
-		if exists {
-			state.NearRelayIndices[i] = int32(relayIndex)
-		} else {
-			state.NearRelayIndices[i] = -1 // near relay no longer exists in route matrix
-		}
-	}
-	*/
+	state.SourceRelays = outputSourceRelays
+	state.SourceRelayRTT = outputSourceRelayLatency
 
 	return true
 }
@@ -730,22 +683,35 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		return
 	}
 
-	// var stayOnNext bool
+	var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	// sliceNumber := int32(state.Request.SliceNumber)
+	sliceNumber := int32(state.Request.SliceNumber)
 
 	if !state.Input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		// todo: update
-		/*
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:state.NumNearRelays], state.NearRelayRTTs[:state.NumNearRelays], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, 
+			state.RouteMatrix.FullRelayIndexSet,
+			&state.Buyer.RouteShader, 
+			&state.Output.RouteState, 
+			&state.Buyer.InternalConfig, 
+			int32(state.Request.DirectMinRTT), 
+			state.RealPacketLoss, 
+			state.SourceRelays, 
+			state.SourceRelayRTT, 
+			state.DestRelays, 
+			&routeCost, 
+			&routeNumRelays, 
+			routeRelays[:], 
+			&state.RouteDiversity, 
+			state.Debug, 
+			sliceNumber) {
 
 			state.TakeNetworkNext = true
 
@@ -773,7 +739,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			}
 
 		}
-		*/
 
 	} else {
 
@@ -793,16 +758,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			return
 		}
 
-		/*
-			Reframe the current route in terms of relay indices in the current route matrix
+		// reframe the current route in terms of relay indices in the current route matrix
 
-			This is necessary because the set of relays in the route matrix change over time.
-		*/
-
-		// todo: rework reframe route
-
-		/*
-		if !core.ReframeRoute(&state.Output.RouteState, state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
+		if !core.ReframeRoute(state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
 			routeRelays = [core.MaxRelaysPerRoute]int32{}
 			core.Debug("one or more relays in the route no longer exist")
 			state.RouteRelayNoLongerExists = true
@@ -810,22 +768,33 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				*state.Debug += "route relay no longer exists\n"
 			}
 		}
-		*/
 
-		// todo: update
-		/*
-		sourceRelays := state.NearRelayIndices[:state.NumNearRelays]
-		sourceRelayCosts := state.NearRelayRTTs[:state.NumNearRelays]
-
-		destRelays := state.DestRelays[:state.NumDestRelays]
+		// make route decision
 
 		directLatency := int32(state.Request.DirectMinRTT)
 		nextLatency := int32(state.Request.NextRTT)
+		predictedLatency := state.Input.RouteCost
 
-		// todo: what the fuck. this should be calculated?
-		predictedLatency := state.Output.RouteCost 
-
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, directLatency, nextLatency, predictedLatency, state.RealPacketLoss, state.Request.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, sourceRelays[:state.NumNearRelays], sourceRelayCosts[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, 
+			state.RouteMatrix.FullRelayIndexSet, 
+			state.RouteMatrix.RelayNames, 
+			&state.Buyer.RouteShader, 
+			&state.Output.RouteState, 
+			&state.Buyer.InternalConfig, 
+			directLatency, 
+			nextLatency, 
+			predictedLatency, 
+			state.RealPacketLoss, 
+			state.Request.NextPacketLoss, 
+			state.Output.RouteNumRelays, 
+			routeRelays, 
+			state.SourceRelays, 
+			state.SourceRelayRTT, 
+			state.DestRelays, 
+			&routeCost, 
+			&routeNumRelays, 
+			routeRelays[:], 
+			state.Debug)
 
 		if stayOnNext {
 
@@ -889,7 +858,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				}
 			}
 		}
-		*/
 	}
 
 	/*

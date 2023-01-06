@@ -2912,16 +2912,16 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:           int32(sqlIC.RouteSelectThreshold),
-			RouteSwitchThreshold:           int32(sqlIC.RouteSwitchThreshold),
-			MaxLatencyTradeOff:             int32(sqlIC.MaxLatencyTradeOff),
-			RTTVeto_Default:                int32(sqlIC.RTTVetoDefault),
-			RTTVeto_PacketLoss:             int32(sqlIC.RTTVetoPacketLoss),
-			RTTVeto_Multipath:              int32(sqlIC.RTTVetoMultipath),
-			ForceNext:                      sqlIC.ForceNext,
-			MaxNextRTT:                     int32(sqlIC.MaxRTT),
-			HighFrequencyPings:             sqlIC.HighFrequencyPings,
-			RouteDiversity:                 int32(sqlIC.RouteDiversity),
+			RouteSelectThreshold: int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold: int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:   int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:      int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:   int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:    int32(sqlIC.RTTVetoMultipath),
+			ForceNext:            sqlIC.ForceNext,
+			MaxNextRTT:           int32(sqlIC.MaxRTT),
+			HighFrequencyPings:   sqlIC.HighFrequencyPings,
+			RouteDiversity:       int32(sqlIC.RouteDiversity),
 		}
 		return internalConfig, nil
 	default:
@@ -2939,16 +2939,16 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	defer cancel()
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
-		ForceNext:                      ic.ForceNext,
-		MaxRTT:                         int64(ic.MaxNextRTT),
-		HighFrequencyPings:             ic.HighFrequencyPings,
-		RouteDiversity:                 int64(ic.RouteDiversity),
+		RouteSelectThreshold: int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold: int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:   int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:       int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:    int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:     int64(ic.RTTVeto_Multipath),
+		ForceNext:            ic.ForceNext,
+		MaxRTT:               int64(ic.MaxNextRTT),
+		HighFrequencyPings:   ic.HighFrequencyPings,
+		RouteDiversity:       int64(ic.RouteDiversity),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))

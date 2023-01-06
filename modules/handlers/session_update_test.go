@@ -1009,8 +1009,6 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: disabled until we fix the reframe stuff
-/*
 func Test_SessionUpdate_MakeRouteDecision_NoRouteRelays(t *testing.T) {
 
 	t.Parallel()
@@ -1080,25 +1078,12 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 10
-	state.NearRelayRTTs[1] = 10
-	state.NearRelayRTTs[2] = 10
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{10,10,10}
 
 	// setup dest relays
 
-	state.NumDestRelays = 3
-
-	state.DestRelays = make([]int32, state.NumDestRelays)
-
-	state.DestRelays[0] = 0
-	state.DestRelays[1] = 1
-	state.DestRelays[2] = 2
+	state.DestRelays = []int32{0,1,2}
 
 	// make the route decision
 
@@ -1214,23 +1199,12 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -1437,23 +1411,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -1675,23 +1638,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -1790,9 +1742,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
-	state.NearRelayRTTs[0] = 100
-	state.NearRelayRTTs[1] = 1
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelayRTT[0] = 100
+	state.SourceRelayRTT[1] = 1
+	state.SourceRelayRTT[2] = 100
 
 	// make route decision
 
@@ -1962,23 +1914,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -2070,7 +2011,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	state.Request.Next = true
 
-	state.NumNearRelays = 0
+	state.SourceRelays = make([]int32, 0)
+	state.SourceRelayRTT = make([]int32, 0)
 
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
@@ -2194,23 +2136,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -2302,7 +2233,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	state.Request.Next = true
 
-	state.NumNearRelays = 0
+	state.SourceRelays = make([]int32, 0)
 
 	// make route decision
 
@@ -2424,23 +2355,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -2662,23 +2582,12 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -2820,23 +2729,12 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// setup near relays
 
-	state.NumNearRelays = 3
-
-	state.NearRelayIndices[0] = 0
-	state.NearRelayIndices[1] = 1
-	state.NearRelayIndices[2] = 2
-
-	state.NearRelayRTTs[0] = 1
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelays = []int32{0,1,2}
+	state.SourceRelayRTT = []int32{1,100,100}
 
 	// setup dest relays
 
-	state.NumDestRelays = 1
-
-	state.DestRelays = make([]int32, 1)
-
-	state.DestRelays[0] = 2
+	state.DestRelays = []int32{2}
 
 	// make the route decision
 
@@ -2851,9 +2749,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// make all near relays very expensive
 
-	state.NearRelayRTTs[0] = 100
-	state.NearRelayRTTs[1] = 100
-	state.NearRelayRTTs[2] = 100
+	state.SourceRelayRTT = []int32{100,100,100}
 
 	// make route decision
 
@@ -2870,7 +2766,6 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	assert.True(t, state.LatencyWorse)
 	assert.False(t, state.Output.RouteState.Next)
 }
-*/
 
 // --------------------------------------------------------------
 

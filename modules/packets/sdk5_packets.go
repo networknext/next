@@ -172,25 +172,25 @@ func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream encoding.Stream)
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateRequestPacket struct {
-	Version                         SDKVersion
-	BuyerId                         uint64
-	DatacenterId                    uint64
-	SessionId                       uint64
-	SliceNumber                     uint32
-	RetryNumber                     int32
-	SessionDataBytes                int32
-	SessionData                     [SDK5_MaxSessionDataSize]byte
-	ClientAddress                   net.UDPAddr
-	ServerAddress                   net.UDPAddr
-	ClientRoutePublicKey            [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
-	ServerRoutePublicKey            [crypto.Box_KeySize]byte // todo: ditto
-	UserHash                        uint64
-	PlatformType                    int32
-	ConnectionType                  int32
-	Next                            bool
+	Version              SDKVersion
+	BuyerId              uint64
+	DatacenterId         uint64
+	SessionId            uint64
+	SliceNumber          uint32
+	RetryNumber          int32
+	SessionDataBytes     int32
+	SessionData          [SDK5_MaxSessionDataSize]byte
+	ClientAddress        net.UDPAddr
+	ServerAddress        net.UDPAddr
+	ClientRoutePublicKey [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
+	ServerRoutePublicKey [crypto.Box_KeySize]byte // todo: ditto
+	UserHash             uint64
+	PlatformType         int32
+	ConnectionType       int32
+	Next                 bool
 
 	// todo: remove
-	Committed                       bool
+	Committed bool
 
 	Reported                        bool
 	FallbackToDirect                bool
@@ -399,8 +399,8 @@ func GenerateRandomSessionData() SDK5_SessionData {
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateResponsePacket struct {
-	SessionId          uint64
-	SliceNumber        uint32
+	SessionId   uint64
+	SliceNumber uint32
 	// todo: where is the signature for the session data?
 	SessionDataBytes   int32
 	SessionData        [SDK5_MaxSessionDataSize]byte
@@ -417,11 +417,11 @@ type SDK5_SessionUpdateResponsePacket struct {
 	HighFrequencyPings bool
 
 	// todo: remove
-	Committed          bool
+	Committed bool
 
 	// todo: this complexity is no longer needed. remove.
-	ExcludeNearRelays  bool
-	NearRelayExcluded  [SDK5_MaxNearRelays]bool
+	ExcludeNearRelays bool
+	NearRelayExcluded [SDK5_MaxNearRelays]bool
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -553,6 +553,9 @@ type SDK5_SessionData struct {
 	RouteCost                     int32
 	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
 	RouteState                    core.RouteState
+	HeldNumNearRelays             int32
+	HeldNearRelayIds              [SDK5_MaxNearRelays]uint64
+	HeldNearRelayRTT              [SDK5_MaxNearRelays]int32
 	EverOnNext                    bool
 	FallbackToDirect              bool
 	PrevPacketsSentClientToServer uint64
@@ -629,6 +632,8 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint64(&sessionData.RouteRelayIds[i])
 		}
 	}
+
+	// todo: we gotta write the HeldNumNearRelays, etc.
 
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)

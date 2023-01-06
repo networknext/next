@@ -283,29 +283,29 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 	// fuck firestore
 	/*
-	// Check for the firestore emulator
-	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
-	if firestoreEmulatorOK {
-		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected firestore emulator")
-	}
-
-	if gcpProjectID != "" || firestoreEmulatorOK {
-		fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
-		if err != nil {
-			return storer, fmt.Errorf("could not create firestore: %v", err)
+		// Check for the firestore emulator
+		firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
+		if firestoreEmulatorOK {
+			gcpProjectID = "local"
+			level.Info(logger).Log("msg", "Detected firestore emulator")
 		}
 
-		fsSyncInterval := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
+		if gcpProjectID != "" || firestoreEmulatorOK {
+			fs, err := storage.NewFirestore(ctx, gcpProjectID, logger)
+			if err != nil {
+				return storer, fmt.Errorf("could not create firestore: %v", err)
+			}
 
-		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(fsSyncInterval)
-			fs.SyncLoop(ctx, ticker.C)
-		}()
+			fsSyncInterval := envvar.GetDuration("GOOGLE_FIRESTORE_SYNC_INTERVAL", time.Second*10)
 
-		storer = fs
-	}
+			// Start a goroutine to sync from Firestore
+			go func() {
+				ticker := time.NewTicker(fsSyncInterval)
+				fs.SyncLoop(ctx, ticker.C)
+			}()
+
+			storer = fs
+		}
 	*/
 
 	// Create dummy entries in storer for local testing

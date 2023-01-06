@@ -15,7 +15,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 		nearRelayIds := make([]uint64, 0)
 		nearRelayAddresses := make([]net.UDPAddr, 0)
 		return nearRelayIds, nearRelayAddresses
-	}	
+	}
 
 	// Estimate direct latency
 
