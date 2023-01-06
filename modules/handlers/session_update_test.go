@@ -1896,8 +1896,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	relayDatacenters := make([]uint64, 3)
 	relayDatacenters[0] = 1
-	relayDatacenters[1] = 1
-	relayDatacenters[2] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
