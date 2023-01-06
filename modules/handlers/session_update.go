@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	// "math"
+	"math"
 	"net"
 	"time"
 
@@ -54,13 +54,17 @@ type SessionUpdateState struct {
 	// route diversity is the number unique near relays with viable routes
 	RouteDiversity int32
 
-	// for route planning (comes from SDK and route matrix)
+	// for route planning
+	DestRelays       []int32
+
+	// todo: WHUT
+	/*
 	NumNearRelays    int
 	NearRelayIndices [core.MaxNearRelays]int32
 	NearRelayRTTs    [core.MaxNearRelays]int32
 	NearRelayJitters [core.MaxNearRelays]int32
 	NumDestRelays    int32
-	DestRelays       []int32
+	*/
 
 	// for session post (billing, portal etc...)
 	PostNearRelayCount               int
@@ -116,6 +120,28 @@ type SessionUpdateState struct {
 	LocatedIP                                          bool
 }
 
+func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
+
+	if state.ReadSessionData {
+		return true
+	}
+
+	// todo: we must check the signature of the session data here prior to read
+
+	readStream := encoding.CreateReadStream(state.Request.SessionData[:])
+
+	err := state.Input.Serialize(readStream)
+	if err != nil {
+		core.Debug("failed to read session data: %v", err)
+		state.FailedToReadSessionData = true
+		return false
+	}
+
+	state.ReadSessionData = true
+
+	return true
+}
+
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	/*
@@ -167,16 +193,9 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		// use location data stored in session data
 
-		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
-
-		err := state.Input.Serialize(readStream)
-		if err != nil {
-			core.Debug("failed to read session data: %v", err)
-			state.FailedToReadSessionData = true
+		if !SessionUpdate_ReadSessionData(state) {
 			return true
 		}
-
-		state.ReadSessionData = true
 
 		state.Output.Location = state.Input.Location
 	}
@@ -275,20 +294,8 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 		This way we don't have to store state per-session in the backend.
 	*/
 
-	// todo: the session data must not be modifiable by the client. where is the check that ensures this is the case?
-
-	if !state.ReadSessionData {
-
-		readStream := encoding.CreateReadStream(state.Request.SessionData[:])
-
-		err := state.Input.Serialize(readStream)
-		if err != nil {
-			core.Debug("failed to read session data: %v", err)
-			state.FailedToReadSessionData = true
-			return
-		}
-
-		state.ReadSessionData = true
+	if !SessionUpdate_ReadSessionData(state) {
+		return
 	}
 
 	/*
@@ -487,20 +494,54 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
-		Reframe the near relays to get them in a relay index form relative to the current route matrix.
+		Reframe dest relays to get them relative to the current route matrix.
 	*/
+
+	inputDestRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
+	outputNumDestRelays := 0
+	outputDestRelays := make([]int32, len(inputDestRelayIds))
+
+	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, inputDestRelayIds, &outputNumDestRelays, outputDestRelays)
+
+	state.DestRelays = outputDestRelays[:outputNumDestRelays]
+
+	/*
+		On slice #1, we have the first near relay ping results.
+
+		Filter them and store the results in the route state as held relays.
+	*/
+
+	if state.Input.SliceNumber == 1 {
+
+		directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
+		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
+		directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
+		nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
+
+		_ = directLatency
+		_ = directJitter
+		_ = directPacketLoss
+		_ = nextPacketLoss
+
+		// todo: FilterSourceRelays
+
+		return true
+	}
+
+	/*
+		On subsequent slices (#2  and above...) reframe the near relays 
+		to get them in a relay index form relative to the route matrix.
+	*/
+
+	// todo: ReframeSourceRelays
 
 	/*
 	routeState := &state.Output.RouteState
 
-	directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
-	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-	directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
-	nextPacketLoss := int32(math.Floor(float64(state.Request.NextPacketLoss) + 0.5))
 
 	numNearRelays := state.Request.NumNearRelays
 
-	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
+	
 
 	state.DestRelays = make([]int32, len(destRelayIds))
 	*/
@@ -545,15 +586,6 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 			state.NearRelayIndices[i] = -1 // near relay no longer exists in route matrix
 		}
 	}
-
-	// tell the SDK to stop pinging near relays
-
-	// todo: remove this, not needed anymore
-	state.Response.ExcludeNearRelays = true
-	for i := 0; i < core.MaxNearRelays; i++ {
-		state.Response.NearRelayExcluded[i] = true
-	}
-	state.NearRelaysExcluded = true
 	*/
 
 	return true
@@ -698,22 +730,22 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		return
 	}
 
-	var stayOnNext bool
+	// var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	sliceNumber := int32(state.Request.SliceNumber)
+	// sliceNumber := int32(state.Request.SliceNumber)
 
 	if !state.Input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		destRelays := state.DestRelays[:state.NumDestRelays]
-
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:state.NumNearRelays], state.NearRelayRTTs[:state.NumNearRelays], destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		// todo: update
+		/*
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndexSet, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Request.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:state.NumNearRelays], state.NearRelayRTTs[:state.NumNearRelays], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 
 			state.TakeNetworkNext = true
 
@@ -741,6 +773,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			}
 
 		}
+		*/
 
 	} else {
 
@@ -779,6 +812,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		}
 		*/
 
+		// todo: update
+		/*
 		sourceRelays := state.NearRelayIndices[:state.NumNearRelays]
 		sourceRelayCosts := state.NearRelayRTTs[:state.NumNearRelays]
 
@@ -854,6 +889,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				}
 			}
 		}
+		*/
 	}
 
 	/*
@@ -984,6 +1020,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	writeStream.Flush()
+
+	// todo: we must store a session data signature in the response packet
 
 	state.Response.SessionDataBytes = int32(writeStream.GetBytesProcessed())
 
