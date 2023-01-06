@@ -20,7 +20,6 @@ require (
 	github.com/go-redis/redis/v9 v9.0.0-beta.2
 	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.2
-	github.com/google/go-cmp v0.5.8
 	github.com/google/go-github/v36 v36.0.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.7.3
@@ -60,6 +59,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20220412212628-83db2b799d1f // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.1.0 // indirect
