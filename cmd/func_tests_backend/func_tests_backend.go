@@ -927,9 +927,7 @@ func test_redis_leader_store_migration() {
 
 	fmt.Printf("test_redis_leader_store_migration\n")
 
-	// todo: disabled until we can update it
-	/*
-		serviceName := "store_migration"
+	serviceName := "store_migration"
 
 		cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
 
@@ -1021,12 +1019,16 @@ func test_redis_leader_store_migration() {
 								os.Exit(1)
 							}
 						}
-					} else {
-						for i, store := range dataStore2 {
-							if string(store.Data) != string(newDataStore[i].Data) {
-								core.Error("elector 1: data loaded was not from elector 2: %s != %s", string(store.Data), string(newDataStore[i].Data))
-								os.Exit(1)
-							}
+					}
+				} else {
+					// Check to see if someone has been elected
+					if len(newDataStore) == 0 {
+						continue
+					}
+					for i, store := range dataStore2 {
+						if string(store.Data) != string(newDataStore[i].Data) {
+							core.Error("elector 1: data loaded was not from elector 2: %s != %s", string(store.Data), string(newDataStore[i].Data))
+							os.Exit(1)
 						}
 					}
 				}
@@ -1090,18 +1092,35 @@ func test_redis_leader_store_migration() {
 								os.Exit(1)
 							}
 						}
-					} else {
-						for i, store := range dataStore {
-							if string(store.Data) != string(newDataStore2[i].Data) {
-								core.Error("elector 2: data loaded was not from elector 1: %s != %s", string(store.Data), string(newDataStore2[i].Data))
-								os.Exit(1)
-							}
+					}
+				} else {
+					// Check to see if someone has been elected
+					if len(newDataStore2) == 0 {
+						continue
+					}
+					for i, store := range dataStore {
+						if string(store.Data) != string(newDataStore2[i].Data) {
+							core.Error("elector 2: data loaded was not from elector 1: %s != %s", string(store.Data), string(newDataStore2[i].Data))
+							os.Exit(1)
 						}
-
 					}
 				}
 			}
-		}()
+		}
+	}()
+
+	time.Sleep(time.Second * 5)
+
+	redisObserver, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   serviceName,
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis observer")
+		os.Exit(1)
+	}
 
 		time.Sleep(time.Second * 2)
 
@@ -1116,7 +1135,14 @@ func test_redis_leader_store_migration() {
 			os.Exit(1)
 		}
 
-		go func() {
+		leaderElected := false
+
+		for {
+			select {
+			case <-cancelContext.Done():
+				waitGroup.Done()
+				return
+			case <-ticker.C:
 
 			ticker := time.NewTicker(time.Second)
 
@@ -1148,37 +1174,65 @@ func test_redis_leader_store_migration() {
 					isLeader1 := redisElector.IsLeader()
 					electorMutex1.Unlock()
 
-					electorMutex2.Lock()
-					isLeader2 := redisElector2.IsLeader()
-					electorMutex2.Unlock()
+				if !leaderElected && (isLeader1 || isLeader2) {
+					leaderElected = true
+				}
 
-					if !isLeader1 && !isLeader2 {
-						core.Error("failed to have an elected leader")
-						os.Exit(1)
-					}
+				if !isLeader1 && !isLeader2 && leaderElected {
+					core.Error("failed to have an elected leader after first election")
+					os.Exit(1)
 				}
 			}
 		}()
 
-		time.Sleep(time.Second * 18)
+	time.Sleep(time.Second * 15)
 
 		cancelFunc()
 
 		waitGroup.Wait()
 
-		core.Debug("done")
-	*/
+	// force keys to expire
+	time.Sleep(time.Second * 5)
+
+	core.Debug("done")
 }
 
 func test_redis_leader_store_no_flap() {
 
 	fmt.Printf("test_redis_leader_store_no_flap\n")
 
-	// todo: disabling for now
-	/*
-		serviceName := "store_flap"
+	serviceName := "store_flap"
 
-		cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+
+	rediselector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   serviceName,
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis elector 1")
+		os.Exit(1)
+	}
+
+	electorSwitches := int64(0)
+	elector2Switches := int64(0)
+
+	dataStore := []common.DataStoreConfig{
+		{
+			Name: "store1",
+			Data: []byte("1"),
+		},
+		{
+			Name: "store2",
+			Data: []byte("2"),
+		},
+		{
+			Name: "store3",
+			Data: []byte("3"),
+		},
+	}
 
 		redielector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
 			RedisHostname: "127.0.0.1:6379",
@@ -1211,43 +1265,56 @@ func test_redis_leader_store_no_flap() {
 
 		go func() {
 
-			ticker := time.NewTicker(time.Second)
+				wasLeader := rediselector.IsLeader()
+
+				rediselector.Store(cancelContext, dataStore...)
+				rediselector.Load(cancelContext)
+
+				isNowLeader := rediselector.IsLeader()
+
+				if !wasLeader && isNowLeader {
+					// we became leader
+					atomic.AddInt64(&electorSwitches, 1)
+				}
 
 			for {
 				select {
 				case <-cancelContext.Done():
 					waitGroup.Done()
 					return
-				case <-ticker.C:
-
-					redielector.Store(cancelContext, dataStore...)
-					redielector.Load(cancelContext)
-
-					if cancelContext.Err() != nil {
-						waitGroup.Done()
-						return
-					}
-
-					if !redielector.IsLeader() {
-						core.Error("elector 1 should always be leader")
-						os.Exit(1)
-					}
 				}
 			}
 		}()
 
 		time.Sleep(time.Second * 2)
 
-		redielector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-			Timeout:       time.Second * 5,
-		})
-		if err != nil {
-			core.Error("failed to setup redis elector 2")
-			os.Exit(1)
-		}
+	rediselector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
+		RedisHostname: "127.0.0.1:6379",
+		RedisPassword: "",
+		ServiceName:   serviceName,
+		Timeout:       time.Second * 5,
+	})
+	if err != nil {
+		core.Error("failed to setup redis elector 2")
+		os.Exit(1)
+	}
+
+	dataStore2 := []common.DataStoreConfig{
+		{
+			Name: "store1",
+			Data: []byte("4"),
+		},
+		{
+			Name: "store2",
+			Data: []byte("5"),
+		},
+		{
+			Name: "store3",
+			Data: []byte("6"),
+		},
+	}
+
+	go func() {
 
 		dataStore2 := []common.DataStoreConfig{
 			{
@@ -1266,27 +1333,23 @@ func test_redis_leader_store_no_flap() {
 
 		go func() {
 
-			ticker := time.NewTicker(time.Second)
+				wasLeader := rediselector.IsLeader()
+
+				rediselector2.Store(cancelContext, dataStore2...)
+				rediselector2.Load(cancelContext)
+
+				isNowLeader := rediselector.IsLeader()
+
+				if !wasLeader && isNowLeader {
+					// we became leader
+					atomic.AddInt64(&elector2Switches, 1)
+				}
 
 			for {
 				select {
 				case <-cancelContext.Done():
 					waitGroup.Done()
 					return
-				case <-ticker.C:
-
-					redielector2.Store(cancelContext, dataStore2...)
-					redielector2.Load(cancelContext)
-
-					if cancelContext.Err() != nil {
-						waitGroup.Done()
-						return
-					}
-
-					if redielector2.IsLeader() {
-						core.Error("elector 2 should never be leader")
-						os.Exit(1)
-					}
 				}
 			}
 		}()
@@ -1297,258 +1360,30 @@ func test_redis_leader_store_no_flap() {
 
 		waitGroup.Wait()
 
-		core.Debug("done")
-	*/
-}
+	fail := false
+	if electorSwitches > 1 {
+		core.Error("elector 1 flapped")
+		fail = true
+	}
 
-func test_redis_leader_election_migration() {
+	if elector2Switches > 1 {
+		core.Error("elector 2 flapped")
+		fail = true
+	}
 
-	fmt.Printf("test_redis_leader_election_migration\n")
+	if electorSwitches == 0 && elector2Switches == 0 {
+		core.Error("no one was elected")
+		fail = true
+	}
 
-	// todo: disabling for now
-	/*
-		serviceName := "migration"
+	if fail {
+		os.Exit(1)
+	}
 
-		cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
+	// force keys to expire
+	time.Sleep(time.Second * 5)
 
-		redisElector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-			Timeout:       time.Second * 5,
-		})
-		if err != nil {
-			core.Error("failed to setup redis elector 1")
-			os.Exit(1)
-		}
-
-		electorMutex := sync.RWMutex{}
-
-		go func() {
-
-			ticker := time.NewTicker(time.Second)
-
-			iterationNum := 0
-
-			for {
-				select {
-				case <-cancelContext.Done():
-					return
-				case <-ticker.C:
-
-					electorMutex.Lock()
-					isLeader := redisElector.IsLeader()
-					electorMutex.Unlock()
-
-					if isLeader {
-						iterationNum++
-						if iterationNum%5 == 0 {
-							continue
-						}
-					}
-
-					electorMutex.Lock()
-					redisElector.Update(cancelContext)
-					isLeader = redisElector.IsLeader()
-					electorMutex.Unlock()
-				}
-			}
-		}()
-
-		time.Sleep(time.Second * 2)
-
-		electorMutex2 := sync.RWMutex{}
-
-		redisElector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-		})
-		if err != nil {
-			core.Error("failed to setup redis elector 2")
-			os.Exit(1)
-		}
-
-		go func() {
-
-			ticker := time.NewTicker(time.Second)
-
-			iterationNum := 0
-
-			for {
-				select {
-				case <-cancelContext.Done():
-					return
-				case <-ticker.C:
-
-					electorMutex2.Lock()
-					isLeader := redisElector2.IsLeader()
-					electorMutex2.Unlock()
-
-					if isLeader {
-						iterationNum++
-						if iterationNum%5 == 0 {
-							continue
-						}
-					}
-
-					electorMutex2.Lock()
-					redisElector2.Update(cancelContext)
-					isLeader = redisElector2.IsLeader()
-					electorMutex2.Unlock()
-				}
-			}
-		}()
-
-		time.Sleep(time.Second * 2)
-
-		redisObserver, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-		})
-		if err != nil {
-			core.Error("failed to setup redis observer")
-			os.Exit(1)
-		}
-
-		go func() {
-
-			ticker := time.NewTicker(time.Second)
-
-			for {
-				select {
-				case <-cancelContext.Done():
-					return
-				case <-ticker.C:
-
-					if redisObserver.IsLeader() {
-						core.Error("observer should never be leader")
-						os.Exit(1)
-					}
-
-					electorMutex.Lock()
-					isLeader1 := redisElector.IsLeader()
-					electorMutex.Unlock()
-
-					electorMutex2.Lock()
-					isLeader2 := redisElector2.IsLeader()
-					electorMutex2.Unlock()
-
-					if cancelContext.Err() != nil {
-						return
-					}
-
-					if !isLeader1 && !isLeader2 {
-						core.Error("failed to have an elected leader")
-						os.Exit(1)
-					}
-				}
-			}
-		}()
-
-		time.Sleep(time.Second * 18)
-
-		cancelFunc()
-
-		// Make sure all keys expire
-		time.Sleep(time.Second * 7)
-
-		core.Debug("done")
-	*/
-}
-
-func test_redis_leader_election_no_flap() {
-
-	// todo: disabling for now
-
-	/*
-		fmt.Printf("test_redis_leader_election_no_flap\n")
-
-		serviceName := "falp"
-
-		cancelContext, cancelFunc := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
-
-		redielector, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-			Timeout:       time.Second * 5,
-		})
-		if err != nil {
-			core.Error("failed to setup redis elector 1")
-			os.Exit(1)
-		}
-
-		go func() {
-
-			ticker := time.NewTicker(time.Second)
-
-			for {
-				select {
-				case <-cancelContext.Done():
-					return
-				case <-ticker.C:
-
-					redielector.Update(cancelContext)
-
-					if cancelContext.Err() != nil {
-						return
-					}
-
-					if !redielector.IsLeader() {
-						core.Error("elector 1 should always be leader")
-						os.Exit(1)
-					}
-				}
-			}
-		}()
-
-		time.Sleep(time.Second * 2)
-
-		redielector2, err := common.CreateRedisLeaderElection(cancelContext, common.RedisLeaderElectionConfig{
-			RedisHostname: "127.0.0.1:6379",
-			RedisPassword: "",
-			ServiceName:   serviceName,
-		})
-		if err != nil {
-			core.Error("failed to setup redis elector 2")
-			os.Exit(1)
-		}
-
-		go func() {
-
-			ticker := time.NewTicker(time.Second)
-
-			for {
-				select {
-				case <-cancelContext.Done():
-					return
-				case <-ticker.C:
-
-					redielector2.Update(cancelContext)
-
-					if cancelContext.Err() != nil {
-						return
-					}
-
-					if redielector2.IsLeader() {
-						core.Error("elector 2 should never be leader")
-						os.Exit(1)
-					}
-				}
-			}
-		}()
-
-		time.Sleep(time.Second * 20)
-
-		cancelFunc()
-
-		// Make sure keys expire
-		time.Sleep(time.Second * 7)
-
-		core.Debug("done")
-	*/
+	core.Debug("done")
 }
 
 func test_cost_matrix_read_write() {
@@ -2244,8 +2079,6 @@ func main() {
 		test_redis_streams,
 		test_redis_leader_store_no_flap,
 		test_redis_leader_store_migration,
-		test_redis_leader_election_no_flap,
-		test_redis_leader_election_migration,
 		test_google_pubsub,
 		test_google_bigquery,
 		test_cost_matrix_read_write,
