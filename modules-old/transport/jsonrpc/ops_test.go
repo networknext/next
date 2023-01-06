@@ -2899,16 +2899,11 @@ func TestUpdateBuyerRouteShader(t *testing.T) {
         assert.Equal(t, updatedRouteShader.RouteShader.ABTest, newRouteShader.ABTest)
         assert.NotEqual(t, oldRouteShader.ABTest, newRouteShader.ABTest)
 
-        updatedRouteShader.RouteShader.ProMode = !defaultRouteShader.ProMode
-
         err = svc.UpdateBuyerRouteShader(req, &jsonrpc.UpdateBuyerRouteShaderArgs{CustomerCode: "local", RouteShader: updatedRouteShader.RouteShader}, &reply)
         assert.NoError(t, err)
 
         newRouteShader, err = storer.RouteShader(ctx, 1)
         assert.NoError(t, err)
-
-        assert.Equal(t, updatedRouteShader.RouteShader.ProMode, newRouteShader.ProMode)
-        assert.NotEqual(t, oldRouteShader.ProMode, newRouteShader.ProMode)
 
         updatedRouteShader.RouteShader.ReduceLatency = !defaultRouteShader.ReduceLatency
 

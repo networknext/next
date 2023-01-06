@@ -2830,7 +2830,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			AnalysisOnly:              sqlRS.AnalysisOnly,
 			SelectionPercent:          int(sqlRS.SelectionPercent),
 			ABTest:                    sqlRS.ABTest,
-			ProMode:                   sqlRS.ProMode,
 			ReduceLatency:             sqlRS.ReduceLatency,
 			ReducePacketLoss:          sqlRS.ReducePacketLoss,
 			ReduceJitter:              sqlRS.ReduceJitter,
@@ -2843,12 +2842,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
 		}
 
-		bannedUserList, err := db.BannedUsers(ctx, ephemeralBuyerID)
-		if err != nil {
-			core.Error("RouteShader() -> BannedUsers() returned an error")
-			return core.RouteShader{}, fmt.Errorf("RouteShader() -> BannedUser() returned an error: %v for Buyer %s", err, fmt.Sprintf("%016x", ephemeralBuyerID))
-		}
-		routeShader.BannedUsers = bannedUserList
 		return routeShader, nil
 	default:
 		core.Error("RouteShader() QueryRow returned an error: %v", err)
@@ -2925,17 +2918,10 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 			RTTVeto_Default:                int32(sqlIC.RTTVetoDefault),
 			RTTVeto_PacketLoss:             int32(sqlIC.RTTVetoPacketLoss),
 			RTTVeto_Multipath:              int32(sqlIC.RTTVetoMultipath),
-			MultipathOverloadThreshold:     int32(sqlIC.MultipathOverloadThreshold),
-			TryBeforeYouBuy:                sqlIC.TryBeforeYouBuy,
 			ForceNext:                      sqlIC.ForceNext,
-			LargeCustomer:                  sqlIC.LargeCustomer,
-			Uncommitted:                    sqlIC.Uncommitted,
-			MaxRTT:                         int32(sqlIC.MaxRTT),
+			MaxNextRTT:                     int32(sqlIC.MaxRTT),
 			HighFrequencyPings:             sqlIC.HighFrequencyPings,
 			RouteDiversity:                 int32(sqlIC.RouteDiversity),
-			MultipathThreshold:             int32(sqlIC.MultipathThreshold),
-			EnableVanityMetrics:            sqlIC.EnableVanityMetrics,
-			ReducePacketLossMinSliceNumber: int32(sqlIC.ReducePacketLossMinSliceNumber),
 		}
 		return internalConfig, nil
 	default:
@@ -2959,17 +2945,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
 		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
 		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
 		ForceNext:                      ic.ForceNext,
-		LargeCustomer:                  ic.LargeCustomer,
-		Uncommitted:                    ic.Uncommitted,
-		MaxRTT:                         int64(ic.MaxRTT),
+		MaxRTT:                         int64(ic.MaxNextRTT),
 		HighFrequencyPings:             ic.HighFrequencyPings,
 		RouteDiversity:                 int64(ic.RouteDiversity),
-		MultipathThreshold:             int64(ic.MultipathThreshold),
-		EnableVanityMetrics:            ic.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -3245,7 +3224,6 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		DisableNetworkNext:        rs.DisableNetworkNext,
 		LatencyThreshold:          int64(rs.LatencyThreshold),
 		Multipath:                 rs.Multipath,
-		ProMode:                   rs.ProMode,
 		ReduceLatency:             rs.ReduceLatency,
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
