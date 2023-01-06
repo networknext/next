@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"math"
+	// "math"
 	"net"
 	"time"
 
@@ -476,8 +476,6 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
-	routeShader := &state.Buyer.RouteShader
-
 	if state.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
 		return false
@@ -492,6 +490,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		Reframe the near relays to get them in a relay index form relative to the current route matrix.
 	*/
 
+	/*
 	routeState := &state.Output.RouteState
 
 	directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
@@ -504,11 +503,11 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
 
 	state.DestRelays = make([]int32, len(destRelayIds))
+	*/
 
-	// todo: we need to "filter" when we have new near relays in the request
+	// todo: clean up and update to latest reframe source relays, reframe dest relays
 
-	// todo: otherwise, we need to "reframe" relays (simplest, make sure they have the right relay indices...)
-
+	/*
 	core.ReframeRelays(
 
 		// input
@@ -555,6 +554,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		state.Response.NearRelayExcluded[i] = true
 	}
 	state.NearRelaysExcluded = true
+	*/
 
 	return true
 }
@@ -766,6 +766,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			This is necessary because the set of relays in the route matrix change over time.
 		*/
 
+		// todo: rework reframe route
+
+		/*
 		if !core.ReframeRoute(&state.Output.RouteState, state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
 			routeRelays = [core.MaxRelaysPerRoute]int32{}
 			core.Debug("one or more relays in the route no longer exist")
@@ -774,6 +777,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				*state.Debug += "route relay no longer exists\n"
 			}
 		}
+		*/
 
 		sourceRelays := state.NearRelayIndices[:state.NumNearRelays]
 		sourceRelayCosts := state.NearRelayRTTs[:state.NumNearRelays]

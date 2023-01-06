@@ -725,7 +725,6 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 	stream.SerializeBool(&sessionData.EverOnNext)
 	stream.SerializeBool(&sessionData.FellBackToDirect)
-	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 
