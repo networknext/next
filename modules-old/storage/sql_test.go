@@ -1614,7 +1614,6 @@ func TestRouteShaders(t *testing.T) {
             DisableNetworkNext:        true,
             LatencyThreshold:          int32(5),
             Multipath:                 true,
-            ProMode:                   true,
             ReduceLatency:             true,
             ReducePacketLoss:          true,
             ReduceJitter:              true,
@@ -1637,7 +1636,6 @@ func TestRouteShaders(t *testing.T) {
         assert.Equal(t, true, outerRouteShader.DisableNetworkNext)
         assert.Equal(t, int32(5), outerRouteShader.LatencyThreshold)
         assert.Equal(t, true, outerRouteShader.Multipath)
-        assert.Equal(t, true, outerRouteShader.ProMode)
         assert.Equal(t, true, outerRouteShader.ReduceLatency)
         assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
         assert.Equal(t, true, outerRouteShader.ReduceJitter)
@@ -1711,13 +1709,6 @@ func TestRouteShaders(t *testing.T) {
         checkRouteShader, err = db.RouteShader(ctx, outerBuyer.ID)
         assert.NoError(t, err)
         assert.Equal(t, false, checkRouteShader.Multipath)
-
-        // ProMode
-        err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ProMode", false)
-        assert.NoError(t, err)
-        checkRouteShader, err = db.RouteShader(ctx, outerBuyer.ID)
-        assert.NoError(t, err)
-        assert.Equal(t, false, checkRouteShader.ProMode)
 
         // ReduceLatency
         err = db.UpdateRouteShader(ctx, outerBuyer.ID, "ReduceLatency", false)

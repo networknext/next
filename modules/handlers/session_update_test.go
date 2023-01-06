@@ -313,21 +313,6 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	assert.False(t, state.NoRelaysInDatacenter)
 }
 
-func Test_SessionUpdate_Pre_Pro(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.NumTags = 1
-	state.Request.Tags[0] = common.HashTag("pro")
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, state.Pro)
-}
-
 func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	t.Parallel()
@@ -1254,7 +1239,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -1477,7 +1462,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -1715,7 +1700,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2002,7 +1987,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2234,7 +2219,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2464,7 +2449,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
 	assert.False(t, state.Output.RouteChanged)
@@ -2702,7 +2687,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Committed)
-	assert.False(t, state.Response.Multipath)
+	assert.True(t, state.Response.Multipath)
 
 	// mispredict 3 times
 
@@ -2823,6 +2808,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
 	state.Buyer.RouteShader.AnalysisOnly = false
+	state.Buyer.RouteShader.Multipath = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2861,19 +2847,17 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	assert.True(t, state.Response.Committed)
 	assert.False(t, state.Response.Multipath)
 
-	// setup a terrible route matrix with nothing but bad routes
+	// make all near relays very expensive
 
-	for i := range costMatrix {
-		costMatrix[i] = 10
-	}
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+	state.NearRelayRTTs[0] = 100
+	state.NearRelayRTTs[1] = 100
+	state.NearRelayRTTs[2] = 100
 
 	// make route decision
 
 	state.Request.Next = true
 	state.Request.NextRTT = 100
-	state.Request.DirectMinRTT = 0
+	state.Request.DirectMinRTT = 1
 
 	state.Input = state.Output
 
@@ -2887,15 +2871,165 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_GetNearRelays
+func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Buyer.RouteShader.AnalysisOnly = true
+
+	result := handlers.SessionUpdate_GetNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NotGettingNearRelaysAnalysisOnly)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+}
+
+func Test_SessionUpdate_GetNearRelays_DatacenterNotEnabled(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.DatacenterNotEnabled = true
+
+	result := handlers.SessionUpdate_GetNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NotGettingNearRelaysDatacenterNotEnabled)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+}
+
+func Test_SessionUpdate_GetNearRelays_NoNearRelays(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	result := handlers.SessionUpdate_GetNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NoNearRelays)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+}
+
+func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	// initialize database with three relays
+
+	seller_a := db.Seller{ID: "a", Name: "a"}
+	seller_b := db.Seller{ID: "b", Name: "b"}
+	seller_c := db.Seller{ID: "c", Name: "c"}
+
+	datacenter_a := db.Datacenter{ID: 1, Name: "a"}
+	datacenter_b := db.Datacenter{ID: 2, Name: "b"}
+	datacenter_c := db.Datacenter{ID: 3, Name: "c"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["a"] = seller_a
+	state.Database.SellerMap["b"] = seller_b
+	state.Database.SellerMap["c"] = seller_c
+
+	state.Database.DatacenterMap[1] = datacenter_a
+	state.Database.DatacenterMap[2] = datacenter_b
+	state.Database.DatacenterMap[3] = datacenter_c
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+
+	costMatrix := make([]int32, entryCount)
+
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
+	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
+	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
+
+	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
+
+	// get near relays
+
+	result := handlers.SessionUpdate_GetNearRelays(state)
+
+	// validate
+
+	assert.True(t, result)
+	assert.False(t, state.NotGettingNearRelaysAnalysisOnly)
+	assert.False(t, state.NotGettingNearRelaysDatacenterNotEnabled)
+	assert.False(t, state.NoNearRelays)
+	assert.Equal(t, state.Response.NumNearRelays, int32(3))
+	assert.True(t, state.Response.NearRelaysChanged)
+	assert.False(t, state.Response.HighFrequencyPings)
+
+	contains_1 := false
+	contains_2 := false
+	contains_3 := false
+
+	for i := 0; i < int(state.Response.NumNearRelays); i++ {
+		if state.Response.NearRelayIds[i] == 1 {
+			contains_1 = true
+		}
+		if state.Response.NearRelayIds[i] == 2 {
+			contains_2 = true
+		}
+		if state.Response.NearRelayIds[i] == 3 {
+			contains_3 = true
+		}
+	}
+
+	assert.True(t, contains_1)
+	assert.True(t, contains_2)
+	assert.True(t, contains_3)
+}
 
 // --------------------------------------------------------------
 
 // todo: SessionUpdate_UpdateNearRelays
-
-// --------------------------------------------------------------
-
-// todo: SessionUpdate_FilterNearRelays
 
 // --------------------------------------------------------------
 
