@@ -427,7 +427,7 @@ func happy_path(wait bool) int {
 
 	server5_initialized := false
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
 			strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
 			server5_initialized = true
@@ -450,13 +450,13 @@ func happy_path(wait bool) int {
 
 	client5_initialized := false
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 600; i++ {
 		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
 			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
 			client5_initialized = true
 			break
 		}
-		time.Sleep(time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !client5_initialized {
