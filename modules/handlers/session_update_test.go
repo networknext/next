@@ -3044,7 +3044,10 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.DestRelays[1], int32(1) )
 	assert.Equal(t, state.DestRelays[2], int32(2) )
 
+	// todo: check much more stuff... especially, output from filter relays, etc.
 }
+
+// todo: Test_SessionUpdate_UpdateNearRelays_SliceTwo
 
 // --------------------------------------------------------------
 
