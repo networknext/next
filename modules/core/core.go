@@ -1182,155 +1182,148 @@ func GetBestRoutes(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, source
 
 // -------------------------------------------
 
-func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+// todo: test
+/*
+func ReframeRoute(routeState *RouteState, relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+
+	// translate relay ids -> relay index and invalidate the route if any route relays no longer exist
+
 	for i := range routeRelayIds {
-		relayIndex, ok := relayIDToIndex[routeRelayIds[i]]
+		relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
 		if !ok {
+			Debug("route relay %x went away", routeRelayIds[i])
 			routeState.RelayWentAway = true
 			return false
 		}
 		out_routeRelays[i] = relayIndex
 	}
+	
 	routeState.RelayWentAway = false
+	
 	return true
 }
 
-// todo: we should probably split this apart into standard reframe (minimal), and filter functions... we want to filter on the slice number = 1 after results come in, but not after this, we only want to reframe.
+func ReframeDestRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, destRelayId []uint64, out_numDestRelays *int32, out_destRelays []int32) {
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+	// translate dest relays -> relay index and exclude any dest relays that no longer exist in the route matrix
 
-	if routeState.NumNearRelays == 0 {
-		routeState.NumNearRelays = int32(len(sourceRelayId))
+	numDestRelays := int32(0)
+
+	for i := range destRelayId {
+		destRelayIndex, ok := relayIdToIndex[destRelayId[i]]
+		if !ok {
+			continue
+		}
+		routeState.DestRelay[numDestRelays] = destRelayIndex
+		numDestRelays++
 	}
 
-	if directJitter > 255 {
-		directJitter = 255
+	routeState.NumDestRelays = numDestRelays
+}
+
+func FilterSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32) {
+
+	routeState.NumNearRelays = int32(len(sourceRelayId))
+
+	// calculate average jitter (pre-exclusion)
+
+	count := 0
+	totalJitter := 0.0
+	for i := range sourceRelayId {
+		if sourceRelayJitter[i] != 255 {
+			totalJitter += float64(sourceRelayJitter[i])
+			count++
+		}
 	}
 
-	if directJitter > routeState.DirectJitter {
-		routeState.DirectJitter = directJitter
+	averageJitter := int32(0)
+	if count > 0 {
+		averageJitter = int32(math.Ceil(totalJitter / float64(count)))
 	}
+
+	// general exclusion pass
 
 	for i := range sourceRelayLatency {
 
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
 			routeState.NearRelayRTT[i] = 255
-			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
-		// any source relay with >= 50% PL in the last slice is bad news
+		// exclude relays with latency above 255ms
+		if sourceRelayLatency[i] > 255 {
+			routeState.NearRelayRTT[i] = 255
+			continue
+		}
+
+		// exclude relays with jitter significantly higher than average
+		if sourceRelayJitter[i] > averageJitter+JitterThreshold {
+			routeState.NearRelayRTT[i] = 255
+		}
+
+		// exclude relays with jitter significantly higher than direct
+		if sourceRelayJitter[i] > directJitter+JitterThreshold {
+			routeState.NearRelayRTT[i] = 255
+		}
+
+		// exclude relays with PL >= 50%
 		if sourceRelayPacketLoss[i] >= 50 {
 			routeState.NearRelayRTT[i] = 255
-			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
-		// any source relay with latency > direct is not helpful to us
-		if routeState.NearRelayRTT[i] != 255 && routeState.NearRelayRTT[i] > directLatency+10 {
+		// exclude relays with latency > direct
+		if routeState.NearRelayRTT[i] > directLatency {
 			routeState.NearRelayRTT[i] = 255
-			out_sourceRelayLatency[i] = 255
+			continue
+		}
+
+		// exclude relays with packet loss higher than direct
+		if sourceRelayPacketLoss[i] > directPacketLoss {
+			routeState.NearRelayRTT[i] = 255
+		}
+
+		// exclude relays that no longer exist
+		_, ok := relayIdToIndex[sourceRelayId[i]]
+		if !ok {
+			routeState.NearRelayRTT[i] = 255
+			continue
+		}
+
+		routeState.NearRelayRTT[i] = sourceRelayLatency[i]
+	}
+}
+
+func ReframeSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32) {
+
+	routeState.NumNearRelays = int32(len(sourceRelayId))
+
+	for i := range sourceRelayLatency {
+
+		// you say your latency is 0ms? I don't believe you!
+		if sourceRelayLatency[i] <= 0 {
+			routeState.NearRelayRTT[i] = 255
+			continue
+		}
+
+		// clamp latency above 255ms
+		if sourceRelayLatency[i] > 255 {
+			routeState.NearRelayRTT[i] = 255
 			continue
 		}
 
 		// any source relay that no longer exists cannot be routed through
-		_, ok := relayIDToIndex[sourceRelayId[i]]
+		_, ok := relayIdToIndex[sourceRelayId[i]]
 		if !ok {
 			routeState.NearRelayRTT[i] = 255
-			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
-		rtt := sourceRelayLatency[i]
-		jitter := sourceRelayJitter[i]
-
-		if rtt > 255 {
-			rtt = 255
-		}
-
-		if jitter > 255 {
-			jitter = 255
-		}
-
-		if rtt > routeState.NearRelayRTT[i] {
-			routeState.NearRelayRTT[i] = rtt
-		}
-
-		if jitter > routeState.NearRelayJitter[i] {
-			routeState.NearRelayJitter[i] = jitter
-		}
-
-		out_sourceRelayLatency[i] = routeState.NearRelayRTT[i]
-		out_sourceRelayJitter[i] = routeState.NearRelayJitter[i]
+		routeState.NearRelayRTT[i] = sourceRelayLatency[i]
 	}
-
-	// exclude near relays with significantly higher jitter than direct
-
-	for i := range sourceRelayLatency {
-
-		if routeState.NearRelayJitter[i] > routeState.DirectJitter+JitterThreshold {
-			out_sourceRelayLatency[i] = 255
-		}
-	}
-
-	// exclude near relays with significantly higher jitter than average
-
-	count := 0
-	totalJitter := 0.0
-	for i := range sourceRelayLatency {
-		if out_sourceRelayLatency[i] != 255 {
-			totalJitter += float64(out_sourceRelayJitter[i])
-			count++
-		}
-	}
-
-	if count > 0 {
-		averageJitter := int32(math.Ceil(totalJitter / float64(count)))
-		for i := range sourceRelayLatency {
-			if out_sourceRelayLatency[i] == 255 {
-				continue
-			}
-			if out_sourceRelayJitter[i] > averageJitter+JitterThreshold {
-				out_sourceRelayLatency[i] = 255
-			}
-		}
-	}
-
-	// exclude near relays with significantly higher packet loss than direct
-
-	for i := range sourceRelayLatency {
-		if sourceRelayPacketLoss[i] > directPacketLoss {
-			out_sourceRelayLatency[i] = 255
-		}
-	}	
-
-	// extra safety. don't let any relay report latency of zero
-
-	for i := range sourceRelayLatency {
-
-		if sourceRelayLatency[i] <= 0 || out_sourceRelayLatency[i] <= 0 {
-			routeState.NearRelayRTT[i] = 255
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-	}
-
-	// exclude any dest relays that no longer exist in the route matrix
-
-	numDestRelays := int32(0)
-
-	for i := range destRelayIds {
-		destRelayIndex, ok := relayIDToIndex[destRelayIds[i]]
-		if !ok {
-			continue
-		}
-		out_destRelays[numDestRelays] = destRelayIndex
-		numDestRelays++
-	}
-
-	*out_numDestRelays = numDestRelays
 }
+*/
 
 // ----------------------------------------------
 
@@ -1500,11 +1493,16 @@ type RouteState struct {
 	LatencyWorseCounter uint32
 	PLSustainedCounter  int32
 
-	// todo: do we really need all this data written and read? i don't think we do, we already hold these values elsewhere
-	DirectJitter        int32
-	NumNearRelays       int32
-	NearRelayRTT        [MaxNearRelays]int32
-	NearRelayJitter     [MaxNearRelays]int32
+	// todo: should these even be in here, if they are not serialized?
+
+	// IMPORTANT: not serialized
+	NumSourceRelays     int32
+	SourceRelay         [MaxNearRelays]int32
+	SourceRelayRTT      [MaxNearRelays]int32
+
+	// IMPORTANT: not serialized
+	NumDestRelays       int32
+	DestRelay           []int32
 }
 
 type InternalConfig struct {

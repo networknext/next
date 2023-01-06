@@ -707,6 +707,7 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	}
 
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
+
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)
@@ -724,22 +725,11 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
 	stream.SerializeBool(&sessionData.EverOnNext)
 	stream.SerializeBool(&sessionData.FellBackToDirect)
-
-	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
-
-	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
-		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
-	}
-
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
-	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
-
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 
 	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
@@ -749,12 +739,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 
-	if sessionData.Version >= 11 {
-		stream.SerializeBool(&sessionData.HoldNearRelays)
-		if sessionData.HoldNearRelays {
-			for i := 0; i < core.MaxNearRelays; i++ {
-				stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
-			}
+	stream.SerializeBool(&sessionData.HoldNearRelays)
+	if sessionData.HoldNearRelays {
+		for i := 0; i < core.MaxNearRelays; i++ {
+			stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
 		}
 	}
 

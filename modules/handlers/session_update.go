@@ -505,6 +505,10 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	state.DestRelays = make([]int32, len(destRelayIds))
 
+	// todo: we need to "filter" when we have new near relays in the request
+
+	// todo: otherwise, we need to "reframe" relays (simplest, make sure they have the right relay indices...)
+
 	core.ReframeRelays(
 
 		// input
@@ -516,10 +520,13 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		directPacketLoss,
 		nextPacketLoss,
 		int32(state.Request.SliceNumber),
+
+		// todo: here is the bug. near relay stuff isn't coming in the request anymore. it's stored in state...
 		state.Request.NearRelayIds[:numNearRelays],
 		state.Request.NearRelayRTT[:numNearRelays],
 		state.Request.NearRelayJitter[:numNearRelays],
 		state.Request.NearRelayPacketLoss[:numNearRelays],
+		
 		destRelayIds,
 
 		// output
@@ -540,47 +547,9 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		}
 	}
 
-	/*
-		On slice 1, store the near relay results from slice 0 (after processing to exclude bad near relays).
-
-		On subsequent slices, just use the held near relay results.
-
-		We can't afford to ping near relays continuously during a session.
-
-		This also enabled future work where a ping token grants a certain number of ping responses 
-		to an IP address only, solving near relay ping DDoS to our relay fleet.
-	*/
-
-	if !state.Input.HoldNearRelays {
-
-		// hold near relay RTTs
-
-		core.Debug("holding near relays")
-
-		state.Output.HoldNearRelays = true
-
-		state.HoldingNearRelays = true
-
-		for i := 0; i < len(state.Request.NearRelayIds); i++ {
-			state.Output.HoldNearRelayRTT[i] = state.NearRelayRTTs[i]
-		}
-
-	} else {
-
-		// use held near relay RTTs
-
-		core.Debug("using held near relays")
-
-		for i := range state.Request.NearRelayIds {
-			state.Request.NearRelayRTT[i] = state.Input.HoldNearRelayRTT[i] // when set to 255, near relay is excluded from routing
-			state.Request.NearRelayJitter[i] = 0
-			state.Request.NearRelayPacketLoss[i] = 0
-		}
-
-	}
-
 	// tell the SDK to stop pinging near relays
 
+	// todo: remove this, not needed anymore
 	state.Response.ExcludeNearRelays = true
 	for i := 0; i < core.MaxNearRelays; i++ {
 		state.Response.NearRelayExcluded[i] = true

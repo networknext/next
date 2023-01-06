@@ -188,7 +188,10 @@ type SDK5_SessionUpdateRequestPacket struct {
 	PlatformType                    int32
 	ConnectionType                  int32
 	Next                            bool
+
+	// todo: remove
 	Committed                       bool
+
 	Reported                        bool
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
@@ -254,7 +257,10 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeInteger(&packet.ConnectionType, SDK5_ConnectionTypeUnknown, SDK5_ConnectionTypeMax)
 
 	stream.SerializeBool(&packet.Next)
+
+	// todo: remove
 	stream.SerializeBool(&packet.Committed)
+
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
@@ -348,7 +354,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		PrevPacketsSentServerToClient: rand.Uint64(),
 		PrevPacketsLostClientToServer: rand.Uint64(),
 		PrevPacketsLostServerToClient: rand.Uint64(),
-		HoldNearRelays:                common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
 		TotalPriceSum:                 rand.Uint64(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
@@ -358,12 +363,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
-	}
-
-	if sessionData.HoldNearRelays {
-		for i := 0; i < core.MaxNearRelays; i++ {
-			sessionData.HoldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
-		}
 	}
 
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
@@ -410,6 +409,7 @@ func GenerateRandomSessionData() SDK5_SessionData {
 type SDK5_SessionUpdateResponsePacket struct {
 	SessionId          uint64
 	SliceNumber        uint32
+	// todo: where is the signature for the session data?
 	SessionDataBytes   int32
 	SessionData        [SDK5_MaxSessionDataSize]byte
 	RouteType          int32
@@ -420,12 +420,16 @@ type SDK5_SessionUpdateResponsePacket struct {
 	NumTokens          int32
 	Tokens             []byte
 	Multipath          bool
-	Committed          bool
 	HasDebug           bool
 	Debug              string
+	HighFrequencyPings bool
+
+	// todo: remove
+	Committed          bool
+
+	// todo: this complexity is no longer needed. remove.
 	ExcludeNearRelays  bool
 	NearRelayExcluded  [SDK5_MaxNearRelays]bool
-	HighFrequencyPings bool
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -475,6 +479,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 	stream.SerializeBool(&packet.HasDebug)
 	stream.SerializeString(&packet.Debug, SDK5_MaxSessionDebug)
 
+	// todo: remove this
 	stream.SerializeBool(&packet.ExcludeNearRelays)
 	if packet.ExcludeNearRelays {
 		for i := range packet.NearRelayExcluded {
@@ -562,8 +567,6 @@ type SDK5_SessionData struct {
 	PrevPacketsSentServerToClient uint64
 	PrevPacketsLostClientToServer uint64
 	PrevPacketsLostServerToClient uint64
-	HoldNearRelays                bool
-	HoldNearRelayRTT              [SDK5_MaxNearRelays]int32
 	WroteSummary                  bool
 	TotalPriceSum                 uint64
 	NextEnvelopeBytesUpSum        uint64
@@ -655,14 +658,16 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.FallbackToDirect)
 
 	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
-
 	for i := int32(0); i < sessionData.RouteState.NumNearRelays; i++ {
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayRTT[i], 0, 255)
+		// todo: we don't need to store the relay jitter
 		stream.SerializeInteger(&sessionData.RouteState.NearRelayJitter[i], 0, 255)
 	}
 
 	stream.SerializeBool(&sessionData.RouteState.RelayWentAway)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
+
+	// todo: why store this? isn't it sent up in the request each session update?
 	stream.SerializeInteger(&sessionData.RouteState.DirectJitter, 0, 255)
 
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
@@ -677,13 +682,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 
 	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
-
-	stream.SerializeBool(&sessionData.HoldNearRelays)
-	if sessionData.HoldNearRelays {
-		for i := 0; i < core.MaxNearRelays; i++ {
-			stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
-		}
-	}
 
 	stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
 
