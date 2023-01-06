@@ -1,7 +1,7 @@
-[map "f74b6d75-a586-36b8-9008-94484d3ce5d4"]
-	object = 1beda88c9527ad9f7766fc39da81d8d80fcc468b
-	path = enet
-	type = expand module
 [map "349e93c9-72d8-39fe-84eb-26e2ad1ac8bc"]
 	object = 27dfef95bffcfecb485017ce155e801c0fe4f178
 	type = include + expand tree
+[map "e5d4cd73-c766-3550-a8ce-8f8ecb0de034"]
+	object = af62fa032377c232bb6a1985021eca2affac916a
+	path = enet
+	type = expand module
