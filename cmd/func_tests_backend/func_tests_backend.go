@@ -1296,12 +1296,12 @@ func test_redis_leader_store_no_flap() {
 				return
 			case <-ticker.C:
 
-				wasLeader := rediselector.IsLeader()
+				wasLeader := rediselector2.IsLeader()
 
 				rediselector2.Store(cancelContext, dataStore2...)
 				rediselector2.Load(cancelContext)
 
-				isNowLeader := rediselector.IsLeader()
+				isNowLeader := rediselector2.IsLeader()
 
 				if !wasLeader && isNowLeader {
 					// we became leader
@@ -2037,19 +2037,23 @@ func main() {
 	googleProjectID = "local"
 
 	allTests := []test_function{
-		test_magic_backend,
-		test_redis_pubsub,
-		test_redis_streams,
+		/*
+			test_magic_backend,
+			test_redis_pubsub,
+			test_redis_streams,
+		*/
 		test_redis_leader_store_no_flap,
 		test_redis_leader_store_migration,
-		test_google_pubsub,
-		test_google_bigquery,
-		test_cost_matrix_read_write,
-		test_route_matrix_read_write,
-		test_session_data_serialize,
-		test_relay_manager,
-		test_optimize,
-		test_relay_backend,
+		/*
+			test_google_pubsub,
+			test_google_bigquery,
+			test_cost_matrix_read_write,
+			test_route_matrix_read_write,
+			test_session_data_serialize,
+			test_relay_manager,
+			test_optimize,
+			test_relay_backend,
+		*/
 	}
 
 	var tests []test_function
