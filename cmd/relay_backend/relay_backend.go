@@ -154,11 +154,16 @@ func UpdateReadyState() {
 	}()
 }
 
+func isReady() bool {
+	readyMutex.RLock()
+	result := ready
+	readyMutex.RUnlock()
+	return result
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 
-	readyMutex.RLock()
-	not_ready := !ready
-	readyMutex.RUnlock()
+	not_ready := !isReady()
 
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -613,7 +618,9 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				dataStores = service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
-					core.Error("failed to get data stores from redis selector")
+					if isReady() {
+						core.Error("failed to get data stores from redis selector") // don't complain unless we are ready. otherwise, this is benign.
+					}
 					continue
 				}
 

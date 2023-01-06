@@ -9,6 +9,14 @@ import (
 
 func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float32, relayLongitudes []float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32) ([]uint64, []net.UDPAddr) {
 
+	// Are there no relays in the route matrix? Return empty set
+
+	if len(relayIds) == 0 {
+		nearRelayIds := make([]uint64, 0)
+		nearRelayAddresses := make([]net.UDPAddr, 0)
+		return nearRelayIds, nearRelayAddresses
+	}	
+
 	// Estimate direct latency
 
 	directLatency := float32(3.0 / 2.0 * core.SpeedOfLightTimeMilliseconds_AB(float64(sourceLatitude), float64(sourceLongitude), float64(destLatitude), float64(destLongitude)))
