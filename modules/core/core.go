@@ -986,8 +986,6 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 
 			if entry.NumRoutes > 0 {
 
-				// todo: verify this code using "fullRelaySet"
-
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
 					for l := 0; l < len(entry.RouteRelays[0]); l++ {
@@ -1182,45 +1180,62 @@ func GetBestRoutes(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, source
 
 // -------------------------------------------
 
-// todo: test
-/*
-func ReframeRoute(routeState *RouteState, relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
-
-	// translate relay ids -> relay index and invalidate the route if any route relays no longer exist
-
+func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
 	for i := range routeRelayIds {
 		relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
 		if !ok {
-			Debug("route relay %x went away", routeRelayIds[i])
-			routeState.RelayWentAway = true
 			return false
 		}
 		out_routeRelays[i] = relayIndex
 	}
-	
-	routeState.RelayWentAway = false
-	
 	return true
 }
 
-func ReframeDestRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, destRelayId []uint64, out_numDestRelays *int32, out_destRelays []int32) {
-
-	// translate dest relays -> relay index and exclude any dest relays that no longer exist in the route matrix
-
-	numDestRelays := int32(0)
-
+func ReframeDestRelays(relayIdToIndex map[uint64]int32, destRelayId []uint64, out_numDestRelays *int, out_destRelays []int32) {
+	numDestRelays := 0
 	for i := range destRelayId {
 		destRelayIndex, ok := relayIdToIndex[destRelayId[i]]
 		if !ok {
 			continue
 		}
-		routeState.DestRelay[numDestRelays] = destRelayIndex
+		out_destRelays[numDestRelays] = destRelayIndex
 		numDestRelays++
 	}
-
-	routeState.NumDestRelays = numDestRelays
+	*out_numDestRelays = numDestRelays
 }
 
+func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
+
+	for i := range sourceRelayLatency {
+
+		// you say your latency is 0ms? I don't believe you!
+		if sourceRelayLatency[i] <= 0 {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
+		}
+
+		// clamp latency above 255ms
+		if sourceRelayLatency[i] > 255 {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
+		}
+
+		// any source relay that no longer exists cannot be routed through
+		relayIndex, ok := relayIdToIndex[sourceRelayId[i]]
+		if !ok {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
+		}
+
+		out_sourceRelays[i] = relayIndex
+		out_sourceRelayLatency[i] = sourceRelayLatency[i]
+	}
+}
+
+/*
 func FilterSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32) {
 
 	routeState.NumNearRelays = int32(len(sourceRelayId))
@@ -1285,35 +1300,6 @@ func FilterSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32,
 		}
 
 		// exclude relays that no longer exist
-		_, ok := relayIdToIndex[sourceRelayId[i]]
-		if !ok {
-			routeState.NearRelayRTT[i] = 255
-			continue
-		}
-
-		routeState.NearRelayRTT[i] = sourceRelayLatency[i]
-	}
-}
-
-func ReframeSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32) {
-
-	routeState.NumNearRelays = int32(len(sourceRelayId))
-
-	for i := range sourceRelayLatency {
-
-		// you say your latency is 0ms? I don't believe you!
-		if sourceRelayLatency[i] <= 0 {
-			routeState.NearRelayRTT[i] = 255
-			continue
-		}
-
-		// clamp latency above 255ms
-		if sourceRelayLatency[i] > 255 {
-			routeState.NearRelayRTT[i] = 255
-			continue
-		}
-
-		// any source relay that no longer exists cannot be routed through
 		_, ok := relayIdToIndex[sourceRelayId[i]]
 		if !ok {
 			routeState.NearRelayRTT[i] = 255
@@ -1483,26 +1469,13 @@ type RouteState struct {
 	LocationVeto        bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
-
 	RelayWentAway       bool
 	RouteLost           bool
 	Mispredict          bool
 	LackOfDiversity     bool
-
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
-	PLSustainedCounter  int32
-
-	// todo: should these even be in here, if they are not serialized?
-
-	// IMPORTANT: not serialized
-	NumSourceRelays     int32
-	SourceRelay         [MaxNearRelays]int32
-	SourceRelayRTT      [MaxNearRelays]int32
-
-	// IMPORTANT: not serialized
-	NumDestRelays       int32
-	DestRelay           []int32
+	PLSustainedCounter  uint32
 }
 
 type InternalConfig struct {

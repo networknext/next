@@ -673,12 +673,9 @@ func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [MaxRelaysP
 		relayIdToIndex[id] = int32(v.index)
 	}
 	reframedRoute := [MaxRelaysPerRoute]int32{}
-	// todo: reframe route shouldn't access route state
-	/*
-	if ReframeRoute(&routeState, relayIdToIndex, route, &reframedRoute) {
+	if ReframeRoute(relayIdToIndex, route, &reframedRoute) {
 		return int32(len(route)), reframedRoute
 	}
-	*/
 	return 0, reframedRoute
 }
 
@@ -2641,6 +2638,40 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 	assert.Equal(t, int32(0), numRouteRelays)
 }
 
+func TestReframeDestRelays(t *testing.T) {
+
+	t.Parallel()
+
+	relayIdToIndex := make(map[uint64]int32)
+	relayIdToIndex[1] = 0
+	relayIdToIndex[2] = 1
+	relayIdToIndex[3] = 2
+	relayIdToIndex[4] = 3
+	relayIdToIndex[5] = 4
+	relayIdToIndex[6] = 5
+
+	inputDestRelayIds := [...]uint64{4,5,6,7}
+
+	outputNumDestRelays := 0
+	outputDestRelays := make([]int32, len(inputDestRelayIds))
+
+	ReframeDestRelays(relayIdToIndex, inputDestRelayIds[:], &outputNumDestRelays, outputDestRelays[:])
+
+	assert.Equal(t, outputNumDestRelays, 3)
+	assert.Equal(t, outputDestRelays[0], int32(3))
+	assert.Equal(t, outputDestRelays[1], int32(4))
+	assert.Equal(t, outputDestRelays[2], int32(5))
+}
+
+func TestReframeSourceRelays(t *testing.T) {
+
+	t.Parallel()
+
+	// ...
+}
+
+// todo: TestFilterSourceRelays (various cases)
+
 func TestEarlyOutDirect(t *testing.T) {
 
 	var debug string
@@ -4320,17 +4351,17 @@ func TestTakeNetworkNext_ReducePacketLoss_PLBelowSustained(t *testing.T) {
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(2), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.True(t, result)
-	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(3), test.routeState.PLSustainedCounter)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
@@ -4367,17 +4398,17 @@ func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(2), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.True(t, result)
-	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(3), test.routeState.PLSustainedCounter)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
@@ -4414,17 +4445,17 @@ func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T) {
@@ -4461,19 +4492,19 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(2), test.routeState.PLSustainedCounter)
 
 	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 }
 
 func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) {
@@ -4510,50 +4541,50 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 
 	test.directPacketLoss = 5
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(2), test.routeState.PLSustainedCounter)
 
 	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(0), test.routeState.PLSustainedCounter)
 
 	test.directPacketLoss = 5
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(1), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
-	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(2), test.routeState.PLSustainedCounter)
 
 	result = test.TakeNetworkNext()
 
 	assert.True(t, result)
-	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
+	assert.Equal(t, uint32(3), test.routeState.PLSustainedCounter)
 }
 
 // -----------------------------------------------------------------------------
@@ -5868,11 +5899,9 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 // -------------------------------------------------------------
 
-// todo: Test_ReframeRoute
+// todo: Test_FilterSourceRelays
 
 // todo: Test_ReframeDestRelays
-
-// todo: Test_FilterSourceRelays
 
 // todo: Test_ReframeSourceRelays
 
