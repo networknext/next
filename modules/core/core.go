@@ -1235,12 +1235,9 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-/*
-func FilterSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32) {
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
 
-	routeState.NumNearRelays = int32(len(sourceRelayId))
-
-	// calculate average jitter (pre-exclusion)
+	// calculate average jitter
 
 	count := 0
 	totalJitter := 0.0
@@ -1256,60 +1253,71 @@ func FilterSourceRelays(routeState *RouteState, relayIdToIndex map[uint64]int32,
 		averageJitter = int32(math.Ceil(totalJitter / float64(count)))
 	}
 
-	// general exclusion pass
+	// exclude unsuitable source relays
 
 	for i := range sourceRelayLatency {
 
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with latency above 255ms
 		if sourceRelayLatency[i] > 255 {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with jitter significantly higher than average
 		if sourceRelayJitter[i] > averageJitter+JitterThreshold {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
 		}
 
 		// exclude relays with jitter significantly higher than direct
 		if sourceRelayJitter[i] > directJitter+JitterThreshold {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
 		}
 
 		// exclude relays with PL >= 50%
 		if sourceRelayPacketLoss[i] >= 50 {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with latency > direct
-		if routeState.NearRelayRTT[i] > directLatency {
-			routeState.NearRelayRTT[i] = 255
+		if sourceRelayLatency[i] > directLatency {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
 			continue
 		}
 
 		// exclude relays with packet loss higher than direct
 		if sourceRelayPacketLoss[i] > directPacketLoss {
-			routeState.NearRelayRTT[i] = 255
-		}
-
-		// exclude relays that no longer exist
-		_, ok := relayIdToIndex[sourceRelayId[i]]
-		if !ok {
-			routeState.NearRelayRTT[i] = 255
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
 			continue
 		}
 
-		routeState.NearRelayRTT[i] = sourceRelayLatency[i]
+		// exclude relays that no longer exist
+		relayIndex, ok := relayIdToIndex[sourceRelayId[i]]
+		if !ok {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
+		}
+
+		out_sourceRelays[i] = relayIndex
+		out_sourceRelayLatency[i] = sourceRelayLatency[i]
 	}
 }
-*/
 
 // ----------------------------------------------
 

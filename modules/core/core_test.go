@@ -2667,10 +2667,37 @@ func TestReframeSourceRelays(t *testing.T) {
 
 	t.Parallel()
 
-	// ...
-}
+	relayIdToIndex := make(map[uint64]int32)
+	relayIdToIndex[1] = 0
+	relayIdToIndex[2] = 1
+	relayIdToIndex[3] = 2
+	relayIdToIndex[4] = 3
+	relayIdToIndex[5] = 4
+	relayIdToIndex[6] = 5
+	relayIdToIndex[7] = 6
+	relayIdToIndex[8] = 7
+	relayIdToIndex[9] = 8
 
-// todo: TestFilterSourceRelays (various cases)
+	inputSourceRelayIds := [...]uint64{4,5,6,7,10}
+	inputSourceRelayLatency := [...]int32{100, 10, 0, 300, 10}
+
+	outputSourceRelays := make([]int32, len(inputSourceRelayIds))
+	outputSourceRelayLatency := make([]int32, len(inputSourceRelayIds))
+
+	ReframeSourceRelays(relayIdToIndex, inputSourceRelayIds[:], inputSourceRelayLatency[:], outputSourceRelays[:], outputSourceRelayLatency[:])
+
+	assert.Equal(t, outputSourceRelays[0], int32(3))
+	assert.Equal(t, outputSourceRelays[1], int32(4))
+	assert.Equal(t, outputSourceRelays[2], int32(-1))
+	assert.Equal(t, outputSourceRelays[3], int32(-1))
+	assert.Equal(t, outputSourceRelays[4], int32(-1))
+
+	assert.Equal(t, outputSourceRelayLatency[0], int32(100))
+	assert.Equal(t, outputSourceRelayLatency[1], int32(10))
+	assert.Equal(t, outputSourceRelayLatency[2], int32(255))
+	assert.Equal(t, outputSourceRelayLatency[3], int32(255))
+	assert.Equal(t, outputSourceRelayLatency[4], int32(255))
+}
 
 func TestEarlyOutDirect(t *testing.T) {
 
