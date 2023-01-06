@@ -281,6 +281,8 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		LocalMode: true,
 	}
 
+	// fuck firestore
+	/*
 	// Check for the firestore emulator
 	firestoreEmulatorOK := envvar.Exists("FIRESTORE_EMULATOR_HOST")
 	if firestoreEmulatorOK {
@@ -304,6 +306,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 
 		storer = fs
 	}
+	*/
 
 	// Create dummy entries in storer for local testing
 	if env == "local" {
