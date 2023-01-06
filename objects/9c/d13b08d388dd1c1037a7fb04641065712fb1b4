@@ -5,3 +5,7 @@
 	object = cd0496a2999b4d038a4edabf9b81917415aeeea3
 	path = portal
 	type = expand module
+[map "2f63279f-2a95-3e98-b620-0c5c8385e1a8"]
+	object = 44d9177d8bdf930df78c684e286406d26568a004
+	path = portal
+	type = expand module
