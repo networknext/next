@@ -416,13 +416,14 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	fmt.Printf("\nstarting server:\n\n")
+	fmt.Printf("\nstarting client and server:\n\n")
 
+	client5_stdout := run("client5", "logs/client5")
 	server5_stdout := run("server5", "logs/server5")
 
 	// initialize server5
 
-	fmt.Printf("verifying server ...")
+	fmt.Printf("\nverifying server ...")
 
 	server5_initialized := false
 
@@ -444,16 +445,6 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
-
-	// ==================================================================================
-
-	fmt.Printf("\nstarting client:\n\n")
-
-	client5_stdout := run("client5", "logs/client5")
-
-	fmt.Printf("\n")
-
-	// initialize client5
 
 	fmt.Printf("verifying client ...")
 

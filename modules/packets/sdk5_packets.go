@@ -633,7 +633,18 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	// todo: we gotta write the HeldNumNearRelays, etc.
+	hasNearRelays := false
+	if stream.IsWriting() {
+		hasNearRelays = sessionData.HeldNumNearRelays > 0
+	}
+	stream.SerializeBool(&hasNearRelays)
+	if hasNearRelays {
+		stream.SerializeInteger(&sessionData.HeldNumNearRelays, 1, int32(SDK5_MaxNearRelays))
+		for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
+			stream.SerializeUint64(&sessionData.HeldNearRelayIds[i])
+			stream.SerializeInteger(&sessionData.HeldNearRelayRTT[i], 0, 255)
+		}
+	}
 
 	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)

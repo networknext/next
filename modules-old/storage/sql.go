@@ -3139,10 +3139,10 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, highFrequencyPings, int64(ephemeralBuyerID))
-	case "MaxRTT":
+	case "MaxNextRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
-			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
+			return fmt.Errorf("MaxNextRTT: %v is not a valid int32 type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
