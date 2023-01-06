@@ -164,16 +164,6 @@ type Storer interface {
 	// RemoveRouteShader removes a record from the RouteShaders table
 	RemoveRouteShader(ctx context.Context, buyerID uint64) error
 
-	// AddBannedUser adds a user to the banned_user table
-	AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error
-
-	// RemoveBannedUser removes a user from the banned_user table
-	RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error
-
-	// BannedUsers returns the set of banned users for the specified buyer ID. This method
-	// is designed to be used by syncRouteShaders() though it can be used by client code.
-	BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error)
-
 	// GetDatabaseBinFileMetaData returns data from the database_bin_meta table
 	GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error)
 

@@ -124,8 +124,6 @@ func main() {
 		pingdom()
 	} else if command == "relay" {
 		relay()
-	} else if command == "server-backend4" {
-		server_backend4()
 	} else if command == "server-backend5" {
 		server_backend5()
 	} else if command == "happy-path" {
@@ -219,10 +217,6 @@ func relay() {
 		relayPort = "2000"
 	}
 	bash(fmt.Sprintf("cd dist && RELAY_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
-}
-
-func server_backend4() {
-	bash("HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4")
 }
 
 func server_backend5() {

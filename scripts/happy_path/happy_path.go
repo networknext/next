@@ -334,36 +334,11 @@ func happy_path(wait bool) int {
 
 	// initialize server backends
 
-	fmt.Printf("\nstarting server backends:\n\n")
+	fmt.Printf("\nstarting server backend:\n\n")
 
-	server_backend4_stdout := run("server-backend4", "logs/server_backend4")
 	server_backend5_stdout := run("server-backend5", "logs/server_backend5")
 
-	fmt.Printf("\nverifying server backend 4 ...")
-
-	server_backend4_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(server_backend4_stdout.String(), "started http server on port 40000") &&
-			strings.Contains(server_backend4_stdout.String(), "started udp server on port 40000") &&
-			strings.Contains(server_backend4_stdout.String(), "updated route matrix: 10 relays") {
-			server_backend4_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !server_backend4_initialized {
-		fmt.Printf("\n\nerror: server backend 4 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", server_backend4_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying server backend 5 ...")
+	fmt.Printf("\nverifying server backend ...")
 
 	server_backend5_initialized := false
 
@@ -441,39 +416,13 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	fmt.Printf("\nstarting servers:\n\n")
+	fmt.Printf("\nstarting server:\n\n")
 
-	server4_stdout := run("server4", "logs/server4")
 	server5_stdout := run("server5", "logs/server5")
-
-	// initialize server4
-
-	fmt.Printf("\nverifying server 4 ...")
-
-	server4_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(server4_stdout.String(), "welcome to network next :)") &&
-			strings.Contains(server4_stdout.String(), "server is ready to receive client connections") {
-			server4_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !server4_initialized {
-		fmt.Printf("\n\nerror: server 4 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", server4_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
 
 	// initialize server5
 
-	fmt.Printf("verifying server 5 ...")
+	fmt.Printf("verifying server ...")
 
 	server5_initialized := false
 
@@ -498,41 +447,15 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	fmt.Printf("\nstarting clients:\n\n")
+	fmt.Printf("\nstarting client:\n\n")
 
-	client4_stdout := run("client4", "logs/client4")
 	client5_stdout := run("client5", "logs/client5")
 
 	fmt.Printf("\n")
 
-	// initialize client4
-
-	fmt.Printf("verifying client 4 ...")
-
-	client4_initialized := false
-
-	for i := 0; i < 45; i++ {
-		if strings.Contains(client4_stdout.String(), "client next route (committed)") &&
-			strings.Contains(client4_stdout.String(), "client continues route (committed)") {
-			client4_initialized = true
-			break
-		}
-		time.Sleep(time.Second)
-	}
-
-	if !client4_initialized {
-		fmt.Printf("\n\nerror: client 4 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", client4_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// initialize client5
 
-	fmt.Printf("verifying client 5 ...")
+	fmt.Printf("verifying client ...")
 
 	client5_initialized := false
 

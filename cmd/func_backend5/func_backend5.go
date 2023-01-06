@@ -853,8 +853,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		return
 	}
 
-	excludeNearRelays(responsePacket, sessionData.RouteState)
-
 	packetSessionData, err := packets.WritePacket[*packets.SDK5_SessionData](responsePacket.SessionData[:], &sessionData)
 
 	if err != nil {
@@ -891,16 +889,6 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, request
 	}
 
 	SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
-}
-
-func excludeNearRelays(sessionResponse *packets.SDK5_SessionUpdateResponsePacket, routeState core.RouteState) {
-	numExcluded := 0
-	for i := 0; i < int(routeState.NumNearRelays); i++ {
-		if routeState.NearRelayRTT[i] == 255 {
-			sessionResponse.NearRelayExcluded[i] = true
-		}
-	}
-	sessionResponse.ExcludeNearRelays = numExcluded > 0
 }
 
 // -----------------------------------------------

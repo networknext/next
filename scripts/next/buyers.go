@@ -442,7 +442,6 @@ func getRouteShader(
 	fmt.Printf("  AnalysisOnly             : %t\n", reply.RouteShader.AnalysisOnly)
 	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
 	fmt.Printf("  ABTest                   : %t\n", reply.RouteShader.ABTest)
-	fmt.Printf("  ProMode                  : %t\n", reply.RouteShader.ProMode)
 	fmt.Printf("  ReduceLatency            : %t\n", reply.RouteShader.ReduceLatency)
 	fmt.Printf("  ReduceJitter             : %t\n", reply.RouteShader.ReduceJitter)
 	fmt.Printf("  ReducePacketLoss         : %t\n", reply.RouteShader.ReducePacketLoss)
@@ -590,76 +589,6 @@ func updateRouteShader(
 	}
 
 	fmt.Printf("RouteShader for %s updated successfully.\n", buyerName)
-	return nil
-}
-
-func getBannedUsers(
-	env Environment,
-	buyerRegex string,
-) error {
-
-	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
-
-	reply := localjsonrpc.GetBannedUserReply{}
-
-	args := localjsonrpc.GetBannedUserArg{
-		BuyerID: buyerID,
-	}
-	if err := makeRPCCall(env, &reply, "BuyersService.GetBannedUsers", args); err != nil {
-		fmt.Printf("%v\n", err)
-		return nil
-	}
-
-	fmt.Printf("Banned users for buyer %s:\n", buyerName)
-	for _, userID := range reply.BannedUsers {
-		fmt.Printf("  %s\n", userID)
-	}
-	return nil
-}
-
-func addBannedUser(
-	env Environment,
-	buyerRegex string,
-	userID uint64,
-) error {
-
-	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
-
-	emptyReply := localjsonrpc.BannedUserReply{}
-
-	args := localjsonrpc.BannedUserArgs{
-		BuyerID: buyerID,
-		UserID:  userID,
-	}
-	if err := makeRPCCall(env, &emptyReply, "BuyersService.AddBannedUser", args); err != nil {
-		fmt.Printf("%v\n", err)
-		return nil
-	}
-
-	fmt.Printf("Banned user %016x added for buyer %s successfully.\n", userID, buyerName)
-	return nil
-}
-
-func removeBannedUser(
-	env Environment,
-	buyerRegex string,
-	userID uint64,
-) error {
-
-	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
-
-	emptyReply := localjsonrpc.BannedUserReply{}
-
-	args := localjsonrpc.BannedUserArgs{
-		BuyerID: buyerID,
-		UserID:  userID,
-	}
-	if err := makeRPCCall(env, &emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
-		fmt.Printf("%v\n", err)
-		return nil
-	}
-
-	fmt.Printf("Banned user %016x successfully removed  for buyer %s.\n", userID, buyerName)
 	return nil
 }
 

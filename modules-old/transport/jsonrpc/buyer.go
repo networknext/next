@@ -1013,7 +1013,8 @@ func (s *BuyersService) GenerateMapPointsPerBuyer(ctx context.Context) error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
-		isLargeCustomer := buyer.InternalConfig.LargeCustomer
+		// todo: thsi should really be a setting, "show only accelerated sessions?"
+		isLargeCustomer := false
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
@@ -1818,7 +1819,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// save old route shader, internal config, and banned users to bring over to new buyer
 	routeShader, routeShaderErr := s.Storage.RouteShader(ctx, oldBuyerID)
 	internalConfig, internalConfigErr := s.Storage.InternalConfig(ctx, oldBuyerID)
-	bannedUsers, bannedUsersErr := s.Storage.BannedUsers(ctx, oldBuyerID)
 
 	// Remove everything that has a FK to old buyer ID
 	if err = s.Storage.RemoveRouteShader(ctx, oldBuyerID); err != nil {
@@ -1827,12 +1827,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	if err = s.Storage.RemoveInternalConfig(ctx, oldBuyerID); err != nil {
 		core.Error("%v", err)
-	}
-
-	for id := range bannedUsers {
-		if err = s.Storage.RemoveBannedUser(ctx, oldBuyerID, id); err != nil {
-			core.Error("%v", err)
-		}
 	}
 
 	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
@@ -1874,17 +1868,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			err = fmt.Errorf("UpdateGameConfiguration() failed to add old internal config to new buyer: %v", err)
 			core.Error("%v", err)
 			return err
-		}
-	}
-
-	if bannedUsersErr == nil {
-		for id := range bannedUsers {
-			err := s.Storage.AddBannedUser(ctx, buyerID, id)
-			if err != nil {
-				err = fmt.Errorf("UpdateGameConfiguration() failed to add old banned user to new buyer: %v", err)
-				core.Error("%v", err)
-				return err
-			}
 		}
 	}
 
@@ -2301,17 +2284,11 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 		RTTVeto_Default:                int64(ic.RTTVeto_Default),
 		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
 		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
 		ForceNext:                      ic.ForceNext,
-		LargeCustomer:                  ic.LargeCustomer,
-		Uncommitted:                    ic.Uncommitted,
-		MaxRTT:                         int64(ic.MaxRTT),
+		MaxRTT:                         int64(ic.MaxNextRTT),
 		HighFrequencyPings:             ic.HighFrequencyPings,
 		RouteDiversity:                 int64(ic.RouteDiversity),
-		MultipathThreshold:             int64(ic.MultipathThreshold),
-		EnableVanityMetrics:            ic.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
+		// todo: are we passing in all internal config fields above?
 	}
 
 	reply.InternalConfig = jsonIC
@@ -2343,17 +2320,11 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 		RTTVeto_Default:                int32(arg.InternalConfig.RTTVeto_Default),
 		RTTVeto_Multipath:              int32(arg.InternalConfig.RTTVeto_Multipath),
 		RTTVeto_PacketLoss:             int32(arg.InternalConfig.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold:     int32(arg.InternalConfig.MultipathOverloadThreshold),
-		TryBeforeYouBuy:                arg.InternalConfig.TryBeforeYouBuy,
 		ForceNext:                      arg.InternalConfig.ForceNext,
-		LargeCustomer:                  arg.InternalConfig.LargeCustomer,
-		Uncommitted:                    arg.InternalConfig.Uncommitted,
-		MaxRTT:                         int32(arg.InternalConfig.MaxRTT),
+		MaxNextRTT:                     int32(arg.InternalConfig.MaxRTT),
 		HighFrequencyPings:             arg.InternalConfig.HighFrequencyPings,
 		RouteDiversity:                 int32(arg.InternalConfig.RouteDiversity),
-		MultipathThreshold:             int32(arg.InternalConfig.MultipathThreshold),
-		EnableVanityMetrics:            arg.InternalConfig.EnableVanityMetrics,
-		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
+		// todo: do we have all internal config fields above?
 	}
 
 	err = s.Storage.AddInternalConfig(r.Context(), ic, buyerID)
@@ -2466,7 +2437,6 @@ type JSRouteShader struct {
 	AnalysisOnly              bool            `json:"analysis_only"`
 	SelectionPercent          int64           `json:"selectionPercent"`
 	ABTest                    bool            `json:"abTest"`
-	ProMode                   bool            `json:"proMode"`
 	ReduceLatency             bool            `json:"reduceLatency"`
 	ReduceJitter              bool            `json:"reduceJitter"`
 	ReducePacketLoss          bool            `json:"reducePacketLoss"`
@@ -2511,7 +2481,6 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AnalysisOnly:              rs.AnalysisOnly,
 		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
-		ProMode:                   rs.ProMode,
 		ReduceLatency:             rs.ReduceLatency,
 		ReduceJitter:              rs.ReduceJitter,
 		ReducePacketLoss:          rs.ReducePacketLoss,
@@ -2519,9 +2488,9 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AcceptableLatency:         int64(rs.AcceptableLatency),
 		LatencyThreshold:          int64(rs.LatencyThreshold),
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	reply.RouteShader = jsonRS
@@ -2551,7 +2520,6 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		AnalysisOnly:              arg.RouteShader.AnalysisOnly,
 		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
 		ABTest:                    arg.RouteShader.ABTest,
-		ProMode:                   arg.RouteShader.ProMode,
 		ReduceLatency:             arg.RouteShader.ReduceLatency,
 		ReduceJitter:              arg.RouteShader.ReduceJitter,
 		ReducePacketLoss:          arg.RouteShader.ReducePacketLoss,
@@ -2566,7 +2534,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 
 	err = s.Storage.AddRouteShader(r.Context(), rs, buyerID)
 	if err != nil {
-		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
+		err = fmt.Errorf("buyer.go -- AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		core.Error("%v", err)
 		return err
 	}
@@ -2669,7 +2637,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	case "AnalysisOnly", "DisableNetworkNext", "ABTest", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
@@ -2685,74 +2653,6 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", args.Field)
-	}
-
-	return nil
-}
-
-// BannedUser CRUD endpoints
-type GetBannedUserArg struct {
-	BuyerID uint64
-}
-
-type GetBannedUserReply struct {
-	BannedUsers []string // hex strings
-}
-
-func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	var userList []string
-
-	bannedUsers, err := s.Storage.BannedUsers(r.Context(), arg.BuyerID)
-	if err != nil {
-		err = fmt.Errorf("GetBannedUsers() error retrieving banned users for buyer %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
-	}
-
-	for userID := range bannedUsers {
-		userList = append(userList, fmt.Sprintf("%016x", userID))
-	}
-
-	reply.BannedUsers = userList
-	return nil
-}
-
-type BannedUserArgs struct {
-	BuyerID uint64
-	UserID  uint64
-}
-
-type BannedUserReply struct{}
-
-func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	err := s.Storage.AddBannedUser(r.Context(), arg.BuyerID, arg.UserID)
-	if err != nil {
-		err = fmt.Errorf("AddBannedUser() error adding banned user for buyer %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	err := s.Storage.RemoveBannedUser(r.Context(), arg.BuyerID, arg.UserID)
-	if err != nil {
-		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
 	}
 
 	return nil
