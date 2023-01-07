@@ -108,6 +108,8 @@ const (
 	SDK5_NonceBytes = crypto.Box_NonceSize
 	SDK5_KeyBytes   = crypto.Box_KeySize
 
+	SDK5_SignatureBytes = crypto.Sign_SignatureSize
+
 	SDK5_MaxNearRelayRTT        = 255
 	SDK5_MaxNearRelayJitter     = 255
 	SDK5_MaxNearRelayPacketLoss = 100
