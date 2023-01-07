@@ -26,6 +26,7 @@ const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
+const LatencyThreshold = 15
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -1287,8 +1288,8 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with latency > direct
-		if sourceRelayLatency[i] > directLatency {
+		// exclude relays with latency significantly higher than direct
+		if sourceRelayLatency[i] > directLatency+LatencyThreshold {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}
@@ -1722,9 +1723,16 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
+	Debug("direct latency = %d", directLatency)
+	Debug("next latency = %d", nextLatency)
+	Debug("predicted latency = %d", predictedLatency)
+
 	// if we early out, go direct
 
 	if EarlyOutDirect(routeShader, routeState, debug) {
+		if debug != nil {
+			*debug += "early out direct\n"
+		}
 		return false, false
 	}
 
@@ -1737,11 +1745,6 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
-
-	// todo
-	fmt.Printf("direct latency = %d\n", directLatency)
-	fmt.Printf("next latency = %d\n", nextLatency)
-	fmt.Printf("predicted latency = %d\n", predictedLatency)
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
