@@ -27,21 +27,23 @@ DONE
 
 	Add unit test to make sure we reject unsigned session data.
 
-TODO
-
 	Update unit tests for session update handler so they work with the new signed session data.
-
-	-----------------
 
 	Extend session update post so it writes the session data signature to the response packet.
 
-	-----------------
-
 	Add a crypto_test.go for the new crypto module
 
+TODO
+
+	Add test for crypto box
+
+	Add test for crypto generate customer keypair
+
 	-----------------
 
+	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
 
+	-----------------
 
 
 
@@ -63,9 +65,6 @@ TODO
 
 	-----------------
 
-	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
-
-	-----------------
 	
 
 
@@ -318,14 +317,6 @@ TODO
 	-----------------
 
 	Fix the database thing around lat/long for datacenters
-
-	-----------------
-
-	Unit test near relay functions in session update
-
-	-----------------
-
-	Unit test session update post (at least the core parts for sending the response packet etc...)
 
 	-----------------
 

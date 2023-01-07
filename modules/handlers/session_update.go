@@ -126,7 +126,7 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 		return true
 	}
 
-	if !crypto.Verify(state.Request.SessionData[:], state.ServerBackendPublicKey[:], state.Request.SessionDataSignature[:]) {
+	if !crypto.Verify(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPublicKey[:], state.Request.SessionDataSignature[:]) {
 		core.Error("session data signature check failed")
 		state.SessionDataSignatureCheckFailed = true
 		return false
@@ -1014,9 +1014,9 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	writeStream.Flush()
 
-	// todo: we must store a session data signature in the response packet
-
 	state.Response.SessionDataBytes = int32(writeStream.GetBytesProcessed())
+
+	copy(state.Response.SessionDataSignature[:], crypto.Sign(state.Response.SessionData[:state.Response.SessionDataBytes], state.ServerBackendPrivateKey))
 
 	/*
 		Write the session update response packet.
