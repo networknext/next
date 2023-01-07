@@ -19,6 +19,8 @@ const (
 	Sign_PrivateKeySize = 64
 )
 
+// ----------------------------------------------------
+
 func Box_KeyPair() ([]byte, []byte) {
 	publicKey, privateKey, err := box.GenerateKey(crypto_rand.Reader)
 	if err != nil {
@@ -50,6 +52,27 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 	copy(priv[:], privateKey)
 
 	return box.Seal(nil, data, &n, &pub, &priv)
+}
+
+// ----------------------------------------------------
+
+func Sign_Keypair() ([]byte, []byte) {
+	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	publicKey, privateKey := new([32]byte), new([64]byte)
+	copy((*publicKey)[:], pub)
+	copy((*privateKey)[:], priv)
+	return publicKey[:], privateKey[:]
+}
+
+func Sign(data []byte, privateKey []byte) []byte {
+	return ed25519.Sign(ed25519.PrivateKey(privateKey), data)
+}
+
+func Verify(data []byte, publicKey []byte, signature []byte) bool {
+	return ed25519.Verify(ed25519.PublicKey(publicKey), data, signature)
 }
 
 // ----------------------------------------------------
