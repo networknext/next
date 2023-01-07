@@ -181,6 +181,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	RetryNumber          int32
 	SessionDataBytes     int32
 	SessionData          [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature [SDK5_SignatureBytes]byte
 	ClientAddress        net.UDPAddr
 	ServerAddress        net.UDPAddr
 	ClientRoutePublicKey [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
@@ -241,6 +242,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
