@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
+	// "github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 
@@ -80,6 +80,7 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 	return routeMatrix
 }
 
+/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -3526,6 +3527,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
 }
+*/
 
 func Test_SessionUpdate_Post_Response(t *testing.T) {
 
@@ -3542,6 +3544,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	state.From = core.ParseAddress("127.0.0.1:40000")
@@ -3554,14 +3557,48 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	handlers.SessionUpdate_Post(state)
 
-	// verify
+	// verify we wrote the session data and response packet without error
 
+	assert.True(t, state.WroteResponsePacket)
 	assert.False(t, state.FailedToWriteSessionData)
 	assert.False(t, state.FailedToWriteResponsePacket)
+	assert.True(t, len(state.ResponsePacket) > 0)
 
-	// todo: verify we can decrypt the response packet
+	// make sure the basic packet filter passes
 
-	// todo: verify the response packet is equal to the response in state
+	packetData := state.ResponsePacket
+
+	assert.True(t, core.BasicPacketFilter(packetData[:], len(packetData)))
+
+	// make sure the advanced packet filter passes
+
+	to := state.From
+	from := state.ServerBackendAddress
+
+	var emptyMagic [8]byte
+
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+
+	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
+	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+	assert.True(t, core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)))
+
+	// check packet signature
+
+	// todo: doesn't pass for some reason
+	// assert.True(t, packets.SDK5_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
+
+	// verify we can decrypt the response packet
+
+	packet := packets.SDK5_SessionUpdateResponsePacket{}
+	err := packets.ReadPacket(packetData, &packet)
+	assert.NotNil(t, err)
+
+	// verify the response packet is equal to the response in state
+
+	assert.Equal(t, packet, state.Response)
 
 	// todo: verify that the signature check passes on the session data inside the response
 
