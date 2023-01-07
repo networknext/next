@@ -79,26 +79,3 @@ func Verify(data []byte, publicKey []byte, signature []byte) bool {
 }
 
 // ----------------------------------------------------
-
-func GenerateCustomerKeyPair() ([]byte, []byte, error) {
-
-	customerId := make([]byte, 8)
-
-	crypto_rand.Read(customerId)
-
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	customerPublicKey := make([]byte, 0)
-	customerPublicKey = append(customerPublicKey, customerId...)
-	customerPublicKey = append(customerPublicKey, publicKey...)
-	customerPrivateKey := make([]byte, 0)
-	customerPrivateKey = append(customerPrivateKey, customerId...)
-	customerPrivateKey = append(customerPrivateKey, privateKey...)
-
-	return customerPublicKey, customerPrivateKey, nil
-}
-
-// ----------------------------------------------------
