@@ -18,6 +18,19 @@ import (
 
 // ------------------------------------------------------------
 
+func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
+	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	return int(result)
+}
+
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
+
 func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 
 	var state C.crypto_sign_state
@@ -32,19 +45,6 @@ func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 	}
 
 	return true
-}
-
-func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
-	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
-	return int(result)
-}
-
-func SDK5_SignPacket(packetData []byte, privateKey []byte) {
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 }
 
 func SDK5_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
@@ -180,10 +180,11 @@ type SDK5_SessionUpdateRequestPacket struct {
 	RetryNumber          int32
 	SessionDataBytes     int32
 	SessionData          [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature [SDK5_SignatureBytes]byte
 	ClientAddress        net.UDPAddr
 	ServerAddress        net.UDPAddr
-	ClientRoutePublicKey [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
-	ServerRoutePublicKey [crypto.Box_KeySize]byte // todo: ditto
+	ClientRoutePublicKey [crypto.Box_PublicKeySize]byte
+	ServerRoutePublicKey [crypto.Box_PublicKeySize]byte
 	UserHash             uint64
 	PlatformType         int32
 	ConnectionType       int32
@@ -240,6 +241,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
@@ -354,6 +356,7 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		PrevPacketsSentServerToClient: rand.Uint64(),
 		PrevPacketsLostClientToServer: rand.Uint64(),
 		PrevPacketsLostServerToClient: rand.Uint64(),
+		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
 		TotalPriceSum:                 rand.Uint64(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
@@ -363,6 +366,13 @@ func GenerateRandomSessionData() SDK5_SessionData {
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
+	}
+
+	sessionData.HeldNumNearRelays = int32(common.RandomInt(0, SDK5_MaxNearRelays))
+
+	for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
+		sessionData.HeldNearRelayIds[i] = rand.Uint64()
+		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
 	}
 
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
@@ -399,22 +409,22 @@ func GenerateRandomSessionData() SDK5_SessionData {
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateResponsePacket struct {
-	SessionId   uint64
-	SliceNumber uint32
-	// todo: where is the signature for the session data?
-	SessionDataBytes   int32
-	SessionData        [SDK5_MaxSessionDataSize]byte
-	RouteType          int32
-	NearRelaysChanged  bool
-	NumNearRelays      int32
-	NearRelayIds       [SDK5_MaxNearRelays]uint64
-	NearRelayAddresses [SDK5_MaxNearRelays]net.UDPAddr
-	NumTokens          int32
-	Tokens             []byte
-	Multipath          bool
-	HasDebug           bool
-	Debug              string
-	HighFrequencyPings bool
+	SessionId            uint64
+	SliceNumber          uint32
+	SessionDataBytes     int32
+	SessionData          [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature [SDK5_SignatureBytes]byte
+	RouteType            int32
+	NearRelaysChanged    bool
+	NumNearRelays        int32
+	NearRelayIds         [SDK5_MaxNearRelays]uint64
+	NearRelayAddresses   [SDK5_MaxNearRelays]net.UDPAddr
+	NumTokens            int32
+	Tokens               []byte
+	Multipath            bool
+	HasDebug             bool
+	Debug                string
+	HighFrequencyPings   bool
 
 	// todo: remove
 	Committed bool
@@ -434,6 +444,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, SDK5_RouteTypeContinue)
@@ -562,6 +573,7 @@ type SDK5_SessionData struct {
 	PrevPacketsSentServerToClient uint64
 	PrevPacketsLostClientToServer uint64
 	PrevPacketsLostServerToClient uint64
+	WriteSummary                  bool
 	WroteSummary                  bool
 	TotalPriceSum                 uint64
 	NextEnvelopeBytesUpSum        uint64
@@ -675,6 +687,7 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)
 	stream.SerializeUint64(&sessionData.PrevPacketsLostClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
+	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
 	stream.SerializeUint64(&sessionData.TotalPriceSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
