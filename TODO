@@ -1,43 +1,4 @@
-
 DONE
-
-	Added tests for SessionUpdate_GetNearRelays
-
-	Simplify route state down to minimum.
-
-	Aggressively nuke old server backend 4.
-
-	Add tests for FilterSourceRelays
-
-	Add tests for SessionUpdate_UpdateNearRelays
-
-	Actually sending the response packet inside the handler is dumb. It makes it hard to test
-
-	Remove the connection from the "state" and have the caller send the response packet, not us.
-
-	Make it much easier to test post. Don't want UDP sockets in unit tests...
-
-	Fix happy path
-
-	Add tests for SessionUpdate_Post
-
-	Extend session data to be signed in session request and session response packet.
-
-	Extend SDK to check the session data signature and drop if it doesn't match.
-
-	Add unit test to make sure we reject unsigned session data.
-
-	Update unit tests for session update handler so they work with the new signed session data.
-
-	Extend session update post so it writes the session data signature to the response packet.
-
-	Add a crypto_test.go for the new crypto module
-
-	Add test for crypto box
-
-	Standardize all crypto usage so you know what primitives correspond to Box, and what to Sign.
-
-	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
 
 TODO
 
