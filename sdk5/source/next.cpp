@@ -14900,6 +14900,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
             packet.session_data_bytes = session->session_data_bytes;
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
+            memcpy( packet.session_data_signature, session->session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
             session->session_update_request_packet = packet;
 
@@ -19297,6 +19298,10 @@ void test_session_update_packet()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19356,6 +19361,10 @@ void test_session_update_packet()
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
             next_check( in.session_data[j] == out.session_data[j] );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( in.session_data_signature[j] == out.session_data_signature[j] );
         }
     }
 }
