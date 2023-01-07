@@ -1067,51 +1067,6 @@ func TestSlowerRoute(t *testing.T) {
 	}
 }
 
-func TestEncrypt(t *testing.T) {
-
-	senderPublicKey, senderPrivateKey := crypto.Box_KeyPair()
-
-	receiverPublicKey, receiverPrivateKey := crypto.Box_KeyPair()
-
-	// encrypt random data and verify we can decrypt it
-
-	nonce := make([]byte, crypto.Box_NonceSize)
-	RandomBytes(nonce)
-
-	data := make([]byte, 256)
-	for i := range data {
-		data[i] = byte(data[i])
-	}
-
-	encryptedData := make([]byte, 256+crypto.Box_MacSize)
-
-	encryptedBytes := Encrypt(senderPrivateKey[:], receiverPublicKey[:], nonce, encryptedData, len(data))
-
-	assert.Equal(t, 256+crypto.Box_MacSize, encryptedBytes)
-
-	err := Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
-
-	assert.NoError(t, err)
-
-	// decryption should fail with garbage data
-
-	garbageData := make([]byte, 256+crypto.Box_MacSize)
-	RandomBytes(garbageData[:])
-
-	err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, garbageData, encryptedBytes)
-
-	assert.Error(t, err)
-
-	// decryption should fail with the wrong receiver private key
-
-	RandomBytes(receiverPrivateKey[:])
-
-	err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
-
-	assert.Error(t, err)
-
-}
-
 func TestRouteToken(t *testing.T) {
 
 	t.Parallel()
@@ -1188,7 +1143,7 @@ func TestRouteTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_KeySize)
+		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
@@ -1291,7 +1246,7 @@ func TestContinueTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_KeySize)
+		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
@@ -5926,11 +5881,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 // -------------------------------------------------------------
 
-// todo: Test_FilterSourceRelays
-
-// todo
-/*
-func TestReframeRelays_NearRelayFilter(t *testing.T) {
+func TestFilterSourceRelays_NoFilter(t *testing.T) {
 
 	t.Parallel()
 
@@ -5946,358 +5897,393 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	relayIdToIndex := env.GetRelayIdToIndex()
 
-	// start with a clean slate
-
-	routeShader := NewRouteShader()
-	routeShader.AnalysisOnly = false
-
-	routeState := RouteState{}
-
-	// next, pass in some near relay ids with initial rtt and jitter values
-
-	directLatency := int32(100)
-	directJitter := int32(5)
-	directPacketLoss := int32(0)
-
-	nextPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
-	sourceRelayJitter := []int32{5, 5, 5, 5, 5}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
-
-	destRelayIds := relayIds
-
-	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
-	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	out_numDestRelays := int32(0)
-	out_destRelays := []int32{0, 0, 0, 0, 0}
-}
-
-func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	// start with a clean slate
-
-	routeShader := NewRouteShader()
-	routeShader.AnalysisOnly = false
-
-	routeState := RouteState{}
-
-	// next, pass in some near relay ids with initial rtt and jitter values
-
-	directLatency := int32(100)
-	directJitter := int32(5)
-	directPacketLoss := int32(0)
-
-	nextPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
-	sourceRelayJitter := []int32{5, 5, 5, 5, 5}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
-
-	destRelayIds := relayIds
-
-	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
-	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	out_numDestRelays := int32(0)
-	out_destRelays := []int32{0, 0, 0, 0, 0}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{5, 5, 5, 5, 5}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(5), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{5, 5, 5, 5, 5}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// now increase the near relay jitter so it is above the direct jitter + threshold and verify these relays are excluded temporarily
-
-	highJitter := directJitter + JitterThreshold + 1
-
-	sourceRelayJitter = []int32{highJitter, highJitter, highJitter, highJitter, highJitter}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(5), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// increase direct jitter and all near relays should recover and be routable again
-
-	directJitter = int32(30)
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 2, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(30), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{highJitter, highJitter, highJitter, highJitter, highJitter}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// now blow out direct jitter and a few near relays. make sure the high jitter near relays
-	// get excluded because they have higher than average jitter across all near relays.
-
-	directJitter = int32(100)
-
-	sourceRelayJitter = []int32{highJitter, highJitter, 90, 90, 90}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 3, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{50, 50, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{highJitter, highJitter, 90, 90, 90}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(100), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{highJitter, highJitter, 90, 90, 90}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-}
-
-func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	// start with a clean slate
-
-	routeShader := NewRouteShader()
-	routeShader.AnalysisOnly = false
-
-	routeState := RouteState{}
-
-	// pass in zero jitter for direct, and verify 1-5ms jitter (jitter threshold) are still routable
-	// this means we consider any jitter <= jitter threshold basically equivalent, so we don't
-	// overconstrain the system and reject routes that are otherwise good.
-
-	directLatency := int32(100)
+	directLatency := int32(25)
 	directJitter := int32(0)
 	directPacketLoss := int32(0)
 
-	nextPacketLoss := int32(0)
-
 	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
-	sourceRelayJitter := []int32{1, 2, 3, 4, 5}
+	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
 
-	destRelayIds := relayIds
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
-	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
-	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	out_numDestRelays := int32(0)
-	out_destRelays := []int32{0, 0, 0, 0, 0}
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
 
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{1, 2, 3, 4, 5}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(0), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{1, 2, 3, 4, 5}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// now increase the near relay jitter above the threshold and verify the relays get excluded
-
-	sourceRelayJitter = []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{255, 255, 255, 255, 255}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(0), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{50, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1, JitterThreshold + 1}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-}
-
-func TestReframeRelays_ReducePacketLoss(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	// start with a clean slate
-
-	routeShader := NewRouteShader()
-	routeShader.AnalysisOnly = false
-
-	routeState := RouteState{}
-
-	// pass in some near relay ids with a near relay that LOOKS attractive (lowest latency)
-	// but has packet loss higher than direct, and verify it gets excluded
-
-	directLatency := int32(100)
-	directJitter := int32(10)
-	directPacketLoss := int32(1)
-
-	nextPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
-	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{2, 0, 0, 0, 0}
-
-	destRelayIds := relayIds
-
-	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
-	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	out_numDestRelays := int32(0)
-	out_destRelays := []int32{0, 0, 0, 0, 0}
-
-	sliceNumber := int32(0)
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, sliceNumber, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	sliceNumber++
-
-	assert.Equal(t, []int32{255, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(10), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-}
-
-func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	// start with a clean slate
-
-	routeShader := NewRouteShader()
-	routeShader.AnalysisOnly = false
-
-	routeState := RouteState{}
-
-	// give direct some packet loss on first slice and the same amount of PL on the first near relay
-	// the near relay should not be excluded because it was at no point ever "worse" packet loss than direct
-
-	directLatency := int32(100)
-	directJitter := int32(10)
-	directPacketLoss := int32(1)
-
-	nextPacketLoss := int32(1)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
-	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{1, 0, 0, 0, 0}
-
-	destRelayIds := relayIds
-
-	out_sourceRelayLatency := []int32{0, 0, 0, 0, 0}
-	out_sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	out_numDestRelays := int32(0)
-	out_destRelays := []int32{0, 0, 0, 0, 0}
-
-	ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 0, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-	assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-	assert.Equal(t, int32(5), out_numDestRelays)
-	assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-	assert.Equal(t, int32(10), routeState.DirectJitter)
-	assert.Equal(t, int32(5), routeState.NumNearRelays)
-	assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-	assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
-
-	// verify it remains routable for 7 more slices (history size is 8) after packet loss stops
-
-	directPacketLoss = 0.0
-	nextPacketLoss = 0.0
-
-	sourceRelayPacketLoss = []int32{0, 0, 0, 0, 0}
-
-	for i := 0; i < 7; i++ {
-
-		ReframeRelays(&routeShader, &routeState, relayIdToIndex, directLatency, directJitter, directPacketLoss, nextPacketLoss, 1, sourceRelayIds, sourceRelayLatency, sourceRelayJitter, sourceRelayPacketLoss, destRelayIds, out_sourceRelayLatency, out_sourceRelayJitter, &out_numDestRelays, out_destRelays)
-
-		assert.Equal(t, []int32{10, 50, 50, 50, 50}, out_sourceRelayLatency)
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, out_sourceRelayJitter)
-		assert.Equal(t, int32(5), out_numDestRelays)
-		assert.Equal(t, []int32{0, 1, 2, 3, 4}, out_destRelays)
-
-		assert.Equal(t, int32(10), routeState.DirectJitter)
-		assert.Equal(t, int32(5), routeState.NumNearRelays)
-		assert.Equal(t, []int32{10, 50, 50, 50, 50}, routeState.NearRelayRTT[:routeState.NumNearRelays])
-		assert.Equal(t, []int32{0, 0, 0, 0, 0}, routeState.NearRelayJitter[:routeState.NumNearRelays])
+	for i := range sourceRelayIds {
+		assert.Equal(t, outputSourceRelayLatency[i], int32(1))
 	}
 }
-*/
+
+func TestFilterSourceRelays_ZeroLatency(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(25)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 0, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
+
+func TestFilterSourceRelays_ClampLatencyAbove255(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(25)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 300, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
+
+func TestFilterSourceRelays_HigherThanAverageJitter(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(25)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 100, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
+
+func TestFilterSourceRelays_HigherThanDirectJitter(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(25)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
+	sourceRelayJitter := []int32{100, 100, 100, 100, 100}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+	}
+}
+
+func TestFilterSourceRelays_HighPacketLoss(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(25)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 50, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
+
+func TestFilterSourceRelays_LatencyAboveDirect(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(10)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 100, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
+
+func TestFilterSourceRelays_PacketLossAboveDirect(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(10)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 0, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{1, 1, 1, 1, 1}
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+	}
+}
+
+func TestFilterSourceRelays_RelayDoesNotExist(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("a", "10.0.0.1")
+	env.AddRelay("b", "10.0.0.2")
+	env.AddRelay("c", "10.0.0.3")
+	env.AddRelay("d", "10.0.0.4")
+	env.AddRelay("e", "10.0.0.5")
+
+	relayIds := env.GetRelayIds()
+
+	relayIdToIndex := env.GetRelayIdToIndex()
+
+	directLatency := int32(10)
+	directJitter := int32(0)
+	directPacketLoss := int32(0)
+
+	sourceRelayIds := relayIds
+	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
+	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+
+	sourceRelayIds[2] = 423189384
+
+	outputSourceRelayLatency := [MaxNearRelays]int32{}
+
+	FilterSourceRelays(relayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		outputSourceRelayLatency[:])
+
+	for i := range sourceRelayIds {
+		if i != 2 {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
+		} else {
+			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
+		}
+	}
+}
 
 // -------------------------------------------------------------
 

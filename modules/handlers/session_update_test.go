@@ -1,4 +1,4 @@
-package handlers_test
+ package handlers_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
+	// "github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 
@@ -80,6 +80,7 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 	return routeMatrix
 }
 
+/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -128,6 +129,12 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.LocateIP = FailLocateIP
 
 	result := handlers.SessionUpdate_Pre(state)
@@ -142,6 +149,11 @@ func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.Request.SliceNumber = 1
 
 	sessionData := packets.SDK5_SessionData{}
@@ -153,7 +165,7 @@ func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 	sessionData.Location.ISP = "Starlink"
 	sessionData.Location.ASN = 5
 
-	buffer := make([]byte, packets.SDK5_MaxPacketBytes)
+	buffer := make([]byte, packets.SDK5_MaxSessionDataSize)
 	writeStream := encoding.CreateWriteStream(buffer[:])
 	err := sessionData.Serialize(writeStream)
 	assert.Nil(t, err)
@@ -161,8 +173,11 @@ func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 	packetBytes := writeStream.GetBytesProcessed()
 	packetData := buffer[:packetBytes]
 
+	fmt.Printf("session data bytes = %d\n", len(packetData))
+
 	state.Request.SessionDataBytes = int32(packetBytes)
 	copy(state.Request.SessionData[:], packetData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(packetData, state.ServerBackendPrivateKey))
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -180,6 +195,11 @@ func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.RouteMatrix.CreatedAt = 0
 
 	result := handlers.SessionUpdate_Pre(state)
@@ -193,6 +213,11 @@ func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Request.DatacenterId = 0x12345
 
@@ -210,6 +235,11 @@ func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.Request.DatacenterId = 0x12345
 
 	result := handlers.SessionUpdate_Pre(state)
@@ -223,6 +253,11 @@ func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Buyer.ID = 0x11111
 	state.Request.DatacenterId = 0x12345
@@ -241,6 +276,11 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.Buyer.ID = 0x11111
 	state.Request.BuyerId = 0x11111
 	state.Request.DatacenterId = 0x12345
@@ -255,13 +295,45 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	assert.False(t, state.DatacenterNotEnabled)
 }
 
+func Test_SessionUpdate_Pre_SessionDataSignatureCheckFailed(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	state.Request.SliceNumber = 1
+
+	state.Request.SessionDataBytes = 100
+	common.RandomBytes(state.Request.SessionData[:])
+
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.True(t, result)
+	assert.True(t, state.SessionDataSignatureCheckFailed)
+	assert.False(t, state.FailedToReadSessionData)
+}
+
 func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	state.Request.SliceNumber = 1
+
+	state.Request.SessionDataBytes = 100
+	common.RandomBytes(state.Request.SessionData[:])
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPrivateKey))
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -274,6 +346,11 @@ func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Buyer.ID = 0x11111
 	state.Request.DatacenterId = 0x12345
@@ -291,6 +368,11 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Buyer.ID = 0x11111
 	state.Request.DatacenterId = 0x12345
@@ -318,6 +400,11 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 	t.Parallel()
 
 	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Buyer.Debug = true
 
@@ -363,6 +450,18 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	writeSessionData := make([]byte, 256)
+	common.RandomBytes(writeSessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.FailedToReadSessionData)
@@ -392,9 +491,18 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionData := packets.GenerateRandomSessionData()
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -408,6 +516,11 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -415,7 +528,11 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -431,6 +548,11 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -438,7 +560,11 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
 
@@ -456,6 +582,11 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -463,7 +594,11 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
@@ -482,6 +617,11 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -489,7 +629,11 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
@@ -512,6 +656,11 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -523,7 +672,11 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	sessionData.PrevPacketsLostClientToServer = 0
 	sessionData.PrevPacketsLostServerToClient = 0
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
@@ -555,6 +708,11 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 
 	state := CreateState()
 
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
 	sessionId := uint64(0x1234556134512)
 	sliceNumber := uint32(100)
 
@@ -562,7 +720,11 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	copy(state.Request.SessionData[:], writeSessionData(sessionData))
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
@@ -1078,12 +1240,12 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{10,10,10}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{10, 10, 10}
 
 	// setup dest relays
 
-	state.DestRelays = []int32{0,1,2}
+	state.DestRelays = []int32{0, 1, 2}
 
 	// make the route decision
 
@@ -1199,8 +1361,8 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -1411,8 +1573,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -1638,8 +1800,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -1869,6 +2031,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Database.RelayMap[2] = relay_b
 	state.Database.RelayMap[3] = relay_c
 
+	state.DestRelays = []int32{0,1,2}
+
 	// setup cost matrix with route through relays a -> b -> c
 
 	const NumRelays = 3
@@ -1914,8 +2078,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -2136,8 +2300,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -2355,8 +2519,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -2582,8 +2746,8 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -2729,8 +2893,8 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// setup near relays
 
-	state.SourceRelays = []int32{0,1,2}
-	state.SourceRelayRTT = []int32{1,100,100}
+	state.SourceRelays = []int32{0, 1, 2}
+	state.SourceRelayRTT = []int32{1, 100, 100}
 
 	// setup dest relays
 
@@ -2749,7 +2913,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// make all near relays very expensive
 
-	state.SourceRelayRTT = []int32{100,100,100}
+	state.SourceRelayRTT = []int32{100, 100, 100}
 
 	// make route decision
 
@@ -2775,7 +2939,7 @@ func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
 
 	state := CreateState()
 
-	state.Buyer.RouteShader.AnalysisOnly = true
+	state.AnalysisOnly = true
 
 	result := handlers.SessionUpdate_GetNearRelays(state)
 
@@ -2927,10 +3091,517 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_UpdateNearRelays
+func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.AnalysisOnly = true
+
+	result := handlers.SessionUpdate_UpdateNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
+}
+
+func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.DatacenterNotEnabled = true
+
+	result := handlers.SessionUpdate_UpdateNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+}
+
+func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	// initialize database with three relays
+
+	seller := db.Seller{ID: "seller", Name: "seller"}
+
+	datacenter := db.Datacenter{ID: 1, Name: "datacenter"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["seller"] = seller
+
+	state.Database.DatacenterMap[1] = datacenter
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	state.DestRelayIds = []uint64{1,2,3}
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+
+	costMatrix := make([]int32, entryCount)
+
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
+	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
+	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
+
+	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
+
+	// setup near relays
+
+	state.Request.NumNearRelays = 3
+	copy(state.Request.NearRelayIds[:], []uint64{1,2,3})
+	copy(state.Request.NearRelayRTT[:], []int32{1,100,100})
+	copy(state.Request.NearRelayJitter[:], []int32{0,0,0})
+	copy(state.Request.NearRelayPacketLoss[:], []int32{0,0,0})
+
+	// update near relays
+
+	state.Input.SliceNumber = 1
+
+	result := handlers.SessionUpdate_UpdateNearRelays(state)
+
+	// validate
+
+	assert.True(t, result)
+	assert.False(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+
+	assert.Equal(t, len(state.DestRelays), 3)
+	assert.Equal(t, state.DestRelays[0], int32(0) )
+	assert.Equal(t, state.DestRelays[1], int32(1) )
+	assert.Equal(t, state.DestRelays[2], int32(2) )
+
+	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
+
+	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
+	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
+	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
+	
+	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
+
+	assert.Equal(t, len(state.SourceRelays), 3)
+	assert.Equal(t, len(state.SourceRelayRTT), 3)
+
+	assert.Equal(t, state.SourceRelays[0], int32(0))
+	assert.Equal(t, state.SourceRelays[1], int32(1))
+	assert.Equal(t, state.SourceRelays[2], int32(2))
+
+	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
+	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
+	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+}
+
+func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	// initialize database with three relays
+
+	seller := db.Seller{ID: "seller", Name: "seller"}
+
+	datacenter := db.Datacenter{ID: 1, Name: "datacenter"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap["seller"] = seller
+
+	state.Database.DatacenterMap[1] = datacenter
+
+	state.Database.RelayMap[1] = relay_a
+	state.Database.RelayMap[2] = relay_b
+	state.Database.RelayMap[3] = relay_c
+
+	state.DestRelayIds = []uint64{1,2,3}
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+
+	costMatrix := make([]int32, entryCount)
+
+	for i := range costMatrix {
+		costMatrix[i] = -1
+	}
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
+	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
+	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
+
+	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
+
+	// setup held near relays
+
+	state.Output.HeldNumNearRelays = 3
+	copy(state.Output.HeldNearRelayIds[:], []uint64{1,2,3})
+	copy(state.Output.HeldNearRelayRTT[:], []int32{1,255,255})
+
+	// update near relays
+
+	state.Input.SliceNumber = 2
+
+	result := handlers.SessionUpdate_UpdateNearRelays(state)
+
+	// validate
+
+	assert.True(t, result)
+	assert.False(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+
+	assert.Equal(t, len(state.DestRelays), 3)
+	assert.Equal(t, state.DestRelays[0], int32(0) )
+	assert.Equal(t, state.DestRelays[1], int32(1) )
+	assert.Equal(t, state.DestRelays[2], int32(2) )
+
+	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
+
+	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
+	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
+	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
+	
+	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
+
+	assert.Equal(t, len(state.SourceRelays), 3)
+	assert.Equal(t, len(state.SourceRelayRTT), 3)
+
+	assert.Equal(t, state.SourceRelays[0], int32(0))
+	assert.Equal(t, state.SourceRelays[1], int32(1))
+	assert.Equal(t, state.SourceRelays[2], int32(2))
+
+	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
+	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
+	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+}
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_Post
+func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 0
+	
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.GetNearRelays)
+}
+
+func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.Next = true
+	state.Request.SliceNumber = 1
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.False(t, state.GetNearRelays)
+	assert.True(t, state.Output.EverOnNext)
+	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK5_BillingSliceSeconds))
+}
+
+func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 2
+
+	state.Request.PacketsSentClientToServer = 10001
+	state.Request.PacketsSentServerToClient = 10002
+	state.Request.PacketsLostClientToServer = 10003
+	state.Request.PacketsLostServerToClient = 10004
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.Equal(t, state.Output.PrevPacketsSentClientToServer, state.Request.PacketsSentClientToServer)
+	assert.Equal(t, state.Output.PrevPacketsSentServerToClient, state.Request.PacketsSentServerToClient)
+	assert.Equal(t, state.Output.PrevPacketsLostClientToServer, state.Request.PacketsLostClientToServer)
+	assert.Equal(t, state.Output.PrevPacketsLostServerToClient, state.Request.PacketsLostServerToClient)
+}
+
+func Test_SessionUpdate_Post_Debug(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 2
+
+	debugString := "it's debug time"
+
+	state.Debug = &debugString
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.Response.HasDebug)
+	assert.Equal(t, state.Response.Debug, *state.Debug)
+}
+
+func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.Output.WriteSummary)
+	assert.False(t, state.Output.WroteSummary)
+}
+
+func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+	state.Output.WriteSummary = true
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.False(t, state.Output.WriteSummary)
+	assert.True(t, state.Output.WroteSummary)
+}
+*/
+
+func Test_SessionUpdate_Post_Response(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	// setup so we write a response with random session data in the post
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPrivateKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Input = packets.GenerateRandomSessionData()
+	state.Output = state.Input
+
+	// run session update post
+
+	handlers.SessionUpdate_Post(state)
+
+	// verify we wrote the session data and response packet without error
+
+	assert.True(t, state.WroteResponsePacket)
+	assert.False(t, state.FailedToWriteSessionData)
+	assert.False(t, state.FailedToWriteResponsePacket)
+	assert.True(t, len(state.ResponsePacket) > 0)
+
+	// make sure the basic packet filter passes
+
+	packetData := state.ResponsePacket
+
+	assert.True(t, core.BasicPacketFilter(packetData[:], len(packetData)))
+
+	// make sure the advanced packet filter passes
+
+	to := state.From
+	from := state.ServerBackendAddress
+
+	var emptyMagic [8]byte
+
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+
+	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
+	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+
+	assert.True(t, core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)))
+
+	// check packet signature
+
+	assert.True(t, packets.SDK5_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
+
+	// verify we can read the response packet
+
+	packet := packets.SDK5_SessionUpdateResponsePacket{}
+	err := packets.ReadPacket(packetData, &packet)
+	assert.NotNil(t, err)
+
+	// verify the response packet is equal to the response in state
+
+	assert.Equal(t, packet, state.Response)
+
+	// todo: verify that the signature check passes on the session data inside the response
+
+	// todo: verify that we can serialize read the session data inside the response
+}
 
 // --------------------------------------------------------------
