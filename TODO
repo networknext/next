@@ -21,31 +21,49 @@ DONE
 
 	Add tests for SessionUpdate_Post
 
-TODO
-
-	-----------------
-
-	Extend session data to be signed in session response packet.
-
-	-----------------
+	Extend session data to be signed in session request and session response packet.
 
 	Extend SDK to check the session data signature and drop if it doesn't match.
 
-	-----------------
+	Add unit test to make sure we reject unsigned session data.
 
-	Extend SDK to pass back up the session data signature with the session update request.
+TODO
 
-	-----------------
-
-	Extend sdk5 session update handler to check the session data signature and reject.
+	Update unit tests for session update handler so they work with the new signed session data.
 
 	-----------------
 
-	Add unit tests to make sure we reject unsigned session data.
+	Extend session update post so it writes the session data signature to the response packet.
 
 	-----------------
 
-	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the session data inside is signed, and verifies.
+	Add a crypto_test.go for the new crypto module
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Extend SDK so it has the session data signature in both request and response packets.
+
+	-----------------
+
+	Extend SDK to pass back up the session data signature in the next the session update request.
+
+	-----------------
+
+	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
 
 	-----------------
 	

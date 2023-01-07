@@ -8,6 +8,7 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
@@ -26,6 +27,7 @@ type SessionUpdateState struct {
 	RoutingPrivateKey       []byte
 	ServerBackendAddress    *net.UDPAddr
 	ServerBackendPrivateKey []byte
+	ServerBackendPublicKey  []byte
 
 	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
 
@@ -76,6 +78,8 @@ type SessionUpdateState struct {
 
 	// flags
 	ReadSessionData                           bool
+	SessionDataSignatureCheckFailed           bool
+	FailedToReadSessionData                   bool
 	LongDuration                              bool
 	ClientPingTimedOut                        bool
 	Pro                                       bool
@@ -100,7 +104,6 @@ type SessionUpdateState struct {
 	RouteNoLongerExists                       bool
 	Mispredict                                bool
 	LatencyWorse                              bool
-	FailedToReadSessionData                   bool
 	StaleRouteMatrix                          bool
 	UnknownDatacenter                         bool
 	DatacenterNotEnabled                      bool
@@ -123,7 +126,11 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 		return true
 	}
 
-	// todo: we must check the signature of the session data here prior to read
+	if !crypto.Verify(state.Request.SessionData[:], state.ServerBackendPublicKey[:], state.Request.SessionDataSignature[:]) {
+		core.Error("session data signature check failed")
+		state.SessionDataSignatureCheckFailed = true
+		return false
+	}
 
 	readStream := encoding.CreateReadStream(state.Request.SessionData[:])
 

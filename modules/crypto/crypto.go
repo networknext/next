@@ -56,15 +56,12 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 
 // ----------------------------------------------------
 
-func Sign_Keypair() ([]byte, []byte) {
+func Sign_KeyPair() ([]byte, []byte) {
 	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
 	if err != nil {
 		panic(err)
 	}
-	publicKey, privateKey := new([32]byte), new([64]byte)
-	copy((*publicKey)[:], pub)
-	copy((*privateKey)[:], priv)
-	return publicKey[:], privateKey[:]
+	return pub, priv
 }
 
 func Sign(data []byte, privateKey []byte) []byte {
