@@ -25,6 +25,61 @@ TODO
 
 	-----------------
 
+	Extend session data to be signed in session response packet.
+
+	-----------------
+
+	Extend SDK to check the session data signature and drop if it doesn't match.
+
+	-----------------
+
+	Extend SDK to pass back up the session data signature with the session update request.
+
+	-----------------
+
+	Extend sdk5 session update handler to check the session data signature and reject.
+
+	-----------------
+
+	Add unit tests to make sure we reject unsigned session data.
+
+	-----------------
+
+	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the session data inside is signed, and verifies.
+
+	-----------------
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Test session update response packet write in post, with session data as well.
+
 	-----------------
 
 	Implement code to fill and pass session update data to portal
