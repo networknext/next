@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 	"time"
+	"context"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -3195,6 +3196,73 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: SessionUpdate_Post
+func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 0
+	
+	lc := net.ListenConfig{}
+	lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
+	if err != nil {
+		panic(fmt.Sprintf("could not bind socket: %v", err))
+	}
+
+	state.Connection = lp.(*net.UDPConn)
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.GetNearRelays)
+}
+
+func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
+
+	t.Parallel()
+
+	// todo
+	/*
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 5
+	
+	lc := net.ListenConfig{}
+	lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
+	if err != nil {
+		panic(fmt.Sprintf("could not bind socket: %v", err))
+	}
+
+	state.Connection = lp.(*net.UDPConn)
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.GetNearRelays)
+	*/
+}
 
 // --------------------------------------------------------------

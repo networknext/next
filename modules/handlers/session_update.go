@@ -113,6 +113,7 @@ type SessionUpdateState struct {
 	SentSessionUpdateMessage                  bool
 	SentPortalData                            bool
 	LocatedIP                                 bool
+	GetNearRelays                             bool
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -415,6 +416,8 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		to the first relay to the total route cost, and by excluding near relays
 		with higher jitter or packet loss.
 	*/
+
+	state.GetNearRelays = true
 
 	if state.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
