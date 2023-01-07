@@ -1,4 +1,4 @@
- package handlers_test
+package handlers_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
 
@@ -80,7 +80,6 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 	return routeMatrix
 }
 
-/*
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -3221,7 +3220,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
 	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
 	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
-	
+
 	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
 	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
 	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
@@ -3338,7 +3337,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
 	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
 	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
-	
+
 	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
 	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
 	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
@@ -3376,7 +3375,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 
 	state.Request.SliceNumber = 0
-	
+
 	handlers.SessionUpdate_Post(state)
 
 	assert.True(t, state.GetNearRelays)
@@ -3527,7 +3526,6 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
 }
-*/
 
 func Test_SessionUpdate_Post_Response(t *testing.T) {
 
@@ -3591,17 +3589,29 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	// verify we can read the response packet
 
+	packetData = packetData[16:]
+
 	packet := packets.SDK5_SessionUpdateResponsePacket{}
 	err := packets.ReadPacket(packetData, &packet)
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 
 	// verify the response packet is equal to the response in state
 
 	assert.Equal(t, packet, state.Response)
 
-	// todo: verify that the signature check passes on the session data inside the response
+	// verify that the signature check passes on the session data inside the response
 
-	// todo: verify that we can serialize read the session data inside the response
+	assert.True(t, crypto.Verify(packet.SessionData[:packet.SessionDataBytes], state.ServerBackendPublicKey[:], packet.SessionDataSignature[:]))
+
+	// verify that we can serialize read the session data inside the response
+
+	sessionData := packets.SDK5_SessionData{}
+	err = packets.ReadPacket(packet.SessionData[:packet.SessionDataBytes], &sessionData)
+	assert.Nil(t, err)
+
+	// verify that the session data we read matches what was written
+
+	assert.Equal(t, state.Output, sessionData)
 }
 
 // --------------------------------------------------------------

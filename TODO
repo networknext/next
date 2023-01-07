@@ -37,23 +37,9 @@ DONE
 
 	Standardize all crypto usage so you know what primitives correspond to Box, and what to Sign.
 
-TODO
-
-	-----------------
-
 	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
 
-	-----------------
-
-
-
-
-
-
-
-
-
-
+TODO
 
 	-----------------
 
@@ -65,7 +51,13 @@ TODO
 
 	-----------------
 
-	
+	Verify happy path works.
+
+	-----------------
+
+	Todays' work is done!
+
+	-----------------	
 
 
 

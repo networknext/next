@@ -31,7 +31,7 @@ type SessionUpdateState struct {
 
 	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
 
-	From       *net.UDPAddr
+	From *net.UDPAddr
 
 	Input packets.SDK5_SessionData // sent up from the SDK. previous slice.
 
@@ -984,16 +984,16 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
- 	if state.Request.ClientPingTimedOut {
+	if state.Request.ClientPingTimedOut {
 
- 		if state.Output.WriteSummary {
- 			state.Output.WroteSummary = true
- 			state.Output.WriteSummary = false
- 		}
+		if state.Output.WriteSummary {
+			state.Output.WroteSummary = true
+			state.Output.WriteSummary = false
+		}
 
- 		if !state.Output.WroteSummary {
- 			state.Output.WriteSummary = true
- 		}
+		if !state.Output.WroteSummary {
+			state.Output.WriteSummary = true
+		}
 	}
 
 	/*

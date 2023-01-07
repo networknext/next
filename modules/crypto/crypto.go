@@ -5,9 +5,9 @@ package crypto
 import "C"
 
 import (
-	"fmt"
 	"crypto/ed25519"
 	crypto_rand "crypto/rand"
+	"fmt"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"

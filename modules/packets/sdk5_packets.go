@@ -372,7 +372,7 @@ func GenerateRandomSessionData() SDK5_SessionData {
 
 	for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
 		sessionData.HeldNearRelayIds[i] = rand.Uint64()
-		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0,255))
+		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
 	}
 
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
@@ -409,22 +409,22 @@ func GenerateRandomSessionData() SDK5_SessionData {
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateResponsePacket struct {
-	SessionId   uint64
-	SliceNumber uint32
-	SessionDataBytes   int32
-	SessionData        [SDK5_MaxSessionDataSize]byte
+	SessionId            uint64
+	SliceNumber          uint32
+	SessionDataBytes     int32
+	SessionData          [SDK5_MaxSessionDataSize]byte
 	SessionDataSignature [SDK5_SignatureBytes]byte
-	RouteType          int32
-	NearRelaysChanged  bool
-	NumNearRelays      int32
-	NearRelayIds       [SDK5_MaxNearRelays]uint64
-	NearRelayAddresses [SDK5_MaxNearRelays]net.UDPAddr
-	NumTokens          int32
-	Tokens             []byte
-	Multipath          bool
-	HasDebug           bool
-	Debug              string
-	HighFrequencyPings bool
+	RouteType            int32
+	NearRelaysChanged    bool
+	NumNearRelays        int32
+	NearRelayIds         [SDK5_MaxNearRelays]uint64
+	NearRelayAddresses   [SDK5_MaxNearRelays]net.UDPAddr
+	NumTokens            int32
+	Tokens               []byte
+	Multipath            bool
+	HasDebug             bool
+	Debug                string
+	HighFrequencyPings   bool
 
 	// todo: remove
 	Committed bool
