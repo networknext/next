@@ -1,11 +1,6 @@
 package crypto
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
-	"fmt"
 	"crypto/ed25519"
 	crypto_rand "crypto/rand"
 
@@ -62,23 +57,22 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 // ----------------------------------------------------
 
 func Sign_Keypair() ([]byte, []byte) {
-	var publicKey []byte
-	var privateKey []byte
-	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
-	if result != 0 {
-		panic(fmt.Sprintf("failed to generate sign keypair: %d", result))
+	pub, priv, err := ed25519.GenerateKey(crypto_rand.Reader)
+	if err != nil {
+		panic(err)
 	}
-	return publicKey, privateKey
+	publicKey, privateKey := new([32]byte), new([64]byte)
+	copy((*publicKey)[:], pub)
+	copy((*privateKey)[:], priv)
+	return publicKey[:], privateKey[:]
 }
 
 func Sign(data []byte, privateKey []byte) []byte {
-	// todo
-	return []byte{}
+	return ed25519.Sign(ed25519.PrivateKey(privateKey), data)
 }
 
 func Verify(data []byte, publicKey []byte, signature []byte) bool {
-	// todo
-	return true
+	return ed25519.Verify(ed25519.PublicKey(publicKey), data, signature)
 }
 
 /*
