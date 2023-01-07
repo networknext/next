@@ -239,7 +239,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		common.RandomBytes(packet.SessionData[:packet.SessionDataBytes])
 	}
 
-	for i := 0; i < int(crypto.Box_KeySize); i++ {
+	for i := 0; i < int(crypto.Box_PublicKeySize); i++ {
 		packet.ClientRoutePublicKey[i] = uint8((i + 7) % 256)
 		packet.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
 	}

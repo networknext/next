@@ -184,8 +184,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 	SessionDataSignature [SDK5_SignatureBytes]byte
 	ClientAddress        net.UDPAddr
 	ServerAddress        net.UDPAddr
-	ClientRoutePublicKey [crypto.Box_KeySize]byte // todo: these aren't really Box_KeySize
-	ServerRoutePublicKey [crypto.Box_KeySize]byte // todo: ditto
+	ClientRoutePublicKey [crypto.Box_PublicKeySize]byte
+	ServerRoutePublicKey [crypto.Box_PublicKeySize]byte
 	UserHash             uint64
 	PlatformType         int32
 	ConnectionType       int32

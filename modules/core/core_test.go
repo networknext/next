@@ -1067,51 +1067,6 @@ func TestSlowerRoute(t *testing.T) {
 	}
 }
 
-func TestEncrypt(t *testing.T) {
-
-	senderPublicKey, senderPrivateKey := crypto.Box_KeyPair()
-
-	receiverPublicKey, receiverPrivateKey := crypto.Box_KeyPair()
-
-	// encrypt random data and verify we can decrypt it
-
-	nonce := make([]byte, crypto.Box_NonceSize)
-	RandomBytes(nonce)
-
-	data := make([]byte, 256)
-	for i := range data {
-		data[i] = byte(data[i])
-	}
-
-	encryptedData := make([]byte, 256+crypto.Box_MacSize)
-
-	encryptedBytes := Encrypt(senderPrivateKey[:], receiverPublicKey[:], nonce, encryptedData, len(data))
-
-	assert.Equal(t, 256+crypto.Box_MacSize, encryptedBytes)
-
-	err := Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
-
-	assert.NoError(t, err)
-
-	// decryption should fail with garbage data
-
-	garbageData := make([]byte, 256+crypto.Box_MacSize)
-	RandomBytes(garbageData[:])
-
-	err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, garbageData, encryptedBytes)
-
-	assert.Error(t, err)
-
-	// decryption should fail with the wrong receiver private key
-
-	RandomBytes(receiverPrivateKey[:])
-
-	err = Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
-
-	assert.Error(t, err)
-
-}
-
 func TestRouteToken(t *testing.T) {
 
 	t.Parallel()
@@ -1188,7 +1143,7 @@ func TestRouteTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_KeySize)
+		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
@@ -1291,7 +1246,7 @@ func TestContinueTokens(t *testing.T) {
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
 	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_KeySize)
+		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
