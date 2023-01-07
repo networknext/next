@@ -18,6 +18,20 @@ import (
 
 // ------------------------------------------------------------
 
+// todo: probably should just replace usage of this with crypto.Sign_Keypair
+func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
+	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	return int(result)
+}
+
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
+
 func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 
 	var state C.crypto_sign_state
@@ -32,19 +46,6 @@ func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 	}
 
 	return true
-}
-
-func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
-	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
-	return int(result)
-}
-
-func SDK5_SignPacket(packetData []byte, privateKey []byte) {
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 }
 
 func SDK5_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
