@@ -3541,7 +3541,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPrivateKey[:])
 
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
@@ -3587,10 +3587,9 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	// check packet signature
 
-	// todo: doesn't pass for some reason
-	// assert.True(t, packets.SDK5_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
+	assert.True(t, packets.SDK5_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
 
-	// verify we can decrypt the response packet
+	// verify we can read the response packet
 
 	packet := packets.SDK5_SessionUpdateResponsePacket{}
 	err := packets.ReadPacket(packetData, &packet)

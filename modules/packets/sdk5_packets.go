@@ -18,7 +18,6 @@ import (
 
 // ------------------------------------------------------------
 
-// todo: probably should just replace usage of this with crypto.Sign_Keypair
 func SDK5_SignKeypair(publicKey []byte, privateKey []byte) int {
 	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
 	return int(result)
