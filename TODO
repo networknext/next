@@ -33,11 +33,11 @@ DONE
 
 	Add a crypto_test.go for the new crypto module
 
-TODO
-
 	Add test for crypto box
 
-	Add test for crypto generate customer keypair
+	Standardize all crypto usage so you know what primitives correspond to Box, and what to Sign.
+
+TODO
 
 	-----------------
 
