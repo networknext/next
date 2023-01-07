@@ -1,6 +1,11 @@
 package crypto
 
+// #cgo pkg-config: libsodium
+// #include <sodium.h>
+import "C"
+
 import (
+	"fmt"
 	"crypto/ed25519"
 	crypto_rand "crypto/rand"
 
@@ -18,6 +23,8 @@ const (
 	Sign_PublicKeySize  = 32
 	Sign_PrivateKeySize = 64
 )
+
+// ----------------------------------------------------
 
 func Box_KeyPair() ([]byte, []byte) {
 	publicKey, privateKey, err := box.GenerateKey(crypto_rand.Reader)
@@ -51,6 +58,54 @@ func Box_Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []
 
 	return box.Seal(nil, data, &n, &pub, &priv)
 }
+
+// ----------------------------------------------------
+
+func Sign_Keypair() ([]byte, []byte) {
+	var publicKey []byte
+	var privateKey []byte
+	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	if result != 0 {
+		panic(fmt.Sprintf("failed to generate sign keypair: %d", result))
+	}
+	return publicKey, privateKey
+}
+
+func Sign(data []byte, privateKey []byte) []byte {
+	// todo
+	return []byte{}
+}
+
+func Verify(data []byte, publicKey []byte, signature []byte) bool {
+	// todo
+	return true
+}
+
+/*
+func SDK5_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
+
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+
+	if result != 0 {
+		core.Error("signed packet did not verify")
+		return false
+	}
+
+	return true
+}
+
+func SDK5_SignPacket(packetData []byte, privateKey []byte) {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK5_CRYPTO_SIGN_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK5_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+}
+*/
 
 // ----------------------------------------------------
 
