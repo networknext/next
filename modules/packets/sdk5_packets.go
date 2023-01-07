@@ -365,6 +365,13 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
 	}
 
+	sessionData.HeldNumNearRelays = int32(common.RandomInt(0, SDK5_MaxNearRelays))
+
+	for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
+		sessionData.HeldNearRelayIds[i] = rand.Uint64()
+		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0,255))
+	}
+
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
 	sessionData.Location.Latitude = rand.Float32()
 	sessionData.Location.Longitude = rand.Float32()
