@@ -3527,4 +3527,45 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	assert.True(t, state.Output.WroteSummary)
 }
 
+func Test_SessionUpdate_Post_Response(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	// setup so we write a response with random session data in the post
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Input = packets.GenerateRandomSessionData()
+	state.Output = state.Input
+
+	// run session update post
+
+	handlers.SessionUpdate_Post(state)
+
+	// verify
+
+	assert.False(t, state.FailedToWriteSessionData)
+	assert.False(t, state.FailedToWriteResponsePacket)
+
+	// todo: verify we can decrypt the response packet
+
+	// todo: verify the response packet is equal to the response in state
+
+	// todo: verify that the signature check passes on the session data inside the response
+
+	// todo: verify that we can serialize read the session data inside the response
+}
+
 // --------------------------------------------------------------
