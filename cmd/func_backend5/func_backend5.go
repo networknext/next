@@ -789,7 +789,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		// build token data
 
-		routerPrivateKey := [packets.SDK5_KeyBytes]byte{}
+		routerPrivateKey := [packets.SDK5_PrivateKeyBytes]byte{}
 		copy(routerPrivateKey[:], TestRouterPrivateKey)
 
 		tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
