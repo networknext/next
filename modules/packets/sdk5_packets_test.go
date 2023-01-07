@@ -284,6 +284,11 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		packet.SessionData[i] = uint8((i + 17) % 256)
 	}
 
+	if packet.SessionDataBytes > 0 {
+		common.RandomBytes(packet.SessionData[:packet.SessionDataBytes])
+		common.RandomBytes(packet.SessionDataSignature[:])
+	}
+
 	if packet.NearRelaysChanged {
 		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
 		for i := 0; i < int(packet.NumNearRelays); i++ {

@@ -412,9 +412,9 @@ func GenerateRandomSessionData() SDK5_SessionData {
 type SDK5_SessionUpdateResponsePacket struct {
 	SessionId   uint64
 	SliceNumber uint32
-	// todo: where is the signature for the session data?
 	SessionDataBytes   int32
 	SessionData        [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature [SDK5_SignatureBytes]byte
 	RouteType          int32
 	NearRelaysChanged  bool
 	NumNearRelays      int32
@@ -445,6 +445,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, SDK5_RouteTypeContinue)
