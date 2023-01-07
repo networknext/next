@@ -1,0 +1,322 @@
+
+DONE
+
+	Added tests for SessionUpdate_GetNearRelays
+
+	Simplify route state down to minimum.
+
+	Aggressively nuke old server backend 4.
+
+	Add tests for FilterSourceRelays
+
+	Add tests for SessionUpdate_UpdateNearRelays
+
+	Actually sending the response packet inside the handler is dumb. It makes it hard to test
+
+	Remove the connection from the "state" and have the caller send the response packet, not us.
+
+	Make it much easier to test post. Don't want UDP sockets in unit tests...
+
+	Fix happy path
+
+	Add tests for SessionUpdate_Post
+
+	Extend session data to be signed in session request and session response packet.
+
+	Extend SDK to check the session data signature and drop if it doesn't match.
+
+	Add unit test to make sure we reject unsigned session data.
+
+	Update unit tests for session update handler so they work with the new signed session data.
+
+	Extend session update post so it writes the session data signature to the response packet.
+
+	Add a crypto_test.go for the new crypto module
+
+	Add test for crypto box
+
+	Standardize all crypto usage so you know what primitives correspond to Box, and what to Sign.
+
+TODO
+
+	-----------------
+
+	Add unit test for session update post, to make sure the session response packet is written, decrypts, and the random session data inside is signed, and verifies, and then reads back the same.
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Extend SDK so it has the session data signature in both request and response packets.
+
+	-----------------
+
+	Extend SDK to pass back up the session data signature in the next the session update request.
+
+	-----------------
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Test session update response packet write in post, with session data as well.
+
+	-----------------
+
+	Implement code to fill and pass session update data to portal
+
+	-----------------
+
+	Hook up the ip2location to the new server 5 backend
+
+	-----------------
+
+	Hook up the old database code to write datacenter lat/long to the place expected by the new database code.
+
+	-----------------
+
+	Check over all // todo and make sure we are good.
+
+	-----------------
+
+	Implement func tests for each major service, especially around leader election and transfer in-situ
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Need some raspberry pi like service so we have some real clients in dev.
+
+	Setup a test customer "Raspberry" and use the existing raspberry code or pro tool to create this sort of "multi-client".
+
+	This way I can easily run multiple clients pointing at dev from dr strange, and they are easily accessible.
+
+	Run the raspberry pi server inside the linode instance...
+
+    -----------------
+
+    Once this is working, verify the raspberry pi clients are taking sessions via "next relays" in dev.
+
+    -----------------
+
+    Then the next step is to extend the session handler so it posts portal data to the portal crunchers
+
+    -----------------
+
+    Then the portal crunchers should be cleaned up so that they use the service.go framework and setup as an autoscale mig.
+
+    -----------------
+
+    After this, it is time to plumb session update messages to analytics, then process them to perform insertion into bigquery.
+
+    -----------------
+
+    Once this is done, we basically have a working SDK5 backend in dev.
+
+    -----------------
+
+    The next step then is to setup a build process for relays in semaphore.
+
+    -----------------
+
+    Then extend the relay to have the concept of a "secondary" backend, which it will send relay updates to, but it will not shut down if it can't communicate with.
+
+    -----------------
+
+    Once this is done we can create a new prod5 environment, and set up a few relays in prod so that they use prod5 as secondary relay backend.
+
+    -----------------
+
+    Once this is verified stable, upgrade all relays so they report to the secondary prod5 relay backend.
+
+    -----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    -----------------
+
+    Google pubsub should be disabled by default, and enabled explicitly with env var
+
+		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=route_matrix_stats).
+		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=route_matrix_stats).
+		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=cost_matrix_stats).
+
+	-----------------
+
+	Google bigquery should be disabled by default, and enabled explicitly with env var.
+
+	-----------------
+
+	analytics service is spamming this in dev:
+
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+		Jan 04 03:38:30 analytics-mig-hkq3 app[4831]: error: could not read cost_matrix_stats message - dropping
+
+	Why can't it read the cost_matrix_stats message?
+
+	-----------------
+
+	analytics is failing to insert into bigquery in dev:
+
+		Jan 04 04:29:18 analytics-mig-hkq3 app[4833]: error: failed to publish bigquery entry: 244 row insertions failed (insertion of row [insertID: "9blW809c4pZF2Tre0gkTFV5UKaI"; insertIndex: 0] failed with error: {Location: "numRelays"; Message: "no such field: numRelays."; Reason: "invalid"}, insertion of row [insertID: "IFxlFo9QjZskGR38a35pHJAoItl"; insertIndex: 1] failed with error: {Location: "numDatacenters"; Message: "no such field: numDatacenters."; Reason: "invalid"}, insertion of row [insertID: "27d1wczpzBolHFsuiwfOsUdax04"; insertIndex: 2] failed with error: {Location: "numDatacenters"; Message: "no such field: numDatacenters."; Reason: "invalid"}, ...)
+		Jan 04 04:29:18 analytics-mig-hkq3 app[4833]: error: failed to publish bigquery entry: 245 row insertions failed (insertion of row [insertID: "fqcpRXzcepXDie22eUl57AyUZV8"; insertIndex: 0] failed with error: {Location: "bytes"; Message: "no such field: bytes."; Reason: "invalid"}, insertion of row [insertID: "ce23BHskKZVXVQ8U0mlDfROp5Re"; insertIndex: 1] failed with error: {Location: "numRelays"; Message: "no such field: numRelays."; Reason: "invalid"}, insertion of row [insertID: "WH8doSUiENSPxzdIxjMnA04Jq6U"; insertIndex: 2] failed with error: {Location: "numRelays"; Message: "no such field: numRelays."; Reason: "invalid"}, ...)
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Would be good to do a bunch of pretty intensive, per-service functional tests in the backend func tests, that way the happy path could be kept reasonably simple.
+
+	For example, analytics, relay backend, checking for leadership flapping, leadership transfer stuff, relay backend ready etc.
+
+	-----------------
+
+	Fix up the locator handler to be passed in from server backend 5 cmd
+
+	-----------------
+
+	Fix the database thing around lat/long for datacenters
+
+	-----------------
+
