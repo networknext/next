@@ -445,7 +445,6 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	state.RoutingPrivateKey = handler.RoutingPrivateKey
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress
-	state.Connection = conn
 	state.From = from
 	state.LocateIP = SDK5_LocateIP // todo: this should be passed in from the caller via handler instead
 	state.Buyer = handler.Database.BuyerMap[requestPacket.BuyerId]
@@ -481,12 +480,17 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	/*
 	   Session post *always* runs at the end of this function
-
-	   It writes and sends the response packet back to the sender,
-	   and sends session data to billing and the portal.
 	*/
 
-	defer SessionUpdate_Post(&state)
+	defer func() {
+		SessionUpdate_Post(&state)
+		if len(state.ResponsePacket) > 0 {
+			if _, err := conn.WriteToUDP(state.ResponsePacket, state.From); err != nil {
+				core.Error("failed to send session update response packet: %v", err)
+				return
+			}
+		}
+	}()
 
 	/*
 	   Call session pre function
