@@ -3311,4 +3311,59 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	assert.Equal(t, state.Response.Debug, *state.Debug)
 }
 
+func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.Output.WriteSummary)
+	assert.False(t, state.Output.WroteSummary)
+}
+
+func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+	state.Output.WriteSummary = true
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.False(t, state.Output.WriteSummary)
+	assert.True(t, state.Output.WroteSummary)
+}
+
 // --------------------------------------------------------------
