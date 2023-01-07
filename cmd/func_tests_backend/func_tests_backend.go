@@ -1296,12 +1296,12 @@ func test_redis_leader_store_no_flap() {
 					return
 				case <-ticker.C:
 
-					wasLeader := rediselector.IsLeader()
+				wasLeader := rediselector2.IsLeader()
 
 					rediselector2.Store(cancelContext, dataStore2...)
 					rediselector2.Load(cancelContext)
 
-					isNowLeader := rediselector.IsLeader()
+				isNowLeader := rediselector2.IsLeader()
 
 					if !wasLeader && isNowLeader {
 						// we became leader
