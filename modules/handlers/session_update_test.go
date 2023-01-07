@@ -3224,8 +3224,6 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	t.Parallel()
 
-	// todo
-	/*
 	state := CreateState()
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
@@ -3240,20 +3238,77 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	state.From = core.ParseAddress("127.0.0.1:40000")
 	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 
-	state.Request.SliceNumber = 5
-	
-	lc := net.ListenConfig{}
-	lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
-	if err != nil {
-		panic(fmt.Sprintf("could not bind socket: %v", err))
-	}
-
-	state.Connection = lp.(*net.UDPConn)
+	state.Request.Next = true
+	state.Request.SliceNumber = 1
 
 	handlers.SessionUpdate_Post(state)
 
-	assert.True(t, state.GetNearRelays)
-	*/
+	assert.False(t, state.GetNearRelays)
+	assert.True(t, state.Output.EverOnNext)
+	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK5_BillingSliceSeconds))
+}
+
+func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 2
+
+	state.Request.PacketsSentClientToServer = 10001
+	state.Request.PacketsSentServerToClient = 10002
+	state.Request.PacketsLostClientToServer = 10003
+	state.Request.PacketsLostServerToClient = 10004
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.Equal(t, state.Output.PrevPacketsSentClientToServer, state.Request.PacketsSentClientToServer)
+	assert.Equal(t, state.Output.PrevPacketsSentServerToClient, state.Request.PacketsSentServerToClient)
+	assert.Equal(t, state.Output.PrevPacketsLostClientToServer, state.Request.PacketsLostClientToServer)
+	assert.Equal(t, state.Output.PrevPacketsLostServerToClient, state.Request.PacketsLostServerToClient)
+}
+
+func Test_SessionUpdate_Post_Debug(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 2
+
+	debugString := "it's debug time"
+
+	state.Debug = &debugString
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.True(t, state.Response.HasDebug)
+	assert.Equal(t, state.Response.Debug, *state.Debug)
 }
 
 // --------------------------------------------------------------
