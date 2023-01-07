@@ -29,12 +29,13 @@ type SessionUpdateState struct {
 
 	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
 
-	Connection *net.UDPConn
 	From       *net.UDPAddr
 
 	Input packets.SDK5_SessionData // sent up from the SDK. previous slice.
 
 	Output packets.SDK5_SessionData // sent down to the SDK. current slice.
+
+	ResponsePacket []byte // response packet sent back to the "from" if non-zero length.
 
 	Request       *packets.SDK5_SessionUpdateRequestPacket
 	Response      packets.SDK5_SessionUpdateResponsePacket
@@ -55,6 +56,7 @@ type SessionUpdateState struct {
 	RouteDiversity int32
 
 	// for route planning
+	DestRelayIds   []uint64
 	DestRelays     []int32
 	SourceRelays   []int32
 	SourceRelayRTT []int32
@@ -73,43 +75,46 @@ type SessionUpdateState struct {
 	PostRealPacketLossServerToClient float32
 
 	// flags
-	ReadSessionData                          bool
-	LongDuration                             bool
-	ClientPingTimedOut                       bool
-	Pro                                      bool
-	BadSessionId                             bool
-	BadSliceNumber                           bool
-	AnalysisOnly                             bool
-	NoRelaysInDatacenter                     bool
-	HoldingNearRelays                        bool
-	NearRelaysExcluded                       bool
-	NotGettingNearRelaysAnalysisOnly         bool
-	NotGettingNearRelaysDatacenterNotEnabled bool
-	FallbackToDirect                         bool
-	NoNearRelays                             bool
-	LargeCustomer                            bool
-	NoRouteRelays                            bool
-	Aborted                                  bool
-	RouteRelayNoLongerExists                 bool
-	RouteChanged                             bool
-	RouteContinued                           bool
-	RouteNoLongerExists                      bool
-	Mispredict                               bool
-	LatencyWorse                             bool
-	FailedToReadSessionData                  bool
-	StaleRouteMatrix                         bool
-	UnknownDatacenter                        bool
-	DatacenterNotEnabled                     bool
-	TakeNetworkNext                          bool
-	StayDirect                               bool
-	LeftNetworkNext                          bool
-	WroteResponsePacket                      bool
-	FailedToWriteResponsePacket              bool
-	FailedToSendResponsePacket               bool
-	LocationVeto                             bool
-	SentSessionUpdateMessage                 bool
-	SentPortalData                           bool
-	LocatedIP                                bool
+	ReadSessionData                           bool
+	LongDuration                              bool
+	ClientPingTimedOut                        bool
+	Pro                                       bool
+	BadSessionId                              bool
+	BadSliceNumber                            bool
+	AnalysisOnly                              bool
+	NoRelaysInDatacenter                      bool
+	HoldingNearRelays                         bool
+	NearRelaysExcluded                        bool
+	NotGettingNearRelaysAnalysisOnly          bool
+	NotGettingNearRelaysDatacenterNotEnabled  bool
+	NotUpdatingNearRelaysAnalysisOnly         bool
+	NotUpdatingNearRelaysDatacenterNotEnabled bool
+	FallbackToDirect                          bool
+	NoNearRelays                              bool
+	LargeCustomer                             bool
+	NoRouteRelays                             bool
+	Aborted                                   bool
+	RouteRelayNoLongerExists                  bool
+	RouteChanged                              bool
+	RouteContinued                            bool
+	RouteNoLongerExists                       bool
+	Mispredict                                bool
+	LatencyWorse                              bool
+	FailedToReadSessionData                   bool
+	StaleRouteMatrix                          bool
+	UnknownDatacenter                         bool
+	DatacenterNotEnabled                      bool
+	TakeNetworkNext                           bool
+	StayDirect                                bool
+	LeftNetworkNext                           bool
+	WroteResponsePacket                       bool
+	FailedToWriteResponsePacket               bool
+	FailedToWriteSessionData                  bool
+	LocationVeto                              bool
+	SentSessionUpdateMessage                  bool
+	SentPortalData                            bool
+	LocatedIP                                 bool
+	GetNearRelays                             bool
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -244,6 +249,8 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
 		state.NoRelaysInDatacenter = true
 	}
+
+	state.DestRelayIds = destRelayIds
 
 	/*
 		The debug string is appended to during the rest of the handler and sent down to the SDK
@@ -411,7 +418,9 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		with higher jitter or packet loss.
 	*/
 
-	if state.Buyer.RouteShader.AnalysisOnly {
+	state.GetNearRelays = true
+
+	if state.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
 		return false
@@ -469,11 +478,13 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	if state.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
+		state.NotUpdatingNearRelaysAnalysisOnly = true
 		return false
 	}
 
 	if state.DatacenterNotEnabled {
-		core.Debug("datacenter not disabled, not updating near relay stats")
+		core.Debug("datacenter not enabled, not updating near relay stats")
+		state.NotUpdatingNearRelaysDatacenterNotEnabled = true
 		return false
 	}
 
@@ -481,11 +492,10 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		Reframe dest relays to get them relative to the current route matrix.
 	*/
 
-	inputDestRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Datacenter.ID)
 	outputNumDestRelays := 0
-	outputDestRelays := make([]int32, len(inputDestRelayIds))
+	outputDestRelays := make([]int32, len(state.DestRelayIds))
 
-	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, inputDestRelayIds, &outputNumDestRelays, outputDestRelays)
+	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, state.DestRelayIds, &outputNumDestRelays, outputDestRelays)
 
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
@@ -696,21 +706,21 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, 
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
-			&state.Buyer.RouteShader, 
-			&state.Output.RouteState, 
-			&state.Buyer.InternalConfig, 
-			int32(state.Request.DirectMinRTT), 
-			state.RealPacketLoss, 
-			state.SourceRelays, 
-			state.SourceRelayRTT, 
-			state.DestRelays, 
-			&routeCost, 
-			&routeNumRelays, 
-			routeRelays[:], 
-			&state.RouteDiversity, 
-			state.Debug, 
+			&state.Buyer.RouteShader,
+			&state.Output.RouteState,
+			&state.Buyer.InternalConfig,
+			int32(state.Request.DirectMinRTT),
+			state.RealPacketLoss,
+			state.SourceRelays,
+			state.SourceRelayRTT,
+			state.DestRelays,
+			&routeCost,
+			&routeNumRelays,
+			routeRelays[:],
+			&state.RouteDiversity,
+			state.Debug,
 			sliceNumber) {
 
 			state.TakeNetworkNext = true
@@ -775,25 +785,25 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		nextLatency := int32(state.Request.NextRTT)
 		predictedLatency := state.Input.RouteCost
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, 
-			state.RouteMatrix.FullRelayIndexSet, 
-			state.RouteMatrix.RelayNames, 
-			&state.Buyer.RouteShader, 
-			&state.Output.RouteState, 
-			&state.Buyer.InternalConfig, 
-			directLatency, 
-			nextLatency, 
-			predictedLatency, 
-			state.RealPacketLoss, 
-			state.Request.NextPacketLoss, 
-			state.Output.RouteNumRelays, 
-			routeRelays, 
-			state.SourceRelays, 
-			state.SourceRelayRTT, 
-			state.DestRelays, 
-			&routeCost, 
-			&routeNumRelays, 
-			routeRelays[:], 
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries,
+			state.RouteMatrix.FullRelayIndexSet,
+			state.RouteMatrix.RelayNames,
+			&state.Buyer.RouteShader,
+			&state.Output.RouteState,
+			&state.Buyer.InternalConfig,
+			directLatency,
+			nextLatency,
+			predictedLatency,
+			state.RealPacketLoss,
+			state.Request.NextPacketLoss,
+			state.Output.RouteNumRelays,
+			routeRelays,
+			state.SourceRelays,
+			state.SourceRelayRTT,
+			state.DestRelays,
+			&routeCost,
+			&routeNumRelays,
+			routeRelays[:],
 			state.Debug)
 
 		if stayOnNext {
@@ -967,8 +977,16 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
-	if state.Request.ClientPingTimedOut {
-		state.Output.WroteSummary = true
+ 	if state.Request.ClientPingTimedOut {
+
+ 		if state.Output.WriteSummary {
+ 			state.Output.WroteSummary = true
+ 			state.Output.WriteSummary = false
+ 		}
+
+ 		if !state.Output.WroteSummary {
+ 			state.Output.WriteSummary = true
+ 		}
 	}
 
 	/*
@@ -983,7 +1001,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)
-		// todo: counter
+		state.FailedToWriteSessionData = true
 		return
 	}
 
@@ -994,7 +1012,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.Response.SessionDataBytes = int32(writeStream.GetBytesProcessed())
 
 	/*
-		Write the session update response packet and send it back to the caller.
+		Write the session update response packet.
 	*/
 
 	if state.Debug != nil {
@@ -1003,30 +1021,14 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		core.Debug("%s-------------------------------------", *state.Debug)
 	}
 
-	packetData, err := packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
+	state.ResponsePacket, err = packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
-		// todo: counter
+		state.FailedToWriteResponsePacket = true
 		return
 	}
 
-	if err == nil {
-
-		if _, err := state.Connection.WriteToUDP(packetData, state.From); err != nil {
-			core.Error("failed to send session update response packet: %v", err)
-			state.FailedToSendResponsePacket = true
-			return
-		}
-
-		state.WroteResponsePacket = true
-
-	} else {
-
-		core.Error("failed to write response packet: %v", err)
-
-		state.FailedToWriteResponsePacket = true
-
-	}
+	state.WroteResponsePacket = true
 
 	/*
 		Build the data for the relays in the route.
