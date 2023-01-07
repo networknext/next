@@ -26,6 +26,7 @@ const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
+const LatencyThreshold = 15
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -107,6 +108,10 @@ func TriMatrixIndex(i, j int) int {
 	} else {
 		return j*(j+1)/2 - j + i
 	}
+}
+
+func RandomBytes(buffer []byte) {
+	crypto_rand.Read(buffer)
 }
 
 // -----------------------------------------------------
@@ -812,42 +817,13 @@ type RouteToken struct {
 	KbpsUp          uint32
 	KbpsDown        uint32
 	NextAddress     *net.UDPAddr
-	PrivateKey      [crypto.Box_KeySize]byte
+	PrivateKey      [crypto.Box_PrivateKeySize]byte
 }
 
 type ContinueToken struct {
 	ExpireTimestamp uint64
 	SessionId       uint64
 	SessionVersion  uint8
-}
-
-func Encrypt(senderPrivateKey []byte, receiverPublicKey []byte, nonce []byte, buffer []byte, bytes int) int {
-	C.crypto_box_easy((*C.uchar)(&buffer[0]),
-		(*C.uchar)(&buffer[0]),
-		C.ulonglong(bytes),
-		(*C.uchar)(&nonce[0]),
-		(*C.uchar)(&receiverPublicKey[0]),
-		(*C.uchar)(&senderPrivateKey[0]))
-	return bytes + crypto.Box_MacSize
-}
-
-func Decrypt(senderPublicKey []byte, receiverPrivateKey []byte, nonce []byte, buffer []byte, bytes int) error {
-	result := C.crypto_box_open_easy(
-		(*C.uchar)(&buffer[0]),
-		(*C.uchar)(&buffer[0]),
-		C.ulonglong(bytes),
-		(*C.uchar)(&nonce[0]),
-		(*C.uchar)(&senderPublicKey[0]),
-		(*C.uchar)(&receiverPrivateKey[0]))
-	if result != 0 {
-		return fmt.Errorf("failed to decrypt: result = %d", result)
-	} else {
-		return nil
-	}
-}
-
-func RandomBytes(buffer []byte) {
-	crypto_rand.Read(buffer)
 }
 
 // -----------------------------------------------------------------------------
@@ -879,7 +855,7 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
 	RandomBytes(tokenData[:crypto.Box_NonceSize])
 	WriteRouteToken(token, tokenData[crypto.Box_NonceSize:])
-	Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], NEXT_ROUTE_TOKEN_BYTES)
+	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
@@ -888,14 +864,14 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	}
 	nonce := tokenData[0 : crypto.Box_NonceSize-1]
 	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
+	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadRouteToken(token, tokenData)
 }
 
 func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
-	privateKey := [crypto.Box_KeySize]byte{}
+	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
 		var token RouteToken
@@ -933,7 +909,7 @@ func ReadContinueToken(token *ContinueToken, buffer []byte) error {
 func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
 	RandomBytes(buffer[:crypto.Box_NonceSize])
 	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
-	Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], NEXT_CONTINUE_TOKEN_BYTES)
+	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
@@ -942,7 +918,7 @@ func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPu
 	}
 	nonce := tokenData[0 : crypto.Box_NonceSize-1]
 	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
+	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadContinueToken(token, tokenData)
@@ -1287,8 +1263,8 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with latency > direct
-		if sourceRelayLatency[i] > directLatency {
+		// exclude relays with latency significantly higher than direct
+		if sourceRelayLatency[i] > directLatency+LatencyThreshold {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}
@@ -1722,9 +1698,16 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
+	Debug("direct latency = %d", directLatency)
+	Debug("next latency = %d", nextLatency)
+	Debug("predicted latency = %d", predictedLatency)
+
 	// if we early out, go direct
 
 	if EarlyOutDirect(routeShader, routeState, debug) {
+		if debug != nil {
+			*debug += "early out direct\n"
+		}
 		return false, false
 	}
 
@@ -1737,11 +1720,6 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
-
-	// todo
-	fmt.Printf("direct latency = %d\n", directLatency)
-	fmt.Printf("next latency = %d\n", nextLatency)
-	fmt.Printf("predicted latency = %d\n", predictedLatency)
 
 	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
