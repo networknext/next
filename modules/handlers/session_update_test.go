@@ -3029,6 +3029,13 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
 	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
 
+	// setup near relays
+
+	state.Request.NearRelayIds := []uint32{1,2,3}
+	state.Request.NearRelayRTT := []int32{1,100,100}
+	state.Request.NearRelayJitter := []int32{0,0,0}
+	state.Request.NearRelayPacketLoss := []int32{0,0,0}
+
 	// update near relays
 
 	result := handlers.SessionUpdate_UpdateNearRelays(state)
@@ -3045,6 +3052,22 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.DestRelays[2], int32(2) )
 
 	// todo: check much more stuff... especially, output from filter relays, etc.
+
+	/*
+		state.Output.HeldNumNearRelays = state.Request.NumNearRelays
+		state.Output.HeldNearRelayIds
+		state.Output.HeldNearRelayRTT
+
+		state.SourceRelays
+		state.SourceRelayRTT
+	*/
+
+	assert.Equal(t, state.HeldNumNearRelays, int32(3))
+	assert.Equal(t, state.HeldNearRelayIds[0], int32(1))
+	assert.Equal(t, state.HeldNearRelayIds[1], int32(1))
+	assert.Equal(t, state.HeldNearRelayIds[2], int32(1))
+
+	assert.True(t, false)
 }
 
 // todo: Test_SessionUpdate_UpdateNearRelays_SliceTwo
