@@ -5,7 +5,6 @@ import (
 	"net"
 	"testing"
 	"time"
-	"context"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -3216,14 +3215,6 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 
 	state.Request.SliceNumber = 0
 	
-	lc := net.ListenConfig{}
-	lp, err := lc.ListenPacket(context.Background(), "udp", "0.0.0.0:0")
-	if err != nil {
-		panic(fmt.Sprintf("could not bind socket: %v", err))
-	}
-
-	state.Connection = lp.(*net.UDPConn)
-
 	handlers.SessionUpdate_Post(state)
 
 	assert.True(t, state.GetNearRelays)
