@@ -195,7 +195,7 @@
 #define NEXT_UDP_HEADER_BYTES                                           8
 #define NEXT_HEADER_BYTES                                              33
 
-// todo: this must be replaced with a new keypair
+// todo: this must be replaced with a new keypair in production
 static uint8_t next_server_backend_public_key[] =
 {
      76,  97, 202, 140,  71, 135,  62, 212,
@@ -204,7 +204,7 @@ static uint8_t next_server_backend_public_key[] =
      25,  34, 175, 186,  37, 150, 163,  64
 };
 
-// todo: this must be replaced with a new keypair
+// todo: this must be replaced with a new keypair in production
 static uint8_t next_router_public_key[] =
 {
     0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34,

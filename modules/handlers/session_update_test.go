@@ -5,7 +5,6 @@ import (
 	"net"
 	"testing"
 	"time"
-	"os"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -1856,12 +1855,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-
-		// todo: there's a heisenbug here. WTF?!		
 		assert.Nil(t, err)
-		if err != nil {
-			os.Exit(1)
-		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2138,12 +2132,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-
-		// todo: heisenbug here. WTF?!
 		assert.Nil(t, err)
-		if err != nil {
-			os.Exit(1)
-		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2199,7 +2188,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	assert.True(t, state.RouteNoLongerExists)
 }
 
-/*
 func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *testing.T) {
 
 	t.Parallel()
@@ -3556,9 +3544,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPrivateKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
@@ -3634,4 +3620,3 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 }
 
 // --------------------------------------------------------------
-*/
