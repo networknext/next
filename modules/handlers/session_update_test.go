@@ -239,6 +239,7 @@ func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
 	state.ServerBackendPublicKey = serverBackendPublicKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
+	state.Request.SliceNumber = 0
 	state.Request.DatacenterId = 0x12345
 
 	result := handlers.SessionUpdate_Pre(state)
@@ -259,6 +260,7 @@ func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	state.Buyer.ID = 0x11111
+	state.Request.SliceNumber = 0
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
 
@@ -3057,7 +3059,7 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.False(t, state.NoNearRelays)
 	assert.Equal(t, state.Response.NumNearRelays, int32(3))
 	assert.True(t, state.Response.HasNearRelays)
-	
+
 	contains_1 := false
 	contains_2 := false
 	contains_3 := false
@@ -3093,6 +3095,8 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
@@ -3107,6 +3111,8 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
@@ -3226,6 +3232,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
 	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
@@ -3343,6 +3352,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
 	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------
@@ -3532,9 +3544,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPrivateKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]

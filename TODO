@@ -10,34 +10,25 @@ DONE
 
 	Remove "committed" concept from sdk5 next.cpp -- we just don't need the complexity.
 
-TODO
+	Add a unit test to specifically verify that we don't send near relays down on slice 2.
 
-
-
-
-
-
-
-
-
-
-
-
-
-	----------
-
-	Add a unit test to make sure we only send down near relays to ping on slice 1.
-
-	----------
-
-	Low frequency pings can be 10 packets per-second.
+	Low frequency pings 10 packets per-second.
 
 	High frequency pings can be 60 packets per-second :)
 
-	----------
+	Heisenbug is specific to my iMac pro. Probably a bad memory module.
 
+	Extend SDK to pass up actual bandwidth used for direct as well.
 
+	Without this, we can't get an estimate of bandwidth use while in analysis only mode, which makes customer trials difficult.
 
+	Extend sdk5 packets to include direct kbps up / direct kbps down in the session update request packet
+
+	Add sdk5 func test to verify that direct kbps up / down are passed up in session update
+
+TODO
+
+	Finished work for today.
 
 
 

@@ -197,6 +197,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		// use location data stored in session data
 
 		if !SessionUpdate_ReadSessionData(state) {
+			core.Error("failed to read session data")
 			return true
 		}
 
