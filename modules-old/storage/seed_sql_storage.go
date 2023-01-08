@@ -35,8 +35,6 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
-		core.Debug("SeedSQLStorage")
-
 		if err := db.AddAnalyticsDashboardCategory(ctx, 100, "Summary", -1); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}

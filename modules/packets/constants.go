@@ -104,9 +104,12 @@ const (
 	SDK5_MinPacketBytes = 16 + 3 + 8 + SDK5_CRYPTO_SIGN_BYTES + 2
 	SDK5_MaxPacketBytes = 4096
 
-	SDK5_MacBytes   = crypto.Box_MacSize
-	SDK5_NonceBytes = crypto.Box_NonceSize
-	SDK5_KeyBytes   = crypto.Box_KeySize
+	SDK5_MacBytes        = crypto.Box_MacSize
+	SDK5_NonceBytes      = crypto.Box_NonceSize
+	SDK5_PublicKeyBytes  = crypto.Box_PublicKeySize
+	SDK5_PrivateKeyBytes = crypto.Box_PublicKeySize
+
+	SDK5_SignatureBytes = crypto.Sign_SignatureSize
 
 	SDK5_MaxNearRelayRTT        = 255
 	SDK5_MaxNearRelayJitter     = 255
