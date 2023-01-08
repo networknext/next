@@ -252,6 +252,9 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		}
 	}
 
+	packet.DirectKbpsUp = rand.Uint32()
+	packet.DirectKbpsDown = rand.Uint32()
+
 	if packet.Next {
 		packet.NextRTT = rand.Float32()
 		packet.NextJitter = rand.Float32()
