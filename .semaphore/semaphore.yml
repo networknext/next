@@ -664,17 +664,21 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_sdk5 test_session_update_retry
 
-        - name: "test_bandwidth_over_limit"
-          commands:
-            - cd ./dist && ./func_tests_sdk5 test_bandwidth_over_limit
-
         - name: "test_packet_loss"
           commands:
             - cd ./dist && ./func_tests_sdk5 test_packet_loss
 
-        - name: "test_bandwidth"
+        - name: "test_direct_bandwidth"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_bandwidth
+            - cd ./dist && ./func_tests_sdk5 test_direct_bandwidth
+
+        - name: "test_next_bandwidth"
+          commands:
+            - cd ./dist && ./func_tests_sdk5 test_next_bandwidth
+
+        - name: "test_next_bandwidth_over_limit"
+          commands:
+            - cd ./dist && ./func_tests_sdk5 test_next_bandwidth_over_limit
 
         - name: "test_jitter"
           commands:
