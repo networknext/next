@@ -473,9 +473,9 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
 
+	state.Response.HasNearRelays = true
 	state.Response.NumNearRelays = int32(numNearRelays)
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
-	state.Response.NearRelaysChanged = true
 
 	return true
 }
@@ -999,7 +999,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Don't ping near relays except on slice 1.
 	*/
 
-	if state.SliceNumber != 1 {
+	if state.Output.SliceNumber != 1 {
 		state.Response.HasNearRelays = false
 		state.Response.NumNearRelays = 0
 	}
