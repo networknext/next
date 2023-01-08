@@ -88,7 +88,6 @@ type SessionUpdateState struct {
 	AnalysisOnly                              bool
 	NoRelaysInDatacenter                      bool
 	HoldingNearRelays                         bool
-	NearRelaysExcluded                        bool
 	NotGettingNearRelaysAnalysisOnly          bool
 	NotGettingNearRelaysDatacenterNotEnabled  bool
 	NotUpdatingNearRelaysAnalysisOnly         bool
@@ -474,9 +473,9 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
 
+	state.Response.HasNearRelays = true
 	state.Response.NumNearRelays = int32(numNearRelays)
 	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
-	state.Response.NearRelaysChanged = true
 
 	return true
 }
@@ -878,12 +877,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	}
 
 	/*
-		Committed means to send packets across the network next route
-	*/
-
-	state.Response.Committed = true
-
-	/*
 		Multipath means to send packets across both the direct and the network
 		next route at the same time, which reduces packet loss.
 	*/
@@ -994,6 +987,15 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		if !state.Output.WroteSummary {
 			state.Output.WriteSummary = true
 		}
+	}
+
+	/*
+		Don't ping near relays except on slice 1.
+	*/
+
+	if state.Output.SliceNumber != 1 {
+		state.Response.HasNearRelays = false
+		state.Response.NumNearRelays = 0
 	}
 
 	/*

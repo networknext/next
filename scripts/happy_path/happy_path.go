@@ -451,8 +451,8 @@ func happy_path(wait bool) int {
 	client5_initialized := false
 
 	for i := 0; i < 600; i++ {
-		if strings.Contains(client5_stdout.String(), "client next route (committed)") &&
-			strings.Contains(client5_stdout.String(), "client continues route (committed)") {
+		if strings.Contains(client5_stdout.String(), "client next route") &&
+			strings.Contains(client5_stdout.String(), "client continues route") {
 			client5_initialized = true
 			break
 		}

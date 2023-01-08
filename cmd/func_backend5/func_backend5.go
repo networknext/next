@@ -82,7 +82,6 @@ type SessionCacheEntry struct {
 	OnNNSliceCounter           uint64
 	CommitPending              bool
 	CommitObservedSliceCounter uint8
-	Committed                  bool
 	TimestampStart             time.Time
 	TimestampExpire            time.Time
 	Version                    uint8
@@ -708,25 +707,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
-	committed := true
-
-	if backend.mode == BACKEND_MODE_UNCOMMITTED {
-		committed = false
-		if requestPacket.Committed {
-			panic("slices must not be committed in this mode")
-		}
-	}
-
-	if backend.mode == BACKEND_MODE_UNCOMMITTED_TO_COMMITTED {
-		committed = requestPacket.SliceNumber > 2
-		if requestPacket.SliceNumber <= 2 && requestPacket.Committed {
-			panic("slices 0,1,2,3 should not be committed")
-		}
-		if requestPacket.SliceNumber >= 4 && !requestPacket.Committed {
-			panic("slices 4 and greater should be committed")
-		}
-	}
-
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
 		if requestPacket.SliceNumber >= 2 && requestPacket.ServerEvents != 0x123 {
 			panic("server events not set on session update")
@@ -830,7 +810,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			SliceNumber:        requestPacket.SliceNumber,
 			RouteType:          routeType,
 			Multipath:          multipath,
-			Committed:          committed,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
 			HighFrequencyPings: true,
