@@ -7,8 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"encoding/base64"
-
 	"github.com/joho/godotenv"
 )
 
@@ -166,19 +164,7 @@ func help() {
 }
 
 func test() {
-
-	serverBackendPublicKey := []byte{
-     76,  97, 202, 140,  71, 135,  62, 212,
-    160, 181, 151, 195, 202, 224, 207, 113,
-      8,  45,  37,  60, 145,  14, 212, 111,
-     25,  34, 175, 186,  37, 150, 163,  64,
-	}
-
-	output := base64.StdEncoding.EncodeToString(serverBackendPublicKey)
-
-	fmt.Printf("output: %s\n", output)
-
-	// bash("./scripts/test-backend.sh")
+	bash("./scripts/test-backend.sh")
 }
 
 func test_sdk4() {

@@ -1375,7 +1375,6 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -1587,7 +1586,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -1814,7 +1812,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -2092,7 +2089,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -2314,7 +2310,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -2533,7 +2528,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	assert.Equal(t, state.Output.RouteCost, int32(24))
@@ -2760,7 +2754,6 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.True(t, state.Response.Multipath)
 
 	// mispredict 3 times
@@ -2907,7 +2900,6 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Committed)
 	assert.False(t, state.Response.Multipath)
 
 	// make all near relays very expensive
@@ -3064,9 +3056,8 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.False(t, state.NotGettingNearRelaysDatacenterNotEnabled)
 	assert.False(t, state.NoNearRelays)
 	assert.Equal(t, state.Response.NumNearRelays, int32(3))
-	assert.True(t, state.Response.NearRelaysChanged)
-	assert.False(t, state.Response.HighFrequencyPings)
-
+	assert.True(t, state.Response.HasNearRelays)
+	
 	contains_1 := false
 	contains_2 := false
 	contains_3 := false
@@ -3379,6 +3370,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	handlers.SessionUpdate_Post(state)
 
 	assert.True(t, state.GetNearRelays)
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
@@ -3470,6 +3462,7 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 
 	assert.True(t, state.Response.HasDebug)
 	assert.Equal(t, state.Response.Debug, *state.Debug)
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
@@ -3497,6 +3490,7 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	assert.True(t, state.Output.WriteSummary)
 	assert.False(t, state.Output.WroteSummary)
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
@@ -3525,6 +3519,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_Response(t *testing.T) {

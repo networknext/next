@@ -190,9 +190,6 @@ type SDK5_SessionUpdateRequestPacket struct {
 	ConnectionType       int32
 	Next                 bool
 
-	// todo: remove
-	Committed bool
-
 	Reported                        bool
 	FallbackToDirect                bool
 	ClientBandwidthOverLimit        bool
@@ -259,9 +256,6 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeInteger(&packet.ConnectionType, SDK5_ConnectionTypeUnknown, SDK5_ConnectionTypeMax)
 
 	stream.SerializeBool(&packet.Next)
-
-	// todo: remove
-	stream.SerializeBool(&packet.Committed)
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
@@ -415,7 +409,7 @@ type SDK5_SessionUpdateResponsePacket struct {
 	SessionData          [SDK5_MaxSessionDataSize]byte
 	SessionDataSignature [SDK5_SignatureBytes]byte
 	RouteType            int32
-	NearRelaysChanged    bool
+	HasNearRelays        bool
 	NumNearRelays        int32
 	NearRelayIds         [SDK5_MaxNearRelays]uint64
 	NearRelayAddresses   [SDK5_MaxNearRelays]net.UDPAddr
@@ -425,13 +419,6 @@ type SDK5_SessionUpdateResponsePacket struct {
 	HasDebug             bool
 	Debug                string
 	HighFrequencyPings   bool
-
-	// todo: remove
-	Committed bool
-
-	// todo: this complexity is no longer needed. remove.
-	ExcludeNearRelays bool
-	NearRelayExcluded [SDK5_MaxNearRelays]bool
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -449,9 +436,9 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 	stream.SerializeInteger(&packet.RouteType, 0, SDK5_RouteTypeContinue)
 
-	stream.SerializeBool(&packet.NearRelaysChanged)
+	stream.SerializeBool(&packet.HasNearRelays)
 
-	if packet.NearRelaysChanged {
+	if packet.HasNearRelays {
 		stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK5_MaxNearRelays))
 		for i := int32(0); i < packet.NumNearRelays; i++ {
 			stream.SerializeUint64(&packet.NearRelayIds[i])
@@ -461,7 +448,6 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 	if packet.RouteType != SDK5_RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
-		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, SDK5_MaxTokens)
 	}
 
@@ -481,14 +467,6 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 	stream.SerializeBool(&packet.HasDebug)
 	stream.SerializeString(&packet.Debug, SDK5_MaxSessionDebug)
-
-	// todo: remove this
-	stream.SerializeBool(&packet.ExcludeNearRelays)
-	if packet.ExcludeNearRelays {
-		for i := range packet.NearRelayExcluded {
-			stream.SerializeBool(&packet.NearRelayExcluded[i])
-		}
-	}
 
 	stream.SerializeBool(&packet.HighFrequencyPings)
 
