@@ -585,10 +585,10 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
 		if requestPacket.DirectKbpsUp > 0 {
-			fmt.Printf("%d direct up\n", requestPacket.DirectKbpsUp)
+			fmt.Printf("%d direct kbps up\n", requestPacket.DirectKbpsUp)
 		}
 		if requestPacket.DirectKbpsDown > 0 {
-			fmt.Printf("%d direct down\n", requestPacket.DirectKbpsDown)
+			fmt.Printf("%d direct kbps down\n", requestPacket.DirectKbpsDown)
 		}
 		if requestPacket.NextKbpsUp > 0 {
 			fmt.Printf("%d next kbps up\n", requestPacket.NextKbpsUp)
