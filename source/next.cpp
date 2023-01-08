@@ -147,7 +147,7 @@
 
 #define NEXT_MAX_DATACENTER_NAME_LENGTH                               256
 
-#define NEXT_MAX_SESSION_DATA_BYTES                                   500
+#define NEXT_MAX_SESSION_DATA_BYTES                                  1024
 
 #define NEXT_MAX_SESSION_UPDATE_RETRIES                                10
 
@@ -187,8 +187,8 @@
 
 #define NEXT_MAX_SESSION_DEBUG                                       1024
 
-#define NEXT_LOW_FREQUENCY_PING_RATE                                    1
-#define NEXT_HIGH_FREQUENCY_PING_RATE                                  10
+#define NEXT_LOW_FREQUENCY_PING_RATE                                   10
+#define NEXT_HIGH_FREQUENCY_PING_RATE                                  60
 
 #define NEXT_ETHERNET_HEADER_BYTES                                     18
 #define NEXT_IPV4_HEADER_BYTES                                         20
