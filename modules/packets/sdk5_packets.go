@@ -192,8 +192,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 
 	Reported                        bool
 	FallbackToDirect                bool
-	ClientBandwidthOverLimit        bool
-	ServerBandwidthOverLimit        bool
+	ClientNextBandwidthOverLimit    bool
+	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
 	HasNearRelayPings               bool
 	NumTags                         int32
@@ -212,6 +212,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 	NearRelayRTT                    [SDK5_MaxNearRelays]int32
 	NearRelayJitter                 [SDK5_MaxNearRelays]int32
 	NearRelayPacketLoss             [SDK5_MaxNearRelays]int32
+	DirectKbpsUp                    uint32
+	DirectKbpsDown                  uint32
 	NextKbpsUp                      uint32
 	NextKbpsDown                    uint32
 	PacketsSentClientToServer       uint64
@@ -259,8 +261,8 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
-	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientNextBandwidthOverLimit)
+	stream.SerializeBool(&packet.ServerNextBandwidthOverLimit)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasNearRelayPings)
 
@@ -307,6 +309,9 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, SDK5_MaxNearRelayPacketLoss)
 		}
 	}
+
+	stream.SerializeUint32(&packet.DirectKbpsUp)
+	stream.SerializeUint32(&packet.DirectKbpsDown)
 
 	if packet.Next {
 		stream.SerializeUint32(&packet.NextKbpsUp)

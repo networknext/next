@@ -201,8 +201,8 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		Next:                            common.RandomBool(),
 		Reported:                        common.RandomBool(),
 		FallbackToDirect:                common.RandomBool(),
-		ClientBandwidthOverLimit:        common.RandomBool(),
-		ServerBandwidthOverLimit:        common.RandomBool(),
+		ClientNextBandwidthOverLimit:    common.RandomBool(),
+		ServerNextBandwidthOverLimit:    common.RandomBool(),
 		ClientPingTimedOut:              common.RandomBool(),
 		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
@@ -251,6 +251,9 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 			packet.NearRelayPacketLoss[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayPacketLoss))
 		}
 	}
+
+	packet.DirectKbpsUp = rand.Uint32()
+	packet.DirectKbpsDown = rand.Uint32()
 
 	if packet.Next {
 		packet.NextRTT = rand.Float32()

@@ -567,12 +567,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		fmt.Printf("client ping timed out\n")
 	}
 
-	if requestPacket.ClientBandwidthOverLimit {
-		fmt.Printf("client bandwidth over limit\n")
+	if requestPacket.ClientNextBandwidthOverLimit {
+		fmt.Printf("client next bandwidth over limit\n")
 	}
 
-	if requestPacket.ServerBandwidthOverLimit {
-		fmt.Printf("server bandwidth over limit\n")
+	if requestPacket.ServerNextBandwidthOverLimit {
+		fmt.Printf("server next bandwidth over limit\n")
 	}
 
 	if requestPacket.PacketsLostClientToServer > 0 {
@@ -584,11 +584,17 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	}
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
+		if requestPacket.DirectKbpsUp > 0 {
+			fmt.Printf("%d direct kbps up\n", requestPacket.DirectKbpsUp)
+		}
+		if requestPacket.DirectKbpsDown > 0 {
+			fmt.Printf("%d direct kbps down\n", requestPacket.DirectKbpsDown)
+		}
 		if requestPacket.NextKbpsUp > 0 {
-			fmt.Printf("%d kbps up\n", requestPacket.NextKbpsUp)
+			fmt.Printf("%d next kbps up\n", requestPacket.NextKbpsUp)
 		}
 		if requestPacket.NextKbpsDown > 0 {
-			fmt.Printf("%d kbps down\n", requestPacket.NextKbpsDown)
+			fmt.Printf("%d next kbps down\n", requestPacket.NextKbpsDown)
 		}
 	}
 
