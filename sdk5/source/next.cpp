@@ -9774,6 +9774,7 @@ struct NextBackendSessionUpdateRequestPacket
     uint32_t retry_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    uint8_t session_data_signature[NEXT_CRYPTO_SIGN_BYTES];
     next_address_t client_address;
     next_address_t server_address;
     uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
@@ -9844,6 +9845,7 @@ struct NextBackendSessionUpdateRequestPacket
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
+            serialize_bytes( stream, session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
         }
 
         // IMPORTANT: Anonymize the client address before sending it up to our backend
@@ -10213,6 +10215,7 @@ struct next_session_entry_t
 
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    uint8_t session_data_signature[NEXT_CRYPTO_SIGN_BYTES];
 
     NEXT_DECLARE_SENTINEL(25)
 
@@ -10665,6 +10668,7 @@ struct NextBackendSessionUpdateResponsePacket
     uint32_t slice_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    uint8_t session_data_signature[NEXT_CRYPTO_SIGN_BYTES];
     uint8_t response_type;
     bool near_relays_changed;
     int num_near_relays;
@@ -10696,6 +10700,7 @@ struct NextBackendSessionUpdateResponsePacket
         if ( session_data_bytes > 0 )
         {
             serialize_bytes( stream, session_data, session_data_bytes );
+            serialize_bytes( stream, session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
         }
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
@@ -13170,6 +13175,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         entry->session_data_bytes = packet.session_data_bytes;
         memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
+        memcpy( entry->session_data_signature, packet.session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
         entry->waiting_for_update_response = false;
 
@@ -14894,6 +14900,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( session->session_data_bytes <= NEXT_MAX_SESSION_DATA_BYTES );
             packet.session_data_bytes = session->session_data_bytes;
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
+            memcpy( packet.session_data_signature, session->session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
             session->session_update_request_packet = packet;
 
@@ -19291,6 +19298,10 @@ void test_session_update_packet()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19351,6 +19362,10 @@ void test_session_update_packet()
         {
             next_check( in.session_data[j] == out.session_data[j] );
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( in.session_data_signature[j] == out.session_data_signature[j] );
+        }
     }
 }
 
@@ -19393,6 +19408,10 @@ void test_session_response_packet_direct_near_relays_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
         in.exclude_near_relays = true;
@@ -19432,6 +19451,15 @@ void test_session_response_packet_direct_near_relays_changed()
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
+        }
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19480,6 +19508,10 @@ void test_session_response_packet_route_near_relays_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.exclude_near_relays = true;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19519,6 +19551,15 @@ void test_session_response_packet_route_near_relays_changed()
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
+        }
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
@@ -19567,6 +19608,10 @@ void test_session_response_packet_continue_near_relays_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.exclude_near_relays = true;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19609,6 +19654,15 @@ void test_session_response_packet_continue_near_relays_changed()
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
     }
 }
 
@@ -19641,6 +19695,10 @@ void test_session_response_packet_direct_near_relays_not_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
 
@@ -19670,6 +19728,15 @@ void test_session_response_packet_direct_near_relays_not_changed()
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
     }
 }
 
@@ -19706,6 +19773,10 @@ void test_session_response_packet_route_near_relays_not_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.exclude_near_relays = true;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19741,6 +19812,15 @@ void test_session_response_packet_route_near_relays_not_changed()
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
     }
 }
 
@@ -19777,6 +19857,10 @@ void test_session_response_packet_continue_near_relays_not_changed()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.exclude_near_relays = true;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19812,6 +19896,15 @@ void test_session_response_packet_continue_near_relays_not_changed()
             next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
     }
 }
 
@@ -19965,6 +20058,10 @@ void test_session_response_packet_continue_dont_ping_near_relays()
         {
             in.session_data[j] = uint8_t(j);
         }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            in.session_data_signature[j] = uint8_t(j);
+        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19990,6 +20087,15 @@ void test_session_response_packet_continue_dont_ping_near_relays()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
+        next_check( in.session_data_bytes == out.session_data_bytes );
+        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
+        {
+            next_check( out.session_data[j] == uint8_t(j) );
+        }
+        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
+        {
+            next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
     }
 }
 
