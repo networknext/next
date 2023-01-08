@@ -12,7 +12,15 @@ DONE
 
 	Add a unit test to specifically verify that we don't send near relays down on slice 2.
 
+	Low frequency pings 10 packets per-second.
+
+	High frequency pings can be 60 packets per-second :)
+
 TODO
+
+	Fix heisenbug in route tokens in session update tests
+
+	----------
 
 	Extend SDK to pass up actual bandwidth used for direct as well.
 
@@ -20,13 +28,9 @@ TODO
 
 	----------
 
-	Low frequency pings 10 packets per-second.
-
-	High frequency pings can be 60 packets per-second :)
+	What else is really annoying about the SDK that I should take this time to address?
 
 	----------
-
-
 
 
 
