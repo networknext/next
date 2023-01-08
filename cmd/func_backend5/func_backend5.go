@@ -567,12 +567,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		fmt.Printf("client ping timed out\n")
 	}
 
-	if requestPacket.ClientBandwidthOverLimit {
-		fmt.Printf("client bandwidth over limit\n")
+	if requestPacket.ClientNextBandwidthOverLimit {
+		fmt.Printf("client next bandwidth over limit\n")
 	}
 
-	if requestPacket.ServerBandwidthOverLimit {
-		fmt.Printf("server bandwidth over limit\n")
+	if requestPacket.ServerNextBandwidthOverLimit {
+		fmt.Printf("server next bandwidth over limit\n")
 	}
 
 	if requestPacket.PacketsLostClientToServer > 0 {

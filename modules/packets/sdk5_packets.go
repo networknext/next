@@ -192,8 +192,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 
 	Reported                        bool
 	FallbackToDirect                bool
-	ClientBandwidthOverLimit        bool
-	ServerBandwidthOverLimit        bool
+	ClientNextBandwidthOverLimit    bool
+	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
 	HasNearRelayPings               bool
 	NumTags                         int32
@@ -261,8 +261,8 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
-	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
+	stream.SerializeBool(&packet.ClientNextBandwidthOverLimit)
+	stream.SerializeBool(&packet.ServerNextBandwidthOverLimit)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasNearRelayPings)
 

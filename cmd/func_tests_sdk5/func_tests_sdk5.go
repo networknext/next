@@ -1869,8 +1869,8 @@ func test_bandwidth_over_limit() {
 	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
 	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_PASSTHROUGH] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
 
-	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
-	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
+	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client next bandwidth over limit")
+	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server next bandwidth over limit")
 
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == true)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == true)
