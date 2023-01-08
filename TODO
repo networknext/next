@@ -10,27 +10,17 @@ DONE
 
 	Remove "committed" concept from sdk5 next.cpp -- we just don't need the complexity.
 
+	Add a unit test to specifically verify that we don't send near relays down on slice 2.
+
 TODO
 
+	Extend SDK to pass up actual bandwidth used for direct as well.
 
-
-
-
-
-
-
-
-
-
-
+	Without this, we can't get an estimate of bandwidth use while in analysis only mode, which makes customer trials difficult.
 
 	----------
 
-	Add a unit test to make sure we only send down near relays to ping on slice 1.
-
-	----------
-
-	Low frequency pings can be 10 packets per-second.
+	Low frequency pings 10 packets per-second.
 
 	High frequency pings can be 60 packets per-second :)
 

@@ -3057,7 +3057,7 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.False(t, state.NoNearRelays)
 	assert.Equal(t, state.Response.NumNearRelays, int32(3))
 	assert.True(t, state.Response.HasNearRelays)
-	
+
 	contains_1 := false
 	contains_2 := false
 	contains_3 := false
@@ -3093,6 +3093,8 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
@@ -3107,6 +3109,8 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
@@ -3226,6 +3230,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
 	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
@@ -3343,6 +3350,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
 	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------
