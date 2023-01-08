@@ -3103,7 +3103,6 @@ struct NextClientStatsPacket
 {
     bool fallback_to_direct;
     bool next;
-    bool committed;
     bool multipath;
     bool reported;
     bool bandwidth_over_limit;
@@ -3139,7 +3138,6 @@ struct NextClientStatsPacket
     {
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, next );
-        serialize_bool( stream, committed );
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
         serialize_bool( stream, bandwidth_over_limit );
@@ -3182,7 +3180,6 @@ struct NextRouteUpdatePacket
 {
     uint64_t sequence;
     bool multipath;
-    bool committed;
     bool has_near_relays;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
@@ -3227,7 +3224,6 @@ struct NextRouteUpdatePacket
         {
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
             serialize_bool( stream, multipath );
-            serialize_bool( stream, committed );
         }
         if ( update_type == NEXT_UPDATE_TYPE_ROUTE )
         {
@@ -5605,7 +5601,6 @@ struct next_route_data_t
     NEXT_DECLARE_SENTINEL(0)
 
     bool current_route;
-    bool current_route_committed;
     double current_route_expire_time;
     uint64_t current_route_session_id;
     uint8_t current_route_session_version;
@@ -5630,7 +5625,6 @@ struct next_route_data_t
     NEXT_DECLARE_SENTINEL(4)
 
     bool pending_route;
-    bool pending_route_committed;
     double pending_route_start_time;
     double pending_route_last_send_time;
     uint64_t pending_route_session_id;
@@ -5651,7 +5645,6 @@ struct next_route_data_t
     NEXT_DECLARE_SENTINEL(7)
 
     bool pending_continue;
-    bool pending_continue_committed;
     double pending_continue_start_time;
     double pending_continue_last_send_time;
     int pending_continue_request_packet_bytes;
@@ -5796,7 +5789,7 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
     route_manager->route_data.current_route = false;
 }
 
-void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
+void next_route_manager_begin_next_route( next_route_manager_t * route_manager, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_route_manager_verify_sentinels( route_manager );
 
@@ -5816,10 +5809,9 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
         return;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client next route (%s)", committed ? "committed" : "uncommitted" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client next route" );
 
     route_manager->route_data.pending_route = true;
-    route_manager->route_data.pending_route_committed = committed;
     route_manager->route_data.pending_route_start_time = next_time();
     route_manager->route_data.pending_route_last_send_time = -1000.0;
     route_manager->route_data.pending_route_next_address = route_token.next_address;
@@ -5859,7 +5851,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     (void) packet_bytes;
 }
 
-void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
+void next_route_manager_continue_next_route( next_route_manager_t * route_manager, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_route_manager_verify_sentinels( route_manager );
 
@@ -5894,7 +5886,6 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     }
 
     route_manager->route_data.pending_continue = true;
-    route_manager->route_data.pending_continue_committed = committed;
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
 
@@ -5925,10 +5916,10 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     (void) packet_data;
     (void) packet_bytes;
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client continues route" );
 }
 
-void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
+void next_route_manager_update( next_route_manager_t * route_manager, int update_type, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_route_manager_verify_sentinels( route_manager );
 
@@ -5941,11 +5932,11 @@ void next_route_manager_update( next_route_manager_t * route_manager, int update
     }
     else if ( update_type == NEXT_UPDATE_TYPE_ROUTE )
     {
-        next_route_manager_begin_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key, magic, client_external_address );
+        next_route_manager_begin_next_route( route_manager, num_tokens, tokens, public_key, private_key, magic, client_external_address );
     }
     else if ( update_type == NEXT_UPDATE_TYPE_CONTINUE )
     {
-        next_route_manager_continue_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key, magic, client_external_address );
+        next_route_manager_continue_next_route( route_manager, num_tokens, tokens, public_key, private_key, magic, client_external_address );
     }
 }
 
@@ -5959,12 +5950,6 @@ uint64_t next_route_manager_next_send_sequence( next_route_manager_t * route_man
 {
     next_route_manager_verify_sentinels( route_manager );
     return route_manager->send_sequence++;
-}
-
-bool next_route_manager_committed( next_route_manager_t * route_manager )
-{
-    next_route_manager_verify_sentinels( route_manager );
-    return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
 bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes, const uint8_t * magic, const next_address_t * client_external_address )
@@ -7065,7 +7050,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
         }
 
-        route_manager->route_data.current_route_committed = route_manager->route_data.pending_route_committed;
         route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
         route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
         route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
@@ -7186,7 +7170,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        client->route_manager->route_data.current_route_committed = client->route_manager->route_data.pending_continue_committed;
         client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
         client->route_manager->route_data.pending_continue = false;
         next_platform_mutex_release( &client->route_manager_mutex );
@@ -7412,7 +7395,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
-            next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
+            next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
             fallback_to_direct = client->route_manager->fallback_to_direct;
             next_platform_mutex_release( &client->route_manager_mutex );
 
@@ -7751,7 +7734,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_platform_mutex_acquire( &client->route_manager_mutex );
         const bool network_next = client->route_manager->route_data.current_route;
         const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-        const bool committed = network_next && client->route_manager->route_data.current_route_committed;
         next_platform_mutex_release( &client->route_manager_mutex );
 
         client->client_stats.next = network_next;
@@ -7760,7 +7742,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.fallback_to_direct = client->fallback_to_direct;
         client->client_stats.high_frequency_pings = client->near_relay_manager->high_frequency_pings;
         client->client_stats.multipath = client->multipath;
-        client->client_stats.committed = committed;
         client->client_stats.platform_id = next_platform_id();
         client->client_stats.connection_type = next_platform_connection_type();
 
@@ -7847,7 +7828,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.reported = client->reported;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
-        packet.committed = client->client_stats.committed;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
@@ -7865,7 +7845,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         }
 
         packet.next = client->client_stats.next;
-        packet.committed = client->client_stats.committed;
         packet.next_rtt = client->client_stats.next_rtt;
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
@@ -8568,7 +8547,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         next_platform_mutex_acquire( &client->internal->route_manager_mutex );
         const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
         bool send_over_network_next = next_route_manager_has_network_next_route( client->internal->route_manager );
-        bool committed = next_route_manager_committed( client->internal->route_manager );
         bool send_direct = !send_over_network_next;
         next_platform_mutex_release( &client->internal->route_manager_mutex );
 
@@ -8576,12 +8554,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         if ( send_over_network_next && multipath )
         {
-            send_direct = true;
-        }
-
-        if ( !committed )
-        {
-            send_over_network_next = false;
             send_direct = true;
         }
 
@@ -9736,7 +9708,6 @@ struct NextBackendSessionUpdateRequestPacket
     int platform_id;
     int connection_type;
     bool next;
-    bool committed;
     bool reported;
     bool fallback_to_direct;
     bool client_bandwidth_over_limit;
@@ -9823,7 +9794,6 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
 
         serialize_bool( stream, next );
-        serialize_bool( stream, committed );
         serialize_bool( stream, reported );
         serialize_bool( stream, fallback_to_direct );
         serialize_bool( stream, client_bandwidth_over_limit );
@@ -10000,7 +9970,6 @@ struct next_session_entry_t
 
     bool stats_reported;
     bool stats_multipath;
-    bool stats_committed;
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
@@ -10058,7 +10027,6 @@ struct next_session_entry_t
     bool update_dirty;
     bool waiting_for_update_response;
     bool multipath;
-    bool committed;
     double update_last_send_time;
     uint8_t update_type;
     int update_num_tokens;
@@ -10088,7 +10056,6 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(12)
 
     bool has_pending_route;
-    bool pending_route_committed;
     uint8_t pending_route_session_version;
     uint64_t pending_route_expire_timestamp;
     double pending_route_expire_time;
@@ -10103,7 +10070,6 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(14)
 
     bool has_current_route;
-    bool current_route_committed;
     uint8_t current_route_session_version;
     uint64_t current_route_expire_timestamp;
     double current_route_expire_time;
@@ -10150,7 +10116,6 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(22)
 
     bool mutex_multipath;
-    bool mutex_committed;
     int mutex_envelope_kbps_up;
     int mutex_envelope_kbps_down;
     uint64_t mutex_payload_send_sequence;
@@ -10627,7 +10592,6 @@ struct NextBackendSessionUpdateResponsePacket
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     bool multipath;
-    bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
     bool high_frequency_pings;
@@ -10667,7 +10631,6 @@ struct NextBackendSessionUpdateResponsePacket
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )
         {
             serialize_bool( stream, multipath );
-            serialize_bool( stream, committed );
             serialize_int( stream, num_tokens, 0, NEXT_MAX_TOKENS );
         }
 
@@ -12502,7 +12465,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
             }
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
-            packet.committed = entry->committed;
             packet.num_tokens = entry->update_num_tokens;
             if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
             {
@@ -13072,11 +13034,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->mutex_multipath = true;
             next_platform_mutex_release( &server->session_mutex );
         }
-
-        entry->committed = packet.committed;
-        next_platform_mutex_acquire( &server->session_mutex );
-        entry->mutex_committed = packet.committed;
-        next_platform_mutex_release( &server->session_mutex );
 
         entry->update_dirty = true;
 
@@ -13728,7 +13685,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
             session->stats_next = packet.next;
-            session->stats_committed = packet.committed;
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
@@ -14801,7 +14757,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
             packet.next = session->stats_next;
-            packet.committed = session->stats_committed;
             packet.next_rtt = session->stats_next_rtt;
             packet.next_jitter = session->stats_next_jitter;
             packet.next_packet_loss = session->stats_next_packet_loss;
@@ -14926,9 +14881,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->session_update_timed_out = true;
 
             // IMPORTANT: Send packets direct from now on for this session
-            session->committed = false;
             next_platform_mutex_acquire( &server->session_mutex );
-            session->mutex_committed = false;
+            session->mutex_send_over_network_next = false;
             next_platform_mutex_release( &server->session_mutex );
         }
     }
@@ -15535,7 +15489,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( entry && packet_bytes <= NEXT_MTU )
     {
         bool multipath = false;
-        bool committed = false;
         int envelope_kbps_down = 0;
         uint8_t open_session_sequence = 0;
         uint64_t send_sequence = 0;
@@ -15563,9 +15516,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
         next_platform_mutex_acquire( &server->internal->session_mutex );
         multipath = internal_entry->mutex_multipath;
-        committed = internal_entry->mutex_committed;
         envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-        send_over_network_next = internal_entry->mutex_send_over_network_next && committed;
+        send_over_network_next = internal_entry->mutex_send_over_network_next;
         send_upgraded_direct = !send_over_network_next;
         send_sequence = internal_entry->mutex_payload_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
@@ -15714,7 +15666,6 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->platform_id = entry->stats_platform_id;
     stats->connection_type = entry->stats_connection_type;
     stats->next = entry->stats_next;
-    stats->committed = entry->stats_committed;
     stats->multipath = entry->stats_multipath;
     stats->reported = entry->stats_reported;
     stats->fallback_to_direct = entry->stats_fallback_to_direct;
@@ -18452,7 +18403,6 @@ void test_client_stats_packet_with_near_relays()
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
-        in.committed = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
@@ -18494,7 +18444,6 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
         next_check( in.next == out.next );
-        next_check( in.committed == out.committed );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
@@ -18541,7 +18490,6 @@ void test_client_stats_packet_without_near_relays()
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
-        in.committed = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
@@ -18580,7 +18528,6 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
         next_check( in.next == out.next );
-        next_check( in.committed == out.committed );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
@@ -18711,7 +18658,6 @@ void test_route_update_packet_new_route()
         }
         in.update_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_sent_server_to_client = 11000;
@@ -18750,7 +18696,6 @@ void test_route_update_packet_new_route()
         }
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
@@ -18797,7 +18742,6 @@ void test_route_update_packet_continue_route()
         }
         in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
@@ -18830,7 +18774,6 @@ void test_route_update_packet_continue_route()
         }
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
@@ -19194,7 +19137,6 @@ void test_session_update_packet()
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
-        in.committed = true;
         in.has_near_relay_pings = true;
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
@@ -19259,7 +19201,6 @@ void test_session_update_packet()
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
         next_check( in.next == out.next );
-        next_check( in.committed == out.committed );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
@@ -19412,7 +19353,6 @@ void test_session_response_packet_route_has_near_relays()
         }
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19451,7 +19391,6 @@ void test_session_response_packet_route_has_near_relays()
         }
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         next_check( in.session_data_bytes == out.session_data_bytes );
@@ -19502,7 +19441,6 @@ void test_session_response_packet_continue_has_near_relays()
         }
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19534,7 +19472,6 @@ void test_session_response_packet_continue_has_near_relays()
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
@@ -19652,7 +19589,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19685,7 +19621,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
@@ -19726,7 +19661,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19757,7 +19691,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
@@ -19800,7 +19733,6 @@ void test_session_response_packet_direct_no_near_relays()
         in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.multipath = false;
-        in.committed = false;
         in.has_near_relays = false;
 
         int packet_bytes = 0;
@@ -19822,7 +19754,6 @@ void test_session_response_packet_direct_no_near_relays()
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
     }
 }
 
@@ -19851,7 +19782,6 @@ void test_session_response_packet_route_no_near_relays()
         in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19878,7 +19808,6 @@ void test_session_response_packet_route_no_near_relays()
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
@@ -19911,7 +19840,6 @@ void test_session_response_packet_continue_no_near_relays()
         in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
-        in.committed = true;
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -19942,7 +19870,6 @@ void test_session_response_packet_continue_no_near_relays()
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
         next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
