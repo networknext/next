@@ -7400,11 +7400,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             if ( packet.has_near_relays )
             {
+                // enable near relay pings
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
                 next_relay_manager_disable_pings( client->near_relay_manager, false );
             }
             else
             {
+                // disable near relay pings (and clear any ping data)
+                next_relay_manager_update( client->near_relay_manager, 0, NULL, NULL, false );
                 next_relay_manager_disable_pings( client->near_relay_manager, true );
             }
 
