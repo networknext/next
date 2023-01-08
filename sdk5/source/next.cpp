@@ -3197,8 +3197,6 @@ struct NextRouteUpdatePacket
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
     bool dont_ping_near_relays;
-    bool exclude_near_relays;
-    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
@@ -3254,20 +3252,8 @@ struct NextRouteUpdatePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
+        serialize_bool( stream, high_frequency_pings );
         serialize_bool( stream, dont_ping_near_relays );
-        if ( !dont_ping_near_relays )
-        {
-            serialize_bool( stream, exclude_near_relays );
-            if ( exclude_near_relays )
-            {
-                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-                {
-                    serialize_bool( stream, near_relay_excluded[i] );
-                }
-            }
-
-            serialize_bool( stream, high_frequency_pings );
-        }
 
         serialize_bytes( stream, upcoming_magic, 8 );
         serialize_bytes( stream, current_magic, 8 );
@@ -4849,17 +4835,13 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    bool relay_excluded[NEXT_MAX_NEAR_RELAYS];
+    bool high_frequency_pings;
 
     NEXT_DECLARE_SENTINEL(5)
 
-    bool high_frequency_pings;
-
-    NEXT_DECLARE_SENTINEL(6)
-
     next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(7)
+    NEXT_DECLARE_SENTINEL(6)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4875,7 +4857,6 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
     NEXT_INITIALIZE_SENTINEL( manager, 6 )
-    NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
@@ -4893,7 +4874,6 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
-    NEXT_VERIFY_SENTINEL( manager, 7 )
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
 #endif // #if NEXT_ENABLE_MEMORY_CHECKS
@@ -4930,7 +4910,6 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
-    memset( manager->relay_excluded, 0, sizeof(manager->relay_excluded) );
 
     manager->high_frequency_pings = false;
 
@@ -4995,15 +4974,6 @@ void next_relay_manager_disable_pings( next_relay_manager_t * manager, bool disa
     manager->disable_pings = disabled;
 }
 
-void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_relay_excluded )
-{
-    next_relay_manager_verify_sentinels( manager );
-
-    next_assert( near_relay_excluded );
-
-    memcpy( manager->relay_excluded, near_relay_excluded, sizeof(manager->relay_excluded) );
-}
-
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_relay_manager_verify_sentinels( manager );
@@ -5019,9 +4989,6 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        if ( manager->relay_excluded[i] )
-            continue;
-
         const double ping_time = manager->high_frequency_pings ? ( 1.0 / NEXT_HIGH_FREQUENCY_PING_RATE ) : ( 1.0 / NEXT_LOW_FREQUENCY_PING_RATE );
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
@@ -5067,9 +5034,6 @@ void next_relay_manager_process_pong( next_relay_manager_t * manager, const next
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        if ( manager->relay_excluded[i] )
-            continue;
-
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
             next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_time() );
@@ -5093,24 +5057,14 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
 
     for ( int i = 0; i < stats->num_relays; ++i )
     {
-        if ( !manager->relay_excluded[i] && stats->has_pings )
-        {
-            next_route_stats_t route_stats;
+        next_route_stats_t route_stats;
 
-            next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
+        next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
 
-            stats->relay_ids[i] = manager->relay_ids[i];
-            stats->relay_rtt[i] = route_stats.min_rtt;
-            stats->relay_jitter[i] = route_stats.jitter;
-            stats->relay_packet_loss[i] = route_stats.packet_loss;
-        }
-        else
-        {
-            stats->relay_ids[i] = manager->relay_ids[i];
-            stats->relay_rtt[i] = 255;  // IMPORTANT: 255 = "not routable"
-            stats->relay_jitter[i] = 0;
-            stats->relay_packet_loss[i] = 100;
-        }
+        stats->relay_ids[i] = manager->relay_ids[i];
+        stats->relay_rtt[i] = route_stats.min_rtt;
+        stats->relay_jitter[i] = route_stats.jitter;
+        stats->relay_packet_loss[i] = route_stats.packet_loss;
     }
 
     next_relay_stats_verify_sentinels( stats );
@@ -7451,11 +7405,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             if ( packet.near_relays_changed )
             {
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
-            }
-
-            if ( packet.exclude_near_relays )
-            {
-                next_relay_manager_exclude( client->near_relay_manager, packet.near_relay_excluded );
             }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -10230,8 +10179,6 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(27)
 
-    bool exclude_near_relays;
-    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
 
     NEXT_DECLARE_SENTINEL(28)
@@ -10681,8 +10628,6 @@ struct NextBackendSessionUpdateResponsePacket
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
     bool dont_ping_near_relays;
-    bool exclude_near_relays;
-    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
 
     NextBackendSessionUpdateResponsePacket()
@@ -10743,15 +10688,6 @@ struct NextBackendSessionUpdateResponsePacket
         serialize_bool( stream, dont_ping_near_relays );
         if ( !dont_ping_near_relays )
         {
-            serialize_bool( stream, exclude_near_relays );
-            if ( exclude_near_relays )
-            {
-                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-                {
-                    serialize_bool( stream, near_relay_excluded[i] );
-                }
-            }
-
             serialize_bool( stream, high_frequency_pings );
         }
 
@@ -12590,8 +12526,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.has_debug = entry->has_debug;
             memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
 
-            packet.exclude_near_relays = entry->exclude_near_relays;
-            memcpy( packet.near_relay_excluded, entry->near_relay_excluded, sizeof( packet.near_relay_excluded ) );
             packet.high_frequency_pings = entry->high_frequency_pings;
 
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );
@@ -13203,8 +13137,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->has_debug = packet.has_debug;
         memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
 
-        entry->exclude_near_relays = packet.exclude_near_relays;
-        memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
         entry->high_frequency_pings = packet.high_frequency_pings;
 
         if ( entry->previous_server_events != 0 )
@@ -19414,11 +19346,6 @@ void test_session_response_packet_direct_near_relays_changed()
         }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
-        in.exclude_near_relays = true;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_excluded[j] = ( j % 2 ) == 0;
-        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19447,11 +19374,6 @@ void test_session_response_packet_direct_near_relays_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19512,11 +19434,6 @@ void test_session_response_packet_route_near_relays_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.exclude_near_relays = true;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_excluded[j] = ( j % 2 ) == 0;
-        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19547,11 +19464,6 @@ void test_session_response_packet_route_near_relays_changed()
         next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19612,11 +19524,6 @@ void test_session_response_packet_continue_near_relays_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.exclude_near_relays = true;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_excluded[j] = ( j % 2 ) == 0;
-        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19648,11 +19555,6 @@ void test_session_response_packet_continue_near_relays_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -19722,11 +19624,6 @@ void test_session_response_packet_direct_near_relays_not_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -19777,11 +19674,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.exclude_near_relays = true;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_excluded[j] = ( j % 2 ) == 0;
-        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19806,11 +19698,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -19861,11 +19748,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.exclude_near_relays = true;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_excluded[j] = ( j % 2 ) == 0;
-        }
         in.high_frequency_pings = true;
 
         int packet_bytes = 0;
@@ -19890,11 +19772,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.exclude_near_relays == out.exclude_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_excluded[j] == out.near_relay_excluded[j] );
-        }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -20659,42 +20536,6 @@ void test_relay_manager()
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
         next_check( stats.num_relays == 0 );
-    }
-
-    // add max relays and exclude odd near relays, verify odd near relays don't have stats
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, false );
-
-    bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
-
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-    {
-        near_relay_excluded[i] = ( i % 2 ) != 0;
-    }
-
-    next_relay_manager_exclude( manager, near_relay_excluded );
-
-    next_relay_stats_t stats;
-    next_relay_manager_get_stats( manager, &stats );
-    next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-    {
-        next_check( relay_ids[i] == stats.relay_ids[i] );
-        if ( ( i % 2 ) != 0 )
-        {
-            // odd (excluded)
-            next_check( stats.relay_rtt[i] == 255 );
-            next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 100 );
-        }
-        else
-        {
-            // even (not excluded)
-            next_check( stats.relay_rtt[i] == 0 );
-            next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 100 );
-        }
     }
 
     // test high frequency pings

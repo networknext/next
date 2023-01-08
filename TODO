@@ -2,49 +2,7 @@ DONE
 
 TODO
 
-	-----------------
-
-	Extend SDK so it has the session data signature in both request and response packets.
-
-	-----------------
-
-	Extend SDK to pass back up the session data signature in the next the session update request.
-
-	-----------------
-
-	Verify happy path works.
-
-	-----------------
-
-	Todays' work is done!
-
-	-----------------	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Update the SDK only to perform pings on slice 1.
 
 	-----------------
 
@@ -236,40 +194,3 @@ TODO
 		Jan 04 04:29:18 analytics-mig-hkq3 app[4833]: error: failed to publish bigquery entry: 245 row insertions failed (insertion of row [insertID: "fqcpRXzcepXDie22eUl57AyUZV8"; insertIndex: 0] failed with error: {Location: "bytes"; Message: "no such field: bytes."; Reason: "invalid"}, insertion of row [insertID: "ce23BHskKZVXVQ8U0mlDfROp5Re"; insertIndex: 1] failed with error: {Location: "numRelays"; Message: "no such field: numRelays."; Reason: "invalid"}, insertion of row [insertID: "WH8doSUiENSPxzdIxjMnA04Jq6U"; insertIndex: 2] failed with error: {Location: "numRelays"; Message: "no such field: numRelays."; Reason: "invalid"}, ...)
 
 	-----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------
-
-	Would be good to do a bunch of pretty intensive, per-service functional tests in the backend func tests, that way the happy path could be kept reasonably simple.
-
-	For example, analytics, relay backend, checking for leadership flapping, leadership transfer stuff, relay backend ready etc.
-
-	-----------------
-
-	Fix up the locator handler to be passed in from server backend 5 cmd
-
-	-----------------
-
-	Fix the database thing around lat/long for datacenters
-
-	-----------------
-
