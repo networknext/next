@@ -88,7 +88,6 @@ type SessionUpdateState struct {
 	AnalysisOnly                              bool
 	NoRelaysInDatacenter                      bool
 	HoldingNearRelays                         bool
-	NearRelaysExcluded                        bool
 	NotGettingNearRelaysAnalysisOnly          bool
 	NotGettingNearRelaysDatacenterNotEnabled  bool
 	NotUpdatingNearRelaysAnalysisOnly         bool
@@ -994,6 +993,15 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		if !state.Output.WroteSummary {
 			state.Output.WriteSummary = true
 		}
+	}
+
+	/*
+		Don't ping near relays except on slice 1.
+	*/
+
+	if state.SliceNumber != 1 {
+		state.Response.HasNearRelays = false
+		state.Response.NumNearRelays = 0
 	}
 
 	/*

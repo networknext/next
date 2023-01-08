@@ -3183,7 +3183,7 @@ struct NextRouteUpdatePacket
     uint64_t sequence;
     bool multipath;
     bool committed;
-    bool near_relays_changed;
+    bool has_near_relays;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -3196,7 +3196,6 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-    bool dont_ping_near_relays;
     bool high_frequency_pings;
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
@@ -3211,8 +3210,8 @@ struct NextRouteUpdatePacket
     {
         serialize_uint64( stream, sequence );
 
-        serialize_bool( stream, near_relays_changed );
-        if ( near_relays_changed )
+        serialize_bool( stream, has_near_relays );
+        if ( has_near_relays )
         {
             serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
             for ( int i = 0; i < num_near_relays; ++i )
@@ -3253,7 +3252,6 @@ struct NextRouteUpdatePacket
         }
 
         serialize_bool( stream, high_frequency_pings );
-        serialize_bool( stream, dont_ping_near_relays );
 
         serialize_bytes( stream, upcoming_magic, 8 );
         serialize_bytes( stream, current_magic, 8 );
@@ -7400,11 +7398,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 next_printf( "--------------------------------------\n%s--------------------------------------", packet.debug );
             }
 
-            next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
-
-            if ( packet.near_relays_changed )
+            if ( packet.has_near_relays )
             {
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
+                next_relay_manager_disable_pings( client->near_relay_manager, false );
+            }
+            else
+            {
+                next_relay_manager_disable_pings( client->near_relay_manager, true );
             }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -10066,8 +10067,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
-    bool update_dont_ping_near_relays;
-    bool update_near_relays_changed;
+    bool update_has_near_relays;
     int update_num_near_relays;
 
     NEXT_DECLARE_SENTINEL(9)
@@ -10617,7 +10617,7 @@ struct NextBackendSessionUpdateResponsePacket
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
     uint8_t session_data_signature[NEXT_CRYPTO_SIGN_BYTES];
     uint8_t response_type;
-    bool near_relays_changed;
+    bool has_near_relays;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
@@ -10627,7 +10627,6 @@ struct NextBackendSessionUpdateResponsePacket
     bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-    bool dont_ping_near_relays;
     bool high_frequency_pings;
 
     NextBackendSessionUpdateResponsePacket()
@@ -10650,9 +10649,9 @@ struct NextBackendSessionUpdateResponsePacket
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
 
-        serialize_bool( stream, near_relays_changed );
+        serialize_bool( stream, has_near_relays );
 
-        if ( near_relays_changed )
+        if ( has_near_relays )
         {
             serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
             for ( int i = 0; i < num_near_relays; ++i )
@@ -10685,11 +10684,7 @@ struct NextBackendSessionUpdateResponsePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
-        serialize_bool( stream, dont_ping_near_relays );
-        if ( !dont_ping_near_relays )
-        {
-            serialize_bool( stream, high_frequency_pings );
-        }
+        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -12495,9 +12490,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
             memcpy( packet.current_magic, server->current_magic, 8 );
             memcpy( packet.previous_magic, server->previous_magic, 8 );
             packet.sequence = entry->update_sequence;
-            packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
-            packet.near_relays_changed = entry->update_near_relays_changed;
-            if ( packet.near_relays_changed )
+            packet.has_near_relays = entry->update_has_near_relays;
+            if ( packet.has_near_relays )
             {
                 packet.num_near_relays = entry->update_num_near_relays;
                 memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
@@ -13096,9 +13090,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
         }
 
-        entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
-        entry->update_near_relays_changed = packet.near_relays_changed;
-        if ( packet.near_relays_changed )
+        entry->update_has_near_relays = packet.has_near_relays;
+        if ( packet.has_near_relays )
         {
             entry->update_num_near_relays = packet.num_near_relays;
             memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
@@ -18620,7 +18613,7 @@ void test_route_update_packet_direct()
         static NextRouteUpdatePacket in, out;
 
         in.sequence = 100000;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18642,7 +18635,6 @@ void test_route_update_packet_direct()
         in.has_debug = true;
         strcpy( in.debug, "debug time" );
         in.high_frequency_pings = true;
-        in.dont_ping_near_relays = false;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18662,7 +18654,7 @@ void test_route_update_packet_direct()
 
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18680,7 +18672,6 @@ void test_route_update_packet_direct()
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
     }
 }
 
@@ -18704,7 +18695,7 @@ void test_route_update_packet_new_route()
 
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18728,7 +18719,6 @@ void test_route_update_packet_new_route()
         next_random_bytes( in.previous_magic, 8 );
         in.jitter_client_to_server = 0.25f;
         in.high_frequency_pings = true;
-        in.dont_ping_near_relays = false;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18748,7 +18738,7 @@ void test_route_update_packet_new_route()
 
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18768,7 +18758,6 @@ void test_route_update_packet_new_route()
         next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
     }
 }
 
@@ -18792,7 +18781,7 @@ void test_route_update_packet_continue_route()
 
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18810,7 +18799,6 @@ void test_route_update_packet_continue_route()
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
         in.high_frequency_pings = true;
-        in.dont_ping_near_relays = false;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18830,7 +18818,7 @@ void test_route_update_packet_continue_route()
 
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18847,7 +18835,6 @@ void test_route_update_packet_continue_route()
         next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
         next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
     }
 }
 
@@ -19301,7 +19288,7 @@ void test_session_update_packet()
     }
 }
 
-void test_session_response_packet_direct_near_relays_changed()
+void test_session_response_packet_direct_has_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19323,7 +19310,7 @@ void test_session_response_packet_direct_near_relays_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19364,7 +19351,7 @@ void test_session_response_packet_direct_near_relays_changed()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19387,7 +19374,7 @@ void test_session_response_packet_direct_near_relays_changed()
     }
 }
 
-void test_session_response_packet_route_near_relays_changed()
+void test_session_response_packet_route_has_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19409,7 +19396,7 @@ void test_session_response_packet_route_near_relays_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19452,7 +19439,7 @@ void test_session_response_packet_route_near_relays_changed()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19477,7 +19464,7 @@ void test_session_response_packet_route_near_relays_changed()
     }
 }
 
-void test_session_response_packet_continue_near_relays_changed()
+void test_session_response_packet_continue_has_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19499,7 +19486,7 @@ void test_session_response_packet_continue_near_relays_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = true;
+        in.has_near_relays = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19545,7 +19532,7 @@ void test_session_response_packet_continue_near_relays_changed()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -19590,7 +19577,7 @@ void test_session_response_packet_direct_near_relays_not_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -19620,7 +19607,7 @@ void test_session_response_packet_direct_near_relays_not_changed()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
@@ -19659,7 +19646,7 @@ void test_session_response_packet_route_near_relays_not_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
         in.committed = true;
@@ -19692,7 +19679,7 @@ void test_session_response_packet_route_near_relays_not_changed()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
@@ -19733,7 +19720,7 @@ void test_session_response_packet_continue_near_relays_not_changed()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
         in.committed = true;
@@ -19768,7 +19755,7 @@ void test_session_response_packet_continue_near_relays_not_changed()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
-        next_check( in.near_relays_changed == out.near_relays_changed );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
@@ -19785,7 +19772,7 @@ void test_session_response_packet_continue_near_relays_not_changed()
     }
 }
 
-void test_session_response_packet_direct_dont_ping_near_relays()
+void test_session_response_packet_direct_no_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19807,13 +19794,11 @@ void test_session_response_packet_direct_dont_ping_near_relays()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.multipath = false;
         in.committed = false;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
+        in.has_near_relays = false;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19831,15 +19816,14 @@ void test_session_response_packet_direct_dont_ping_near_relays()
 
         next_check( in.slice_number == out.slice_number );
         next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
     }
 }
 
-void test_session_response_packet_route_dont_ping_near_relays()
+void test_session_response_packet_route_no_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19861,8 +19845,7 @@ void test_session_response_packet_route_dont_ping_near_relays()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
         in.committed = true;
@@ -19893,15 +19876,14 @@ void test_session_response_packet_route_dont_ping_near_relays()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
-        next_check( in.near_relays_changed == out.near_relays_changed );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
     }
 }
 
-void test_session_response_packet_continue_dont_ping_near_relays()
+void test_session_response_packet_continue_no_near_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -19923,8 +19905,7 @@ void test_session_response_packet_continue_dont_ping_near_relays()
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
         in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
+        in.has_near_relays = false;
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
         in.committed = true;
@@ -19959,8 +19940,7 @@ void test_session_response_packet_continue_dont_ping_near_relays()
         next_check( in.session_id == out.session_id );
         next_check( in.multipath == out.multipath );
         next_check( in.committed == out.committed );
-        next_check( in.near_relays_changed == out.near_relays_changed );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.has_near_relays == out.has_near_relays );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
@@ -21053,15 +21033,12 @@ void next_test()
         RUN_TEST( test_server_update_packet );
         RUN_TEST( test_server_response_packet );
         RUN_TEST( test_session_update_packet );
-        RUN_TEST( test_session_response_packet_direct_near_relays_changed );
-        RUN_TEST( test_session_response_packet_route_near_relays_changed );
-        RUN_TEST( test_session_response_packet_continue_near_relays_changed );
-        RUN_TEST( test_session_response_packet_direct_near_relays_not_changed );
-        RUN_TEST( test_session_response_packet_route_near_relays_not_changed );
-        RUN_TEST( test_session_response_packet_continue_near_relays_not_changed );
-        RUN_TEST( test_session_response_packet_direct_dont_ping_near_relays );
-        RUN_TEST( test_session_response_packet_route_dont_ping_near_relays );
-        RUN_TEST( test_session_response_packet_continue_dont_ping_near_relays );
+        RUN_TEST( test_session_response_packet_direct_has_near_relays );
+        RUN_TEST( test_session_response_packet_route_has_near_relays );
+        RUN_TEST( test_session_response_packet_continue_has_near_relays );
+        RUN_TEST( test_session_response_packet_direct_no_near_relays );
+        RUN_TEST( test_session_response_packet_route_no_near_relays );
+        RUN_TEST( test_session_response_packet_continue_no_near_relays );
         RUN_TEST( test_match_data_request_packet );
         RUN_TEST( test_match_data_response_packet );
         RUN_TEST( test_pending_session_manager );

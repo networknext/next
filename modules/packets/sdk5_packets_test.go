@@ -270,7 +270,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		SessionId:          rand.Uint64(),
 		SliceNumber:        rand.Uint32(),
 		SessionDataBytes:   int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
-		NearRelaysChanged:  common.RandomBool(),
+		HasNearRelays:      common.RandomBool(),
 		HasDebug:           common.RandomBool(),
 		HighFrequencyPings: common.RandomBool(),
 	}
@@ -288,7 +288,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		common.RandomBytes(packet.SessionDataSignature[:])
 	}
 
-	if packet.NearRelaysChanged {
+	if packet.HasNearRelays {
 		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
 		for i := 0; i < int(packet.NumNearRelays); i++ {
 			packet.NearRelayIds[i] = uint64(i * 32)

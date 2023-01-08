@@ -4,6 +4,74 @@ TODO
 
 	Update the SDK only to perform pings on slice 1.
 
+	Add a unit test to make sure we only send down near relays to ping on slice 1.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	-----------------
 
 	Test session update response packet write in post, with session data as well.
