@@ -877,12 +877,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	}
 
 	/*
-		Committed means to send packets across the network next route
-	*/
-
-	state.Response.Committed = true
-
-	/*
 		Multipath means to send packets across both the direct and the network
 		next route at the same time, which reduces packet loss.
 	*/

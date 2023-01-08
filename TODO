@@ -4,9 +4,24 @@ DONE
 
 	Make sure near relay pings a cleared, so if I choose to send down a new set of near relays to ping mid-session, the previous near relay pings won't affect it.
 
+	Verify that happy path is still rockin'
+
 TODO
 
-	Verify that happy path is still rockin'
+	Remove "committed" concept from sdk5 backend
+
+	Remove "committed" concept from sdk5 next.cpp -- we just don't need the complexity.
+
+
+
+
+
+
+
+
+
+
+
 
 	----------
 

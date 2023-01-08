@@ -189,7 +189,6 @@ type SDK5_SessionUpdateRequestPacket struct {
 	PlatformType         int32
 	ConnectionType       int32
 	Next                 bool
-	Committed            bool
 
 	Reported                        bool
 	FallbackToDirect                bool
@@ -257,8 +256,6 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeInteger(&packet.ConnectionType, SDK5_ConnectionTypeUnknown, SDK5_ConnectionTypeMax)
 
 	stream.SerializeBool(&packet.Next)
-
-	stream.SerializeBool(&packet.Committed)
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
@@ -422,7 +419,6 @@ type SDK5_SessionUpdateResponsePacket struct {
 	HasDebug             bool
 	Debug                string
 	HighFrequencyPings   bool
-	Committed            bool
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -452,7 +448,6 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 	if packet.RouteType != SDK5_RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
-		stream.SerializeBool(&packet.Committed)
 		stream.SerializeInteger(&packet.NumTokens, 0, SDK5_MaxTokens)
 	}
 

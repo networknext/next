@@ -199,7 +199,6 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		UserHash:                        rand.Uint64(),
 		HasNearRelayPings:               common.RandomBool(),
 		Next:                            common.RandomBool(),
-		Committed:                       common.RandomBool(),
 		Reported:                        common.RandomBool(),
 		FallbackToDirect:                common.RandomBool(),
 		ClientBandwidthOverLimit:        common.RandomBool(),
@@ -300,7 +299,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 
 	if packet.RouteType != packets.SDK5_RouteTypeDirect {
 		packet.Multipath = common.RandomBool()
-		packet.Committed = common.RandomBool()
 		packet.NumTokens = int32(common.RandomInt(1, packets.SDK5_MaxTokens))
 	}
 
