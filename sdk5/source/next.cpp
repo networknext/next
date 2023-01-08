@@ -3109,6 +3109,8 @@ struct NextClientStatsPacket
     bool has_near_relay_pings;
     int platform_id;
     int connection_type;
+    float direct_kbps_up;
+    float direct_kbps_down;
     float next_kbps_up;
     float next_kbps_down;
     float direct_min_rtt;
@@ -3144,6 +3146,8 @@ struct NextClientStatsPacket
         serialize_bool( stream, has_near_relay_pings );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
+        serialize_float( stream, direct_kbps_up );
+        serialize_float( stream, direct_kbps_down );
         serialize_float( stream, next_kbps_up );
         serialize_float( stream, next_kbps_down );
         serialize_float( stream, direct_min_rtt );
@@ -7751,6 +7755,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_route_stats_t direct_route_stats;
         next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &direct_route_stats, NEXT_PING_SAFETY );
 
+        next_platform_mutex_acquire( &client->bandwidth_mutex );
+        // todo: we need direct_kbps_up / direct_kbps_down
+        next_platform_mutex_release( &client->bandwidth_mutex );
+
         if ( network_next )
         {
             client->client_stats.next_rtt = next_route_stats.min_rtt;
@@ -7833,6 +7841,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         next_platform_mutex_acquire( &client->bandwidth_mutex );
         packet.bandwidth_over_limit = client->bandwidth_over_limit;
+        // todo: need direct_kbps_up / direct_kbps_down
         packet.next_kbps_up = (int) ceil( client->bandwidth_usage_kbps_up );
         packet.next_kbps_down = (int) ceil( client->bandwidth_usage_kbps_down );
         client->bandwidth_over_limit = false;
@@ -9730,6 +9739,8 @@ struct NextBackendSessionUpdateRequestPacket
     uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    uint32_t direct_kbps_up;
+    uint32_t direct_kbps_down;
     uint32_t next_kbps_up;
     uint32_t next_kbps_down;
     uint64_t packets_sent_client_to_server;
@@ -9850,6 +9861,9 @@ struct NextBackendSessionUpdateRequestPacket
                 serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
             }
         }
+
+        serialize_uint32( stream, direct_kbps_up );
+        serialize_uint32( stream, direct_kbps_down );
 
         if ( next )
         {
@@ -9976,6 +9990,8 @@ struct next_session_entry_t
     bool stats_has_near_relay_pings;
     int stats_platform_id;
     int stats_connection_type;
+    float stats_direct_kbps_up;
+    float stats_direct_kbps_down;
     float stats_next_kbps_up;
     float stats_next_kbps_down;
     float stats_direct_min_rtt;
@@ -13677,6 +13693,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
+            session->stats_direct_kbps_up = packet.direct_kbps_up;
+            session->stats_direct_kbps_down = packet.direct_kbps_down;
             session->stats_next_kbps_up = packet.next_kbps_up;
             session->stats_next_kbps_down = packet.next_kbps_down;
             session->stats_direct_min_rtt = packet.direct_min_rtt;
@@ -14743,6 +14761,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
             packet.client_ping_timed_out = session->client_ping_timed_out;
             packet.connection_type = session->stats_connection_type;
+            packet.direct_kbps_up = session->stats_direct_kbps_up;
+            packet.direct_kbps_down = session->stats_direct_kbps_down;
             packet.next_kbps_up = session->stats_next_kbps_up;
             packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
@@ -15677,6 +15697,8 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->next_rtt = entry->stats_next_rtt;
     stats->next_jitter = entry->stats_next_jitter;
     stats->next_packet_loss = entry->stats_next_packet_loss;
+    stats->direct_kbps_up = entry->stats_direct_kbps_up;
+    stats->direct_kbps_down = entry->stats_direct_kbps_down;
     stats->next_kbps_up = entry->stats_next_kbps_up;
     stats->next_kbps_down = entry->stats_next_kbps_down;
     stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
@@ -19153,6 +19175,8 @@ void test_session_update_packet()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         next_random_bytes( in.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
+        in.direct_kbps_up = 50.0f;
+        in.direct_kbps_down = 75.0f;
         in.next_kbps_up = 100.0f;
         in.next_kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
@@ -19216,6 +19240,8 @@ void test_session_update_packet()
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
         next_check( memcmp( in.server_route_public_key, out.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
+        next_check( in.direct_kbps_up == out.direct_kbps_up );
+        next_check( in.direct_kbps_down == out.direct_kbps_down );
         next_check( in.next_kbps_up == out.next_kbps_up );
         next_check( in.next_kbps_down == out.next_kbps_down );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );

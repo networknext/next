@@ -16,9 +16,9 @@ DONE
 
 	High frequency pings can be 60 packets per-second :)
 
-TODO
+	Heisenbug is specific to my iMac pro. Probably a bad memory module.
 
-	Fix heisenbug in route tokens in session update tests
+TODO
 
 	----------
 
