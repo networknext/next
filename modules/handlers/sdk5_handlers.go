@@ -53,6 +53,7 @@ type SDK5_Handler struct {
 	RouteMatrix             *common.RouteMatrix
 	MaxPacketSize           int
 	ServerBackendAddress    net.UDPAddr
+	ServerBackendPublicKey  []byte
 	ServerBackendPrivateKey []byte
 	RoutingPrivateKey       []byte
 	GetMagicValues          func() ([]byte, []byte, []byte)
@@ -443,6 +444,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	var state SessionUpdateState
 
 	state.RoutingPrivateKey = handler.RoutingPrivateKey
+	state.ServerBackendPublicKey = handler.ServerBackendPublicKey
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress
 	state.From = from

@@ -14,6 +14,7 @@ var service *common.Service
 
 var maxPacketSize int
 var serverBackendAddress net.UDPAddr
+var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
 var routingPrivateKey []byte
 
@@ -23,11 +24,16 @@ func main() {
 
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	serverBackendAddress = *envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000")) // IMPORTANT: This must be the LB public address in dev/prod
+	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 	routingPrivateKey = envvar.GetBase64("ROUTING_PRIVATE_KEY", []byte{})
 
 	core.Log("max packet size: %d bytes", maxPacketSize)
 	core.Log("server backend address: %s", serverBackendAddress.String())
+
+	if len(serverBackendPublicKey) == 0 {
+		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")
+	}
 
 	if len(serverBackendPrivateKey) == 0 {
 		panic("SERVER_BACKEND_PRIVATE_KEY must be specified")
@@ -69,6 +75,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler := handlers.SDK5_Handler{}
 
 	handler.ServerBackendAddress = serverBackendAddress
+	handler.ServerBackendPublicKey = serverBackendPublicKey
 	handler.ServerBackendPrivateKey = serverBackendPrivateKey
 	handler.RoutingPrivateKey = routingPrivateKey
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
