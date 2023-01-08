@@ -265,6 +265,8 @@ struct next_client_stats_t
     float direct_prime_rtt;         // second largest direct rtt value seen in the last 10 second interval. for approximating P99 etc.
     float direct_jitter;
     float direct_packet_loss;
+    float direct_kbps_up;
+    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -339,6 +341,8 @@ struct next_server_stats_t
     float direct_prime_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_kbps_up;
+    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
