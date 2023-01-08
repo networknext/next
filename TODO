@@ -6,11 +6,12 @@ DONE
 
 	Verify that happy path is still rockin'
 
-TODO
-
 	Remove "committed" concept from sdk5 backend
 
 	Remove "committed" concept from sdk5 next.cpp -- we just don't need the complexity.
+
+TODO
+
 
 
 
