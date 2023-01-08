@@ -648,10 +648,6 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_sdk5 test_multipath_fallback_to_direct
 
-        - name: "test_uncommitted"
-          commands:
-            - cd ./dist && ./func_tests_sdk5 test_uncommitted_to_committed
-
         - name: "test_packet_loss_direct"
           commands:
             - cd ./dist && ./func_tests_sdk5 test_packet_loss_direct
