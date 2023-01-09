@@ -1,8 +1,17 @@
 terraform {
+  required_version = ">= 0.13"
   required_providers {
     google = {
-      source  = "hashicorp/google"
-      version = "3.20.0"
+      source = "hashicorp/google"
+    }
+    google-beta = {
+      source = "hashicorp/google-beta"
+    }
+    random = {
+      source = "hashicorp/random"
+    }
+    tls = {
+      source = "hashicorp/tls"
     }
   }
 }
@@ -82,7 +91,7 @@ resource "google_compute_instance_group_manager" "magic_backend_mig" {
 
   base_instance_name = "magic-backend"
   zone               = "us-central1-a"
-  target_size        = 0
+  target_size        = 2
 
   version {
     name              = "magic-backend"
@@ -112,6 +121,75 @@ resource "google_compute_autoscaler" "autoscale_magic_backend" {
 
     cpu_utilization {
       target = 0.6
+    }
+  }
+}
+
+
+/****
+HTTP load balancer
+****/
+module "gce-lb-http" {
+  source            = "GoogleCloudPlatform/lb-http/google"
+  name              = "magic-backend-mig-http-lb"
+  project           = var.project
+  #target_tags       = ["default"]
+  #firewall_networks = ["default"]
+
+
+  backends = {
+    default = {
+      description                     = null
+      protocol                        = "HTTP"
+      port                            = 80
+      port_name                       = "http"
+      timeout_sec                     = 10
+      connection_draining_timeout_sec = null
+      enable_cdn                      = false
+      compression_mode                = null
+      security_policy                 = null
+      session_affinity                = null
+      affinity_cookie_ttl_sec         = null
+      custom_request_headers          = null
+      custom_response_headers         = null
+
+      health_check = {
+        check_interval_sec  = null
+        timeout_sec         = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+        request_path        = "/health"
+        port                = 80
+        host                = null
+        logging             = null
+      }
+
+      log_config = {
+        enable      = false
+        sample_rate = null
+      }
+
+      groups = [
+        {
+          group                        = google_compute_instance_group_manager.magic_backend_mig.instance_group
+          balancing_mode               = null
+          capacity_scaler              = null
+          description                  = null
+          max_connections              = null
+          max_connections_per_instance = null
+          max_connections_per_endpoint = null
+          max_rate                     = null
+          max_rate_per_instance        = null
+          max_rate_per_endpoint        = null
+          max_utilization              = null
+        }
+      ]
+
+      iap_config = {
+        enable               = false
+        oauth2_client_id     = ""
+        oauth2_client_secret = ""
+      }
     }
   }
 }
