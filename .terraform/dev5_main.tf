@@ -15,7 +15,9 @@ provider "google" {
   zone    = var.zone
 }
 
-#magic backend instance template
+/****
+ Magic backend instance template
+****/
 resource "google_compute_instance_template" "magic_backend_instance_template" {
   name        = "magic-backend-instance-template"
   description = "This template is used to create magic backend instances."
@@ -50,5 +52,66 @@ resource "google_compute_instance_template" "magic_backend_instance_template" {
     # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
     email  = "dev5-terraform@dev-5-373713.iam.gserviceaccount.com"
     scopes = ["cloud-platform"]
+  }
+}
+
+/****
+ Magic backend MIG Health Check
+****/
+resource "google_compute_health_check" "magic_backend_health_check" {
+  name = "magic-backend-mig-health-check"
+
+  description = "Health check via http"
+
+  timeout_sec         = 10
+  check_interval_sec  = 10
+  healthy_threshold   = 3
+  unhealthy_threshold = 3
+
+  http_health_check {
+    port         = 80
+    request_path = "/health"
+  }
+}
+
+/****
+Magic backend MIG
+****/
+resource "google_compute_instance_group_manager" "magic_backend_mig" {
+  name = "magic-backend-mig"
+
+  base_instance_name = "magic-backend"
+  zone               = "us-central1-a"
+  target_size        = 0
+
+  version {
+    name              = "magic-backend"
+    instance_template = google_compute_instance_template.magic_backend_instance_template.id
+
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.magic_backend_health_check.id
+    initial_delay_sec = 300
+  }
+}
+
+/*****
+AUTOSCALE
+******/
+
+resource "google_compute_autoscaler" "autoscale_magic_backend" {
+  name   = "autoscale-magic-backend"
+  zone   = "us-central1-a"
+  target = google_compute_instance_group_manager.magic_backend_mig.id
+
+  autoscaling_policy {
+    max_replicas    = 10
+    min_replicas    = 0
+    cooldown_period = 60
+
+    cpu_utilization {
+      target = 0.6
+    }
   }
 }
