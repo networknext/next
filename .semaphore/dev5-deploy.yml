@@ -1,0 +1,87 @@
+version: v1.0
+
+name: "Dev 5 Deploy"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: sdk5-repo-access
+    - name: google-cloud-platform
+  prologue:
+    commands:
+      - checkout
+      - cp envs/local.env .env
+
+blocks:
+
+  - name: "Build Artifacts (Scripts)"
+
+    dependencies: []
+
+    task:
+
+      jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - checkout
+            - artifact push workflow deploy/bootstrap.sh
+
+
+  - name: "Build Artifacts (Golang)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - checkout
+
+            - cd ~/backend/libs/sodium
+            - ./configure
+            - make -j32
+            - sudo make -j32 install
+            - sudo ldconfig
+
+            - cd ~/backend
+
+            - cache restore
+
+      jobs:
+        - name: "Magic Backend"
+          commands:
+            - make dist/magic_backend.dev.tar.gz
+            - artifact push workflow dist/magic_backend.dev.tar.gz
+
+  - name: "Publish Artifacts"
+
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
+
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
+      jobs:
+
+        - name: "Bootstrap"
+          commands:
+            - artifact pull workflow bootstrap.sh
+            - gsutil cp bootstrap.sh gs://dev5_artifacts
+
+        - name: "Magic Backend"
+          commands:
+            - artifact pull workflow magic_backend.dev.tar.gz
+            - gsutil cp magic_backend.dev.tar.gz gs://dev5_artifacts
