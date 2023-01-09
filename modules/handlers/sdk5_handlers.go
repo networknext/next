@@ -156,7 +156,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	case packets.SDK5_SERVER_INIT_REQUEST_PACKET:
 		packet := packets.SDK5_ServerInitRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read server init request packet from %s", from.String())
+			core.Error("could not read server init request packet from %s: %v", from.String(), err)
 			handler.Events[SDK5_HandlerEvent_CouldNotReadServerInitRequestPacket] = true
 			return
 		}
@@ -166,7 +166,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	case packets.SDK5_SERVER_UPDATE_REQUEST_PACKET:
 		packet := packets.SDK5_ServerUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read server update request packet from %s", from.String())
+			core.Error("could not read server update request packet from %s: %v", from.String(), err)
 			handler.Events[SDK5_HandlerEvent_CouldNotReadServerUpdateRequestPacket] = true
 			return
 		}
@@ -176,7 +176,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	case packets.SDK5_SESSION_UPDATE_REQUEST_PACKET:
 		packet := packets.SDK5_SessionUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read session update request packet from %s", from.String())
+			core.Error("could not read session update request packet from %s: %v", from.String(), err)
 			handler.Events[SDK5_HandlerEvent_CouldNotReadSessionUpdateRequestPacket] = true
 			return
 		}
@@ -186,7 +186,7 @@ func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPA
 	case packets.SDK5_MATCH_DATA_REQUEST_PACKET:
 		packet := packets.SDK5_MatchDataRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read match data request packet from %s", from.String())
+			core.Error("could not read match data request packet from %s: %v", from.String(), err)
 			handler.Events[SDK5_HandlerEvent_CouldNotReadMatchDataRequestPacket] = true
 			return
 		}

@@ -6,31 +6,23 @@ DONE
 
 	Disable google bigquery by default. Enable with an env var.
 
+	Got the raspberry pi server initing with the server backend 5 in dev.
+
+	Got the raspberry pi client connecting to the raspberry pi server and upgrading.
+
+	Session data bytes was desynced with raspberry. Was 500 bytes, but now 1024.
+
 TODO
+	
+	It seems now that the magic backend needs to be fixed, perhaps with master/leader system, and maybe a sequence number increased each time the master changes it. 
 
-	-----------------
+	In change of master, bump it by +1000
 
-	Need some raspberry pi like service so we have some real clients in dev.
+	Once this is done, add debug in session update, so I can see how many near relays are routable. Are there any near relays coming up for my client?
 
-	Setup a test customer "Raspberry" and use the existing raspberry code or pro tool to create this sort of "multi-client".
+	I don't know... the relays, or the route matrix could be causing the no routes.
 
-	This way I can easily run multiple clients pointing at dev from dr strange, and they are easily accessible.
-
-	Run the raspberry pi server inside the linode instance...
-
-    -----------------
-
-    Once this is working, verify the raspberry pi clients are taking sessions via "next relays" in dev.
-
-    -----------------
-
-
-
-
-
-
-
-
+	Which is it?
 
 
 
