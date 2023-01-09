@@ -9815,9 +9815,7 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_bits( stream, version_patch, 8 );
 
         serialize_uint64( stream, customer_id );
-
         serialize_uint64( stream, datacenter_id );
-
         serialize_uint64( stream, session_id );
 
         serialize_uint32( stream, slice_number );

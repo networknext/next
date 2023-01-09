@@ -225,7 +225,7 @@ NEXT_EXPORT_FUNC void next_assert_function( void (*function)( const char * condi
 
 NEXT_EXPORT_FUNC void next_allocator( void * (*malloc_function)( void * context, size_t bytes ), void (*free_function)( void * context, void * p ) );
 
-NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer );
+NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer, size_t buffer_size );
 
 // -----------------------------------------
 
