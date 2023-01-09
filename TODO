@@ -12,17 +12,18 @@ DONE
 
 	Session data bytes was desynced with raspberry. Was 500 bytes, but now 1024.
 
+	Extend magic values to have a sequence
+
+	If the sequence is <= current sequence, hold the current magic values.
+
+	This will stop occasionally going back in time to a previous value, if a magic backend instance is slightly delayed.
+
+	Enable debug logs in dev.
+
 TODO
 	
-	It seems now that the magic backend needs to be fixed, perhaps with master/leader system, and maybe a sequence number increased each time the master changes it. 
+	Now deploy to dev and make sure that the magic values stop flapping.
 
-	In change of master, bump it by +1000
-
-	Once this is done, add debug in session update, so I can see how many near relays are routable. Are there any near relays coming up for my client?
-
-	I don't know... the relays, or the route matrix could be causing the no routes.
-
-	Which is it?
 
 
 
