@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -78,6 +79,7 @@ type Service struct {
 
 	magicMutex    sync.RWMutex
 	magicData     []byte
+	magicCounter  uint64
 	upcomingMagic []byte
 	currentMagic  []byte
 	previousMagic []byte
@@ -660,8 +662,8 @@ func getMagic(httpClient *http.Client, uri string) ([]byte, error) {
 
 	response.Body.Close()
 
-	if len(buffer) != 24 {
-		return nil, errors.New(fmt.Sprintf("expected magic data to be 24 bytes, got %d", len(buffer)))
+	if len(buffer) != 32 {
+		return nil, errors.New(fmt.Sprintf("expected magic data to be 32 bytes, got %d", len(buffer)))
 	}
 
 	return buffer, nil
@@ -673,14 +675,24 @@ func (service *Service) updateMagicValues(magicData []byte) {
 		return
 	}
 
+	// IMPORTANT: ignore any magic with older counters than we currently have
+	// this avoids flapping when one instance of the magic backend is very slightly
+	// delayed vs. another, and we get an older set of magic values
+	magicCounter := binary.LittleEndian.Uint64(magicData[0:8])
+	if magicCounter <= service.magicCounter {
+		return
+	}
+
 	service.magicMutex.Lock()
-	service.magicData = magicData
-	service.upcomingMagic = magicData[0:8]
-	service.currentMagic = magicData[8:16]
-	service.previousMagic = magicData[16:24]
+    service.magicData = magicData
+    service.magicCounter = magicCounter
+	service.upcomingMagic = magicData[8:16]
+	service.currentMagic = magicData[16:24]
+	service.previousMagic = magicData[24:32]
 	service.magicMutex.Unlock()
 
-	core.Debug("updated magic values: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+	core.Debug("updated magic values: %x -> %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+		service.magicCounter,
 		service.upcomingMagic[0],
 		service.upcomingMagic[1],
 		service.upcomingMagic[2],
