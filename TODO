@@ -6,21 +6,28 @@ DONE
 
 	Disable google bigquery by default. Enable with an env var.
 
+	Got the raspberry pi server initing with the server backend 5 in dev.
+
+	Got the raspberry pi client connecting to the raspberry pi server and upgrading.
+
 TODO
 
-	-----------------
+	For some reason the session update packet is not getting back to the server:
 
-	Need some raspberry pi like service so we have some real clients in dev.
-
-	Setup a test customer "Raspberry" and use the existing raspberry code or pro tool to create this sort of "multi-client".
-
-	This way I can easily run multiple clients pointing at dev from dr strange, and they are easily accessible.
-
-	Run the raspberry pi server inside the linode instance...
-
-    -----------------
-
-    Once this is working, verify the raspberry pi clients are taking sessions via "next relays" in dev.
+		19.892527: info: server upgraded client 45.33.53.242:60850 to session aa3b73f412a9d3c
+		19.916452: debug: server sent session update packet to backend for session aa3b73f412a9d3c
+		20.932579: debug: server sent server update packet to backend (1 sessions)
+		20.932623: debug: server resent session update packet to backend for session aa3b73f412a9d3c (1)
+		20.945949: debug: server received server update response packet from backend
+		21.500253: debug: server received client stats packet for session aa3b73f412a9d3c
+		21.989672: debug: server resent session update packet to backend for session aa3b73f412a9d3c (2)
+		22.509892: debug: server received client stats packet for session aa3b73f412a9d3c
+		22.972838: debug: server resent session update packet to backend for session aa3b73f412a9d3c (3)
+		23.512870: debug: server received client stats packet for session aa3b73f412a9d3c
+		23.993208: debug: server resent session update packet to backend for session aa3b73f412a9d3c (4)
+		24.517379: debug: server received client stats packet for session aa3b73f412a9d3c
+		25.009482: debug: server resent session update packet to backend for session aa3b73f412a9d3c (5)
+		25.009775: error: server timed out waiting for backend response for session aa3b73f412a9d3c
 
     -----------------
 
