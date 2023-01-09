@@ -239,8 +239,6 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeInteger(&packet.SessionDataBytes, 0, SDK5_MaxSessionDataSize)
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
-		// todo
-		Debug("session data is %d bytes", packet.SessionDataBytes)
 		stream.SerializeBytes(sessionData)
 		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
