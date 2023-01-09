@@ -896,7 +896,7 @@ promotions:
     auto_promote:
       when: branch = 'prod' AND result = 'passed'
 
-  - name: "Dev 5"
+  - name: "Dev 5 Deployment"
     pipeline_file: dev5-deploy.yml
-    auto-promote:
+    auto_promote:
       when: branch = 'dev5' AND result = 'passed'
