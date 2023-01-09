@@ -881,14 +881,18 @@ promotions:
     pipeline_file: development-deploy.yml
     auto_promote:
       when: branch = 'dev' AND result = 'passed'
-  
+
   - name: "Staging Deployment"
     pipeline_file: staging-deploy.yml
     auto_promote:
       when: branch = 'staging' AND result = 'passed'
-  
+
   - name: "Production Deployment"
     pipeline_file: production-deploy.yml
     auto_promote:
       when: branch = 'prod' AND result = 'passed'
-  
+
+  - name: "Dev 5 Deployment"
+    pipeline_file: dev5-deploy.yml
+    auto_promote:
+      when: branch = 'dev5' AND result = 'passed'
