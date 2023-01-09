@@ -899,4 +899,4 @@ promotions:
   - name: "Dev 5"
     pipeline_file: dev5-deploy.yml
     auto-promote:
-      when: branch = 'van_dev5_terraform' AND result = 'passed'
+      when: branch = 'dev5' AND result = 'passed'
