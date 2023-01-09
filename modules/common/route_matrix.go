@@ -354,20 +354,23 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 		}
 	}
 
-	analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs)
+	if numRelayPairs > 0 {
+		
+		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs)
 
-	analysis.RTTBucket_NoImprovement = float32(numRelayPairsWithoutImprovement / numRelayPairs * 100.0)
-	analysis.RTTBucket_0_5ms = float32(float64(buckets[0]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_5_10ms = float32(float64(buckets[1]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_10_15ms = float32(float64(buckets[2]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_15_20ms = float32(float64(buckets[3]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_20_25ms = float32(float64(buckets[4]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_25_30ms = float32(float64(buckets[5]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_30_35ms = float32(float64(buckets[6]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_35_40ms = float32(float64(buckets[7]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_40_45ms = float32(float64(buckets[8]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_45_50ms = float32(float64(buckets[9]) / numRelayPairs * 100.0)
-	analysis.RTTBucket_50ms_Plus = float32(float64(buckets[10]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_NoImprovement = float32(numRelayPairsWithoutImprovement / numRelayPairs * 100.0)
+		analysis.RTTBucket_0_5ms = float32(float64(buckets[0]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_5_10ms = float32(float64(buckets[1]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_10_15ms = float32(float64(buckets[2]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_15_20ms = float32(float64(buckets[3]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_20_25ms = float32(float64(buckets[4]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_25_30ms = float32(float64(buckets[5]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_30_35ms = float32(float64(buckets[6]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_35_40ms = float32(float64(buckets[7]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_40_45ms = float32(float64(buckets[8]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_45_50ms = float32(float64(buckets[9]) / numRelayPairs * 100.0)
+		analysis.RTTBucket_50ms_Plus = float32(float64(buckets[10]) / numRelayPairs * 100.0)
+	}
 
 	totalRoutes := uint64(0)
 	maxRouteLength := int32(0)
@@ -414,15 +417,24 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 		}
 	}
 
-	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
-	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
+	var averageNumRoutes float64
+	if numRelayPairs > 0 {
+		averageNumRoutes = float64(totalRoutes) / float64(numRelayPairs)
+	}
+
+	var averageRouteLength float64
+	if totalRoutes > 0 {
+		averageRouteLength = float64(totalRouteLength) / float64(totalRoutes)
+	}
 
 	analysis.TotalRoutes = int(totalRoutes)
 	analysis.AverageNumRoutes = float32(averageNumRoutes)
 	analysis.AverageRouteLength = float32(averageRouteLength)
 
-	analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs)
-	analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs)
+	if relayPairs > 0 {
+		analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs)
+		analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs)
+	}
 
 	return analysis
 }

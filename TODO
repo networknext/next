@@ -2,15 +2,11 @@ DONE
 
 	Hook up the ip2location to the new server 5 backend via handler -> state
 
-TODO
-
-	-----------------
-
 	Disable google pubsub by default. Enable with an env var.
 
-	-----------------
-
 	Disable google bigquery by default. Enable with an env var.
+
+TODO
 
 	-----------------
 
