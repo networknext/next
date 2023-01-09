@@ -1,165 +1,16 @@
 DONE
 
-	Update the SDK only to perform pings on slice 1.
-
-	Make sure near relay pings a cleared, so if I choose to send down a new set of near relays to ping mid-session, the previous near relay pings won't affect it.
-
-	Verify that happy path is still rockin'
-
-	Remove "committed" concept from sdk5 backend
-
-	Remove "committed" concept from sdk5 next.cpp -- we just don't need the complexity.
-
-	Add a unit test to specifically verify that we don't send near relays down on slice 2.
-
-	Low frequency pings 10 packets per-second.
-
-	High frequency pings can be 60 packets per-second :)
-
-	Heisenbug is specific to my iMac pro. Probably a bad memory module.
-
-	Extend SDK to pass up actual bandwidth used for direct as well.
-
-	Without this, we can't get an estimate of bandwidth use while in analysis only mode, which makes customer trials difficult.
-
-	Extend sdk5 packets to include direct kbps up / direct kbps down in the session update request packet
-
-	Add sdk5 func test to verify that direct kbps up / down are passed up in session update
+	Hook up the ip2location to the new server 5 backend via handler -> state
 
 TODO
 
-	Finished work for today.
+	-----------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Disable google pubsub by default. Enable with an env var.
 
 	-----------------
 
-	Test session update response packet write in post, with session data as well.
-
-	-----------------
-
-	Implement code to fill and pass session update data to portal
-
-	-----------------
-
-	Hook up the ip2location to the new server 5 backend
-
-	-----------------
-
-	Hook up the old database code to write datacenter lat/long to the place expected by the new database code.
-
-	-----------------
-
-	Check over all // todo and make sure we are good.
-
-	-----------------
-
-	Implement func tests for each major service, especially around leader election and transfer in-situ
-
-	-----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Disable google bigquery by default. Enable with an env var.
 
 	-----------------
 
@@ -177,11 +28,106 @@ TODO
 
     -----------------
 
-    Then the next step is to extend the session handler so it posts portal data to the portal crunchers
 
-    -----------------
 
-    Then the portal crunchers should be cleaned up so that they use the service.go framework and setup as an autoscale mig.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
+	Implement a new portal cruncher based around the service.go
+
+	-----------------
+
+	Extend server backend to write session update data messages to redis pubsub.
+
+	-----------------
+
+	Run the portal cruncher in the happy path and verify it gets the redis pubsub messages.
+
+	-----------------
+
+	Update the old database code to stash the "Latitude" and "Longitude" for datacenters in the parent struct, so it is compatible with the new database code.
+
+	-----------------
+
+	Implement func tests for each major service, especially around leader election and transfer in-situ
+
+	-----------------
+
+	We need to check the crypto signature on relay updates.
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     -----------------
 
@@ -243,18 +189,6 @@ TODO
 
 
     -----------------
-
-    Google pubsub should be disabled by default, and enabled explicitly with env var
-
-		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=route_matrix_stats).
-		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=route_matrix_stats).
-		[2023-01-04 12:13:33] error: failed to send message batch: rpc error: code = NotFound desc = Resource not found (resource=cost_matrix_stats).
-
-	-----------------
-
-	Google bigquery should be disabled by default, and enabled explicitly with env var.
-
-	-----------------
 
 	analytics service is spamming this in dev:
 
