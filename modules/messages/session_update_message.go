@@ -64,8 +64,8 @@ type SessionUpdateMessage struct {
 	DatacenterId      uint64
 	BuyerId           uint64
 	UserHash          uint64
-	EnvelopeBytesUp   uint64 // todo: remove once we complete transition to SDK5
-	EnvelopeBytesDown uint64 // todo: remove once we complete transition to SDK5
+	EnvelopeBytesUp   uint64
+	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
 	ClientAddress     net.UDPAddr
@@ -97,8 +97,8 @@ type SessionUpdateMessage struct {
 	EverOnNext                      bool
 	SessionDuration                 uint32
 	TotalPriceSum                   uint64
-	EnvelopeBytesUpSum              uint64 // todo: remove once we complete transition to SDK5
-	EnvelopeBytesDownSum            uint64 // todo: remove once we complete transition to SDK5
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
 	StartTimestamp                  uint64
 
