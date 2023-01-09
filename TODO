@@ -31,9 +31,42 @@ TODO
 
     -----------------
 
+    On the server I see:
 
+		169.111081: debug: server received server update response packet from backend
+		169.111135: debug: server updated magic: 53,83,a2,32,96,e4,f0,48 | 7c,90,55,97,42,05,a5,b8 | 7d,1e,b5,7f,6d,17,1e,94
+		169.126951: debug: server current magic: 7c,90,55,97,42,05,a5,b8
+		169.128136: debug: server advanced packet filter dropped packet ...
+		169.853804: debug: server resent session update packet to backend for session a4c90ad0093bd17d (1)
+		169.858992: debug: server advanced packet filter dropped packet ...
+		170.840616: debug: server resent session update packet to backend for session a4c90ad0093bd17d (2)
+		170.856632: debug: server advanced packet filter dropped packet ...
+		171.810764: debug: server resent session update packet to backend for session a4c90ad0093bd17d (3)
+		171.837639: debug: server advanced packet filter dropped packet ...
+		172.797537: debug: server resent session update packet to backend for session a4c90ad0093bd17d (4)
+		172.813502: debug: server advanced packet filter dropped packet ...
+		173.880329: debug: server resent session update packet to backend for session a4c90ad0093bd17d (5)
+		173.880505: error: server timed out waiting for backend response for session a4c90ad0093bd17d
+		174.200015: debug: server advanced packet filter dropped packet ...
+		174.200070: debug: server client ping timed out for session a4c90ad0093bd17d
 
+	So it seems that the server is both dropping some packets from the client, due to advanced packet filter, and also not receiving the session update response from the server backend 5.
 
+	-----------------
+
+	On the server backend 5 I see:
+
+		Jan 09 18:34:06 server-backend5-mig-nnj1 app[44148]: error: could not read session update request packet from 45.76.24.216:50000
+
+	It seems that the server backend just can't read the session update request packet sent from the server.
+
+	But why not? Is there a desync in the keypairs?
+
+	This can't be true, because the server update and response get through just fine.
+
+	Therefore, it must be a desync between the SDK session update packet and the backend SDK update packet.
+
+	-----------------
 
 
 
