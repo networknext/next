@@ -20,6 +20,8 @@ var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
 var googleProjectId string
 var bigqueryDataset string
+var enableGooglePubsub bool
+var enableGoogleBigquery bool
 
 var logMutex sync.Mutex
 
@@ -33,6 +35,8 @@ func main() {
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", service.Env)
+	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
+	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)
@@ -40,17 +44,21 @@ func main() {
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("google project id: %s", googleProjectId)
 	core.Log("bigquery dataset: %s", bigqueryDataset)
+	core.Log("enable google pubsub: %v", enableGooglePubsub)
+	core.Log("enable google bigquery: %v", enableGoogleBigquery)
 
 	ProcessCostMatrix(service)
 
 	ProcessRouteMatrix(service)
 
-	Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
-	Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
-	Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
-	Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
-	Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
-	Process[*messages.UptimeStatsMessage](service, "uptime_stats", &messages.UptimeStatsMessage{}, false)
+	if enableGooglePubsub && enableGoogleBigquery {
+		Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
+		Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
+		Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
+		Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
+		Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
+		Process[*messages.UptimeStatsMessage](service, "uptime_stats", &messages.UptimeStatsMessage{}, false)
+	}
 
 	service.StartWebServer()
 
@@ -225,19 +233,22 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// send cost matrix message via pubsub
+				// send cost matrix message via google pubsub
 
-				costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
+				if enableGooglePubsub {
 
-				costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion_Write
-				costMatrixStatsMessage.Bytes = costMatrixBytes
-				costMatrixStatsMessage.NumRelays = costMatrixNumRelays
-				costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
-				costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
+					costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
 
-				message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
+					costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion_Write
+					costMatrixStatsMessage.Bytes = costMatrixBytes
+					costMatrixStatsMessage.NumRelays = costMatrixNumRelays
+					costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
+					costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
 
-				statsPubsubProducer.MessageChannel <- message
+					message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
+
+					statsPubsubProducer.MessageChannel <- message
+				}
 			}
 		}
 	}()
@@ -376,37 +387,40 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// send route matrix stats via pubsub
+				// send route matrix stats via google pubsub pubsub
 
-				routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
+				if enableGooglePubsub {
 
-				routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion_Write
-				routeMatrixStatsEntry.Bytes = routeMatrixBytes
-				routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
-				routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
-				routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
-				routeMatrixStatsEntry.TotalRoutes = analysis.TotalRoutes
-				routeMatrixStatsEntry.AverageNumRoutes = analysis.AverageNumRoutes
-				routeMatrixStatsEntry.AverageRouteLength = analysis.AverageRouteLength
-				routeMatrixStatsEntry.NoRoutePercent = analysis.NoRoutePercent
-				routeMatrixStatsEntry.OneRoutePercent = analysis.OneRoutePercent
-				routeMatrixStatsEntry.NoDirectRoutePercent = analysis.NoDirectRoutePercent
-				routeMatrixStatsEntry.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
-				routeMatrixStatsEntry.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
-				routeMatrixStatsEntry.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
-				routeMatrixStatsEntry.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
-				routeMatrixStatsEntry.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
-				routeMatrixStatsEntry.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
-				routeMatrixStatsEntry.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
-				routeMatrixStatsEntry.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
-				routeMatrixStatsEntry.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
-				routeMatrixStatsEntry.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
-				routeMatrixStatsEntry.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
-				routeMatrixStatsEntry.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
+					routeMatrixStatsEntry := messages.RouteMatrixStatsMessage{}
 
-				message := routeMatrixStatsEntry.Write(make([]byte, routeMatrixBytes))
+					routeMatrixStatsEntry.Version = messages.RouteMatrixStatsMessageVersion_Write
+					routeMatrixStatsEntry.Bytes = routeMatrixBytes
+					routeMatrixStatsEntry.NumRelays = routeMatrixNumRelays
+					routeMatrixStatsEntry.NumDestRelays = routeMatrixNumDestRelays
+					routeMatrixStatsEntry.NumDatacenters = routeMatrixNumDatacenters
+					routeMatrixStatsEntry.TotalRoutes = analysis.TotalRoutes
+					routeMatrixStatsEntry.AverageNumRoutes = analysis.AverageNumRoutes
+					routeMatrixStatsEntry.AverageRouteLength = analysis.AverageRouteLength
+					routeMatrixStatsEntry.NoRoutePercent = analysis.NoRoutePercent
+					routeMatrixStatsEntry.OneRoutePercent = analysis.OneRoutePercent
+					routeMatrixStatsEntry.NoDirectRoutePercent = analysis.NoDirectRoutePercent
+					routeMatrixStatsEntry.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
+					routeMatrixStatsEntry.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
+					routeMatrixStatsEntry.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
+					routeMatrixStatsEntry.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
+					routeMatrixStatsEntry.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
+					routeMatrixStatsEntry.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
+					routeMatrixStatsEntry.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
+					routeMatrixStatsEntry.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
+					routeMatrixStatsEntry.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
+					routeMatrixStatsEntry.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
+					routeMatrixStatsEntry.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
+					routeMatrixStatsEntry.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
 
-				statsPubsubProducer.MessageChannel <- message
+					message := routeMatrixStatsEntry.Write(make([]byte, routeMatrixBytes))
+
+					statsPubsubProducer.MessageChannel <- message
+				}
 			}
 		}
 	}()
