@@ -217,7 +217,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumRelays); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
-		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength) // todo: this needs to be optimized
+		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength) // todo: write the relay address in binary format instead
 	}
 
 	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)

@@ -58,6 +58,7 @@ type SDK5_Handler struct {
 	RoutingPrivateKey       []byte
 	GetMagicValues          func() ([]byte, []byte, []byte)
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
+	LocateIP                func(ip net.IP) (packets.SDK5_LocationData, error)
 
 	ServerInitMessageChannel    chan<- *messages.ServerInitMessage
 	ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
@@ -421,14 +422,6 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 	}
 }
 
-func SDK5_LocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
-	// todo: this needs to be hooked up to the proper ip2location when we are not running in local env!!!
-	location := packets.SDK5_LocationData{}
-	location.Latitude = 43
-	location.Longitude = -75
-	return location, nil
-}
-
 func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
 
 	handler.Events[SDK5_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
@@ -448,7 +441,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress
 	state.From = from
-	state.LocateIP = SDK5_LocateIP // todo: this should be passed in from the caller via handler instead
+	state.LocateIP = handler.LocateIP
 	state.Buyer = handler.Database.BuyerMap[requestPacket.BuyerId]
 
 	state.Request = requestPacket

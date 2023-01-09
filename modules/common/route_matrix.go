@@ -36,7 +36,7 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	Version            uint32
 	FullRelayIds       []uint64
-	FullRelayIndexSet  map[int32]bool // todo: this should probably just be an array of bools? why do we need a map?
+	FullRelayIndexSet  map[int32]bool
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
