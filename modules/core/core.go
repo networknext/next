@@ -1588,6 +1588,25 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 		}
 	}
 
+	// print out number of source relays that are routable + dest relays
+
+	if debug != nil {
+		numSourceRelays := len(sourceRelays)
+		numRoutableSourceRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numRoutableSourceRelays++
+			}
+		}
+		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		numDestRelays := len(destRelays)
+		if numDestRelays != 1 {
+			*debug += fmt.Sprintf("1 dest relay\n")
+		} else {
+			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
+		}
+	}	
+
 	// should we try to reduce latency?
 
 	reduceLatency := false
@@ -1679,9 +1698,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 	// if the next route RTT is too high, don't take it
 
-	if bestRouteCost > internal.MaxNextRTT {
+	if internal.MaxNextRTT > 0 && bestRouteCost > internal.MaxNextRTT {
 		if debug != nil {
-			*debug += fmt.Sprintf("not taking network next. best route is higher than max rtt %d\n", internal.MaxNextRTT)
+			*debug += fmt.Sprintf("not taking network next. best route is higher than max next rtt %d\n", internal.MaxNextRTT)
 		}
 		return false
 	}
@@ -1718,6 +1737,25 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 			sourceRelayCost[i] = 255
 		}
 	}
+
+	// print out number of source relays that are routable + dest relays
+
+	if debug != nil {
+		numSourceRelays := len(sourceRelays)
+		numRoutableSourceRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numRoutableSourceRelays++
+			}
+		}
+		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		numDestRelays := len(destRelays)
+		if numDestRelays != 1 {
+			*debug += fmt.Sprintf("1 dest relay\n")
+		} else {
+			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
+		}
+	}	
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
