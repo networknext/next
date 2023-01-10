@@ -1698,9 +1698,9 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 
 	// if the next route RTT is too high, don't take it
 
-	if bestRouteCost > internal.MaxNextRTT {
+	if internal.MaxNextRTT > 0 && bestRouteCost > internal.MaxNextRTT {
 		if debug != nil {
-			*debug += fmt.Sprintf("not taking network next. best route is higher than max rtt %d\n", internal.MaxNextRTT)
+			*debug += fmt.Sprintf("not taking network next. best route is higher than max next rtt %d\n", internal.MaxNextRTT)
 		}
 		return false
 	}
