@@ -222,7 +222,6 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 				relayJSON.DestRelays[i] = "0"
 			}
 		}
-		relayJSON.DestRelayNames = relayData.DestRelayNames
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(relayJSON); err != nil {
 			core.Error("could not write relay data json: %v", err)

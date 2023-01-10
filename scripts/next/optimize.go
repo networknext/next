@@ -62,4 +62,35 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
 	}
+
+	// todo: temporary -- print out route matrix as csv
+
+	fmt.Printf(",")
+	for i := range costMatrix.RelayNames {
+		fmt.Printf("%s,", costMatrix.RelayNames[i])
+	}
+	fmt.Printf("\n")
+	for i := range costMatrix.RelayNames {
+		fmt.Printf("%s,", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Printf("-1,")
+			} else {
+				index := core.TriMatrixIndex(i,j)
+				cost := costMatrix.Costs[index]
+				fmt.Printf("%d,", cost)
+			}
+		}
+		fmt.Printf("\n")
+	}
+	fmt.Printf("\n")
+
+	// todo: print out dest relays
+	fmt.Printf("dest relays: ")
+	for i := range costMatrix.RelayNames {
+		if costMatrix.DestRelays[i] {
+			fmt.Printf("%s,", costMatrix.RelayNames[i])
+		}
+	}
+	fmt.Printf("\n\n")
 }

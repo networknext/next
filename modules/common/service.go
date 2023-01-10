@@ -48,7 +48,6 @@ type RelayData struct {
 	RelayIdToIndex     map[uint64]int
 	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
-	DestRelayNames     []string
 	DatabaseBinFile    []byte
 }
 
@@ -500,23 +499,17 @@ func generateRelayData(database *db.Database) *RelayData {
 	// determine which relays are dest relays for at least one buyer
 
 	relayData.DestRelays = make([]bool, numRelays)
-	relayData.DestRelayNames = []string{}
 
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
 			for _, datacenter := range database.DatacenterMaps[buyer.ID] {
 				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterID]
 				for j := 0; j < len(datacenterRelays); j++ {
-					if !relayData.DestRelays[j] {
-						relayData.DestRelayNames = append(relayData.DestRelayNames, relayData.RelayArray[j].Name)
-						relayData.DestRelays[j] = true
-					}
+					relayData.DestRelays[datacenterRelays[j]] = true
 				}
 			}
 		}
 	}
-
-	sort.Strings(relayData.DestRelayNames)
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 
