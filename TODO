@@ -1,55 +1,51 @@
 DONE
 
-	Hook up the ip2location to the new server 5 backend via handler -> state
-
-	Disable google pubsub by default. Enable with an env var.
-
-	Disable google bigquery by default. Enable with an env var.
-
-	Got the raspberry pi server initing with the server backend 5 in dev.
-
-	Got the raspberry pi client connecting to the raspberry pi server and upgrading.
-
-	Session data bytes was desynced with raspberry. Was 500 bytes, but now 1024.
-
-	Extend magic values to have a sequence
-
-	If the sequence is <= current sequence, hold the current magic values.
-
-	This will stop occasionally going back in time to a previous value, if a magic backend instance is slightly delayed.
-
-	Enable debug logs in dev.
-
-	Now deploy to dev and make sure that the magic values stop flapping.
-
-	Fix confirmed.
-
-	Now we need to debug why there are no next routes. Is it the route matrix in dev, or is it the near relays?
-
-	To debug, extend the routing functions in core.go to write out a summary of the number of routable relays when deciding if they take network next, and whether to continue network next.
-
-	This way we can see: "0/9 source relays are routable"
-
-	and go, oh, no near relays are routable.
-
-	or. "0/0 source relays are routable" -- oh, there are no near relays.. why?
-
-	etc...
-
-	It's not the near relays:
-
-		6/9 source relays are routable
-
-	It has to be the route matrix then. Most likely, the max jitter is set too low on the relay backend, so the route matrix can't route into the dest relay.
+	Cost matrix looks fine. I suspect it must be no dest relays.
 
 TODO
+
+	Check to see if the cost matrix has dest relays?
+
+	Confirm that cost matrix is missing vultr.chicago as a dest relay.
+
+	Where are dest relays calculated?	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	
-	The next thing to do now is to inspect the route matrix.
-
-	This can be done via the next tool.
-
-	Write some new code to actually print out the route matrix as CSV, so I can import it into a spreadsheet...
-
 	---------------
 
 	If the default server backend port in sdk5 is 45000, then we need to run the server backend on that port.
