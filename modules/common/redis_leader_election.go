@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change the redis data structures!
+const RedisLeaderElectionVersion = 2 // IMPORTANT: bump this anytime you change the redis data structures!
 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
@@ -29,10 +29,9 @@ type RedisLeaderElection struct {
 	redisClient  *redis.Client
 	startTime    time.Time
 	instanceId   string
-	storeCounter uint64
 
-	leaderMutex sync.RWMutex
-	isLeader    bool
+	leaderMutex   sync.RWMutex
+	isLeader      bool
 
 	autoRefresh bool
 }
@@ -100,8 +99,6 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores ...DataStoreConfig) {
 
-	leaderElection.storeCounter++
-
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
 	instanceEntry.StartTime = uint64(leaderElection.startTime.UnixNano())
@@ -110,7 +107,7 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 	instanceEntry.Keys = make([]string, numStores)
 
 	for i := 0; i < numStores; i++ {
-		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s-%d", dataStores[i].Name, RedisLeaderElectionVersion, leaderElection.instanceId, leaderElection.storeCounter)
+		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s", dataStores[i].Name, RedisLeaderElectionVersion, leaderElection.instanceId)
 	}
 
 	var buffer bytes.Buffer

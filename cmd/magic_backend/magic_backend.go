@@ -49,6 +49,9 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 
 	counter := timestamp / int64(magicUpdateSeconds)
 
+	var counterData [8]byte
+	binary.LittleEndian.PutUint64(counterData[:], uint64(counter))
+
 	upcomingMagic := hashCounter(counter + 2)
 	currentMagic := hashCounter(counter + 1)
 	previousMagic := hashCounter(counter + 0)
@@ -82,6 +85,7 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 
+	w.Write(counterData[:])
 	w.Write(upcomingMagic[:])
 	w.Write(currentMagic[:])
 	w.Write(previousMagic[:])

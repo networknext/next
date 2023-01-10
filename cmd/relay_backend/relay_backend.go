@@ -64,7 +64,7 @@ func main() {
 
 	maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
 	maxJitter = float32(envvar.GetFloat("MAX_JITTER", 1000.0))
-	maxPacketLoss = float32(envvar.GetFloat("MAX_JITTER", 100.0))
+	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
 	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 10*1024*1024)
 	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 100*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
@@ -222,7 +222,6 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 				relayJSON.DestRelays[i] = "0"
 			}
 		}
-		relayJSON.DestRelayNames = relayData.DestRelayNames
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(relayJSON); err != nil {
 			core.Error("could not write relay data json: %v", err)

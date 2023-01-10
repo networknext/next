@@ -1,30 +1,60 @@
 DONE
 
-	Hook up the ip2location to the new server 5 backend via handler -> state
-
-	Disable google pubsub by default. Enable with an env var.
-
-	Disable google bigquery by default. Enable with an env var.
-
-	Got the raspberry pi server initing with the server backend 5 in dev.
-
-	Got the raspberry pi client connecting to the raspberry pi server and upgrading.
-
-	Session data bytes was desynced with raspberry. Was 500 bytes, but now 1024.
+	Cost matrix looks fine. I suspect it must be no dest relays.
 
 TODO
+
+	Check to see if the cost matrix has dest relays?
+
+	Confirm that cost matrix is missing vultr.chicago as a dest relay.
+
+	Where are dest relays calculated?	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	
-	It seems now that the magic backend needs to be fixed, perhaps with master/leader system, and maybe a sequence number increased each time the master changes it. 
+	---------------
 
-	In change of master, bump it by +1000
+	If the default server backend port in sdk5 is 45000, then we need to run the server backend on that port.
 
-	Once this is done, add debug in session update, so I can see how many near relays are routable. Are there any near relays coming up for my client?
+	export NEXT_SERVER_BACKEND_PORT=40000
 
-	I don't know... the relays, or the route matrix could be causing the no routes.
+	Alternatively, we drop back to server backend 5 being 40000. which is fine IMO.
 
-	Which is it?
-
-
+	---------------
 
 
 

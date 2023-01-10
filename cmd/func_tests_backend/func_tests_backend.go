@@ -117,19 +117,27 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
+	if len(magicData) != 32 {
+		fmt.Printf("error: magic data should be 32 bytes long\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
+
 	time.Sleep(time.Second)
 
 	check_output("served magic values", cmd, stdout, stderr)
 
 	// test that the magic values shuffle from upcoming -> current -> previous over time
 
+	magicCounter := binary.LittleEndian.Uint64(magicData[0:8])
+
 	var upcomingMagic [8]byte
 	var currentMagic [8]byte
 	var previousMagic [8]byte
 
-	copy(upcomingMagic[:], magicData[0:8])
-	copy(currentMagic[:], magicData[8:16])
-	copy(previousMagic[:], magicData[16:24])
+	copy(upcomingMagic[:], magicData[8:16])
+	copy(currentMagic[:], magicData[16:24])
+	copy(previousMagic[:], magicData[24:32])
 
 	magicUpdates := 0
 
@@ -149,25 +157,40 @@ func test_magic_backend() {
 			os.Exit(1)
 		}
 
-		if bytes.Compare(magicData[0:8], upcomingMagic[:]) != 0 {
+		if len(magicData) != 32 {
+			fmt.Printf("error: magic data should be 32 bytes long\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
 
+		newMagicCounter := binary.LittleEndian.Uint64(magicData[0:8])
+		if newMagicCounter < magicCounter {
+			fmt.Printf("error: magic counter must not decrease\n")
+			cmd.Process.Signal(syscall.SIGTERM)
+			os.Exit(1)
+		}
+
+		if newMagicCounter != magicCounter {
+
+			magicCounter = newMagicCounter
 			magicUpdates++
 
-			if bytes.Compare(magicData[8:16], upcomingMagic[:]) != 0 {
+			if bytes.Compare(magicData[16:24], upcomingMagic[:]) != 0 {
 				fmt.Printf("error: did not see upcoming magic shuffle to current magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
 
-			if bytes.Compare(magicData[16:24], currentMagic[:]) != 0 {
+			if bytes.Compare(magicData[24:32], currentMagic[:]) != 0 {
 				fmt.Printf("error: did not see current magic shuffle to previous magic\n")
 				cmd.Process.Signal(syscall.SIGTERM)
 				os.Exit(1)
 			}
 
-			copy(upcomingMagic[:], magicData[0:8])
-			copy(currentMagic[:], magicData[8:16])
-			copy(previousMagic[:], magicData[16:24])
+			copy(upcomingMagic[:], magicData[8:16])
+			copy(currentMagic[:], magicData[16:24])
+			copy(previousMagic[:], magicData[24:32])
+
 		}
 
 		time.Sleep(time.Second)
@@ -237,7 +260,7 @@ func test_magic_backend() {
 			os.Exit(1)
 		}
 
-		if bytes.Compare(magicData1, magicData2) != 0 && !(bytes.Compare(magicData1[0:16], magicData2[8:24]) == 0 || bytes.Compare(magicData2[0:16], magicData1[8:24]) == 0) {
+		if bytes.Compare(magicData1, magicData2) != 0 && !(bytes.Compare(magicData1[8:24], magicData2[16:32]) == 0 || bytes.Compare(magicData2[8:24], magicData1[16:32]) == 0) {
 			fmt.Printf("error: magic data mismatch between two magic backends\n")
 			cmd.Process.Signal(syscall.SIGTERM)
 			os.Exit(1)
