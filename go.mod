@@ -34,7 +34,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/russellcardullo/go-pingdom v1.3.0
 	github.com/stretchr/testify v1.8.0
-	github.com/tidwall/gjson v1.6.0
+	github.com/tidwall/gjson v1.9.3
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/exp v0.0.0-20220929160808-de9c53c655b9
@@ -67,8 +67,8 @@ require (
 	github.com/oschwald/maxminddb-golang v1.6.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/tidwall/match v1.0.1 // indirect
-	github.com/tidwall/pretty v1.0.1 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
