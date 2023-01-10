@@ -20,10 +20,17 @@ DONE
 
 	Enable debug logs in dev.
 
-TODO
-	
 	Now deploy to dev and make sure that the magic values stop flapping.
 
+	Fix confirmed.
+
+TODO
+	
+	Same "counter" strategy needs to apply to redis leader election. Counts may only stay the same or go up, but never decrease. This way we can't go back in time to a previous route matrix.
+
+	This can be done entirely in the redis leader election code.
+
+	Ideally, it won't have any affect on current tests.
 
 
 
