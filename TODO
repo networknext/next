@@ -44,6 +44,12 @@ DONE
 
 TODO
 	
+	The next thing to do now is to inspect the route matrix.
+
+	This can be done via the next tool.
+
+	Write some new code to actually print out the route matrix as CSV, so I can import it into a spreadsheet...
+
 	---------------
 
 	If the default server backend port in sdk5 is 45000, then we need to run the server backend on that port.
