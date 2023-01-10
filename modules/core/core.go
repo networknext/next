@@ -1600,7 +1600,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 		}
 		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 		numDestRelays := len(destRelays)
-		if numDestRelays != 1 {
+		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")
 		} else {
 			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
@@ -1750,7 +1750,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 		}
 		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 		numDestRelays := len(destRelays)
-		if numDestRelays != 1 {
+		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")
 		} else {
 			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
@@ -1844,7 +1844,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 
 	// if the next route RTT is too high, leave network next
 
-	if bestRouteCost > internal.MaxNextRTT {
+	if internal.MaxNextRTT > 0 && bestRouteCost > internal.MaxNextRTT {
 		if debug != nil {
 			*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, internal.MaxNextRTT)
 		}
