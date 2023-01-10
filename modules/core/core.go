@@ -1588,6 +1588,19 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, fullRelaySet ma
 		}
 	}
 
+	// print out number of source relays that are routable to debug
+
+	if debug != nil {
+		numSourceRelays := len(sourceRelays)
+		numRoutableSourceRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numRoutableSourceRelays++
+			}
+		}
+		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+	}
+
 	// should we try to reduce latency?
 
 	reduceLatency := false
@@ -1717,6 +1730,19 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(routeMatrix []RouteEntry, full
 		if sourceRelayCost[i] <= 0 {
 			sourceRelayCost[i] = 255
 		}
+	}
+
+	// print out number of source relays that are routable to debug
+
+	if debug != nil {
+		numSourceRelays := len(sourceRelays)
+		numRoutableSourceRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numRoutableSourceRelays++
+			}
+		}
+		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next

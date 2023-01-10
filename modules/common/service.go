@@ -3,9 +3,9 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/gob"
 	"encoding/json"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -684,8 +684,8 @@ func (service *Service) updateMagicValues(magicData []byte) {
 	}
 
 	service.magicMutex.Lock()
-    service.magicData = magicData
-    service.magicCounter = magicCounter
+	service.magicData = magicData
+	service.magicCounter = magicCounter
 	service.upcomingMagic = magicData[8:16]
 	service.currentMagic = magicData[16:24]
 	service.previousMagic = magicData[24:32]
