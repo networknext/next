@@ -26,13 +26,17 @@ DONE
 
 TODO
 	
-	Same "counter" strategy needs to apply to redis leader election. Counts may only stay the same or go up, but never decrease. This way we can't go back in time to a previous route matrix.
+	Now we need to debug why there are no next routes. Is it the route matrix in dev, or is it the near relays?
 
-	This can be done entirely in the redis leader election code.
+	To debug, extend the routing functions in core.go to write out a summary of the number of routable relays when deciding if they take network next, and whether to continue network next.
 
-	Ideally, it won't have any affect on current tests.
+	This way we can see: "0/9 source relays are routable"
 
+	and go, oh, no near relays are routable.
 
+	or. "0/0 source relays are routable" -- oh, there are no near relays.. why?
+
+	etc...
 
 
 
