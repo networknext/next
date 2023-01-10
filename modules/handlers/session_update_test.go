@@ -2029,7 +2029,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Database.RelayMap[2] = relay_b
 	state.Database.RelayMap[3] = relay_c
 
-	state.DestRelays = []int32{0,1,2}
+	state.DestRelays = []int32{0, 1, 2}
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -3147,7 +3147,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	state.Database.RelayMap[2] = relay_b
 	state.Database.RelayMap[3] = relay_c
 
-	state.DestRelayIds = []uint64{1,2,3}
+	state.DestRelayIds = []uint64{1, 2, 3}
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -3190,10 +3190,10 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	// setup near relays
 
 	state.Request.NumNearRelays = 3
-	copy(state.Request.NearRelayIds[:], []uint64{1,2,3})
-	copy(state.Request.NearRelayRTT[:], []int32{1,100,100})
-	copy(state.Request.NearRelayJitter[:], []int32{0,0,0})
-	copy(state.Request.NearRelayPacketLoss[:], []int32{0,0,0})
+	copy(state.Request.NearRelayIds[:], []uint64{1, 2, 3})
+	copy(state.Request.NearRelayRTT[:], []int32{1, 100, 100})
+	copy(state.Request.NearRelayJitter[:], []int32{0, 0, 0})
+	copy(state.Request.NearRelayPacketLoss[:], []int32{0, 0, 0})
 
 	// update near relays
 
@@ -3208,9 +3208,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.DestRelays), 3)
-	assert.Equal(t, state.DestRelays[0], int32(0) )
-	assert.Equal(t, state.DestRelays[1], int32(1) )
-	assert.Equal(t, state.DestRelays[2], int32(2) )
+	assert.Equal(t, state.DestRelays[0], int32(0))
+	assert.Equal(t, state.DestRelays[1], int32(1))
+	assert.Equal(t, state.DestRelays[2], int32(2))
 
 	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
 
@@ -3269,7 +3269,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	state.Database.RelayMap[2] = relay_b
 	state.Database.RelayMap[3] = relay_c
 
-	state.DestRelayIds = []uint64{1,2,3}
+	state.DestRelayIds = []uint64{1, 2, 3}
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -3312,8 +3312,8 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	// setup held near relays
 
 	state.Output.HeldNumNearRelays = 3
-	copy(state.Output.HeldNearRelayIds[:], []uint64{1,2,3})
-	copy(state.Output.HeldNearRelayRTT[:], []int32{1,255,255})
+	copy(state.Output.HeldNearRelayIds[:], []uint64{1, 2, 3})
+	copy(state.Output.HeldNearRelayRTT[:], []int32{1, 255, 255})
 
 	// update near relays
 
@@ -3328,9 +3328,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.DestRelays), 3)
-	assert.Equal(t, state.DestRelays[0], int32(0) )
-	assert.Equal(t, state.DestRelays[1], int32(1) )
-	assert.Equal(t, state.DestRelays[2], int32(2) )
+	assert.Equal(t, state.DestRelays[0], int32(0))
+	assert.Equal(t, state.DestRelays[1], int32(1))
+	assert.Equal(t, state.DestRelays[2], int32(2))
 
 	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
 

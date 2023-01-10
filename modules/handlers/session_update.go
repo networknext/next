@@ -896,7 +896,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	}
 
 	if state.Debug != nil {
-		*state.Debug += fmt.Sprintf("route cost is %d\n", routeCost)
+		if routeCost != 0 {
+			*state.Debug += fmt.Sprintf("route cost is %d\n", routeCost)
+		}
 		if state.Response.Multipath {
 			*state.Debug += "multipath\n"
 		}

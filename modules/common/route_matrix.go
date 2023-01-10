@@ -355,7 +355,7 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	}
 
 	if numRelayPairs > 0 {
-		
+
 		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs)
 
 		analysis.RTTBucket_NoImprovement = float32(numRelayPairsWithoutImprovement / numRelayPairs * 100.0)

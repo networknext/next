@@ -20,12 +20,23 @@ DONE
 
 	Enable debug logs in dev.
 
-TODO
-	
 	Now deploy to dev and make sure that the magic values stop flapping.
 
+	Fix confirmed.
 
+TODO
+	
+	Now we need to debug why there are no next routes. Is it the route matrix in dev, or is it the near relays?
 
+	To debug, extend the routing functions in core.go to write out a summary of the number of routable relays when deciding if they take network next, and whether to continue network next.
+
+	This way we can see: "0/9 source relays are routable"
+
+	and go, oh, no near relays are routable.
+
+	or. "0/0 source relays are routable" -- oh, there are no near relays.. why?
+
+	etc...
 
 
 
