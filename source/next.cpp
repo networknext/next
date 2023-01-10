@@ -8501,9 +8501,9 @@ void next_client_update( next_client_t * client )
 
                 if ( !packet_received->direct )
                 {
-	                next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-	                const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
-	                next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+                    next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
+                    const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
+                    next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
