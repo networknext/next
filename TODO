@@ -24,8 +24,6 @@ DONE
 
 	Fix confirmed.
 
-TODO
-	
 	Now we need to debug why there are no next routes. Is it the route matrix in dev, or is it the near relays?
 
 	To debug, extend the routing functions in core.go to write out a summary of the number of routable relays when deciding if they take network next, and whether to continue network next.
@@ -37,6 +35,30 @@ TODO
 	or. "0/0 source relays are routable" -- oh, there are no near relays.. why?
 
 	etc...
+
+	It's not the near relays:
+
+		6/9 source relays are routable
+
+	It has to be the route matrix then. Most likely, the max jitter is set too low on the relay backend, so the route matrix can't route into the dest relay.
+
+TODO
+	
+	The next thing to do now is to inspect the route matrix.
+
+	This can be done via the next tool.
+
+	Write some new code to actually print out the route matrix as CSV, so I can import it into a spreadsheet...
+
+	---------------
+
+	If the default server backend port in sdk5 is 45000, then we need to run the server backend on that port.
+
+	export NEXT_SERVER_BACKEND_PORT=40000
+
+	Alternatively, we drop back to server backend 5 being 40000. which is fine IMO.
+
+	---------------
 
 
 
