@@ -113,8 +113,6 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	service.LeaderElection(false)
-
 	service.OverrideHealthHandler(healthHandler)
 
 	ProcessRelayUpdates(service, relayManager)
@@ -130,20 +128,12 @@ func UpdateReadyState(service *common.Service) {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-
-			routeMatrixMutex.RLock()
-			routeMatrixReady := len(routeMatrixData) > 0
-			routeMatrixMutex.RUnlock()
-
-			routeMatrixInternalMutex.RLock()
-			routeMatrixInternalReady := len(routeMatrixInternalData) > 0
-			routeMatrixInternalMutex.RUnlock()
-
+			core.Debug("waiting until ready...")
 			delayReady := time.Since(startTime) >= readyDelay
-
-			if routeMatrixReady && routeMatrixInternalReady && delayReady {
+			if delayReady {
 				core.Log("relay backend is ready")
 				service.StartWebServer()
+				service.LeaderElection(false)
 				readyMutex.Lock()
 				ready = true
 				readyMutex.Unlock()
@@ -161,9 +151,7 @@ func isReady() bool {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-
 	not_ready := !isReady()
-
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
@@ -503,6 +491,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
+	hasSeenDataStores := false
+
 	go func() {
 
 		for {
@@ -594,33 +584,40 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// store our most recent cost and route matrix in redis
 
-				dataStores := []common.DataStoreConfig{
-					{
-						Name: "relays",
-						Data: relaysCSVDataNew,
-					},
-					{
-						Name: "cost_matrix",
-						Data: costMatrixDataNew,
-					},
-					{
-						Name: "route_matrix",
-						Data: routeMatrixDataNew,
-					},
-				}
+				if isReady() {
 
-				service.UpdateLeaderStore(dataStores)
+					dataStores := []common.DataStoreConfig{
+						{
+							Name: "relays",
+							Data: relaysCSVDataNew,
+						},
+						{
+							Name: "cost_matrix",
+							Data: costMatrixDataNew,
+						},
+						{
+							Name: "route_matrix",
+							Data: routeMatrixDataNew,
+						},
+					}
+
+					service.UpdateLeaderStore(dataStores)
+				}
 
 				// load the master cost and route matrix from redis (leader election)
 
-				dataStores = service.LoadLeaderStore()
+				dataStores := service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
-					if isReady() {
-						core.Error("failed to get data stores from redis selector") // don't complain unless we are ready. otherwise, this is benign.
+					// IMPORTANT: don't error unless we've already seen data stores succeed once, and it is failing now
+					// otherwise, we get error spam on startup while we are waiting for the first leader to be elected
+					if hasSeenDataStores {
+						core.Error("could not get data stores from redis selector")
 					}
 					continue
 				}
+
+				hasSeenDataStores = true
 
 				relaysCSVDataNew = dataStores[0].Data
 				if relaysCSVDataNew == nil {
