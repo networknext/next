@@ -298,7 +298,7 @@ func (service *Service) UpdateLeaderStore(dataStores []DataStoreConfig) {
 
 func (service *Service) LoadLeaderStore() []DataStoreConfig {
 
-	if service.leaderElection.autoRefresh {
+	if service.leaderElection == nil || service.leaderElection.autoRefresh {
 		return []DataStoreConfig{}
 	}
 

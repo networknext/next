@@ -1843,7 +1843,7 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
-	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=1s")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=5s")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DISABLE_GOOGLE_PUBSUB=1")
 
 	var relay_backend_output bytes.Buffer
@@ -1851,9 +1851,10 @@ func test_relay_backend() {
 	relay_backend_cmd.Stderr = &relay_backend_output
 	relay_backend_cmd.Start()
 
-	// wait until the relay gateway and relay backend are ready
+	// wait until the relay gateway and relay backend are ready to serve http
 
 	for {
+
 		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
 			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
 			break
@@ -1958,7 +1959,11 @@ func test_relay_backend() {
 		for {
 			response, err := client.Get("http://127.0.0.1:30001/health")
 			if err == nil && response.StatusCode == 200 {
-				break
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err == nil && strings.Contains(string(buffer), "OK") {
+					break
+				}
+				response.Body.Close()
 			}
 		}
 
