@@ -1,4 +1,0 @@
-{
-  "pluginsFile": "tests/e2e/plugins/index.js",
-  "baseUrl": "http://127.0.0.1:20000"
-}
