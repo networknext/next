@@ -153,7 +153,10 @@ func isReady() bool {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	ready := isReady()
-	if ready {
+	routeMatrixMutex.RLock()
+	hasRouteMatrix := len(routeMatrixData) > 0
+	routeMatrixMutex.RUnlock()
+	if ready && hasRouteMatrix {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
@@ -187,7 +190,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		relayData := service.RelayData()
 		relayJSON := RelayJSON{}
-		relayJSON.RelayIds = make([]string, relayData.NumRelays)
+			relayJSON.RelayIds = make([]string, relayData.NumRelays)
 		relayJSON.RelayNames = relayData.RelayNames
 		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
 		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
