@@ -152,11 +152,8 @@ func isReady() bool {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	not_ready := !isReady()
-	if not_ready {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(http.StatusText(http.StatusInternalServerError)))
-	} else {
+	ready := isReady()
+	if ready {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
@@ -202,7 +199,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
-			relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
+		relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
 			relayJSON.RelayAddresses[i] = relayData.RelayAddresses[i].String()
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {

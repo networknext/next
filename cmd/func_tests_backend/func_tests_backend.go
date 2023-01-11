@@ -1958,7 +1958,11 @@ func test_relay_backend() {
 		for {
 			response, err := client.Get("http://127.0.0.1:30001/health")
 			if err == nil && response.StatusCode == 200 {
-				break
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err == nil && strings.Contains(string(buffer), "OK") {
+					break
+				}
+				response.Body.Close()
 			}
 		}
 
