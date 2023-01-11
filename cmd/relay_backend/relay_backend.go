@@ -115,6 +115,10 @@ func main() {
 
 	service.OverrideHealthHandler(healthHandler)
 
+	service.StartWebServer()
+
+	service.LeaderElection(false)
+
 	ProcessRelayUpdates(service, relayManager)
 
 	UpdateRouteMatrix(service, relayManager)
@@ -128,12 +132,9 @@ func UpdateReadyState(service *common.Service) {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			core.Debug("waiting until ready...")
 			delayReady := time.Since(startTime) >= readyDelay
 			if delayReady {
 				core.Log("relay backend is ready")
-				service.StartWebServer()
-				service.LeaderElection(false)
 				readyMutex.Lock()
 				ready = true
 				readyMutex.Unlock()
@@ -154,6 +155,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	not_ready := !isReady()
 	if not_ready {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(http.StatusText(http.StatusInternalServerError)))
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
@@ -584,29 +586,26 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// store our most recent cost and route matrix in redis
 
-				if isReady() {
-
-					dataStores := []common.DataStoreConfig{
-						{
-							Name: "relays",
-							Data: relaysCSVDataNew,
-						},
-						{
-							Name: "cost_matrix",
-							Data: costMatrixDataNew,
-						},
-						{
-							Name: "route_matrix",
-							Data: routeMatrixDataNew,
-						},
-					}
-
-					service.UpdateLeaderStore(dataStores)
+				dataStores := []common.DataStoreConfig{
+					{
+						Name: "relays",
+						Data: relaysCSVDataNew,
+					},
+					{
+						Name: "cost_matrix",
+						Data: costMatrixDataNew,
+					},
+					{
+						Name: "route_matrix",
+						Data: routeMatrixDataNew,
+					},
 				}
+
+				service.UpdateLeaderStore(dataStores)
 
 				// load the master cost and route matrix from redis (leader election)
 
-				dataStores := service.LoadLeaderStore()
+				dataStores = service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
 					// IMPORTANT: don't error unless we've already seen data stores succeed once, and it is failing now
