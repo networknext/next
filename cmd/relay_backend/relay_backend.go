@@ -157,8 +157,11 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	hasRouteMatrix := len(routeMatrixData) > 0
 	routeMatrixMutex.RUnlock()
 	if ready && hasRouteMatrix {
+		core.Debug("health check OK")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
+	} else {
+		core.Debug("health check NOT OK")
 	}
 }
 
