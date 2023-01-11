@@ -117,18 +117,16 @@ func main() {
 
 	service.OverrideHealthHandler(healthHandler)
 
-	service.StartWebServer()
-
 	ProcessRelayUpdates(service, relayManager)
 
 	UpdateRouteMatrix(service, relayManager)
 
-	UpdateReadyState()
+	UpdateReadyState(service)
 
 	service.WaitForShutdown()
 }
 
-func UpdateReadyState() {
+func UpdateReadyState(service *common.Service) {
 	go func() {
 		for {
 			time.Sleep(time.Second)
@@ -145,6 +143,7 @@ func UpdateReadyState() {
 
 			if routeMatrixReady && routeMatrixInternalReady && delayReady {
 				core.Log("relay backend is ready")
+				service.StartWebServer()
 				readyMutex.Lock()
 				ready = true
 				readyMutex.Unlock()
