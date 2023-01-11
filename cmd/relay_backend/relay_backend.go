@@ -113,9 +113,11 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	service.LeaderElection(false)
-
 	service.OverrideHealthHandler(healthHandler)
+
+	service.StartWebServer()
+
+	service.LeaderElection(false)
 
 	ProcessRelayUpdates(service, relayManager)
 
@@ -130,20 +132,9 @@ func UpdateReadyState(service *common.Service) {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-
-			routeMatrixMutex.RLock()
-			routeMatrixReady := len(routeMatrixData) > 0
-			routeMatrixMutex.RUnlock()
-
-			routeMatrixInternalMutex.RLock()
-			routeMatrixInternalReady := len(routeMatrixInternalData) > 0
-			routeMatrixInternalMutex.RUnlock()
-
 			delayReady := time.Since(startTime) >= readyDelay
-
-			if routeMatrixReady && routeMatrixInternalReady && delayReady {
+			if delayReady {
 				core.Log("relay backend is ready")
-				service.StartWebServer()
 				readyMutex.Lock()
 				ready = true
 				readyMutex.Unlock()
@@ -161,12 +152,11 @@ func isReady() bool {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-
-	not_ready := !isReady()
-
-	if not_ready {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
+	ready := isReady()
+	routeMatrixMutex.RLock()
+	hasRouteMatrix := len(routeMatrixData) > 0
+	routeMatrixMutex.RUnlock()
+	if ready && hasRouteMatrix {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
@@ -200,7 +190,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		relayData := service.RelayData()
 		relayJSON := RelayJSON{}
-		relayJSON.RelayIds = make([]string, relayData.NumRelays)
+			relayJSON.RelayIds = make([]string, relayData.NumRelays)
 		relayJSON.RelayNames = relayData.RelayNames
 		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
 		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
@@ -212,7 +202,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
-			relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
+		relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
 			relayJSON.RelayAddresses[i] = relayData.RelayAddresses[i].String()
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {
@@ -503,6 +493,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
+	hasSeenDataStores := false
+
 	go func() {
 
 		for {
@@ -616,11 +608,15 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				dataStores = service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
-					if isReady() {
-						core.Error("failed to get data stores from redis selector") // don't complain unless we are ready. otherwise, this is benign.
+					// IMPORTANT: don't error unless we've already seen data stores succeed once, and it is failing now
+					// otherwise, we get error spam on startup while we are waiting for the first leader to be elected
+					if hasSeenDataStores {
+						core.Error("could not get data stores from redis selector")
 					}
 					continue
 				}
+
+				hasSeenDataStores = true
 
 				relaysCSVDataNew = dataStores[0].Data
 				if relaysCSVDataNew == nil {
