@@ -4,9 +4,9 @@ terraform {
     google = {
       source = "hashicorp/google"
     }
-    google-beta = {
+    /*google-beta = {
       source = "hashicorp/google-beta"
-    }
+    }*/
     random = {
       source = "hashicorp/random"
     }
