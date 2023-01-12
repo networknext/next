@@ -211,7 +211,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	NearRelayIds                    [SDK5_MaxNearRelays]uint64
 	NearRelayRTT                    [SDK5_MaxNearRelays]int32
 	NearRelayJitter                 [SDK5_MaxNearRelays]int32
-	NearRelayPacketLoss             [SDK5_MaxNearRelays]int32
+	NearRelayPacketLoss             [SDK5_MaxNearRelays]float32
 	DirectKbpsUp                    uint32
 	DirectKbpsDown                  uint32
 	NextKbpsUp                      uint32
@@ -306,7 +306,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		if packet.HasNearRelayPings {
 			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
 			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, SDK5_MaxNearRelayPacketLoss)
+			stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
 		}
 	}
 

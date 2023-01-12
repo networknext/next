@@ -27,6 +27,7 @@ const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
 const LatencyThreshold = 15
+const PacketLossThreshold = 0.1
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -1211,7 +1212,7 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, out_sourceRelayLatency []int32) {
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, out_sourceRelayLatency []int32) {
 
 	// calculate average jitter
 
@@ -1263,8 +1264,8 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with packet loss higher than direct
-		if sourceRelayPacketLoss[i] > directPacketLoss {
+		// exclude relays with packet loss significantly higher than direct
+		if sourceRelayPacketLoss[i] > directPacketLoss + PacketLossThreshold {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}

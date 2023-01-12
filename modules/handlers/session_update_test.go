@@ -3193,7 +3193,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	copy(state.Request.NearRelayIds[:], []uint64{1, 2, 3})
 	copy(state.Request.NearRelayRTT[:], []int32{10, 20, 30})
 	copy(state.Request.NearRelayJitter[:], []int32{0, 0, 0})
-	copy(state.Request.NearRelayPacketLoss[:], []int32{0, 0, 0})
+	copy(state.Request.NearRelayPacketLoss[:], []float32{0, 0, 0})
 
 	// update near relays
 

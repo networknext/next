@@ -516,7 +516,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 		directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
 		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-		directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
+		directPacketLoss := state.Request.DirectPacketLoss
 
 		sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
 		sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]

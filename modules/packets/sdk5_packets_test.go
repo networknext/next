@@ -248,7 +248,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		if packet.HasNearRelayPings {
 			packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
 			packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
-			packet.NearRelayPacketLoss[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayPacketLoss))
+			packet.NearRelayPacketLoss[i] = rand.Float32()
 		}
 	}
 
