@@ -27,7 +27,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 dist/website_cruncher $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -130,3 +130,5 @@ dist/func_client5: dist/$(SDKNAME5).so cmd/func_client5/*
 
 .PHONY: func-test-sdk5
 func-test-sdk5: dist/reference_relay dist/func_server5 dist/func_client5 dist/func_backend5 dist/func_tests_sdk5
+
+# 
