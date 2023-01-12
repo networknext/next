@@ -22,7 +22,10 @@ import (
 )
 
 const (
-	TOP_SESSIONS_COUNT = 10
+	TOP_SESSIONS_COUNT            = 10
+	STATS_DATASTORE               = "live_stats"
+	TOP_SESSIONS_DATASTORE        = "top_sessions"
+	LIVE_SESSION_COUNTS_DATASTORE = "live_session_counts"
 )
 
 var landingPageStatsMutex sync.RWMutex
@@ -449,6 +452,8 @@ func StartLookerDataCollection(service *common.Service) {
 
 				stats := LookerStats{}
 
+				// TODO: update stats using Looker
+
 				if err := updateDataStore(service, stats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
 					core.Error("failed to update data store with new looker stats: %v", err)
 					continue
@@ -480,15 +485,15 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 
 	dataStores := []common.DataStoreConfig{
 		{
-			Name: "live_stats",
+			Name: STATS_DATASTORE,
 			Data: statsBuffer.Bytes(),
 		},
 		{
-			Name: "top_sessions",
+			Name: TOP_SESSIONS_DATASTORE,
 			Data: topSessionsBuffer.Bytes(),
 		},
 		{
-			Name: "session_counts",
+			Name: LIVE_SESSION_COUNTS_DATASTORE,
 			Data: sessionCountsBuffer.Bytes(),
 		},
 	}
