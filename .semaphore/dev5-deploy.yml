@@ -86,22 +86,23 @@ blocks:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz gs://dev5_artifacts
 
-    - name: "Terraform apply"
+  - name: "Terraform apply"
 
-      dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
 
-      task:
-        secrets:
-          - name: terraform-key
-          - name: gcp
-        jobs:
+    task:
+      secrets:
+        - name: terraform-key
+        - name: gcp
+        
+      jobs:
 
-          -name: "Apply new changes"
-            commands:
-              - checkout
-              - chmod 0600 ~/.ssh/id_rsa_semaphore_terraform
-              - cd ~/backend/.semaphore
-              - terraform init
-              - terraform plan
-              - terraform apply -auto-approve
-              - terraform show terraform.tfstate
+        -name: "Apply new changes"
+          commands:
+            - checkout
+            - chmod 0600 ~/.ssh/id_rsa_semaphore_terraform
+            - cd ~/backend/.semaphore
+            - terraform init
+            - terraform plan
+            - terraform apply -auto-approve
+            - terraform show terraform.tfstate
