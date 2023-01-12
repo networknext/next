@@ -257,7 +257,6 @@ func StartRedisDataCollection(service *common.Service) {
 				core.Debug("%+v", topSessionsB)
 
 				metaPipeline := redisClient.Pipeline()
-				defer metaPipeline.Close()
 
 				cmdOutputs := make([]*redis.StringCmd, 0)
 
@@ -291,12 +290,23 @@ func StartRedisDataCollection(service *common.Service) {
 				for i := 0; i < len(sessionIDsRetreivedMap); i++ {
 					metaString := cmds[i].String()
 
-					core.Debug("meta string: %s", metaString)
-
 					if metaString == "" {
 						core.Error("meta data string is empty: %v", cmds[i].Err())
 						continue
 					}
+
+					parseableStrings := strings.SplitN(metaString, ": ", 2)
+
+					if len(parseableStrings) < 2 {
+						core.Error("failed to split redis string. Meta string: %s", metaString)
+						continue
+					}
+
+					core.Debug("---------------------------------------------------")
+					core.Debug("sub strings (%d): %v", len(parseableStrings), parseableStrings)
+					core.Debug("not parsed: %s", parseableStrings[0])
+					core.Debug("parsed: %s", parseableStrings[1])
+					core.Debug("---------------------------------------------------")
 
 					splitMetaStrings := strings.Split(metaString, "|")
 					if err := meta.ParseRedisString(splitMetaStrings); err != nil {
@@ -371,16 +381,13 @@ func StartRedisDataCollection(service *common.Service) {
 					}
 				}
 
-				topSessionsListMutex.Lock()
-				topSessionsList = topSessions
-				topSessionsListMutex.Unlock()
+				metaPipeline.Close()
 
 				// Total Counts
 
 				liveSessionCounts := LiveSessionCounts{}
 
 				countsPipeline := redisClient.Pipeline()
-				defer countsPipeline.Close()
 
 				firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
 				if err != nil {
@@ -425,6 +432,8 @@ func StartRedisDataCollection(service *common.Service) {
 				for i := 0; i < len(secondTotalCounts); i++ {
 					// TODO
 				}
+
+				countsPipeline.Close()
 
 				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
 					core.Error("failed to update data store with new top sessions and counts: %v", err)
