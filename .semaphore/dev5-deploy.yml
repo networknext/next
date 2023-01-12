@@ -100,7 +100,7 @@ blocks:
             commands:
               - checkout
               - chmod 0600 ~/.ssh/id_rsa_semaphore_terraform
-              - cd gcloud
+              - cd ~/backend/.semaphore
               - terraform init
               - terraform plan
               - terraform apply -auto-approve
