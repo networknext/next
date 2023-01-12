@@ -1263,12 +1263,6 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with latency significantly higher than direct
-		if sourceRelayLatency[i] > directLatency+LatencyThreshold {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
 		// exclude relays with packet loss higher than direct
 		if sourceRelayPacketLoss[i] > directPacketLoss {
 			out_sourceRelayLatency[i] = 255

@@ -6149,52 +6149,6 @@ func TestFilterSourceRelays_HighPacketLoss(t *testing.T) {
 	}
 }
 
-func TestFilterSourceRelays_LatencyAboveDirect(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	directLatency := int32(10)
-	directJitter := int32(0)
-	directPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{1, 1, 100, 1, 1}
-	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
-
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
-
-	FilterSourceRelays(relayIdToIndex,
-		directLatency,
-		directJitter,
-		directPacketLoss,
-		sourceRelayIds,
-		sourceRelayLatency,
-		sourceRelayJitter,
-		sourceRelayPacketLoss,
-		outputSourceRelayLatency[:])
-
-	for i := range sourceRelayIds {
-		if i != 2 {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
-		} else {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
-		}
-	}
-}
-
 func TestFilterSourceRelays_PacketLossAboveDirect(t *testing.T) {
 
 	t.Parallel()
