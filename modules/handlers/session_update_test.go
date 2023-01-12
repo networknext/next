@@ -3191,7 +3191,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 
 	state.Request.NumNearRelays = 3
 	copy(state.Request.NearRelayIds[:], []uint64{1, 2, 3})
-	copy(state.Request.NearRelayRTT[:], []int32{1, 100, 100})
+	copy(state.Request.NearRelayRTT[:], []int32{10, 20, 30})
 	copy(state.Request.NearRelayJitter[:], []int32{0, 0, 0})
 	copy(state.Request.NearRelayPacketLoss[:], []int32{0, 0, 0})
 
@@ -3218,9 +3218,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
 	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
 
-	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(10))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(20))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(30))
 
 	assert.Equal(t, len(state.SourceRelays), 3)
 	assert.Equal(t, len(state.SourceRelayRTT), 3)
@@ -3229,9 +3229,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.SourceRelays[1], int32(1))
 	assert.Equal(t, state.SourceRelays[2], int32(2))
 
-	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
-	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
-	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+	assert.Equal(t, state.SourceRelayRTT[0], int32(10))
+	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
+	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
 
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
@@ -3313,7 +3313,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 
 	state.Output.HeldNumNearRelays = 3
 	copy(state.Output.HeldNearRelayIds[:], []uint64{1, 2, 3})
-	copy(state.Output.HeldNearRelayRTT[:], []int32{1, 255, 255})
+	copy(state.Output.HeldNearRelayRTT[:], []int32{10, 20, 30})
 
 	// update near relays
 
@@ -3338,9 +3338,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
 	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
 
-	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(1))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(255))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(255))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(10))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(20))
+	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(30))
 
 	assert.Equal(t, len(state.SourceRelays), 3)
 	assert.Equal(t, len(state.SourceRelayRTT), 3)
@@ -3349,9 +3349,9 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.SourceRelays[1], int32(1))
 	assert.Equal(t, state.SourceRelays[2], int32(2))
 
-	assert.Equal(t, state.SourceRelayRTT[0], int32(1))
-	assert.Equal(t, state.SourceRelayRTT[1], int32(255))
-	assert.Equal(t, state.SourceRelayRTT[2], int32(255))
+	assert.Equal(t, state.SourceRelayRTT[0], int32(10))
+	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
+	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
 
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
