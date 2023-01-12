@@ -130,15 +130,16 @@ resource "google_compute_autoscaler" "autoscale_magic_backend" {
 HTTP load balancer
 ****/
 module "gce-lb-http" {
-  source            = "GoogleCloudPlatform/lb-http/google"
-  name              = "magic-backend-mig-http-lb"
-  project           = var.project
-  #target_tags       = ["default"]
-  #firewall_networks = ["default"]
-
+  source  = "GoogleCloudPlatform/lb-http/google"
+  name    = "magic-backend-mig-http-lb"
+  project = var.project
+  #target_tags       = ["http-server"]
+  firewall_networks = ["default"]
+  #load_balancing_scheme = "INTERNAL"
 
   backends = {
     default = {
+      name                            = "magic-backend-internal-lb"
       description                     = null
       protocol                        = "HTTP"
       port                            = 80
@@ -152,12 +153,15 @@ module "gce-lb-http" {
       affinity_cookie_ttl_sec         = null
       custom_request_headers          = null
       custom_response_headers         = null
+      load_balancing_scheme           = "INTERNAL"
+      region                          = var.region
+
 
       health_check = {
-        check_interval_sec  = null
-        timeout_sec         = null
-        healthy_threshold   = null
-        unhealthy_threshold = null
+        check_interval_sec  = 1
+        timeout_sec         = 1
+        healthy_threshold   = 2
+        unhealthy_threshold = 2
         request_path        = "/health"
         port                = 80
         host                = null
@@ -172,8 +176,8 @@ module "gce-lb-http" {
       groups = [
         {
           group                        = google_compute_instance_group_manager.magic_backend_mig.instance_group
-          balancing_mode               = null
-          capacity_scaler              = null
+          balancing_mode               = "UTILIZATION"
+          capacity_scaler              = 1.0
           description                  = null
           max_connections              = null
           max_connections_per_instance = null
@@ -193,3 +197,39 @@ module "gce-lb-http" {
     }
   }
 }
+
+/****
+Internal Load balancer
+****
+module "gce-ilb" {
+  source       = "GoogleCloudPlatform/lb-internal/google"
+  project      = var.project
+  region       = var.region
+  name         = "internal-load-balancer"
+  source_tags  = ["source-tag-foo"]
+  target_tags  = ["target-tag-bar"]
+  health_check = {
+    type                = "http"
+    check_interval_sec  = 1
+    healthy_threshold   = 2
+    timeout_sec         = 1
+    unhealthy_threshold = 2
+    response            = ""
+    proxy_header        = "NONE"
+    port                = 80
+    port_name           = "health-check-port"
+    request             = ""
+    request_path        = "/health"
+    host                = "1.2.3.4"
+    enable_log          = false
+  }
+  ports = ["80"]
+  ip_protocol = "HTTP"
+  backends = [
+    {
+      group       = google_compute_instance_group_manager.magic_backend_mig.instance_group
+      description = ""
+      failover    = false
+    },
+  ]
+}*/
