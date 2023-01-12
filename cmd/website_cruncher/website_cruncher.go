@@ -253,9 +253,6 @@ func StartRedisDataCollection(service *common.Service) {
 					continue
 				}
 
-				core.Debug("%+v", topSessionsA)
-				core.Debug("%+v", topSessionsB)
-
 				metaPipeline := redisClient.Pipeline()
 
 				cmdOutputs := make([]*redis.StringCmd, 0)
@@ -273,8 +270,6 @@ func StartRedisDataCollection(service *common.Service) {
 						sessionIDsRetreivedMap[sessionID] = true
 					}
 				}
-
-				core.Debug("%+v", sessionIDsRetreivedMap)
 
 				cmds, err := metaPipeline.Exec(ctx)
 				if err != nil {
@@ -302,13 +297,7 @@ func StartRedisDataCollection(service *common.Service) {
 						continue
 					}
 
-					core.Debug("---------------------------------------------------")
-					core.Debug("sub strings (%d): %v", len(parseableStrings), parseableStrings)
-					core.Debug("not parsed: %s", parseableStrings[0])
-					core.Debug("parsed: %s", parseableStrings[1])
-					core.Debug("---------------------------------------------------")
-
-					splitMetaStrings := strings.Split(metaString, "|")
+					splitMetaStrings := strings.Split(parseableStrings[1], "|")
 					if err := meta.ParseRedisString(splitMetaStrings); err != nil {
 						core.Error("failed to parse meta data string: %v", err)
 						continue
