@@ -68,7 +68,7 @@ func main() {
 
 	StartRedisDataCollection(service)
 
-	StartLookerDataCollection(service)
+	// StartLookerDataCollection(service)
 
 	service.Router.HandleFunc("/stats", getAllStats())
 	service.Router.HandleFunc("/sessions/counts", getLiveSessionCounts())
@@ -216,7 +216,7 @@ func StartRedisDataCollection(service *common.Service) {
 
 	ticker := time.NewTicker(liveStatsRefreshInterval)
 
-	timeoutContext, _ := context.WithTimeout(service.Context, time.Second*30)
+	ctx := service.Context
 
 	go func(ctx context.Context, client *redis.Client) {
 		for {
@@ -225,7 +225,7 @@ func StartRedisDataCollection(service *common.Service) {
 			case <-service.Context.Done():
 				return
 			case <-ticker.C:
-				_, err := redisClient.Ping(service.Context).Result()
+				_, err := redisClient.Ping(ctx).Result()
 				if err != nil {
 					core.Error("failed to ping redis: %v", err)
 					continue
@@ -250,6 +250,9 @@ func StartRedisDataCollection(service *common.Service) {
 					continue
 				}
 
+				fmt.Println(topSessionsA)
+				fmt.Println(topSessionsB)
+
 				metaPipeline := redisClient.TxPipeline()
 				defer metaPipeline.Close()
 
@@ -264,6 +267,8 @@ func StartRedisDataCollection(service *common.Service) {
 						sessionIDsRetreivedMap[sessionID] = true
 					}
 				}
+
+				fmt.Println(sessionIDsRetreivedMap)
 
 				cmds, err := metaPipeline.Exec(ctx)
 				if err != nil {
@@ -358,58 +363,63 @@ func StartRedisDataCollection(service *common.Service) {
 				topSessionsList = topSessions
 				topSessionsListMutex.Unlock()
 
-				// Total Counts
+				/*
 
-				liveSessionCounts := LiveSessionCounts{}
+					// Total Counts
 
-				countsPipeline := redisClient.Pipeline()
-				defer countsPipeline.Close()
+					liveSessionCounts := LiveSessionCounts{}
 
-				firstNextCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("n-*-%d", minutes-1)).Result()
-				if err != nil {
-					core.Error("failed to get first set of counts: %v", err)
-					continue
-				}
-				secondNextCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("n-*-%d", minutes)).Result()
-				if err != nil {
-					core.Error("failed to get second set of counts: %v", err)
-					continue
-				}
+					countsPipeline := redisClient.Pipeline()
+					defer countsPipeline.Close()
 
-				for i := 0; i < len(firstNextCounts); i++ {
-					// TODO
-				}
+					firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondNextCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("n-*-%d", minutes)).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
 
-				for i := 0; i < len(secondNextCounts); i++ {
-					// TODO
-				}
+					fmt.Printf("%+v\n", firstNextCounts)
 
-				firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
-				if err != nil {
-					core.Error("failed to get first set of counts: %v", err)
-					continue
-				}
-				secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
-				if err != nil {
-					core.Error("failed to get second set of counts: %v", err)
-					continue
-				}
+					for i := 0; i < len(firstNextCounts); i++ {
+						// TODO
+					}
 
-				for i := 0; i < len(firstTotalCounts); i++ {
-					// TODO
-				}
+					for i := 0; i < len(secondNextCounts); i++ {
+						// TODO
+					}
 
-				for i := 0; i < len(secondTotalCounts); i++ {
-					// TODO
-				}
+					firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
 
-				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
-					core.Error("failed to update data store with new top sessions and counts: %v", err)
-					continue
-				}
+					for i := 0; i < len(firstTotalCounts); i++ {
+						// TODO
+					}
+
+					for i := 0; i < len(secondTotalCounts); i++ {
+						// TODO
+					}
+
+					if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
+						core.Error("failed to update data store with new top sessions and counts: %v", err)
+						continue
+					}
+				*/
 			}
 		}
-	}(timeoutContext, redisClient)
+	}(ctx, redisClient)
 }
 
 // ------------------------------------------------------------------------------------------
