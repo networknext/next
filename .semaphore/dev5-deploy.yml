@@ -88,7 +88,7 @@ blocks:
 
   - name: "Terraform apply"
 
-    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Publish Artifacts"]
 
     task:
       secrets:
