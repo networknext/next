@@ -27,7 +27,7 @@ const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
 const LatencyThreshold = 15
-const PacketLossThreshold = 0.1
+const PacketLossThreshold = 1
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
