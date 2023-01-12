@@ -3125,7 +3125,7 @@ struct NextClientStatsPacket
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
@@ -3169,7 +3169,7 @@ struct NextClientStatsPacket
             {
                 serialize_int( stream, near_relay_rtt[i], 0, 255 );
                 serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
+                serialize_float( stream, near_relay_packet_loss[i] );
             }
         }
         serialize_uint64( stream, packets_sent_client_to_server );
@@ -7901,7 +7901,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
                 int rtt = (int) ceil( client->near_relay_stats.relay_rtt[i] );
                 int jitter = (int) ceil( client->near_relay_stats.relay_jitter[i] );
-                int packet_loss = (int) floor( client->near_relay_stats.relay_packet_loss[i] + 0.5f );
+                float packet_loss = client->near_relay_stats.relay_packet_loss[i];
 
                 if ( rtt > 255 )
                     rtt = 255;
@@ -7914,8 +7914,21 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
                 packet.near_relay_rtt[i] = uint8_t( rtt );
                 packet.near_relay_jitter[i] = uint8_t( jitter );
-                packet.near_relay_packet_loss[i] = uint8_t( packet_loss );
+                packet.near_relay_packet_loss[i] = packet_loss;
             }
+
+            // todo
+            if ( packet.num_near_relays )
+            {
+	            printf( "------------------------------\n" );
+	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f\n", int(packet.direct_min_rtt), int(packet.direct_jitter), packet.direct_packet_loss );
+	            printf( "------------------------------\n" );
+	            for ( int i = 0; i < packet.num_near_relays; i++ )
+	            {
+	            	printf( "%" PRIx64 ": rtt = %d, jitter = %d, packet loss = %.2f\n", packet.near_relay_ids[i], packet.near_relay_rtt[i], packet.near_relay_jitter[i], packet.near_relay_packet_loss[i] );
+	            }
+	            printf( "------------------------------\n" );
+	        }
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );
@@ -8501,9 +8514,9 @@ void next_client_update( next_client_t * client )
 
                 if ( !packet_received->direct )
                 {
-                    next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-                    const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
-                    next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+	                next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
+	                const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
+	                next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
@@ -9786,7 +9799,7 @@ struct NextBackendSessionUpdateRequestPacket
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
     uint32_t direct_kbps_up;
     uint32_t direct_kbps_down;
     uint32_t next_kbps_up;
@@ -9904,7 +9917,7 @@ struct NextBackendSessionUpdateRequestPacket
             {
                 serialize_int( stream, near_relay_rtt[i], 0, 255 );
                 serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
+                serialize_float( stream, near_relay_packet_loss[i] );
             }
         }
 
@@ -10065,7 +10078,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(5)
 
-    uint8_t stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
 
