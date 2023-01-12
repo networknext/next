@@ -4,9 +4,9 @@ terraform {
     google = {
       source = "hashicorp/google"
     }
-    /*google-beta = {
+    google-beta = {
       source = "hashicorp/google-beta"
-    }*/
+    }
     random = {
       source = "hashicorp/random"
     }
@@ -17,6 +17,14 @@ terraform {
 }
 
 provider "google" {
+  credentials = file(var.credentials_file)
+
+  project = var.project
+  region  = var.region
+  zone    = var.zone
+}
+
+provider "google-beta" {
   credentials = file(var.credentials_file)
 
   project = var.project
