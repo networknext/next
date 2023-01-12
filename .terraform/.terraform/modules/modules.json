@@ -1,1 +1,1 @@
-{"Modules":[{"Key":"gce-lb-http","Source":"registry.terraform.io/GoogleCloudPlatform/lb-http/google","Version":"4.5.0","Dir":".terraform/modules/gce-lb-http"},{"Key":"","Source":"","Dir":"."}]}
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"gce-ilb","Source":"registry.terraform.io/GoogleCloudPlatform/lb-internal/google","Version":"5.0.0","Dir":".terraform/modules/gce-ilb"},{"Key":"gce-lb-http","Source":"registry.terraform.io/GoogleCloudPlatform/lb-http/google","Version":"6.3.0","Dir":".terraform/modules/gce-lb-http"}]}
