@@ -254,8 +254,9 @@ func StartRedisDataCollection(service *common.Service) {
 				}
 
 				core.Debug("%+v", topSessionsA)
+				core.Debug("%+v", topSessionsB)
 
-				metaPipeline := redisClient.TxPipeline()
+				metaPipeline := redisClient.Pipeline()
 				defer metaPipeline.Close()
 
 				sessionIDsRetreivedMap := make(map[string]bool)
@@ -282,6 +283,8 @@ func StartRedisDataCollection(service *common.Service) {
 				var meta transport.SessionMeta               // TODO: avoid using transport structs
 				for i := 0; i < len(sessionIDsRetreivedMap); i++ {
 					metaString := cmds[i].String()
+
+					core.Debug("meta string: %s", metaString)
 
 					if metaString == "" {
 						core.Error("meta data string is empty: %v", cmds[i].Err())
@@ -377,7 +380,7 @@ func StartRedisDataCollection(service *common.Service) {
 					core.Error("failed to get first set of counts: %v", err)
 					continue
 				}
-				secondNextCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("n-*-%d", minutes)).Result()
+				secondNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes), -1).Result()
 				if err != nil {
 					core.Error("failed to get second set of counts: %v", err)
 					continue
