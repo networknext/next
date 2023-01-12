@@ -94,10 +94,10 @@ blocks:
       secrets:
         - name: terraform-key
         - name: gcp
-        
+
       jobs:
 
-        -name: "Apply new changes"
+        - name: "Apply new changes"
           commands:
             - checkout
             - chmod 0600 ~/.ssh/id_rsa_semaphore_terraform
