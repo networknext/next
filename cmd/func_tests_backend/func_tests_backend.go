@@ -1963,16 +1963,33 @@ func test_relay_backend() {
 
 		client := &http.Client{Transport: transport}
 
-		// wait until the relay backend is ready
+		// wait until the relay backend health checks both pass
 
 		for {
-			response, err := client.Get("http://127.0.0.1:30001/health")
+			readyCount := 0
+
+			response, err := client.Get("http://127.0.0.1:30001/vm_health")
 			if err == nil && response.StatusCode == 200 {
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err == nil && strings.Contains(string(buffer), "OK") {
-					break
+					fmt.Printf("vm_health is ready\n")
+					readyCount++
 				}
 				response.Body.Close()
+			}
+			
+			response, err = client.Get("http://127.0.0.1:30001/lb_health")
+			if err == nil && response.StatusCode == 200 {
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err == nil && strings.Contains(string(buffer), "OK") {
+					fmt.Printf("lb_health is ready\n")
+					readyCount++
+				}
+				response.Body.Close()
+			}
+			
+			if readyCount == 2 {
+				break
 			}
 		}
 

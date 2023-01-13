@@ -10,6 +10,14 @@ DONE
 
 TODO
 
+	--------------
+
+	The leader election is pretty clearly broken.
+
+	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
+
+	--------------
+
 	Make sure tests and happy path works with new health checks
 
 	--------------
