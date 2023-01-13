@@ -5,3 +5,7 @@
 	object = 83d73980ec43ed191ccaf4d076c69924bd8e3c9f
 	path = relay
 	type = expand module
+[map "7370988a-7f6b-33be-bf9e-8927eef69194"]
+	object = 725d4cd2671b3adec26b7892283f80d0bceff47c
+	path = relay
+	type = expand module
