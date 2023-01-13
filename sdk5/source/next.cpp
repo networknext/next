@@ -1,4 +1,4 @@
- /*
+/*
     Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -57,8 +57,8 @@
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
 #define NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE                   1000000
-#define NEXT_REPLAY_PROTECTION_BUFFER_SIZE                            256
-#define NEXT_PING_HISTORY_ENTRY_COUNT                                  64
+#define NEXT_REPLAY_PROTECTION_BUFFER_SIZE                           1024
+#define NEXT_PING_HISTORY_ENTRY_COUNT                                1024
 #define NEXT_CLIENT_STATS_WINDOW                                     10.0
 #define NEXT_PING_SAFETY                                              1.0
 #define NEXT_UPGRADE_TIMEOUT                                          5.0
