@@ -199,9 +199,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	NumTags                         int32
 	Tags                            [SDK5_MaxTags]uint64
 	ServerEvents                    uint64
-	DirectMinRTT                    float32
-	DirectMaxRTT                    float32
-	DirectPrimeRTT                  float32
+	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -287,9 +285,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		stream.SerializeUint64(&packet.ServerEvents)
 	}
 
-	stream.SerializeFloat32(&packet.DirectMinRTT)
-	stream.SerializeFloat32(&packet.DirectMaxRTT)
-	stream.SerializeFloat32(&packet.DirectPrimeRTT)
+	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 
