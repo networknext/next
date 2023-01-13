@@ -32,7 +32,7 @@
 const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
-const char * server_backend_hostname = "prod.spacecats.net";
+const char * server_backend_hostname = "prod5.spacecats.net";
 const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 // -------------------------------------------------------------
@@ -387,9 +387,7 @@ void print_server_stats( next_server_t * server, ServerContext * context )
 
         printf( "fallback_to_direct = %s\n", stats.fallback_to_direct ? "true" : "false" );
 
-        printf( "direct_min_rtt = %.2fms\n", stats.direct_min_rtt );
-        printf( "direct_max_rtt = %.2fms\n", stats.direct_max_rtt );
-        printf( "direct_prime_rtt = %.2fms\n", stats.direct_prime_rtt );
+        printf( "direct_rtt = %.2fms\n", stats.direct_rtt );
         printf( "direct_jitter = %.2fms\n", stats.direct_jitter );
         printf( "direct_packet_loss = %.1f%%\n", stats.direct_packet_loss );
 
