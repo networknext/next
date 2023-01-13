@@ -418,7 +418,6 @@ func (service *Service) IsLeader() bool {
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}
-
 	return false
 }
 

@@ -1,4 +1,4 @@
-/*
+ /*
     Network Next SDK. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
@@ -427,6 +427,9 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 }
 
 // -------------------------------------------------------------
+
+// todo
+#define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
@@ -14473,6 +14476,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
         next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
         next_assert( notify_direct_only );
+        notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
 
         next_platform_mutex_guard( &server->notify_mutex );
         next_queue_push( server->notify_queue, notify_direct_only );
@@ -14514,6 +14518,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
         next_assert( notify_direct_only );
+        notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
         next_platform_mutex_guard( &server->notify_mutex );
         next_queue_push( server->notify_queue, notify_direct_only );
         return;
@@ -14621,8 +14626,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server update response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
-            next_assert( notify_direct_only );
+    	    next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
+	        next_assert( notify_direct_only );
+	        notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify_direct_only );
             return;
