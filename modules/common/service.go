@@ -95,6 +95,8 @@ type Service struct {
 	routeMatrixDatabase *db.Database
 
 	googleCloudHandler *GoogleCloudHandler
+
+	lookerHandler *LookerHandler
 }
 
 func CreateService(serviceName string) *Service {
@@ -808,3 +810,39 @@ func (service *Service) SyncFiles(config *FileSyncConfig) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+
+func (service *Service) UseLooker() {
+
+	config := LookerHandlerConfig{}
+
+	config.HostURL = envvar.GetString("LOOKER_HOST_URL", "")
+	config.ClientID = envvar.GetString("LOOKER_CLIENT_ID", "")
+	config.Secret = envvar.GetString("LOOKER_CLIENT_SECRET", "")
+	config.APISecret = envvar.GetString("LOOKER_API_SECRET", "")
+
+	core.Log("looker host url: %s", config.HostURL)
+	core.Log("looker client id: %s", config.ClientID)
+	core.Log("looker client secret: %s", config.Secret)
+	core.Log("looker api secret: %s", config.APISecret)
+
+	lookerHandler, err := NewLookerHandler(config)
+	if err != nil {
+		core.Error("failed to create looker handler: %v", err)
+		os.Exit(1)
+	}
+
+	service.lookerHandler = lookerHandler
+}
+
+func (service *Service) FetchWebsiteStats() error {
+	newLookerStats, err := service.lookerHandler.RunWebsiteStatsQuery()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%+v\n", newLookerStats)
+
+	return nil
+}
+
+// ----------------------------------------------------------
