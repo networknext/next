@@ -10,6 +10,8 @@ DONE
 
 TODO
 
+	Setup raspberry_client and raspberry_server as commands in the main backend repo. This is a much better way to work, and we can leverage dev environment and semaphore to deploy them.
+
 	--------------
 
 	Server does not appear to be property detecting the fallback to direct only... this is needed so the server is robust, even when the server backend goes down.
