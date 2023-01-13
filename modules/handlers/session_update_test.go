@@ -1197,7 +1197,7 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -1268,7 +1268,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -1479,7 +1479,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -1705,7 +1705,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -1974,7 +1974,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -2197,7 +2197,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -2415,7 +2415,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -2641,7 +2641,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -2786,7 +2786,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	state := CreateState()
 
 	state.Input.RouteState.Next = false
-	state.Request.DirectMinRTT = 100
+	state.Request.DirectRTT = 100
 	state.Request.SliceNumber = 100
 	state.Debug = new(string)
 
@@ -2912,7 +2912,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	state.Request.Next = true
 	state.Request.NextRTT = 100
-	state.Request.DirectMinRTT = 1
+	state.Request.DirectRTT = 1
 
 	state.Input = state.Output
 

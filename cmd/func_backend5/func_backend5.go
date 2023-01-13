@@ -31,7 +31,7 @@ import (
 
 var TestRouterPrivateKey = []byte{}
 
-var TestBackendPrivateKey = []byte{}
+var TestServerBackendPrivateKey = []byte{}
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -499,7 +499,11 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestBackendPrivateKey)
+	if len(TestServerBackendPrivateKey) == 0 {
+		panic("missing server backend private key")
+	}
+
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestServerBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -624,8 +628,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	}
 
 	if backend.mode == BACKEND_MODE_DIRECT_STATS {
-		if requestPacket.DirectMinRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
-			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectMinRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
+		if requestPacket.DirectRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
+			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
 		}
 	}
 
@@ -738,7 +742,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:          int32(packets.SDK5_RouteTypeDirect),
 			NumTokens:          0,
 			Tokens:             nil,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -818,7 +822,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			Multipath:          multipath,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {
@@ -956,7 +960,7 @@ func main() {
 
 	TestRouterPrivateKey = envvar.GetBase64("TEST_ROUTER_PRIVATE_KEY", []byte{})
 
-	TestBackendPrivateKey = envvar.GetBase64("TEST_BACKEND_PRIVATE_KEY", []byte{})
+	TestServerBackendPrivateKey = envvar.GetBase64("TEST_SERVER_BACKEND_PRIVATE_KEY", []byte{})
 
 	relayPublicKey, _ = base64.StdEncoding.DecodeString("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 
