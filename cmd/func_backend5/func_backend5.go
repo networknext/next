@@ -738,7 +738,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:          int32(packets.SDK5_RouteTypeDirect),
 			NumTokens:          0,
 			Tokens:             nil,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -818,7 +818,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			Multipath:          multipath,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {
