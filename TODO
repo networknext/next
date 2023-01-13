@@ -16,7 +16,11 @@ DONE
 
 	Server does not appear to be property detecting the fallback to direct only... this is needed so the server is robust, even when the server backend goes down.
 
+	Add new spam log level
+
 TODO
+
+	--------
 
 	Create a raspberry_backend service in golang.
 
