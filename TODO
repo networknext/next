@@ -6,7 +6,17 @@ DONE
 
 	Configure raspberry customer so that it has fairly random selection of best routes, eg. by having a very wide route selection threshold, and route switch threshold
 
+	Split apart VM and LB health checks. They're not the same!
+
 TODO
+
+	Make sure tests and happy path works with new health checks
+
+	--------------
+
+	Setup services in dev with new health checks.
+
+	--------------
 
 	We need to track max direct packet loss seen
 
@@ -29,16 +39,6 @@ TODO
 	Set up dr strange so I can clone the raspberry repo to /mnt/c/raspberry
 
 	Build and run 25 raspberry pi clients on dr strange continuously.
-
-	--------------
-
-	We need to split apart lb health checks, from vm health checks.
-
-	lb health checks are "should I send traffic to this instance?"
-
-	vm health checks are "should I kill vm because it's crashed?"
-
-	they're not the same.
 
 	-----------------
 

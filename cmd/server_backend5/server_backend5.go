@@ -46,7 +46,7 @@ func main() {
 
 	service.UpdateRouteMatrix()
 
-	service.OverrideHealthHandler(healthHandler)
+	service.SetHealthFunctions(sendTrafficToMe(), machineIsHealthy())
 
 	service.StartUDPServer(packetHandler)
 
@@ -57,18 +57,13 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-
+func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
+	return routeMatrix != nil && database != nil
+}
 
-	not_ready := routeMatrix == nil || database == nil
-
-	if not_ready {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(http.StatusText(http.StatusOK)))
-	}
+func machineIsHealthy() bool {
+	return true
 }
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
