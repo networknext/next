@@ -130,8 +130,10 @@ func main() {
 
 func sendTrafficToMe(service *common.Service) func () bool {
 	return func () bool {
-		routeMatrix, database := service.RouteMatrixAndDatabase()
-		return routeMatrix != nil && database != nil
+		routeMatrixMutex.RLock()
+		hasRouteMatrix := routeMatrixData != nil
+		routeMatrixMutex.RUnlock()
+		return isReady() && hasRouteMatrix
 	}
 }
 
