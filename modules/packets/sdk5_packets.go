@@ -199,9 +199,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	NumTags                         int32
 	Tags                            [SDK5_MaxTags]uint64
 	ServerEvents                    uint64
-	DirectMinRTT                    float32
-	DirectMaxRTT                    float32
-	DirectPrimeRTT                  float32
+	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -211,7 +209,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	NearRelayIds                    [SDK5_MaxNearRelays]uint64
 	NearRelayRTT                    [SDK5_MaxNearRelays]int32
 	NearRelayJitter                 [SDK5_MaxNearRelays]int32
-	NearRelayPacketLoss             [SDK5_MaxNearRelays]int32
+	NearRelayPacketLoss             [SDK5_MaxNearRelays]float32
 	DirectKbpsUp                    uint32
 	DirectKbpsDown                  uint32
 	NextKbpsUp                      uint32
@@ -287,9 +285,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		stream.SerializeUint64(&packet.ServerEvents)
 	}
 
-	stream.SerializeFloat32(&packet.DirectMinRTT)
-	stream.SerializeFloat32(&packet.DirectMaxRTT)
-	stream.SerializeFloat32(&packet.DirectPrimeRTT)
+	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 
@@ -306,7 +302,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		if packet.HasNearRelayPings {
 			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
 			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, SDK5_MaxNearRelayPacketLoss)
+			stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
 		}
 	}
 
