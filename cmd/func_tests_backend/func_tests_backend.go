@@ -83,11 +83,20 @@ func test_magic_backend() {
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
 
-	// test the health check
+	// test the vm health check
 
-	response, err := http.Get("http://127.0.0.1:40000/health")
+	response, err := http.Get("http://127.0.0.1:40000/vm_health")
 	if err != nil || response.StatusCode != 200 {
-		fmt.Printf("error: health check failed\n")
+		fmt.Printf("error: vm health check failed\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
+
+	// test the lb health check
+
+	response, err = http.Get("http://127.0.0.1:40000/lb_health")
+	if err != nil || response.StatusCode != 200 {
+		fmt.Printf("error: lb health check failed\n")
 		cmd.Process.Signal(syscall.SIGTERM)
 		os.Exit(1)
 	}
@@ -1843,7 +1852,7 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
-	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=1s")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=5s")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DISABLE_GOOGLE_PUBSUB=1")
 
 	var relay_backend_output bytes.Buffer
@@ -1851,9 +1860,10 @@ func test_relay_backend() {
 	relay_backend_cmd.Stderr = &relay_backend_output
 	relay_backend_cmd.Start()
 
-	// wait until the relay gateway and relay backend are ready
+	// wait until the relay gateway and relay backend are ready to serve http
 
 	for {
+
 		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
 			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
 			break
@@ -1953,11 +1963,32 @@ func test_relay_backend() {
 
 		client := &http.Client{Transport: transport}
 
-		// wait until the relay backend is ready
+		// wait until the relay backend health checks both pass
 
 		for {
-			response, err := client.Get("http://127.0.0.1:30001/health")
+			readyCount := 0
+
+			response, err := client.Get("http://127.0.0.1:30001/vm_health")
 			if err == nil && response.StatusCode == 200 {
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err == nil && strings.Contains(string(buffer), "OK") {
+					fmt.Printf("vm_health is ready\n")
+					readyCount++
+				}
+				response.Body.Close()
+			}
+			
+			response, err = client.Get("http://127.0.0.1:30001/lb_health")
+			if err == nil && response.StatusCode == 200 {
+				buffer, err := ioutil.ReadAll(response.Body)
+				if err == nil && strings.Contains(string(buffer), "OK") {
+					fmt.Printf("lb_health is ready\n")
+					readyCount++
+				}
+				response.Body.Close()
+			}
+			
+			if readyCount == 2 {
 				break
 			}
 		}

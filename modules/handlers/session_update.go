@@ -514,9 +514,9 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	if state.Input.SliceNumber == 1 {
 
-		directLatency := int32(math.Ceil(float64(state.Request.DirectMinRTT)))
+		directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
 		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-		directPacketLoss := int32(math.Floor(float64(state.Request.DirectPacketLoss) + 0.5))
+		directPacketLoss := state.Request.DirectPacketLoss
 
 		sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
 		sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
@@ -718,7 +718,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
 			&state.Buyer.InternalConfig,
-			int32(state.Request.DirectMinRTT),
+			int32(state.Request.DirectRTT),
 			state.RealPacketLoss,
 			state.SourceRelays,
 			state.SourceRelayRTT,
@@ -788,7 +788,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// make route decision
 
-		directLatency := int32(state.Request.DirectMinRTT)
+		directLatency := int32(state.Request.DirectRTT)
 		nextLatency := int32(state.Request.NextRTT)
 		predictedLatency := state.Input.RouteCost
 
