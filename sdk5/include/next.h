@@ -260,9 +260,7 @@ struct next_client_stats_t
     NEXT_BOOL reported;
     NEXT_BOOL fallback_to_direct;
     NEXT_BOOL high_frequency_pings;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_prime_rtt;         // second largest direct rtt value seen in the last 10 second interval. for approximating P99 etc.
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     float direct_kbps_up;
@@ -336,9 +334,7 @@ struct next_server_stats_t
     NEXT_BOOL multipath;
     NEXT_BOOL reported;
     NEXT_BOOL fallback_to_direct;
-    float direct_min_rtt;
-    float direct_max_rtt;
-    float direct_prime_rtt;
+    float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
     float direct_kbps_up;
@@ -409,6 +405,8 @@ NEXT_EXPORT_FUNC void next_server_set_packet_receive_callback( struct next_serve
 NEXT_EXPORT_FUNC void next_server_set_send_packet_to_address_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes ), void * callback_data );
 
 NEXT_EXPORT_FUNC void next_server_set_payload_receive_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * address, const uint8_t * payload_data, int payload_bytes ), void * callback_data );
+
+NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * server );
 
 // -----------------------------------------
 
