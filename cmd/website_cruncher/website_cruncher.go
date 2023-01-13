@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/networknext/backend/modules-old/transport"
 	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -17,18 +21,24 @@ import (
 	"github.com/rs/cors"
 )
 
-/* todo
 const (
-	BASE_URL                = "https://networknextexternal.cloud.looker.com"
-	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
-	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
-	LOOKER_PROD_MODEL       = "network_next_prod"
+	TOP_SESSIONS_COUNT            = 10
+	STATS_DATASTORE               = "live_stats"
+	TOP_SESSIONS_DATASTORE        = "top_sessions"
+	LIVE_SESSION_COUNTS_DATASTORE = "live_session_counts"
 )
-*/
 
-var websiteStatsMutex sync.RWMutex
-var websiteStats LiveStats
-var statsRefreshInterval time.Duration
+var landingPageStatsMutex sync.RWMutex
+var landingPageStats LookerStats
+
+var liveSessionCountsMutex sync.RWMutex
+var liveSessionCounts LiveSessionCounts
+
+var topSessionsListMutex sync.RWMutex
+var topSessionsList []TopSession
+
+var lookerStatsRefreshInterval time.Duration
+var liveStatsRefreshInterval time.Duration
 
 var PLATFORM_TYPES = []string{
 	"PS4",
@@ -49,13 +59,19 @@ var CONNECTION_TYPES = []string{
 func main() {
 	service := common.CreateService("website_cruncher")
 
-	statsRefreshInterval = envvar.GetDuration("STATS_REFRESH_INTERVAL", time.Minute*5)
+	lookerStatsRefreshInterval = envvar.GetDuration("LOOKER_STATS_REFRESH_INTERVAL", time.Hour*24)
+	liveStatsRefreshInterval = envvar.GetDuration("LIVE_STATS_REFRESH_INTERVAL", time.Second*10)
 
-	core.Log("stats refresh interval: %s", statsRefreshInterval)
+	core.Log("looker stats refresh interval: %s", lookerStatsRefreshInterval)
+	core.Log("live stats refresh interval: %s", liveStatsRefreshInterval)
+
+	service.UseLooker()
 
 	service.LeaderElection(false)
 
-	StartDataCollection(service)
+	StartRedisDataCollection(service)
+
+	// StartLookerDataCollection(service)
 
 	service.Router.HandleFunc("/stats", getAllStats())
 	service.Router.HandleFunc("/sessions/counts", getLiveSessionCounts())
@@ -69,130 +85,72 @@ func main() {
 func getTopSessionsList() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		topSessionsList := make([]TopSession, 10)
-
-		// TODO: call out to redis for 10 sessions
-
-		for i := 0; i < 10; i++ {
-			topSessionsList[i] = TopSession{}
-
-			numSlices := common.RandomInt(18, 60)
-
-			slices := make([]SessionSlice, numSlices)
-
-			for j := 0; j < numSlices; j++ {
-				slices[j] = SessionSlice{
-					Timestamp: time.Now().Add(time.Second * time.Duration(-10*(numSlices-i))),
-					Next: Stats{
-						RTT:        float32(common.RandomInt(0, 30)),
-						Jitter:     float32(common.RandomInt(0, 30)),
-						PacketLoss: 0,
-					},
-					Direct: Stats{
-						RTT:        float32(common.RandomInt(100, 2000)),
-						Jitter:     float32(common.RandomInt(100, 2000)),
-						PacketLoss: float32(common.RandomInt(0, 100)),
-					},
-				}
-			}
-
-			topSessionsList[i].Slices = slices
-
-			directRTT := int32(common.RandomInt(100, 2000))
-			nextRTT := int32(common.RandomInt(0, 60))
-
-			topSessionsList[i].Meta = SessionMeta{
-				ISP:            fmt.Sprintf("%s Communications", common.RandomString(6)),
-				Datacenter:     fmt.Sprintf("provider.%s", common.RandomString(6)),
-				Platform:       PLATFORM_TYPES[common.RandomInt(0, len(PLATFORM_TYPES)-1)],
-				ConnectionType: CONNECTION_TYPES[common.RandomInt(0, len(CONNECTION_TYPES)-1)],
-				DirectRTT:      directRTT,
-				NextRTT:        nextRTT,
-				Improvement:    directRTT - nextRTT,
-			}
-		}
-
-		sort.Slice(topSessionsList, func(i int, j int) bool {
-			return topSessionsList[i].Meta.Improvement > topSessionsList[j].Meta.Improvement
-		})
-
 		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(topSessionsList); err != nil {
+		if err := json.NewEncoder(w).Encode(currentTopSessionsList()); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 	}
+}
+
+func currentTopSessionsList() []TopSession {
+
+	landingPageStatsMutex.RLock()
+	topSessions := topSessionsList
+	landingPageStatsMutex.RUnlock()
+
+	return topSessions
+
 }
 
 func getLiveSessionCounts() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		liveSessionCounts := LiveSessionCounts{
-			TotalOnNext:   int32(common.RandomInt(0, 1000)),
-			TotalSessions: int32(common.RandomInt(2000, 10000)),
-		}
-
 		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(liveSessionCounts); err != nil {
+		if err := json.NewEncoder(w).Encode(currentLiveSessionCounts()); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 	}
+}
+
+func currentLiveSessionCounts() LiveSessionCounts {
+
+	landingPageStatsMutex.RLock()
+	counts := liveSessionCounts
+	landingPageStatsMutex.RUnlock()
+
+	return counts
+
 }
 
 func getAllStats() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		websiteStatsMutex.RLock()
-		stats := websiteStats
-		websiteStatsMutex.RUnlock()
-
-		numSecondsPerInterval := statsRefreshInterval.Seconds()
-
-		oldUniquePlayers := float64(stats.UniquePlayers)
-		oldBandwidth := float64(stats.AcceleratedBandwidth)
-		oldPlaytime := float64(stats.AcceleratedPlayTime)
-
-		deltaUniquePerSecond := float64(stats.UniquePlayersDelta) / numSecondsPerInterval
-		deltaBanwidthPerSecond := float64(stats.AcceleratedBandwidthDelta) / numSecondsPerInterval
-		deltaPlaytimePerSecond := float64(stats.AcceleratedPlayTimeDelta) / numSecondsPerInterval
-
-		currentSecond := float64(time.Now().UTC().Second())
-
-		newUniquePlayers := oldUniquePlayers + (deltaUniquePerSecond * currentSecond)
-		newBanwidth := oldBandwidth + (deltaBanwidthPerSecond * currentSecond)
-		newPlaytime := oldPlaytime + (deltaPlaytimePerSecond * currentSecond)
-
-		newStats := LiveStats{
-			UniquePlayers:             int32(newUniquePlayers),
-			AcceleratedBandwidth:      int32(newBanwidth),
-			AcceleratedPlayTime:       int32(newPlaytime),
-			UniquePlayersDelta:        stats.UniquePlayersDelta,
-			AcceleratedBandwidthDelta: stats.AcceleratedBandwidthDelta,
-			AcceleratedPlayTimeDelta:  stats.UniquePlayersDelta,
-		}
-
 		middleware.CORSControlHandlerFunc(envvar.GetList("ALLOWED_ORIGINS", []string{}), w, r)
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(newStats); err != nil {
+		if err := json.NewEncoder(w).Encode(currentStats()); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
-func currentStats() LiveStats {
+func currentStats() LookerStats {
 
-	websiteStatsMutex.RLock()
-	stats := websiteStats
-	websiteStatsMutex.RUnlock()
+	landingPageStatsMutex.RLock()
+	stats := landingPageStats
+	landingPageStatsMutex.RUnlock()
 
 	return stats
 
 }
 
+// TODO - move to handlers or middleware or something - will be useful elsewhere
 func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
 	cors.New(cors.Options{
 		AllowedOrigins:   allowedOrigins,
@@ -208,22 +166,11 @@ func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *h
 
 // -----------------------------------------------------------------------------------------
 
-// todo - setup in service
-type LiveStats struct {
-	UniquePlayers             int32 `json:"unique_players"`
-	AcceleratedPlayTime       int32 `json:"accelerated_play_time"`
-	AcceleratedBandwidth      int32 `json:"accelerated_bandwidth"`
-	UniquePlayersDelta        int32 `json:"unique_players_delta"`
-	AcceleratedPlayTimeDelta  int32 `json:"accelerated_play_time_delta"`
-	AcceleratedBandwidthDelta int32 `json:"accelerated_bandwidth_delta"`
-}
-
+// TODO: verify necessary / clean up
 type LiveSessionCounts struct {
 	TotalSessions int32 `json:"total_sessions"`
 	TotalOnNext   int32 `json:"total_on_next"`
 }
-
-// TODO: Move these somewhere else - don't want to use old routing structs
 
 type Stats struct {
 	RTT        float32 `json:"rtt"`
@@ -260,9 +207,248 @@ type TopSession struct {
 	Meta   SessionMeta    `json:"meta"`
 }
 
-func StartDataCollection(service *common.Service) {
+func StartRedisDataCollection(service *common.Service) {
 
-	ticker := time.NewTicker(statsRefreshInterval)
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     redisHostname,
+		Password: redisPassword,
+	})
+
+	ticker := time.NewTicker(liveStatsRefreshInterval)
+
+	ctx := service.Context
+
+	go func(ctx context.Context, client *redis.Client) {
+		for {
+
+			select {
+			case <-service.Context.Done():
+				return
+			case <-ticker.C:
+				_, err := redisClient.Ping(ctx).Result()
+				if err != nil {
+					core.Error("failed to ping redis: %v", err)
+					continue
+				}
+
+				// Top Sessions
+
+				topSessions := make([]TopSession, TOP_SESSIONS_COUNT)         // TODO: use this structure for all data collection after transport is removed
+				sessions := make([]transport.SessionMeta, TOP_SESSIONS_COUNT) // TODO: don't use transport structs
+
+				minutes := time.Now().Unix() / 60
+
+				topSessionsA, err := client.ZRevRange(ctx, fmt.Sprintf("s-%d", minutes-1), 0, TOP_SESSIONS_COUNT).Result()
+				if err != nil {
+					core.Error("failed to fetch top sessions group A: %v", err)
+					continue
+				}
+
+				topSessionsB, err := client.ZRevRange(ctx, fmt.Sprintf("s-%d", minutes), 0, TOP_SESSIONS_COUNT).Result()
+				if err != nil {
+					core.Error("failed to fetch top sessions group B: %v", err)
+					continue
+				}
+
+				metaPipeline := redisClient.Pipeline()
+
+				sessionIDsRetreivedMap := make(map[string]bool)
+				for _, sessionID := range topSessionsA {
+					metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
+					sessionIDsRetreivedMap[sessionID] = true
+				}
+				for _, sessionID := range topSessionsB {
+					if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
+						metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
+						sessionIDsRetreivedMap[sessionID] = true
+					}
+				}
+
+				cmds, err := metaPipeline.Exec(ctx)
+				if err != nil {
+					core.Error("failed to exec redis pipeline: %v", err)
+					continue
+				}
+
+				var sessionMetasNext []transport.SessionMeta // TODO: avoid using transport structs
+				var meta transport.SessionMeta               // TODO: avoid using transport structs
+				for i := 0; i < len(sessionIDsRetreivedMap); i++ {
+					metaString := cmds[i].String()
+
+					if metaString == "" {
+						core.Error("meta data string is empty: %v", cmds[i].Err())
+						continue
+					}
+
+					parseableStrings := strings.SplitN(metaString, ": ", 2)
+
+					if len(parseableStrings) < 2 {
+						core.Error("failed to split redis string. Meta string: %s", metaString)
+						continue
+					}
+
+					splitMetaStrings := strings.Split(parseableStrings[1], "|")
+					if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+						core.Error("failed to parse meta data string: %v", err)
+						continue
+					}
+
+					sessionMetasNext = append(sessionMetasNext, meta)
+				}
+
+				sort.Slice(sessionMetasNext, func(i, j int) bool {
+					return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
+				})
+
+				if len(sessionMetasNext) > TOP_SESSIONS_COUNT {
+					sessions = sessionMetasNext[:TOP_SESSIONS_COUNT]
+				} else {
+					sessions = sessionMetasNext
+				}
+
+				var slice transport.SessionSlice // TODO: don't use transport
+				for i := 0; i < len(sessions); i++ {
+
+					currentSession := sessions[i]
+					sessionID := currentSession.ID
+
+					topSessions[i] = TopSession{
+						Meta: SessionMeta{
+							ISP:            currentSession.Location.ISP,
+							Datacenter:     currentSession.DatacenterName,
+							Platform:       PLATFORM_TYPES[currentSession.Platform],
+							ConnectionType: CONNECTION_TYPES[currentSession.Connection],
+							DirectRTT:      int32(currentSession.DirectRTT),
+							NextRTT:        int32(currentSession.NextRTT),
+							Improvement:    int32(currentSession.DirectRTT - currentSession.NextRTT),
+						},
+					}
+
+					slices, err := redisClient.LRange(ctx, fmt.Sprintf("ss-%016x", sessionID), 0, -1).Result()
+					if err != nil {
+						core.Error("failed to look up slice data for session %016x: %v", sessionID, err)
+						continue
+					}
+
+					topSessions[i].Slices = make([]SessionSlice, len(slices))
+
+					for j := 0; j < len(slices); j++ {
+
+						sliceStrings := strings.Split(slices[j], "|")
+						if err := slice.ParseRedisString(sliceStrings); err != nil {
+							core.Error("failed to parse slice string: %v", err)
+							continue
+						}
+
+						topSessions[i].Slices[j] = SessionSlice{
+							Timestamp: slice.Timestamp,
+							Next: Stats{
+								RTT:        float32(slice.Next.RTT),
+								Jitter:     float32(slice.Next.Jitter),
+								PacketLoss: float32(slice.Next.PacketLoss),
+							},
+							Direct: Stats{
+								RTT:        float32(slice.Direct.RTT),
+								Jitter:     float32(slice.Direct.Jitter),
+								PacketLoss: float32(slice.Direct.PacketLoss),
+							},
+							Envelope: Envelope{
+								Up:   int32(slice.Envelope.Up),
+								Down: int32(slice.Envelope.Down),
+							},
+						}
+					}
+				}
+
+				metaPipeline.Close()
+
+				// Total Counts
+
+				/*
+
+					liveSessionCounts := LiveSessionCounts{}
+
+					countsPipeline := redisClient.Pipeline()
+
+					firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes), -1).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
+
+					core.Debug("%+v", firstNextCounts)
+					core.Debug("%+v", secondNextCounts)
+
+					for i := 0; i < len(firstNextCounts); i++ {
+						// TODO
+					}
+
+					for i := 0; i < len(secondNextCounts); i++ {
+						// TODO
+					}
+
+					firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
+
+					core.Debug("%+v", firstTotalCounts)
+					core.Debug("%+v", secondTotalCounts)
+
+					for i := 0; i < len(firstTotalCounts); i++ {
+						// TODO
+					}
+
+					for i := 0; i < len(secondTotalCounts); i++ {
+						// TODO
+					}
+
+					countsPipeline.Close()
+				*/
+
+				core.Debug("----------------------------")
+				core.Debug("num found top sessions: %d", len(topSessions))
+				core.Debug("found top sessions: %+v", topSessions)
+				core.Debug("----------------------------")
+
+				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
+					core.Error("failed to update data store with new top sessions and counts: %v", err)
+					continue
+				}
+			}
+		}
+	}(ctx, redisClient)
+}
+
+// ------------------------------------------------------------------------------------------
+
+// TODO: update / verify necessary
+type LookerStats struct {
+	UniquePlayers             int32 `json:"unique_players"`
+	AcceleratedPlayTime       int32 `json:"accelerated_play_time"`
+	AcceleratedBandwidth      int32 `json:"accelerated_bandwidth"`
+	UniquePlayersDelta        int32 `json:"unique_players_delta"`
+	AcceleratedPlayTimeDelta  int32 `json:"accelerated_play_time_delta"`
+	AcceleratedBandwidthDelta int32 `json:"accelerated_bandwidth_delta"`
+}
+
+func StartLookerDataCollection(service *common.Service) {
+
+	ticker := time.NewTicker(lookerStatsRefreshInterval)
 
 	go func() {
 
@@ -273,162 +459,97 @@ func StartDataCollection(service *common.Service) {
 				return
 			case <-ticker.C:
 
-				newStats := LiveStats{}
+				stats := LookerStats{}
 
-				currentStats := currentStats()
+				// TODO: update stats using Looker
 
-				// todo - grab stats from somewhere (looker, redis, etc)
-				newStats.UniquePlayers = int32(common.RandomInt(int(currentStats.UniquePlayers), int(currentStats.UniquePlayers)+1000))
-				newStats.UniquePlayersDelta = newStats.UniquePlayers - currentStats.UniquePlayers
-
-				newStats.AcceleratedBandwidth = int32(common.RandomInt(int(currentStats.AcceleratedBandwidth), int(currentStats.AcceleratedBandwidth)+1000))
-				newStats.AcceleratedBandwidthDelta = newStats.AcceleratedBandwidth - currentStats.AcceleratedBandwidth
-
-				newStats.AcceleratedPlayTime = int32(common.RandomInt(int(currentStats.AcceleratedPlayTime), int(currentStats.AcceleratedPlayTime)+1000))
-				newStats.AcceleratedPlayTimeDelta = newStats.AcceleratedPlayTime - currentStats.AcceleratedPlayTime
-
-				var statsBuffer bytes.Buffer
-				encoder := gob.NewEncoder(&statsBuffer)
-				if err := encoder.Encode(newStats); err != nil {
-					core.Error("failed to encode new stats")
+				if err := updateDataStore(service, stats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
+					core.Error("failed to update data store with new looker stats: %v", err)
 					continue
 				}
-
-				newStatsData := statsBuffer.Bytes()
-
-				dataStores := []common.DataStoreConfig{
-					{
-						Name: "live_stats",
-						Data: newStatsData,
-					},
-				}
-
-				service.UpdateLeaderStore(dataStores)
-
-				dataStores = service.LoadLeaderStore()
-
-				newLiveStats := LiveStats{}
-
-				decoder := gob.NewDecoder(bytes.NewBuffer(dataStores[0].Data))
-				err := decoder.Decode(&newLiveStats)
-				if err != nil {
-					core.Debug("could not decode live stats data: %v", err)
-					continue
-				}
-
-				websiteStatsMutex.Lock()
-				websiteStats = newLiveStats
-				websiteStatsMutex.Unlock()
-
 			}
 		}
 	}()
 }
 
-// -----------------------------------------------------------------------------------------
+func updateDataStore(service *common.Service, stats LookerStats, topSessionsList []TopSession, liveSessionCounts LiveSessionCounts) error {
 
-// todo - move into a common module
-/*
-type LookerClient struct {
-	APISettings rtl.ApiSettings
-}
-
-type LookerAuthResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int32  `json:"expires_in"`
-}
-
-func setupLookerClient() {}
-
-func (l *LookerClient) fetchLookerAuthToken() (string, error) {
-	authURL := fmt.Sprintf(LOOKER_AUTH_URI, l.APISettings.BaseUrl, l.APISettings.ClientId, l.APISettings.ClientSecret)
-	req, err := http.NewRequest(http.MethodPost, authURL, nil)
-	if err != nil {
-		return "", err
+	var statsBuffer bytes.Buffer
+	encoder := gob.NewEncoder(&statsBuffer)
+	if err := encoder.Encode(stats); err != nil {
+		return fmt.Errorf("failed to encode new looker stats")
 	}
 
-	client := &http.Client{Timeout: time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
+	var topSessionsBuffer bytes.Buffer
+	encoder = gob.NewEncoder(&topSessionsBuffer)
+	if err := encoder.Encode(topSessionsList); err != nil {
+		return fmt.Errorf("failed to encode top sessions")
 	}
 
-	defer resp.Body.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return "", err
+	var sessionCountsBuffer bytes.Buffer
+	encoder = gob.NewEncoder(&sessionCountsBuffer)
+	if err := encoder.Encode(liveSessionCounts); err != nil {
+		return fmt.Errorf("failed to encode session counts")
 	}
 
-	authResponse := LookerAuthResponse{}
-	if err = json.Unmarshal(buf.Bytes(), &authResponse); err != nil {
-		return "", err
+	dataStores := []common.DataStoreConfig{
+		{
+			Name: STATS_DATASTORE,
+			Data: statsBuffer.Bytes(),
+		},
+		{
+			Name: TOP_SESSIONS_DATASTORE,
+			Data: topSessionsBuffer.Bytes(),
+		},
+		{
+			Name: LIVE_SESSION_COUNTS_DATASTORE,
+			Data: sessionCountsBuffer.Bytes(),
+		},
 	}
 
-	return authResponse.AccessToken, nil
-}
+	service.UpdateLeaderStore(dataStores)
 
-func (l *LookerClient) getWebsiteStats() error {
-	// Looker API always passes back an array - "this is the rows for that query - # rows >= 0"
-	queryWebsiteStats := make([]LiveStats, 0)
+	dataStores = service.LoadLeaderStore()
 
-	token, err := l.fetchLookerAuthToken()
-	if err != nil {
-		return err
+	if len(dataStores) == 0 {
+		return fmt.Errorf("no data stores returned from redis")
 	}
 
-	// Fetch Meta data for session
+	newLookerStats := LookerStats{}
+	newTopSesssions := make([]TopSession, 10)
+	newSessionCounts := LiveSessionCounts{}
 
-	requiredFields := []string{
-		// todo: work with alex for table and field names
-	}
-	sorts := []string{}
-	requiredFilters := make(map[string]interface{})
+	decoder := gob.NewDecoder(bytes.NewBuffer(dataStores[0].Data))
 
-	query := v4.WriteQuery{
-		Model: LOOKER_PROD_MODEL,
-		// View:    , todo - work with alex for view name
-		Fields:  &requiredFields,
-		Filters: &requiredFilters,
-		Sorts:   &sorts,
+	if err := decoder.Decode(&newLookerStats); err != nil {
+		return fmt.Errorf("could not decode live stats data: %v", err)
 	}
 
-	lookerBody, err := json.Marshal(query)
-	if err != nil {
-		return err
+	landingPageStatsMutex.Lock()
+	landingPageStats = newLookerStats
+	landingPageStatsMutex.Unlock()
+
+	decoder = gob.NewDecoder(bytes.NewBuffer(dataStores[1].Data))
+
+	if err := decoder.Decode(&newTopSesssions); err != nil {
+		return fmt.Errorf("could not decode top sessions data")
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	topSessionsListMutex.Lock()
+	topSessionsList = newTopSesssions
+	topSessionsListMutex.Unlock()
 
-	client := &http.Client{Timeout: time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+	decoder = gob.NewDecoder(bytes.NewBuffer(dataStores[2].Data))
+
+	if err := decoder.Decode(&newSessionCounts); err != nil {
+		return fmt.Errorf("could not decode session counts")
 	}
 
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal(buf.Bytes(), &queryWebsiteStats); err != nil {
-		return err
-	}
-
-	resp.Body.Close()
-
-	if len(queryWebsiteStats) == 0 {
-		return fmt.Errorf("failed to look up site data")
-	}
+	liveSessionCountsMutex.Lock()
+	liveSessionCounts = newSessionCounts
+	liveSessionCountsMutex.Unlock()
 
 	return nil
 }
-*/
+
+// -----------------------------------------------------------------------------------------
