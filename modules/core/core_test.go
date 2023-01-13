@@ -6126,7 +6126,7 @@ func TestFilterSourceRelays_PacketLossAboveDirect(t *testing.T) {
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 0, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []float32{1, 1, 1, 1, 1}
+	sourceRelayPacketLoss := []float32{10, 10, 10, 10, 10}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
