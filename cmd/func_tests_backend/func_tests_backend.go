@@ -83,11 +83,20 @@ func test_magic_backend() {
 	check_output("magic_backend", cmd, stdout, stderr)
 	check_output("starting http server on port 40000", cmd, stdout, stderr)
 
-	// test the health check
+	// test the vm health check
 
-	response, err := http.Get("http://127.0.0.1:40000/health")
+	response, err := http.Get("http://127.0.0.1:40000/vm_health")
 	if err != nil || response.StatusCode != 200 {
-		fmt.Printf("error: health check failed\n")
+		fmt.Printf("error: vm health check failed\n")
+		cmd.Process.Signal(syscall.SIGTERM)
+		os.Exit(1)
+	}
+
+	// test the lb health check
+
+	response, err := http.Get("http://127.0.0.1:40000/lb_health")
+	if err != nil || response.StatusCode != 200 {
+		fmt.Printf("error: lb health check failed\n")
 		cmd.Process.Signal(syscall.SIGTERM)
 		os.Exit(1)
 	}

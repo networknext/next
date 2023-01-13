@@ -113,7 +113,7 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	service.OverrideHealthHandler(healthHandler)
+	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
 
 	service.StartWebServer()
 
@@ -126,6 +126,22 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func sendTrafficToMe() bool {
+	routeMatrix, database := service.RouteMatrixAndDatabase()
+	return routeMatrix != nil && database != nil
+}
+
+func machineIsHealthy() bool {
+	return true
+}
+
+func isReady() bool {
+	readyMutex.RLock()
+	result := ready
+	readyMutex.RUnlock()
+	return result
 }
 
 func UpdateReadyState(service *common.Service) {
@@ -142,24 +158,6 @@ func UpdateReadyState(service *common.Service) {
 			}
 		}
 	}()
-}
-
-func isReady() bool {
-	readyMutex.RLock()
-	result := ready
-	readyMutex.RUnlock()
-	return result
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	ready := isReady()
-	routeMatrixMutex.RLock()
-	hasRouteMatrix := len(routeMatrixData) > 0
-	routeMatrixMutex.RUnlock()
-	if ready && hasRouteMatrix {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(http.StatusText(http.StatusOK)))
-	}
 }
 
 func relaysHandler(w http.ResponseWriter, r *http.Request) {

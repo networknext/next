@@ -85,7 +85,8 @@ type Service struct {
 
 	leaderElection *RedisLeaderElection
 
-	healthHandler func(w http.ResponseWriter, r *http.Request)
+	sendTrafficToMe  func () bool
+	machineIsHealthy func () bool
 
 	udpServer *UDPServer
 
@@ -122,20 +123,27 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
-
-	service.healthHandler = healthHandlerFunc()
+	service.Router.HandleFunc("/lb_health", service.lbHealthHandlerFunc())
+	service.Router.HandleFunc("/vm_health", service.vmHealthHandlerFunc())
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
 	service.runStatusUpdateLoop()
 
-	// todo: perhaps we can just autodetect we are running in google cloud, and determine the project id we are running under automatically?
 	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
 	if service.GoogleProjectId != "" {
 		core.Log("google project id: %s", service.GoogleProjectId)
 	}
 
+	service.sendTrafficToMe = func() bool { return true }
+	service.machineIsHealthy = func() bool { return true }
+
 	return &service
+}
+
+func (service *Service) SetHealthFunctions(sendTrafficToMe func () bool, machineIsHealthy func () bool) {
+	service.sendTrafficToMe = sendTrafficToMe
+	service.machineIsHealthy = machineIsHealthy
 }
 
 func (service *Service) LoadDatabase() {
@@ -200,11 +208,7 @@ func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
 	return upcomingMagic, currentMagic, previousMagic
 }
 
-func (service *Service) OverrideHealthHandler(healthHandler func(w http.ResponseWriter, r *http.Request)) {
-	service.healthHandler = healthHandler
-}
-
-func healthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+func (service *Service) lbHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -212,6 +216,27 @@ func healthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
+		if !service.sendTrafficToMe() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		if !service.machineIsHealthy() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(http.StatusText(http.StatusOK)))
 	}
@@ -238,7 +263,6 @@ func versionHandlerFunc(buildTime string, commitMessage string, commitHash strin
 func (service *Service) StartWebServer() {
 	port := envvar.GetString("HTTP_PORT", "80")
 	core.Log("starting http server on port %s", port)
-	service.Router.HandleFunc("/health", service.healthHandler)
 	go func() {
 		err := http.ListenAndServe(":"+port, &service.Router)
 		if err != nil {
