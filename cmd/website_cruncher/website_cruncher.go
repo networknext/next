@@ -31,14 +31,14 @@ const (
 var landingPageStatsMutex sync.RWMutex
 var landingPageStats LookerStats
 
-var liveSessionCountsMutex sync.RWMutex
-var liveSessionCounts LiveSessionCounts
+var landingPageTopSessionsMutex sync.RWMutex
+var landingPageTopSessions []TopSession
 
-var topSessionsListMutex sync.RWMutex
-var topSessionsList []TopSession
+var landingPageSessionCountsMutex sync.RWMutex
+var landingPageSessionCounts LiveSessionCounts
 
 var lookerStatsRefreshInterval time.Duration
-var liveStatsRefreshInterval time.Duration
+var redisStatsRefreshInterval time.Duration
 
 var PLATFORM_TYPES = []string{
 	"PS4",
@@ -60,10 +60,10 @@ func main() {
 	service := common.CreateService("website_cruncher")
 
 	lookerStatsRefreshInterval = envvar.GetDuration("LOOKER_STATS_REFRESH_INTERVAL", time.Hour*24)
-	liveStatsRefreshInterval = envvar.GetDuration("LIVE_STATS_REFRESH_INTERVAL", time.Second*10)
+	redisStatsRefreshInterval = envvar.GetDuration("REDIS_STATS_REFRESH_INTERVAL", time.Second*10)
 
 	core.Log("looker stats refresh interval: %s", lookerStatsRefreshInterval)
-	core.Log("live stats refresh interval: %s", liveStatsRefreshInterval)
+	core.Log("redis stats refresh interval: %s", redisStatsRefreshInterval)
 
 	service.UseLooker()
 
@@ -97,9 +97,9 @@ func getTopSessionsList() func(w http.ResponseWriter, r *http.Request) {
 
 func currentTopSessionsList() []TopSession {
 
-	landingPageStatsMutex.RLock()
-	topSessions := topSessionsList
-	landingPageStatsMutex.RUnlock()
+	landingPageTopSessionsMutex.RLock()
+	topSessions := landingPageTopSessions
+	landingPageTopSessionsMutex.RUnlock()
 
 	return topSessions
 
@@ -120,9 +120,9 @@ func getLiveSessionCounts() func(w http.ResponseWriter, r *http.Request) {
 
 func currentLiveSessionCounts() LiveSessionCounts {
 
-	landingPageStatsMutex.RLock()
-	counts := liveSessionCounts
-	landingPageStatsMutex.RUnlock()
+	landingPageSessionCountsMutex.RLock()
+	counts := landingPageSessionCounts
+	landingPageSessionCountsMutex.RUnlock()
 
 	return counts
 
@@ -217,7 +217,7 @@ func StartRedisDataCollection(service *common.Service) {
 		Password: redisPassword,
 	})
 
-	ticker := time.NewTicker(liveStatsRefreshInterval)
+	ticker := time.NewTicker(redisStatsRefreshInterval)
 
 	ctx := service.Context
 
@@ -367,9 +367,8 @@ func StartRedisDataCollection(service *common.Service) {
 
 				// Total Counts
 
+				liveSessionCounts := LiveSessionCounts{}
 				/*
-
-					liveSessionCounts := LiveSessionCounts{}
 
 					countsPipeline := redisClient.Pipeline()
 
@@ -419,11 +418,6 @@ func StartRedisDataCollection(service *common.Service) {
 
 					countsPipeline.Close()
 				*/
-
-				core.Debug("----------------------------")
-				core.Debug("num found top sessions: %d", len(topSessions))
-				core.Debug("found top sessions: %+v", topSessions)
-				core.Debug("----------------------------")
 
 				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
 					core.Error("failed to update data store with new top sessions and counts: %v", err)
@@ -475,20 +469,20 @@ func StartLookerDataCollection(service *common.Service) {
 func updateDataStore(service *common.Service, stats LookerStats, topSessionsList []TopSession, liveSessionCounts LiveSessionCounts) error {
 
 	var statsBuffer bytes.Buffer
-	encoder := gob.NewEncoder(&statsBuffer)
-	if err := encoder.Encode(stats); err != nil {
+	statsEncoder := gob.NewEncoder(&statsBuffer)
+	if err := statsEncoder.Encode(stats); err != nil {
 		return fmt.Errorf("failed to encode new looker stats")
 	}
 
 	var topSessionsBuffer bytes.Buffer
-	encoder = gob.NewEncoder(&topSessionsBuffer)
-	if err := encoder.Encode(topSessionsList); err != nil {
+	sessionsListEncoder := gob.NewEncoder(&topSessionsBuffer)
+	if err := sessionsListEncoder.Encode(topSessionsList); err != nil {
 		return fmt.Errorf("failed to encode top sessions")
 	}
 
 	var sessionCountsBuffer bytes.Buffer
-	encoder = gob.NewEncoder(&sessionCountsBuffer)
-	if err := encoder.Encode(liveSessionCounts); err != nil {
+	sessionCountsEncoder := gob.NewEncoder(&sessionCountsBuffer)
+	if err := sessionCountsEncoder.Encode(liveSessionCounts); err != nil {
 		return fmt.Errorf("failed to encode session counts")
 	}
 
@@ -519,9 +513,9 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 	newTopSesssions := make([]TopSession, 10)
 	newSessionCounts := LiveSessionCounts{}
 
-	decoder := gob.NewDecoder(bytes.NewBuffer(dataStores[0].Data))
+	statsDecoder := gob.NewDecoder(bytes.NewBuffer(dataStores[0].Data))
 
-	if err := decoder.Decode(&newLookerStats); err != nil {
+	if err := statsDecoder.Decode(&newLookerStats); err != nil {
 		return fmt.Errorf("could not decode live stats data: %v", err)
 	}
 
@@ -529,25 +523,25 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 	landingPageStats = newLookerStats
 	landingPageStatsMutex.Unlock()
 
-	decoder = gob.NewDecoder(bytes.NewBuffer(dataStores[1].Data))
+	listDecoder := gob.NewDecoder(bytes.NewBuffer(dataStores[1].Data))
 
-	if err := decoder.Decode(&newTopSesssions); err != nil {
+	if err := listDecoder.Decode(&newTopSesssions); err != nil {
 		return fmt.Errorf("could not decode top sessions data")
 	}
 
-	topSessionsListMutex.Lock()
-	topSessionsList = newTopSesssions
-	topSessionsListMutex.Unlock()
+	landingPageTopSessionsMutex.Lock()
+	landingPageTopSessions = newTopSesssions
+	landingPageTopSessionsMutex.Unlock()
 
-	decoder = gob.NewDecoder(bytes.NewBuffer(dataStores[2].Data))
+	countsDecoder := gob.NewDecoder(bytes.NewBuffer(dataStores[2].Data))
 
-	if err := decoder.Decode(&newSessionCounts); err != nil {
+	if err := countsDecoder.Decode(&newSessionCounts); err != nil {
 		return fmt.Errorf("could not decode session counts")
 	}
 
-	liveSessionCountsMutex.Lock()
-	liveSessionCounts = newSessionCounts
-	liveSessionCountsMutex.Unlock()
+	landingPageSessionCountsMutex.Lock()
+	landingPageSessionCounts = newSessionCounts
+	landingPageSessionCountsMutex.Unlock()
 
 	return nil
 }
