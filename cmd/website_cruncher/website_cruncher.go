@@ -253,20 +253,16 @@ func StartRedisDataCollection(service *common.Service) {
 					continue
 				}
 
-				metaPipeline := redisClient.TxPipeline()
-
-				cmdOutputs := make([]*redis.StringCmd, 0)
+				metaPipeline := redisClient.Pipeline()
 
 				sessionIDsRetreivedMap := make(map[string]bool)
 				for _, sessionID := range topSessionsA {
-					cmd := metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
-					cmdOutputs = append(cmdOutputs, cmd)
+					metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
 					sessionIDsRetreivedMap[sessionID] = true
 				}
 				for _, sessionID := range topSessionsB {
 					if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-						cmd := metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
-						cmdOutputs = append(cmdOutputs, cmd)
+						metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
 						sessionIDsRetreivedMap[sessionID] = true
 					}
 				}
@@ -274,9 +270,6 @@ func StartRedisDataCollection(service *common.Service) {
 				cmds, err := metaPipeline.Exec(ctx)
 				if err != nil {
 					core.Error("failed to exec redis pipeline: %v", err)
-					for _, cmd := range cmdOutputs {
-						core.Debug("meta cmd err: %v", cmd.Err())
-					}
 					continue
 				}
 
