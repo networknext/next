@@ -548,6 +548,22 @@ func checkBuyersInBinFile() {
 		fmt.Printf("\t%-25s %016s %5t %5t\n", buyer.CompanyCode, id, buyer.Live, buyer.RouteShader.AnalysisOnly)
 	}
 	fmt.Println()
+
+	fmt.Printf("Route shaders:\n")
+	for _, buyer := range buyers {
+		if buyer.Live {
+			fmt.Printf("\n%s:\n%+v\n", buyer.CompanyCode, buyer.RouteShader)
+		}
+	}
+	fmt.Println()	
+
+	fmt.Printf("Internal configs:\n")
+	for _, buyer := range buyers {
+		if buyer.Live {
+			fmt.Printf("\n%s:\n%+v\n", buyer.CompanyCode, buyer.InternalConfig)
+		}
+	}
+	fmt.Println()	
 }
 
 func checkDCMapsInBinFile() {
