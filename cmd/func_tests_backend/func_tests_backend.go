@@ -94,7 +94,7 @@ func test_magic_backend() {
 
 	// test the lb health check
 
-	response, err := http.Get("http://127.0.0.1:40000/lb_health")
+	response, err = http.Get("http://127.0.0.1:40000/lb_health")
 	if err != nil || response.StatusCode != 200 {
 		fmt.Printf("error: lb health check failed\n")
 		cmd.Process.Signal(syscall.SIGTERM)
