@@ -5899,12 +5899,12 @@ func TestFilterSourceRelays_NoFilter(t *testing.T) {
 
 	directLatency := int32(25)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -5941,12 +5941,12 @@ func TestFilterSourceRelays_ZeroLatency(t *testing.T) {
 
 	directLatency := int32(25)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 0, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -5987,58 +5987,12 @@ func TestFilterSourceRelays_ClampLatencyAbove255(t *testing.T) {
 
 	directLatency := int32(25)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 300, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
-
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
-
-	FilterSourceRelays(relayIdToIndex,
-		directLatency,
-		directJitter,
-		directPacketLoss,
-		sourceRelayIds,
-		sourceRelayLatency,
-		sourceRelayJitter,
-		sourceRelayPacketLoss,
-		outputSourceRelayLatency[:])
-
-	for i := range sourceRelayIds {
-		if i != 2 {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
-		} else {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
-		}
-	}
-}
-
-func TestFilterSourceRelays_HigherThanAverageJitter(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	directLatency := int32(25)
-	directJitter := int32(0)
-	directPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
-	sourceRelayJitter := []int32{0, 0, 100, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -6079,12 +6033,12 @@ func TestFilterSourceRelays_HigherThanDirectJitter(t *testing.T) {
 
 	directLatency := int32(25)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
 	sourceRelayJitter := []int32{100, 100, 100, 100, 100}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -6121,58 +6075,12 @@ func TestFilterSourceRelays_HighPacketLoss(t *testing.T) {
 
 	directLatency := int32(25)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 50, 0, 0}
-
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
-
-	FilterSourceRelays(relayIdToIndex,
-		directLatency,
-		directJitter,
-		directPacketLoss,
-		sourceRelayIds,
-		sourceRelayLatency,
-		sourceRelayJitter,
-		sourceRelayPacketLoss,
-		outputSourceRelayLatency[:])
-
-	for i := range sourceRelayIds {
-		if i != 2 {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(1))
-		} else {
-			assert.Equal(t, outputSourceRelayLatency[i], int32(255))
-		}
-	}
-}
-
-func TestFilterSourceRelays_LatencyAboveDirect(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("a", "10.0.0.1")
-	env.AddRelay("b", "10.0.0.2")
-	env.AddRelay("c", "10.0.0.3")
-	env.AddRelay("d", "10.0.0.4")
-	env.AddRelay("e", "10.0.0.5")
-
-	relayIds := env.GetRelayIds()
-
-	relayIdToIndex := env.GetRelayIdToIndex()
-
-	directLatency := int32(10)
-	directJitter := int32(0)
-	directPacketLoss := int32(0)
-
-	sourceRelayIds := relayIds
-	sourceRelayLatency := []int32{1, 1, 100, 1, 1}
-	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 50, 0, 0}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -6213,12 +6121,12 @@ func TestFilterSourceRelays_PacketLossAboveDirect(t *testing.T) {
 
 	directLatency := int32(10)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 0, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{1, 1, 1, 1, 1}
+	sourceRelayPacketLoss := []float32{10, 10, 10, 10, 10}
 
 	outputSourceRelayLatency := [MaxNearRelays]int32{}
 
@@ -6255,12 +6163,12 @@ func TestFilterSourceRelays_RelayDoesNotExist(t *testing.T) {
 
 	directLatency := int32(10)
 	directJitter := int32(0)
-	directPacketLoss := int32(0)
+	directPacketLoss := float32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{1, 1, 1, 1, 1}
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
-	sourceRelayPacketLoss := []int32{0, 0, 0, 0, 0}
+	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
 	sourceRelayIds[2] = 423189384
 

@@ -208,9 +208,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
 		ServerEvents:                    rand.Uint64(),
 		NumNearRelays:                   int32(common.RandomInt(0, packets.SDK5_MaxNearRelays)),
-		DirectMinRTT:                    rand.Float32(),
-		DirectMaxRTT:                    rand.Float32(),
-		DirectPrimeRTT:                  rand.Float32(),
+		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
 		PacketsSentClientToServer:       rand.Uint64(),
@@ -248,7 +246,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		if packet.HasNearRelayPings {
 			packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
 			packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
-			packet.NearRelayPacketLoss[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayPacketLoss))
+			packet.NearRelayPacketLoss[i] = rand.Float32()
 		}
 	}
 

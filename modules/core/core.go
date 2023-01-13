@@ -27,6 +27,7 @@ const MaxRelaysPerRoute = 5
 const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
 const LatencyThreshold = 15
+const PacketLossThreshold = 1
 
 const NEXT_MAX_NODES = 7
 const NEXT_ADDRESS_BYTES = 19
@@ -1211,23 +1212,7 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, out_sourceRelayLatency []int32) {
-
-	// calculate average jitter
-
-	count := 0
-	totalJitter := 0.0
-	for i := range sourceRelayId {
-		if sourceRelayJitter[i] != 255 {
-			totalJitter += float64(sourceRelayJitter[i])
-			count++
-		}
-	}
-
-	averageJitter := int32(0)
-	if count > 0 {
-		averageJitter = int32(math.Ceil(totalJitter / float64(count)))
-	}
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, out_sourceRelayLatency []int32) {
 
 	// exclude unsuitable source relays
 
@@ -1245,32 +1230,20 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with jitter significantly higher than average
-		if sourceRelayJitter[i] > averageJitter+JitterThreshold {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
 		// exclude relays with jitter significantly higher than direct
 		if sourceRelayJitter[i] > directJitter+JitterThreshold {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}
 
+		// exclude relays with packet loss significantly higher than direct
+		if sourceRelayPacketLoss[i] > directPacketLoss + PacketLossThreshold {
+			out_sourceRelayLatency[i] = 255
+			continue
+		}
+
 		// exclude relays with PL >= 50%
 		if sourceRelayPacketLoss[i] >= 50 {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		// exclude relays with latency significantly higher than direct
-		if sourceRelayLatency[i] > directLatency+LatencyThreshold {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		// exclude relays with packet loss higher than direct
-		if sourceRelayPacketLoss[i] > directPacketLoss {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}

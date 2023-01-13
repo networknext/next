@@ -193,9 +193,15 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 	// IMPORTANT: if there is only one entry, wait at least 10 seconds to ensure
 	// we don't flap leader when a bunch of services start close together
 
-	if len(instanceEntries) == 1 && time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
-		core.Debug("only one instance entry. waiting for other entries to join...")
-		return dataStores
+	leaderElection.leaderMutex.RLock()
+	isLeader := leaderElection.isLeader
+	leaderElection.leaderMutex.RUnlock()
+
+	if !isLeader {
+		if len(instanceEntries) == 1 && time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
+			core.Debug("only one instance entry. waiting for other entries to join...")
+			return dataStores
+		}
 	}
 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
