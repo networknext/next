@@ -499,6 +499,10 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
+	if len(TestBackendPrivateKey) == 0 {
+		panic("missing backend private key")
+	}
+
 	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
@@ -624,8 +628,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	}
 
 	if backend.mode == BACKEND_MODE_DIRECT_STATS {
-		if requestPacket.DirectMinRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
-			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectMinRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
+		if requestPacket.DirectRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
+			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
 		}
 	}
 
@@ -738,7 +742,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:          int32(packets.SDK5_RouteTypeDirect),
 			NumTokens:          0,
 			Tokens:             nil,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -818,7 +822,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			Multipath:          multipath,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
-			HighFrequencyPings: true,
+			HighFrequencyPings: false,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {
