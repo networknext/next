@@ -1,0 +1,56 @@
+DONE
+
+	Setup home network so all traffic goes across spectrum, not starlink.
+	
+	We need more relays in dev for testing. Asked van to setup more AWS relays (5-6 more), in north america for testing.
+
+	Configure raspberry customer so that it has fairly random selection of best routes, eg. by having a very wide route selection threshold, and route switch threshold
+
+	Split apart VM and LB health checks. They're not the same!
+
+TODO
+
+	Make sure tests and happy path works with new health checks
+
+	--------------
+
+	Setup services in dev with new health checks.
+
+	--------------
+
+	We need to track max direct packet loss seen
+
+	I believe that a key component of the old system was comparing max packet loss on direct vs. max PL on relays, so over time we had some code that went "ok, so we have intermittent packet loss, loosen it up on the near relays".
+
+	We also would need to not filter out relays forever, but instead, store them unmolested, and filter them temporarily before we use them for routing.
+
+	--------------
+
+	Once this is done, we can remove the packet loss threshold.
+
+	--------------
+
+	Setup google.virginia.3 relay myself, so I can understand the process and potentially streamline it.
+
+	--------------
+
+	Setup a deploy key for the raspberry repo.
+
+	Set up dr strange so I can clone the raspberry repo to /mnt/c/raspberry
+
+	Build and run 25 raspberry pi clients on dr strange continuously.
+
+	-----------------
+
+	Streamline the process to setup a new machine to be a relay.
+
+	-----------------
+
+	Instead of trying to change the hostname, just change the shell prompt to the relay name. Much easier, with no side effects.
+
+	-----------------
+
+	Build a relay release process in semaphore.
+
+	-----------------
+
