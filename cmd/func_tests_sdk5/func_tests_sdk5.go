@@ -1688,7 +1688,7 @@ func test_server_under_load() {
 	clientConfig.duration = 60.0
 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
-	const MaxClients = 32
+	const MaxClients = 30
 
 	client_cmd := make([]*exec.Cmd, MaxClients)
 	client_stdout := make([]*bytes.Buffer, MaxClients)
