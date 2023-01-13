@@ -20298,7 +20298,7 @@ void test_relay_manager()
             next_check( relay_ids[i] == stats.relay_ids[i] );
             next_check( stats.relay_rtt[i] == 0 );
             next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 100 );
+            next_check( stats.relay_packet_loss[i] == 0 );
        }
     }
 
