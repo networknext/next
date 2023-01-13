@@ -31,7 +31,7 @@ import (
 
 var TestRouterPrivateKey = []byte{}
 
-var TestServerBackendPrivateKey = []byte{}
+var TestBackendPrivateKey = []byte{}
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -499,11 +499,11 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	if len(TestServerBackendPrivateKey) == 0 {
-		panic("missing server backend private key")
+	if len(TestBackendPrivateKey) == 0 {
+		panic("missing backend private key")
 	}
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestServerBackendPrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -960,7 +960,7 @@ func main() {
 
 	TestRouterPrivateKey = envvar.GetBase64("TEST_ROUTER_PRIVATE_KEY", []byte{})
 
-	TestServerBackendPrivateKey = envvar.GetBase64("TEST_SERVER_BACKEND_PRIVATE_KEY", []byte{})
+	TestBackendPrivateKey = envvar.GetBase64("TEST_BACKEND_PRIVATE_KEY", []byte{})
 
 	relayPublicKey, _ = base64.StdEncoding.DecodeString("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 

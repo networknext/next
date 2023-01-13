@@ -11,7 +11,7 @@ import (
 )
 
 const TestRouterPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
-const TestServerBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
+const TestBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
 
 var cmd *exec.Cmd
 
@@ -280,7 +280,7 @@ func func_sdk4() {
 }
 
 func func_sdk5() {
-	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_SERVER_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestServerBackendPrivateKey))
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestServerBackendPrivateKey))
 }
 
 func func_backend4() {
@@ -288,7 +288,7 @@ func func_backend4() {
 }
 
 func func_backend5() {
-	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_SERVER_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestServerBackendPrivateKey))
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestServerBackendPrivateKey))
 }
 
 func func_backend(tests []string) {
