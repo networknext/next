@@ -113,7 +113,7 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
+	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
 	service.StartWebServer()
 
@@ -128,9 +128,11 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func sendTrafficToMe() bool {
-	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && database != nil
+func sendTrafficToMe(service *common.Service) func () bool {
+	return func () bool {
+		routeMatrix, database := service.RouteMatrixAndDatabase()
+		return routeMatrix != nil && database != nil
+	}
 }
 
 func machineIsHealthy() bool {

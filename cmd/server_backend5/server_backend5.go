@@ -2,8 +2,7 @@ package main
 
 import (
 	"net"
-	"net/http"
-
+	
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -46,7 +45,7 @@ func main() {
 
 	service.UpdateRouteMatrix()
 
-	service.SetHealthFunctions(sendTrafficToMe(), machineIsHealthy())
+	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
 
 	service.StartUDPServer(packetHandler)
 
