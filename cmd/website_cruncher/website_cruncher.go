@@ -253,7 +253,7 @@ func StartRedisDataCollection(service *common.Service) {
 					continue
 				}
 
-				metaPipeline := redisClient.Pipeline()
+				metaPipeline := redisClient.TxPipeline()
 
 				cmdOutputs := make([]*redis.StringCmd, 0)
 
@@ -374,55 +374,63 @@ func StartRedisDataCollection(service *common.Service) {
 
 				// Total Counts
 
-				liveSessionCounts := LiveSessionCounts{}
+				/*
 
-				countsPipeline := redisClient.Pipeline()
+					liveSessionCounts := LiveSessionCounts{}
 
-				firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
-				if err != nil {
-					core.Error("failed to get first set of counts: %v", err)
-					continue
-				}
-				secondNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes), -1).Result()
-				if err != nil {
-					core.Error("failed to get second set of counts: %v", err)
-					continue
-				}
+					countsPipeline := redisClient.Pipeline()
 
-				core.Debug("%+v", firstNextCounts)
-				core.Debug("%+v", secondNextCounts)
+					firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes), -1).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
 
-				for i := 0; i < len(firstNextCounts); i++ {
-					// TODO
-				}
+					core.Debug("%+v", firstNextCounts)
+					core.Debug("%+v", secondNextCounts)
 
-				for i := 0; i < len(secondNextCounts); i++ {
-					// TODO
-				}
+					for i := 0; i < len(firstNextCounts); i++ {
+						// TODO
+					}
 
-				firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
-				if err != nil {
-					core.Error("failed to get first set of counts: %v", err)
-					continue
-				}
-				secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
-				if err != nil {
-					core.Error("failed to get second set of counts: %v", err)
-					continue
-				}
+					for i := 0; i < len(secondNextCounts); i++ {
+						// TODO
+					}
 
-				core.Debug("%+v", firstTotalCounts)
-				core.Debug("%+v", secondTotalCounts)
+					firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
+					if err != nil {
+						core.Error("failed to get first set of counts: %v", err)
+						continue
+					}
+					secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
+					if err != nil {
+						core.Error("failed to get second set of counts: %v", err)
+						continue
+					}
 
-				for i := 0; i < len(firstTotalCounts); i++ {
-					// TODO
-				}
+					core.Debug("%+v", firstTotalCounts)
+					core.Debug("%+v", secondTotalCounts)
 
-				for i := 0; i < len(secondTotalCounts); i++ {
-					// TODO
-				}
+					for i := 0; i < len(firstTotalCounts); i++ {
+						// TODO
+					}
 
-				countsPipeline.Close()
+					for i := 0; i < len(secondTotalCounts); i++ {
+						// TODO
+					}
+
+					countsPipeline.Close()
+				*/
+
+				core.Debug("----------------------------")
+				core.Debug("num found top sessions: %d", len(topSessions))
+				core.Debug("found top sessions: %+v", topSessions)
+				core.Debug("----------------------------")
 
 				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
 					core.Error("failed to update data store with new top sessions and counts: %v", err)
@@ -509,6 +517,10 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 	service.UpdateLeaderStore(dataStores)
 
 	dataStores = service.LoadLeaderStore()
+
+	if len(dataStores) == 0 {
+		return fmt.Errorf("no data stores returned from redis")
+	}
 
 	newLookerStats := LookerStats{}
 	newTopSesssions := make([]TopSession, 10)
