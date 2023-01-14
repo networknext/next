@@ -67,14 +67,6 @@ struct next_platform_thread_t
     HANDLE handle;
 };
 
-typedef DWORD next_platform_thread_return_t;
-
-#define NEXT_PLATFORM_THREAD_RETURN() do { return 0; } while ( 0 )
-
-#define NEXT_PLATFORM_THREAD_FUNC WINAPI
-
-typedef next_platform_thread_return_t(NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
-
 // -------------------------------------
 
 struct next_platform_mutex_t
