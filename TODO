@@ -8,13 +8,7 @@ DONE
 
 	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
 
-TODO
-
-	--------
-
 	Setup raspberry_client and raspberry_server artifacts to be built and uploaded in semaphore.
-
-	--------
 
 	Ask van to setup raspberry_client, raspberry_server and raspberry_backend MIGs in dev.
 
@@ -22,55 +16,7 @@ TODO
 
 	The rest should just be a raw mig that we scale up/down manually.
 
-	--------
-
-	Get a steady state of a few hundred raspberry pis running in the dev environment :)
-
-	--------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	The leader election is pretty clearly broken.
-
-	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
+TODO
 
 	--------------
 
@@ -86,6 +32,8 @@ TODO
 
 	We also would need to not filter out relays forever, but instead, store them unmolested, and filter them temporarily before we use them for routing.
 
+	Once this is done, we can remove the packet loss threshold.
+
 	--------------
 
 	Why does it only ever show 7 routes, for 7 near relays?
@@ -94,7 +42,9 @@ TODO
 
 	--------------
 
-	Once this is done, we can remove the packet loss threshold.
+	The leader election is pretty clearly broken.
+
+	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
 
 	--------------
 
