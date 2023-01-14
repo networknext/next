@@ -18,33 +18,53 @@ DONE
 
 	Add new spam log level
 
-TODO
-
-	--------
-
 	Create a raspberry_backend service in golang.
 
 	This service just tracks raspberry servers that are available to connect to.
 
 	This way we can have raspberry pi servers be zero configuration and just run in a MIG.
 
-	--------
+	Setup raspberry server to report server updates to the raspberry backend in a background thread.
 
-	Setup raspberry pi client to be a self-contained program that runs multiple clients on n threads.
+TODO
 
-	This way it can just be run in a MIG and be zero configuration.
-
-	--------
-
-	Setup raspberry_backend, raspberry_client and raspberry_server artifacts to be built.
+	Raspberry client should git the raspberry backend to get a list of servers to connect to, and connect to one randomly.
 
 	--------
 
-	Setup raspberry_backend, raspberry_client and raspberry_server MIGs in dev.
+	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
+
+	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
 
 	--------
 
+	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
 
+	--------
+
+	Setup raspberry_client and raspberry_server artifacts to be built and uploaded in semaphore.
+
+	--------
+
+	Ask van to setup raspberry_client, raspberry_server and raspberry_backend MIGs in dev.
+
+	Only raspberry backend needs health check and LB.
+
+	The rest should just be a raw mig that we scale up/down manually.
+
+	--------
+
+	Get a steady state of a few hundred raspberry pis running in the dev environment :)
+
+	--------
+
+	Shut down the old raspberry pi client and server instances I'd hacked up elsewhere.
+
+	--------
+
+	Freeze the old raspberry pi github repo.
+
+	--------
 
 
 
