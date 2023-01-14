@@ -1,50 +1,38 @@
 DONE
 
-	Setup home network so all traffic goes across spectrum, not starlink.
-	
-	We need more relays in dev for testing. Asked van to setup more AWS relays (5-6 more), in north america for testing.
+	Raspberry client should hit the raspberry backend to get a list of servers to connect to, and connect to one randomly.
 
-	Configure raspberry customer so that it has fairly random selection of best routes, eg. by having a very wide route selection threshold, and route switch threshold
+	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
 
-	Split apart VM and LB health checks. They're not the same!
+	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
 
-	Make sure tests and happy path works with new health checks
-
-	Setup services in dev with new health checks.
-
-	Setup raspberry_client and raspberry_server as commands in the main backend repo. This is a much better way to work, and we can leverage dev environment and semaphore to deploy them.
-
-	Server does not appear to be property detecting the fallback to direct only... this is needed so the server is robust, even when the server backend goes down.
-
-	Add new spam log level
+	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
 
 TODO
 
 	--------
 
-	Create a raspberry_backend service in golang.
+	Raspberry server needs to detect when its running in google cloud, and query its public IP address automatically.
 
-	This service just tracks raspberry servers that are available to connect to.
-
-	This way we can have raspberry pi servers be zero configuration and just run in a MIG.
+	This way it can be zero configuration and we can easily scale servers up and down in a MIG.
 
 	--------
 
-	Setup raspberry pi client to be a self-contained program that runs multiple clients on n threads.
-
-	This way it can just be run in a MIG and be zero configuration.
+	Setup raspberry_client and raspberry_server artifacts to be built and uploaded in semaphore.
 
 	--------
 
-	Setup raspberry_backend, raspberry_client and raspberry_server artifacts to be built.
+	Ask van to setup raspberry_client, raspberry_server and raspberry_backend MIGs in dev.
+
+	Only raspberry backend needs health check and LB.
+
+	The rest should just be a raw mig that we scale up/down manually.
 
 	--------
 
-	Setup raspberry_backend, raspberry_client and raspberry_server MIGs in dev.
+	Get a steady state of a few hundred raspberry pis running in the dev environment :)
 
 	--------
-
-
 
 
 
