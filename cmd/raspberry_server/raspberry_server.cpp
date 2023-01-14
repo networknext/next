@@ -114,7 +114,7 @@ extern const char * next_platform_getenv( const char * name );
 
 int main()
 {
-    printf( "\nRaspberry Pi Server\n\n" );
+    printf( "\nRaspberry Server\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
@@ -130,12 +130,29 @@ int main()
 
     next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
 
-    char server_address[256];
+    char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
 
-    // todo: if we are running in google cloud, detect google cloud public IP address
+    // if we are running in google cloud, detect google cloud public IP address
 
-    // ...
+    FILE * file = popen( "curl http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+
+    char buffer[1024];
+
+    while ( file && fgets( buffer, sizeof(buffer), file ) != NULL )
+    {
+		next_address_t address;
+		if ( next_address_parse( &address, buffer ) == NEXT_OK )
+		{
+			next_address_to_string( &address, server_address );
+			break;
+		}
+    }
+
+    if ( file )
+    {
+    	pclose( file );
+    }
 
     // start server
 
