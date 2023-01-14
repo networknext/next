@@ -12,12 +12,6 @@ TODO
 
 	--------
 
-	Raspberry server needs to detect when its running in google cloud, and query its public IP address automatically.
-
-	This way it can be zero configuration and we can easily scale servers up and down in a MIG.
-
-	--------
-
 	Setup raspberry_client and raspberry_server artifacts to be built and uploaded in semaphore.
 
 	--------
@@ -106,14 +100,6 @@ TODO
 
 	Setup google.virginia.3 relay myself, so I can understand the process and potentially streamline it.
 
-	--------------
-
-	Setup a deploy key for the raspberry repo.
-
-	Set up dr strange so I can clone the raspberry repo to /mnt/c/raspberry
-
-	Build and run 25 raspberry pi clients on dr strange continuously.
-
 	-----------------
 
 	Streamline the process to setup a new machine to be a relay.
@@ -127,4 +113,3 @@ TODO
 	Build a relay release process in semaphore.
 
 	-----------------
-
