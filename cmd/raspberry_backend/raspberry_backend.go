@@ -8,6 +8,7 @@ import (
 	"context"
 	"sync"
 	"strconv"
+	"strings"
 	"io/ioutil"
 
 	"github.com/go-redis/redis/v8"
@@ -38,6 +39,8 @@ const RaspberryBackendVersion = 1 // IMPORTANT: bump this anytime you change the
 func main() {
 
 	service := common.CreateService("raspberry_backend")
+
+	updateChannel = make(chan *Update, 10*1024)
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
@@ -73,7 +76,6 @@ func processUpdates() {
 	go func() {
 		for {
 			update := <-updateChannel
-			fmt.Printf("processing update\n")
 			pipe := redisClient.TxPipeline()
 			pipe.Set(ctx, fmt.Sprintf("raspberry-server-%d/%s", RaspberryBackendVersion, update.address.String()), "", 30 * time.Second)
 			_, err := pipe.Exec(ctx)
@@ -85,7 +87,7 @@ func processUpdates() {
 	}()
 }
 
-func ParseAddress(input string) *net.UDPAddr {
+func parseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
 	if err != nil {
@@ -99,26 +101,38 @@ func ParseAddress(input string) *net.UDPAddr {
 }
 
 func updateServers() {
+	ctx := context.Background()
+	prefix := fmt.Sprintf("raspberry-server-%d/", RaspberryBackendVersion)
 	go func() {
 		for {
 			time.Sleep(time.Second)
+			newServers := ""
+			itor := redisClient.Scan(ctx, 0, fmt.Sprintf("%s*", prefix), 0).Iterator()
+			for itor.Next(ctx) {
+				_, server, result := strings.Cut(itor.Val(), prefix)
+				if result {
+					newServers += fmt.Sprintf("%s\n", server)
+				}
+			}
+			if err := itor.Err(); err != nil {
+				fmt.Printf("failed to update servers: %v", err)
+				continue
+			}
 			serversMutex.Lock()
-			// todo: get list of servers from redis
-			servers = "todo"
+			servers = newServers
 			serversMutex.Unlock()
 		}
 	}()
 }
 
 func serverUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("server update\n")
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer r.Body.Close()
-	address := ParseAddress(string(data))
+	address := parseAddress(string(data))
 	if address.IP == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -127,7 +141,6 @@ func serverUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func serversHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("servers\n")
 	w.WriteHeader(http.StatusOK)
 	serversMutex.RLock()
 	w.Write([]byte(servers))
