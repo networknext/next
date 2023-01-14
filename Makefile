@@ -27,7 +27,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/website_cruncher $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/website_cruncher dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -131,4 +131,12 @@ dist/func_client5: dist/$(SDKNAME5).so cmd/func_client5/*
 .PHONY: func-test-sdk5
 func-test-sdk5: dist/reference_relay dist/func_server5 dist/func_client5 dist/func_backend5 dist/func_tests_sdk5
 
-# 
+# Raspberry
+
+dist/raspberry_client: dist/$(SDKNAME5).so cmd/raspberry_client/raspberry_client.cpp
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o raspberry_client ../cmd/raspberry_client/raspberry_client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
+
+dist/raspberry_server: dist/$(SDKNAME5).so cmd/raspberry_server/raspberry_server.cpp
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o raspberry_server ../cmd/raspberry_server/raspberry_server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@echo $@
