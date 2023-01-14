@@ -234,6 +234,16 @@ blocks:
             - artifact pull workflow raspberry_backend.dev.tar.gz
             - gsutil cp raspberry_backend.dev.tar.gz gs://development_artifacts/
 
+        - name: "Raspberry Server"
+          commands:
+            - artifact pull workflow raspberry_server.dev.tar.gz
+            - gsutil cp raspberry_server.dev.tar.gz gs://development_artifacts/
+
+        - name: "Raspberry Client"
+          commands:
+            - artifact pull workflow raspberry_client.dev.tar.gz
+            - gsutil cp raspberry_client.dev.tar.gz gs://development_artifacts/
+
         - name: "Sodium"
           commands:
             - artifact pull workflow libsodium.so
