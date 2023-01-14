@@ -20,6 +20,38 @@ TODO
 
 	--------------
 
+	Gotta fix all sdk4 and sdk5 building
+
+	Test the UE4 plugin and make sure the command line stuff is in there for mountain top and multiversus
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Need to take the max of direct PL and real PL when calculating max direct PL seen
 
 	When the raspberry pi runs at 1 packet per-second, real PL will tend to be lower, statistically speaking than near relay pings, until probabilistically enough slices have passed.
