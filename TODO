@@ -4,15 +4,17 @@ DONE
 
 	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
 
+	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
+
+	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
+
 TODO
 
 	--------
 
-	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
+	Raspberry server needs to detect when its running in google cloud, and query its public IP address automatically.
 
-	--------
-
-	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
+	This way it can be zero configuration and we can easily scale servers up and down in a MIG.
 
 	--------
 
@@ -29,14 +31,6 @@ TODO
 	--------
 
 	Get a steady state of a few hundred raspberry pis running in the dev environment :)
-
-	--------
-
-	Shut down the old raspberry pi client and server instances I'd hacked up elsewhere.
-
-	--------
-
-	Freeze the old raspberry pi github repo.
 
 	--------
 
