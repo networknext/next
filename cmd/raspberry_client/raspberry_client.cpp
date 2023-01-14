@@ -236,7 +236,7 @@ extern const char * next_platform_getenv( const char * name );
 
 int main()
 {
-    printf( "\nRaspberry Pi Client\n\n" );
+    printf( "\nRaspberry Client\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
