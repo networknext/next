@@ -115,6 +115,11 @@ blocks:
             - make dist/website_cruncher.dev.tar.gz
             - artifact push workflow dist/website_cruncher.dev.tar.gz
 
+        - name: "Raspberry Backend"
+          commands:
+            - make dist/raspberry_backend.dev.tar.gz
+            - artifact push workflow dist/raspberry_backend.dev.tar.gz
+
 
   - name: "Publish Artifacts"
 
@@ -187,6 +192,11 @@ blocks:
           commands:
             - artifact pull workflow website_cruncher.dev.tar.gz
             - gsutil cp website_cruncher.dev.tar.gz gs://development_artifacts/
+
+        - name: "Raspberry Backend"
+          commands:
+            - artifact pull workflow raspberry_backend.dev.tar.gz
+            - gsutil cp raspberry_backend.dev.tar.gz gs://development_artifacts/
 
         - name: "Sodium"
           commands:

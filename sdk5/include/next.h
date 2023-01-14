@@ -411,6 +411,28 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * serve
 
 // -----------------------------------------
 
+struct next_platform_thread_t;
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK || NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
+    typedef DWORD next_platform_thread_return_t;
+    #define NEXT_PLATFORM_THREAD_FUNC WINAPI
+    typedef next_platform_thread_return_t(NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
+#else
+    #define NEXT_PLATFORM_THREAD_FUNC
+    typedef void * next_platform_thread_return_t;
+    typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
+#endif
+
+#define NEXT_PLATFORM_THREAD_RETURN() do { return 0; } while ( 0 )
+
+NEXT_EXPORT_FUNC next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * func, void * arg );
+
+NEXT_EXPORT_FUNC void next_platform_thread_join( next_platform_thread_t * thread );
+
+NEXT_EXPORT_FUNC void next_platform_thread_destroy( next_platform_thread_t * thread );
+
+// -----------------------------------------
+
 #define NEXT_MUTEX_BYTES 256
 
 struct next_mutex_t { uint8_t dummy[NEXT_MUTEX_BYTES]; };
@@ -436,9 +458,13 @@ struct next_mutex_helper_t
 
 #endif // #ifdef __cplusplus
 
-// =======================================================================================
+// -----------------------------------------
 
-NEXT_EXPORT_FUNC void next_test();
+NEXT_EXPORT_FUNC void next_copy_string( char * dest, const char * source, size_t dest_size );
+
+// -----------------------------------------
+
+NEXT_EXPORT_FUNC void next_test();      // IMPORTANT: only if compiled with tests. See #if NEXT_COMPILE_WITH_TESTS
 
 // -----------------------------------------
 
