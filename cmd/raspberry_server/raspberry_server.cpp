@@ -139,7 +139,7 @@ int main()
 
     char buffer[1024];
 
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+    while ( file && fgets( buffer, sizeof(buffer), file ) != NULL )
     {
 		next_address_t address;
 		if ( next_address_parse( &address, buffer ) == NEXT_OK )
@@ -150,7 +150,9 @@ int main()
     }
 
     if ( file )
+    {
     	pclose( file );
+    }
 
     // start server
 
