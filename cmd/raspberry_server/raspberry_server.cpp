@@ -110,6 +110,8 @@ void send_server_updates_to_raspberry_backend( thread_data_t * thread_data )
     (void) thread;
 }
 
+extern const char * next_platform_getenv( const char * name );
+
 int main()
 {
     printf( "\nRaspberry Pi Server\n\n" );
@@ -118,15 +120,26 @@ int main()
 
     next_init( NULL, NULL );
 
-    // todo: get raspberry backend address from env var
-    const char * raspberry_backend_address = "127.0.0.1:40100";
+    char raspberry_backend_address[1024];
+    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof( raspberry_backend_address ) );
+    const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
+    if ( raspberry_backend_address_override )
+    {
+    	next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
 
     char server_address[256];
     next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
 
-    // todo: detect google cloud public IP address, if possible
+    // todo: if we are running in google cloud, detect google cloud public IP address
 
-    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0", "local", server_packet_received );
+    // ...
+
+    // start server
+
+    next_server_t * server = next_server_create( NULL, server_address, "0.0.0.0", "local", server_packet_received );
 
     if ( server == NULL )
     {
@@ -134,7 +147,7 @@ int main()
         return 1;
     }
 
-    // todo: now that we know our port number, combine with the address and we have our public address
+    // now that we know our port number, combine with the address and we have our public address
 
     int server_port = next_server_port( server );
     char public_address[256];

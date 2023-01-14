@@ -103,9 +103,21 @@ uint64_t raspberry_user_id()
     return user_id;
 }
 
-next_platform_thread_return_t run_client_thread( void * data )
+next_platform_thread_return_t client_thread_function( void * data )
 {
-	uint64_t user_id = *((uint64_t*)data);
+	(void) data;
+
+    uint64_t user_id = raspberry_user_id();
+
+    if ( user_id != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
+        srand( (unsigned int) user_id );
+    }
+    else
+    {
+        srand( (unsigned int) time(NULL) );
+    }
 
     const int MaxServers = 256;
 
@@ -210,30 +222,21 @@ next_platform_thread_return_t run_client_thread( void * data )
 	NEXT_PLATFORM_THREAD_RETURN();
 }
 
-void run_client( uint64_t user_id )
-{
-    next_platform_thread_t * thread = next_platform_thread_create( NULL, run_client_thread, &user_id );
-    next_assert( thread );
-    (void) thread;
-}
-
-void run_clients( uint64_t user_id, int num_clients )
+void run_clients( int num_clients )
 {
 	for ( int i = 0; i < num_clients; i++ )
 	{
-		run_client( user_id );		
+	    next_platform_thread_t * thread = next_platform_thread_create( NULL, client_thread_function, NULL );
+	    next_assert( thread );
+	    (void) thread;
 	}
 }
+
+extern const char * next_platform_getenv( const char * name );
 
 int main()
 {
     printf( "\nRaspberry Pi Client\n\n" );
-
-    // todo: get raspberry backend address from env var
-    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof(raspberry_backend_address) );
-
-    // todo: get num clients from env var
-    const int num_clients = 25;
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
@@ -248,19 +251,24 @@ int main()
 
     next_init( NULL, &config );
 
-    uint64_t user_id = raspberry_user_id();
-
-    if ( user_id != 0 )
+    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof(raspberry_backend_address) );
+    const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
+    if ( raspberry_backend_address_override )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
-        srand( (unsigned int) user_id );
-    }
-    else
-    {
-        srand( (unsigned int) time(NULL) );
+    	next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
     }
 
-    run_clients( user_id, num_clients );
+    int num_clients = 25;
+    const char * num_clients_override = next_platform_getenv( "RASPBERRY_NUM_CLIENTS" );
+    if ( num_clients_override )
+    {
+        num_clients = atoi( num_clients_override );
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
+    next_printf( NEXT_LOG_LEVEL_INFO, "num clients: %d", num_clients );
+
+    run_clients( num_clients );
 
     while ( !quit )
     {
