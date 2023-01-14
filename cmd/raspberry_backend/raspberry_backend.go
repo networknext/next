@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"context"
 	"sync"
+	"strconv"
+	"io/ioutil"
 
 	"github.com/go-redis/redis/v8"
 
@@ -21,7 +23,7 @@ var redisPassword string
 var magicUpdateSeconds int
 
 type Update struct {
-	Address *net.UDPAddr
+	address *net.UDPAddr
 }
 
 var updateChannel chan *Update
@@ -67,13 +69,33 @@ func main() {
 }
 
 func processUpdates() {
+	ctx := context.Background()
 	go func() {
 		for {
 			update := <-updateChannel
 			fmt.Printf("processing update\n")
-			_ = update
+			pipe := redisClient.TxPipeline()
+			pipe.Set(ctx, fmt.Sprintf("raspberry-server-%d/%s", RaspberryBackendVersion, update.address.String()), "", 30 * time.Second)
+			_, err := pipe.Exec(ctx)
+			if err != nil {
+				core.Error("failed to store server update: %v", err)
+				return
+			}
 		}
 	}()
+}
+
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
 }
 
 func updateServers() {
@@ -90,9 +112,18 @@ func updateServers() {
 
 func serverUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("server update\n")
-	update := &Update{}
-	// todo: parse update into update struct
-	updateChannel <- update
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+	address := ParseAddress(string(data))
+	if address.IP == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	updateChannel <- &Update{address: address}
 }
 
 func serversHandler(w http.ResponseWriter, r *http.Request) {
