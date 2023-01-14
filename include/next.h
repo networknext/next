@@ -413,15 +413,15 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * serve
 
 struct next_platform_thread_t;
 
-// fucking windows
-//typedef DWORD next_platform_thread_return_t;
-//#define NEXT_PLATFORM_THREAD_FUNC WINAPI
-
-#define NEXT_PLATFORM_THREAD_FUNC
-
-typedef void * next_platform_thread_return_t;
-
-typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
+#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK || NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
+    typedef DWORD next_platform_thread_return_t;
+    #define NEXT_PLATFORM_THREAD_FUNC WINAPI
+    typedef next_platform_thread_return_t(NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
+#else
+    #define NEXT_PLATFORM_THREAD_FUNC
+    typedef void * next_platform_thread_return_t;
+    typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
+#endif
 
 #define NEXT_PLATFORM_THREAD_RETURN() do { return 0; } while ( 0 )
 
