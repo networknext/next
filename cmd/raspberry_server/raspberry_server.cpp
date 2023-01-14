@@ -71,21 +71,116 @@ void server_packet_received( next_server_t * server, void * context, const next_
     }
 }
 
+struct thread_data_t
+{
+    const char * server_address;
+    const char * raspberry_backend_address;
+};
+
+next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC server_update_thread( void * data )
+{
+    next_assert( data );
+
+    thread_data_t * thread_data = (thread_data_t*) data;
+
+    const char * server_address = thread_data->server_address;
+    const char * raspberry_backend_address = thread_data->raspberry_backend_address;
+    
+    char command_line[1024];
+    snprintf( command_line, sizeof(command_line), "curl -d \"%s\" -X POST http://%s/server_update --max-time 2 2>/dev/null", server_address, raspberry_backend_address );
+
+    while ( !quit )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "sending server update: %s", server_address );
+
+        FILE * file = popen( command_line, "r" );
+        if ( file )
+            pclose( file );
+
+        next_sleep( 10.0 );
+    }
+
+    NEXT_PLATFORM_THREAD_RETURN();
+}
+
+void send_server_updates_to_raspberry_backend( thread_data_t * thread_data )
+{
+    next_platform_thread_t * thread = next_platform_thread_create( NULL, server_update_thread, thread_data );
+    next_assert( thread );
+    (void) thread;
+}
+
+extern const char * next_platform_getenv( const char * name );
+
 int main()
 {
-    printf( "\nRaspberry Pi Server\n\n" );
+    printf( "\nRaspberry Server\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL );
 
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    char raspberry_backend_address[1024];
+    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof( raspberry_backend_address ) );
+    const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
+    if ( raspberry_backend_address_override )
+    {
+    	next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
+
+    char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
+
+    // if we are running in google cloud, detect google cloud public IP address
+
+    FILE * file = popen( "curl http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+
+    char buffer[1024];
+
+    while ( file && fgets( buffer, sizeof(buffer), file ) != NULL )
+    {
+		next_address_t address;
+		if ( next_address_parse( &address, buffer ) == NEXT_OK )
+		{
+			next_address_to_string( &address, server_address );
+			break;
+		}
+    }
+
+    if ( file )
+    {
+    	pclose( file );
+    }
+
+    // start server
+
+    next_server_t * server = next_server_create( NULL, server_address, "0.0.0.0", "local", server_packet_received );
 
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );
         return 1;
     }
+
+    // now that we know our port number, combine with the address and we have our public address
+
+    int server_port = next_server_port( server );
+    char public_address[256];
+    snprintf( public_address, sizeof(public_address), "%s:%d", server_address, server_port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "public address is: %s", public_address );
+
+    // send server updates to the raspberry backend in the background
+
+    thread_data_t thread_data;
+
+    thread_data.server_address = public_address;
+    thread_data.raspberry_backend_address = raspberry_backend_address;
+
+    send_server_updates_to_raspberry_backend( &thread_data );
+
+    // main loop for server
 
     while ( !quit )
     {

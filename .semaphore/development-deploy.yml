@@ -115,10 +115,51 @@ blocks:
             - make dist/website_cruncher.dev.tar.gz
             - artifact push workflow dist/website_cruncher.dev.tar.gz
 
+        - name: "Raspberry Backend"
+          commands:
+            - make dist/raspberry_backend.dev.tar.gz
+            - artifact push workflow dist/raspberry_backend.dev.tar.gz
+
+
+  - name: "Build Artifacts (Native)"
+
+    dependencies: []
+
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+            - sudo apt-get update
+            - sudo apt-get install -y libsodium-dev
+            - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+            - git submodule init
+            - git submodule update
+            - mkdir dist
+
+      jobs:
+
+        - name: "Raspberry Server"
+          commands:
+            - artifact pull workflow libnext5.so
+            - make -j dist/raspberry_server.dev.tar.gz
+            - artifact push workflow dist/raspberry_server.dev.tar.gz
+
+        - name: "Raspberry Client"
+          commands:
+            - artifact pull workflow libnext5.so
+            - make -j dist/raspberry_client.dev.tar.gz
+            - artifact push workflow dist/raspberry_client.dev.tar.gz
+
 
   - name: "Publish Artifacts"
 
-    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)"]
+    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
 
     task:
 
@@ -187,6 +228,21 @@ blocks:
           commands:
             - artifact pull workflow website_cruncher.dev.tar.gz
             - gsutil cp website_cruncher.dev.tar.gz gs://development_artifacts/
+
+        - name: "Raspberry Backend"
+          commands:
+            - artifact pull workflow raspberry_backend.dev.tar.gz
+            - gsutil cp raspberry_backend.dev.tar.gz gs://development_artifacts/
+
+        - name: "Raspberry Server"
+          commands:
+            - artifact pull workflow raspberry_server.dev.tar.gz
+            - gsutil cp raspberry_server.dev.tar.gz gs://development_artifacts/
+
+        - name: "Raspberry Client"
+          commands:
+            - artifact pull workflow raspberry_client.dev.tar.gz
+            - gsutil cp raspberry_client.dev.tar.gz gs://development_artifacts/
 
         - name: "Sodium"
           commands:
