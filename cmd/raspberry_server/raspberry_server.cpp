@@ -107,6 +107,7 @@ void send_server_updates_to_raspberry_backend( thread_data_t * thread_data )
 {
     next_platform_thread_t * thread = next_platform_thread_create( NULL, server_update_thread, thread_data );
     next_assert( thread );
+    (void) thread;
 }
 
 int main()

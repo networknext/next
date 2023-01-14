@@ -156,6 +156,10 @@ func main() {
 		func_backend(args[2:])
 	} else if command == "raspberry-backend" {
 		raspberry_backend()
+	} else if command == "raspberry-server" {
+		raspberry_server()
+	} else if command == "raspberry-client" {
+		raspberry_client()
 	}
 
 	cleanup()
@@ -306,4 +310,12 @@ func func_backend(tests []string) {
 
 func raspberry_backend() {
 	bash("HTTP_PORT=40100 ./dist/raspberry_backend")	
+}
+
+func raspberry_client() {
+	bash("cd dist && ./raspberry_client")
+}
+
+func raspberry_server() {
+	bash("cd dist && ./raspberry_server")
 }

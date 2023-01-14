@@ -1,38 +1,12 @@
 DONE
 
-	Setup home network so all traffic goes across spectrum, not starlink.
-	
-	We need more relays in dev for testing. Asked van to setup more AWS relays (5-6 more), in north america for testing.
+	Raspberry client should hit the raspberry backend to get a list of servers to connect to, and connect to one randomly.
 
-	Configure raspberry customer so that it has fairly random selection of best routes, eg. by having a very wide route selection threshold, and route switch threshold
-
-	Split apart VM and LB health checks. They're not the same!
-
-	Make sure tests and happy path works with new health checks
-
-	Setup services in dev with new health checks.
-
-	Setup raspberry_client and raspberry_server as commands in the main backend repo. This is a much better way to work, and we can leverage dev environment and semaphore to deploy them.
-
-	Server does not appear to be property detecting the fallback to direct only... this is needed so the server is robust, even when the server backend goes down.
-
-	Add new spam log level
-
-	Create a raspberry_backend service in golang.
-
-	This service just tracks raspberry servers that are available to connect to.
-
-	This way we can have raspberry pi servers be zero configuration and just run in a MIG.
-
-	Setup raspberry server to report server updates to the raspberry backend in a background thread.
+	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
 
 TODO
 
-	Raspberry client should git the raspberry backend to get a list of servers to connect to, and connect to one randomly.
-
 	--------
-
-	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
 
 	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
 
