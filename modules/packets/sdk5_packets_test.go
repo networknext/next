@@ -211,6 +211,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
+		DirectMaxPacketLossSeen:         rand.Float32(),
 		PacketsSentClientToServer:       rand.Uint64(),
 		PacketsSentServerToClient:       rand.Uint64(),
 		PacketsLostClientToServer:       rand.Uint64(),
@@ -272,7 +273,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		SessionDataBytes:   int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
 		HasNearRelays:      common.RandomBool(),
 		HasDebug:           common.RandomBool(),
-		HighFrequencyPings: common.RandomBool(),
 	}
 
 	if packet.HasDebug {

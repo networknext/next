@@ -280,7 +280,6 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-	state.Output.RouteState.UserID = state.Request.UserHash
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -469,14 +468,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
+	state.Response.HasNearRelays = true
+	state.Response.NumNearRelays = int32(numNearRelays)
+
 	for i := 0; i < numNearRelays; i++ {
 		state.Response.NearRelayIds[i] = nearRelayIds[i]
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
-
-	state.Response.HasNearRelays = true
-	state.Response.NumNearRelays = int32(numNearRelays)
-	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
 
 	return true
 }
@@ -507,53 +505,36 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
 	/*
-		On slice #1, we have the first near relay ping results sent up from the SDK.
-
-		Filter them and store the usable near relays in the session data as held relays.
+		Filter source relays and get them in a form relative to the current route matrix
 	*/
 
-	if state.Input.SliceNumber == 1 {
+	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
+	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))   // todo: may want DirectMaxJitterSeen
+	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
-		directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
-		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-		directPacketLoss := state.Request.DirectPacketLoss
+	fmt.Printf("%d near relays sent up from SDK\n", state.Request.NumNearRelays)
 
-		sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
-		sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
-		sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
-		sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
+	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
+	sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
+	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
+	sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
 
-		outputSourceRelayLatency := [core.MaxNearRelays]int32{}
+	filteredSourceRelayLatency := [core.MaxNearRelays]int32{}
 
-		core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
-			directLatency,
-			directJitter,
-			directPacketLoss,
-			sourceRelayIds,
-			sourceRelayLatency,
-			sourceRelayJitter,
-			sourceRelayPacketLoss,
-			outputSourceRelayLatency[:])
+	core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		filteredSourceRelayLatency[:])
 
-		state.Output.HeldNumNearRelays = state.Request.NumNearRelays
-		copy(state.Output.HeldNearRelayIds[:], sourceRelayIds)
-		copy(state.Output.HeldNearRelayRTT[:], outputSourceRelayLatency[:state.Request.NumNearRelays])
+	outputSourceRelays := make([]int32, len(sourceRelayIds))
+	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
 
-		// todo: we may wish to store the near relay ping data somewhere
-		// by publishing a google pubsub message in the session post for slice #1
-	}
-
-	/*
-		Reframe the source relays to get them in a relay index from relative to the current route matrix.
-	*/
-
-	inputSourceRelayIds := state.Output.HeldNearRelayIds[:state.Output.HeldNumNearRelays]
-	inputSourceRelayLatency := state.Output.HeldNearRelayRTT[:state.Output.HeldNumNearRelays]
-
-	outputSourceRelays := make([]int32, state.Output.HeldNumNearRelays)
-	outputSourceRelayLatency := make([]int32, state.Output.HeldNumNearRelays)
-
-	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, inputSourceRelayIds, inputSourceRelayLatency, outputSourceRelays, outputSourceRelayLatency)
+	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
@@ -713,7 +694,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries,
+		if core.MakeRouteDecision_TakeNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
@@ -792,7 +774,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		nextLatency := int32(state.Request.NextRTT)
 		predictedLatency := state.Input.RouteCost
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries,
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
