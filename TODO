@@ -22,30 +22,13 @@ DONE
 
 	Remove high frequency pings. There is just no point to this. Standardize on 10HZ.
 
-TODO
-
 	Remove user id from route state
 
-	It's much cheaper just to pass in up from the client with each route request
+	Cache the near relay state on the server, holding it and sending it up with each route request packet.
 
-	---------
+TODO
 
-	Egress bandwidth is expensive.
-
-	We should not be storing the held near relays in state, and sending it back and forth.
-
-	Instead the SDK should be simply uploading to us the latest near relay data that *it* has cached for us.
-
-	This is simpler, and less bandwidth (especially, egress bandwidth from google cloud, which is expensive for us)
-
-	It is the same amount of bandwidth for our customer to send up from their servers.
-
-	Do it.
-
-	---------
-
-
-
+	Use the max packet loss seen when filtering near relays. This way we don't ever introduce near relays with packet loss, unless direct is also experiencing packet loss.
 
 
 

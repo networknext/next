@@ -10180,6 +10180,14 @@ struct next_session_entry_t
     bool match_data_flush_finished;
 
     NEXT_DECLARE_SENTINEL(29)
+
+    int num_held_near_relays;
+    uint64_t held_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint8_t held_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t held_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    float held_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(30)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -10216,6 +10224,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 27 )
     NEXT_INITIALIZE_SENTINEL( entry, 28 )
     NEXT_INITIALIZE_SENTINEL( entry, 29 )
+    NEXT_INITIALIZE_SENTINEL( entry, 30 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -10252,6 +10261,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 27 )
     NEXT_VERIFY_SENTINEL( entry, 28 )
     NEXT_VERIFY_SENTINEL( entry, 29 )
+    NEXT_INITIALIZE_SENTINEL( entry, 30 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -14761,6 +14771,19 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
 
+            // IMPORTANT: hold near relay stats for the rest of the session
+            if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
+            {
+            	session->num_held_near_relays = session->stats_num_near_relays;
+            	for ( int i = 0; i < session->stats_num_near_relays; i++ )
+            	{
+            		session->held_near_relay_ids[i] = session->stats_near_relay_ids[i];	
+            		session->held_near_relay_rtt[i] = session->stats_near_relay_rtt[i];	
+            		session->held_near_relay_jitter[i] = session->stats_near_relay_jitter[i];	
+            		session->held_near_relay_packet_loss[i] = session->stats_near_relay_packet_loss[i];	
+            	}
+            }
+
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
@@ -14779,10 +14802,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.num_near_relays = session->stats_num_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
-                packet.near_relay_ids[j] = session->stats_near_relay_ids[j];
-                packet.near_relay_rtt[j] = session->stats_near_relay_rtt[j];
-                packet.near_relay_jitter[j] = session->stats_near_relay_jitter[j];
-                packet.near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];
+                packet.near_relay_ids[j] = session->held_near_relay_ids[j];
+                packet.near_relay_rtt[j] = session->held_near_relay_rtt[j];
+                packet.near_relay_jitter[j] = session->held_near_relay_jitter[j];
+                packet.near_relay_packet_loss[j] = session->held_near_relay_packet_loss[j];
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
