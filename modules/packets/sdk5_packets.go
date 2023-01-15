@@ -378,7 +378,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 	sessionData.Location.ISP = common.RandomString(SDK5_MaxISPNameLength)
 	sessionData.Location.ASN = rand.Uint32()
 
-	sessionData.RouteState.UserID = rand.Uint64()
 	sessionData.RouteState.Next = common.RandomBool()
 	sessionData.RouteState.Veto = common.RandomBool()
 	sessionData.RouteState.Disabled = common.RandomBool()
@@ -636,7 +635,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)

@@ -280,7 +280,6 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-	state.Output.RouteState.UserID = state.Request.UserHash
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -712,7 +711,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries,
+		if core.MakeRouteDecision_TakeNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
@@ -791,7 +791,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		nextLatency := int32(state.Request.NextRTT)
 		predictedLatency := state.Input.RouteCost
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries,
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
