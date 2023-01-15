@@ -211,6 +211,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
+		DirectMaxPacketLossSeen:         rand.Float32(),
 		PacketsSentClientToServer:       rand.Uint64(),
 		PacketsSentServerToClient:       rand.Uint64(),
 		PacketsLostClientToServer:       rand.Uint64(),

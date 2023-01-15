@@ -202,6 +202,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
+	DirectMaxPacketLossSeen         float32
 	NextRTT                         float32
 	NextJitter                      float32
 	NextPacketLoss                  float32
@@ -288,6 +289,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
+	stream.SerializeFloat32(&packet.DirectMaxPacketLossSeen)
 
 	if packet.Next {
 		stream.SerializeFloat32(&packet.NextRTT)
