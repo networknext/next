@@ -264,6 +264,7 @@ struct next_client_stats_t
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float direct_kbps_up;
     float direct_kbps_down;
     float next_rtt;
@@ -338,6 +339,7 @@ struct next_server_stats_t
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float direct_kbps_up;
     float direct_kbps_down;
     float next_rtt;

@@ -343,7 +343,6 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		sessionData.SessionID = sessionUpdate.SessionID
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
-		sessionData.RouteState.UserID = sessionUpdate.UserHash
 		sessionData.Location = routing.LocationNullIsland
 	} else {
 		if err := transport.UnmarshalSessionData(&sessionData, sessionUpdate.SessionData[:]); err != nil {
