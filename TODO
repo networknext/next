@@ -30,8 +30,6 @@ DONE
 
 TODO
 
-	Debug why the sdk held relays aren't working
-
 
 
 
@@ -86,13 +84,6 @@ TODO
 
 
 
-
-
-	--------------
-
-	Why does it only ever show 7 routes, for 7 near relays?
-
-	Is there something in our code that restricts to the best route, per-near relay only?
 
 	--------------
 
