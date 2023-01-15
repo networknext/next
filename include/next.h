@@ -417,7 +417,7 @@ struct next_platform_thread_t;
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK || NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
     typedef DWORD next_platform_thread_return_t;
-    #define NEXT_PLATFORM_THREAD_FUNC WINAPI
+    #define NEXT_PLATFORM_THREAD_FUNC __stdcall
     typedef next_platform_thread_return_t(NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
 #else
     #define NEXT_PLATFORM_THREAD_FUNC
