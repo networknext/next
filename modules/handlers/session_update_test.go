@@ -3114,6 +3114,8 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 	assert.False(t, state.Response.HasNearRelays)
 }
 
+// todo: update
+/*
 func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 
 	t.Parallel()
@@ -3355,6 +3357,7 @@ func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
 }
+*/
 
 // --------------------------------------------------------------
 

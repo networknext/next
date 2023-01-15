@@ -1182,7 +1182,7 @@ func ReframeDestRelays(relayIdToIndex map[uint64]int32, destRelayId []uint64, ou
 
 func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
 
-	for i := range sourceRelayLatency {
+	for i := range sourceRelayId {
 
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {

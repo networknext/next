@@ -26,11 +26,11 @@ DONE
 
 	Cache the near relay state on the server, holding it and sending it up with each route request packet.
 
-TODO
-
 	Use the max packet loss seen when filtering near relays. This way we don't ever introduce near relays with packet loss, unless direct is also experiencing packet loss.
 
+TODO
 
+	Debug why the sdk held relays aren't working
 
 
 

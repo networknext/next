@@ -365,13 +365,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
 	}
 
-	sessionData.HeldNumNearRelays = int32(common.RandomInt(0, SDK5_MaxNearRelays))
-
-	for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
-		sessionData.HeldNearRelayIds[i] = rand.Uint64()
-		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
-	}
-
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
 	sessionData.Location.Latitude = rand.Float32()
 	sessionData.Location.Longitude = rand.Float32()
@@ -541,9 +534,6 @@ type SDK5_SessionData struct {
 	RouteCost                     int32
 	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
 	RouteState                    core.RouteState
-	HeldNumNearRelays             int32
-	HeldNearRelayIds              [SDK5_MaxNearRelays]uint64
-	HeldNearRelayRTT              [SDK5_MaxNearRelays]int32
 	EverOnNext                    bool
 	FallbackToDirect              bool
 	PrevPacketsSentClientToServer uint64
@@ -619,19 +609,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&sessionData.RouteNumRelays, 0, SDK5_MaxTokens)
 		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
 			stream.SerializeUint64(&sessionData.RouteRelayIds[i])
-		}
-	}
-
-	hasNearRelays := false
-	if stream.IsWriting() {
-		hasNearRelays = sessionData.HeldNumNearRelays > 0
-	}
-	stream.SerializeBool(&hasNearRelays)
-	if hasNearRelays {
-		stream.SerializeInteger(&sessionData.HeldNumNearRelays, 1, int32(SDK5_MaxNearRelays))
-		for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
-			stream.SerializeUint64(&sessionData.HeldNearRelayIds[i])
-			stream.SerializeInteger(&sessionData.HeldNearRelayRTT[i], 0, 255)
 		}
 	}
 
