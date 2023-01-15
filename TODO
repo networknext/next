@@ -18,9 +18,48 @@ DONE
 
 TODO
 
+	We need to track max direct packet loss seen
+
+	Need to take the max of direct PL and real PL when calculating max direct PL seen
+
+	---------
+
+	I believe that a key component of the old system was comparing max packet loss on direct vs. max PL on relays, so over time we had some code that went "ok, so we have intermittent packet loss, loosen it up on the near relays".
+
+	We also would need to not filter out relays forever, but instead, store them unmolested, and filter them temporarily before we use them for routing.
+
+	Once this is done, we can remove the packet loss threshold.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	--------------
 
 	Gotta fix all sdk4 and sdk5 building
+
+	--------------
 
 	Test the UE4 plugin and make sure the command line stuff is in there for mountain top and multiversus
 
@@ -51,20 +90,6 @@ TODO
 
 
 
-
-	Need to take the max of direct PL and real PL when calculating max direct PL seen
-
-	When the raspberry pi runs at 1 packet per-second, real PL will tend to be lower, statistically speaking than near relay pings, until probabilistically enough slices have passed.
-
-	--------------
-
-	We need to track max direct packet loss seen
-
-	I believe that a key component of the old system was comparing max packet loss on direct vs. max PL on relays, so over time we had some code that went "ok, so we have intermittent packet loss, loosen it up on the near relays".
-
-	We also would need to not filter out relays forever, but instead, store them unmolested, and filter them temporarily before we use them for routing.
-
-	Once this is done, we can remove the packet loss threshold.
 
 	--------------
 

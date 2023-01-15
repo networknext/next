@@ -3118,9 +3118,11 @@ struct NextClientStatsPacket
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
+    float max_jitter_seen;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
@@ -3153,6 +3155,7 @@ struct NextClientStatsPacket
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
+        serialize_float( stream, direct_max_packet_loss_seen );
         if ( next )
         {
             serialize_float( stream, next_rtt );
@@ -7763,6 +7766,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.direct_jitter = direct_route_stats.jitter;
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
+        if ( direct_route_stats.packet_loss > client->client_stats.direct_max_packet_loss_seen )
+        {
+        	client->client_stats.direct_max_packet_loss_seen = direct_route_stats.packet_loss;
+        }
+
 #if NEXT_DEVELOPMENT
         if ( !fallback_to_direct && next_fake_fallback_to_direct )
         {
@@ -7843,6 +7851,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.direct_rtt = client->client_stats.direct_rtt;
         packet.direct_jitter = client->client_stats.direct_jitter;
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
+        packet.direct_max_packet_loss_seen = client->client_stats.direct_max_packet_loss_seen;
 
         if ( !client->fallback_to_direct )
         {
@@ -7874,7 +7883,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             if ( packet.num_near_relays )
             {
 	            printf( "------------------------------\n" );
-	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f\n", int(packet.direct_rtt), int(packet.direct_jitter), packet.direct_packet_loss );
+	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f, max packet loss seen = %.2f\n", int(packet.direct_rtt), int(packet.direct_jitter), packet.direct_packet_loss, packet.direct_max_packet_loss_seen );
 	            printf( "------------------------------\n" );
 	            for ( int i = 0; i < packet.num_near_relays; i++ )
 	            {
@@ -9739,6 +9748,7 @@ struct NextBackendSessionUpdateRequestPacket
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -9845,6 +9855,7 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
+        serialize_float( stream, direct_max_packet_loss_seen );
 
         if ( next )
         {
@@ -10001,6 +10012,7 @@ struct next_session_entry_t
     float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
+    float stats_direct_max_packet_loss_seen;
     bool stats_next;
     float stats_next_rtt;
     float stats_next_jitter;
@@ -13696,6 +13708,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_direct_rtt = packet.direct_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
+            session->stats_direct_max_packet_loss_seen = packet.direct_max_packet_loss_seen;
             session->stats_next = packet.next;
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
@@ -14790,7 +14803,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_packet_loss = session->stats_next_packet_loss;
             packet.direct_rtt = session->stats_direct_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
-            packet.direct_packet_loss = session->stats_direct_packet_loss;
+            session->stats_direct_packet_loss = packet.direct_packet_loss;
+            session->stats_direct_max_packet_loss_seen = packet.direct_max_packet_loss_seen;
             packet.has_near_relay_pings = session->stats_has_near_relay_pings;
             packet.num_near_relays = session->stats_num_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
@@ -15705,6 +15719,7 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->direct_rtt = entry->stats_direct_rtt;
     stats->direct_jitter = entry->stats_direct_jitter;
     stats->direct_packet_loss = entry->stats_direct_packet_loss;
+    stats->direct_max_packet_loss_seen = entry->stats_direct_max_packet_loss_seen;
     stats->next_rtt = entry->stats_next_rtt;
     stats->next_jitter = entry->stats_next_jitter;
     stats->next_packet_loss = entry->stats_next_packet_loss;
@@ -18314,6 +18329,7 @@ void test_client_stats_packet_with_near_relays()
         in.direct_rtt = 50.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
@@ -18353,6 +18369,7 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
@@ -18397,6 +18414,7 @@ void test_client_stats_packet_without_near_relays()
         in.direct_rtt = 50.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
@@ -18433,6 +18451,7 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
@@ -19040,6 +19059,7 @@ void test_session_update_packet()
         in.direct_rtt = 10.1f;
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.has_near_relay_pings = true;
         in.next_rtt = 5.0f;
@@ -19104,6 +19124,7 @@ void test_session_update_packet()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
