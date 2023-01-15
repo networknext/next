@@ -14798,8 +14798,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_jitter = session->stats_direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
             session->stats_direct_max_packet_loss_seen = packet.direct_max_packet_loss_seen;
-            packet.has_near_relay_pings = session->stats_has_near_relay_pings;
-            packet.num_near_relays = session->stats_num_near_relays;
+            packet.has_near_relay_pings = session->num_held_near_relays != 0;
+            packet.num_near_relays = session->num_held_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
                 packet.near_relay_ids[j] = session->held_near_relay_ids[j];
