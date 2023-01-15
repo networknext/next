@@ -8144,7 +8144,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
+static void next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
 
@@ -8181,8 +8181,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             last_update_time = current_time;
         }
     }
-
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 // ---------------------------------------------------------------
@@ -11187,8 +11185,8 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
         next_pending_session_manager_verify_sentinels( server->pending_session_manager );
 }
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_autodetect_thread_function( void * context );
+static void next_server_internal_resolve_hostname_thread_function( void * context );
+static void next_server_internal_autodetect_thread_function( void * context );
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -11958,7 +11956,7 @@ void next_server_internal_initialize( next_server_internal_t * server )
 
 void next_server_internal_destroy( next_server_internal_t * server );
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context );
+static void next_server_internal_thread_function( void * context );
 
 next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
 {
@@ -14153,7 +14151,7 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
     }
 }
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context )
+static void next_server_internal_resolve_hostname_thread_function( void * context )
 {
     next_assert( context );
 
@@ -14218,7 +14216,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         next_platform_mutex_guard( &server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        NEXT_PLATFORM_THREAD_RETURN();
+		return;
     }
 
 #if NEXT_DEVELOPMENT
@@ -14232,14 +14230,12 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
-        NEXT_PLATFORM_THREAD_RETURN();
+        return;
     }
 
     next_platform_mutex_guard( &server->resolve_hostname_mutex );
     server->resolve_hostname_finished = true;
     server->resolve_hostname_result = address;
-
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
@@ -14302,7 +14298,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     return true;
 }
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_autodetect_thread_function( void * context )
+static void next_server_internal_autodetect_thread_function( void * context )
 {
     next_assert( context );
 
@@ -14366,7 +14362,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
-        NEXT_PLATFORM_THREAD_RETURN();
+        return;
     }
 
     next_platform_mutex_guard( &server->autodetect_mutex );
@@ -14374,8 +14370,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     server->autodetect_finished = true;
     server->autodetect_succeeded = autodetect_result;
     server->autodetect_actually_did_something = autodetect_actually_did_something;
-
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 static bool next_server_internal_update_autodetect( next_server_internal_t * server )
@@ -15029,7 +15023,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     }
 }
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context )
+static void next_server_internal_thread_function( void * context )
 {
     next_assert( context );
 
@@ -15066,8 +15060,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
             last_update_time = current_time;
         }
     }
-
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 // ---------------------------------------------------------------
@@ -17095,10 +17087,9 @@ void test_platform_socket()
 
 static bool threads_work = false;
 
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC test_thread_function(void*)
+static void test_thread_function(void*)
 {
     threads_work = true;
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 void test_platform_thread()
