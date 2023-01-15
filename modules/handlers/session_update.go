@@ -469,14 +469,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
+	state.Response.HasNearRelays = true
+	state.Response.NumNearRelays = int32(numNearRelays)
+
 	for i := 0; i < numNearRelays; i++ {
 		state.Response.NearRelayIds[i] = nearRelayIds[i]
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
-
-	state.Response.HasNearRelays = true
-	state.Response.NumNearRelays = int32(numNearRelays)
-	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
 
 	return true
 }

@@ -18,6 +18,24 @@ DONE
 
 TODO
 
+	Remove high frequency pings. There is just no point to this. Standardize on 10HZ.
+
+	---------
+
+	Egress bandwidth is expensive.
+
+	We should not be storing the held near relays in state, and sending it back and forth.
+
+	Instead the SDK should be simply uploading to us the latest near relay data that *it* has cached for us.
+
+	This is simpler, and less bandwidth (especially, egress bandwidth from google cloud, which is expensive for us)
+
+	It is the same amount of bandwidth for our customer to send up from their servers.
+
+	Do it.
+
+	---------
+
 	We need to track max direct packet loss seen
 
 	Need to take the max of direct PL and real PL when calculating max direct PL seen

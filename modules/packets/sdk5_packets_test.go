@@ -273,7 +273,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		SessionDataBytes:   int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
 		HasNearRelays:      common.RandomBool(),
 		HasDebug:           common.RandomBool(),
-		HighFrequencyPings: common.RandomBool(),
 	}
 
 	if packet.HasDebug {
