@@ -187,8 +187,7 @@
 
 #define NEXT_MAX_SESSION_DEBUG                                       1024
 
-#define NEXT_LOW_FREQUENCY_PING_RATE                                   10
-#define NEXT_HIGH_FREQUENCY_PING_RATE                                  60
+#define NEXT_PING_RATE                                                 10
 
 #define NEXT_ETHERNET_HEADER_BYTES                                     18
 #define NEXT_IPV4_HEADER_BYTES                                         20
@@ -3118,9 +3117,11 @@ struct NextClientStatsPacket
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
+    float max_jitter_seen;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
@@ -3153,6 +3154,7 @@ struct NextClientStatsPacket
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
+        serialize_float( stream, direct_max_packet_loss_seen );
         if ( next )
         {
             serialize_float( stream, next_rtt );
@@ -3195,7 +3197,6 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-    bool high_frequency_pings;
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
@@ -3248,8 +3249,6 @@ struct NextRouteUpdatePacket
         {
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
-
-        serialize_bool( stream, high_frequency_pings );
 
         serialize_bytes( stream, upcoming_magic, 8 );
         serialize_bytes( stream, current_magic, 8 );
@@ -4794,13 +4793,9 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    bool high_frequency_pings;
-
-    NEXT_DECLARE_SENTINEL(5)
-
     next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
 
-    NEXT_DECLARE_SENTINEL(6)
+    NEXT_DECLARE_SENTINEL(5)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4815,7 +4810,6 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 3 )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
-    NEXT_INITIALIZE_SENTINEL( manager, 6 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
@@ -4832,7 +4826,6 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 3 )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
-    NEXT_VERIFY_SENTINEL( manager, 6 )
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
 #endif // #if NEXT_ENABLE_MEMORY_CHECKS
@@ -4870,15 +4863,13 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
 
-    manager->high_frequency_pings = false;
-
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
         next_ping_history_clear( &manager->relay_ping_history[i] );
     }
 }
 
-void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses, bool high_frequency_pings )
+void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses )
 {
     next_relay_manager_verify_sentinels( manager );
 
@@ -4888,10 +4879,6 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_assert( relay_addresses );
 
     next_relay_manager_reset( manager );
-
-    // copy across high frequency ping flag
-
-    manager->high_frequency_pings = high_frequency_pings;
 
     // copy across all relay data
 
@@ -4907,7 +4894,7 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
 
     double current_time = next_time();
 
-    const double ping_time = high_frequency_pings ? ( 1.0 / NEXT_HIGH_FREQUENCY_PING_RATE ) : ( 1.0 / NEXT_LOW_FREQUENCY_PING_RATE );
+    const double ping_time = 1.0 / NEXT_PING_RATE;
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -4944,7 +4931,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        const double ping_time = manager->high_frequency_pings ? ( 1.0 / NEXT_HIGH_FREQUENCY_PING_RATE ) : ( 1.0 / NEXT_LOW_FREQUENCY_PING_RATE );
+        const double ping_time = 1.0 / NEXT_PING_RATE;
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {
@@ -7352,8 +7339,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             if ( packet.has_near_relays )
             {
                 // enable near relay pings
-                next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays (%s)", packet.num_near_relays, packet.high_frequency_pings ? "high frequency" : "low frequency" );
-                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
+                next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays", packet.num_near_relays );
+                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
                 next_relay_manager_disable_pings( client->near_relay_manager, false );
             }
             else
@@ -7362,7 +7349,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 if ( client->near_relay_manager->num_relays != 0 )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "client near relay pings completed" );
-                    next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
+                    next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
                     next_relay_manager_disable_pings( client->near_relay_manager, true );
                 }
             }
@@ -7718,7 +7705,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
         client->client_stats.fallback_to_direct = client->fallback_to_direct;
-        client->client_stats.high_frequency_pings = client->near_relay_manager->high_frequency_pings;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
         client->client_stats.connection_type = next_platform_connection_type();
@@ -7762,6 +7748,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.direct_rtt = direct_route_stats.rtt;
         client->client_stats.direct_jitter = direct_route_stats.jitter;
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
+
+        if ( direct_route_stats.packet_loss > client->client_stats.direct_max_packet_loss_seen )
+        {
+        	client->client_stats.direct_max_packet_loss_seen = direct_route_stats.packet_loss;
+        }
 
 #if NEXT_DEVELOPMENT
         if ( !fallback_to_direct && next_fake_fallback_to_direct )
@@ -7843,6 +7834,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.direct_rtt = client->client_stats.direct_rtt;
         packet.direct_jitter = client->client_stats.direct_jitter;
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
+        packet.direct_max_packet_loss_seen = client->client_stats.direct_max_packet_loss_seen;
 
         if ( !client->fallback_to_direct )
         {
@@ -7874,7 +7866,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             if ( packet.num_near_relays )
             {
 	            printf( "------------------------------\n" );
-	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f\n", int(packet.direct_rtt), int(packet.direct_jitter), packet.direct_packet_loss );
+	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f, max packet loss seen = %.2f\n", int(packet.direct_rtt), int(packet.direct_jitter), packet.direct_packet_loss, packet.direct_max_packet_loss_seen );
 	            printf( "------------------------------\n" );
 	            for ( int i = 0; i < packet.num_near_relays; i++ )
 	            {
@@ -9739,6 +9731,7 @@ struct NextBackendSessionUpdateRequestPacket
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
@@ -9845,6 +9838,7 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
+        serialize_float( stream, direct_max_packet_loss_seen );
 
         if ( next )
         {
@@ -10001,6 +9995,7 @@ struct next_session_entry_t
     float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
+    float stats_direct_max_packet_loss_seen;
     bool stats_next;
     float stats_next_rtt;
     float stats_next_jitter;
@@ -10165,10 +10160,6 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(27)
 
-    bool high_frequency_pings;
-
-    NEXT_DECLARE_SENTINEL(28)
-
     uint64_t match_id;
     double match_values[NEXT_MAX_MATCH_VALUES];
     int num_match_values;
@@ -10180,13 +10171,21 @@ struct next_session_entry_t
     bool waiting_for_match_data_response;
     bool match_data_response_received;
 
-    NEXT_DECLARE_SENTINEL(29)
+    NEXT_DECLARE_SENTINEL(28)
 
     uint32_t session_flush_update_sequence;
     bool session_update_flush;
     bool session_update_flush_finished;
     bool match_data_flush;
     bool match_data_flush_finished;
+
+    NEXT_DECLARE_SENTINEL(29)
+
+    int num_held_near_relays;
+    uint64_t held_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint8_t held_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t held_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    float held_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
 
     NEXT_DECLARE_SENTINEL(30)
 };
@@ -10262,7 +10261,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 27 )
     NEXT_VERIFY_SENTINEL( entry, 28 )
     NEXT_VERIFY_SENTINEL( entry, 29 )
-    NEXT_VERIFY_SENTINEL( entry, 30 )
+    NEXT_INITIALIZE_SENTINEL( entry, 30 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -10612,7 +10611,6 @@ struct NextBackendSessionUpdateResponsePacket
     bool multipath;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-    bool high_frequency_pings;
 
     NextBackendSessionUpdateResponsePacket()
     {
@@ -10667,8 +10665,6 @@ struct NextBackendSessionUpdateResponsePacket
         {
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
-
-        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -12501,8 +12497,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.has_debug = entry->has_debug;
             memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
 
-            packet.high_frequency_pings = entry->high_frequency_pings;
-
             next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );
 
             entry->update_last_send_time = current_time;
@@ -13102,8 +13096,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->has_debug = packet.has_debug;
         memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
 
-        entry->high_frequency_pings = packet.high_frequency_pings;
-
         if ( entry->previous_server_events != 0 )
         {   
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -13696,6 +13688,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_direct_rtt = packet.direct_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
+            session->stats_direct_max_packet_loss_seen = packet.direct_max_packet_loss_seen;
             session->stats_next = packet.next;
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
@@ -14778,6 +14771,19 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             next_platform_mutex_release( &server->session_mutex );
 
+            // IMPORTANT: hold near relay stats for the rest of the session
+            if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
+            {
+            	session->num_held_near_relays = session->stats_num_near_relays;
+            	for ( int i = 0; i < session->stats_num_near_relays; i++ )
+            	{
+            		session->held_near_relay_ids[i] = session->stats_near_relay_ids[i];	
+            		session->held_near_relay_rtt[i] = session->stats_near_relay_rtt[i];	
+            		session->held_near_relay_jitter[i] = session->stats_near_relay_jitter[i];	
+            		session->held_near_relay_packet_loss[i] = session->stats_near_relay_packet_loss[i];	
+            	}
+            }
+
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
@@ -14790,15 +14796,16 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_packet_loss = session->stats_next_packet_loss;
             packet.direct_rtt = session->stats_direct_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
-            packet.direct_packet_loss = session->stats_direct_packet_loss;
-            packet.has_near_relay_pings = session->stats_has_near_relay_pings;
-            packet.num_near_relays = session->stats_num_near_relays;
+            session->stats_direct_packet_loss = packet.direct_packet_loss;
+            session->stats_direct_max_packet_loss_seen = packet.direct_max_packet_loss_seen;
+            packet.has_near_relay_pings = session->num_held_near_relays != 0;
+            packet.num_near_relays = session->num_held_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
-                packet.near_relay_ids[j] = session->stats_near_relay_ids[j];
-                packet.near_relay_rtt[j] = session->stats_near_relay_rtt[j];
-                packet.near_relay_jitter[j] = session->stats_near_relay_jitter[j];
-                packet.near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];
+                packet.near_relay_ids[j] = session->held_near_relay_ids[j];
+                packet.near_relay_rtt[j] = session->held_near_relay_rtt[j];
+                packet.near_relay_jitter[j] = session->held_near_relay_jitter[j];
+                packet.near_relay_packet_loss[j] = session->held_near_relay_packet_loss[j];
             }
             packet.client_address = session->address;
             packet.server_address = server->server_address;
@@ -15705,6 +15712,7 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->direct_rtt = entry->stats_direct_rtt;
     stats->direct_jitter = entry->stats_direct_jitter;
     stats->direct_packet_loss = entry->stats_direct_packet_loss;
+    stats->direct_max_packet_loss_seen = entry->stats_direct_max_packet_loss_seen;
     stats->next_rtt = entry->stats_next_rtt;
     stats->next_jitter = entry->stats_next_jitter;
     stats->next_packet_loss = entry->stats_next_packet_loss;
@@ -18314,6 +18322,7 @@ void test_client_stats_packet_with_near_relays()
         in.direct_rtt = 50.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
@@ -18353,6 +18362,7 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
@@ -18397,6 +18407,7 @@ void test_client_stats_packet_without_near_relays()
         in.direct_rtt = 50.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
@@ -18433,6 +18444,7 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
@@ -18490,7 +18502,6 @@ void test_route_update_packet_direct()
         in.jitter_client_to_server = 0.1f;
         in.has_debug = true;
         strcpy( in.debug, "debug time" );
-        in.high_frequency_pings = true;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18527,7 +18538,6 @@ void test_route_update_packet_direct()
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
@@ -18573,7 +18583,6 @@ void test_route_update_packet_new_route()
         next_random_bytes( in.current_magic, 8 );
         next_random_bytes( in.previous_magic, 8 );
         in.jitter_client_to_server = 0.25f;
-        in.high_frequency_pings = true;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18611,7 +18620,6 @@ void test_route_update_packet_new_route()
         next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
         next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
@@ -18651,7 +18659,6 @@ void test_route_update_packet_continue_route()
         in.num_tokens = NEXT_MAX_TOKENS;
         next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
         in.packets_lost_client_to_server = 10000;
-        in.high_frequency_pings = true;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -18686,7 +18693,6 @@ void test_route_update_packet_continue_route()
         next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
         next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
         next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
@@ -19040,6 +19046,7 @@ void test_session_update_packet()
         in.direct_rtt = 10.1f;
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
+        in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.has_near_relay_pings = true;
         in.next_rtt = 5.0f;
@@ -19104,6 +19111,7 @@ void test_session_update_packet()
         next_check( in.direct_rtt == out.direct_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
+        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
         next_check( in.next == out.next );
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
@@ -19183,7 +19191,6 @@ void test_session_response_packet_direct_has_near_relays()
         }
         in.has_debug = true;
         strcpy( in.debug, "hello session" );
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19220,7 +19227,6 @@ void test_session_response_packet_direct_has_near_relays()
         {
             next_check( out.session_data_signature[j] == uint8_t(j) );
         }
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
@@ -19270,7 +19276,6 @@ void test_session_response_packet_route_has_near_relays()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19308,7 +19313,6 @@ void test_session_response_packet_route_has_near_relays()
         {
             next_check( out.session_data_signature[j] == uint8_t(j) );
         }
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
@@ -19358,7 +19362,6 @@ void test_session_response_packet_continue_has_near_relays()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19388,7 +19391,6 @@ void test_session_response_packet_continue_has_near_relays()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19457,7 +19459,6 @@ void test_session_response_packet_direct_near_relays_not_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19506,7 +19507,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19529,7 +19529,6 @@ void test_session_response_packet_route_near_relays_not_changed()
         next_check( in.multipath == out.multipath );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19578,7 +19577,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19601,7 +19599,6 @@ void test_session_response_packet_continue_near_relays_not_changed()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
         {
@@ -19695,7 +19692,6 @@ void test_session_response_packet_route_no_near_relays()
         {
             in.session_data[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -19757,7 +19753,6 @@ void test_session_response_packet_continue_no_near_relays()
         {
             in.session_data_signature[j] = uint8_t(j);
         }
-        in.high_frequency_pings = true;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -20293,7 +20288,7 @@ void test_relay_manager()
 
     // add max relays
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, false );
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20309,7 +20304,7 @@ void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, false );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20320,7 +20315,7 @@ void test_relay_manager()
 
     for ( int j = 0; j < 2; ++j )
     {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, false );
+        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
         {
             next_relay_stats_t stats;
             next_relay_manager_get_stats( manager, &stats );
@@ -20334,7 +20329,7 @@ void test_relay_manager()
 
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, false );
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4 );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20347,20 +20342,12 @@ void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, false );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
         next_check( stats.num_relays == 0 );
     }
-
-    // test high frequency pings
-
-    next_check( manager->high_frequency_pings == false );
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, true );
-
-    next_check( manager->high_frequency_pings == true );
 
     next_relay_manager_destroy( manager );
 }

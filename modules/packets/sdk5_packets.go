@@ -202,6 +202,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
+	DirectMaxPacketLossSeen         float32
 	NextRTT                         float32
 	NextJitter                      float32
 	NextPacketLoss                  float32
@@ -288,6 +289,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeFloat32(&packet.DirectRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
+	stream.SerializeFloat32(&packet.DirectMaxPacketLossSeen)
 
 	if packet.Next {
 		stream.SerializeFloat32(&packet.NextRTT)
@@ -363,20 +365,12 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
 	}
 
-	sessionData.HeldNumNearRelays = int32(common.RandomInt(0, SDK5_MaxNearRelays))
-
-	for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
-		sessionData.HeldNearRelayIds[i] = rand.Uint64()
-		sessionData.HeldNearRelayRTT[i] = int32(common.RandomInt(0, 255))
-	}
-
 	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
 	sessionData.Location.Latitude = rand.Float32()
 	sessionData.Location.Longitude = rand.Float32()
 	sessionData.Location.ISP = common.RandomString(SDK5_MaxISPNameLength)
 	sessionData.Location.ASN = rand.Uint32()
 
-	sessionData.RouteState.UserID = rand.Uint64()
 	sessionData.RouteState.Next = common.RandomBool()
 	sessionData.RouteState.Veto = common.RandomBool()
 	sessionData.RouteState.Disabled = common.RandomBool()
@@ -419,7 +413,6 @@ type SDK5_SessionUpdateResponsePacket struct {
 	Multipath            bool
 	HasDebug             bool
 	Debug                string
-	HighFrequencyPings   bool
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -468,8 +461,6 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 	stream.SerializeBool(&packet.HasDebug)
 	stream.SerializeString(&packet.Debug, SDK5_MaxSessionDebug)
-
-	stream.SerializeBool(&packet.HighFrequencyPings)
 
 	return stream.Error()
 }
@@ -543,9 +534,6 @@ type SDK5_SessionData struct {
 	RouteCost                     int32
 	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
 	RouteState                    core.RouteState
-	HeldNumNearRelays             int32
-	HeldNearRelayIds              [SDK5_MaxNearRelays]uint64
-	HeldNearRelayRTT              [SDK5_MaxNearRelays]int32
 	EverOnNext                    bool
 	FallbackToDirect              bool
 	PrevPacketsSentClientToServer uint64
@@ -624,20 +612,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	hasNearRelays := false
-	if stream.IsWriting() {
-		hasNearRelays = sessionData.HeldNumNearRelays > 0
-	}
-	stream.SerializeBool(&hasNearRelays)
-	if hasNearRelays {
-		stream.SerializeInteger(&sessionData.HeldNumNearRelays, 1, int32(SDK5_MaxNearRelays))
-		for i := 0; i < int(sessionData.HeldNumNearRelays); i++ {
-			stream.SerializeUint64(&sessionData.HeldNearRelayIds[i])
-			stream.SerializeInteger(&sessionData.HeldNearRelayRTT[i], 0, 255)
-		}
-	}
-
-	stream.SerializeUint64(&sessionData.RouteState.UserID)
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)

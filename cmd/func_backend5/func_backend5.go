@@ -657,7 +657,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		sessionData.SessionId = requestPacket.SessionId
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-		sessionData.RouteState.UserID = requestPacket.UserHash
 		sessionData.Location.Version = packets.SDK5_LocationVersion_Write
 
 	} else {
@@ -742,7 +741,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:          int32(packets.SDK5_RouteTypeDirect),
 			NumTokens:          0,
 			Tokens:             nil,
-			HighFrequencyPings: false,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -822,7 +820,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			Multipath:          multipath,
 			NumTokens:          int32(numTokens),
 			Tokens:             tokenData,
-			HighFrequencyPings: false,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {
