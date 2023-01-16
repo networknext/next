@@ -32,18 +32,66 @@ DONE
 
 	Set up a simplified script for van to setup relays with. The other half of setup in the admin tool can be manually done, or a tool added there "Add new relay"
 
+	Setup a relay release process in semaphore. Bulid the relay, upload the artifact with version number specified in source code...
+
 TODO
 
 	Test the UE4 plugin and make sure the command line stuff is in there for mountain top and multiversus
 
 	--------------
 
-	Setup a relay release process in semaphore. Bulid the relay, upload the artifact with version number specified in source code...
+	Need to get the whole dev environment setup and working and be trusted, including continuous raspberry pi clients.
 
 	--------------
 
-	The leader election is pretty clearly broken.
+	Then implement the code that passes session update messages from the session update handler.
 
-	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
+	--------------
+
+	Simplify the near relay ping handling. We don't need any complicated code that preserves the set of near relays and past results when new relays are passed down.
+
+	Each time we ping near relays, it will be expected that the pings will be standalone and have no previous data.
+
+	--------------
+
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	--------------
+
+	Implement the relay backend checking signature as needed to secure relay updates.
+
+	--------------
+
+	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
+
+	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
+
+	And then this can be checked.
+
+	Needs to be designed...
+
+	--------------
+
+	Create a new message for near relay stats.
+
+	Unit test it, then on slice #1 when near relay data comes in, write a near relay ping stats message and send it.
+
+	--------------
+
+	Extend the SDK5 so we have the option of sending down new near relay stats on multiple slices, later on.
+
+	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
+
+	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
+
+	--------------
+
+	I don't trust the leader election.
+
+	It needs more functional testing.
+
+	The specific backends as well, especially relay gateway, and relay backend need testing to make sure that leadership changes happen properly, with the delay.
 
 	--------------
