@@ -1,9 +1,9 @@
 # input specific to this relay (these change with each relay you set up)
 
-export RELAY_NAME=google.virginia.3
-export RELAY_ADDRESS=3.138.73.252:40000
-export RELAY_PUBLIC_KEY=5KcEWA5Digp5hBm5TOfXtX3twEk/etE0SB8rwlIrjWQ=
-export RELAY_PRIVATE_KEY=SCrHFjgowY4n4fEkPZnS8wvxseCUiwFGHvaCSkJItqo=
+export RELAY_NAME=google.saopaulo.1
+export RELAY_ADDRESS=34.151.248.241:40000
+export RELAY_PUBLIC_KEY=qunlVxGncMg5b650wXgtYBmJAzetry+K9ancBayMWzw=
+export RELAY_PRIVATE_KEY=1vpJ9L6jntr+KvqHSkZvgH9EnkVE/stS+60pfAdXEkg=
 
 # inputs specific to the environment (these change infrequently)
 
@@ -11,6 +11,7 @@ export RELAY_VERSION=2.1.0
 export RELAY_BACKEND_HOSTNAME=http://34.117.3.168
 export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export VPN_ADDRESS=45.33.53.242
+export ENVIRONMENT=dev
 
 # only allow ssh from vpn address
 
@@ -22,7 +23,7 @@ sudo echo sshd: $VPN_ADDRESS > /etc/hosts.allow
 
 # make the relay prompt cool
 
-sudo echo export PS1=\"\[\033[36m\]$RELAY_NAME\[\033[00m\] \w # \" >> ~/.bashrc
+sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\] \w # \"" >> ~/.bashrc
 
 # build and install libsodium optimized for this relay
 
@@ -32,6 +33,7 @@ cd libsodium-1.0.18
 ./configure
 make -j
 sudo make install
+ldconfig
 cd ~
 
 # download the relay binary and copy it to the app directory
