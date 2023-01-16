@@ -118,7 +118,7 @@ static DWORD WINAPI thread_function_shim( void * data )
 	return 0;
 }
 
-next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t fn, void * arg )
+next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t thread_function, void * arg )
 {
     next_platform_thread_t * thread = (next_platform_thread_t*) next_malloc( context, sizeof( next_platform_thread_t ) );
 
