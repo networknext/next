@@ -558,7 +558,7 @@ static void* thread_function_shim( void * data )
 	return NULL;
 }
 
-next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * thread_function, void * arg )
+next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t thread_function, void * arg )
 {
     next_platform_thread_t * thread = (next_platform_thread_t*) next_malloc( context, sizeof( next_platform_thread_t) );
 
@@ -569,7 +569,10 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     thread_shim_data_t * shim_data = (thread_shim_data_t*) next_malloc( context, sizeof(thread_shim_data_t) );
     next_assert( shim_data );
     if ( !shim_data )
+    {
+    	next_free( context, shim_data );
     	return NULL;
+    }
     shim_data->context = context;
     shim_data->real_thread_function = thread_function;
     shim_data->real_thread_data = arg;

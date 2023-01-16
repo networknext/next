@@ -415,9 +415,9 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * serve
 
 struct next_platform_thread_t;
 
-typedef void (next_platform_thread_func_t)(void*);
+typedef void (*next_platform_thread_func_t)(void*);
 
-NEXT_EXPORT_FUNC next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * func, void * arg );
+NEXT_EXPORT_FUNC next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t func, void * arg );
 
 NEXT_EXPORT_FUNC void next_platform_thread_join( next_platform_thread_t * thread );
 
