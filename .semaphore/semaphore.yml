@@ -9,7 +9,7 @@ agent:
 
 blocks:
 
-  - name: "Build on Ubuntu 20.04 LTS"
+  - name: "Build relay binary"
     dependencies: []
     task:
       prologue:
