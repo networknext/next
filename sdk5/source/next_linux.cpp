@@ -543,7 +543,7 @@ struct thread_shim_data_t
 {
 	void * context;
 	void * real_thread_data;
-	next_platform_thread_func_t *real_thread_function;
+	next_platform_thread_func_t real_thread_function;
 };
 
 static void* thread_function_shim( void * data )
@@ -552,7 +552,7 @@ static void* thread_function_shim( void * data )
 	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
 	void * context = shim_data->context;
 	void * real_thread_data = shim_data->real_thread_data;
-	next_platform_thread_func_t * real_thread_function = shim_data->real_thread_function;
+	next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
 	next_free( context, data );
 	real_thread_function( real_thread_data );
 	return NULL;
