@@ -28,62 +28,17 @@ DONE
 
 	Use the max packet loss seen when filtering near relays. This way we don't ever introduce near relays with packet loss, unless direct is also experiencing packet loss.
 
+	Setup google.virginia.3 relay myself, so I can understand the process and potentially streamline it.
+
+	Set up a simplified script for van to setup relays with. The other half of setup in the admin tool can be manually done, or a tool added there "Add new relay"
+
 TODO
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Gotta fix all sdk4 and sdk5 building
-
-	--------------
 
 	Test the UE4 plugin and make sure the command line stuff is in there for mountain top and multiversus
 
 	--------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Setup a relay release process in semaphore. Bulid the relay, upload the artifact with version number specified in source code...
 
 	--------------
 
@@ -92,19 +47,3 @@ TODO
 	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
 
 	--------------
-
-	Setup google.virginia.3 relay myself, so I can understand the process and potentially streamline it.
-
-	-----------------
-
-	Streamline the process to setup a new machine to be a relay.
-
-	-----------------
-
-	Instead of trying to change the hostname, just change the shell prompt to the relay name. Much easier, with no side effects.
-
-	-----------------
-
-	Build a relay release process in semaphore.
-
-	-----------------

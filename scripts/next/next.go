@@ -1241,40 +1241,6 @@ func main() {
 				},
 			},
 			{
-				Name:       "check",
-				ShortUsage: "next relay check [regex]",
-				ShortHelp:  "List all or a subset of relays and see diagnostic information. Refer to the README for more information",
-				FlagSet:    relaysfs,
-				Exec: func(ctx context.Context, args []string) error {
-					if relaysfs.NFlag() == 0 {
-						// If no flags are given, set the default set of flags
-						relaysStateHideFlags[routing.RelayStateDecommissioned] = true
-					}
-
-					if relaysAllFlag {
-						// Show all relays (except for decommissioned relays) with --all flag
-						relaysStateShowFlags[routing.RelayStateEnabled] = true
-						relaysStateShowFlags[routing.RelayStateMaintenance] = true
-						relaysStateShowFlags[routing.RelayStateDisabled] = true
-						relaysStateShowFlags[routing.RelayStateQuarantine] = true
-						relaysStateShowFlags[routing.RelayStateOffline] = true
-					}
-
-					if relaysStateShowFlags[routing.RelayStateDecommissioned] {
-						//  Show decommissioned relays with --decommissioned flag by essentially disabling --nodecommissioned flag
-						relaysStateHideFlags[routing.RelayStateDecommissioned] = false
-					}
-
-					regex := ".*"
-					if len(args) > 0 {
-						regex = args[0]
-					}
-
-					checkRelays(env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
-					return nil
-				},
-			},
-			{
 				Name:       "keys",
 				ShortUsage: "next relay keys <relay name>",
 				ShortHelp:  "Show the public keys for the relay",
@@ -1288,39 +1254,6 @@ func main() {
 					relay := &relays[0]
 
 					fmt.Printf("Public Key: %s\n", relay.publicKey)
-
-					return nil
-				},
-			},
-			{
-				Name:       "update",
-				ShortUsage: "next relay update [regex...]",
-				ShortHelp:  "Update the specified relay(s)",
-				FlagSet:    relayupdatefs,
-				Exec: func(ctx context.Context, args []string) error {
-					var regexes []string
-					if len(args) > 0 {
-						regexes = args
-					} else {
-						handleRunTimeError(fmt.Sprintln("please provide at least one relay name or substring"), 1)
-					}
-
-					updateRelays(env, regexes, updateOpts)
-
-					return nil
-				},
-			},
-			{
-				Name:       "revert",
-				ShortUsage: "next relay revert [regex...]",
-				ShortHelp:  "revert all or some relays to the last binary placed on the server",
-				Exec: func(ctx context.Context, args []string) error {
-					regexes := []string{".*"}
-					if len(args) > 0 {
-						regexes = args
-					}
-
-					revertRelays(env, regexes)
 
 					return nil
 				},
@@ -1352,40 +1285,6 @@ func main() {
 					}
 
 					disableRelays(env, regexes, hardDisable, false)
-
-					return nil
-				},
-			},
-			{
-				Name:       "maintenance",
-				ShortUsage: "next relay maintenance [regex...]",
-				ShortHelp:  "Move the specified relay(s) to maintenance mode",
-				FlagSet:    relaydisablefs,
-				Exec: func(_ context.Context, args []string) error {
-					regexes := []string{".*"}
-					if len(args) > 0 {
-						regexes = args
-					}
-
-					disableRelays(env, regexes, hardDisable, true)
-
-					return nil
-				},
-			},
-			{
-				Name:       "rename",
-				ShortUsage: "next relay rename <old name> <new name>",
-				ShortHelp:  "Rename the specified relay",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) == 0 {
-						handleRunTimeError(fmt.Sprintln("You need to supply a current relay name and a new name for it."), 0)
-					}
-
-					if len(args) == 1 {
-						handleRunTimeError(fmt.Sprintln("You need to supply a new name for the relay as well"), 0)
-					}
-
-					updateRelayName(env, args[0], args[1])
 
 					return nil
 				},
@@ -1446,20 +1345,6 @@ func main() {
 					}
 
 					modifyRelayField(env, args[0], args[1], args[2])
-					return nil
-				},
-			},
-			{
-				Name:       "heatmap",
-				ShortUsage: "next relay heatmap <relay name or substring>",
-				ShortHelp:  "Generate a heatmap of the given relay's connectivity to other relays",
-				LongHelp:   nextRelayUpdateJSONLongHelp,
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) != 1 {
-						handleRunTimeError(fmt.Sprintln("Must provide a relay name for the generated heatmap."), 0)
-					}
-
-					relayHeatmap(env, args[0])
 					return nil
 				},
 			},
