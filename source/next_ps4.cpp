@@ -182,6 +182,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "next" ) != 0 )
     {
         next_free( context, thread );
+    	next_free( context, shim_data );
         return NULL;
     }
 

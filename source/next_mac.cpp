@@ -545,7 +545,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     next_assert( shim_data );
     if ( !shim_data )
     {
-    	next_free( context, shim_data );
+    	next_free( context, thread );
     	return NULL;
     }
     shim_data->context = context;

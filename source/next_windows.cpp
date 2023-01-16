@@ -99,6 +99,25 @@ const char * next_platform_getenv( const char * var )
 
 // threads
 
+struct thread_shim_data_t
+{
+	void * context;
+	void * real_thread_data;
+	next_platform_thread_func_t real_thread_function;
+};
+
+static WINAPI DWORD thread_function_shim( void * data )
+{
+	next_assert( data );
+	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
+	void * context = shim_data->context;
+	void * real_thread_data = shim_data->real_thread_data;
+	next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
+	next_free( context, data );
+	real_thread_function( real_thread_data );
+	return 0;
+}
+
 next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t fn, void * arg )
 {
     next_platform_thread_t * thread = (next_platform_thread_t*) next_malloc( context, sizeof( next_platform_thread_t ) );
@@ -107,19 +126,23 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
 
     thread->context = context;
 
-    thread->handle = CreateThread
-    (
-        NULL, // default security attributes
-        0, // use default stack size  
-        fn, // thread function name
-        arg, // argument to thread function 
-        0, // use default creation flags 
-        NULL // returns the thread identifier 
-    );
+    thread_shim_data_t * shim_data = (thread_shim_data_t*) next_malloc( context, sizeof(thread_shim_data_t) );
+    next_assert( shim_data );
+    if ( !shim_data )
+    {
+    	next_free( context, thread );
+    	return NULL;
+    }
+    shim_data->context = context;
+    shim_data->real_thread_function = thread_function;
+    shim_data->real_thread_data = arg;
+
+    thread->handle = CreateThread(NULL, 0, thread_function_shim, shim_data, 0, NULL);
 
     if ( thread->handle == NULL )
     {
         next_free( context, thread );
+    	next_free( context, shim_data );
         return NULL;
     }
 
