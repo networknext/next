@@ -199,7 +199,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     shim_data->real_thread_function = thread_function;
     shim_data->real_thread_data = arg;
 
-    if ( scePthreadCreate( &thread->handle, NULL, fn, arg, "next" ) != 0 )
+    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "next" ) != 0 )
     {
         next_free( context, thread );
         return NULL;
