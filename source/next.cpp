@@ -14769,12 +14769,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
             {
             	session->num_held_near_relays = session->stats_num_near_relays;
-            	for ( int i = 0; i < session->stats_num_near_relays; i++ )
+            	for ( int j = 0; j < session->stats_num_near_relays; j++ )
             	{
-            		session->held_near_relay_ids[i] = session->stats_near_relay_ids[i];	
-            		session->held_near_relay_rtt[i] = session->stats_near_relay_rtt[i];	
-            		session->held_near_relay_jitter[i] = session->stats_near_relay_jitter[i];	
-            		session->held_near_relay_packet_loss[i] = session->stats_near_relay_packet_loss[i];	
+            		session->held_near_relay_ids[j] = session->stats_near_relay_ids[j];	
+            		session->held_near_relay_rtt[j] = session->stats_near_relay_rtt[j];
+            		session->held_near_relay_jitter[j] = session->stats_near_relay_jitter[j];
+            		session->held_near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];	
             	}
             }
 
