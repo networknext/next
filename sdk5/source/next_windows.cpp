@@ -106,7 +106,7 @@ struct thread_shim_data_t
 	next_platform_thread_func_t real_thread_function;
 };
 
-static WINAPI DWORD thread_function_shim( void * data )
+static DWORD WINAPI thread_function_shim( void * data )
 {
 	next_assert( data );
 	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
