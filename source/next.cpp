@@ -387,7 +387,7 @@ extern int next_platform_connection_type();
 
 extern int next_platform_hostname_resolve( const char * hostname, const char * port, next_address_t * address );
 
-extern next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * func, void * arg );
+extern next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t func, void * arg );
 
 extern void next_platform_thread_join( next_platform_thread_t * thread );
 
