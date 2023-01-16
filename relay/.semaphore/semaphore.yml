@@ -9,7 +9,7 @@ agent:
 
 blocks:
 
-  - name: "Build relay binary"
+  - name: "relay"
     dependencies: []
     task:
       prologue:
@@ -26,3 +26,9 @@ blocks:
             - gcc --version
             - make -j
             - ./bin/relay version
+            - artifact push workflow ./bin/relay
+
+promotions:
+
+  - name: "Deploy"
+    pipeline_file: deploy.yml
