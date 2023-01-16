@@ -12,11 +12,12 @@
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "os/socket.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
+
+#include "version.h"
 
 using namespace std::chrono_literals;
 
@@ -226,14 +227,14 @@ int main(int argc, const char* argv[])
 #endif
 
   if (argc == 2 && strcmp(argv[1], "version")==0) {
-    printf("%s\n", core::RELAY_VERSION);
+    printf("%s\n", RELAY_VERSION);
     fflush(stdout);
     exit(0);
   }
 
   LOG(INFO, "Network Next Relay");
 
-  LOG(INFO, "relay version is ", core::RELAY_VERSION);
+  LOG(INFO, "relay version is ", RELAY_VERSION);
 
   Env env;
 

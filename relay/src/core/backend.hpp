@@ -3,7 +3,6 @@
 #include "core/throughput_recorder.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
