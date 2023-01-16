@@ -31,7 +31,8 @@ void * upgrade_thread_function( void * data )
 
   char command[1024];
   snprintf( command, sizeof(command), "rm -f relay-%s", version );
-  system( command );
+  auto result = system( command );
+  (void) result;
 
   snprintf( command, sizeof(command), "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
   if ( system( command ) != 0 ) {
@@ -68,7 +69,8 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "relay binary is good");
 
-  system( "rm -f relay 2>/dev/null" );
+  result = system( "rm -f relay 2>/dev/null" );
+  (void) result;
 
   snprintf( command, sizeof(command), "mv relay-%s relay", version );
   if ( system( command ) != 0 )
