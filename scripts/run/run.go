@@ -160,6 +160,8 @@ func main() {
 		raspberry_server()
 	} else if command == "raspberry-client" {
 		raspberry_client()
+	} else if command == "relay-keygen" {
+		relay_keygen()
 	}
 
 	cleanup()
@@ -318,4 +320,8 @@ func raspberry_client() {
 
 func raspberry_server() {
 	bash("cd dist && ./raspberry_server")
+}
+
+func relay_keygen() {
+	bash("go run scripts/relay_keygen/relay_keygen.go")
 }
