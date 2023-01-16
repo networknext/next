@@ -24,15 +24,4 @@ namespace crypto
 
     // auto parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key) -> bool;
   };
-
-  // todo: junk
-  /*
-  INLINE auto Keychain::parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key)
-   -> bool
-  {
-    return base64::decode(relay_public_key, this->relay_public_key) &&
-           base64::decode(relay_private_key, this->relay_private_key) &&
-           base64::decode(backend_public_key, this->backend_public_key);
-  }
-  */
 }  // namespace crypto
