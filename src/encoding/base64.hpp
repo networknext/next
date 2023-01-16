@@ -1,5 +1,8 @@
 #pragma once
 
+// todo: this code is fucking garbage
+
+/*
 #include "util/logger.hpp"
 #include "util/macros.hpp"
 
@@ -10,22 +13,6 @@ namespace encoding
     template <typename In, typename Out>
     INLINE auto encode(const In& input, Out& output) -> size_t
     {
-      namespace b64 = boost::beast::detail::base64;
-      return b64::encode(output.data(), input.data(), input.size());
-    }
-
-    template <typename In, typename Out>
-    INLINE auto decode(const In& input, Out& output) -> size_t
-    {
-      namespace b64 = boost::beast::detail::base64;
-      auto [written, read] = b64::decode(output.data(), input.data(), input.size());
-      return written;
-    }
-  }  // namespace base64
-}  // namespace encoding
-
-/*
-old encode func
       static const std::array<unsigned char, 65> base64_table_encode = {
        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
        'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -43,7 +30,7 @@ old encode func
         return 0;  // integer overflow
       }
 
-      if (output_length >= output_size) {
+      if y >= output_length) {
         return 0;  // not enough room in output buffer
       }
 
@@ -72,7 +59,12 @@ old encode func
 
       output[output_length] = '\0';
 
-old decode func
+      return output_length;
+    }
+
+    template <typename In, typename Out>
+    INLINE auto decode(const In& input, Out& output) -> size_t
+    {
       static const std::array<int, 256> base64_table_decode = {
        0, 0, 0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
        0, 0, 0,  0, 0,  0,  0,  0,  0,  0,  0,  0,  62, 63, 62, 62, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  0,  0,
@@ -112,4 +104,7 @@ old decode func
       }
 
       return int(output_length);
+    }
+  }  // namespace base64
+}  // namespace encoding
 */

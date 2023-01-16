@@ -25,6 +25,8 @@ namespace testing
   const auto BASE64_ROUTER_PUBLIC_KEY = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto BASE64_ROUTER_PRIVATE_KEY = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=";
 
+  // todo: no
+  /*
   INLINE auto make_keychain() -> crypto::Keychain
   {
     crypto::Keychain keychain;
@@ -39,6 +41,7 @@ namespace testing
     encoding::base64::decode(key, buff);
     return buff;
   }
+  */
 
   INLINE auto random_private_key() -> crypto::GenericKey
   {

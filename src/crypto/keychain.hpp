@@ -1,9 +1,6 @@
 #pragma once
 
-#include "encoding/base64.hpp"
 #include "bytes.hpp"
-
-namespace base64 = encoding::base64;
 
 namespace crypto
 {
@@ -25,9 +22,11 @@ namespace crypto
     std::array<uint8_t, RELAY_PRIVATE_KEY_SIZE> relay_private_key;
     std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> backend_public_key;
 
-    auto parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key) -> bool;
+    // auto parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key) -> bool;
   };
 
+  // todo: junk
+  /*
   INLINE auto Keychain::parse(std::string relay_public_key, std::string relay_private_key, std::string backend_public_key)
    -> bool
   {
@@ -35,4 +34,5 @@ namespace crypto
            base64::decode(relay_private_key, this->relay_private_key) &&
            base64::decode(backend_public_key, this->backend_public_key);
   }
+  */
 }  // namespace crypto

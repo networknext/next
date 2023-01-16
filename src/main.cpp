@@ -66,6 +66,8 @@ INLINE void set_thread_sched_max(std::thread& thread)
 
 INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
 {
+  // todo: rework this to be non-stupid
+  /*
   namespace base64 = encoding::base64;
 
   // relay private key
@@ -97,6 +99,7 @@ INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
 
     LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
   }
+  */
 }
 
 INLINE auto get_num_cpus(const std::optional<std::string>& envvar) -> size_t

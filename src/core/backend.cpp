@@ -27,10 +27,10 @@ void * upgrade_thread_function( void * data )
   LOG(INFO, "upgrading from ", core::RELAY_VERSION, " -> ", version);
 
   char command[1024];
-  sprintf( command, "rm -f relay-%s", version );
+  snprintf( command, sizeof(command), "rm -f relay-%s", version );
   system( command );
 
-  sprintf( command, "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
+  snprintf( command, sizeof(command), "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
   if ( system( command ) != 0 ) {
     LOG(ERROR, "failed to download relay version ", version);
     std::this_thread::sleep_for(60s);
@@ -40,7 +40,7 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "successfully downloaded relay-", version);
 
-  sprintf( command, "chmod +x relay-%s", version );
+  snprintf( command, sizeof(command), "chmod +x relay-%s", version );
   if ( system( command ) != 0 ) {
     LOG(ERROR, "failed to chmod +x relay-", version);
     std::this_thread::sleep_for(60s);
@@ -50,7 +50,7 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "chmod +x relay-", version, " succeeded");
 
-  sprintf( command, "./relay-%s version", version );
+  snprintf( command, sizeof(command), "./relay-%s version", version );
   FILE * file = popen( command, "r" );
   char buffer[1024];
   if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr(buffer, version) == NULL )
@@ -67,7 +67,7 @@ void * upgrade_thread_function( void * data )
 
   system( "rm -f relay 2>/dev/null" );
 
-  sprintf( command, "mv relay-%s relay", version );
+  snprintf( command, sizeof(command), "mv relay-%s relay", version );
   if ( system( command ) != 0 )
   {
     LOG(ERROR, "could not install new relay binary");
