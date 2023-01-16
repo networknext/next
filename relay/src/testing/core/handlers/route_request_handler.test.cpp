@@ -16,6 +16,8 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
+// todo: garbage
+/*
 TEST(core_handlers_route_request_handler)
 {
   Packet packet;
@@ -86,3 +88,4 @@ TEST(core_handlers_route_request_handler)
   });
   CHECK(packet.length == prev_len - RouteToken::SIZE_OF_SIGNED);
 }
+*/

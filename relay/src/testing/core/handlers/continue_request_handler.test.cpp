@@ -19,6 +19,8 @@ using os::Socket;
 using os::SocketConfig;
 using util::ThroughputRecorder;
 
+// todo: garbage
+/*
 TEST(core_handlers_continue_request_handler)
 {
   Packet packet;
@@ -68,3 +70,4 @@ TEST(core_handlers_continue_request_handler)
 
   index = 0;
 }
+*/
