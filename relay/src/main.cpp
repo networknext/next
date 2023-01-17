@@ -129,7 +129,6 @@ INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
   {
     LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
     int len = relay_base64_decode( env.relay_private_key.c_str(), &keychain.relay_private_key[0], crypto::RELAY_PRIVATE_KEY_SIZE);
-    printf( "len = %d\n", len );
     if (len != KEY_SIZE) {
       LOG(FATAL, "invalid relay private key");
     }
