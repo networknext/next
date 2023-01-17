@@ -3107,7 +3107,6 @@ struct NextClientStatsPacket
     bool multipath;
     bool reported;
     bool next_bandwidth_over_limit;
-    bool has_near_relay_pings;
     int platform_id;
     int connection_type;
     float direct_kbps_up;
@@ -3144,7 +3143,6 @@ struct NextClientStatsPacket
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
         serialize_bool( stream, next_bandwidth_over_limit );
-        serialize_bool( stream, has_near_relay_pings );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, direct_kbps_up );
@@ -3162,15 +3160,21 @@ struct NextClientStatsPacket
             serialize_float( stream, next_packet_loss );
         }
         serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; ++i )
+        bool has_near_relay_pings = false;
+        if ( Stream::IsWriting )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            if ( has_near_relay_pings )
-            {
-                serialize_int( stream, near_relay_rtt[i], 0, 255 );
-                serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_float( stream, near_relay_packet_loss[i] );
-            }
+        	has_near_relay_pings = num_near_relays > 0;
+        }
+        serialize_bool( stream, has_near_relay_pings );
+        if ( has_near_relay_pings )
+        {
+	        for ( int i = 0; i < num_near_relays; ++i )
+	        {
+	            serialize_uint64( stream, near_relay_ids[i] );
+	            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+	            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+	            serialize_float( stream, near_relay_packet_loss[i] );
+	        }
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
@@ -4876,6 +4880,8 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_assert( relay_ids );
     next_assert( relay_addresses );
 
+    // reset relay manager
+
     next_relay_manager_reset( manager );
 
     // copy across all relay data
@@ -4975,6 +4981,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
     next_relay_stats_initialize_sentinels( stats );
 
     stats->num_relays = manager->num_relays;
+    stats->has_pings = stats->num_relays > 0;
 
     for ( int i = 0; i < stats->num_relays; ++i )
     {
@@ -7815,7 +7822,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( !client->fallback_to_direct )
         {
-            packet.has_near_relay_pings = client->near_relay_stats.has_pings;
             packet.num_near_relays = client->near_relay_stats.num_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
@@ -13668,23 +13674,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
-            session->stats_has_near_relay_pings = packet.has_near_relay_pings;
+            session->stats_has_near_relay_pings = packet.num_near_relays > 0;
             session->stats_num_near_relays = packet.num_near_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
-                if ( packet.has_near_relay_pings )
-                {
-                    session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
-                    session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
-                    session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
-                }
-                else
-                {
-                    session->stats_near_relay_rtt[i] = 0;
-                    session->stats_near_relay_jitter[i] = 0;
-                    session->stats_near_relay_packet_loss[i] = 0;
-                }
+                session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
+                session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
+                session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
@@ -18295,7 +18292,6 @@ void test_client_stats_packet_with_near_relays()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
-        in.has_near_relay_pings = true;
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18335,7 +18331,6 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.has_near_relay_pings == out.has_near_relay_pings );
         next_check( in.num_near_relays == out.num_near_relays );
         for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
         {
@@ -18380,12 +18375,7 @@ void test_client_stats_packet_without_near_relays()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
-        in.has_near_relay_pings = false;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_ids[j] = uint64_t(10000000) + j;
-        }
+        in.num_near_relays = 0;
         in.packets_lost_server_to_client = 1000;
 
         static next_replay_protection_t replay_protection;
@@ -18417,12 +18407,7 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.has_near_relay_pings == out.has_near_relay_pings );
         next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-        }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
