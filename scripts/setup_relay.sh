@@ -7,7 +7,7 @@ export RELAY_PRIVATE_KEY=1vpJ9L6jntr+KvqHSkZvgH9EnkVE/stS+60pfAdXEkg=
 
 # inputs specific to the environment (these change infrequently)
 
-export RELAY_VERSION=2.1.0
+export RELAY_VERSION=2.1.1
 export RELAY_BACKEND_HOSTNAME=http://34.117.3.168
 export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export VPN_ADDRESS=45.33.53.242
@@ -15,11 +15,10 @@ export ENVIRONMENT=dev
 
 # only allow ssh from vpn address
 
-sudo rm -f /etc/hosts.deny
-sudo echo sshd: ALL > /etc/hosts.deny
-
-sudo rm -f /etc/hosts.allow
-sudo echo sshd: $VPN_ADDRESS > /etc/hosts.allow
+echo sshd: ALL > hosts.deny
+echo sshd: $VPN_ADDRESS > hosts.allow
+sudo mv hosts.deny /etc/hosts.deny
+sudo mv hosts.allow /etc/hosts.allow
 
 # make the relay prompt cool
 
@@ -36,17 +35,15 @@ sudo make install
 ldconfig
 cd ~
 
-# download the relay binary and copy it to the app directory
+# download the relay binary and rename it to 'relay'
 
 wget https://storage.googleapis.com/relay_artifacts/relay-$RELAY_VERSION
-sudo rm -rf /app
-sudo mkdir /app
-mv relay-$RELAY_VERSION /app/relay
-chmod +x /app/relay
+sudo mv relay-$RELAY_VERSION relay
+sudo chmod +x relay
 
 # setup the relay environment file
 
-cat > /app/relay.env <<- EOM
+sudo cat > relay.env <<- EOM
 RELAY_BACKEND_HOSTNAME=$RELAY_BACKEND_HOSTNAME
 RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
 RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
@@ -56,7 +53,7 @@ EOM
 
 # setup the relay service file
 
-cat > /app/relay.service <<- EOM
+sudo cat > relay.service <<- EOM
 [Unit]
 Description=Network Next Relay
 ConditionPathExists=/app/relay
@@ -74,6 +71,14 @@ RestartSec=12
 [Install]
 WantedBy=multi-user.target
 EOM
+
+# move everything into the /app dir
+
+sudo rm -rf /app
+sudo mkdir /app
+sudo mv relay /app/relay
+sudo mv relay.env /app/relay.env
+sudo mv relay.service /app/relay.service
 
 # limit maximum journalctl logs to 200MB so we don't run out of disk space
 
