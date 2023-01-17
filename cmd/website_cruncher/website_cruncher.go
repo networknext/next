@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/rs/cors"
 )
@@ -40,22 +42,6 @@ var landingPageSessionCounts LiveSessionCounts
 var lookerStatsRefreshInterval time.Duration
 var redisStatsRefreshInterval time.Duration
 
-var PLATFORM_TYPES = []string{
-	"PS4",
-	"PS5",
-	"XBOX",
-	"Switch",
-	"Linux",
-	"Mac",
-	"PC",
-}
-
-var CONNECTION_TYPES = []string{
-	"Wired",
-	"WiFi",
-	"Mobile",
-}
-
 func main() {
 	service := common.CreateService("website_cruncher")
 
@@ -64,6 +50,8 @@ func main() {
 
 	core.Log("looker stats refresh interval: %s", lookerStatsRefreshInterval)
 	core.Log("redis stats refresh interval: %s", redisStatsRefreshInterval)
+
+	service.LoadDatabase()
 
 	service.UseLooker()
 
@@ -221,7 +209,9 @@ func StartRedisDataCollection(service *common.Service) {
 
 	ctx := service.Context
 
-	go func(ctx context.Context, client *redis.Client) {
+	buyerMap := service.Database().BuyerMap
+
+	go func(ctx context.Context, client *redis.Client, buyerMap map[uint64]database.Buyer) {
 		for {
 
 			select {
@@ -275,11 +265,11 @@ func StartRedisDataCollection(service *common.Service) {
 
 				var sessionMetasNext []transport.SessionMeta // TODO: avoid using transport structs
 				var meta transport.SessionMeta               // TODO: avoid using transport structs
-				for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-					metaString := cmds[i].String()
+				for _, cmd := range cmds {
+					metaString := cmd.String()
 
 					if metaString == "" {
-						core.Error("meta data string is empty: %v", cmds[i].Err())
+						core.Error("meta data string is empty: %v", cmd.Err())
 						continue
 					}
 
@@ -319,8 +309,8 @@ func StartRedisDataCollection(service *common.Service) {
 						Meta: SessionMeta{
 							ISP:            currentSession.Location.ISP,
 							Datacenter:     currentSession.DatacenterName,
-							Platform:       PLATFORM_TYPES[currentSession.Platform],
-							ConnectionType: CONNECTION_TYPES[currentSession.Connection],
+							Platform:       transport.PlatformTypeText(currentSession.Platform),     // TODO: don't use transport
+							ConnectionType: transport.ConnectionTypeText(currentSession.Connection), // TODO: don't use transport
 							DirectRTT:      int32(currentSession.DirectRTT),
 							NextRTT:        int32(currentSession.NextRTT),
 							Improvement:    int32(currentSession.DirectRTT - currentSession.NextRTT),
@@ -368,56 +358,135 @@ func StartRedisDataCollection(service *common.Service) {
 				// Total Counts
 
 				liveSessionCounts := LiveSessionCounts{}
-				/*
+				firstNextCount := 0
+				secondNextCount := 0
+				firstTotalCount := 0
+				secondTotalCount := 0
 
-					countsPipeline := redisClient.Pipeline()
+				countsPipeline := redisClient.Pipeline()
 
-					firstNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes-1), -1).Result()
+				for _, buyer := range buyerMap {
+					buyerID := fmt.Sprintf("%016x", buyer.ID)
+
+					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
 					if err != nil {
-						core.Error("failed to get first set of counts: %v", err)
+						core.Error("failed to get first set of next counts: %v", err)
 						continue
 					}
-					secondNextCounts, _, err := countsPipeline.Scan(ctx, 0, fmt.Sprintf("n-*-%d", minutes), -1).Result()
+					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerID, minutes))
 					if err != nil {
-						core.Error("failed to get second set of counts: %v", err)
+						core.Error("failed to get second set of next counts: %v", err)
+						continue
+					}
+				}
+
+				// TODO: go back over this and see if we can avoid the string parsing
+				cmds, err = countsPipeline.Exec(ctx)
+				if err != nil {
+					core.Error("failed to exec redis pipeline: %v", err)
+					continue
+				}
+
+				for _, cmd := range cmds {
+					countString := cmd.String()
+
+					if countString == "" {
+						core.Error("count output is empty: %v", cmd.Err())
 						continue
 					}
 
-					core.Debug("%+v", firstNextCounts)
-					core.Debug("%+v", secondNextCounts)
+					parseableStrings := strings.SplitN(countString, ": ", 2)
 
-					for i := 0; i < len(firstNextCounts); i++ {
-						// TODO
-					}
-
-					for i := 0; i < len(secondNextCounts); i++ {
-						// TODO
-					}
-
-					firstTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes-1)).Result()
-					if err != nil {
-						core.Error("failed to get first set of counts: %v", err)
-						continue
-					}
-					secondTotalCounts, err := countsPipeline.HGetAll(ctx, fmt.Sprintf("c-*-%d", minutes)).Result()
-					if err != nil {
-						core.Error("failed to get second set of counts: %v", err)
+					if len(parseableStrings) < 2 {
+						core.Error("failed to split redis string. Count string: %s", countString)
 						continue
 					}
 
-					core.Debug("%+v", firstTotalCounts)
-					core.Debug("%+v", secondTotalCounts)
-
-					for i := 0; i < len(firstTotalCounts); i++ {
-						// TODO
+					parseInt, err := strconv.ParseInt(parseableStrings[1], 10, 64)
+					if err != nil {
+						core.Error("failed to parse int: %v", err)
+						continue
 					}
 
-					for i := 0; i < len(secondTotalCounts); i++ {
-						// TODO
+					if strings.Contains(countString, fmt.Sprintf("%d", minutes-1)) {
+						firstNextCount += int(parseInt)
+					} else {
+						secondNextCount += int(parseInt)
+					}
+				}
+
+				liveSessionCounts.TotalOnNext = int32(firstNextCount)
+				if secondNextCount > firstNextCount {
+					liveSessionCounts.TotalOnNext = int32(secondNextCount)
+				}
+
+				for _, buyer := range buyerMap {
+					buyerID := fmt.Sprintf("%016x", buyer.ID)
+					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerID, minutes-1))
+					if err != nil {
+						core.Error("failed to get first set of next counts: %v", err)
+						continue
+					}
+					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerID, minutes))
+					if err != nil {
+						core.Error("failed to get second set of next counts: %v", err)
+						continue
+					}
+				}
+
+				cmds, err = countsPipeline.Exec(ctx)
+				if err != nil {
+					core.Error("failed to exec redis pipeline: %v", err)
+					continue
+				}
+
+				for _, cmd := range cmds {
+					countString := cmd.String()
+
+					if countString == "" {
+						core.Error("count output is empty: %v", cmd.Err())
+						continue
 					}
 
-					countsPipeline.Close()
-				*/
+					parseableStrings := strings.SplitN(countString, ": ", 2)
+
+					if len(parseableStrings) < 2 {
+						core.Error("failed to split redis string. Count string: %s", countString)
+						continue
+					}
+
+					noBracesLeft := strings.ReplaceAll(parseableStrings[1], "[", "")
+					noBracesRight := strings.ReplaceAll(noBracesLeft, "]", "")
+					stringValues := strings.Split(noBracesRight, " ")
+
+					for _, val := range stringValues {
+						if val == "" {
+							continue
+						}
+
+						parseInt, err := strconv.ParseInt(val, 10, 64)
+						if err != nil {
+							core.Error("failed to parse int: %v", err)
+							continue
+						}
+
+						if strings.Contains(countString, fmt.Sprintf("%d", minutes-1)) {
+							firstTotalCount += int(parseInt)
+						} else {
+							secondTotalCount += int(parseInt)
+						}
+					}
+				}
+
+				totalCounts := int32(firstTotalCount)
+
+				if secondTotalCount > firstTotalCount {
+					totalCounts = int32(secondTotalCount)
+				}
+
+				liveSessionCounts.TotalSessions = totalCounts
+
+				countsPipeline.Close()
 
 				if err := updateDataStore(service, currentStats(), topSessions, liveSessionCounts); err != nil {
 					core.Error("failed to update data store with new top sessions and counts: %v", err)
@@ -425,7 +494,7 @@ func StartRedisDataCollection(service *common.Service) {
 				}
 			}
 		}
-	}(ctx, redisClient)
+	}(ctx, redisClient, buyerMap)
 }
 
 // ------------------------------------------------------------------------------------------
@@ -501,9 +570,11 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 		},
 	}
 
-	service.UpdateLeaderStore(dataStores)
+	/*
+		service.UpdateLeaderStore(dataStores)
 
-	dataStores = service.LoadLeaderStore()
+		dataStores = service.LoadLeaderStore()
+	*/
 
 	if len(dataStores) == 0 {
 		return fmt.Errorf("no data stores returned from redis")
