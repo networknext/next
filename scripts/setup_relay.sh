@@ -23,7 +23,7 @@ sudo echo sshd: $VPN_ADDRESS > /etc/hosts.allow
 
 # make the relay prompt cool
 
-sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\] \w # \"" >> ~/.bashrc
+sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
 
 # build and install libsodium optimized for this relay
 

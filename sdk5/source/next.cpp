@@ -4777,7 +4777,6 @@ struct next_relay_manager_t
 
     void * context;
     int num_relays;
-    bool disable_pings;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -4902,18 +4901,6 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     }
 
     next_relay_manager_verify_sentinels( manager );
-}
-
-void next_relay_manager_disable_pings( next_relay_manager_t * manager, bool disabled )
-{
-    next_assert( manager );
-
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-    {
-        next_ping_history_clear( &manager->relay_ping_history[i] );
-    }
-
-    manager->disable_pings = disabled;
 }
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )

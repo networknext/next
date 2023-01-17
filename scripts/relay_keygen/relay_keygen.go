@@ -16,6 +16,6 @@ func main() {
 	}
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
 	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
-	fmt.Printf("RELAY_PUBLIC_KEY=%s\n", publicKeyBase64)
-	fmt.Printf("RELAY_PRIVATE_KEY=%s\n", privateKeyBase64)
+	fmt.Printf("export RELAY_PUBLIC_KEY=%s\n", publicKeyBase64)
+	fmt.Printf("export RELAY_PRIVATE_KEY=%s\n", privateKeyBase64)
 }
