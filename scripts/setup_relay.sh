@@ -23,7 +23,7 @@ sudo mv hosts.allow /etc/hosts.allow
 # make the relay prompt cool
 
 sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
-sudo echo "source ~/.bashrc" > ~/.profile.sh
+sudo echo "source ~/.bashrc" >> ~/.profile.sh
 
 # build and install libsodium optimized for this relay
 
