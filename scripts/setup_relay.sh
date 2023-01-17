@@ -1,9 +1,9 @@
 # input specific to this relay (these change with each relay you set up)
 
-export RELAY_NAME=google.saopaulo.1
-export RELAY_ADDRESS=34.151.248.241:40000
-export RELAY_PUBLIC_KEY=qunlVxGncMg5b650wXgtYBmJAzetry+K9ancBayMWzw=
-export RELAY_PRIVATE_KEY=1vpJ9L6jntr+KvqHSkZvgH9EnkVE/stS+60pfAdXEkg=
+export RELAY_NAME=google.dallas.1
+export RELAY_ADDRESS=34.174.121.66:40000
+export RELAY_PUBLIC_KEY=dBu7R1Jax6IgnxY87Nhnns1EJue5hs887AAldXTASzI=
+export RELAY_PRIVATE_KEY=XsRdnwJ0A+S/tLTElbvD3jjJo7Sx9xgPAFGwNTz+fN4=
 
 # inputs specific to the environment (these change infrequently)
 
@@ -24,6 +24,11 @@ sudo mv hosts.allow /etc/hosts.allow
 
 sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
 sudo echo "source ~/.bashrc" >> ~/.profile.sh
+
+# make sure we have build essentials
+
+sudo apt install build-essential -y
+sudo apt autoremove -y
 
 # build and install libsodium optimized for this relay
 
