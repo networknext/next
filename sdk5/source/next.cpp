@@ -46,7 +46,6 @@
 #define NEXT_SERVER_BACKEND_HOSTNAME                "prod5.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME                 "dev5.spacecats.net"
-#define NEXT_DISABLE_ADVANCED_PACKET_FILTER                             1
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "45000"
 
@@ -8042,7 +8041,6 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
             next_platform_mutex_acquire( &client->route_manager_mutex );
             next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
             next_platform_mutex_release( &client->route_manager_mutex );
-            // todo: but this counter is not being set elsewhere... ?
             client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
             client->fallback_to_direct = true;
         }
