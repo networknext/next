@@ -4855,7 +4855,6 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
 {
     next_relay_manager_verify_sentinels( manager );
 
-    manager->disable_pings = false;
     manager->num_relays = 0;
 
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
@@ -4907,9 +4906,6 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 {
     next_relay_manager_verify_sentinels( manager );
 
-    if ( manager->disable_pings )
-        return;
-
     next_assert( socket );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -4956,9 +4952,6 @@ void next_relay_manager_process_pong( next_relay_manager_t * manager, const next
 {
     next_relay_manager_verify_sentinels( manager );
 
-    if ( manager->disable_pings )
-        return;
-
     next_assert( from );
 
     for ( int i = 0; i < manager->num_relays; ++i )
@@ -4981,7 +4974,6 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
 
     next_relay_stats_initialize_sentinels( stats );
 
-    stats->has_pings = !manager->disable_pings;
     stats->num_relays = manager->num_relays;
 
     for ( int i = 0; i < stats->num_relays; ++i )
@@ -7328,7 +7320,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 // enable near relay pings
                 next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays", packet.num_near_relays );
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
-                next_relay_manager_disable_pings( client->near_relay_manager, false );
             }
             else
             {
@@ -7336,8 +7327,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 if ( client->near_relay_manager->num_relays != 0 )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "client near relay pings completed" );
-                    next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
-                    next_relay_manager_disable_pings( client->near_relay_manager, true );
+                    next_relay_manager_update( client->near_relay_manager, 0, packet.near_relay_ids, packet.near_relay_addresses );
                 }
             }
 
