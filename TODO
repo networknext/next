@@ -8,7 +8,25 @@ TODO
 
 	--------------
 
-	Then implement the code that passes session update messages from the session update handler.
+	Implement the code that passes session update messages from the session update handler.
+
+	--------------
+
+	Implement the relay backend checking signature as needed to secure relay updates.
+
+	--------------
+
+	IP2location needs to be hooked up to the sdk5 session update handler
+
+	--------------
+
+	Extend analytics service to insert into bigquery.
+
+	--------------
+
+	Create a new message for near relay stats.
+
+	Unit test it, then on slice #1 when near relay data comes in, write a near relay ping stats message and send it.
 
 	--------------
 
@@ -16,9 +34,9 @@ TODO
 
 	We need to do this now, so we don't have problems with it in the future.
 
-	--------------
+	It can be as simple as an expire time for pings
 
-	Implement the relay backend checking signature as needed to secure relay updates.
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
 
 	--------------
 
@@ -32,9 +50,15 @@ TODO
 
 	--------------
 
-	Create a new message for near relay stats.
+	It would be good to track when sessions shut down, vs. having them always time out
 
-	Unit test it, then on slice #1 when near relay data comes in, write a near relay ping stats message and send it.
+	This would require new messages up then back down the chain of relays for ack
+
+	It would also reduce the risk of missing packets or having sessions time out and not noticing.
+
+	We can now track sessions timing out before being closed, and this would indicate problems (or at least, hard disconnects...)
+
+	Again, adding this later would be challenging. Best to do it now.
 
 	--------------
 
@@ -43,6 +67,12 @@ TODO
 	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
 
 	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
+
+	Doing this later will be difficult, best to do it now.
+
+	--------------
+
+	One key feature that we need in sdk5 is the ability to multipath across two network next routes.
 
 	--------------
 
@@ -58,6 +88,14 @@ TODO
 
 	The trick is to use the code from the proxy to go wide across n threads with SO_REUSEPORT
 
-	Since each port/address maps to a specific socket, there is no need for locks across the route manager, aside from communications to the relay backend.
+	Since each port/address maps to a specific socket, there is no need for locks across the session map, there will be a session map per-thread.
+
+	Stats can be managed with atomics, eg. count of sessions per-thread in a uint64 atomic, summed by the main thread before uploading the total to the relay backend.
+
+	--------------
+
+	Extend the relay to support a secondary relay backend.
+
+	This will enable relays to be shared between dev and dev5, and prod and prod5.
 
 	--------------
