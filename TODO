@@ -32,19 +32,9 @@ DONE
 
 TODO
 
-	The whole relay update packet needs to be signed with the private key of the relay.
+	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
 
-	It also needs a timestamp added. Add both of these to the end of the packet, so the relay update remains compatible with sdk4 backends, which don't check the signature.
 
-	The relay gateway in sdk5 (stateless), needs to check the signature, and discard if it doesn't verify.
-
-	The relay manager in sdk5 (stateful), needs to check the update time (uint64). 
-
-	If its older than the last update for the relay, ignore it. 
-
-	If its more than x seconds in the future, ignore it.
-
-	---------
 
 
 
@@ -54,10 +44,6 @@ TODO
 
 
 Essentials:
-
-	---------
-
-	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
 
 	---------
 
