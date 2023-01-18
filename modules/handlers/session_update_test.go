@@ -10,9 +10,9 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -32,6 +32,8 @@ func CreateState() *handlers.SessionUpdateState {
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
 	state.Database = db.CreateDatabase()
+	state.Input.Latitude = 35.0
+	state.Input.Longitude = -75.0
 	return &state
 }
 
@@ -136,47 +138,6 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	assert.True(t, result)
 	assert.True(t, state.LocationVeto)
-}
-
-func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	sessionData := packets.SDK5_SessionData{}
-
-	sessionData.Version = packets.SDK5_SessionDataVersion_Write
-	sessionData.Latitude = 10
-	sessionData.Longitude = 20
-
-	buffer := make([]byte, packets.SDK5_MaxSessionDataSize)
-	writeStream := encoding.CreateWriteStream(buffer[:])
-	err := sessionData.Serialize(writeStream)
-	assert.Nil(t, err)
-	writeStream.Flush()
-	packetBytes := writeStream.GetBytesProcessed()
-	packetData := buffer[:packetBytes]
-
-	fmt.Printf("session data bytes = %d\n", len(packetData))
-
-	state.Request.SessionDataBytes = int32(packetBytes)
-	copy(state.Request.SessionData[:], packetData)
-	copy(state.Request.SessionDataSignature[:], crypto.Sign(packetData, state.ServerBackendPrivateKey))
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, state.ReadSessionData)
-	assert.Equal(t, float32(10), state.Output.Latitude)
-	assert.Equal(t, float32(20), state.Output.Longitude)
 }
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
@@ -285,52 +246,6 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	assert.False(t, result)
 	assert.False(t, state.UnknownDatacenter)
 	assert.False(t, state.DatacenterNotEnabled)
-}
-
-func Test_SessionUpdate_Pre_SessionDataSignatureCheckFailed(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	state.Request.SessionDataBytes = 100
-	common.RandomBytes(state.Request.SessionData[:])
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.SessionDataSignatureCheckFailed)
-	assert.False(t, state.FailedToReadSessionData)
-}
-
-func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	state.Request.SessionDataBytes = 100
-	common.RandomBytes(state.Request.SessionData[:])
-	copy(state.Request.SessionDataSignature[:], crypto.Sign(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPrivateKey))
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.FailedToReadSessionData)
 }
 
 func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {

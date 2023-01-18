@@ -31,14 +31,11 @@ Essentials:
 
 	--------------
 
+	Send messages to the portal cruncher via redis streams.
 
 	--------------
 
-	Send messages to the portal cruncher via redis pubsub.
-
-	--------------
-
-	Adjust the portal cruncher so it uses the new service framework and reads messages from redis pubsub.
+	Adjust the portal cruncher so it uses the new service framework and reads messages from redis streams.
 
 	--------------
 
