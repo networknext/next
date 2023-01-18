@@ -6,7 +6,7 @@ DONE
 
 TODO
 
-	Fix various session update tests that presumably need non-zero lat/longs to work
+	Fix various session update tests that broke with the lat/long change...
 
 	--------
 
