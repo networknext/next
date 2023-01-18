@@ -26,107 +26,25 @@ DONE
 
 	Server5 now handshakes with ref backend.
 
-TODO
-
-	Can we now get a client routing across relays w. ref backend5?
-
-	No. Desync in session update packet:
-
-		error: failed to read session update packet: tried to read align; value should be 0
-		
-		goroutine 1 [running]:
-		runtime/debug.Stack()
-			/usr/local/Cellar/go/1.19.4/libexec/src/runtime/debug/stack.go:24 +0x65
-		main.(*ReadStream).error(0xc000012048, {0x100318f60, 0xc000016060})
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:1897 +0x4a
-		main.(*ReadStream).SerializeAlign(0xc000012048)
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2245 +0xb7
-		main.(*ReadStream).SerializeBytes(0xc000012048, {0xc00058c0ac, 0x4, 0x4})
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2060 +0x4a
-		main.(*ReadStream).SerializeAddress(0xc000012048, 0xc0000ce438)
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2208 +0x190
-		main.(*NextBackendSessionUpdatePacket).Serialize(0xc0000ce000, {0x10031ce98, 0xc000012048})
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:529 +0x1a9
-		main.main()
-			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2768 +0x1645
-
-
-	------------
+	ref backend 5 is all good.
 
 	Get the reference backend 4 proven working as well.
 
-	------------
+TODO
 
+	The whole relay update packet needs to be signed with the private key of the relay.
 
+	It also needs a timestamp added. Add both of these to the end of the packet, so the relay update remains compatible with sdk4 backends, which don't check the signature.
 
+	The relay gateway in sdk5 (stateless), needs to check the signature, and discard if it doesn't verify.
 
+	The relay manager in sdk5 (stateful), needs to check the update time (uint64). 
 
+	If its older than the last update for the relay, ignore it. 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	If its more than x seconds in the future, ignore it.
 
 	---------
-
-	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
-
-	---------
-
-	Implement the relay backend checking signature as needed to secure relay updates
-
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily
-
 
 
 
@@ -136,6 +54,14 @@ TODO
 
 
 Essentials:
+
+	---------
+
+	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
+
+	---------
+
+	Get the pusher service live in the dev environment so we can make changes to the database.bin easily
 
 	--------------
 
