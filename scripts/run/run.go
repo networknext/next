@@ -329,5 +329,5 @@ func relay_keygen() {
 }
 
 func ref_backend5() {
-	bash("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s go run reference/backend5/backend5.go")
+	bash(fmt.Sprintf("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./dist/reference_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
