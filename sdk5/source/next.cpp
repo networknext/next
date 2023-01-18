@@ -9826,16 +9826,19 @@ struct NextBackendSessionUpdateRequestPacket
             serialize_float( stream, next_packet_loss );
         }
 
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-
-        for ( int i = 0; i < num_near_relays; ++i )
+        if ( has_near_relay_pings )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            if ( has_near_relay_pings )
+            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+
+            for ( int i = 0; i < num_near_relays; ++i )
             {
-                serialize_int( stream, near_relay_rtt[i], 0, 255 );
-                serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_float( stream, near_relay_packet_loss[i] );
+                serialize_uint64( stream, near_relay_ids[i] );
+                if ( has_near_relay_pings )
+                {
+                    serialize_int( stream, near_relay_rtt[i], 0, 255 );
+                    serialize_int( stream, near_relay_jitter[i], 0, 255 );
+                    serialize_float( stream, near_relay_packet_loss[i] );
+                }
             }
         }
 

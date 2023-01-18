@@ -297,14 +297,15 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
 
-	stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK5_MaxNearRelays))
-
-	for i := int32(0); i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIds[i])
-		if packet.HasNearRelayPings {
-			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
-			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-			stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+	if packet.HasNearRelayPings {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK5_MaxNearRelays))
+		for i := int32(0); i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIds[i])
+			if packet.HasNearRelayPings {
+				stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
+				stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
+				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+			}
 		}
 	}
 

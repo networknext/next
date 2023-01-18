@@ -207,7 +207,6 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
 		ServerEvents:                    rand.Uint64(),
-		NumNearRelays:                   int32(common.RandomInt(0, packets.SDK5_MaxNearRelays)),
 		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
@@ -242,12 +241,15 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		packet.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
 	}
 
-	for i := 0; i < int(packet.NumNearRelays); i++ {
-		packet.NearRelayIds[i] = rand.Uint64()
-		if packet.HasNearRelayPings {
-			packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
-			packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
-			packet.NearRelayPacketLoss[i] = rand.Float32()
+	if packet.HasNearRelayPings {
+		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
+		for i := 0; i < int(packet.NumNearRelays); i++ {
+			packet.NearRelayIds[i] = rand.Uint64()
+			if packet.HasNearRelayPings {
+				packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
+				packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
+				packet.NearRelayPacketLoss[i] = rand.Float32()
+			}
 		}
 	}
 
@@ -299,7 +301,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 	packet.RouteType = int32(common.RandomInt(packets.SDK5_RouteTypeDirect, packets.SDK5_RouteTypeContinue))
 
 	if packet.RouteType != packets.SDK5_RouteTypeDirect {
-		packet.Multipath = common.RandomBool()
 		packet.NumTokens = int32(common.RandomInt(1, packets.SDK5_MaxTokens))
 	}
 

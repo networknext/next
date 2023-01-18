@@ -162,6 +162,8 @@ func main() {
 		raspberry_client()
 	} else if command == "relay-keygen" {
 		relay_keygen()
+	} else if command == "ref-backend5" {
+		ref_backend5()
 	}
 	
 	cleanup()
@@ -324,4 +326,8 @@ func raspberry_server() {
 
 func relay_keygen() {
 	bash("go run scripts/relay_keygen/relay_keygen.go")
+}
+
+func ref_backend5() {
+	bash("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s go run reference/backend5/backend5.go")
 }

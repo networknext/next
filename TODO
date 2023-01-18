@@ -12,12 +12,97 @@ DONE
 
 	Only swap ip2location reader if the validation passes
 
-TODO
-
 	Hook up ip2location to the sdk5 session update handler for server_backend5.
 
-	--------
+	Relay works with ref backend.
 
+	Fix up backend5.go to work with current SDK5 packets
+
+TODO
+
+	Update keypairs so they work with the test keypairs passed in
+
+	------------
+
+	Rename reference components to have "reference_*" prefix, so it is clear.
+
+	Make sure all reference components get built with "make build".
+
+	Get a server5 connecting and working with reference_backend5
+
+	Get a client5 routing across network next with a reference_backend5
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	---------
+
+	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
+
+	---------
+
+	Implement the relay backend checking signature as needed to secure relay updates
+
+	Get the pusher service live in the dev environment so we can make changes to the database.bin easily
 
 
 
@@ -43,10 +128,6 @@ Essentials:
 
 	--------------
 
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily.
-
-	--------------
-
 	Send messages to analytics from server backend 5 via google pubsub.
 
 	--------------
@@ -55,11 +136,11 @@ Essentials:
 
 	--------------
 
-	Implement the relay backend checking signature as needed to secure relay updates.
+	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
 
 	--------------
 
-	Implement leader election func testing for relay backends + ready delay
+	Leader election func testing for relay backends + ready delay
 
 	--------------
 
@@ -113,6 +194,18 @@ Nice to have:
 
 	--------------
 
+	Extend the SDK5 so we have the option of sending down new near relay stats on multiple slices, later on.
+
+	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
+
+	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
+
+	--------------
+
+	Multipath across two network next routes.
+
+	--------------
+
 	It would be good to track when sessions shut down, vs. having them always time out
 
 	This would require new messages up then back down the chain of relays for ack
@@ -122,18 +215,6 @@ Nice to have:
 	We can now track sessions timing out before being closed, and this would indicate problems (or at least, hard disconnects...)
 
 	Again, adding this later would be challenging. Best to do it now.
-
-	--------------
-
-	Extend the SDK5 so we have the option of sending down new near relay stats on multiple slices, later on.
-
-	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
-
-	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
-
-	--------------
-
-	One key feature that we need in sdk5 is the ability to multipath across two network next routes.
 
 	--------------
 
