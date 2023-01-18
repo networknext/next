@@ -2753,7 +2753,7 @@ func main() {
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
 
 			sessionResponse.HasDebug = true
-			sessionResponse.Debug = "test session debug"
+			sessionResponse.Debug = "test session debug\n"
 
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
