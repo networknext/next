@@ -163,7 +163,7 @@ func main() {
 	} else if command == "relay-keygen" {
 		relay_keygen()
 	}
-
+	
 	cleanup()
 }
 

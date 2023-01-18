@@ -1,12 +1,36 @@
 DONE
 
-	...
+	Rework minimal ip2location functionality IP -> (lat,long) into service.go
+
+	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...	
+
+TODO
+
+	Fix various session update tests that presumably need non-zero lat/longs to work
+
+	--------
+
+	Implement reload of ip2location reader every n seconds, swap only if validation passes.
+
+	Test with production ip2location database file, including reload.
+
+	Hook up ip2location to the sdk5 session update handler for server_backend5.
+
+
+
+
+
+
+
+
+
+
+
 
 Essentials:
 
 	--------------
 
-	Get the dev environment setup and working with 100s of raspberry pi clients.
 
 	--------------
 
@@ -23,10 +47,6 @@ Essentials:
 	--------------
 
 	Get the pusher service live in the dev environment so we can make changes to the database.bin easily.
-
-	--------------
-
-	Hook up ip2location to the sdk5 session update handler for server_backend5.
 
 	--------------
 

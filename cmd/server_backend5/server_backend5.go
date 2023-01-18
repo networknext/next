@@ -7,7 +7,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/handlers"
-	"github.com/networknext/backend/modules/packets"
 )
 
 var service *common.Service
@@ -51,6 +50,8 @@ func main() {
 
 	service.UpdateMagic()
 
+	service.LoadIP2Location()
+
 	service.StartWebServer()
 
 	service.WaitForShutdown()
@@ -81,10 +82,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
 }
 
-func locateIP(ip net.IP) (packets.SDK5_LocationData, error) {
+func locateIP(ip net.IP) (float32, float32) {
 	// todo: this needs to be hooked up to the proper ip2location when we are not running in local env!!!
-	location := packets.SDK5_LocationData{}
-	location.Latitude = 43
-	location.Longitude = -75
-	return location, nil
+	return 43.0, -75.0
 }

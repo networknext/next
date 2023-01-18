@@ -87,7 +87,8 @@ type SessionCacheEntry struct {
 	Version                    uint8
 	DirectRTT                  float64
 	NextRTT                    float64
-	Location                   packets.SDK5_LocationData
+	Latitude                   float32
+	Longitude                  float32
 	Response                   []byte
 }
 
@@ -657,7 +658,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		sessionData.SessionId = requestPacket.SessionId
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-		sessionData.Location.Version = packets.SDK5_LocationVersion_Write
 
 	} else {
 

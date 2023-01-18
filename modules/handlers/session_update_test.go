@@ -17,16 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func DummyLocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
-	location := packets.SDK5_LocationData{}
-	location.Latitude = 43
-	location.Longitude = -75
-	return location, nil
+func DummyLocateIP(ip net.IP) (float32, float32) {
+	return 43.0, -75.0
 }
 
-func FailLocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
-	location := packets.SDK5_LocationData{}
-	return location, fmt.Errorf("fail")
+func FailLocateIP(ip net.IP) (float32, float32) {
+	return 0.0, 0.0
 }
 
 func CreateState() *handlers.SessionUpdateState {
@@ -119,8 +115,8 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
 	assert.False(t, state.LocationVeto)
-	assert.Equal(t, state.Output.Location.Latitude, float32(43))
-	assert.Equal(t, state.Output.Location.Longitude, float32(-75))
+	assert.Equal(t, state.Output.Latitude, float32(43))
+	assert.Equal(t, state.Output.Longitude, float32(-75))
 }
 
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
@@ -158,11 +154,8 @@ func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 	sessionData := packets.SDK5_SessionData{}
 
 	sessionData.Version = packets.SDK5_SessionDataVersion_Write
-	sessionData.Location.Version = packets.SDK5_LocationVersion_Write
-	sessionData.Location.Latitude = 10
-	sessionData.Location.Longitude = 20
-	sessionData.Location.ISP = "Starlink"
-	sessionData.Location.ASN = 5
+	sessionData.Latitude = 10
+	sessionData.Longitude = 20
 
 	buffer := make([]byte, packets.SDK5_MaxSessionDataSize)
 	writeStream := encoding.CreateWriteStream(buffer[:])
@@ -182,10 +175,8 @@ func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.ReadSessionData)
-	assert.Equal(t, float32(10), state.Output.Location.Latitude)
-	assert.Equal(t, float32(20), state.Output.Location.Longitude)
-	assert.Equal(t, "Starlink", state.Output.Location.ISP)
-	assert.Equal(t, uint32(5), state.Output.Location.ASN)
+	assert.Equal(t, float32(10), state.Output.Latitude)
+	assert.Equal(t, float32(20), state.Output.Longitude)
 }
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {

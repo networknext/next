@@ -12,10 +12,6 @@ const (
 	SDK5_SessionDataVersion_Max   = 1
 	SDK5_SessionDataVersion_Write = 1
 
-	SDK5_LocationVersion_Min   = 1
-	SDK5_LocationVersion_Max   = 1
-	SDK5_LocationVersion_Write = 1
-
 	SDK5_CRYPTO_SIGN_BYTES             = 64
 	SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
 	SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
