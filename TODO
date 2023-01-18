@@ -18,9 +18,11 @@ DONE
 
 	Fix up backend5.go to work with current SDK5 packets
 
+	Update ref backend 5 keypairs to latest being passed in via run.go with env vars
+
 TODO
 
-	Update keypairs so they work with the test keypairs passed in
+	Now debug why the server5 causes the ref backend 5 to crash on packet processing (has to be a desync)
 
 	------------
 

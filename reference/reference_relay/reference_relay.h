@@ -79,11 +79,11 @@
 #endif
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_WINDOWS
-#include "relay_windows.h"
+#include "reference_relay_windows.h"
 #elif RELAY_PLATFORM == RELAY_PLATFORM_MAC
-#include "relay_mac.h"
+#include "reference_relay_mac.h"
 #elif RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-#include "relay_linux.h"
+#include "reference_relay_linux.h"
 #endif
 
 struct relay_address_t

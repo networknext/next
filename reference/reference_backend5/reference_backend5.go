@@ -318,6 +318,10 @@ type Serializable interface {
 
 func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 
+	if len(privateKey) == 0 {
+		panic("bad private key!\n")
+	}
+
 	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
 	packet[0] = byte(packetType)
 
@@ -2551,6 +2555,9 @@ func generateMagic(magic []byte) {
 }
 
 func main() {
+
+	fmt.Printf("TEST_ROUTER_PRIVATE_KEY: %s\n", os.Getenv("TEST_ROUTER_PRIVATE_KEY"))
+	fmt.Printf("TEST_BACKEND_PRIVATE_KEY: %s\n", os.Getenv("TEST_BACKEND_PRIVATE_KEY"))
 
 	TestRouterPrivateKey = ParseKeyFromBase64(os.Getenv("TEST_ROUTER_PRIVATE_KEY"))
 
