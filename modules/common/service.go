@@ -193,20 +193,25 @@ func (service *Service) LoadIP2Location() {
 	service.watchIP2Location(service.Context, filename)
 }
 
-func (service *Service) LocateIP(ip net.IP) (float32, float32) {
+func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
 	var record struct {
 		Location struct {
 			Latitude       float64 `maxminddb:"latitude"`
 			Longitude      float64 `maxminddb:"longitude"`
 		} `maxminddb:"location"`
 	}
-	service.ip2location_mutex.RLock()
-	err := service.ip2location_reader.Lookup(ip, &record)
-	service.ip2location_mutex.RUnlock()
+	err := reader.Lookup(ip, &record)
 	if err != nil {
 		return 0, 0
 	}
 	return float32(record.Location.Latitude), float32(record.Location.Longitude)
+}
+
+func (service *Service) LocateIP(ip net.IP) (float32, float32) {
+	service.ip2location_mutex.RLock()
+	reader := service.ip2location_reader
+	service.ip2location_mutex.RUnlock()
+	return locateIP(reader, ip)
 }
 
 func (service *Service) Database() *db.Database {
@@ -503,14 +508,19 @@ func (service *Service) watchIP2Location(ctx context.Context, filename string) {
 					os.Exit(1)
 				}
 
-				// todo: verify the new ip2location works (do a lookup on a known ip address, make sure it's not 0,0 ...)
+				ip := net.ParseIP("192.0.2.1")
+				lat, long := locateIP(newReader, ip)
+				if lat == 0.0 && long == 0.0 {
+					core.Error("new ip2location did not validate")
+					continue
+				}
 
 				service.ip2location_mutex.Lock()
 				oldReader := service.ip2location_reader
 				service.ip2location_reader = newReader
 				service.ip2location_mutex.Unlock()
 
-				oldReader.Close(0)
+				oldReader.Close()
 
 				core.Debug("reloaded ip2location file")
 			}
