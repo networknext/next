@@ -184,7 +184,7 @@ func (service *Service) LoadIP2Location() {
 	service.ip2location_reader, err = maxminddb.Open(filename)
 	service.ip2location_mutex.Unlock()
 	if err != nil {
-		core.Error("failed to load geoip2 database: %v", err)
+		core.Error("failed to load ip2location: %v", err)
 		os.Exit(1)
 	}
 
@@ -497,15 +497,22 @@ func (service *Service) watchIP2Location(ctx context.Context, filename string) {
 
 			case <-ticker.C:
 
-				core.Debug("reloading ip2location file")
+				newReader, err := maxminddb.Open(filename)
+				if err != nil {
+					core.Error("failed to load ip2location: %v", err)
+					os.Exit(1)
+				}
 
-				// todo: load new reader
+				// todo: verify the new ip2location works (do a lookup on a known ip address, make sure it's not 0,0 ...)
 
-				// todo: verify the reader is OK
+				service.ip2location_mutex.Lock()
+				oldReader := service.ip2location_reader
+				service.ip2location_reader = newReader
+				service.ip2location_mutex.Unlock()
 
-				// todo: grab mutex and swap with old reader
+				oldReader.Close(0)
 
-				// todo: close old reader
+				core.Debug("reloaded ip2location file")
 			}
 		}
 	}()
