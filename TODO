@@ -20,21 +20,42 @@ DONE
 
 	Update ref backend 5 keypairs to latest being passed in via run.go with env vars
 
-TODO
-
-	Now debug why the server5 causes the ref backend 5 to crash on packet processing (has to be a desync)
-
-	------------
-
 	Rename reference components to have "reference_*" prefix, so it is clear.
 
 	Make sure all reference components get built with "make build".
 
-	Get a server5 connecting and working with reference_backend5
+	Server5 now handshakes with ref backend.
 
-	Get a client5 routing across network next with a reference_backend5
+TODO
+
+	Can we now get a client routing across relays w. ref backend5?
+
+	No. Desync in session update packet:
+
+		error: failed to read session update packet: tried to read align; value should be 0
+		
+		goroutine 1 [running]:
+		runtime/debug.Stack()
+			/usr/local/Cellar/go/1.19.4/libexec/src/runtime/debug/stack.go:24 +0x65
+		main.(*ReadStream).error(0xc000012048, {0x100318f60, 0xc000016060})
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:1897 +0x4a
+		main.(*ReadStream).SerializeAlign(0xc000012048)
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2245 +0xb7
+		main.(*ReadStream).SerializeBytes(0xc000012048, {0xc00058c0ac, 0x4, 0x4})
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2060 +0x4a
+		main.(*ReadStream).SerializeAddress(0xc000012048, 0xc0000ce438)
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2208 +0x190
+		main.(*NextBackendSessionUpdatePacket).Serialize(0xc0000ce000, {0x10031ce98, 0xc000012048})
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:529 +0x1a9
+		main.main()
+			/Users/gaffer/backend/reference/reference_backend5/reference_backend5.go:2768 +0x1645
 
 
+	------------
+
+	Get the reference backend 4 proven working as well.
+
+	------------
 
 
 

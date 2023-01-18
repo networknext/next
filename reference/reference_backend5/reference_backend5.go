@@ -46,6 +46,8 @@ const NEXT_MAX_DATACENTER_NAME_LENGTH = 256
 
 const NEXT_MAX_SESSION_DATA_BYTES = 1024
 
+const NEXT_SESSION_DATA_SIGNATURE_BYTES = 64
+
 const NEXT_MAX_SESSION_DEBUG = 1024
 
 const NEXT_MAX_SESSION_UPDATE_RETRIES = 10
@@ -380,8 +382,8 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
-	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeString(&packet.DatacenterName, NEXT_MAX_DATACENTER_NAME_LENGTH)
 	return stream.Error()
@@ -461,6 +463,7 @@ type NextBackendSessionUpdatePacket struct {
 	RetryNumber                     int32
 	SessionDataBytes                int32
 	SessionData                     [NEXT_MAX_SESSION_DATA_BYTES]byte
+	SessionDataSignature            [NEXT_SESSION_DATA_SIGNATURE_BYTES]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
 	ClientRoutePublicKey            []byte
@@ -524,6 +527,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
@@ -633,6 +637,7 @@ type NextBackendSessionResponsePacket struct {
 	SliceNumber        uint32
 	SessionDataBytes   int32
 	SessionData        [NEXT_MAX_SESSION_DATA_BYTES]byte
+	SessionDataSignature [NEXT_SESSION_DATA_SIGNATURE_BYTES]byte
 	RouteType          int32
 	HasNearRelays      bool
 	NumNearRelays      int32
@@ -655,6 +660,7 @@ func (packet NextBackendSessionResponsePacket) Serialize(stream Stream) error {
 	if packet.SessionDataBytes > 0 {
 		sessionData := packet.SessionData[:packet.SessionDataBytes]
 		stream.SerializeBytes(sessionData)
+		stream.SerializeBytes(packet.SessionDataSignature[:])
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, NEXT_ROUTE_TYPE_CONTINUE)
@@ -2556,9 +2562,6 @@ func generateMagic(magic []byte) {
 
 func main() {
 
-	fmt.Printf("TEST_ROUTER_PRIVATE_KEY: %s\n", os.Getenv("TEST_ROUTER_PRIVATE_KEY"))
-	fmt.Printf("TEST_BACKEND_PRIVATE_KEY: %s\n", os.Getenv("TEST_BACKEND_PRIVATE_KEY"))
-
 	TestRouterPrivateKey = ParseKeyFromBase64(os.Getenv("TEST_ROUTER_PRIVATE_KEY"))
 
 	TestBackendPrivateKey = ParseKeyFromBase64(os.Getenv("TEST_BACKEND_PRIVATE_KEY"))
@@ -2606,16 +2609,6 @@ func main() {
 	defer connection.Close()
 
 	fmt.Printf("\nreference backend (sdk5)\n\n")
-
-	multipath := false
-	if os.Getenv("BACKEND_MULTIPATH") == "1" {
-		multipath = true
-	}
-
-	on_off := false
-	if os.Getenv("BACKEND_ON_OFF") == "1" {
-		on_off = true
-	}
 
 	for {
 
@@ -2811,12 +2804,6 @@ func main() {
 
 			takeNetworkNext := len(nearRelayIds) > 0 && !sessionUpdate.FallbackToDirect
 
-			if on_off {
-				if (sessionData.SliceNumber % 2) != 0 {
-					takeNetworkNext = false
-				}
-			}
-
 			if sessionUpdate.ClientPingTimedOut {
 				takeNetworkNext = false
 			}
@@ -2912,7 +2899,7 @@ func main() {
 					RouteType:          routeType,
 					NumTokens:          int32(numNodes),
 					Tokens:             tokens,
-					Multipath:          multipath,
+					Multipath:          true,
 				}
 
 				sessionData.Route = route
@@ -2923,7 +2910,7 @@ func main() {
 				continue
 			}
 
-			if sessionUpdate.SliceNumber == 1 {
+			if sessionUpdate.SliceNumber == 0 {
 				sessionResponse.HasNearRelays = true
 				sessionResponse.NumNearRelays = int32(len(nearRelayIds))
 				sessionResponse.NearRelayIds = nearRelayIds
@@ -2964,7 +2951,7 @@ func main() {
 			copy(sessionResponse.SessionData[:], sessionDataWriteStream.GetData()[0:sessionDataWriteStream.GetBytesProcessed()])
 
 			sessionResponse.HasDebug = true
-			sessionResponse.Debug = "test session debug"
+			sessionResponse.Debug = "test session debug\n"
 
 			toAddress := from
 			fromAddress := sendAddress
