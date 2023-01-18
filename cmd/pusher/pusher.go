@@ -10,7 +10,9 @@ import (
 	"net"
 	"time"
 
+	// we should not depend on the old routing geolocation code. it's dead code
 	"github.com/networknext/backend/modules-old/routing"
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
