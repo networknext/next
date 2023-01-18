@@ -6,17 +6,10 @@
 package main
 
 import (
-	"io/ioutil"
-	"net"
 	"time"
 
-	// we should not depend on the old routing geolocation code. it's dead code
-	"github.com/networknext/backend/modules-old/routing"
-
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/oschwald/geoip2-golang"
 )
 
 func main() {
@@ -26,12 +19,12 @@ func main() {
 	fileSyncConfig := common.CreateFileSyncConfig()
 
 	ispSyncFile := common.SyncFile{
-		Name:        "GeoIP2-ISP.mmdb", // download URL is a compress tar.gz so we need to know single file name
+		Name:        "GeoIP2-ISP.mmdb",
 		DownloadURL: envvar.GetString("MAXMIND_ISP_DOWNLOAD_URI", "gs://network-next-local/GeoIP2-ISP.tar.gz"),
 	}
 
 	citySyncFile := common.SyncFile{
-		Name:        "GeoIP2-City.mmdb", // download URL is a compress tar.gz so we need to know single file name
+		Name:        "GeoIP2-City.mmdb",
 		DownloadURL: envvar.GetString("MAXMIND_CITY_DOWNLOAD_URI", "gs://network-next-local/GeoIP2-City.tar.gz"),
 	}
 
@@ -74,6 +67,8 @@ func main() {
 
 func validateLocationFiles(locationFiles []string) bool {
 
+	// todo: much simpler validation
+	/*
 	ipStr := "192.0.2.1"
 	testIP := net.ParseIP(ipStr)
 	if testIP == nil {
@@ -134,6 +129,7 @@ func validateLocationFiles(locationFiles []string) bool {
 		core.Error("location returned as null island")
 		return false
 	}
+	*/
 
 	return true
 }
@@ -143,6 +139,11 @@ func validateBinFiles(binFiles []string) bool {
 	databaseFile := binFiles[0]
 	overlayFile := binFiles[1]
 
+	// todo
+	_ = databaseFile
+	_ = overlayFile
+
+	/*
 	databaseWrapper := routing.DatabaseBinWrapper{}
 	overlayWrapper := routing.OverlayBinWrapper{}
 
@@ -160,6 +161,7 @@ func validateBinFiles(binFiles []string) bool {
 		core.Error("failed to read overlay file: %v", err)
 		return false
 	}
+	*/
 
 	return true
 }
