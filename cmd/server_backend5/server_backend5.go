@@ -11,6 +11,7 @@ import (
 
 var service *common.Service
 
+var env string
 var maxPacketSize int
 var serverBackendAddress net.UDPAddr
 var serverBackendPublicKey []byte
@@ -46,11 +47,11 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
 
-	service.StartUDPServer(packetHandler)
+	service.LoadIP2Location()
 
 	service.UpdateMagic()
 
-	service.LoadIP2Location()
+	service.StartUDPServer(packetHandler)
 
 	service.StartWebServer()
 
@@ -77,12 +78,19 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
 	handler.GetMagicValues = func() ([]byte, []byte, []byte) { return service.GetMagicValues() }
-	handler.LocateIP = locateIP
+	if service.Local {
+		handler.LocateIP = locateIP_Local
+	} else {
+		handler.LocateIP = locateIP_Real
+	}
 
 	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
 }
 
-func locateIP(ip net.IP) (float32, float32) {
-	// todo: this needs to be hooked up to the proper ip2location when we are not running in local env!!!
-	return 43.0, -75.0
+func locateIP_Local(ip net.IP) (float32, float32) {
+	return 43, -75
+}
+
+func locateIP_Real(ip net.IP) (float32, float32) {
+	return service.LocateIP(ip)
 }

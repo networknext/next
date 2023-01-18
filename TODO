@@ -10,11 +10,9 @@ DONE
 
 	Update tests with the new near relay stuff
 
-TODO
-
 	Only swap ip2location reader if the validation passes
 
-	Test with production ip2location database file, including reload.
+TODO
 
 	Hook up ip2location to the sdk5 session update handler for server_backend5.
 
