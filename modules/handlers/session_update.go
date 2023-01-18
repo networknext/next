@@ -499,8 +499,6 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))   // todo: may want DirectMaxJitterSeen
 	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
-	fmt.Printf("%d near relays sent up from SDK\n", state.Request.NumNearRelays)
-
 	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
 	sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
 	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]

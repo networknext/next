@@ -4,13 +4,17 @@ DONE
 
 	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...	
 
+	Fix various session update tests that broke with the lat/long change
+
+	Implement reload of ip2location reader every n seconds
+
 TODO
 
-	Fix various session update tests that broke with the lat/long change...
+	Update tests with the new near relay stuff
 
 	--------
 
-	Implement reload of ip2location reader every n seconds, swap only if validation passes.
+	Only swap ip2location reader if the validation passes
 
 	Test with production ip2location database file, including reload.
 
@@ -31,14 +35,11 @@ Essentials:
 
 	--------------
 
+	Send messages to the portal cruncher via redis streams.
 
 	--------------
 
-	Send messages to the portal cruncher via redis pubsub.
-
-	--------------
-
-	Adjust the portal cruncher so it uses the new service framework and reads messages from redis pubsub.
+	Adjust the portal cruncher so it uses the new service framework and reads messages from redis streams.
 
 	--------------
 
