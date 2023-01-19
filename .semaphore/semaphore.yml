@@ -867,6 +867,10 @@ blocks:
       secrets:
         - name: google-cloud-platform-prod
 
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
       jobs:
 
         - name: "run happy-path-no-wait"
@@ -893,6 +897,10 @@ blocks:
 
       secrets:
         - name: google-cloud-platform-prod
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
 
       jobs:
 
