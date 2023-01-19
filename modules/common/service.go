@@ -86,8 +86,8 @@ type Service struct {
 
 	leaderElection *RedisLeaderElection
 
-	sendTrafficToMe  func () bool
-	machineIsHealthy func () bool
+	sendTrafficToMe  func() bool
+	machineIsHealthy func() bool
 
 	udpServer *UDPServer
 
@@ -99,8 +99,10 @@ type Service struct {
 
 	lookerHandler *LookerHandler
 
-	ip2location_mutex sync.RWMutex
-	ip2location_reader *maxminddb.Reader
+	ip2location_isp_mutex   sync.RWMutex
+	ip2location_isp_reader  *maxminddb.Reader
+	ip2location_city_mutex  sync.RWMutex
+	ip2location_city_reader *maxminddb.Reader
 }
 
 func CreateService(serviceName string) *Service {
@@ -145,7 +147,7 @@ func CreateService(serviceName string) *Service {
 	return &service
 }
 
-func (service *Service) SetHealthFunctions(sendTrafficToMe func () bool, machineIsHealthy func () bool) {
+func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineIsHealthy func() bool) {
 	service.sendTrafficToMe = sendTrafficToMe
 	service.machineIsHealthy = machineIsHealthy
 }
@@ -157,13 +159,14 @@ func (service *Service) LoadDatabase() {
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
-	if service.database == nil {
-		core.Error("load database failed: %s", databasePath)
+	if validateBinFiles(service.database) {
+		core.Error("bin files failed validation")
 		os.Exit(1)
 	}
 
 	applyOverlay(service.database, service.databaseOverlay)
 
+	// TODO: should this be part of the database.bin validation?
 	service.databaseRelayData = generateRelayData(service.database)
 	if service.databaseRelayData == nil {
 		core.Error("generate relay data failed")
@@ -175,29 +178,100 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
-func (service *Service) LoadIP2Location() {
-	
-	filename := envvar.GetString("IP2LOCATION_FILENAME", "GeoIP2-City.mmdb")
+func (service *Service) ValidateBinFiles(filenames []string) bool {
 
-	var err error
-	service.ip2location_mutex.Lock()
-	service.ip2location_reader, err = maxminddb.Open(filename)
-	service.ip2location_mutex.Unlock()
-	if err != nil {
-		core.Error("failed to load ip2location: %v", err)
+	database, _ := loadDatabase(filenames[0], filenames[1])
+
+	return validateBinFiles(database)
+
+}
+
+func validateBinFiles(database *db.Database) bool {
+
+	if database == nil {
+		return false
+	}
+
+	return database.IsEmpty()
+
+}
+
+func (service *Service) LoadIP2Location() {
+
+	filenames := envvar.GetList("IP2LOCATION_FILENAMES", []string{"GeoIP2-City.mmdb", "GeoIP2-ISP.mmdb"})
+
+	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
+
+	if validateIP2Location(cityReader, ispReader) {
+		core.Error("ip2location failed validation")
 		os.Exit(1)
 	}
 
-	core.Log("loaded ip2location: %s", filename)
+	service.ip2location_city_mutex.Lock()
+	service.ip2location_city_reader = cityReader
+	service.ip2location_city_mutex.Unlock()
 
-	service.watchIP2Location(service.Context, filename)
+	core.Log("loaded ip2location city file: %s", filenames[0])
+
+	service.ip2location_isp_mutex.Lock()
+	service.ip2location_isp_reader = ispReader
+	service.ip2location_isp_mutex.Unlock()
+
+	core.Log("loaded ip2location isp file: %s", filenames[1])
+
+	service.watchIP2Location(service.Context, filenames)
+}
+
+func (service *Service) ValidateIP2Location(filenames []string) bool {
+
+	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
+
+	return validateIP2Location(cityReader, ispReader)
+
+}
+
+func validateIP2Location(cityReader *maxminddb.Reader, ispReader *maxminddb.Reader) bool {
+
+	valid := true
+
+	ip := net.ParseIP("192.0.2.1")
+
+	if cityReader == nil {
+		core.Error("city reader is nil")
+		valid = false
+	} else {
+		lat, long := locateIP(cityReader, ip)
+		if lat == 0.0 && long == 0.0 {
+			core.Error("failed to validate city")
+			valid = false
+		}
+	}
+
+	if ispReader == nil {
+		core.Error("isp reader is nil")
+		valid = false
+	} else {
+		asn, isp := locateISP(ispReader, ip)
+		if asn == -1 {
+			core.Error("failed to validate asn")
+			valid = false
+		}
+
+		if isp == "" {
+			core.Error("failed to validate isp")
+			valid = false
+		}
+	}
+
+	return valid
+
 }
 
 func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
 	var record struct {
 		Location struct {
-			Latitude       float64 `maxminddb:"latitude"`
-			Longitude      float64 `maxminddb:"longitude"`
+			Latitude  float64 `maxminddb:"latitude"`
+			Longitude float64 `maxminddb:"longitude"`
 		} `maxminddb:"location"`
 	}
 	err := reader.Lookup(ip, &record)
@@ -207,11 +281,32 @@ func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
 	return float32(record.Location.Latitude), float32(record.Location.Longitude)
 }
 
+func locateISP(reader *maxminddb.Reader, ip net.IP) (int, string) {
+	var record struct {
+		ISP struct {
+			AutonomousSystemNumber uint   `maxminddb:"autonomous_system_number"`
+			ISP                    string `maxminddb:"isp"`
+		}
+	}
+	err := reader.Lookup(ip, &record)
+	if err != nil {
+		return -1, ""
+	}
+	return int(record.ISP.AutonomousSystemNumber), record.ISP.ISP
+}
+
 func (service *Service) LocateIP(ip net.IP) (float32, float32) {
-	service.ip2location_mutex.RLock()
-	reader := service.ip2location_reader
-	service.ip2location_mutex.RUnlock()
+	service.ip2location_city_mutex.RLock()
+	reader := service.ip2location_city_reader
+	service.ip2location_city_mutex.RUnlock()
 	return locateIP(reader, ip)
+}
+
+func (service *Service) LocateISP(ip net.IP) (int, string) {
+	service.ip2location_isp_mutex.RLock()
+	reader := service.ip2location_isp_reader
+	service.ip2location_isp_mutex.RUnlock()
+	return locateISP(reader, ip)
 }
 
 func (service *Service) Database() *db.Database {
@@ -472,12 +567,19 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
-	service.ip2location_mutex.Lock()
-	if service.ip2location_reader != nil {
-		service.ip2location_reader.Close()
-		service.ip2location_reader = nil
+	service.ip2location_city_mutex.Lock()
+	if service.ip2location_city_reader != nil {
+		service.ip2location_city_reader.Close()
+		service.ip2location_city_reader = nil
 	}
-	service.ip2location_mutex.Unlock()
+	service.ip2location_city_mutex.Unlock()
+
+	service.ip2location_isp_mutex.Lock()
+	if service.ip2location_isp_reader != nil {
+		service.ip2location_isp_reader.Close()
+		service.ip2location_isp_reader = nil
+	}
+	service.ip2location_isp_mutex.Unlock()
 
 	// todo: we need some system to wait for registered (named) subsystems to complete before we shut down
 
@@ -486,7 +588,27 @@ func (service *Service) WaitForShutdown() {
 
 // -----------------------------------------------------------------------
 
-func (service *Service) watchIP2Location(ctx context.Context, filename string) {
+func loadIP2Location(cityPath string, ispPath string) (*maxminddb.Reader, *maxminddb.Reader) {
+	cityReader, err := maxminddb.Open(cityPath)
+	if err != nil {
+		core.Error("failed to load ip2location city file: %v", err)
+		return nil, nil
+	}
+
+	core.Debug("loaded ip2location city file: '%s'", cityPath)
+
+	ispReader, err := maxminddb.Open(ispPath)
+	if err != nil {
+		core.Error("failed to load ip2location isp file: %v", err)
+		return nil, nil
+	}
+
+	core.Debug("loaded ip2location city file: '%s'", cityPath)
+
+	return cityReader, ispReader
+}
+
+func (service *Service) watchIP2Location(ctx context.Context, filenames []string) {
 
 	syncInterval := envvar.GetDuration("IP2LOCATION_SYNC_INTERVAL", time.Minute)
 
@@ -502,25 +624,25 @@ func (service *Service) watchIP2Location(ctx context.Context, filename string) {
 
 			case <-ticker.C:
 
-				newReader, err := maxminddb.Open(filename)
-				if err != nil {
-					core.Error("failed to load ip2location: %v", err)
-					os.Exit(1)
-				}
-
-				ip := net.ParseIP("192.0.2.1")
-				lat, long := locateIP(newReader, ip)
-				if lat == 0.0 && long == 0.0 {
-					core.Error("new ip2location did not validate")
+				cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
+				if validateIP2Location(cityReader, ispReader) {
+					core.Error("ip2location files not valid")
 					continue
 				}
 
-				service.ip2location_mutex.Lock()
-				oldReader := service.ip2location_reader
-				service.ip2location_reader = newReader
-				service.ip2location_mutex.Unlock()
+				service.ip2location_city_mutex.Lock()
+				oldCityReader := service.ip2location_city_reader
+				service.ip2location_city_reader = oldCityReader
+				service.ip2location_city_mutex.Unlock()
 
-				oldReader.Close()
+				oldCityReader.Close()
+
+				service.ip2location_isp_mutex.Lock()
+				oldISPReader := service.ip2location_isp_reader
+				service.ip2location_isp_reader = oldISPReader
+				service.ip2location_isp_mutex.Unlock()
+
+				oldISPReader.Close()
 
 				core.Debug("reloaded ip2location file")
 			}
@@ -535,7 +657,6 @@ func loadDatabase(databasePath string, overlayPath string) (*db.Database, *db.Ov
 	// load database (required)
 
 	database, err := db.LoadDatabase(databasePath)
-
 	if err != nil {
 		core.Error("error: could not read database: %v", err)
 		return nil, nil
@@ -550,13 +671,19 @@ func loadDatabase(databasePath string, overlayPath string) (*db.Database, *db.Ov
 	// load overlay (optional)
 
 	overlay, err := db.LoadOverlay(overlayPath)
+	if err != nil {
+		core.Debug("failed to load overlay: %v", err)
+		return database, nil
+	}
 
-	if err != nil || overlay.IsEmpty() {
+	if overlay.IsEmpty() {
+		core.Debug("overlay is empty")
 		return database, nil
 	}
 
 	// IMPORTANT: discard the overlay if it's older than the database
 	if database.CreationTime > overlay.CreationTime {
+		core.Debug("overlay is older than database")
 		return database, nil
 	}
 
@@ -670,10 +797,12 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 				newDatabase, newOverlay := loadDatabase(databasePath, overlayPath)
 
-				if newDatabase == nil {
+				if validateBinFiles(newDatabase) {
+					core.Error("new bin file failed validation")
 					continue
 				}
 
+				// TODO: should this be part of database.bin validation?
 				newRelayData := generateRelayData(newDatabase)
 
 				if newRelayData == nil {
