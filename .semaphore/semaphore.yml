@@ -106,6 +106,35 @@ blocks:
             - ./run test-relay
             - artifact push workflow ./dist/reference_relay
 
+  - name: "Get Latest IP2Location Files"
+    dependencies: []
+    task:
+
+      secrets:
+        - name: google-cloud-platform
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Download City File"
+          commands:
+
+            - gsutil cp gs://development_artifacts/GeoIP2-City.mmdb .
+            - artifact push workflow GeoIP2-City.mmdb
+
+        - name: "Download ISP File"
+          commands:
+
+            - gsutil cp gs://development_artifacts/GeoIP2-ISP.mmdb .
+            - artifact push workflow GeoIP2-ISP.mmdb
+
   - name: "Build Functional Tests (backend)"
     dependencies: []
     task:
@@ -835,12 +864,13 @@ blocks:
 
 
   - name: "Happy Path (Mac)"
-    dependencies: []
+    dependencies: ["Get Latest IP2Location Files"]
     task:
       agent:
         machine:
           type: a1-standard-4
           os_image: macos-xcode13
+
       jobs:
 
         - name: "run happy-path-no-wait"
@@ -851,17 +881,26 @@ blocks:
             - brew install libsodium redis golang
             - cd ~/backend
             - make rebuild
+            - artifact pull workflow GeoIP2-City.mmdb
+            - artifact pull workflow GeoIP2-ISP.mmdb
             - ./next select local
             - ./run happy-path-no-wait
 
 
   - name: "Happy Path (Linux)"
-    dependencies: []
+    dependencies: ["Get Latest IP2Location Files"]
     task:
       agent:
         machine:
           type: e1-standard-8
           os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - artifact pull workflow GeoIP2-City.mmdb
+            - artifact pull workflow GeoIP2-ISP.mmdb
+
       jobs:
 
         - name: "run happy-path-no-wait"
