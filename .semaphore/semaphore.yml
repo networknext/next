@@ -126,13 +126,13 @@ blocks:
         - name: "Download City File"
           commands:
 
-            - gsutil cp gs://prod_database_bin/GeoIP2-City.mmdb .
+            - gsutil cp gs://prod_artifacts/GeoIP2-City.mmdb .
             - artifact push workflow GeoIP2-City.mmdb
 
         - name: "Download ISP File"
           commands:
 
-            - gsutil cp gs://prod_database_bin/GeoIP2-ISP.mmdb .
+            - gsutil cp gs://prod_artifacts/GeoIP2-ISP.mmdb .
             - artifact push workflow GeoIP2-ISP.mmdb
 
   - name: "Build Functional Tests (backend)"
