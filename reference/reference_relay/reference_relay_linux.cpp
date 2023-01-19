@@ -1,9 +1,9 @@
 /*
-    Network Next Relay.
+    Network Next Reference Relay.
     Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
-#include "relay_linux.h"
+#include "reference_relay_linux.h"
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 

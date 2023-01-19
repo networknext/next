@@ -297,14 +297,15 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
 
-	stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK5_MaxNearRelays))
-
-	for i := int32(0); i < packet.NumNearRelays; i++ {
-		stream.SerializeUint64(&packet.NearRelayIds[i])
-		if packet.HasNearRelayPings {
-			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
-			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-			stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+	if packet.HasNearRelayPings {
+		stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK5_MaxNearRelays))
+		for i := int32(0); i < packet.NumNearRelays; i++ {
+			stream.SerializeUint64(&packet.NearRelayIds[i])
+			if packet.HasNearRelayPings {
+				stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
+				stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
+				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+			}
 		}
 	}
 
@@ -365,11 +366,8 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		sessionData.RouteRelayIds[i] = rand.Uint64()
 	}
 
-	sessionData.Location.Version = uint32(common.RandomInt(SDK5_LocationVersion_Min, SDK5_LocationVersion_Min))
-	sessionData.Location.Latitude = rand.Float32()
-	sessionData.Location.Longitude = rand.Float32()
-	sessionData.Location.ISP = common.RandomString(SDK5_MaxISPNameLength)
-	sessionData.Location.ASN = rand.Uint32()
+	sessionData.Latitude = rand.Float32()
+	sessionData.Longitude = rand.Float32()
 
 	sessionData.RouteState.Next = common.RandomBool()
 	sessionData.RouteState.Veto = common.RandomBool()
@@ -467,68 +465,15 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 
 // ------------------------------------------------------------
 
-type SDK5_LocationData struct {
-	Version   uint32
-	Latitude  float32
-	Longitude float32
-	ISP       string
-	ASN       uint32
-}
-
-func (location *SDK5_LocationData) Read(data []byte) error {
-
-	index := 0
-
-	if !encoding.ReadUint32(data, &index, &location.Version) {
-		return errors.New("invalid read at version number")
-	}
-
-	if location.Version < SDK5_LocationVersion_Min || location.Version > SDK5_LocationVersion_Max {
-		return fmt.Errorf("invalid location version: %d", location.Version)
-	}
-
-	if !encoding.ReadFloat32(data, &index, &location.Latitude) {
-		return errors.New("invalid read at latitude")
-	}
-
-	if !encoding.ReadFloat32(data, &index, &location.Longitude) {
-		return errors.New("invalid read at longitude")
-	}
-
-	if !encoding.ReadString(data, &index, &location.ISP, SDK5_MaxISPNameLength) {
-		return errors.New("invalid read at ISP")
-	}
-
-	if !encoding.ReadUint32(data, &index, &location.ASN) {
-		return errors.New("invalid read at ASN")
-	}
-
-	return nil
-}
-
-func (location *SDK5_LocationData) Write(buffer []byte) ([]byte, error) {
-	index := 0
-	if location.Version < SDK5_LocationVersion_Min || location.Version > SDK5_LocationVersion_Max {
-		panic(fmt.Sprintf("invalid location version: %d", location.Version))
-	}
-	encoding.WriteUint32(buffer, &index, location.Version)
-	encoding.WriteFloat32(buffer, &index, location.Latitude)
-	encoding.WriteFloat32(buffer, &index, location.Longitude)
-	encoding.WriteString(buffer, &index, location.ISP, SDK5_MaxISPNameLength)
-	encoding.WriteUint32(buffer, &index, location.ASN)
-	return buffer[:index], nil
-}
-
-// ------------------------------------------------------------
-
 type SDK5_SessionData struct {
 	Version                       uint32
 	SessionId                     uint64
 	SessionVersion                uint32
 	SliceNumber                   uint32
 	ExpireTimestamp               uint64
-	Initial                       bool
-	Location                      SDK5_LocationData
+	Initial                       bool        // todo: do we still need this?
+	Latitude                      float32
+	Longitude                     float32
 	RouteChanged                  bool
 	RouteNumRelays                int32
 	RouteCost                     int32
@@ -542,7 +487,7 @@ type SDK5_SessionData struct {
 	PrevPacketsLostServerToClient uint64
 	WriteSummary                  bool
 	WroteSummary                  bool
-	TotalPriceSum                 uint64
+	TotalPriceSum                 uint64      // todo: do we still need this?
 	NextEnvelopeBytesUpSum        uint64
 	NextEnvelopeBytesDownSum      uint64
 	DurationOnNext                uint32
@@ -573,29 +518,8 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&sessionData.Initial)
 
-	buffer := [SDK5_MaxLocationSize]byte{}
-
-	if stream.IsWriting() {
-
-		locationData, err := sessionData.Location.Write(buffer[:])
-		if err != nil {
-			return err
-		}
-		locationBytes := uint32(len(locationData))
-		stream.SerializeUint32(&locationBytes)
-		stream.SerializeBytes(locationData)
-
-	} else {
-
-		var locationBytes uint32
-		stream.SerializeUint32(&locationBytes)
-		stream.SerializeBytes(buffer[:locationBytes])
-		err := sessionData.Location.Read(buffer[:locationBytes])
-		if err != nil {
-			return err
-		}
-
-	}
+	stream.SerializeFloat32(&sessionData.Latitude)
+	stream.SerializeFloat32(&sessionData.Longitude)
 
 	stream.SerializeBool(&sessionData.RouteChanged)
 

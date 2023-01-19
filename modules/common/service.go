@@ -27,6 +27,7 @@ import (
 	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
+	"github.com/oschwald/maxminddb-golang"
 )
 
 var (
@@ -97,6 +98,9 @@ type Service struct {
 	googleCloudHandler *GoogleCloudHandler
 
 	lookerHandler *LookerHandler
+
+	ip2location_mutex sync.RWMutex
+	ip2location_reader *maxminddb.Reader
 }
 
 func CreateService(serviceName string) *Service {
@@ -169,6 +173,45 @@ func (service *Service) LoadDatabase() {
 	core.Log("loaded database: %s", databasePath)
 
 	service.watchDatabase(service.Context, databasePath, overlayPath)
+}
+
+func (service *Service) LoadIP2Location() {
+	
+	filename := envvar.GetString("IP2LOCATION_FILENAME", "GeoIP2-City.mmdb")
+
+	var err error
+	service.ip2location_mutex.Lock()
+	service.ip2location_reader, err = maxminddb.Open(filename)
+	service.ip2location_mutex.Unlock()
+	if err != nil {
+		core.Error("failed to load ip2location: %v", err)
+		os.Exit(1)
+	}
+
+	core.Log("loaded ip2location: %s", filename)
+
+	service.watchIP2Location(service.Context, filename)
+}
+
+func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
+	var record struct {
+		Location struct {
+			Latitude       float64 `maxminddb:"latitude"`
+			Longitude      float64 `maxminddb:"longitude"`
+		} `maxminddb:"location"`
+	}
+	err := reader.Lookup(ip, &record)
+	if err != nil {
+		return 0, 0
+	}
+	return float32(record.Location.Latitude), float32(record.Location.Longitude)
+}
+
+func (service *Service) LocateIP(ip net.IP) (float32, float32) {
+	service.ip2location_mutex.RLock()
+	reader := service.ip2location_reader
+	service.ip2location_mutex.RUnlock()
+	return locateIP(reader, ip)
 }
 
 func (service *Service) Database() *db.Database {
@@ -429,9 +472,60 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
+	service.ip2location_mutex.Lock()
+	if service.ip2location_reader != nil {
+		service.ip2location_reader.Close()
+		service.ip2location_reader = nil
+	}
+	service.ip2location_mutex.Unlock()
+
 	// todo: we need some system to wait for registered (named) subsystems to complete before we shut down
 
 	core.Log("successfully shutdown")
+}
+
+// -----------------------------------------------------------------------
+
+func (service *Service) watchIP2Location(ctx context.Context, filename string) {
+
+	syncInterval := envvar.GetDuration("IP2LOCATION_SYNC_INTERVAL", time.Minute)
+
+	go func() {
+
+		ticker := time.NewTicker(syncInterval)
+
+		for {
+			select {
+
+			case <-ctx.Done():
+				return
+
+			case <-ticker.C:
+
+				newReader, err := maxminddb.Open(filename)
+				if err != nil {
+					core.Error("failed to load ip2location: %v", err)
+					os.Exit(1)
+				}
+
+				ip := net.ParseIP("192.0.2.1")
+				lat, long := locateIP(newReader, ip)
+				if lat == 0.0 && long == 0.0 {
+					core.Error("new ip2location did not validate")
+					continue
+				}
+
+				service.ip2location_mutex.Lock()
+				oldReader := service.ip2location_reader
+				service.ip2location_reader = newReader
+				service.ip2location_mutex.Unlock()
+
+				oldReader.Close()
+
+				core.Debug("reloaded ip2location file")
+			}
+		}
+	}()
 }
 
 // -----------------------------------------------------------------------

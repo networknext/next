@@ -1,18 +1,17 @@
 /*
-    Network Next Relay.
+    Network Next Reference Relay.
     Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
-#include "relay.h"
+#include "reference_relay.h"
 
-#ifndef RELAY_LINUX_H
-#define RELAY_LINUX_H
+#ifndef RELAY_MAC_H
+#define RELAY_MAC_H
 
-#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+#if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
 #include <pthread.h>
 #include <unistd.h>
-#include <sched.h>
 
 #define RELAY_PLATFORM_HAS_IPV6                  1
 #define RELAY_PLATFORM_SOCKET_NON_BLOCKING       0
@@ -24,7 +23,6 @@ typedef int relay_platform_socket_handle_t;
 
 struct relay_platform_socket_t
 {
-    int type;
     relay_platform_socket_handle_t handle;
 };
 
@@ -52,6 +50,6 @@ struct relay_platform_mutex_t
 
 // -------------------------------------
 
-#endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+#endif // #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
-#endif // #ifndef RELAY_LINUX_H
+#endif // #ifndef RELAY_MAC_H

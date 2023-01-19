@@ -162,8 +162,12 @@ func main() {
 		raspberry_client()
 	} else if command == "relay-keygen" {
 		relay_keygen()
+	} else if command == "ref-backend4" {
+		ref_backend4()
+	} else if command == "ref-backend5" {
+		ref_backend5()
 	}
-
+	
 	cleanup()
 }
 
@@ -324,4 +328,12 @@ func raspberry_server() {
 
 func relay_keygen() {
 	bash("go run scripts/relay_keygen/relay_keygen.go")
+}
+
+func ref_backend4() {
+	bash("./dist/reference_backend4")
+}
+
+func ref_backend5() {
+	bash(fmt.Sprintf("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./dist/reference_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }

@@ -13,6 +13,29 @@ export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export VPN_ADDRESS=45.33.53.242
 export ENVIRONMENT=dev
 
+# remove any old journalctl files to free up disk space (if necessary)
+
+sudo journalctl --vacuum-size 200M
+
+# clean up old packages from apt-get to free up disk space (if necessary)
+
+sudo apt autoremove -y
+
+# update installed packages
+
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt dist-upgrade -y
+sudo apt autoremove -y
+
+# install build essentials so we can build libsodium
+
+sudo apt install build-essential -y
+
+# install unattended upgrades so the relay keeps up to date with security fixes
+
+sudo apt install unattended-upgrades -y
+
 # only allow ssh from vpn address
 
 echo sshd: ALL > hosts.deny
@@ -24,11 +47,6 @@ sudo mv hosts.allow /etc/hosts.allow
 
 sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
 sudo echo "source ~/.bashrc" >> ~/.profile.sh
-
-# make sure we have build essentials
-
-sudo apt install build-essential -y
-sudo apt autoremove -y
 
 # build and install libsodium optimized for this relay
 
@@ -88,7 +106,6 @@ sudo mv relay.service /app/relay.service
 
 # limit maximum journalctl logs to 200MB so we don't run out of disk space
 
-sudo journalctl --vacuum-size 200M
 sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
 sudo systemctl restart systemd-journald
 
