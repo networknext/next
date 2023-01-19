@@ -25,10 +25,8 @@ type PortalMessage struct {
 	SessionId        uint64
 	BuyerId          uint64
 	DatacenterId     uint64
-	DatacenterName   string
 	Latitude         float32
 	Longitude        float32
-	ISP              string
 	ClientAddress    net.UDPAddr
 	ServerAddress    net.UDPAddr
 
@@ -76,7 +74,7 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("invalid server portal message version %d", message.Version)
 	}
 
-	// ...
+	// todo
 
 	return nil
 }
@@ -91,7 +89,7 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 
-	// ...
+	// todo
 
 	return buffer[:index]
 }

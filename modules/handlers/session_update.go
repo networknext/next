@@ -12,6 +12,7 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/messages"
 )
 
 type SessionUpdateState struct {
@@ -44,6 +45,7 @@ type SessionUpdateState struct {
 	Database      *db.Database
 	RouteMatrix   *common.RouteMatrix
 	Datacenter    db.Datacenter
+	BuyerId       uint64
 	Buyer         db.Buyer
 	Debug         *string
 	StaleDuration time.Duration
@@ -102,6 +104,9 @@ type SessionUpdateState struct {
 	SentPortalData                            bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
+
+	PortalMessageChannel        chan<- *messages.PortalMessage
+	SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -1006,6 +1011,92 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 // -----------------------------------------
 
+func sendPortalMessage(state *SessionUpdateState) {
+
+	if state.Request.ClientPingTimedOut {
+		return
+	}
+
+	message := messages.PortalMessage{}
+
+	message.Version = messages.PortalMessageVersion_Write
+
+	message.SessionId = state.Input.SessionId
+	message.BuyerId = state.Request.BuyerId
+	message.DatacenterId = state.Request.DatacenterId
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
+
+	message.SliceNumber = state.Input.SliceNumber
+	
+	message.DirectRTT = state.Request.DirectRTT
+	message.DirectJitter = state.Request.DirectJitter
+	message.DirectPacketLoss = state.Request.DirectPacketLoss
+	
+	message.Next = state.Request.Next
+	if message.Next {
+		message.NextRTT = state.Request.NextRTT
+		message.NextJitter = state.Request.NextJitter
+		message.NextPacketLoss = state.Request.NextPacketLoss
+	}
+	
+	message.RealJitter = state.RealJitter
+	message.RealPacketLoss = state.RealPacketLoss
+	// todo: message.RealOutOfOrder
+
+	message.Reported = state.Request.Reported
+	message.FallbackToDirect = state.FallbackToDirect
+
+	// todo
+/*
+	SDKVersion_Major byte
+	SDKVersion_Minor byte
+	SDKVersion_Patch byte
+
+	ClientAddress    net.UDPAddr
+	ServerAddress    net.UDPAddr
+
+	DirectBandwidthUpKbps     float32
+	DirectBandwidthUpDownKbps float32
+	
+	NextBandwidthUpKbps       float32
+	NextBandwidthDownKbps     float32
+
+	PredictedRTT
+
+	NumRouteRelays    int
+	RouteRelayId      [MaxRouteRelays]uint64
+	RouteRelayAddress [MaxRouteRelays]net.UDPAddr
+
+	NumNearRelays       int
+	NearRelayId         [MaxNearRelays]uint64
+	NearRelayAddress    [MaxNearRelays]net.UDPAddr
+	NearRelayRTT        [MaxNearRelays]float32
+	NearRelayJitter     [MaxNearRelays]float32
+	NearRelayPacketLoss [MaxNearRelays]float32
+	NearRelayRoutable   [MaxNearRelays]bool
+*/
+
+	if state.PortalMessageChannel != nil {
+		state.PortalMessageChannel <- &message
+		state.SentPortalData = true
+	}
+}
+
+func sendSessionUpdateMessage(state *SessionUpdateState) {
+
+	message := messages.SessionUpdateMessage{}
+
+	// todo
+
+	if state.SessionUpdateMessageChannel != nil {
+		state.SessionUpdateMessageChannel <- &message
+		state.SentSessionUpdateMessage = true
+	}
+}
+
+// -----------------------------------------
+
 func datacenterExists(database *db.Database, datacenterId uint64) bool {
 	_, exists := database.DatacenterMap[datacenterId]
 	return exists
@@ -1031,23 +1122,4 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	return value
 }
 
-func sendPortalMessage(state *SessionUpdateState) {
-
-	// no point sending data to the portal, once the client has timed out
-
-	if state.Request.ClientPingTimedOut {
-		return
-	}
-
-	// ...
-
-	state.SentPortalData = true
-}
-
-func sendSessionUpdateMessage(state *SessionUpdateState) {
-
-	// todo
-
-	state.SentSessionUpdateMessage = true
-
-}
+// -----------------------------------------
