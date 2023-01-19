@@ -159,7 +159,7 @@ func (service *Service) LoadDatabase() {
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
-	if validateBinFiles(service.database) {
+	if !validateBinFiles(service.database) {
 		core.Error("bin files failed validation")
 		os.Exit(1)
 	}
@@ -202,7 +202,7 @@ func (service *Service) LoadIP2Location() {
 
 	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
 
-	if validateIP2Location(cityReader, ispReader) {
+	if !validateIP2Location(cityReader, ispReader) {
 		core.Error("ip2location failed validation")
 		os.Exit(1)
 	}
@@ -625,7 +625,7 @@ func (service *Service) watchIP2Location(ctx context.Context, filenames []string
 			case <-ticker.C:
 
 				cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-				if validateIP2Location(cityReader, ispReader) {
+				if !validateIP2Location(cityReader, ispReader) {
 					core.Error("ip2location files not valid")
 					continue
 				}
@@ -797,7 +797,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 				newDatabase, newOverlay := loadDatabase(databasePath, overlayPath)
 
-				if validateBinFiles(newDatabase) {
+				if !validateBinFiles(newDatabase) {
 					core.Error("new bin file failed validation")
 					continue
 				}
