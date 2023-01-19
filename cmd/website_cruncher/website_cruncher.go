@@ -45,27 +45,44 @@ var redisStatsRefreshInterval time.Duration
 func main() {
 	service := common.CreateService("website_cruncher")
 
-	lookerStatsRefreshInterval = envvar.GetDuration("LOOKER_STATS_REFRESH_INTERVAL", time.Hour*24)
+	lookerStatsRefreshInterval = envvar.GetDuration("LOOKER_STATS_REFRESH_INTERVAL", time.Second*30)
 	redisStatsRefreshInterval = envvar.GetDuration("REDIS_STATS_REFRESH_INTERVAL", time.Second*10)
 
 	core.Log("looker stats refresh interval: %s", lookerStatsRefreshInterval)
 	core.Log("redis stats refresh interval: %s", redisStatsRefreshInterval)
 
+	service.LeaderElection(false)
+
+	service.UpdateLeaderStore([]common.DataStoreConfig{
+		{
+			Name: STATS_DATASTORE,
+			Data: make([]byte, 0),
+		},
+		{
+			Name: TOP_SESSIONS_DATASTORE,
+			Data: make([]byte, 0),
+		},
+		{
+			Name: LIVE_SESSION_COUNTS_DATASTORE,
+			Data: make([]byte, 0),
+		},
+	})
+
+	service.LoadLeaderStore()
+
 	service.LoadDatabase()
 
 	service.UseLooker()
-
-	service.LeaderElection(false)
-
-	StartRedisDataCollection(service)
-
-	// StartLookerDataCollection(service)
 
 	service.Router.HandleFunc("/stats", getAllStats())
 	service.Router.HandleFunc("/sessions/counts", getLiveSessionCounts())
 	service.Router.HandleFunc("/sessions/list", getTopSessionsList())
 
 	service.StartWebServer()
+
+	StartRedisDataCollection(service)
+
+	// StartLookerDataCollection(service)
 
 	service.WaitForShutdown()
 }
@@ -266,21 +283,14 @@ func StartRedisDataCollection(service *common.Service) {
 				var sessionMetasNext []transport.SessionMeta // TODO: avoid using transport structs
 				var meta transport.SessionMeta               // TODO: avoid using transport structs
 				for _, cmd := range cmds {
-					metaString := cmd.String()
+					metaString := cmd.(*redis.StringCmd).Val()
 
 					if metaString == "" {
 						core.Error("meta data string is empty: %v", cmd.Err())
 						continue
 					}
 
-					parseableStrings := strings.SplitN(metaString, ": ", 2)
-
-					if len(parseableStrings) < 2 {
-						core.Error("failed to split redis string. Meta string: %s", metaString)
-						continue
-					}
-
-					splitMetaStrings := strings.Split(parseableStrings[1], "|")
+					splitMetaStrings := strings.Split(metaString, "|")
 					if err := meta.ParseRedisString(splitMetaStrings); err != nil {
 						core.Error("failed to parse meta data string: %v", err)
 						continue
@@ -389,29 +399,17 @@ func StartRedisDataCollection(service *common.Service) {
 
 				for _, cmd := range cmds {
 					countString := cmd.String()
+					count := cmd.(*redis.IntCmd).Val()
 
 					if countString == "" {
 						core.Error("count output is empty: %v", cmd.Err())
 						continue
 					}
 
-					parseableStrings := strings.SplitN(countString, ": ", 2)
-
-					if len(parseableStrings) < 2 {
-						core.Error("failed to split redis string. Count string: %s", countString)
-						continue
-					}
-
-					parseInt, err := strconv.ParseInt(parseableStrings[1], 10, 64)
-					if err != nil {
-						core.Error("failed to parse int: %v", err)
-						continue
-					}
-
 					if strings.Contains(countString, fmt.Sprintf("%d", minutes-1)) {
-						firstNextCount += int(parseInt)
+						firstNextCount += int(count)
 					} else {
-						secondNextCount += int(parseInt)
+						secondNextCount += int(count)
 					}
 				}
 
@@ -442,24 +440,14 @@ func StartRedisDataCollection(service *common.Service) {
 
 				for _, cmd := range cmds {
 					countString := cmd.String()
+					counts := cmd.(*redis.StringSliceCmd).Val()
 
 					if countString == "" {
 						core.Error("count output is empty: %v", cmd.Err())
 						continue
 					}
 
-					parseableStrings := strings.SplitN(countString, ": ", 2)
-
-					if len(parseableStrings) < 2 {
-						core.Error("failed to split redis string. Count string: %s", countString)
-						continue
-					}
-
-					noBracesLeft := strings.ReplaceAll(parseableStrings[1], "[", "")
-					noBracesRight := strings.ReplaceAll(noBracesLeft, "]", "")
-					stringValues := strings.Split(noBracesRight, " ")
-
-					for _, val := range stringValues {
+					for _, val := range counts {
 						if val == "" {
 							continue
 						}
@@ -513,7 +501,7 @@ func StartLookerDataCollection(service *common.Service) {
 
 	ticker := time.NewTicker(lookerStatsRefreshInterval)
 
-	go func() {
+	go func(service *common.Service) {
 
 		for {
 
@@ -522,17 +510,27 @@ func StartLookerDataCollection(service *common.Service) {
 				return
 			case <-ticker.C:
 
-				stats := LookerStats{}
+				results, err := service.FetchWebsiteStats()
+				if err != nil {
+					core.Error("failed to fetch website stats from Looker: %v", err)
+					continue
+				}
 
-				// TODO: update stats using Looker
+				currentStats := LookerStats{
+					// UniquePlayers:        results.UniquePlayers,
+					AcceleratedPlayTime:  int32(results.AcceleratedPlaytime),
+					AcceleratedBandwidth: int32(results.AcceleratedBandwidth),
+				}
 
-				if err := updateDataStore(service, stats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
+				// TODO: add in extrapolation
+
+				if err := updateDataStore(service, currentStats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
 					core.Error("failed to update data store with new looker stats: %v", err)
 					continue
 				}
 			}
 		}
-	}()
+	}(service)
 }
 
 func updateDataStore(service *common.Service, stats LookerStats, topSessionsList []TopSession, liveSessionCounts LiveSessionCounts) error {
@@ -570,11 +568,9 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 		},
 	}
 
-	/*
-		service.UpdateLeaderStore(dataStores)
+	service.UpdateLeaderStore(dataStores)
 
-		dataStores = service.LoadLeaderStore()
-	*/
+	dataStores = service.LoadLeaderStore()
 
 	if len(dataStores) == 0 {
 		return fmt.Errorf("no data stores returned from redis")

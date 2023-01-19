@@ -25,13 +25,13 @@ type RedisLeaderElectionConfig struct {
 }
 
 type RedisLeaderElection struct {
-	config       RedisLeaderElectionConfig
-	redisClient  *redis.Client
-	startTime    time.Time
-	instanceId   string
+	config      RedisLeaderElectionConfig
+	redisClient *redis.Client
+	startTime   time.Time
+	instanceId  string
 
-	leaderMutex   sync.RWMutex
-	isLeader      bool
+	leaderMutex sync.RWMutex
+	isLeader    bool
 
 	autoRefresh bool
 }
@@ -118,7 +118,8 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 	}
 	instanceData := buffer.Bytes()
 
-	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(5*time.Second))
+	defer cancel()
 
 	pipe := leaderElection.redisClient.TxPipeline()
 	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], leaderElection.config.Timeout)
@@ -136,7 +137,8 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStoreConfig {
 
-	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(5*time.Second))
+	defer cancel()
 
 	// get all "instance/*" keys
 
@@ -217,6 +219,8 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
 	}
+
+	core.Debug("master instance: %+v", masterInstance)
 
 	// get data from master instance
 

@@ -26,7 +26,7 @@ const (
 	DEFAULT_CLIENT_SECRET = "JT2BpTYNc7fybyHNGs3S24g7"
 	DEFAULT_API_SECRET    = "d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0" // TODO - this is tied to andrew@networknext.com user in looker
 
-	WEBSITE_STATS_VIEW = ""
+	WEBSITE_STATS_VIEW = "daily_accelerated_playtime_allcust"
 )
 
 type LookerHandlerConfig struct {
@@ -49,6 +49,11 @@ func NewLookerHandler(config LookerHandlerConfig) (*LookerHandler, error) {
 		config.HostURL = DEFAULT_LOOKER_HOST
 	}
 
+	if config.ClientID == "" {
+		core.Log("using default looker client ID")
+		config.ClientID = DEFAULT_CLIENT_ID
+	}
+
 	if config.Secret == "" {
 		core.Log("using default looker client secret")
 		config.Secret = DEFAULT_CLIENT_SECRET
@@ -61,7 +66,7 @@ func NewLookerHandler(config LookerHandlerConfig) (*LookerHandler, error) {
 
 	settings := rtl.ApiSettings{
 		ClientId:     config.ClientID,
-		ClientSecret: config.APISecret,
+		ClientSecret: config.Secret,
 		ApiVersion:   API_VERSION,
 		VerifySsl:    true,
 		Timeout:      API_TIMEOUT, // TODO: 5 minute timeout is excesive but is good for now
@@ -76,21 +81,24 @@ func NewLookerHandler(config LookerHandlerConfig) (*LookerHandler, error) {
 }
 
 type LookerAuthResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int32  `json:"expires_in"`
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int32  `json:"expires_in"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 func (l *LookerHandler) fetchAuthToken() (string, error) {
 	authURL := fmt.Sprintf(LOOKER_AUTH_URI, l.apiSettings.BaseUrl, API_VERSION, l.apiSettings.ClientId, l.apiSettings.ClientSecret)
 	req, err := http.NewRequest(http.MethodPost, authURL, nil)
 	if err != nil {
+		core.Debug("failed to create auth request")
 		return "", err
 	}
 
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
+		core.Debug("failed to send auth request")
 		return "", err
 	}
 
@@ -99,11 +107,13 @@ func (l *LookerHandler) fetchAuthToken() (string, error) {
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
+		core.Debug("failed to read auth response")
 		return "", err
 	}
 
 	authResponse := LookerAuthResponse{}
 	if err = json.Unmarshal(buf.Bytes(), &authResponse); err != nil {
+		core.Debug("failed to unmarshal auth response")
 		return "", err
 	}
 
@@ -111,9 +121,10 @@ func (l *LookerHandler) fetchAuthToken() (string, error) {
 }
 
 type LookerWebsiteStatsQueryResults struct {
-	TimestampDate        string `json:"VIEW.start_timestamp_date"`
-	AcceleratedBandwidth string `json:"VIEW.accelerated_bandwidth"`
-	AcceleratedPlaytime  string `json:"VIEW.accelerated_playtime"`
+	TimestampDay         string  `json:"daily_accelerated_playtime_allcust.day"`
+	AcceleratedBandwidth float32 `json:"daily_accelerated_playtime_allcust.accelerated_bandwidth"`
+	AcceleratedPlaytime  float32 `json:"daily_accelerated_playtime_allcust.accelerated_playtime"`
+	// UniquePlayers        int32   `json:"daily_accelerated_playtime_allcust.unique_players"`
 }
 
 func (l *LookerHandler) RunWebsiteStatsQuery() (LookerWebsiteStatsQueryResults, error) {
@@ -125,8 +136,14 @@ func (l *LookerHandler) RunWebsiteStatsQuery() (LookerWebsiteStatsQueryResults, 
 		return queryResults, err
 	}
 
+	core.Debug("auth token: %s", token)
+
 	// SELECT requiredFields FROM
-	requiredFields := []string{}
+	requiredFields := []string{
+		WEBSITE_STATS_VIEW + ".day",
+		WEBSITE_STATS_VIEW + ".accelerated_playtime_hours",
+		WEBSITE_STATS_VIEW + ".accelerated_bandwidth_gb_1",
+	}
 
 	sorts := []string{}
 
@@ -143,10 +160,14 @@ func (l *LookerHandler) RunWebsiteStatsQuery() (LookerWebsiteStatsQueryResults, 
 
 	respBytes, err := l.runQuery(token, query)
 	if err != nil {
+		core.Debug("failed to run query: %v", err)
 		return queryResults, err
 	}
 
+	core.Debug("response: %s", string(respBytes))
+
 	if err = json.Unmarshal(respBytes, &queryResults); err != nil {
+		core.Debug("failed to unmarshal query response: %v", err)
 		return queryResults, err
 	}
 
@@ -159,11 +180,15 @@ func (l *LookerHandler) runQuery(authToken string, query v4.WriteQuery) ([]byte,
 
 	lookerBody, err := json.Marshal(query)
 	if err != nil {
+		core.Debug("failed to marshal query")
 		return emptyReturn, err
 	}
 
+	core.Debug("query URL: %s", fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.apiSettings.BaseUrl, API_VERSION))
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.apiSettings.BaseUrl, API_VERSION), bytes.NewBuffer(lookerBody))
 	if err != nil {
+		core.Debug("failed to generate new request")
 		return emptyReturn, err
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -172,6 +197,7 @@ func (l *LookerHandler) runQuery(authToken string, query v4.WriteQuery) ([]byte,
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
+		core.Debug("failed to send query to Looker")
 		return emptyReturn, err
 	}
 	defer resp.Body.Close()
@@ -179,6 +205,7 @@ func (l *LookerHandler) runQuery(authToken string, query v4.WriteQuery) ([]byte,
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
+		core.Debug("failed to read response body")
 		return emptyReturn, err
 	}
 
