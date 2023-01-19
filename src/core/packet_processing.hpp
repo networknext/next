@@ -5,7 +5,6 @@
 #include "core/route_token.hpp"
 #include "core/throughput_recorder.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "handlers/client_to_server_handler.hpp"

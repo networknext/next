@@ -3,12 +3,13 @@
 
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "encoding/read.hpp"
 #include "encoding/write.hpp"
 #include "net/http.hpp"
 #include "os/system.hpp"
 #include <string.h>
+
+#include "version.h"
 
 using core::RelayStats;
 using crypto::KEY_SIZE;
@@ -20,17 +21,20 @@ extern volatile bool should_clean_shutdown;
 
 using namespace std::chrono_literals;
 
+static const char* relay_version = RELAY_VERSION;
+
 void * upgrade_thread_function( void * data )
 {
   const char * version = (const char*) data;
 
-  LOG(INFO, "upgrading from ", core::RELAY_VERSION, " -> ", version);
+  LOG(INFO, "upgrading from ", relay_version, " -> ", version);
 
   char command[1024];
-  sprintf( command, "rm -f relay-%s", version );
-  system( command );
+  snprintf( command, sizeof(command), "rm -f relay-%s", version );
+  auto result = system( command );
+  (void) result;
 
-  sprintf( command, "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
+  snprintf( command, sizeof(command), "wget https://storage.googleapis.com/relay_artifacts/relay-%s", version );
   if ( system( command ) != 0 ) {
     LOG(ERROR, "failed to download relay version ", version);
     std::this_thread::sleep_for(60s);
@@ -40,7 +44,7 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "successfully downloaded relay-", version);
 
-  sprintf( command, "chmod +x relay-%s", version );
+  snprintf( command, sizeof(command), "chmod +x relay-%s", version );
   if ( system( command ) != 0 ) {
     LOG(ERROR, "failed to chmod +x relay-", version);
     std::this_thread::sleep_for(60s);
@@ -50,7 +54,7 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "chmod +x relay-", version, " succeeded");
 
-  sprintf( command, "./relay-%s version", version );
+  snprintf( command, sizeof(command), "./relay-%s version", version );
   FILE * file = popen( command, "r" );
   char buffer[1024];
   if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr(buffer, version) == NULL )
@@ -65,9 +69,10 @@ void * upgrade_thread_function( void * data )
 
   LOG(INFO, "relay binary is good");
 
-  system( "rm -f relay 2>/dev/null" );
+  result = system( "rm -f relay 2>/dev/null" );
+  (void) result;
 
-  sprintf( command, "mv relay-%s relay", version );
+  snprintf( command, sizeof(command), "mv relay-%s relay", version );
   if ( system( command ) != 0 )
   {
     LOG(ERROR, "could not install new relay binary");
@@ -89,11 +94,9 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.9";
+  const char* const update_endpoint = "/relay_update";
 
-  const char* const UPDATE_ENDPOINT = "/relay_update";
-
-  const double CLEAN_SHUTDOWN_TIMEOUT_SECS = 60.0;
+  const double clean_shutdown_timeout_secs = 60.0;
 
   auto UpdateRequest::from(const std::vector<uint8_t>& v) -> bool
   {
@@ -285,8 +288,8 @@ namespace core
     Clock backend_timeout;
     if (should_clean_shutdown) {
       LOG(INFO, "clean shutdown");
-      for (int i = 0; i < CLEAN_SHUTDOWN_TIMEOUT_SECS; i++) {
-        LOG(INFO, CLEAN_SHUTDOWN_TIMEOUT_SECS - i);
+      for (int i = 0; i < clean_shutdown_timeout_secs; i++) {
+        LOG(INFO, clean_shutdown_timeout_secs - i);
         update(recorder, true, should_loop);
         std::this_thread::sleep_for(1s);
       }
@@ -387,7 +390,7 @@ namespace core
     double elapsed_seconds = timeout.elapsed<Second>();
     size_t num_retries = 0;
     bool request_success = false;
-    while (!(request_success = this->http_client.send_request(this->hostname, UPDATE_ENDPOINT, req, res)) && should_retry &&
+    while (!(request_success = this->http_client.send_request(this->hostname, update_endpoint, req, res)) && should_retry &&
            num_retries < MAX_UPDATE_ATTEMPTS) {
       LOG(ERROR, "relay update failed ", num_retries);
       num_retries++;
@@ -445,7 +448,7 @@ namespace core
       first_update = false;
     }
 
-    if (response.target_version[0] != '\0' && strcmp(core::RELAY_VERSION, response.target_version.c_str()) != 0) {
+    if (response.target_version[0] != '\0' && strcmp(RELAY_VERSION, response.target_version.c_str()) != 0) {
 
       if (!upgrading)
       {

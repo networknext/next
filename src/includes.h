@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
-#include <boost/beast/core/detail/base64.hpp>
 #include <cassert>
 #include <cerrno>
 #include <cfloat>
