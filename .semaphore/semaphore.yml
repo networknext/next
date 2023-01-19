@@ -899,9 +899,7 @@ blocks:
         commands:
 
             - artifact pull workflow GeoIP2-City.mmdb
-            - mv GeoIP2-City.mmdb ~/GeoIP2-City.mmdb
             - artifact pull workflow GeoIP2-ISP.mmdb
-            - mv GeoIP2-ISP.mmdb ~/GeoIP2-ISP.mmdb
 
       jobs:
 
