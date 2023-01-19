@@ -29,7 +29,7 @@ type SessionUpdateState struct {
 	ServerBackendPrivateKey []byte
 	ServerBackendPublicKey  []byte
 
-	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
+	LocateIP func(ip net.IP) (float32, float32)
 
 	From *net.UDPAddr
 
@@ -181,27 +181,14 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		state.LocatedIP = true
 
-		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
+		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		if err != nil {
+		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
 			core.Error("location veto: %s", err)
 			state.Output.RouteState.LocationVeto = true
 			state.LocationVeto = true
 			return true
 		}
-
-		state.Input.Location = state.Output.Location
-
-	} else {
-
-		// use location data stored in session data
-
-		if !SessionUpdate_ReadSessionData(state) {
-			core.Error("failed to read session data")
-			return true
-		}
-
-		state.Output.Location = state.Input.Location
 	}
 
 	/*
@@ -438,8 +425,8 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
-	clientLatitude := state.Output.Location.Latitude
-	clientLongitude := state.Output.Location.Longitude
+	clientLatitude := state.Output.Latitude
+	clientLongitude := state.Output.Longitude
 
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude
@@ -511,8 +498,6 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
 	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))   // todo: may want DirectMaxJitterSeen
 	directPacketLoss := state.Request.DirectMaxPacketLossSeen
-
-	fmt.Printf("%d near relays sent up from SDK\n", state.Request.NumNearRelays)
 
 	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
 	sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
@@ -991,8 +976,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	writeStream := encoding.CreateWriteStream(state.Response.SessionData[:])
 
 	state.Output.Version = packets.SDK5_SessionDataVersion_Write
-	state.Output.Location.Version = packets.SDK5_LocationVersion_Write
-
+	
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)

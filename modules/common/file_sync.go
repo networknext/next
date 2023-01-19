@@ -52,6 +52,7 @@ func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval ti
 }
 
 func (config *FileSyncConfig) Print() {
+	core.Log("----------------------------------------------------------")
 	core.Log("file sync groups:")
 	for index, group := range config.FileGroups {
 		core.Log("%d: %s [%s]", index, group.Name, group.SyncInterval.String())
@@ -64,6 +65,7 @@ func (config *FileSyncConfig) Print() {
 			core.Log(" + %s -> %s ", file.DownloadURL, fileName)
 		}
 	}
+	core.Log("----------------------------------------------------------")
 }
 
 func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandler *GoogleCloudHandler, isLeader func() bool) {
