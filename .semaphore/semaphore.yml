@@ -899,7 +899,9 @@ blocks:
         commands:
 
             - artifact pull workflow GeoIP2-City.mmdb
+            - mv GeoIP2-City.mmdb ~/GeoIP2-City.mmdb
             - artifact pull workflow GeoIP2-ISP.mmdb
+            - mv GeoIP2-ISP.mmdb ~/GeoIP2-ISP.mmdb
 
       jobs:
 
@@ -910,6 +912,8 @@ blocks:
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
+            - mv ~/GeoIP2-City.mmdb ~/backend/GeoIP2-City.mmdb
+            - mv ~/GeoIP2-ISP.mmdb ~/backend/GeoIP2-ISP.mmdb
             - make rebuild
             - ./next select local
             - ./run happy-path-no-wait
