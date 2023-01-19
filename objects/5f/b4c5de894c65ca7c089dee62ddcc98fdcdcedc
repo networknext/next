@@ -1,0 +1,7 @@
+[map "a0a78e86-23c0-3f9a-b3e4-d6fdc4f508b0"]
+	object = 0f116e2da09546d4793c3c151e2bf743f1cdf324
+	path = relay
+	type = expand module
+[map "e718dd81-1726-3d23-80a3-bccb7c1d00a5"]
+	object = d6b0d596da87ca5722cbc7bfbdfddd260c37bf37
+	type = include + expand tree
