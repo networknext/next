@@ -30,9 +30,12 @@ DONE
 
 	Get the reference backend 4 proven working as well.
 
+	Get the pusher service live in the dev environment so we can make changes to the database.bin easily. ()
+
+	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
+
 TODO
 
-	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed.
 
 
 
@@ -44,10 +47,6 @@ TODO
 
 
 Essentials:
-
-	---------
-
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily
 
 	--------------
 

@@ -117,7 +117,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 			return errors.New("could not read sample relay id")
 		}
 
-		// todo: these need to become uint8 values
+		// todo: rtt and jitter should become int values [0,255]. packet loss stays as float
 
 		if !encoding.ReadFloat32(buffer, &index, &packet.SampleRTT[i]) {
 			return errors.New("could not read sample rtt")
@@ -187,8 +187,6 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 	} else {
 		return fmt.Errorf("could not resolve udp address '%s': %v", address, err)
 	}
-
-	// todo: probably need to read in the token here too
 
 	return nil
 }

@@ -496,7 +496,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	*/
 
 	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
-	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))   // todo: may want DirectMaxJitterSeen
+	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
 	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
 	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
@@ -1013,22 +1013,24 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Build the data for the relays in the route.
 	*/
 
-	buildRouteRelayData(state)
+	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
+		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
+		if ok {
+			state.PostRouteRelayNames[i] = relay.Name
+			state.PostRouteRelaySellers[i] = relay.Seller
+		}
+	}
 
 	/*
-		Build the data for the near relays.
-	*/
-
-	buildNearRelayData(state)
-
-	/*
-		Send this slice to the portal via the real-time path (redis streams).
+		Send data to the portal
 	*/
 
 	sendPortalData(state)
 
 	/*
-		Send this slice billing system (bigquery) via the non-realtime path (google pubsub).
+		Send the session update message
+
+		This drives the analytics and billing systems
 	*/
 
 	sendSessionUpdateMessage(state)
@@ -1042,6 +1044,7 @@ func datacenterExists(database *db.Database, datacenterId uint64) bool {
 }
 
 func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
+	// todo: do we still need this? I don't think we support datacenter aliases anymore...
 	datacenterAliases, ok := database.DatacenterMaps[buyerId]
 	if !ok {
 		return false
@@ -1060,23 +1063,6 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	return value
 }
 
-func buildRouteRelayData(state *SessionUpdateState) {
-
-	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
-		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
-		if ok {
-			state.PostRouteRelayNames[i] = relay.Name
-			state.PostRouteRelaySellers[i] = relay.Seller
-		}
-	}
-}
-
-func buildNearRelayData(state *SessionUpdateState) {
-
-	// todo
-
-}
-
 func sendPortalData(state *SessionUpdateState) {
 
 	// no point sending data to the portal, once the client has timed out
@@ -1085,22 +1071,14 @@ func sendPortalData(state *SessionUpdateState) {
 		return
 	}
 
+	// todo: build and send portal data to channel
+
 	state.SentPortalData = true
-
-	// todo
-	/*
-		portalData := buildPortalData(state)
-
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			state.PostSessionHandler.SendPortalData(portalData)
-		}
-	*/
 }
 
 func sendSessionUpdateMessage(state *SessionUpdateState) {
 
-	// todo
+	// todo: build and send sessieon update data to channel
 
 	state.SentSessionUpdateMessage = true
-
 }
