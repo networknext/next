@@ -31,6 +31,7 @@ import (
 	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
+	"github.com/networknext/backend/modules/core"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
@@ -761,6 +762,30 @@ func main() {
 
 			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
 				return err
+			}
+
+			runnable := exec.Command("gsutil", "cp", "gs://prod_database_bin/GeoIP2-City.mmdb", ".")
+
+			buffer, err := runnable.CombinedOutput()
+
+			if err != nil {
+				return fmt.Errorf("failed to copy ip2location city file from bucket: %v", err)
+			}
+
+			if len(buffer) > 0 {
+				core.Debug("gcloud scp output city: %s", buffer)
+			}
+
+			runnable = exec.Command("gsutil", "cp", "gs://prod_database_bin/GeoIP2-ISP.mmdb", ".")
+
+			buffer, err = runnable.CombinedOutput()
+
+			if err != nil {
+				return fmt.Errorf("failed to copy ip2location isp file from bucket: %v", err)
+			}
+
+			if len(buffer) > 0 {
+				core.Debug("gcloud scp output isp: %s", buffer)
 			}
 
 			fmt.Printf("Selected %s environment\n", env.Name)
