@@ -192,7 +192,7 @@ func validateBinFiles(database *db.Database) bool {
 		return false
 	}
 
-	return database.IsEmpty()
+	return !database.IsEmpty()
 
 }
 
