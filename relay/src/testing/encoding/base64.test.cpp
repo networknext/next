@@ -1,7 +1,8 @@
 #include "includes.h"
 #include "testing/test.hpp"
 
-#include "encoding/base64.hpp"
+// todo: garbage
+/*#include "encoding/base64.hpp"
 
 TEST(encoding_base64_general)
 {
@@ -18,3 +19,4 @@ TEST(encoding_base64_general)
     std::cout << "output = " << output;
   });
 }
+*/

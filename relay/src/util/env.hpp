@@ -11,7 +11,7 @@ namespace util
     std::string relay_address;
     std::string relay_private_key;
     std::string relay_public_key;
-    std::string relay_router_public_key;
+    std::string router_public_key;
     std::string backend_hostname;
     std::optional<std::string> send_buffer_size;
     std::optional<std::string> recv_buffer_size;
@@ -24,7 +24,7 @@ namespace util
      {"RELAY_ADDRESS", &relay_address},
      {"RELAY_PRIVATE_KEY", &relay_private_key},
      {"RELAY_PUBLIC_KEY", &relay_public_key},
-     {"RELAY_ROUTER_PUBLIC_KEY", &relay_router_public_key},
+     {"RELAY_ROUTER_PUBLIC_KEY", &router_public_key},
      {"RELAY_BACKEND_HOSTNAME", &backend_hostname},
     };
 

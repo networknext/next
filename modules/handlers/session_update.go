@@ -29,7 +29,7 @@ type SessionUpdateState struct {
 	ServerBackendPrivateKey []byte
 	ServerBackendPublicKey  []byte
 
-	LocateIP func(ip net.IP) (packets.SDK5_LocationData, error)
+	LocateIP func(ip net.IP) (float32, float32)
 
 	From *net.UDPAddr
 
@@ -181,27 +181,14 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		state.LocatedIP = true
 
-		state.Output.Location, err = state.LocateIP(state.Request.ClientAddress.IP)
+		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		if err != nil {
+		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
 			core.Error("location veto: %s", err)
 			state.Output.RouteState.LocationVeto = true
 			state.LocationVeto = true
 			return true
 		}
-
-		state.Input.Location = state.Output.Location
-
-	} else {
-
-		// use location data stored in session data
-
-		if !SessionUpdate_ReadSessionData(state) {
-			core.Error("failed to read session data")
-			return true
-		}
-
-		state.Output.Location = state.Input.Location
 	}
 
 	/*
@@ -280,7 +267,6 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
-	state.Output.RouteState.UserID = state.Request.UserHash
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -439,8 +425,8 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
-	clientLatitude := state.Output.Location.Latitude
-	clientLongitude := state.Output.Location.Longitude
+	clientLatitude := state.Output.Latitude
+	clientLongitude := state.Output.Longitude
 
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude
@@ -469,14 +455,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
+	state.Response.HasNearRelays = true
+	state.Response.NumNearRelays = int32(numNearRelays)
+
 	for i := 0; i < numNearRelays; i++ {
 		state.Response.NearRelayIds[i] = nearRelayIds[i]
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
-
-	state.Response.HasNearRelays = true
-	state.Response.NumNearRelays = int32(numNearRelays)
-	state.Response.HighFrequencyPings = state.Buyer.InternalConfig.HighFrequencyPings
 
 	return true
 }
@@ -507,53 +492,34 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
 	/*
-		On slice #1, we have the first near relay ping results sent up from the SDK.
-
-		Filter them and store the usable near relays in the session data as held relays.
+		Filter source relays and get them in a form relative to the current route matrix
 	*/
 
-	if state.Input.SliceNumber == 1 {
+	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
+	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
+	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
-		directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
-		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-		directPacketLoss := state.Request.DirectPacketLoss
+	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
+	sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
+	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
+	sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
 
-		sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
-		sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
-		sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
-		sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
+	filteredSourceRelayLatency := [core.MaxNearRelays]int32{}
 
-		outputSourceRelayLatency := [core.MaxNearRelays]int32{}
+	core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		sourceRelayIds,
+		sourceRelayLatency,
+		sourceRelayJitter,
+		sourceRelayPacketLoss,
+		filteredSourceRelayLatency[:])
 
-		core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
-			directLatency,
-			directJitter,
-			directPacketLoss,
-			sourceRelayIds,
-			sourceRelayLatency,
-			sourceRelayJitter,
-			sourceRelayPacketLoss,
-			outputSourceRelayLatency[:])
+	outputSourceRelays := make([]int32, len(sourceRelayIds))
+	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
 
-		state.Output.HeldNumNearRelays = state.Request.NumNearRelays
-		copy(state.Output.HeldNearRelayIds[:], sourceRelayIds)
-		copy(state.Output.HeldNearRelayRTT[:], outputSourceRelayLatency[:state.Request.NumNearRelays])
-
-		// todo: we may wish to store the near relay ping data somewhere
-		// by publishing a google pubsub message in the session post for slice #1
-	}
-
-	/*
-		Reframe the source relays to get them in a relay index from relative to the current route matrix.
-	*/
-
-	inputSourceRelayIds := state.Output.HeldNearRelayIds[:state.Output.HeldNumNearRelays]
-	inputSourceRelayLatency := state.Output.HeldNearRelayRTT[:state.Output.HeldNumNearRelays]
-
-	outputSourceRelays := make([]int32, state.Output.HeldNumNearRelays)
-	outputSourceRelayLatency := make([]int32, state.Output.HeldNumNearRelays)
-
-	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, inputSourceRelayIds, inputSourceRelayLatency, outputSourceRelays, outputSourceRelayLatency)
+	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
@@ -713,7 +679,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries,
+		if core.MakeRouteDecision_TakeNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
@@ -792,7 +759,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		nextLatency := int32(state.Request.NextRTT)
 		predictedLatency := state.Input.RouteCost
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries,
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.Request.UserHash,
+			state.RouteMatrix.RouteEntries,
 			state.RouteMatrix.FullRelayIndexSet,
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
@@ -1008,8 +976,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	writeStream := encoding.CreateWriteStream(state.Response.SessionData[:])
 
 	state.Output.Version = packets.SDK5_SessionDataVersion_Write
-	state.Output.Location.Version = packets.SDK5_LocationVersion_Write
-
+	
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)
@@ -1046,22 +1013,24 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Build the data for the relays in the route.
 	*/
 
-	buildRouteRelayData(state)
+	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
+		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
+		if ok {
+			state.PostRouteRelayNames[i] = relay.Name
+			state.PostRouteRelaySellers[i] = relay.Seller
+		}
+	}
 
 	/*
-		Build the data for the near relays.
-	*/
-
-	buildNearRelayData(state)
-
-	/*
-		Send this slice to the portal via the real-time path (redis streams).
+		Send data to the portal
 	*/
 
 	sendPortalData(state)
 
 	/*
-		Send this slice billing system (bigquery) via the non-realtime path (google pubsub).
+		Send the session update message
+
+		This drives the analytics and billing systems
 	*/
 
 	sendSessionUpdateMessage(state)
@@ -1075,6 +1044,7 @@ func datacenterExists(database *db.Database, datacenterId uint64) bool {
 }
 
 func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
+	// todo: do we still need this? I don't think we support datacenter aliases anymore...
 	datacenterAliases, ok := database.DatacenterMaps[buyerId]
 	if !ok {
 		return false
@@ -1093,23 +1063,6 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	return value
 }
 
-func buildRouteRelayData(state *SessionUpdateState) {
-
-	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
-		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
-		if ok {
-			state.PostRouteRelayNames[i] = relay.Name
-			state.PostRouteRelaySellers[i] = relay.Seller
-		}
-	}
-}
-
-func buildNearRelayData(state *SessionUpdateState) {
-
-	// todo
-
-}
-
 func sendPortalData(state *SessionUpdateState) {
 
 	// no point sending data to the portal, once the client has timed out
@@ -1118,22 +1071,14 @@ func sendPortalData(state *SessionUpdateState) {
 		return
 	}
 
+	// todo: build and send portal data to channel
+
 	state.SentPortalData = true
-
-	// todo
-	/*
-		portalData := buildPortalData(state)
-
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			state.PostSessionHandler.SendPortalData(portalData)
-		}
-	*/
 }
 
 func sendSessionUpdateMessage(state *SessionUpdateState) {
 
-	// todo
+	// todo: build and send sessieon update data to channel
 
 	state.SentSessionUpdateMessage = true
-
 }

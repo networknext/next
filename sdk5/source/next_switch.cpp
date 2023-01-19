@@ -36,7 +36,7 @@ extern void next_free( void * context, void * p );
 
 // threads
 
-next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * fn, void * arg )
+next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t fn, void * arg )
 {
     const size_t STACK_SIZE = nn::os::ThreadStackAlignment * 512;
     next_platform_thread_t * thread = (next_platform_thread_t *) next_malloc( context, sizeof( next_platform_thread_t ) );

@@ -327,7 +327,7 @@ func mainReturnWithCode() int {
 
 	opsService := jsonrpc.OpsService{
 		Env:                  env,
-		Release:              "", // todo: no longer passed in. maybe we should use commit message here instead?
+		Release:              "",
 		BuildTime:            buildTime,
 		Storage:              db,
 		LookerClient:         lookerClient,

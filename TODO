@@ -1,32 +1,41 @@
 DONE
 
-	Raspberry client should hit the raspberry backend to get a list of servers to connect to, and connect to one randomly.
+	Rework minimal ip2location functionality IP -> (lat,long) into service.go
 
-	Setup raspberry client to be a self-contained program that runs multiple clients on n threads.
+	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...	
 
-	Raspberry client number of threads is pulled from RASPBERRY_CLIENT_NUM_THREADS env var, default to 25.
+	Fix various session update tests that broke with the lat/long change
 
-	Raspberry client and server should get raspberry backend address from env var set in envs/local.env
+	Implement reload of ip2location reader every n seconds
+
+	Update tests with the new near relay stuff
+
+	Only swap ip2location reader if the validation passes
+
+	Hook up ip2location to the sdk5 session update handler for server_backend5.
+
+	Relay works with ref backend.
+
+	Fix up backend5.go to work with current SDK5 packets
+
+	Update ref backend 5 keypairs to latest being passed in via run.go with env vars
+
+	Rename reference components to have "reference_*" prefix, so it is clear.
+
+	Make sure all reference components get built with "make build".
+
+	Server5 now handshakes with ref backend.
+
+	ref backend 5 is all good.
+
+	Get the reference backend 4 proven working as well.
+
+	Get the pusher service live in the dev environment so we can make changes to the database.bin easily. ()
+
+	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
 
 TODO
 
-	--------
-
-	Setup raspberry_client and raspberry_server artifacts to be built and uploaded in semaphore.
-
-	--------
-
-	Ask van to setup raspberry_client, raspberry_server and raspberry_backend MIGs in dev.
-
-	Only raspberry backend needs health check and LB.
-
-	The rest should just be a raw mig that we scale up/down manually.
-
-	--------
-
-	Get a steady state of a few hundred raspberry pis running in the dev environment :)
-
-	--------
 
 
 
@@ -37,79 +46,118 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Essentials:
 
 	--------------
 
-	The leader election is pretty clearly broken.
-
-	I can start one relay backend, then start another, -- and the new one immediately becomes the leader. No...
+	Send messages to the portal cruncher via redis streams.
 
 	--------------
 
-	Need to take the max of direct PL and real PL when calculating max direct PL seen
-
-	When the raspberry pi runs at 1 packet per-second, real PL will tend to be lower, statistically speaking than near relay pings, until probabilistically enough slices have passed.
+	Adjust the portal cruncher so it uses the new service framework and reads messages from redis streams.
 
 	--------------
 
-	We need to track max direct packet loss seen
-
-	I believe that a key component of the old system was comparing max packet loss on direct vs. max PL on relays, so over time we had some code that went "ok, so we have intermittent packet loss, loosen it up on the near relays".
-
-	We also would need to not filter out relays forever, but instead, store them unmolested, and filter them temporarily before we use them for routing.
+	Verify that portal functionality is working with raspberry clients in dev.
 
 	--------------
 
-	Why does it only ever show 7 routes, for 7 near relays?
-
-	Is there something in our code that restricts to the best route, per-near relay only?
+	Send messages to analytics from server backend 5 via google pubsub.
 
 	--------------
 
-	Once this is done, we can remove the packet loss threshold.
+	Extend analytics service to insert billing messages into bigquery.
 
 	--------------
 
-	Setup google.virginia.3 relay myself, so I can understand the process and potentially streamline it.
+	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
 
-	-----------------
+	--------------
 
-	Streamline the process to setup a new machine to be a relay.
+	Leader election func testing for relay backends + ready delay
 
-	-----------------
+	--------------
 
-	Instead of trying to change the hostname, just change the shell prompt to the relay name. Much easier, with no side effects.
+	Implement func test for server backend to make sure when it is in connection drain state, it indicates to the LB health test that traffic should not be sent to it.
 
-	-----------------
+	--------------
 
-	Build a relay release process in semaphore.
+	Extend the relay to support a secondary relay backend.
 
-	-----------------
+	This will enable relays to be shared between dev and dev5, and prod and prod5.
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+Nice to have:
+
+	--------------
+
+	Create a new message for near relay stats.
+
+	Unit test it, then on slice #1 when near relay data comes in, write a near relay ping stats message and send it.
+
+	--------------
+
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	It can be as simple as an expire time for pings
+
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+
+	--------------
+
+	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
+
+	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
+
+	And then this can be checked.
+
+	Needs to be designed...
+
+	--------------
+
+	Extend the SDK5 so we have the option of sending down new near relay stats on multiple slices, later on.
+
+	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
+
+	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
+
+	--------------
+
+	Multipath across two network next routes.
+
+	--------------
+
+	It would be good to track when sessions shut down, vs. having them always time out
+
+	This would require new messages up then back down the chain of relays for ack
+
+	It would also reduce the risk of missing packets or having sessions time out and not noticing.
+
+	We can now track sessions timing out before being closed, and this would indicate problems (or at least, hard disconnects...)
+
+	Again, adding this later would be challenging. Best to do it now.
+
+	--------------
+
+	Rework the reference relay and make it the official relay.
+
+	The trick is to use the code from the proxy to go wide across n threads with SO_REUSEPORT
+
+	Since each port/address maps to a specific socket, there is no need for locks across the session map, there will be a session map per-thread.
+
+	Stats can be managed with atomics, eg. count of sessions per-thread in a uint64 atomic, summed by the main thread before uploading the total to the relay backend.
+
+	--------------

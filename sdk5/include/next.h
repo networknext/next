@@ -264,6 +264,7 @@ struct next_client_stats_t
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float direct_kbps_up;
     float direct_kbps_down;
     float next_rtt;
@@ -338,6 +339,7 @@ struct next_server_stats_t
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
+    float direct_max_packet_loss_seen;
     float direct_kbps_up;
     float direct_kbps_down;
     float next_rtt;
@@ -413,19 +415,9 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * serve
 
 struct next_platform_thread_t;
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK || NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
-    typedef DWORD next_platform_thread_return_t;
-    #define NEXT_PLATFORM_THREAD_FUNC WINAPI
-    typedef next_platform_thread_return_t(NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
-#else
-    #define NEXT_PLATFORM_THREAD_FUNC
-    typedef void * next_platform_thread_return_t;
-    typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
-#endif
+typedef void (*next_platform_thread_func_t)(void*);
 
-#define NEXT_PLATFORM_THREAD_RETURN() do { return 0; } while ( 0 )
-
-NEXT_EXPORT_FUNC next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * func, void * arg );
+NEXT_EXPORT_FUNC next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t func, void * arg );
 
 NEXT_EXPORT_FUNC void next_platform_thread_join( next_platform_thread_t * thread );
 

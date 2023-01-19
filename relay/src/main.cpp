@@ -1,6 +1,6 @@
 /*
  * Network Next Relay.
- * Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+ * Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
  */
 
 #include "includes.h"
@@ -12,11 +12,12 @@
 #include "core/router_info.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "os/socket.hpp"
 #include "testing/test.hpp"
 #include "util/env.hpp"
+
+#include "version.h"
 
 using namespace std::chrono_literals;
 
@@ -64,38 +65,91 @@ INLINE void set_thread_sched_max(std::thread& thread)
   }
 }
 
+static const unsigned char base64_table_encode[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static const int base64_table_decode[256] =
+{
+    0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0, 62, 63, 62, 62, 63, 52, 53, 54, 55,
+    56, 57, 58, 59, 60, 61,  0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,
+    7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  0,
+    0,  0,  0,  63,  0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
+};
+
+int relay_base64_decode( const char * input, uint8_t * output, size_t output_size )
+{
+    assert( input );
+    assert( output );
+    assert( output_size > 0 );
+
+    size_t input_length = strlen( input );
+    int pad = input_length > 0 && ( input_length % 4 || input[input_length - 1] == '=' );
+    size_t L = ( ( input_length + 3 ) / 4 - pad ) * 4;
+    size_t output_length = L / 4 * 3 + pad;
+
+    if ( output_length > output_size )
+    {
+        printf( "not enough room\n" );
+        return 0;
+    }
+
+    for ( size_t i = 0, j = 0; i < L; i += 4 )
+    {
+        int n = base64_table_decode[int( input[i] )] << 18 | base64_table_decode[int( input[i + 1] )] << 12 | base64_table_decode[int( input[i + 2] )] << 6 | base64_table_decode[int( input[i + 3] )];
+        output[j++] = uint8_t( n >> 16 );
+        output[j++] = uint8_t( n >> 8 & 0xFF );
+        output[j++] = uint8_t( n & 0xFF );
+    }
+
+    if ( pad )
+    {
+        int n = base64_table_decode[int( input[L] )] << 18 | base64_table_decode[int( input[L + 1] )] << 12;
+        output[output_length - 1] = uint8_t( n >> 16 );
+
+        if (input_length > L + 2 && input[L + 2] != '=')
+        {
+            n |= base64_table_decode[int( input[L + 2] )] << 6;
+            output_length += 1;
+            if ( output_length > output_size )
+            {
+                return 0;
+            }
+            output[output_length - 1] = uint8_t( n >> 8 & 0xFF );
+        }
+    }
+
+    return int( output_length );
+}
+
 INLINE void get_crypto_keys(const Env& env, Keychain& keychain)
 {
-  namespace base64 = encoding::base64;
-
   // relay private key
   {
-    auto len = base64::decode(env.relay_private_key, keychain.relay_private_key);
+    LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
+    int len = relay_base64_decode( env.relay_private_key.c_str(), &keychain.relay_private_key[0], crypto::RELAY_PRIVATE_KEY_SIZE);
     if (len != KEY_SIZE) {
       LOG(FATAL, "invalid relay private key");
     }
-
-    LOG(INFO, "relay private key is '", env.relay_private_key, '\'');
   }
 
   // relay public key
   {
-    auto len = base64::decode(env.relay_public_key, keychain.relay_public_key);
+    LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
+    int len = relay_base64_decode( env.relay_public_key.c_str(), &keychain.relay_public_key[0], crypto::RELAY_PUBLIC_KEY_SIZE);
     if (len != KEY_SIZE) {
       LOG(FATAL, "invalid relay public key");
     }
-
-    LOG(INFO, "relay public key is '", env.relay_public_key, '\'');
   }
 
   // router public key
   {
-    auto len = base64::decode(env.relay_router_public_key, keychain.backend_public_key);
+    LOG(INFO, "router public key is '", env.router_public_key, '\'');
+    int len = relay_base64_decode( env.router_public_key.c_str(), &keychain.backend_public_key[0], crypto_sign_PUBLICKEYBYTES);
     if (len != KEY_SIZE) {
       LOG(FATAL, "invalid router public key");
     }
-
-    LOG(INFO, "router public key is '", env.relay_router_public_key, '\'');
   }
 }
 
@@ -172,14 +226,14 @@ int main(int argc, const char* argv[])
 #endif
 
   if (argc == 2 && strcmp(argv[1], "version")==0) {
-    printf("%s\n", core::RELAY_VERSION);
+    printf("%s\n", RELAY_VERSION);
     fflush(stdout);
     exit(0);
   }
 
   LOG(INFO, "Network Next Relay");
 
-  LOG(INFO, "relay version is ", core::RELAY_VERSION);
+  LOG(INFO, "relay version is ", RELAY_VERSION);
 
   Env env;
 

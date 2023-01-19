@@ -143,14 +143,46 @@ const char * next_platform_getenv( const char * )
 
 // threads
 
-next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t * fn, void * arg )
+struct thread_shim_data_t
+{
+	void * context;
+	void * real_thread_data;
+	next_platform_thread_func_t real_thread_function;
+};
+
+static void* thread_function_shim( void * data )
+{
+	next_assert( data );
+	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
+	void * context = shim_data->context;
+	void * real_thread_data = shim_data->real_thread_data;
+	next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
+	next_free( context, data );
+	real_thread_function( real_thread_data );
+	return NULL;
+}
+
+next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t thread_function, void * arg )
 {
     next_platform_thread_t * thread = (next_platform_thread_t *) next_malloc( context, sizeof( next_platform_thread_t ) );
     next_assert( thread );
     thread->context = context;
-    if ( scePthreadCreate( &thread->handle, NULL, fn, arg, "next" ) != 0 )
+
+    thread_shim_data_t * shim_data = (thread_shim_data_t*) next_malloc( context, sizeof(thread_shim_data_t) );
+    next_assert( shim_data );
+    if ( !shim_data )
+    {
+    	next_free( context, thread );
+    	return NULL;
+    }
+    shim_data->context = context;
+    shim_data->real_thread_function = thread_function;
+    shim_data->real_thread_data = arg;
+
+    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "next" ) != 0 )
     {
         next_free( context, thread );
+    	next_free( context, shim_data );
         return NULL;
     }
 

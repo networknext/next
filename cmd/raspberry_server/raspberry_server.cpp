@@ -77,7 +77,7 @@ struct thread_data_t
     const char * raspberry_backend_address;
 };
 
-next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC server_update_thread( void * data )
+void server_update_thread( void * data )
 {
     next_assert( data );
 
@@ -99,8 +99,6 @@ next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC server_update_thread( vo
 
         next_sleep( 10.0 );
     }
-
-    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 void send_server_updates_to_raspberry_backend( thread_data_t * thread_data )

@@ -706,8 +706,6 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	stream.SerializeUint64(&sessionData.RouteState.UserID)
-
 	stream.SerializeBool(&sessionData.RouteState.Next)
 	stream.SerializeBool(&sessionData.RouteState.Veto)
 	stream.SerializeBool(&sessionData.RouteState.Disabled)
