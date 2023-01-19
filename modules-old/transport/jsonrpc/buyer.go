@@ -2288,7 +2288,6 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 		MaxRTT:               int64(ic.MaxNextRTT),
 		HighFrequencyPings:   ic.HighFrequencyPings,
 		RouteDiversity:       int64(ic.RouteDiversity),
-		// todo: are we passing in all internal config fields above?
 	}
 
 	reply.InternalConfig = jsonIC
@@ -2324,7 +2323,6 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 		MaxNextRTT:           int32(arg.InternalConfig.MaxRTT),
 		HighFrequencyPings:   arg.InternalConfig.HighFrequencyPings,
 		RouteDiversity:       int32(arg.InternalConfig.RouteDiversity),
-		// todo: do we have all internal config fields above?
 	}
 
 	err = s.Storage.AddInternalConfig(r.Context(), ic, buyerID)

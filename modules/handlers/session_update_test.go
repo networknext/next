@@ -10,23 +10,19 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func DummyLocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
-	location := packets.SDK5_LocationData{}
-	location.Latitude = 43
-	location.Longitude = -75
-	return location, nil
+func DummyLocateIP(ip net.IP) (float32, float32) {
+	return 43.0, -75.0
 }
 
-func FailLocateIP(ip net.IP) (packets.SDK5_LocationData, error) {
-	location := packets.SDK5_LocationData{}
-	return location, fmt.Errorf("fail")
+func FailLocateIP(ip net.IP) (float32, float32) {
+	return 0.0, 0.0
 }
 
 func CreateState() *handlers.SessionUpdateState {
@@ -36,6 +32,8 @@ func CreateState() *handlers.SessionUpdateState {
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
 	state.Database = db.CreateDatabase()
+	state.Input.Latitude = 35.0
+	state.Input.Longitude = -75.0
 	return &state
 }
 
@@ -119,8 +117,8 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
 	assert.False(t, state.LocationVeto)
-	assert.Equal(t, state.Output.Location.Latitude, float32(43))
-	assert.Equal(t, state.Output.Location.Longitude, float32(-75))
+	assert.Equal(t, state.Output.Latitude, float32(43))
+	assert.Equal(t, state.Output.Longitude, float32(-75))
 }
 
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
@@ -140,52 +138,6 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	assert.True(t, result)
 	assert.True(t, state.LocationVeto)
-}
-
-func Test_SessionUpdate_Pre_ReadLocation(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	sessionData := packets.SDK5_SessionData{}
-
-	sessionData.Version = packets.SDK5_SessionDataVersion_Write
-	sessionData.Location.Version = packets.SDK5_LocationVersion_Write
-	sessionData.Location.Latitude = 10
-	sessionData.Location.Longitude = 20
-	sessionData.Location.ISP = "Starlink"
-	sessionData.Location.ASN = 5
-
-	buffer := make([]byte, packets.SDK5_MaxSessionDataSize)
-	writeStream := encoding.CreateWriteStream(buffer[:])
-	err := sessionData.Serialize(writeStream)
-	assert.Nil(t, err)
-	writeStream.Flush()
-	packetBytes := writeStream.GetBytesProcessed()
-	packetData := buffer[:packetBytes]
-
-	fmt.Printf("session data bytes = %d\n", len(packetData))
-
-	state.Request.SessionDataBytes = int32(packetBytes)
-	copy(state.Request.SessionData[:], packetData)
-	copy(state.Request.SessionDataSignature[:], crypto.Sign(packetData, state.ServerBackendPrivateKey))
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, state.ReadSessionData)
-	assert.Equal(t, float32(10), state.Output.Location.Latitude)
-	assert.Equal(t, float32(20), state.Output.Location.Longitude)
-	assert.Equal(t, "Starlink", state.Output.Location.ISP)
-	assert.Equal(t, uint32(5), state.Output.Location.ASN)
 }
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
@@ -296,52 +248,6 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	assert.False(t, state.DatacenterNotEnabled)
 }
 
-func Test_SessionUpdate_Pre_SessionDataSignatureCheckFailed(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	state.Request.SessionDataBytes = 100
-	common.RandomBytes(state.Request.SessionData[:])
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.SessionDataSignatureCheckFailed)
-	assert.False(t, state.FailedToReadSessionData)
-}
-
-func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.SliceNumber = 1
-
-	state.Request.SessionDataBytes = 100
-	common.RandomBytes(state.Request.SessionData[:])
-	copy(state.Request.SessionDataSignature[:], crypto.Sign(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPrivateKey))
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.FailedToReadSessionData)
-}
-
 func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 
 	t.Parallel()
@@ -436,7 +342,6 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 	assert.Equal(t, state.Output.Version, uint32(packets.SDK5_SessionDataVersion_Write))
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, uint32(1))
-	assert.Equal(t, state.Output.RouteState.UserID, userHash)
 	assert.Equal(t, state.Output.RouteState.ABTest, abTest)
 	assert.True(t, state.Output.ExpireTimestamp > uint64(time.Now().Unix()))
 
@@ -3115,7 +3020,7 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 	assert.False(t, state.Response.HasNearRelays)
 }
 
-func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
+func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 
 	t.Parallel()
 
@@ -3212,16 +3117,6 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.DestRelays[1], int32(1))
 	assert.Equal(t, state.DestRelays[2], int32(2))
 
-	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
-
-	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
-	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
-	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
-
-	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(10))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(20))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(30))
-
 	assert.Equal(t, len(state.SourceRelays), 3)
 	assert.Equal(t, len(state.SourceRelayRTT), 3)
 
@@ -3236,127 +3131,6 @@ func Test_SessionUpdate_UpdateNearRelays_SliceOne(t *testing.T) {
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
 }
-
-func Test_SessionUpdate_UpdateNearRelays_SliceTwo(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	// initialize database with three relays
-
-	seller := db.Seller{ID: "seller", Name: "seller"}
-
-	datacenter := db.Datacenter{ID: 1, Name: "datacenter"}
-
-	relay_address_a := core.ParseAddress("127.0.0.1:40000")
-	relay_address_b := core.ParseAddress("127.0.0.1:40001")
-	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-
-	relay_public_key_a, _ := crypto.Box_KeyPair()
-	relay_public_key_b, _ := crypto.Box_KeyPair()
-	relay_public_key_c, _ := crypto.Box_KeyPair()
-
-	relay_a := db.Relay{ID: 1, Name: "a", Addr: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{ID: 2, Name: "b", Addr: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{ID: 3, Name: "c", Addr: *relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
-
-	state.Database.SellerMap["seller"] = seller
-
-	state.Database.DatacenterMap[1] = datacenter
-
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
-
-	state.DestRelayIds = []uint64{1, 2, 3}
-
-	// setup cost matrix with route through relays a -> b -> c
-
-	const NumRelays = 3
-
-	entryCount := core.TriMatrixLength(NumRelays)
-
-	costMatrix := make([]int32, entryCount)
-
-	for i := range costMatrix {
-		costMatrix[i] = -1
-	}
-
-	costMatrix[core.TriMatrixIndex(0, 1)] = 10
-	costMatrix[core.TriMatrixIndex(1, 2)] = 10
-	costMatrix[core.TriMatrixIndex(0, 2)] = 100
-
-	// generate route matrix
-
-	relayIds := make([]uint64, 3)
-	relayIds[0] = 1
-	relayIds[1] = 2
-	relayIds[2] = 3
-
-	relayDatacenters := make([]uint64, 3)
-	relayDatacenters[0] = 1
-	relayDatacenters[1] = 2
-	relayDatacenters[2] = 3
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
-
-	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
-	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
-	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
-
-	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
-	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
-	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
-
-	// setup held near relays
-
-	state.Output.HeldNumNearRelays = 3
-	copy(state.Output.HeldNearRelayIds[:], []uint64{1, 2, 3})
-	copy(state.Output.HeldNearRelayRTT[:], []int32{10, 20, 30})
-
-	// update near relays
-
-	state.Input.SliceNumber = 2
-
-	result := handlers.SessionUpdate_UpdateNearRelays(state)
-
-	// validate
-
-	assert.True(t, result)
-	assert.False(t, state.NotUpdatingNearRelaysAnalysisOnly)
-	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
-
-	assert.Equal(t, len(state.DestRelays), 3)
-	assert.Equal(t, state.DestRelays[0], int32(0))
-	assert.Equal(t, state.DestRelays[1], int32(1))
-	assert.Equal(t, state.DestRelays[2], int32(2))
-
-	assert.Equal(t, state.Output.HeldNumNearRelays, int32(3))
-
-	assert.Equal(t, state.Output.HeldNearRelayIds[0], uint64(1))
-	assert.Equal(t, state.Output.HeldNearRelayIds[1], uint64(2))
-	assert.Equal(t, state.Output.HeldNearRelayIds[2], uint64(3))
-
-	assert.Equal(t, state.Output.HeldNearRelayRTT[0], int32(10))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[1], int32(20))
-	assert.Equal(t, state.Output.HeldNearRelayRTT[2], int32(30))
-
-	assert.Equal(t, len(state.SourceRelays), 3)
-	assert.Equal(t, len(state.SourceRelayRTT), 3)
-
-	assert.Equal(t, state.SourceRelays[0], int32(0))
-	assert.Equal(t, state.SourceRelays[1], int32(1))
-	assert.Equal(t, state.SourceRelays[2], int32(2))
-
-	assert.Equal(t, state.SourceRelayRTT[0], int32(10))
-	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
-	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
-
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	assert.False(t, state.Response.HasNearRelays)
-}
-
 // --------------------------------------------------------------
 
 func Test_SessionUpdate_Post_SliceZero(t *testing.T) {

@@ -27,7 +27,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/website_cruncher dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/reference_backend4 dist/reference_backend5 dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/website_cruncher dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -99,10 +99,18 @@ dist/test5: dist/$(SDKNAME5).so sdk5/test.cpp
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test5 ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
-# Build reference relay
+# Build reference binaries
 
-dist/reference_relay: reference/relay/*
-	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/relay/*.cpp $(LDFLAGS)
+dist/reference_relay: reference/reference_relay/*
+	@$(CXX) $(CXX_FLAGS) -o dist/reference_relay reference/reference_relay/*.cpp $(LDFLAGS)
+	@echo $@
+
+dist/reference_backend4: reference/reference_backend4/*.go
+	@go build -o $@ reference/reference_backend4/*.go
+	@echo $@
+
+dist/reference_backend5: reference/reference_backend5/*.go
+	@go build -o $@ reference/reference_backend5/*.go
 	@echo $@
 
 # Functional tests (sdk4)

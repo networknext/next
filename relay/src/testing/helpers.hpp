@@ -25,21 +25,6 @@ namespace testing
   const auto BASE64_ROUTER_PUBLIC_KEY = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=";
   const auto BASE64_ROUTER_PRIVATE_KEY = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=";
 
-  INLINE auto make_keychain() -> crypto::Keychain
-  {
-    crypto::Keychain keychain;
-    keychain.parse(BASE64_RELAY_PUBLIC_KEY, BASE64_RELAY_PRIVATE_KEY, BASE64_ROUTER_PUBLIC_KEY);
-    return keychain;
-  }
-
-  INLINE auto router_private_key() -> crypto::GenericKey
-  {
-    std::string key = BASE64_ROUTER_PRIVATE_KEY;
-    crypto::GenericKey buff;
-    encoding::base64::decode(key, buff);
-    return buff;
-  }
-
   INLINE auto random_private_key() -> crypto::GenericKey
   {
     crypto::GenericKey private_key;

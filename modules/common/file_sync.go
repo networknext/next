@@ -26,7 +26,7 @@ type FileSyncGroup struct {
 	SyncInterval   time.Duration
 	ValidationFunc func([]string) bool
 	UploadTo       string
-	PushTo         string
+	PushTo         []string
 }
 
 type SyncFile struct {
@@ -40,11 +40,11 @@ func CreateFileSyncConfig() *FileSyncConfig {
 	}
 }
 
-func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migName string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
+func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migNames []string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
 	config.FileGroups = append(config.FileGroups, FileSyncGroup{
 		Name:           groupName,
 		SyncInterval:   syncInterval,
-		PushTo:         migName,
+		PushTo:         migNames,
 		ValidationFunc: validationFunc,
 		UploadTo:       uploadBucketURL,
 		Files:          files,
@@ -52,6 +52,7 @@ func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval ti
 }
 
 func (config *FileSyncConfig) Print() {
+	core.Log("----------------------------------------------------------")
 	core.Log("file sync groups:")
 	for index, group := range config.FileGroups {
 		core.Log("%d: %s [%s]", index, group.Name, group.SyncInterval.String())
@@ -64,6 +65,7 @@ func (config *FileSyncConfig) Print() {
 			core.Log(" + %s -> %s ", file.DownloadURL, fileName)
 		}
 	}
+	core.Log("----------------------------------------------------------")
 }
 
 func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandler *GoogleCloudHandler, isLeader func() bool) {
@@ -128,12 +130,16 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 							}
 						}
 
-						receivingVMs := googleCloudHandler.GetMIGInstanceNames(group.PushTo)
+						receivingVMs := make([][]string, len(group.PushTo))
 
-						if len(receivingVMs) > 0 {
-							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-							if err := PushFileToVMs(ctx, googleCloudHandler, fileName, receivingVMs); err != nil {
-								core.Error("failed to upload location file to google cloud VMs: %v", err)
+						for i, destination := range group.PushTo {
+							receivingVMs[i] = googleCloudHandler.GetMIGInstanceNames(destination)
+
+							if len(receivingVMs[i]) > 0 {
+								core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
+								if err := PushFileToVMs(ctx, googleCloudHandler, fileName, receivingVMs[i]); err != nil {
+									core.Error("failed to upload location file to google cloud VMs: %v", err)
+								}
 							}
 						}
 					}

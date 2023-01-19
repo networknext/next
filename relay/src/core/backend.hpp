@@ -3,7 +3,6 @@
 #include "core/throughput_recorder.hpp"
 #include "crypto/bytes.hpp"
 #include "crypto/keychain.hpp"
-#include "encoding/base64.hpp"
 #include "net/http.hpp"
 #include "relay_manager.hpp"
 #include "router_info.hpp"
@@ -33,7 +32,7 @@ namespace core
   extern const char* RELAY_VERSION;
 
   const uint32_t UPDATE_REQUEST_VERSION = 5;
-  const uint32_t UPDATE_RESPONSE_VERSION = 0;
+  const uint32_t UPDATE_RESPONSE_VERSION = 1;
 
   const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
 

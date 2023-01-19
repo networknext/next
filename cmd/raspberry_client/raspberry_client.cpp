@@ -103,7 +103,7 @@ uint64_t raspberry_user_id()
     return user_id;
 }
 
-next_platform_thread_return_t client_thread_function( void * data )
+void client_thread_function( void * data )
 {
 	(void) data;
 
@@ -218,8 +218,6 @@ next_platform_thread_return_t client_thread_function( void * data )
 
 	    next_client_destroy( client );
 	}
-
-	NEXT_PLATFORM_THREAD_RETURN();
 }
 
 void run_clients( int num_clients )
