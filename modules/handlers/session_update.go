@@ -63,26 +63,12 @@ type SessionUpdateState struct {
 	SourceRelays   []int32
 	SourceRelayRTT []int32
 
-	// for session post (billing, portal etc...)
-	PostNearRelayCount               int
-	PostNearRelayIDs                 [core.MaxNearRelays]uint64
-	PostNearRelayNames               [core.MaxNearRelays]string
-	PostNearRelayAddresses           [core.MaxNearRelays]net.UDPAddr
-	PostNearRelayRTT                 [core.MaxNearRelays]float32
-	PostNearRelayJitter              [core.MaxNearRelays]float32
-	PostNearRelayPacketLoss          [core.MaxNearRelays]float32
-	PostRouteRelayNames              [core.MaxRelaysPerRoute]string
-	PostRouteRelaySellers            [core.MaxRelaysPerRoute]db.Seller
-	PostRealPacketLossClientToServer float32
-	PostRealPacketLossServerToClient float32
-
 	// flags
 	ReadSessionData                           bool
 	SessionDataSignatureCheckFailed           bool
 	FailedToReadSessionData                   bool
 	LongDuration                              bool
 	ClientPingTimedOut                        bool
-	Pro                                       bool
 	BadSessionId                              bool
 	BadSliceNumber                            bool
 	AnalysisOnly                              bool
@@ -94,7 +80,6 @@ type SessionUpdateState struct {
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
 	FallbackToDirect                          bool
 	NoNearRelays                              bool
-	LargeCustomer                             bool
 	NoRouteRelays                             bool
 	Aborted                                   bool
 	RouteRelayNoLongerExists                  bool
@@ -347,9 +332,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	if RealPacketLossServerToClient > RealPacketLossClientToServer {
 		state.RealPacketLoss = RealPacketLossServerToClient
 	}
-
-	state.PostRealPacketLossClientToServer = RealPacketLossClientToServer
-	state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
 
 	/*
 		Calculate real jitter.
@@ -1010,25 +992,13 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.WroteResponsePacket = true
 
 	/*
-		Build the data for the relays in the route.
+		Send the portal message to drive the portal.
 	*/
 
-	buildRouteRelayData(state)
+	sendPortalMessage(state)
 
 	/*
-		Build the data for the near relays.
-	*/
-
-	buildNearRelayData(state)
-
-	/*
-		Send this slice to the portal via the real-time path (redis streams).
-	*/
-
-	sendPortalData(state)
-
-	/*
-		Send this slice billing system (bigquery) via the non-realtime path (google pubsub).
+		Send the the session update message to drive analytics and billing.
 	*/
 
 	sendSessionUpdateMessage(state)
@@ -1042,6 +1012,7 @@ func datacenterExists(database *db.Database, datacenterId uint64) bool {
 }
 
 func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
+	// todo: do we still need this alias stuff? I don't think we really support it anymore?
 	datacenterAliases, ok := database.DatacenterMaps[buyerId]
 	if !ok {
 		return false
@@ -1060,24 +1031,7 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	return value
 }
 
-func buildRouteRelayData(state *SessionUpdateState) {
-
-	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
-		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
-		if ok {
-			state.PostRouteRelayNames[i] = relay.Name
-			state.PostRouteRelaySellers[i] = relay.Seller
-		}
-	}
-}
-
-func buildNearRelayData(state *SessionUpdateState) {
-
-	// todo
-
-}
-
-func sendPortalData(state *SessionUpdateState) {
+func sendPortalMessage(state *SessionUpdateState) {
 
 	// no point sending data to the portal, once the client has timed out
 
@@ -1085,16 +1039,9 @@ func sendPortalData(state *SessionUpdateState) {
 		return
 	}
 
+	// ...
+
 	state.SentPortalData = true
-
-	// todo
-	/*
-		portalData := buildPortalData(state)
-
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			state.PostSessionHandler.SendPortalData(portalData)
-		}
-	*/
 }
 
 func sendSessionUpdateMessage(state *SessionUpdateState) {
