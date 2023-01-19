@@ -863,6 +863,10 @@ blocks:
         machine:
           type: a1-standard-4
           os_image: macos-xcode13
+
+      secrets:
+        - name: google-cloud-platform-prod
+
       jobs:
 
         - name: "run happy-path-no-wait"
@@ -886,6 +890,10 @@ blocks:
         machine:
           type: e1-standard-8
           os_image: ubuntu2004
+
+      secrets:
+        - name: google-cloud-platform-prod
+
       jobs:
 
         - name: "run happy-path-no-wait"
