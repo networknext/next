@@ -112,7 +112,7 @@ blocks:
 
       agent:
         machine:
-          type: el-standard-2
+          type: e1-standard-2
           os_image: ubuntu2004
 
       jobs:
