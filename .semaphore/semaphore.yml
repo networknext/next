@@ -111,7 +111,7 @@ blocks:
     task:
 
       secrets:
-        - name: google-cloud-platform-prod
+        - name: google-cloud-platform
 
       prologue:
         commands:
@@ -126,13 +126,13 @@ blocks:
         - name: "Download City File"
           commands:
 
-            - gsutil cp gs://prod_artifacts/GeoIP2-City.mmdb .
+            - gsutil cp gs://development_artifacts/GeoIP2-City.mmdb .
             - artifact push workflow GeoIP2-City.mmdb
 
         - name: "Download ISP File"
           commands:
 
-            - gsutil cp gs://prod_artifacts/GeoIP2-ISP.mmdb .
+            - gsutil cp gs://development_artifacts/GeoIP2-ISP.mmdb .
             - artifact push workflow GeoIP2-ISP.mmdb
 
   - name: "Build Functional Tests (backend)"
@@ -895,6 +895,12 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
 
+      prologue:
+        commands:
+
+            - artifact pull workflow GeoIP2-City.mmdb
+            - artifact pull workflow GeoIP2-ISP.mmdb
+
       jobs:
 
         - name: "run happy-path-no-wait"
@@ -905,8 +911,6 @@ blocks:
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - make rebuild
-            - artifact pull workflow GeoIP2-City.mmdb
-            - artifact pull workflow GeoIP2-ISP.mmdb
             - ./next select local
             - ./run happy-path-no-wait
 
