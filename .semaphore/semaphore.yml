@@ -106,6 +106,28 @@ blocks:
             - ./run test-relay
             - artifact push workflow ./dist/reference_relay
 
+  - name: "Get Latest IP2Location Files"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: el-standard-2
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Download City File"
+          commands:
+
+            - gsutil cp gs://prod_database_bin/GeoIP2-City.mmdb .
+            - artifact push workflow GeoIP2-City.mmdb
+
+        - name: "Download ISP File"
+          commands:
+
+            - gsutil cp gs://prod_database_bin/GeoIP2-ISP.mmdb .
+            - artifact push workflow GeoIP2-ISP.mmdb
+
   - name: "Build Functional Tests (backend)"
     dependencies: []
     task:
@@ -835,7 +857,7 @@ blocks:
 
 
   - name: "Happy Path (Mac)"
-    dependencies: []
+    dependencies: ["Get Latest IP2Location Files"]
     task:
       agent:
         machine:
@@ -851,12 +873,14 @@ blocks:
             - brew install libsodium redis golang
             - cd ~/backend
             - make rebuild
+            - artifact pull workflow GeoIP2-City.mmdb
+            - artifact pull workflow GeoIP2-ISP.mmdb
             - ./next select local
             - ./run happy-path-no-wait
 
 
   - name: "Happy Path (Linux)"
-    dependencies: []
+    dependencies: ["Get Latest IP2Location Files"]
     task:
       agent:
         machine:
@@ -872,6 +896,8 @@ blocks:
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - make rebuild
+            - artifact pull workflow GeoIP2-City.mmdb
+            - artifact pull workflow GeoIP2-ISP.mmdb
             - ./next select local
             - ./run happy-path-no-wait
 
