@@ -80,7 +80,7 @@ func main() {
 
 	service.StartWebServer()
 
-	// StartRedisDataCollection(service)
+	StartRedisDataCollection(service)
 
 	StartLookerDataCollection(service)
 
