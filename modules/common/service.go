@@ -276,9 +276,12 @@ func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
 	}
 	err := reader.Lookup(ip, &record)
 	if err != nil {
-		core.Debug("city look up failed: %v", err)
+		core.Error("city look up failed: %v", err)
 		return 0, 0
 	}
+
+	core.Debug("city record: %+v", record)
+
 	return float32(record.Location.Latitude), float32(record.Location.Longitude)
 }
 
@@ -291,9 +294,12 @@ func locateISP(reader *maxminddb.Reader, ip net.IP) (int, string) {
 	}
 	err := reader.Lookup(ip, &record)
 	if err != nil {
-		core.Debug("isp look up failed: %v", err)
+		core.Error("isp look up failed: %v", err)
 		return -1, ""
 	}
+
+	core.Debug("isp record: %+v", record)
+
 	return int(record.ISP.AutonomousSystemNumber), record.ISP.ISP
 }
 
