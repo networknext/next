@@ -916,6 +916,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
+	// todo: can save a lot of bandwidth if the SDK does this calculation for us
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
 	state.Output.PrevPacketsSentServerToClient = state.Request.PacketsSentServerToClient
 	state.Output.PrevPacketsLostClientToServer = state.Request.PacketsLostClientToServer
@@ -1054,10 +1055,11 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NextPacketLoss = state.Request.NextPacketLoss
 		message.NextKbpsUp = state.Request.NextKbpsUp
 		message.NextKbpsDown = state.Request.NextKbpsDown
-		message.PredictedRTT = uint32(state.Input.RouteCost)
-		message.NumRouteRelays = int(state.Input.RouteNumRelays)
-		for i := 0; i < message.NumRouteRelays; i++ {
-			message.RouteRelayId[i] = state.Input.RouteRelayIds[i]
+		message.NextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit || state.Request.ServerNextBandwidthOverLimit
+		message.NextPredictedRTT = uint32(state.Input.RouteCost)
+		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = state.Input.RouteRelayIds[i]
 		}
 	}
 	
@@ -1068,14 +1070,15 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.Reported = state.Request.Reported
 	message.FallbackToDirect = state.FallbackToDirect
 
-	message.NumNearRelays = int(state.Request.NumNearRelays)
-	for i := 0; i < message.NumNearRelays; i++ {
+	message.NumNearRelays = uint32(state.Request.NumNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
 		message.NearRelayId[i] = state.Request.NearRelayIds[i]
 		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
 		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
 	}
+
 	if state.PortalMessageChannel != nil {
 		state.PortalMessageChannel <- &message
 		state.SentPortalData = true
