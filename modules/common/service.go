@@ -159,7 +159,7 @@ func (service *Service) LoadDatabase() {
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
-	if validateBinFiles(service.database) {
+	if !validateBinFiles(service.database) {
 		core.Error("bin files failed validation")
 		os.Exit(1)
 	}
@@ -192,7 +192,7 @@ func validateBinFiles(database *db.Database) bool {
 		return false
 	}
 
-	return database.IsEmpty()
+	return !database.IsEmpty()
 
 }
 
@@ -202,7 +202,7 @@ func (service *Service) LoadIP2Location() {
 
 	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
 
-	if validateIP2Location(cityReader, ispReader) {
+	if !validateIP2Location(cityReader, ispReader) {
 		core.Error("ip2location failed validation")
 		os.Exit(1)
 	}
@@ -234,7 +234,7 @@ func validateIP2Location(cityReader *maxminddb.Reader, ispReader *maxminddb.Read
 
 	valid := true
 
-	ip := net.ParseIP("192.0.2.1")
+	ip := net.ParseIP("98.11.247.166")
 
 	if cityReader == nil {
 		core.Error("city reader is nil")
@@ -276,8 +276,12 @@ func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
 	}
 	err := reader.Lookup(ip, &record)
 	if err != nil {
+		core.Error("city look up failed: %v", err)
 		return 0, 0
 	}
+
+	core.Debug("city record: %+v", record)
+
 	return float32(record.Location.Latitude), float32(record.Location.Longitude)
 }
 
@@ -290,8 +294,12 @@ func locateISP(reader *maxminddb.Reader, ip net.IP) (int, string) {
 	}
 	err := reader.Lookup(ip, &record)
 	if err != nil {
+		core.Error("isp look up failed: %v", err)
 		return -1, ""
 	}
+
+	core.Debug("isp record: %+v", record)
+
 	return int(record.ISP.AutonomousSystemNumber), record.ISP.ISP
 }
 
@@ -603,7 +611,7 @@ func loadIP2Location(cityPath string, ispPath string) (*maxminddb.Reader, *maxmi
 		return nil, nil
 	}
 
-	core.Debug("loaded ip2location city file: '%s'", cityPath)
+	core.Debug("loaded ip2location isp file: '%s'", ispPath)
 
 	return cityReader, ispReader
 }
@@ -625,7 +633,7 @@ func (service *Service) watchIP2Location(ctx context.Context, filenames []string
 			case <-ticker.C:
 
 				cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-				if validateIP2Location(cityReader, ispReader) {
+				if !validateIP2Location(cityReader, ispReader) {
 					core.Error("ip2location files not valid")
 					continue
 				}
@@ -797,7 +805,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 				newDatabase, newOverlay := loadDatabase(databasePath, overlayPath)
 
-				if validateBinFiles(newDatabase) {
+				if !validateBinFiles(newDatabase) {
 					core.Error("new bin file failed validation")
 					continue
 				}
