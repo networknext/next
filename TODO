@@ -1,40 +1,49 @@
 DONE
 
-	Rework minimal ip2location functionality IP -> (lat,long) into service.go
+	Define portal message and make sure it has all data we need
 
-	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...	
+	Fill out the portal message as much as possible and send it to the channel
 
-	Fix various session update tests that broke with the lat/long change
-
-	Implement reload of ip2location reader every n seconds
-
-	Update tests with the new near relay stuff
-
-	Only swap ip2location reader if the validation passes
-
-	Hook up ip2location to the sdk5 session update handler for server_backend5.
-
-	Relay works with ref backend.
-
-	Fix up backend5.go to work with current SDK5 packets
-
-	Update ref backend 5 keypairs to latest being passed in via run.go with env vars
-
-	Rename reference components to have "reference_*" prefix, so it is clear.
-
-	Make sure all reference components get built with "make build".
-
-	Server5 now handshakes with ref backend.
-
-	ref backend 5 is all good.
-
-	Get the reference backend 4 proven working as well.
+	Add next bandwidth exceeded up/down bools to portal data
 
 	Get the pusher service live in the dev environment so we can make changes to the database.bin easily. ()
 
 	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
 
 TODO
+
+	Implement random portal message function
+
+	Implement unit test for portal message
+
+	Implement code in server_backend5 cmd to process portal messages, write them, and send to redis streams.
+
+	---------
+
+	Implement a portal_cruncher_new service using the new service framework
+
+	Setup a number of threads.
+
+	Verify that the new portal cruncher receives portal messages.
+
+	---------
+
+	Make sure that real packet loss is calculated correctly, if not then pass it up from the SDK
+
+	Extend session update to calculate real out of order.
+
+	---------
+
+	Work out how to implement new portal cruncher... optimize as you go.
+
+	---------
+
+	Verify that portal functionality is working with raspberry clients in dev.
+
+	---------
+
+
+
 
 
 
@@ -47,18 +56,6 @@ TODO
 
 
 Essentials:
-
-	--------------
-
-	Send messages to the portal cruncher via redis streams.
-
-	--------------
-
-	Adjust the portal cruncher so it uses the new service framework and reads messages from redis streams.
-
-	--------------
-
-	Verify that portal functionality is working with raspberry clients in dev.
 
 	--------------
 
@@ -88,7 +85,9 @@ Essentials:
 
 	--------------
 
+	SDK5 server backend 5 MIG in dev needs to move to 45000 port. Van
 
+	--------------
 
 
 
@@ -159,5 +158,13 @@ Nice to have:
 	Since each port/address maps to a specific socket, there is no need for locks across the session map, there will be a session map per-thread.
 
 	Stats can be managed with atomics, eg. count of sessions per-thread in a uint64 atomic, summed by the main thread before uploading the total to the relay backend.
+
+	--------------
+
+	A relay which has its firewall misconfigured will cause players to fallback to direct, because traffic can't be sent to it.
+
+	Would be nice if the relay backend would talk to the relay over its UDP port and say hi, and if this heartbeat was a prerequisite for the relay coming online.
+
+	This way misconfigured relays can't cause problems.
 
 	--------------

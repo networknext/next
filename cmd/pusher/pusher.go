@@ -34,8 +34,8 @@ func main() {
 		envvar.GetList("LOCATION_FILE_DESTINATION_MIGS", []string{}),
 		envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://network-next-local-upload"),
 		service.ValidateIP2Location,
-		ispSyncFile,
 		citySyncFile,
+		ispSyncFile,
 	)
 
 	databaseSyncFile := common.SyncFile{

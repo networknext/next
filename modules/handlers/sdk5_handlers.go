@@ -62,6 +62,7 @@ type SDK5_Handler struct {
 
 	ServerInitMessageChannel    chan<- *messages.ServerInitMessage
 	ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
+	PortalMessageChannel        chan<- *messages.PortalMessage
 	SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
 	MatchDataMessageChannel     chan<- *messages.MatchDataMessage
 }

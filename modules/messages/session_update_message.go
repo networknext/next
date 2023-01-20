@@ -96,7 +96,6 @@ type SessionUpdateMessage struct {
 	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
 	EverOnNext                      bool
 	SessionDuration                 uint32
-	TotalPriceSum                   uint64
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
@@ -253,7 +252,6 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 		if message.EverOnNext {
 
-			stream.SerializeUint64(&message.TotalPriceSum)
 			stream.SerializeUint64(&message.EnvelopeBytesUpSum)
 			stream.SerializeUint64(&message.EnvelopeBytesDownSum)
 			stream.SerializeUint32(&message.DurationOnNext)
@@ -490,7 +488,6 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["sessionDuration"] = int(message.SessionDuration)
 
 		if message.EverOnNext {
-			e["totalPriceSum"] = int(message.TotalPriceSum)
 			e["envelopeBytesUpSum"] = int(message.EnvelopeBytesUpSum)
 			e["envelopeBytesDownSum"] = int(message.EnvelopeBytesDownSum)
 			e["durationOnNext"] = int(message.DurationOnNext)
