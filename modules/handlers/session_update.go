@@ -1005,31 +1005,10 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Send the portal message to drive the portal.
 	*/
 
-<<<<<<< HEAD
-	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
-		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
-		if ok {
-			state.PostRouteRelayNames[i] = relay.Name
-			state.PostRouteRelaySellers[i] = relay.Seller
-		}
-	}
-
-	/*
-		Send data to the portal
-	*/
-
-	sendPortalData(state)
-
-	/*
-		Send the session update message
-
-		This drives the analytics and billing systems
-=======
 	sendPortalMessage(state)
 
 	/*
 		Send the the session update message to drive analytics and billing.
->>>>>>> portal-message
 	*/
 
 	sendSessionUpdateMessage(state)
