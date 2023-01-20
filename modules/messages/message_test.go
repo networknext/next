@@ -258,7 +258,6 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.SessionDuration = rand.Uint32()
 
 		if message.EverOnNext {
-			message.TotalPriceSum = rand.Uint64()
 			message.EnvelopeBytesUpSum = rand.Uint64()
 			message.EnvelopeBytesDownSum = rand.Uint64()
 			message.DurationOnNext = rand.Uint32()

@@ -1044,12 +1044,21 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	
+	message.DirectKbpsUp = state.Request.DirectKbpsUp
+	message.DirectKbpsDown = state.Request.DirectKbpsDown
+
 	message.Next = state.Request.Next
 	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
+		message.NextKbpsUp = state.Request.NextKbpsUp
+		message.NextKbpsDown = state.Request.NextKbpsDown
+		message.PredictedRTT = state.Input.RouteCost
+		message.NumRouteRelays = int(state.Input.RouteNumRelays)
+		for i := 0; i < message.NumRouteRelays; i++ {
+			message.RouteRelayId[i] = state.Input.RouteRelayIds[i]
+		}
 	}
 	
 	message.RealJitter = state.RealJitter
@@ -1067,21 +1076,6 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
 	}
-
-	// todo
-/*
-	DirectBandwidthUpKbps     float32
-	DirectBandwidthUpDownKbps float32
-	
-	NextBandwidthUpKbps       float32
-	NextBandwidthDownKbps     float32
-
-	PredictedRTT
-
-	NumRouteRelays    int
-	RouteRelayId      [MaxRouteRelays]uint64
-	RouteRelayAddress [MaxRouteRelays]net.UDPAddr
-*/
 
 	if state.PortalMessageChannel != nil {
 		state.PortalMessageChannel <- &message

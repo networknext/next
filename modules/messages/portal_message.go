@@ -34,14 +34,15 @@ type PortalMessage struct {
 	DirectRTT                 float32
 	DirectJitter              float32
 	DirectPacketLoss          float32
-	DirectBandwidthUpKbps     float32
-	DirectBandwidthUpDownKbps float32
+	DirectKbpsUp              uint32
+	DirectKbpsDown            uint32
 	Next                      bool
 	NextRTT                   float32
 	NextJitter                float32
 	NextPacketLoss            float32
-	NextBandwidthUpKbps       float32
-	NextBandwidthDownKbps     float32
+	NextKbpsUp                uint32
+	NextKbpsDown              uint32
+	NextBandwidthOverLimit    bool
 	RealJitter                float32
 	RealPacketLoss            float32
 	RealOutOfOrder            float32
@@ -52,7 +53,6 @@ type PortalMessage struct {
 
 	NumRouteRelays    int
 	RouteRelayId      [MaxRouteRelays]uint64
-	RouteRelayAddress [MaxRouteRelays]net.UDPAddr
 
 	NumNearRelays       int
 	NearRelayId         [MaxNearRelays]uint64

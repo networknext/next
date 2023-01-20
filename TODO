@@ -1,8 +1,47 @@
 DONE
 
+	Define portal message and make sure it has all data we need
+
+	Fill out the portal message as much as possible and send it to the channel
+
+	Add next bandwidth exceeded up/down bools to portal data
+
 TODO
 
-	Send messages to the portal cruncher via redis streams.
+	Implement random portal message function
+
+	Implement unit test for portal message
+
+	Implement code in server_backend5 cmd to process portal messages, write them, and send to redis streams.
+
+	---------
+
+	Implement a portal_cruncher_new service using the new service framework
+
+	Setup a number of threads.
+
+	Verify that the new portal cruncher receives portal messages.
+
+	---------
+
+	Make sure that real packet loss is calculated correctly, if not then pass it up from the SDK
+
+	Extend session update to calculate real out of order.
+
+	---------
+
+	Work out how to implement new portal cruncher... optimize as you go.
+
+	---------
+
+	Verify that portal functionality is working with raspberry clients in dev.
+
+	---------
+
+
+
+
+
 
 
 
@@ -14,14 +53,6 @@ TODO
 
 
 Essentials:
-
-	--------------
-
-	Adjust the portal cruncher so it uses the new service framework and reads messages from redis streams.
-
-	--------------
-
-	Verify that portal functionality is working with raspberry clients in dev.
 
 	--------------
 
