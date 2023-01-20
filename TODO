@@ -2,7 +2,7 @@ DONE
 
 	Rework minimal ip2location functionality IP -> (lat,long) into service.go
 
-	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...	
+	Remove the SDK5_LocationData, it's just stupid. Just lat/long folks...
 
 	Fix various session update tests that broke with the lat/long change
 
@@ -44,10 +44,6 @@ TODO
 
 
 Essentials:
-
-	---------
-
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily
 
 	--------------
 

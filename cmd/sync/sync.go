@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	service := common.CreateService("pusher")
+	service := common.CreateService("sync")
 
 	fileSyncConfig := common.CreateFileSyncConfig()
 

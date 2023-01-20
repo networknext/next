@@ -118,8 +118,8 @@ func main() {
 		portal_cruncher()
 	} else if command == "portal" {
 		portal()
-	} else if command == "pusher" {
-		pusher()
+	} else if command == "sync" {
+		sync()
 	} else if command == "pingdom" {
 		pingdom()
 	} else if command == "relay" {
@@ -167,7 +167,7 @@ func main() {
 	} else if command == "ref-backend5" {
 		ref_backend5()
 	}
-	
+
 	cleanup()
 }
 
@@ -215,8 +215,8 @@ func analytics() {
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/analytics", httpPort))
 }
 
-func pusher() {
-	bash("HTTP_PORT=40010 ./dist/pusher")
+func sync() {
+	bash("HTTP_PORT=40010 ./dist/sync")
 }
 
 func pingdom() {
@@ -315,7 +315,7 @@ func func_backend(tests []string) {
 }
 
 func raspberry_backend() {
-	bash("HTTP_PORT=40100 ./dist/raspberry_backend")	
+	bash("HTTP_PORT=40100 ./dist/raspberry_backend")
 }
 
 func raspberry_client() {
