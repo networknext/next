@@ -231,3 +231,7 @@ Nice to have:
 	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
 
 	--------------
+
+	Consider renaming "Server Events" to "Game Events" in SDK5
+
+	--------------

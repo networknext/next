@@ -2,12 +2,12 @@ package messages
 
 import (
 	"fmt"
-	"net"
+	// "net"
 
-	"cloud.google.com/go/bigquery"
+	// "cloud.google.com/go/bigquery"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
+	// "github.com/networknext/backend/modules/common"
+	// "github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -18,6 +18,7 @@ const (
 
 	MaxSessionUpdateMessageBytes = 4096
 
+	// todo: constants module
 	SessionUpdateMessageMaxRelays           = 5
 	SessionUpdateMessageMaxAddressLength    = 256
 	SessionUpdateMessageMaxISPLength        = 64
@@ -30,34 +31,60 @@ const (
 	SessionUpdateMessageMaxRouteDiversity   = 31
 	SessionUpdateMessageMaxConnectionType   = 3
 	SessionUpdateMessageMaxPlatformType     = 10
+	SessionUpdateMessageMaxRouteRelays      = 5
 	SessionUpdateMessageMaxNearRelayRTT     = 255
+
+	SessionFlags_Next                 = (1<<0)
+	SessionFlags_Reported             = (1<<1)
+	SessionFlags_Debug                = (1<<2)
+	SessionFlags_FallbackToDirect     = (1<<3)
+	SessionFlags_Mispredict           = (1<<4)
+	SessionFlags_LatencyWorse         = (1<<5)
+	SessionFlags_NoRoute              = (1<<6)
+	SessionFlags_NextLatencyTooHigh   = (1<<7)
+	SessionFlags_UnknownDatacenter    = (1<<8)
+	SessionFlags_DatacenterNotEnabled = (1<<9)
+	SessionFlags_StaleRouteMatrix     = (1<<10)
+	SessionFlags_ABTest               = (1<<11)
+	SessionFlags_Aborted              = (1<<12)
+	SessionFlags_LatencyReduction     = (1<<13)
+	SessionFlags_PacketLossReduction  = (1<<14)
+	SessionFlags_EverOnNext           = (1<<15)
+	SessionFlags_Summary              = (1<<16)
 )
 
 type SessionUpdateMessage struct {
 
 	// always
 
-	Version             uint32
+	Version             uint8
 	Timestamp           uint64
 	SessionId           uint64
 	SliceNumber         uint32
-	DirectMinRTT        int32
-	DirectMaxRTT        int32
-	DirectPrimeRTT      int32
-	DirectJitter        int32
-	DirectPacketLoss    int32
-	RealPacketLoss      int32
-	RealPacketLoss_Frac uint32
-	RealJitter          uint32
-	Next                bool
-	Flagged             bool
-	Summary             bool
-	UseDebug            bool
-	Debug               string
-	RouteDiversity      int32
-	UserFlags           uint64
-	TryBeforeYouBuy     bool
+	RealPacketLoss      float32
+	RealJitter          float32
+	RealOutOfOrder      float32
+	SessionFlags        uint64
+	GameEvents          uint64
+	DirectRTT           float32
+	DirectJitter        float32
+	DirectPacketLoss    float32
+	DirectBytesUp       uint64
+	DirectBytesDown     uint64
 
+	// next only
+
+	NextRTT             float32
+	NextJitter          float32
+	NextPacketLoss      float32
+	NextPredictedRTT    float32
+	NextNearRelayRTT    float32
+	NextNumRouteRelays  uint32
+	NextRouteRelays     [SessionUpdateMessageMaxRouteRelays]uint64
+	NextBytesUp         uint64
+	NextBytesDown       uint64
+
+/*
 	// first slice and summary slice only
 
 	DatacenterId      uint64
@@ -77,8 +104,6 @@ type SessionUpdateMessage struct {
 	SDKVersion_Patch  uint32
 	NumTags           int32
 	Tags              [SessionUpdateMessageMaxTags]uint64
-	ABTest            bool
-	Pro               bool
 
 	// summary slice only
 
@@ -88,55 +113,51 @@ type SessionUpdateMessage struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	EverOnNext                      bool
 	SessionDuration                 uint32
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
 	StartTimestamp                  uint64
-
-	// network next only
-
-	NextRTT             int32
-	NextJitter          int32
-	NextPacketLoss      int32
-	PredictedNextRTT    int32
-	NearRelayRTT        int32
-	NumNextRelays       int32
-	NextRelays          [SessionUpdateMessageMaxRelays]uint64
-	NextRelayPrice      [SessionUpdateMessageMaxRelays]uint64
-	TotalPrice          uint64
-	Uncommitted         bool
-	Multipath           bool
-	RTTReduction        bool
-	PacketLossReduction bool
-	RouteChanged        bool
-	NextBytesUp         uint64
-	NextBytesDown       uint64
-
-	// error state only
-
-	FallbackToDirect     bool
-	MultipathVetoed      bool
-	Mispredicted         bool
-	Vetoed               bool
-	LatencyWorse         bool
-	NoRoute              bool
-	NextLatencyTooHigh   bool
-	CommitVeto           bool
-	UnknownDatacenter    bool
-	DatacenterNotEnabled bool
-	BuyerNotLive         bool
-	StaleRouteMatrix     bool
+*/
 }
 
+func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
+
+	index := 0
+
+	if message.Version < PortalMessageVersion_Min || message.Version > PortalMessageVersion_Max {
+		panic(fmt.Sprintf("invalid portal message version %d", message.Version))
+	}
+
+	encoding.WriteUint8(buffer, &index, message.Version)
+
+	// ...
+
+	return buffer[:index]
+}
+
+func (message *SessionUpdateMessage) Read(buffer []byte) error {
+
+	index := 0
+
+	if !encoding.ReadUint8(buffer, &index, &message.Version) {
+		return fmt.Errorf("failed to read session update message version")
+	}
+
+	if message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max {
+		return fmt.Errorf("invalid session update message version %d", message.Version)
+	}
+
+	// ...
+
+	return nil
+}
+
+
+/*
 func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
-	/*
-	   1. Always
-
-	   These values are serialized in every slice
-	*/
+	// always
 
 	if stream.IsWriting() && (message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max) {
 		panic(fmt.Sprintf("invalid session update message version %d", message.Version))
@@ -185,11 +206,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&message.TryBeforeYouBuy)
 
-	/*
-	   2. First slice and summary slice only
-
-	   These values are serialized only for slice 0 and summary slice.
-	*/
+	// first slice and summary slice only
 
 	if message.SliceNumber == 0 || message.Summary {
 
@@ -216,11 +233,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeAddress(&message.ServerAddress)
 	}
 
-	/*
-	   3. Summary slice only
-
-	   These values are serialized only for the summary slice (at the end of the session)
-	*/
+	// summary slice only
 
 	if message.Summary {
 
@@ -244,11 +257,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	/*
-	   4. Network Next Only
-
-	   These values are serialized only when a slice is on network next.
-	*/
+	// next only
 
 	if message.Next {
 
@@ -275,11 +284,7 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&message.NextBytesDown)
 	}
 
-	/*
-	   5. Error State Only
-
-	   These values are only serialized when the session is in an error state (rare).
-	*/
+	// error state only
 
 	errorState := false
 
@@ -347,11 +352,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 	e := make(map[string]bigquery.Value)
 
-	/*
-	   1. Always
-
-	   These values are written for every slice.
-	*/
+	// always
 
 	e["timestamp"] = int(message.Timestamp)
 	e["sessionID"] = int(message.SessionId)
@@ -392,11 +393,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["tryBeforeYouBuy"] = message.TryBeforeYouBuy
 	}
 
-	/*
-	   2. First slice and summary slice only
-
-	   These values are serialized only for slice 0 and the summary slice.
-	*/
+	// first slice and summary slice only
 
 	if message.SliceNumber == 0 || message.Summary {
 
@@ -431,11 +428,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		}
 	}
 
-	/*
-	   3. Summary slice only
-
-	   These values are serialized only for the summary slice (at the end of the session)
-	*/
+	// summary slice only
 
 	if message.Summary {
 
@@ -461,11 +454,7 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["startTimestamp"] = int(message.StartTimestamp)
 	}
 
-	/*
-	   4. Network Next Only
-
-	   These values are serialized only when a slice is on network next.
-	*/
+	// next only
 
 	if message.Next {
 
@@ -516,12 +505,8 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 
 	}
 
-	/*
-	   5. Error State Only
-
-	   These values are only serialized when the session is in an error state (rare).
-	*/
-
+	// error state only
+	
 	if message.FallbackToDirect {
 		e["fallbackToDirect"] = true
 	}
@@ -655,3 +640,4 @@ func (message *SessionUpdateMessage) Clamp() {
 		core.Warn("NumNextRelays was clamped!")
 	}
 }
+*/
