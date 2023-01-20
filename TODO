@@ -10,27 +10,31 @@ DONE
 
 	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
 
-TODO
-
 	Implement random portal message function
 
 	Implement unit test for portal message
 
-	Implement code in server_backend5 cmd to process portal messages, write them, and send to redis streams.
+	Implement write portal message
+
+	Implement read portal message
+
+	Verify unit test passes for portal message
+
+	Implement code in server_backend5 cmd to process portal messages on channel.
+
+TODO
+
+	Extend server backend 5 to write portal messages and send them to redis streams (needs configuration env vars for this...)
+
+	Defaults should work in local.
 
 	---------
 
 	Implement a portal_cruncher_new service using the new service framework
 
-	Setup a number of threads.
+	Setup a number of threads via env var.
 
 	Verify that the new portal cruncher receives portal messages.
-
-	---------
-
-	Make sure that real packet loss is calculated correctly, if not then pass it up from the SDK
-
-	Extend session update to calculate real out of order.
 
 	---------
 
@@ -85,10 +89,6 @@ Essentials:
 
 	--------------
 
-	SDK5 server backend 5 MIG in dev needs to move to 45000 port. Van
-
-	--------------
-
 
 
 
@@ -98,6 +98,20 @@ Essentials:
 
 
 Nice to have:
+
+	--------------
+
+	Code in service.go to only shut down service once various subsystems have reported that they're complete
+
+	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
+
+	--------------
+
+	Change SDK to pass up the real packet loss, real jitter, real out of order etc.
+
+	We don't need to store multiple uint64 in session data to calculate this
+
+	It's wasteful to pass this data back to the client with each session update response.
 
 	--------------
 
