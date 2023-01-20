@@ -106,9 +106,9 @@ func (g *GoogleCloudHandler) CopyFromBucketToLocal(ctx context.Context, bucketUR
 // -------------------------------------------------------
 
 type InstanceInfo struct {
-	CurrentAction  string
-	Id             string
-	InstanceStatus string
+	CurrentAction  string `json:"currentAction"`
+	Id             string `json:"id"`
+	InstanceStatus string `json:"instance"`
 }
 
 func (g *GoogleCloudHandler) GetMIGInstanceInfo(migName string) []InstanceInfo {
@@ -148,6 +148,11 @@ func (g *GoogleCloudHandler) GetMIGInstanceNames(migName string) []string {
 
 	for i := 0; i < numInstances; i++ {
 		names[i] = instances[i].Id
+	}
+
+	core.Debug("instance names:")
+	for _, name := range names {
+		core.Debug("%s", name)
 	}
 
 	return names
