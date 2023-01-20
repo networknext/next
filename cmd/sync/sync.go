@@ -30,7 +30,7 @@ func main() {
 
 	fileSyncConfig.AddFileSyncGroup(
 		"ip2location",
-		envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", 5*time.Minute),
+		envvar.GetDuration("LOCATION_FILE_REFRESH_INTERVAL", 24*time.Hour),
 		envvar.GetList("LOCATION_FILE_DESTINATION_MIGS", []string{}),
 		"",
 		envvar.GetString("LOCATION_FILE_BUCKET_PATH", "gs://network-next-local-upload"),
