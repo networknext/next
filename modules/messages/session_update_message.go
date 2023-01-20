@@ -23,7 +23,6 @@ const (
 	SessionUpdateMessageMaxISPLength        = 64
 	SessionUpdateMessageMaxSDKVersionLength = 11
 	SessionUpdateMessageMaxDebugLength      = 2048
-	SessionUpdateMessageMaxNearRelays       = 32
 	SessionUpdateMessageMaxTags             = 8
 	SessionUpdateMessageMaxRTT              = 1023
 	SessionUpdateMessageMaxJitter           = 255
@@ -89,11 +88,6 @@ type SessionUpdateMessage struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	NumNearRelays                   int32
-	NearRelayIds                    [SessionUpdateMessageMaxNearRelays]uint64
-	NearRelayRTTs                   [SessionUpdateMessageMaxNearRelays]int32
-	NearRelayJitters                [SessionUpdateMessageMaxNearRelays]int32
-	NearRelayPacketLosses           [SessionUpdateMessageMaxNearRelays]int32
 	EverOnNext                      bool
 	SessionDuration                 uint32
 	EnvelopeBytesUpSum              uint64
@@ -236,14 +230,6 @@ func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&message.ServerToClientPacketsLost)
 		stream.SerializeUint64(&message.ClientToServerPacketsOutOfOrder)
 		stream.SerializeUint64(&message.ServerToClientPacketsOutOfOrder)
-		stream.SerializeInteger(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays)
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			stream.SerializeUint64(&message.NearRelayIds[i])
-			stream.SerializeInteger(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT)
-			stream.SerializeInteger(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter)
-			stream.SerializeInteger(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss)
-		}
 
 		stream.SerializeUint64(&message.StartTimestamp)
 		stream.SerializeUint32(&message.SessionDuration)
@@ -460,27 +446,6 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 		e["clientToServerPacketsOutOfOrder"] = int(message.ClientToServerPacketsOutOfOrder)
 		e["serverToClientPacketsOutOfOrder"] = int(message.ServerToClientPacketsOutOfOrder)
 
-		if message.NumNearRelays > 0 {
-
-			nearRelayIds := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayRTTs := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayJitters := make([]bigquery.Value, message.NumNearRelays)
-			nearRelayPacketLosses := make([]bigquery.Value, message.NumNearRelays)
-
-			for i := 0; i < int(message.NumNearRelays); i++ {
-				nearRelayIds[i] = int(message.NearRelayIds[i])
-				nearRelayRTTs[i] = int(message.NearRelayRTTs[i])
-				nearRelayJitters[i] = int(message.NearRelayJitters[i])
-				nearRelayPacketLosses[i] = int(message.NearRelayPacketLosses[i])
-			}
-
-			e["nearRelayIDs"] = nearRelayIds
-			e["nearRelayRTTs"] = nearRelayRTTs
-			e["nearRelayJitters"] = nearRelayJitters
-			e["nearRelayPacketLosses"] = nearRelayPacketLosses
-
-		}
-
 		if message.EverOnNext {
 			e["everOnNext"] = true
 		}
@@ -664,25 +629,6 @@ func (message *SessionUpdateMessage) Clamp() {
 
 	if common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags) {
 		core.Warn("NumTags was clamped!")
-	}
-
-	if common.Clamp(&message.NumNearRelays, 0, SessionUpdateMessageMaxNearRelays) {
-		core.Warn("NumNearRelays was clamped!")
-	}
-
-	for i := 0; i < int(message.NumNearRelays); i++ {
-
-		if common.Clamp(&message.NearRelayRTTs[i], 0, SessionUpdateMessageMaxNearRelayRTT) {
-			core.Warn("NearRelayRTT was clamped!")
-		}
-
-		if common.Clamp(&message.NearRelayJitters[i], 0, SessionUpdateMessageMaxJitter) {
-			core.Warn("NearRelayJitters was clamped!")
-		}
-
-		if common.Clamp(&message.NearRelayPacketLosses[i], 0, SessionUpdateMessageMaxPacketLoss) {
-			core.Warn("NearRelayPacketLosses was clamped!")
-		}
 	}
 
 	if common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT) {

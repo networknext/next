@@ -16,6 +16,8 @@ DONE
 
 TODO
 
+	Remove near relays from the session update message
+
 	-----------
 
 	Review the session update message and remove things in it that we no longer need

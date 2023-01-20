@@ -253,7 +253,6 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.ServerToClientPacketsLost = rand.Uint64()
 		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
 		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
-		message.NumNearRelays = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelays))
 		message.EverOnNext = common.RandomBool()
 		message.SessionDuration = rand.Uint32()
 
@@ -294,16 +293,6 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 		for i := 0; i < int(message.NumTags); i++ {
 			message.Tags[i] = rand.Uint64()
-		}
-	}
-
-	if message.Summary {
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			message.NearRelayIds[i] = rand.Uint64()
-			message.NearRelayRTTs[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
-			message.NearRelayJitters[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
-			message.NearRelayPacketLosses[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
 		}
 	}
 
