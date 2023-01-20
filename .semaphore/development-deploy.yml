@@ -90,10 +90,10 @@ blocks:
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
 
-        - name: "Pusher"
+        - name: "Sync"
           commands:
-            - make dist/pusher.dev.tar.gz
-            - artifact push workflow dist/pusher.dev.tar.gz
+            - make dist/sync.dev.tar.gz
+            - artifact push workflow dist/sync.dev.tar.gz
 
         - name: "Pingdom"
           commands:
@@ -204,10 +204,10 @@ blocks:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
 
-        - name: "Pusher"
+        - name: "Sync"
           commands:
-            - artifact pull workflow pusher.dev.tar.gz
-            - gsutil cp pusher.dev.tar.gz gs://development_artifacts/
+            - artifact pull workflow sync.dev.tar.gz
+            - gsutil cp sync.dev.tar.gz gs://development_artifacts/
 
         - name: "Pingdom"
           commands:
