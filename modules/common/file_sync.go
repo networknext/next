@@ -27,6 +27,7 @@ type FileSyncGroup struct {
 	ValidationFunc func([]string) bool
 	UploadTo       string
 	PushTo         []string
+	OutputPath     string
 }
 
 type SyncFile struct {
@@ -40,7 +41,7 @@ func CreateFileSyncConfig() *FileSyncConfig {
 	}
 }
 
-func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migNames []string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
+func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval time.Duration, migNames []string, outputPath string, uploadBucketURL string, validationFunc func([]string) bool, files ...SyncFile) {
 	config.FileGroups = append(config.FileGroups, FileSyncGroup{
 		Name:           groupName,
 		SyncInterval:   syncInterval,
@@ -122,6 +123,8 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 
 					for _, fileName := range fileNames {
 
+						outputPath := fmt.Sprintf("%s%s", group.OutputPath, fileName)
+
 						if group.UploadTo != "" {
 							core.Debug("uploading files to: %s", group.UploadTo)
 							if err := googleCloudHandler.CopyFromLocalToBucket(ctx, fileName, fmt.Sprintf("%s/%s", group.UploadTo, fileName)); err != nil {
@@ -137,7 +140,7 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 
 							if len(receivingVMs[i]) > 0 {
 								core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-								if err := PushFileToVMs(ctx, googleCloudHandler, fileName, receivingVMs[i]); err != nil {
+								if err := PushFileToVMs(ctx, googleCloudHandler, fileName, outputPath, receivingVMs[i]); err != nil {
 									core.Error("failed to upload location file to google cloud VMs: %v", err)
 								}
 							}
@@ -225,7 +228,7 @@ func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath strin
 	return nil
 }
 
-func PushFileToVMs(ctx context.Context, googleCloudHandler *GoogleCloudHandler, filePath string, vmNames []string) error {
+func PushFileToVMs(ctx context.Context, googleCloudHandler *GoogleCloudHandler, filePath string, outputPath string, vmNames []string) error {
 
 	if len(vmNames) == 0 {
 		return nil
@@ -233,7 +236,7 @@ func PushFileToVMs(ctx context.Context, googleCloudHandler *GoogleCloudHandler, 
 
 	hadError := false
 	for _, vm := range vmNames {
-		if err := googleCloudHandler.CopyFromLocalToRemote(ctx, filePath, filePath, vm); err != nil {
+		if err := googleCloudHandler.CopyFromLocalToRemote(ctx, filePath, outputPath, vm); err != nil {
 			core.Error("failed to copy file to vm: %v", err)
 			hadError = true
 		}
