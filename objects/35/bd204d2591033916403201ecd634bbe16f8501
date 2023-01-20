@@ -9,3 +9,7 @@
 	object = 725d4cd2671b3adec26b7892283f80d0bceff47c
 	path = relay
 	type = expand module
+[map "8de8a3b7-b3ff-3192-abe4-fb6f0ef1b7dc"]
+	object = 4668402dd275450f558e5211824c307ec84a06e3
+	path = relay
+	type = expand module
