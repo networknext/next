@@ -185,7 +185,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 		// always
 
-		Version:             uint32(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Min)),
+		Version:             uint32(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Max)),
 		Timestamp:           rand.Uint64(),
 		SessionId:           rand.Uint64(),
 		SliceNumber:         rand.Uint32(),
@@ -325,7 +325,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 func GenerateRandomPortalMessage() messages.PortalMessage {
 
 	message := messages.PortalMessage{
-		Version:             byte(common.RandomInt(messages.PortalMessageVersion_Min, messages.PortalMessageVersion_Min)),
+		Version:             byte(common.RandomInt(messages.PortalMessageVersion_Min, messages.PortalMessageVersion_Max)),
 
 		SDKVersion_Major:    uint8(common.RandomInt(0,255)),
 		SDKVersion_Minor:    uint8(common.RandomInt(0,255)),
@@ -376,6 +376,35 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		message.NearRelayJitter[i] = byte(common.RandomInt(0,255))
 		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0,100))
 		message.NearRelayRoutable[i] = common.RandomBool()
+	}
+
+	return message
+}
+
+func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
+
+	message := messages.NearRelayPingsMessage{
+		Version:             byte(common.RandomInt(messages.NearRelayPingsMessageVersion_Min, messages.NearRelayPingsMessageVersion_Max)),
+
+		Timestamp:           rand.Uint64(),
+
+		BuyerId:             rand.Uint64(),
+		SessionId:           rand.Uint64(),
+		UserHash:            rand.Uint64(),
+		Latitude:            float32(common.RandomInt(-90,+90)),
+		Longitude:           float32(common.RandomInt(-180,+180)),
+		ClientAddress:       common.RandomAddress(),
+		ConnectionType:      byte(common.RandomInt(0,255)),
+		PlatformType:        byte(common.RandomInt(0,255)),
+
+		NumNearRelays:       uint32(common.RandomInt(0, messages.MaxNearRelays)),
+	}
+
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		message.NearRelayId[i] = rand.Uint64()
+		message.NearRelayRTT[i] = byte(common.RandomInt(0,255))
+		message.NearRelayJitter[i] = byte(common.RandomInt(0,255))
+		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0,100))
 	}
 
 	return message
@@ -472,5 +501,14 @@ func TestPortalMessage(t *testing.T) {
 		writeMessage := GenerateRandomPortalMessage()
 		readMessage := messages.PortalMessage{}
 		MessageReadWriteTest[*messages.PortalMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestNearRelayPingsMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomNearRelayPingsMessage()
+		readMessage := messages.NearRelayPingsMessage{}
+		MessageReadWriteTest[*messages.NearRelayPingsMessage](&writeMessage, &readMessage, t)
 	}
 }

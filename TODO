@@ -1,14 +1,20 @@
 DONE
 
-TODO
-
 	Add the near relays message
 
 	Code the read/write
 
+TODO
+
+	Generate a random near relays message
+
 	Unit test it
 
 	Send it out from the session update handler
+
+	Add code to process the near relays message in the server backend 5
+
+	Verify that we receive the near relays message in the happy path
 
 	-----------
 

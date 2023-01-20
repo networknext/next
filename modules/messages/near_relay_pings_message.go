@@ -83,10 +83,6 @@ func (message *NearRelayPingsMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read timestamp")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read timestamp")
-	}
-
 	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
 		return fmt.Errorf("failed to read buyer id")
 	}
