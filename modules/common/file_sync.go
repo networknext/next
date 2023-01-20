@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -49,6 +48,7 @@ func (config *FileSyncConfig) AddFileSyncGroup(groupName string, syncInterval ti
 		ValidationFunc: validationFunc,
 		UploadTo:       uploadBucketURL,
 		Files:          files,
+		OutputPath:     outputPath,
 	})
 }
 
@@ -63,7 +63,7 @@ func (config *FileSyncConfig) Print() {
 			if fileName == "" {
 				fileName = GetFileNameFromPath(file.DownloadURL)
 			}
-			core.Log(" + %s -> %s ", file.DownloadURL, fileName)
+			core.Log(" + %s -> %s ", file.DownloadURL, fmt.Sprintf("%s%s", group.OutputPath, fileName))
 		}
 	}
 	core.Log("----------------------------------------------------------")
@@ -106,9 +106,11 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 							fileName = GetFileNameFromPath(syncFile.DownloadURL)
 						}
 
+						outputPath := fmt.Sprintf("%s%s", group.OutputPath, fileName)
+
 						core.Debug("downloading %s", syncFile.DownloadURL)
 
-						if err := DownloadFile(ctx, googleCloudHandler, syncFile.DownloadURL, fileName); err != nil {
+						if err := DownloadFile(ctx, googleCloudHandler, syncFile.DownloadURL, fileName, outputPath); err != nil {
 							core.Error("failed to download %s: %v", fileName, err)
 							continue
 						}
@@ -133,17 +135,16 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 							}
 						}
 
-						receivingVMs := make([][]string, len(group.PushTo))
+						for _, destination := range group.PushTo {
 
-						for i, destination := range group.PushTo {
-							receivingVMs[i] = googleCloudHandler.GetMIGInstanceNames(destination)
+							receivingVMs := googleCloudHandler.GetMIGInstanceNames(destination)
 
-							if len(receivingVMs[i]) > 0 {
-								core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
-								if err := PushFileToVMs(ctx, googleCloudHandler, fileName, outputPath, receivingVMs[i]); err != nil {
-									core.Error("failed to upload location file to google cloud VMs: %v", err)
-								}
+							core.Debug("pushing %s to VMs: %v", fileName, receivingVMs)
+
+							if err := PushFileToVMs(ctx, googleCloudHandler, fileName, outputPath, receivingVMs); err != nil {
+								core.Error("failed to upload location file to google cloud VMs: %v", err)
 							}
+
 						}
 					}
 				}
@@ -152,26 +153,19 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 	}
 }
 
-func DownloadFile(ctx context.Context, googleCloudHandler *GoogleCloudHandler, downloadURL string, fileName string) error {
-
-	currentDirectory, err := os.Getwd()
-	if err != nil {
-		core.Error("failed to get current directory: %v", err)
-		currentDirectory = "./"
-	}
-
-	path := fmt.Sprintf("%s/%s", currentDirectory, fileName)
+func DownloadFile(ctx context.Context, googleCloudHandler *GoogleCloudHandler, downloadURL string, fileName string, outputPath string) error {
 
 	urlScheme := strings.Split(downloadURL, "://")[0]
 
 	switch urlScheme {
 	case "gs":
-		return googleCloudHandler.CopyFromBucketToLocal(ctx, downloadURL, path)
+		return googleCloudHandler.CopyFromBucketToLocal(ctx, downloadURL, outputPath)
 	case "http", "https":
-		return DownloadFileFromURL(ctx, downloadURL, path)
+		return DownloadFileFromURL(ctx, downloadURL, outputPath)
 	default:
 		return errors.New(fmt.Sprintf("unknown url scheme: %s", urlScheme))
 	}
+
 }
 
 func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath string) error {
