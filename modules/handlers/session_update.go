@@ -12,6 +12,7 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/messages"
 )
 
 type SessionUpdateState struct {
@@ -44,15 +45,14 @@ type SessionUpdateState struct {
 	Database      *db.Database
 	RouteMatrix   *common.RouteMatrix
 	Datacenter    db.Datacenter
+	BuyerId       uint64
 	Buyer         db.Buyer
 	Debug         *string
 	StaleDuration time.Duration
 
-	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
-
-	// real jitter (from actual game packets).
-	RealJitter float32
+	RealJitter     float32
+	RealOutOfOrder float32
 
 	// route diversity is the number unique near relays with viable routes
 	RouteDiversity int32
@@ -63,26 +63,12 @@ type SessionUpdateState struct {
 	SourceRelays   []int32
 	SourceRelayRTT []int32
 
-	// for session post (billing, portal etc...)
-	PostNearRelayCount               int
-	PostNearRelayIDs                 [core.MaxNearRelays]uint64
-	PostNearRelayNames               [core.MaxNearRelays]string
-	PostNearRelayAddresses           [core.MaxNearRelays]net.UDPAddr
-	PostNearRelayRTT                 [core.MaxNearRelays]float32
-	PostNearRelayJitter              [core.MaxNearRelays]float32
-	PostNearRelayPacketLoss          [core.MaxNearRelays]float32
-	PostRouteRelayNames              [core.MaxRelaysPerRoute]string
-	PostRouteRelaySellers            [core.MaxRelaysPerRoute]db.Seller
-	PostRealPacketLossClientToServer float32
-	PostRealPacketLossServerToClient float32
-
 	// flags
 	ReadSessionData                           bool
 	SessionDataSignatureCheckFailed           bool
 	FailedToReadSessionData                   bool
 	LongDuration                              bool
 	ClientPingTimedOut                        bool
-	Pro                                       bool
 	BadSessionId                              bool
 	BadSliceNumber                            bool
 	AnalysisOnly                              bool
@@ -94,7 +80,6 @@ type SessionUpdateState struct {
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
 	FallbackToDirect                          bool
 	NoNearRelays                              bool
-	LargeCustomer                             bool
 	NoRouteRelays                             bool
 	Aborted                                   bool
 	RouteRelayNoLongerExists                  bool
@@ -117,6 +102,9 @@ type SessionUpdateState struct {
 	SentPortalData                            bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
+
+	PortalMessageChannel        chan<- *messages.PortalMessage
+	SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -348,9 +336,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 		state.RealPacketLoss = RealPacketLossServerToClient
 	}
 
-	state.PostRealPacketLossClientToServer = RealPacketLossClientToServer
-	state.PostRealPacketLossServerToClient = RealPacketLossServerToClient
-
 	/*
 		Calculate real jitter.
 
@@ -373,6 +358,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	if state.Request.JitterServerToClient > state.Request.JitterClientToServer {
 		state.RealJitter = state.Request.JitterServerToClient
 	}
+
+	/*
+		Calculate real out of order packet %
+	*/
+
+	// todo
+	state.RealOutOfOrder = 0.0
 }
 
 func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
@@ -496,7 +488,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	*/
 
 	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
-	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))   // todo: may want DirectMaxJitterSeen
+	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
 	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
 	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
@@ -1010,28 +1002,96 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.WroteResponsePacket = true
 
 	/*
-		Build the data for the relays in the route.
+		Send the portal message to drive the portal.
 	*/
 
-	buildRouteRelayData(state)
+	sendPortalMessage(state)
 
 	/*
-		Build the data for the near relays.
-	*/
-
-	buildNearRelayData(state)
-
-	/*
-		Send this slice to the portal via the real-time path (redis streams).
-	*/
-
-	sendPortalData(state)
-
-	/*
-		Send this slice billing system (bigquery) via the non-realtime path (google pubsub).
+		Send the the session update message to drive analytics and billing.
 	*/
 
 	sendSessionUpdateMessage(state)
+}
+
+// -----------------------------------------
+
+func sendPortalMessage(state *SessionUpdateState) {
+
+	if state.Request.ClientPingTimedOut {
+		return
+	}
+
+	message := messages.PortalMessage{}
+
+	message.ClientAddress = state.Request.ClientAddress
+	message.ServerAddress = state.Request.ServerAddress
+
+	message.SDKVersion_Major = byte(state.Request.Version.Major)
+	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
+	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
+
+	message.Version = messages.PortalMessageVersion_Write
+
+	message.SessionId = state.Input.SessionId
+	message.BuyerId = state.Request.BuyerId
+	message.DatacenterId = state.Request.DatacenterId
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
+
+	message.SliceNumber = state.Input.SliceNumber
+	
+	message.DirectRTT = state.Request.DirectRTT
+	message.DirectJitter = state.Request.DirectJitter
+	message.DirectPacketLoss = state.Request.DirectPacketLoss
+	message.DirectKbpsUp = state.Request.DirectKbpsUp
+	message.DirectKbpsDown = state.Request.DirectKbpsDown
+
+	message.Next = state.Request.Next
+	if message.Next {
+		message.NextRTT = state.Request.NextRTT
+		message.NextJitter = state.Request.NextJitter
+		message.NextPacketLoss = state.Request.NextPacketLoss
+		message.NextKbpsUp = state.Request.NextKbpsUp
+		message.NextKbpsDown = state.Request.NextKbpsDown
+		message.PredictedRTT = uint32(state.Input.RouteCost)
+		message.NumRouteRelays = int(state.Input.RouteNumRelays)
+		for i := 0; i < message.NumRouteRelays; i++ {
+			message.RouteRelayId[i] = state.Input.RouteRelayIds[i]
+		}
+	}
+	
+	message.RealJitter = state.RealJitter
+	message.RealPacketLoss = state.RealPacketLoss
+	message.RealOutOfOrder = state.RealOutOfOrder
+
+	message.Reported = state.Request.Reported
+	message.FallbackToDirect = state.FallbackToDirect
+
+	message.NumNearRelays = int(state.Request.NumNearRelays)
+	for i := 0; i < message.NumNearRelays; i++ {
+		message.NearRelayId[i] = state.Request.NearRelayIds[i]
+		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
+		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
+	}
+	if state.PortalMessageChannel != nil {
+		state.PortalMessageChannel <- &message
+		state.SentPortalData = true
+	}
+}
+
+func sendSessionUpdateMessage(state *SessionUpdateState) {
+
+	message := messages.SessionUpdateMessage{}
+
+	// todo
+
+	if state.SessionUpdateMessageChannel != nil {
+		state.SessionUpdateMessageChannel <- &message
+		state.SentSessionUpdateMessage = true
+	}
 }
 
 // -----------------------------------------
@@ -1060,47 +1120,4 @@ func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
 	return value
 }
 
-func buildRouteRelayData(state *SessionUpdateState) {
-
-	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
-		relay, ok := state.Database.RelayMap[state.Input.RouteRelayIds[i]]
-		if ok {
-			state.PostRouteRelayNames[i] = relay.Name
-			state.PostRouteRelaySellers[i] = relay.Seller
-		}
-	}
-}
-
-func buildNearRelayData(state *SessionUpdateState) {
-
-	// todo
-
-}
-
-func sendPortalData(state *SessionUpdateState) {
-
-	// no point sending data to the portal, once the client has timed out
-
-	if state.Request.ClientPingTimedOut {
-		return
-	}
-
-	state.SentPortalData = true
-
-	// todo
-	/*
-		portalData := buildPortalData(state)
-
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			state.PostSessionHandler.SendPortalData(portalData)
-		}
-	*/
-}
-
-func sendSessionUpdateMessage(state *SessionUpdateState) {
-
-	// todo
-
-	state.SentSessionUpdateMessage = true
-
-}
+// -----------------------------------------

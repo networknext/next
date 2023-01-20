@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 
 	"github.com/networknext/backend/modules/common"
@@ -11,7 +11,7 @@ import (
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
 
-	costMatrixData, err := ioutil.ReadFile(costMatrixFilename)
+	costMatrixData, err := os.ReadFile(costMatrixFilename)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not read the cost matrix file: %v\n", err), 1)
 	}
@@ -58,7 +58,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		handleRunTimeError(fmt.Sprintf("could not write route matrix: %v", err), 1)
 	}
 
-	err = ioutil.WriteFile(routeMatrixFilename, routeMatrixData, 0)
+	err = os.WriteFile(routeMatrixFilename, routeMatrixData, 0644)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
 	}

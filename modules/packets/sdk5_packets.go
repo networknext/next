@@ -356,7 +356,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		PrevPacketsLostServerToClient: rand.Uint64(),
 		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
-		TotalPriceSum:                 rand.Uint64(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
@@ -487,7 +486,6 @@ type SDK5_SessionData struct {
 	PrevPacketsLostServerToClient uint64
 	WriteSummary                  bool
 	WroteSummary                  bool
-	TotalPriceSum                 uint64      // todo: do we still need this?
 	NextEnvelopeBytesUpSum        uint64
 	NextEnvelopeBytesDownSum      uint64
 	DurationOnNext                uint32
@@ -566,7 +564,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
-	stream.SerializeUint64(&sessionData.TotalPriceSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	stream.SerializeUint32(&sessionData.DurationOnNext)

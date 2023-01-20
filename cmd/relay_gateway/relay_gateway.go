@@ -107,8 +107,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
-		// todo: we should run crypto check here
-
 		// build the response packet
 
 		var responsePacket packets.RelayUpdateResponsePacket

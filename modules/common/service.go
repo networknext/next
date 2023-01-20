@@ -1075,15 +1075,8 @@ func (service *Service) UseLooker() {
 	service.lookerHandler = lookerHandler
 }
 
-func (service *Service) FetchWebsiteStats() error {
-	newLookerStats, err := service.lookerHandler.RunWebsiteStatsQuery()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%+v\n", newLookerStats)
-
-	return nil
+func (service *Service) FetchWebsiteStats() (LookerStats, error) {
+	return service.lookerHandler.RunWebsiteStatsQuery()
 }
 
 // ----------------------------------------------------------

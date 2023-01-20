@@ -6,8 +6,11 @@ import (
 
 type Message interface {
 	Write(buffer []byte) []byte
-
 	Read(buffer []byte) error
+}
 
+type BigQueryMessage interface {
+	Write(buffer []byte) []byte
+	Read(buffer []byte) error
 	Save() (map[string]bigquery.Value, string, error)
 }

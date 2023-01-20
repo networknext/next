@@ -1,9 +1,9 @@
 # input specific to this relay (these change with each relay you set up)
 
-export RELAY_NAME=google.dallas.1
-export RELAY_ADDRESS=34.174.121.66:40000
-export RELAY_PUBLIC_KEY=dBu7R1Jax6IgnxY87Nhnns1EJue5hs887AAldXTASzI=
-export RELAY_PRIVATE_KEY=XsRdnwJ0A+S/tLTElbvD3jjJo7Sx9xgPAFGwNTz+fN4=
+export RELAY_NAME=linode.newark
+export RELAY_ADDRESS=172.105.104.156:40000
+export RELAY_PUBLIC_KEY=j31ln+qWzsS/ZY3rjLBdsE94dKIZmWhhvWGUL5/E6hM=
+export RELAY_PRIVATE_KEY=z8kiGRNyGcMz1BfFC8aBtPI10y2OQkSz2VJrz0QXP2M=
 
 # inputs specific to the environment (these change infrequently)
 

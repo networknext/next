@@ -69,7 +69,7 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T messages.Message](service *common.Service, name string, message messages.Message, important bool) {
+func Process[T messages.BigQueryMessage](service *common.Service, name string, message messages.BigQueryMessage, important bool) {
 
 	namePrefix := strings.ToUpper(name) + "_"
 
