@@ -7843,19 +7843,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
                 packet.near_relay_jitter[i] = uint8_t( jitter );
                 packet.near_relay_packet_loss[i] = packet_loss;
             }
-
-            // todo
-            if ( packet.num_near_relays )
-            {
-	            printf( "------------------------------\n" );
-	            printf( "direct rtt = %d, jitter = %d, packet loss = %.2f, max packet loss seen = %.2f\n", int(packet.direct_rtt), int(packet.direct_jitter), packet.direct_packet_loss, packet.direct_max_packet_loss_seen );
-	            printf( "------------------------------\n" );
-	            for ( int i = 0; i < packet.num_near_relays; i++ )
-	            {
-	            	printf( "%" PRIx64 ": rtt = %d, jitter = %d, packet loss = %.2f\n", packet.near_relay_ids[i], packet.near_relay_rtt[i], packet.near_relay_jitter[i], packet.near_relay_packet_loss[i] );
-	            }
-	            printf( "------------------------------\n" );
-	        }
         }
 
         next_platform_mutex_acquire( &client->packets_sent_mutex );
