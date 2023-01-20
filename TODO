@@ -4,8 +4,6 @@ DONE
 
 	Code the read/write
 
-TODO
-
 	Generate a random near relays message
 
 	Unit test it
@@ -16,11 +14,17 @@ TODO
 
 	Verify that we receive the near relays message in the happy path
 
+TODO
+
 	-----------
 
 	Review the session update message and remove things in it that we no longer need
 
-	Fill out the session update message inside the handler
+	Simplify the session update message, maybe we have a session summary message, and a regular session update message.
+
+	Use simpler serialization. We don't need bitpacking for messages...
+
+	Do we still need data on the first slice? Yes, for the bigquery driven session view
 
 	-----------
 
@@ -29,6 +33,8 @@ TODO
 	Add unit test to make sure we write out portal message
 
 	Add unit test to make sure we write out near relay message 
+
+	etc...
 
 	-----------
 
@@ -217,5 +223,9 @@ Nice to have:
 	Would be nice if the relay backend would talk to the relay over its UDP port and say hi, and if this heartbeat was a prerequisite for the relay coming online.
 
 	This way misconfigured relays can't cause problems.
+
+	--------------
+
+	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
 
 	--------------
