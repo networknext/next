@@ -864,7 +864,7 @@ blocks:
 
 
   - name: "Happy Path (Mac)"
-    dependencies: ["Get Latest IP2Location Files"]
+    dependencies: []
     task:
       agent:
         machine:
@@ -888,7 +888,7 @@ blocks:
 
 
   - name: "Happy Path (Linux)"
-    dependencies: ["Get Latest IP2Location Files"]
+    dependencies: []
     task:
       agent:
         machine:
