@@ -44,7 +44,8 @@ type PortalMessage struct {
 	NextBandwidthDownKbps     float32
 	RealJitter                float32
 	RealPacketLoss            float32
-	PredictedRTT              float32
+	RealOutOfOrder            float32
+	PredictedRTT              uint32
 
 	Reported         bool
 	FallbackToDirect bool
@@ -55,9 +56,8 @@ type PortalMessage struct {
 
 	NumNearRelays       int
 	NearRelayId         [MaxNearRelays]uint64
-	NearRelayAddress    [MaxNearRelays]net.UDPAddr
-	NearRelayRTT        [MaxNearRelays]float32
-	NearRelayJitter     [MaxNearRelays]float32
+	NearRelayRTT        [MaxNearRelays]byte
+	NearRelayJitter     [MaxNearRelays]byte
 	NearRelayPacketLoss [MaxNearRelays]float32
 	NearRelayRoutable   [MaxNearRelays]bool
 }

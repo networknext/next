@@ -50,11 +50,9 @@ type SessionUpdateState struct {
 	Debug         *string
 	StaleDuration time.Duration
 
-	// real packet loss (from actual game packets). high precision %
 	RealPacketLoss float32
-
-	// real jitter (from actual game packets).
-	RealJitter float32
+	RealJitter     float32
+	RealOutOfOrder float32
 
 	// route diversity is the number unique near relays with viable routes
 	RouteDiversity int32
@@ -360,6 +358,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	if state.Request.JitterServerToClient > state.Request.JitterClientToServer {
 		state.RealJitter = state.Request.JitterServerToClient
 	}
+
+	/*
+		Calculate real out of order packet %
+	*/
+
+	// todo
+	state.RealOutOfOrder = 0.0
 }
 
 func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
@@ -1019,6 +1024,13 @@ func sendPortalMessage(state *SessionUpdateState) {
 
 	message := messages.PortalMessage{}
 
+	message.ClientAddress = state.Request.ClientAddress
+	message.ServerAddress = state.Request.ServerAddress
+
+	message.SDKVersion_Major = byte(state.Request.Version.Major)
+	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
+	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
+
 	message.Version = messages.PortalMessageVersion_Write
 
 	message.SessionId = state.Input.SessionId
@@ -1042,20 +1054,22 @@ func sendPortalMessage(state *SessionUpdateState) {
 	
 	message.RealJitter = state.RealJitter
 	message.RealPacketLoss = state.RealPacketLoss
-	// todo: message.RealOutOfOrder
+	message.RealOutOfOrder = state.RealOutOfOrder
 
 	message.Reported = state.Request.Reported
 	message.FallbackToDirect = state.FallbackToDirect
 
+	message.NumNearRelays = int(state.Request.NumNearRelays)
+	for i := 0; i < message.NumNearRelays; i++ {
+		message.NearRelayId[i] = state.Request.NearRelayIds[i]
+		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
+		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
+	}
+
 	// todo
 /*
-	SDKVersion_Major byte
-	SDKVersion_Minor byte
-	SDKVersion_Patch byte
-
-	ClientAddress    net.UDPAddr
-	ServerAddress    net.UDPAddr
-
 	DirectBandwidthUpKbps     float32
 	DirectBandwidthUpDownKbps float32
 	
@@ -1067,14 +1081,6 @@ func sendPortalMessage(state *SessionUpdateState) {
 	NumRouteRelays    int
 	RouteRelayId      [MaxRouteRelays]uint64
 	RouteRelayAddress [MaxRouteRelays]net.UDPAddr
-
-	NumNearRelays       int
-	NearRelayId         [MaxNearRelays]uint64
-	NearRelayAddress    [MaxNearRelays]net.UDPAddr
-	NearRelayRTT        [MaxNearRelays]float32
-	NearRelayJitter     [MaxNearRelays]float32
-	NearRelayPacketLoss [MaxNearRelays]float32
-	NearRelayRoutable   [MaxNearRelays]bool
 */
 
 	if state.PortalMessageChannel != nil {
