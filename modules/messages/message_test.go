@@ -468,12 +468,9 @@ func TestSessionUpdateMessage(t *testing.T) {
 
 func TestPortalMessage(t *testing.T) {
 	t.Parallel()
-	// todo: implement serialize
-	/*
 	for i := 0; i < NumIterations; i++ {
 		writeMessage := GenerateRandomPortalMessage()
 		readMessage := messages.PortalMessage{}
 		MessageReadWriteTest[*messages.PortalMessage](&writeMessage, &readMessage, t)
 	}
-	*/
 }

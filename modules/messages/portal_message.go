@@ -138,10 +138,165 @@ func (message *PortalMessage) Read(buffer []byte) error {
 	}
 
 	if message.Version < PortalMessageVersion_Min || message.Version > PortalMessageVersion_Max {
-		return fmt.Errorf("invalid server portal message version %d", message.Version)
+		return fmt.Errorf("invalid portal message version %d", message.Version)
 	}
 
-	// todo
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
+		return fmt.Errorf("failed to read sdk version major")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Minor) {
+		return fmt.Errorf("failed to read sdk version minor")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
+		return fmt.Errorf("failed to read sdk version patch")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
+		return fmt.Errorf("failed to read session id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
+		return fmt.Errorf("failed to read buyer id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
+		return fmt.Errorf("failed to read datacenter id")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.Latitude) {
+		return fmt.Errorf("failed to read latitude")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.Longitude) {
+		return fmt.Errorf("failed to read longitude")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &message.ClientAddress) {
+		return fmt.Errorf("failed to read client address")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+		return fmt.Errorf("failed to read server address")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.SliceNumber) {
+		return fmt.Errorf("failed to read slice number")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {
+		return fmt.Errorf("failed to read direct rtt")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectJitter) {
+		return fmt.Errorf("failed to read direct jitter")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectPacketLoss) {
+		return fmt.Errorf("failed to read direct packet loss")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsUp) {
+		return fmt.Errorf("failed to read direct kbps up")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsDown) {
+		return fmt.Errorf("failed to read direct kbps down")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Next) {
+		return fmt.Errorf("failed to read next")
+	}
+
+	if message.Next {
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
+			return fmt.Errorf("failed to read next rtt")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
+			return fmt.Errorf("failed to read next jitter")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
+			return fmt.Errorf("failed to read next packet loss")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+			return fmt.Errorf("failed to read next kbps up")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+			return fmt.Errorf("failed to read next kbps down")
+		}
+
+		if !encoding.ReadBool(buffer, &index, &message.NextBandwidthOverLimit) {
+			return fmt.Errorf("failed to read next bandwidth over limit")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
+			return fmt.Errorf("failed to read next predicted rtt")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
+			return fmt.Errorf("failed to read next num route relays")
+		}
+
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+
+			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
+				return fmt.Errorf("failed to read next route relay id")
+			}
+		}
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealJitter) {
+		return fmt.Errorf("failed to read real jitter")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealPacketLoss) {
+		return fmt.Errorf("failed to read real packet loss")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealOutOfOrder) {
+		return fmt.Errorf("failed to read real out of order")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Reported) {
+		return fmt.Errorf("failed to read reported")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+		return fmt.Errorf("failed to read fallback to direct")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.NumNearRelays) {
+		return fmt.Errorf("failed to read num near relays")
+	}
+
+	for i := 0; i < int(message.NumNearRelays); i++ {
+
+		if !encoding.ReadUint64(buffer, &index, &message.NearRelayId[i]) {
+			return fmt.Errorf("failed to read near relay id")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT[i]) {
+			return fmt.Errorf("failed to read near relay rtt")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter[i]) {
+			return fmt.Errorf("failed to read near relay jitter")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss[i]) {
+			return fmt.Errorf("failed to read near relay packet loss")
+		}
+
+		if !encoding.ReadBool(buffer, &index, &message.NearRelayRoutable[i]) {
+			return fmt.Errorf("failed to read near relay packet routable")
+		}
+	}
 
 	return nil
 }

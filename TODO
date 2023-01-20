@@ -16,11 +16,11 @@ DONE
 
 	Implement write portal message
 
-TODO
-
 	Implement read portal message
 
 	Verify unit test passes for portal message
+
+TODO
 
 	---------
 
@@ -33,12 +33,6 @@ TODO
 	Setup a number of threads.
 
 	Verify that the new portal cruncher receives portal messages.
-
-	---------
-
-	Make sure that real packet loss is calculated correctly, if not then pass it up from the SDK
-
-	Extend session update to calculate real out of order.
 
 	---------
 
@@ -93,10 +87,6 @@ Essentials:
 
 	--------------
 
-	SDK5 server backend 5 MIG in dev needs to move to 45000 port. Van
-
-	--------------
-
 
 
 
@@ -106,6 +96,14 @@ Essentials:
 
 
 Nice to have:
+
+	--------------
+
+	Change SDK to pass up the real packet loss, real jitter, real out of order etc.
+
+	We don't need to store multiple uint64 in session data to calculate this
+
+	It's wasteful to pass this data back to the client with each session update response.
 
 	--------------
 
