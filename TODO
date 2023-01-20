@@ -99,6 +99,12 @@ Nice to have:
 
 	--------------
 
+	Code in service.go to only shut down service once various subsystems have reported that they're complete
+
+	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
+
+	--------------
+
 	Change SDK to pass up the real packet loss, real jitter, real out of order etc.
 
 	We don't need to store multiple uint64 in session data to calculate this
