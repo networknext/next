@@ -455,6 +455,9 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 		RouteType:   packets.SDK5_RouteTypeDirect,
 	}
 
+	state.PortalMessageChannel = handler.PortalMessageChannel
+	state.SessionUpdateMessageChannel = handler.SessionUpdateMessageChannel
+
 	// track the length of session update handlers
 
 	timeStart := time.Now()

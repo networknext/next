@@ -322,6 +322,65 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 	return message
 }
 
+func GenerateRandomPortalMessage() messages.PortalMessage {
+
+	message := messages.PortalMessage{
+		Version:             byte(common.RandomInt(messages.PortalMessageVersion_Min, messages.PortalMessageVersion_Min)),
+
+		SDKVersion_Major:    uint8(common.RandomInt(0,255)),
+		SDKVersion_Minor:    uint8(common.RandomInt(0,255)),
+		SDKVersion_Patch:    uint8(common.RandomInt(0,255)),
+		SessionId:           rand.Uint64(),
+		BuyerId:             rand.Uint64(),
+		DatacenterId:        rand.Uint64(),
+		Latitude:            float32(common.RandomInt(-90,+90)),
+		Longitude:           float32(common.RandomInt(-180,+180)),
+		ClientAddress:       common.RandomAddress(),
+		ServerAddress:       common.RandomAddress(),
+
+		SliceNumber:         rand.Uint32(),
+		DirectRTT:           float32(common.RandomInt(0,1000)),
+		DirectJitter:        float32(common.RandomInt(0,1000)),
+		DirectPacketLoss:    float32(common.RandomInt(0,100)),
+		DirectKbpsUp:        rand.Uint32(),
+		DirectKbpsDown:      rand.Uint32(),
+
+		Next:                common.RandomBool(),
+		Reported:            common.RandomBool(),
+		FallbackToDirect:    common.RandomBool(),
+
+		RealPacketLoss:      float32(common.RandomInt(0,100)),
+		RealJitter:          float32(common.RandomInt(0,1000)),
+		RealOutOfOrder:      float32(common.RandomInt(0,100)),
+
+		NumNearRelays:       uint32(common.RandomInt(0, messages.MaxNearRelays)),
+	}
+
+	if message.Next {
+		message.NextRTT = float32(common.RandomInt(0,1000))
+		message.NextJitter = float32(common.RandomInt(0,1000))
+		message.NextPacketLoss = float32(common.RandomInt(0,100))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextBandwidthOverLimit = common.RandomBool()
+		message.NextPredictedRTT = uint32(common.RandomInt(0,1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = rand.Uint64()
+		}
+	}
+	
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		message.NearRelayId[i] = rand.Uint64()
+		message.NearRelayRTT[i] = byte(common.RandomInt(0,255))
+		message.NearRelayJitter[i] = byte(common.RandomInt(0,255))
+		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0,100))
+		message.NearRelayRoutable[i] = common.RandomBool()
+	}
+
+	return message
+}
+
 // -----------------------------------------------------------
 
 const NumIterations = 1000
@@ -404,5 +463,14 @@ func TestSessionUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomSessionUpdateMessage()
 		readMessage := messages.SessionUpdateMessage{}
 		MessageReadWriteTest[*messages.SessionUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestPortalMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalMessage()
+		readMessage := messages.PortalMessage{}
+		MessageReadWriteTest[*messages.PortalMessage](&writeMessage, &readMessage, t)
 	}
 }
