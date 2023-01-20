@@ -123,7 +123,7 @@ func StartFileSync(ctx context.Context, config *FileSyncConfig, googleCloudHandl
 
 					for _, fileName := range fileNames {
 
-						outputPath := fmt.Sprintf("%s/%s", group.OutputPath, fileName)
+						outputPath := fmt.Sprintf("%s%s", group.OutputPath, fileName)
 
 						if group.UploadTo != "" {
 							core.Debug("uploading files to: %s", group.UploadTo)
