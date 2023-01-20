@@ -916,6 +916,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
+	// todo: can save a lot of bandwidth if the SDK does this calculation for us
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
 	state.Output.PrevPacketsSentServerToClient = state.Request.PacketsSentServerToClient
 	state.Output.PrevPacketsLostClientToServer = state.Request.PacketsLostClientToServer

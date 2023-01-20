@@ -72,7 +72,9 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
 
-	service.LoadIP2Location()
+	if !service.Local {
+		service.LoadIP2Location()
+	}
 
 	service.UpdateMagic()
 

@@ -1895,4 +1895,6 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	}
 }
 
+// todo: we should extend these tests to check for portal messages as well
+
 // ---------------------------------------------------------------------------------------

@@ -24,6 +24,10 @@ DONE
 
 TODO
 
+	Verify that we receive portal messages in happy path
+
+	---------
+
 	Extend server backend 5 to write portal messages and send them to redis streams (needs configuration env vars for this...)
 
 	Defaults should work in local.
@@ -98,6 +102,12 @@ Essentials:
 
 
 Nice to have:
+
+	--------------
+
+	Simplified debug string for first slice: "first slice always goes direct" without a bunch of other junk.
+
+	Printing out names of near relays would be nice etc.
 
 	--------------
 
