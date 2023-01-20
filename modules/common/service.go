@@ -27,7 +27,7 @@ import (
 	"github.com/networknext/backend/modules-old/transport/middleware"
 
 	"github.com/gorilla/mux"
-	"github.com/oschwald/maxminddb-golang"
+	"github.com/oschwald/geoip2-golang"
 )
 
 var (
@@ -100,9 +100,9 @@ type Service struct {
 	lookerHandler *LookerHandler
 
 	ip2location_isp_mutex   sync.RWMutex
-	ip2location_isp_reader  *maxminddb.Reader
+	ip2location_isp_reader  *geoip2.Reader
 	ip2location_city_mutex  sync.RWMutex
-	ip2location_city_reader *maxminddb.Reader
+	ip2location_city_reader *geoip2.Reader
 }
 
 func CreateService(serviceName string) *Service {
@@ -159,7 +159,7 @@ func (service *Service) LoadDatabase() {
 
 	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
 
-	if validateBinFiles(service.database) {
+	if !validateBinFiles(service.database) {
 		core.Error("bin files failed validation")
 		os.Exit(1)
 	}
@@ -192,7 +192,7 @@ func validateBinFiles(database *db.Database) bool {
 		return false
 	}
 
-	return database.IsEmpty()
+	return !database.IsEmpty()
 
 }
 
@@ -202,7 +202,7 @@ func (service *Service) LoadIP2Location() {
 
 	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
 
-	if validateIP2Location(cityReader, ispReader) {
+	if !validateIP2Location(cityReader, ispReader) {
 		core.Error("ip2location failed validation")
 		os.Exit(1)
 	}
@@ -230,11 +230,11 @@ func (service *Service) ValidateIP2Location(filenames []string) bool {
 
 }
 
-func validateIP2Location(cityReader *maxminddb.Reader, ispReader *maxminddb.Reader) bool {
+func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bool {
 
 	valid := true
 
-	ip := net.ParseIP("192.0.2.1")
+	ip := net.ParseIP("98.11.247.166")
 
 	if cityReader == nil {
 		core.Error("city reader is nil")
@@ -267,32 +267,28 @@ func validateIP2Location(cityReader *maxminddb.Reader, ispReader *maxminddb.Read
 
 }
 
-func locateIP(reader *maxminddb.Reader, ip net.IP) (float32, float32) {
-	var record struct {
-		Location struct {
-			Latitude  float64 `maxminddb:"latitude"`
-			Longitude float64 `maxminddb:"longitude"`
-		} `maxminddb:"location"`
-	}
-	err := reader.Lookup(ip, &record)
+func locateIP(reader *geoip2.Reader, ip net.IP) (float32, float32) {
+	city, err := reader.City(ip)
 	if err != nil {
+		core.Error("city look up failed: %v", err)
 		return 0, 0
 	}
-	return float32(record.Location.Latitude), float32(record.Location.Longitude)
+
+	core.Debug("city record: %+v", city)
+
+	return float32(city.Location.Latitude), float32(city.Location.Longitude)
 }
 
-func locateISP(reader *maxminddb.Reader, ip net.IP) (int, string) {
-	var record struct {
-		ISP struct {
-			AutonomousSystemNumber uint   `maxminddb:"autonomous_system_number"`
-			ISP                    string `maxminddb:"isp"`
-		}
-	}
-	err := reader.Lookup(ip, &record)
+func locateISP(reader *geoip2.Reader, ip net.IP) (int, string) {
+	isp, err := reader.ISP(ip)
 	if err != nil {
+		core.Error("isp look up failed: %v", err)
 		return -1, ""
 	}
-	return int(record.ISP.AutonomousSystemNumber), record.ISP.ISP
+
+	core.Debug("isp record: %+v", isp)
+
+	return int(isp.AutonomousSystemNumber), isp.ISP
 }
 
 func (service *Service) LocateIP(ip net.IP) (float32, float32) {
@@ -588,22 +584,44 @@ func (service *Service) WaitForShutdown() {
 
 // -----------------------------------------------------------------------
 
-func loadIP2Location(cityPath string, ispPath string) (*maxminddb.Reader, *maxminddb.Reader) {
-	cityReader, err := maxminddb.Open(cityPath)
+func loadIP2Location(cityPath string, ispPath string) (*geoip2.Reader, *geoip2.Reader) {
+	if _, err := os.Stat(cityPath); err != nil {
+		core.Error("failed to find city file at path: %s", cityPath)
+		return nil, nil
+	}
+
+	cityBytes, err := ioutil.ReadFile(cityPath)
 	if err != nil {
-		core.Error("failed to load ip2location city file: %v", err)
+		core.Error("failed to read city file: %v", err)
+		return nil, nil
+	}
+
+	cityReader, err := geoip2.FromBytes(cityBytes)
+	if err != nil {
+		core.Error("failed to create city reader: %v", err)
 		return nil, nil
 	}
 
 	core.Debug("loaded ip2location city file: '%s'", cityPath)
 
-	ispReader, err := maxminddb.Open(ispPath)
-	if err != nil {
-		core.Error("failed to load ip2location isp file: %v", err)
+	if _, err := os.Stat(ispPath); err != nil {
+		core.Error("failed to find isp file at path: %s", ispPath)
 		return nil, nil
 	}
 
-	core.Debug("loaded ip2location city file: '%s'", cityPath)
+	ispBytes, err := ioutil.ReadFile(ispPath)
+	if err != nil {
+		core.Error("failed to read isp file: %v", err)
+		return nil, nil
+	}
+
+	ispReader, err := geoip2.FromBytes(ispBytes)
+	if err != nil {
+		core.Error("failed to create isp reader: %v", err)
+		return nil, nil
+	}
+
+	core.Debug("loaded ip2location isp file: '%s'", ispPath)
 
 	return cityReader, ispReader
 }
@@ -625,7 +643,7 @@ func (service *Service) watchIP2Location(ctx context.Context, filenames []string
 			case <-ticker.C:
 
 				cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-				if validateIP2Location(cityReader, ispReader) {
+				if !validateIP2Location(cityReader, ispReader) {
 					core.Error("ip2location files not valid")
 					continue
 				}
@@ -797,7 +815,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 				newDatabase, newOverlay := loadDatabase(databasePath, overlayPath)
 
-				if validateBinFiles(newDatabase) {
+				if !validateBinFiles(newDatabase) {
 					core.Error("new bin file failed validation")
 					continue
 				}
