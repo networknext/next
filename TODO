@@ -2,11 +2,29 @@ DONE
 
 TODO
 
+	Add the near relays message
+
+	Code the read/write
+
+	Unit test it
+
+	Send it out from the session update handler
+
+	-----------
+
 	Review the session update message and remove things in it that we no longer need
 
 	Fill out the session update message inside the handler
 
-	Add tests to make sure we write session update and portal messages at the appropriate times
+	-----------
+
+	Add unit test to make sure we write out session update message
+
+	Add unit test to make sure we write out portal message
+
+	Add unit test to make sure we write out near relay message 
+
+	-----------
 
 
 
