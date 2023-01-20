@@ -1054,7 +1054,7 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NextPacketLoss = state.Request.NextPacketLoss
 		message.NextKbpsUp = state.Request.NextKbpsUp
 		message.NextKbpsDown = state.Request.NextKbpsDown
-		message.PredictedRTT = state.Input.RouteCost
+		message.PredictedRTT = uint32(state.Input.RouteCost)
 		message.NumRouteRelays = int(state.Input.RouteNumRelays)
 		for i := 0; i < message.NumRouteRelays; i++ {
 			message.RouteRelayId[i] = state.Input.RouteRelayIds[i]
@@ -1076,7 +1076,6 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
 	}
-
 	if state.PortalMessageChannel != nil {
 		state.PortalMessageChannel <- &message
 		state.SentPortalData = true
