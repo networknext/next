@@ -234,7 +234,7 @@ func validateIP2Location(cityReader *maxminddb.Reader, ispReader *maxminddb.Read
 
 	valid := true
 
-	ip := net.ParseIP("192.0.2.1")
+	ip := net.ParseIP("98.11.247.166")
 
 	if cityReader == nil {
 		core.Error("city reader is nil")
