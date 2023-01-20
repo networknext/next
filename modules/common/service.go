@@ -811,7 +811,7 @@ func (service *Service) UseLooker() {
 	service.lookerHandler = lookerHandler
 }
 
-func (service *Service) FetchWebsiteStats() (LookerWebsiteStatsQueryResults, error) {
+func (service *Service) FetchWebsiteStats() (LookerStats, error) {
 	return service.lookerHandler.RunWebsiteStatsQuery()
 }
 

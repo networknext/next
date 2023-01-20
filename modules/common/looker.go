@@ -121,26 +121,35 @@ func (l *LookerHandler) fetchAuthToken() (string, error) {
 }
 
 type LookerWebsiteStatsQueryResults struct {
-	TimestampDay         string  `json:"daily_accelerated_playtime_allcust.day"`
-	AcceleratedBandwidth float32 `json:"daily_accelerated_playtime_allcust.accelerated_bandwidth"`
-	AcceleratedPlaytime  float32 `json:"daily_accelerated_playtime_allcust.accelerated_playtime"`
+	TimestampDay         string  `json:"daily_accelerated_playtime_allcust.day_date"`
+	AcceleratedBandwidth float32 `json:"daily_accelerated_playtime_allcust.accelerated_bandwidth_gb_1"`
+	AcceleratedPlaytime  float32 `json:"daily_accelerated_playtime_allcust.accelerated_playtime_hours"`
 	// UniquePlayers        int32   `json:"daily_accelerated_playtime_allcust.unique_players"`
 }
 
-func (l *LookerHandler) RunWebsiteStatsQuery() (LookerWebsiteStatsQueryResults, error) {
+type LookerStats struct {
+	UniquePlayers             int32 `json:"unique_players"`
+	AcceleratedPlayTime       int32 `json:"accelerated_play_time"`
+	AcceleratedBandwidth      int32 `json:"accelerated_bandwidth"`
+	UniquePlayersDelta        int32 `json:"unique_players_delta"`
+	AcceleratedPlayTimeDelta  int32 `json:"accelerated_play_time_delta"`
+	AcceleratedBandwidthDelta int32 `json:"accelerated_bandwidth_delta"`
+}
 
-	queryResults := LookerWebsiteStatsQueryResults{}
+func (l *LookerHandler) RunWebsiteStatsQuery() (LookerStats, error) {
+
+	stats := LookerStats{}
 
 	token, err := l.fetchAuthToken()
 	if err != nil {
-		return queryResults, err
+		return stats, err
 	}
 
 	core.Debug("auth token: %s", token)
 
 	// SELECT requiredFields FROM
 	requiredFields := []string{
-		WEBSITE_STATS_VIEW + ".day",
+		WEBSITE_STATS_VIEW + ".day_date",
 		WEBSITE_STATS_VIEW + ".accelerated_playtime_hours",
 		WEBSITE_STATS_VIEW + ".accelerated_bandwidth_gb_1",
 	}
@@ -161,17 +170,31 @@ func (l *LookerHandler) RunWebsiteStatsQuery() (LookerWebsiteStatsQueryResults, 
 	respBytes, err := l.runQuery(token, query)
 	if err != nil {
 		core.Debug("failed to run query: %v", err)
-		return queryResults, err
+		return stats, err
 	}
 
-	core.Debug("response: %s", string(respBytes))
+	queryResults := []LookerWebsiteStatsQueryResults{}
 
 	if err = json.Unmarshal(respBytes, &queryResults); err != nil {
 		core.Debug("failed to unmarshal query response: %v", err)
-		return queryResults, err
+		return stats, err
 	}
 
-	return queryResults, nil
+	numDays := len(queryResults)
+
+	if numDays <= 0 {
+		return stats, fmt.Errorf("no results returned")
+	}
+
+	for _, result := range queryResults {
+		stats.AcceleratedPlayTime = stats.AcceleratedPlayTime + int32(result.AcceleratedPlaytime)
+		stats.AcceleratedBandwidth = stats.AcceleratedBandwidth + int32(result.AcceleratedBandwidth)
+	}
+
+	stats.AcceleratedPlayTimeDelta = stats.AcceleratedPlayTime / int32(numDays)
+	stats.AcceleratedBandwidthDelta = stats.AcceleratedBandwidth / int32(numDays)
+
+	return stats, nil
 }
 
 func (l *LookerHandler) runQuery(authToken string, query v4.WriteQuery) ([]byte, error) {

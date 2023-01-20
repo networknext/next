@@ -31,7 +31,7 @@ const (
 )
 
 var landingPageStatsMutex sync.RWMutex
-var landingPageStats LookerStats
+var landingPageStats common.LookerStats
 
 var landingPageTopSessionsMutex sync.RWMutex
 var landingPageTopSessions []TopSession
@@ -80,9 +80,9 @@ func main() {
 
 	service.StartWebServer()
 
-	StartRedisDataCollection(service)
+	// StartRedisDataCollection(service)
 
-	// StartLookerDataCollection(service)
+	StartLookerDataCollection(service)
 
 	service.WaitForShutdown()
 }
@@ -145,7 +145,7 @@ func getAllStats() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func currentStats() LookerStats {
+func currentStats() common.LookerStats {
 
 	landingPageStatsMutex.RLock()
 	stats := landingPageStats
@@ -487,16 +487,6 @@ func StartRedisDataCollection(service *common.Service) {
 
 // ------------------------------------------------------------------------------------------
 
-// TODO: update / verify necessary
-type LookerStats struct {
-	UniquePlayers             int32 `json:"unique_players"`
-	AcceleratedPlayTime       int32 `json:"accelerated_play_time"`
-	AcceleratedBandwidth      int32 `json:"accelerated_bandwidth"`
-	UniquePlayersDelta        int32 `json:"unique_players_delta"`
-	AcceleratedPlayTimeDelta  int32 `json:"accelerated_play_time_delta"`
-	AcceleratedBandwidthDelta int32 `json:"accelerated_bandwidth_delta"`
-}
-
 func StartLookerDataCollection(service *common.Service) {
 
 	ticker := time.NewTicker(lookerStatsRefreshInterval)
@@ -510,21 +500,15 @@ func StartLookerDataCollection(service *common.Service) {
 				return
 			case <-ticker.C:
 
-				results, err := service.FetchWebsiteStats()
+				stats, err := service.FetchWebsiteStats()
 				if err != nil {
 					core.Error("failed to fetch website stats from Looker: %v", err)
 					continue
 				}
 
-				currentStats := LookerStats{
-					// UniquePlayers:        results.UniquePlayers,
-					AcceleratedPlayTime:  int32(results.AcceleratedPlaytime),
-					AcceleratedBandwidth: int32(results.AcceleratedBandwidth),
-				}
-
 				// TODO: add in extrapolation
 
-				if err := updateDataStore(service, currentStats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
+				if err := updateDataStore(service, stats, currentTopSessionsList(), currentLiveSessionCounts()); err != nil {
 					core.Error("failed to update data store with new looker stats: %v", err)
 					continue
 				}
@@ -533,7 +517,7 @@ func StartLookerDataCollection(service *common.Service) {
 	}(service)
 }
 
-func updateDataStore(service *common.Service, stats LookerStats, topSessionsList []TopSession, liveSessionCounts LiveSessionCounts) error {
+func updateDataStore(service *common.Service, stats common.LookerStats, topSessionsList []TopSession, liveSessionCounts LiveSessionCounts) error {
 
 	var statsBuffer bytes.Buffer
 	statsEncoder := gob.NewEncoder(&statsBuffer)
@@ -576,7 +560,7 @@ func updateDataStore(service *common.Service, stats LookerStats, topSessionsList
 		return fmt.Errorf("no data stores returned from redis")
 	}
 
-	newLookerStats := LookerStats{}
+	newLookerStats := common.LookerStats{}
 	newTopSesssions := make([]TopSession, 10)
 	newSessionCounts := LiveSessionCounts{}
 
