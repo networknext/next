@@ -103,6 +103,13 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
 	handler.GetMagicValues = func() ([]byte, []byte, []byte) { return service.GetMagicValues() }
+
+	handler.ServerInitMessageChannel = serverInitMessageChannel
+	handler.ServerUpdateMessageChannel = serverUpdateMessageChannel
+	handler.PortalMessageChannel = portalMessageChannel
+	handler.SessionUpdateMessageChannel = sessionUpdateMessageChannel
+	handler.MatchDataMessageChannel = matchDataMessageChannel
+
 	if service.Local {
 		handler.LocateIP = locateIP_Local
 	} else {

@@ -20,17 +20,19 @@ DONE
 
 	Verify unit test passes for portal message
 
+	Implement code in server_backend5 cmd to process portal messages on channel.
+
 TODO
 
-	---------
+	Extend server backend 5 to write portal messages and send them to redis streams (needs configuration env vars for this...)
 
-	Implement code in server_backend5 cmd to process portal messages on channel, write them, and send to redis streams.
+	Defaults should work in local.
 
 	---------
 
 	Implement a portal_cruncher_new service using the new service framework
 
-	Setup a number of threads.
+	Setup a number of threads via env var.
 
 	Verify that the new portal cruncher receives portal messages.
 
