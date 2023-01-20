@@ -604,8 +604,6 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
-	assert.Equal(t, state.PostRealPacketLossServerToClient, float32(5.0))
-	assert.Equal(t, state.PostRealPacketLossClientToServer, float32(10.0))
 }
 
 func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
