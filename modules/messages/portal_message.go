@@ -41,15 +41,14 @@ type PortalMessage struct {
 	DirectKbpsUp     uint32
 	DirectKbpsDown   uint32
 
-	NextRTT                float32
-	NextJitter             float32
-	NextPacketLoss         float32
-	NextKbpsUp             uint32
-	NextKbpsDown           uint32
-	NextBandwidthOverLimit bool
-	NextPredictedRTT       uint32
-	NextNumRouteRelays     uint32
-	NextRouteRelayId       [MaxRouteRelays]uint64
+	NextRTT            float32
+	NextJitter         float32
+	NextPacketLoss     float32
+	NextKbpsUp         uint32
+	NextKbpsDown       uint32
+	NextPredictedRTT   uint32
+	NextNumRouteRelays uint32
+	NextRouteRelayId   [MaxRouteRelays]uint64
 
 	RealJitter     float32
 	RealPacketLoss float32
@@ -100,7 +99,6 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
 		encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
 		encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
-		encoding.WriteBool(buffer, &index, message.NextBandwidthOverLimit)
 		encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
 		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
@@ -228,10 +226,6 @@ func (message *PortalMessage) Read(buffer []byte) error {
 
 		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
 			return fmt.Errorf("failed to read next kbps down")
-		}
-
-		if !encoding.ReadBool(buffer, &index, &message.NextBandwidthOverLimit) {
-			return fmt.Errorf("failed to read next bandwidth over limit")
 		}
 
 		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {

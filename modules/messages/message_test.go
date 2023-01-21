@@ -198,8 +198,8 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		DirectRTT:        float32(common.RandomInt(0, 1000)),
 		DirectJitter:     float32(common.RandomInt(0, 1000)),
 		DirectPacketLoss: float32(common.RandomInt(0, 100)),
-		DirectBytesUp:    rand.Uint64(),
-		DirectBytesDown:  rand.Uint64(),
+		DirectKbpsUp:     rand.Uint32(),
+		DirectKbpsDown:   rand.Uint32(),
 	}
 
 	// next only
@@ -208,12 +208,12 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
 		message.NextJitter = float32(common.RandomInt(0, 1000))
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))
-		message.NextBytesUp = rand.Uint64()
-		message.NextBytesDown = rand.Uint64()
-		message.NextPredictedRTT = float32(common.RandomInt(0, 1000))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
 		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			message.NextRouteRelays[i] = rand.Uint64()
+			message.NextRouteRelayId[i] = rand.Uint64()
 		}
 	}
 
@@ -253,8 +253,8 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
 		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
 		message.SessionDuration = rand.Uint32()
-		message.EnvelopeBytesUp = rand.Uint64()
-		message.EnvelopeBytesDown = rand.Uint64()
+		message.TotalEnvelopeBytesUp = rand.Uint64()
+		message.TotalEnvelopeBytesDown = rand.Uint64()
 		message.DurationOnNext = rand.Uint32()
 		message.StartTimestamp = rand.Uint64()
 	}
@@ -301,7 +301,6 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))
 		message.NextKbpsUp = rand.Uint32()
 		message.NextKbpsDown = rand.Uint32()
-		message.NextBandwidthOverLimit = common.RandomBool()
 		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
 		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {

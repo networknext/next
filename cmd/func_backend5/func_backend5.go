@@ -717,13 +717,13 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-		if requestPacket.SliceNumber >= 2 && requestPacket.ServerEvents != 0x123 {
-			panic("server events not set on session update")
+		if requestPacket.SliceNumber >= 2 && requestPacket.GameEvents != 0x123 {
+			panic("game events not set on session update")
 		}
 	}
 
-	if requestPacket.ServerEvents > 0 {
-		fmt.Printf("server events %x\n", requestPacket.ServerEvents)
+	if requestPacket.GameEvents > 0 {
+		fmt.Printf("game events %x\n", requestPacket.GameEvents)
 	}
 
 	// build response packet

@@ -51,6 +51,8 @@ const (
 	SessionFlags_FailedToWriteResponsePacket     = (1 << 33)
 	SessionFlags_FailedToWriteSessionData        = (1 << 34)
 	SessionFlags_LocationVeto                    = (1 << 35)
+	SessionFlags_ClientNextBandwidthOverLimit    = (1 << 36)
+	SessionFlags_ServerNextBandwidthOverLimit    = (1 << 37)
 )
 
 type SessionUpdateMessage struct {
@@ -69,19 +71,19 @@ type SessionUpdateMessage struct {
 	DirectRTT        float32
 	DirectJitter     float32
 	DirectPacketLoss float32
-	DirectBytesUp    uint64
-	DirectBytesDown  uint64
+	DirectKbpsUp     uint32
+	DirectKbpsDown   uint32
 
 	// next only
 
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
-	NextPredictedRTT   float32
-	NextBytesUp        uint64
-	NextBytesDown      uint64
+	NextKbpsUp         uint32
+	NextKbpsDown       uint32
+	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
-	NextRouteRelays    [MaxRouteRelays]uint64
+	NextRouteRelayId   [MaxRouteRelays]uint64
 
 	// first slice only
 
@@ -111,10 +113,10 @@ type SessionUpdateMessage struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	SessionDuration                 uint32
-	EnvelopeBytesUp                 uint64
-	EnvelopeBytesDown               uint64
+	TotalEnvelopeBytesUp            uint64
+	TotalEnvelopeBytesDown          uint64
 	DurationOnNext                  uint32
+	SessionDuration                 uint32
 	StartTimestamp                  uint64
 }
 
@@ -141,8 +143,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
 	encoding.WriteFloat32(buffer, &index, message.DirectPacketLoss)
-	encoding.WriteUint64(buffer, &index, message.DirectBytesUp)
-	encoding.WriteUint64(buffer, &index, message.DirectBytesDown)
+	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
+	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
 	// next only
 
@@ -150,12 +152,12 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
-		encoding.WriteFloat32(buffer, &index, message.NextPredictedRTT)
-		encoding.WriteUint64(buffer, &index, message.NextBytesUp)
-		encoding.WriteUint64(buffer, &index, message.NextBytesDown)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
+		encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
 		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			encoding.WriteUint64(buffer, &index, message.NextRouteRelays[i])
+			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 		}
 	}
 
@@ -195,8 +197,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsOutOfOrder)
 		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsOutOfOrder)
 		encoding.WriteUint32(buffer, &index, message.SessionDuration)
-		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesUp)
-		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesDown)
+		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesUp)
+		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesDown)
 		encoding.WriteUint32(buffer, &index, message.DurationOnNext)
 		encoding.WriteUint64(buffer, &index, message.StartTimestamp)
 	}
@@ -262,12 +264,12 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct packet loss")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesUp) {
-		return fmt.Errorf("failed to read direct bytes up")
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsUp) {
+		return fmt.Errorf("failed to read direct kbps up")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesDown) {
-		return fmt.Errorf("failed to read direct bytes down")
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsDown) {
+		return fmt.Errorf("failed to read direct kbps down")
 	}
 
 	// next only
@@ -286,16 +288,16 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read next packet loss")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NextPredictedRTT) {
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+			return fmt.Errorf("failed to read next kbps up")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+			return fmt.Errorf("failed to read next kbps down")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
 			return fmt.Errorf("failed to read next predicted rtt")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.NextBytesUp) {
-			return fmt.Errorf("failed to read next bytes up")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.NextBytesDown) {
-			return fmt.Errorf("failed to read next bytes down")
 		}
 
 		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
@@ -303,7 +305,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelays[i]) {
+			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
 				return fmt.Errorf("failed to read next route relay id")
 			}
 		}
@@ -409,12 +411,12 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read session duration")
 		}
 
-		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesUp) {
-			return fmt.Errorf("failed to read envelope bytes up sum")
+		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesUp) {
+			return fmt.Errorf("failed to read total envelope bytes up sum")
 		}
 
-		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesDown) {
-			return fmt.Errorf("failed to read envelope bytes down sum")
+		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesDown) {
+			return fmt.Errorf("failed to read total envelope bytes down sum")
 		}
 
 		if !encoding.ReadUint32(buffer, &index, &message.DurationOnNext) {

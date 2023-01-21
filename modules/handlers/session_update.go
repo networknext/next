@@ -135,6 +135,18 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	}
 
 	/*
+		Catch the over bandwidth flags and stash them as session flags so they are sent to the portal and analytics
+	*/
+
+	if state.Request.ClientNextBandwidthOverLimit {
+		state.SessionFlags |= messages.SessionFlags_ClientNextBandwidthOverLimit
+	}
+
+	if state.Request.ServerNextBandwidthOverLimit {
+		state.SessionFlags |= messages.SessionFlags_ServerNextBandwidthOverLimit
+	}
+
+	/*
 		On the initial slice, we look up the lat/long for the player using ip2location.
 
 		On subsequent slices, we use the cached location data from the session state.
@@ -231,7 +243,8 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.Version = packets.SDK5_SessionDataVersion_Write
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
-	state.Output.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
+	state.Output.StartTimestamp = uint64(time.Now().Unix())
+	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK5_BillingSliceSeconds * 2
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -284,7 +297,16 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 
 	/*
-		Calculate real packet loss.
+		Track total next envelope bandwidth sent up and down
+	*/
+
+	if state.Input.RouteState.Next {
+		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
+		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
+	}
+
+	/*
+		Calculate real packet loss %
 
 		This is driven from actual game packets, not ping packets.
 
@@ -313,6 +335,30 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 
 	/*
+		Calculate real out of order packet %
+
+		This is driven from actual game packets, not ping packets.
+	*/
+
+	slicePacketsOutOfOrderClientToServer := state.Request.PacketsOutOfOrderClientToServer - state.Input.PrevPacketsOutOfOrderClientToServer
+	slicePacketsOutOfOrderServerToClient := state.Request.PacketsOutOfOrderServerToClient - state.Input.PrevPacketsOutOfOrderServerToClient
+
+	var RealOutOfOrderClientToServer float32
+	if slicePacketsSentClientToServer != uint64(0) {
+		RealOutOfOrderClientToServer = float32(float64(slicePacketsOutOfOrderClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
+	}
+
+	var RealOutOfOrderServerToClient float32
+	if slicePacketsSentServerToClient != uint64(0) {
+		RealOutOfOrderServerToClient = float32(float64(slicePacketsOutOfOrderServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
+	}
+
+	state.RealOutOfOrder = RealOutOfOrderClientToServer
+	if RealOutOfOrderServerToClient > RealOutOfOrderClientToServer {
+		state.RealOutOfOrder = RealOutOfOrderServerToClient
+	}
+
+	/*
 		Calculate real jitter.
 
 		This is driven from actual game packets, not ping packets.
@@ -334,13 +380,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	if state.Request.JitterServerToClient > state.Request.JitterClientToServer {
 		state.RealJitter = state.Request.JitterServerToClient
 	}
-
-	/*
-		Calculate real out of order packet %
-	*/
-
-	// todo
-	state.RealOutOfOrder = 0.0
 }
 
 func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
@@ -492,25 +531,11 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
 
-	/*
-		Send the near relay pings message
-
-		This gives us access to near relay pings data for analytics.
-	*/
-
-	// todo: it would be best if we could ping near relays multiple times in a session
-	// when we can do this, we should adjust this check to send near relay ping messages
-	// each time we have a new set of near relay pings from the SDK
-	if state.Request.SliceNumber == 1 {
-		sendNearRelayPingsMessage(state)
-	}
-
 	return true
 }
 
 func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int32, routeRelays []int32) {
 
-	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 	state.Output.SessionVersion++
 
 	numTokens := routeNumRelays + 2
@@ -889,11 +914,17 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
+		Track session duration
+	*/
+
+	state.Output.SessionDuration += packets.SDK5_BillingSliceSeconds
+
+	/*
 		Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
-	if state.Request.Next {
-		state.Output.EverOnNext = true
+	if state.Input.RouteState.Next {
+		state.SessionFlags |= messages.SessionFlags_EverOnNext
 		state.Output.DurationOnNext += packets.SDK5_BillingSliceSeconds
 		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
@@ -904,11 +935,12 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
-	// todo: can save a lot of bandwidth if the SDK does this calculation for us
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
 	state.Output.PrevPacketsSentServerToClient = state.Request.PacketsSentServerToClient
 	state.Output.PrevPacketsLostClientToServer = state.Request.PacketsLostClientToServer
 	state.Output.PrevPacketsLostServerToClient = state.Request.PacketsLostServerToClient
+	state.Output.PrevPacketsOutOfOrderClientToServer = state.Request.PacketsOutOfOrderClientToServer
+	state.Output.PrevPacketsOutOfOrderServerToClient = state.Request.PacketsOutOfOrderServerToClient
 
 	/*
 		If the core routing logic generated a debug string, include it in the response packet
@@ -1001,6 +1033,14 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	sendSessionUpdateMessage(state)
+
+	/*
+		Send the near relay pings message
+
+		This gives us access to near relay pings data for analytics.
+	*/
+
+	sendNearRelayPingsMessage(state)
 }
 
 // -----------------------------------------
@@ -1029,7 +1069,7 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.Longitude = state.Output.Longitude
 	message.SliceNumber = state.Input.SliceNumber
 	message.SessionFlags = state.SessionFlags
-	message.GameEvents = state.Request.ServerEvents // todo: rename to game events
+	message.GameEvents = state.Request.GameEvents
 
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
@@ -1043,7 +1083,6 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NextPacketLoss = state.Request.NextPacketLoss
 		message.NextKbpsUp = state.Request.NextKbpsUp
 		message.NextKbpsDown = state.Request.NextKbpsDown
-		message.NextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit || state.Request.ServerNextBandwidthOverLimit
 		message.NextPredictedRTT = uint32(state.Input.RouteCost)
 		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
@@ -1073,6 +1112,10 @@ func sendPortalMessage(state *SessionUpdateState) {
 }
 
 func sendNearRelayPingsMessage(state *SessionUpdateState) {
+
+	if state.Request.SliceNumber != 1 {
+		return
+	}
 
 	message := messages.NearRelayPingsMessage{}
 
@@ -1118,15 +1161,71 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
 	message.SessionFlags = state.SessionFlags
-	message.GameEvents = state.Request.ServerEvents // todo: rename to game events all the way down to the SDK
+	message.GameEvents = state.Request.GameEvents
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	// todo
-	/*
-		message.DirectBytesUp = state.Request.DirectBytesUp
-		message.DirectBytesDown = state.Request.DirectBytesDown
-	*/
+	message.DirectKbpsUp = state.Request.DirectKbpsUp
+	message.DirectKbpsDown = state.Request.DirectKbpsDown
+
+	// next only
+
+	if (state.SessionFlags & messages.SessionFlags_Next) != 0 {
+		message.NextRTT = state.Request.NextRTT
+		message.NextJitter = state.Request.NextJitter
+		message.NextPacketLoss = state.Request.NextPacketLoss
+		message.NextKbpsUp = state.Request.NextKbpsUp
+		message.NextKbpsDown = state.Request.NextKbpsDown
+		message.NextPredictedRTT = uint32(state.Input.RouteCost)
+		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = state.Input.RouteRelayIds[i]
+		}
+	}
+
+	// first slice only
+
+	if message.SliceNumber == 0 {
+		message.NumTags = byte(state.Request.NumTags)
+		for i := 0; i < int(state.Request.NumTags); i++ {
+			message.Tags[i] = state.Request.Tags[i]
+		}
+	}
+
+	// first slice or summary
+
+	if message.SliceNumber == 0 || (message.SessionFlags&messages.SessionFlags_Summary) != 0 {
+		message.DatacenterId = state.Request.DatacenterId
+		message.BuyerId = state.Request.BuyerId
+		message.UserHash = state.Request.UserHash
+		message.Latitude = state.Output.Latitude
+		message.Longitude = state.Output.Longitude
+		message.ClientAddress = state.Request.ClientAddress
+		message.ServerAddress = state.Request.ServerAddress
+		message.ConnectionType = byte(state.Request.ConnectionType)
+		message.PlatformType = byte(state.Request.PlatformType)
+		message.SDKVersion_Major = byte(state.Request.Version.Major)
+		message.SDKVersion_Minor = byte(state.Request.Version.Minor)
+		message.SDKVersion_Patch = byte(state.Request.Version.Patch)
+	}
+
+	// summary only
+
+	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
+		message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
+		message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
+		message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer
+		message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
+		message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
+		message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
+		message.SessionDuration = state.Output.SessionDuration
+		message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
+		message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
+		message.DurationOnNext = state.Output.DurationOnNext
+		message.StartTimestamp = state.Output.StartTimestamp
+	}
+
+	// send message to channel
 
 	if state.SessionUpdateMessageChannel != nil {
 		state.SessionUpdateMessageChannel <- &message

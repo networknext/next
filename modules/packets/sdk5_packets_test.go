@@ -206,7 +206,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		ClientPingTimedOut:              common.RandomBool(),
 		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
-		ServerEvents:                    rand.Uint64(),
+		GameEvents:                      rand.Uint64(),
 		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
