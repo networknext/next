@@ -141,7 +141,6 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		}
 	}
 
-/*
 	// first slice only
 
 	if message.SliceNumber == 0 {
@@ -157,6 +156,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint64(buffer, &index, message.DatacenterId)
 		encoding.WriteUint64(buffer, &index, message.BuyerId)
 		encoding.WriteUint64(buffer, &index, message.UserHash)
+		/*
 		encoding.WriteFloat32(buffer, &index, message.Latitude)
 		encoding.WriteFloat32(buffer, &index, message.Longitude)
 		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
@@ -166,8 +166,10 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
+		*/
 	}
 
+/*
 	// summary slice only
 
 	if (message.SessionFlags & SessionFlags_Summary) != 0 {
@@ -293,7 +295,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
-/*
 	// first slice only
 
 	if message.SliceNumber == 0 {
@@ -325,6 +326,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read user hash")
 		}
 
+		/*
 		if !encoding.ReadFloat32(buffer, &index, &message.Latitude) {
 			return fmt.Errorf("failed to read latitude")
 		}
@@ -360,8 +362,10 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
 			return fmt.Errorf("failed to read sdk version patch")
 		}
+		*/
 	}
 
+/*
 	// summary slice only
 
 	if (message.SessionFlags & SessionFlags_Summary) != 0 {

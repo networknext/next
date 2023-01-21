@@ -217,6 +217,36 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		}
 	}
 
+	// first slice only
+
+	if message.SliceNumber == 0 {
+		message.NumTags = byte(common.RandomInt(0,messages.MaxTags))
+		for i := 0; i < int(message.NumTags); i++ {
+			message.Tags[i] = rand.Uint64()
+		}
+	}
+
+	// first slice or summary
+
+	if message.SliceNumber == 0 || (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
+		message.DatacenterId = rand.Uint64()
+		message.BuyerId = rand.Uint64()
+		message.UserHash = rand.Uint64()
+		/*
+		encoding.WriteUint64(buffer, &index, message.BuyerId)
+		encoding.WriteUint64(buffer, &index, message.UserHash)
+		encoding.WriteFloat32(buffer, &index, message.Latitude)
+		encoding.WriteFloat32(buffer, &index, message.Longitude)
+		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
+		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
+		encoding.WriteUint8(buffer, &index, message.ConnectionType)
+		encoding.WriteUint8(buffer, &index, message.PlatformType)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
+		*/
+	}
+
 	return message
 }
 
