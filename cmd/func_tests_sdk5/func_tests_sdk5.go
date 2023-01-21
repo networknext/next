@@ -3304,7 +3304,7 @@ func test_flush_game_events_and_match_data() {
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 	backendSawGameEvents := strings.Contains(backend_stdout.String(), "game events 40100400")
 
-	serverFlushedGameEvents := strings.Contains(server_stdout.String(), "server flushed events 40100400 to backend")
+	serverFlushedGameEvents := strings.Contains(server_stdout.String(), "server flushed game events 40100400 to backend")
 	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
 	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
@@ -3373,7 +3373,7 @@ func test_flush_game_events_and_match_data_retry() {
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 	backendSawGameEvents := strings.Contains(backend_stdout.String(), "game events 40100400")
 
-	serverFlushedGameEvents := strings.Contains(server_stdout.String(), "server flushed events 40100400 to backend")
+	serverFlushedGameEvents := strings.Contains(server_stdout.String(), "server flushed game events 40100400 to backend")
 	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
 	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
