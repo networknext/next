@@ -232,9 +232,9 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.DatacenterId = rand.Uint64()
 		message.BuyerId = rand.Uint64()
 		message.UserHash = rand.Uint64()
+		message.Latitude = float32(common.RandomInt(-90,+90))
+		message.Longitude = float32(common.RandomInt(-180,+180))
 		/*
-		encoding.WriteUint64(buffer, &index, message.BuyerId)
-		encoding.WriteUint64(buffer, &index, message.UserHash)
 		encoding.WriteFloat32(buffer, &index, message.Latitude)
 		encoding.WriteFloat32(buffer, &index, message.Longitude)
 		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
