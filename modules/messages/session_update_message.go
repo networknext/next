@@ -2,12 +2,8 @@ package messages
 
 import (
 	"fmt"
-	// "net"
+	"net"
 
-	// "cloud.google.com/go/bigquery"
-
-	// "github.com/networknext/backend/modules/common"
-	// "github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -16,23 +12,9 @@ const (
 	SessionUpdateMessageVersion_Max   = 1
 	SessionUpdateMessageVersion_Write = 1
 
-	MaxSessionUpdateMessageBytes = 4096
-
 	// todo: constants module
-	SessionUpdateMessageMaxRelays           = 5
-	SessionUpdateMessageMaxAddressLength    = 256
-	SessionUpdateMessageMaxISPLength        = 64
-	SessionUpdateMessageMaxSDKVersionLength = 11
-	SessionUpdateMessageMaxDebugLength      = 2048
-	SessionUpdateMessageMaxTags             = 8
-	SessionUpdateMessageMaxRTT              = 1023
-	SessionUpdateMessageMaxJitter           = 255
-	SessionUpdateMessageMaxPacketLoss       = 100
-	SessionUpdateMessageMaxRouteDiversity   = 31
-	SessionUpdateMessageMaxConnectionType   = 3
-	SessionUpdateMessageMaxPlatformType     = 10
-	SessionUpdateMessageMaxRouteRelays      = 5
-	SessionUpdateMessageMaxNearRelayRTT     = 255
+	MaxDebugLength      = 1024
+	MaxTags             = 8
 
 	SessionFlags_Next                 = (1<<0)
 	SessionFlags_Reported             = (1<<1)
@@ -78,32 +60,30 @@ type SessionUpdateMessage struct {
 	NextJitter          float32
 	NextPacketLoss      float32
 	NextPredictedRTT    float32
-	NextNearRelayRTT    float32
-	NextNumRouteRelays  uint32
-	NextRouteRelays     [SessionUpdateMessageMaxRouteRelays]uint64
 	NextBytesUp         uint64
 	NextBytesDown       uint64
+	NextNumRouteRelays  uint32
+	NextRouteRelays     [MaxRouteRelays]uint64
 
-/*
+	// first slice only
+
+	NumTags byte
+	Tags    [MaxTags]uint64
+
 	// first slice and summary slice only
 
 	DatacenterId      uint64
 	BuyerId           uint64
 	UserHash          uint64
-	EnvelopeBytesUp   uint64
-	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
 	ClientAddress     net.UDPAddr
 	ServerAddress     net.UDPAddr
-	ISP               string
-	ConnectionType    int32
-	PlatformType      int32
-	SDKVersion_Major  uint32
-	SDKVersion_Minor  uint32
-	SDKVersion_Patch  uint32
-	NumTags           int32
-	Tags              [SessionUpdateMessageMaxTags]uint64
+	ConnectionType    byte
+	PlatformType      byte
+	SDKVersion_Major  byte
+	SDKVersion_Minor  byte
+	SDKVersion_Patch  byte
 
 	// summary slice only
 
@@ -114,24 +94,94 @@ type SessionUpdateMessage struct {
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
 	SessionDuration                 uint32
-	EnvelopeBytesUpSum              uint64
-	EnvelopeBytesDownSum            uint64
+	EnvelopeBytesUp  	            uint64
+	EnvelopeBytesDown               uint64
 	DurationOnNext                  uint32
 	StartTimestamp                  uint64
-*/
 }
 
 func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	if message.Version < PortalMessageVersion_Min || message.Version > PortalMessageVersion_Max {
-		panic(fmt.Sprintf("invalid portal message version %d", message.Version))
+	if message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid session update message version %d", message.Version))
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 
-	// ...
+	// always
+
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	encoding.WriteUint64(buffer, &index, message.SessionId)
+	encoding.WriteUint32(buffer, &index, message.SliceNumber)
+	encoding.WriteFloat32(buffer, &index, message.RealPacketLoss)
+	encoding.WriteFloat32(buffer, &index, message.RealJitter)
+	encoding.WriteFloat32(buffer, &index, message.RealOutOfOrder)
+	encoding.WriteUint64(buffer, &index, message.SessionFlags)
+	encoding.WriteUint64(buffer, &index, message.GameEvents)
+	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
+	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
+	encoding.WriteFloat32(buffer, &index, message.DirectPacketLoss)
+	encoding.WriteUint64(buffer, &index, message.DirectBytesUp)
+	encoding.WriteUint64(buffer, &index, message.DirectBytesDown)
+
+	// next only
+
+	if (message.SessionFlags & SessionFlags_Next) != 0 {
+		encoding.WriteFloat32(buffer, &index, message.NextRTT)
+		encoding.WriteFloat32(buffer, &index, message.NextJitter)
+		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
+		encoding.WriteFloat32(buffer, &index, message.NextPredictedRTT)		
+		encoding.WriteUint64(buffer, &index, message.NextBytesUp)
+		encoding.WriteUint64(buffer, &index, message.NextBytesDown)
+		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			encoding.WriteUint64(buffer, &index, message.NextRouteRelays[i])
+		}
+	}
+
+	// first slice only
+
+	if message.SliceNumber == 0 {
+		encoding.WriteUint8(buffer, &index, message.NumTags)
+		for i := 0; i < int(message.NumTags); i++ {
+			encoding.WriteUint64(buffer, &index, message.Tags[i])
+		}
+	}
+
+	// first slice or summary slice
+
+	if message.SliceNumber == 0 || (message.SessionFlags & SessionFlags_Summary) != 0 {
+		encoding.WriteUint64(buffer, &index, message.DatacenterId)
+		encoding.WriteUint64(buffer, &index, message.BuyerId)
+		encoding.WriteUint64(buffer, &index, message.UserHash)
+		encoding.WriteFloat32(buffer, &index, message.Latitude)
+		encoding.WriteFloat32(buffer, &index, message.Longitude)
+		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
+		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
+		encoding.WriteUint8(buffer, &index, message.ConnectionType)
+		encoding.WriteUint8(buffer, &index, message.PlatformType)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
+		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
+	}
+
+	// summary slice only
+
+	if (message.SessionFlags & SessionFlags_Summary) != 0 {
+		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsSent)
+		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsSent)
+		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsLost)
+		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsLost)
+		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsOutOfOrder)
+		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsOutOfOrder)
+		encoding.WriteUint32(buffer, &index, message.SessionDuration)
+		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesUp)
+		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesDown)
+		encoding.WriteUint32(buffer, &index, message.DurationOnNext)
+		encoding.WriteUint64(buffer, &index, message.StartTimestamp)
+	}
 
 	return buffer[:index]
 }
@@ -148,496 +198,219 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("invalid session update message version %d", message.Version)
 	}
 
-	// ...
+	// always
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read timestamp")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
+		return fmt.Errorf("failed to read session id")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.SliceNumber) {
+		return fmt.Errorf("failed to read slice number")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealPacketLoss) {
+		return fmt.Errorf("failed to read real packet loss")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealJitter) {
+		return fmt.Errorf("failed to read real jitter")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RealOutOfOrder) {
+		return fmt.Errorf("failed to read real out of order")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.SessionFlags) {
+		return fmt.Errorf("failed to read session flags")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.GameEvents) {
+		return fmt.Errorf("failed to read game events")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {
+		return fmt.Errorf("failed to read direct rtt")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectJitter) {
+		return fmt.Errorf("failed to read direct jitter")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.DirectPacketLoss) {
+		return fmt.Errorf("failed to read direct packet loss")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesUp) {
+		return fmt.Errorf("failed to read direct bytes up")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesDown) {
+		return fmt.Errorf("failed to read direct bytes down")
+	}
+
+	// next only
+
+	if (message.SessionFlags & SessionFlags_Next) != 0 {
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
+			return fmt.Errorf("failed to read next rtt")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
+			return fmt.Errorf("failed to read next jitter")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
+			return fmt.Errorf("failed to read next packet loss")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextPredictedRTT) {
+			return fmt.Errorf("failed to read next predicted rtt")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.NextBytesUp) {
+			return fmt.Errorf("failed to read next bytes up")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.NextBytesDown) {
+			return fmt.Errorf("failed to read next bytes down")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
+			return fmt.Errorf("failed to read next num route relays")
+		}
+
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelays[i]) {
+				return fmt.Errorf("failed to read next route relay id")
+			}
+		}
+	}
+
+	// first slice only
+
+	if message.SliceNumber == 0 {
+
+		if !encoding.ReadUint8(buffer, &index, &message.NumTags) {
+			return fmt.Errorf("failed to read num tags")
+		}
+
+		for i := 0; i < int(message.NumTags); i++ {
+			if !encoding.ReadUint64(buffer, &index, &message.Tags[i]) {
+				return fmt.Errorf("failed to read tags")
+			}
+		}
+	}
+
+	// first slice or summary
+
+	if message.SliceNumber == 0 || (message.SessionFlags & SessionFlags_Summary) != 0 {
+
+		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
+			return fmt.Errorf("failed to read datacenter id")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
+			return fmt.Errorf("failed to read buyer id")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
+			return fmt.Errorf("failed to read user hash")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.Latitude) {
+			return fmt.Errorf("failed to read latitude")
+		}
+
+		if !encoding.ReadFloat32(buffer, &index, &message.Longitude) {
+			return fmt.Errorf("failed to read longitude")
+		}
+
+		if !encoding.ReadAddress(buffer, &index, &message.ClientAddress) {
+			return fmt.Errorf("failed to read client address")
+		}
+
+		if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+			return fmt.Errorf("failed to read server address")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.ConnectionType) {
+			return fmt.Errorf("failed to read connection type")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.PlatformType) {
+			return fmt.Errorf("failed to read platform type")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
+			return fmt.Errorf("failed to read sdk version major")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Minor) {
+			return fmt.Errorf("failed to read sdk version minor")
+		}
+
+		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
+			return fmt.Errorf("failed to read sdk version patch")
+		}
+	}
+
+	// summary slice only
+
+	if (message.SessionFlags & SessionFlags_Summary) != 0 {
+
+		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsSent) {
+			return fmt.Errorf("failed to read client to server packets sent")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsSent) {
+			return fmt.Errorf("failed to read server to client packets sent")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsLost) {
+			return fmt.Errorf("failed to read client to server packets lost")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsLost) {
+			return fmt.Errorf("failed to read server to client packets lost")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsOutOfOrder) {
+			return fmt.Errorf("failed to read client to server packets out of order")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsOutOfOrder) {
+			return fmt.Errorf("failed to read server to client packets out of order")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsOutOfOrder) {
+			return fmt.Errorf("failed to read server to client packets out of order")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.SessionDuration) {
+			return fmt.Errorf("failed to read session duration")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesUp) {
+			return fmt.Errorf("failed to read envelope bytes up sum")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesDown) {
+			return fmt.Errorf("failed to read envelope bytes down sum")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.DurationOnNext) {
+			return fmt.Errorf("failed to read duration on next")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.StartTimestamp) {
+			return fmt.Errorf("failed to read start timestamp")
+		}
+	}
 
 	return nil
 }
-
-
-/*
-func (message *SessionUpdateMessage) Serialize(stream encoding.Stream) error {
-
-	// always
-
-	if stream.IsWriting() && (message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max) {
-		panic(fmt.Sprintf("invalid session update message version %d", message.Version))
-	}
-
-	stream.SerializeBits(&message.Version, 8)
-
-	if stream.IsReading() && (message.Version < SessionUpdateMessageVersion_Min || message.Version > SessionUpdateMessageVersion_Max) {
-		return fmt.Errorf("invalid session update message version %d", message.Version)
-	}
-
-	stream.SerializeUint64(&message.Timestamp)
-	stream.SerializeUint64(&message.SessionId)
-
-	small := false
-	if message.SliceNumber < 1024 {
-		small = true
-	}
-	stream.SerializeBool(&small)
-	if small {
-		stream.SerializeBits(&message.SliceNumber, 10)
-	} else {
-		stream.SerializeBits(&message.SliceNumber, 32)
-	}
-
-	stream.SerializeInteger(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT)
-	stream.SerializeInteger(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT)
-	stream.SerializeInteger(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT)
-	stream.SerializeInteger(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter)
-	stream.SerializeInteger(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-
-	stream.SerializeInteger(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-	stream.SerializeBits(&message.RealPacketLoss_Frac, 8)
-	stream.SerializeUint32(&message.RealJitter)
-
-	stream.SerializeBool(&message.Next)
-	stream.SerializeBool(&message.Flagged)
-	stream.SerializeBool(&message.Summary)
-
-	stream.SerializeBool(&message.UseDebug)
-	stream.SerializeString(&message.Debug, SessionUpdateMessageMaxDebugLength)
-
-	stream.SerializeInteger(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity)
-
-	stream.SerializeUint64(&message.UserFlags)
-
-	stream.SerializeBool(&message.TryBeforeYouBuy)
-
-	// first slice and summary slice only
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		stream.SerializeUint64(&message.DatacenterId)
-		stream.SerializeUint64(&message.BuyerId)
-		stream.SerializeUint64(&message.UserHash)
-		stream.SerializeUint64(&message.EnvelopeBytesUp)
-		stream.SerializeUint64(&message.EnvelopeBytesDown)
-		stream.SerializeFloat32(&message.Latitude)
-		stream.SerializeFloat32(&message.Longitude)
-		stream.SerializeString(&message.ISP, SessionUpdateMessageMaxISPLength)
-		stream.SerializeInteger(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType)
-		stream.SerializeInteger(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType)
-		stream.SerializeBits(&message.SDKVersion_Major, 8)
-		stream.SerializeBits(&message.SDKVersion_Minor, 8)
-		stream.SerializeBits(&message.SDKVersion_Patch, 8)
-		stream.SerializeInteger(&message.NumTags, 0, SessionUpdateMessageMaxTags)
-		for i := 0; i < int(message.NumTags); i++ {
-			stream.SerializeUint64(&message.Tags[i])
-		}
-		stream.SerializeBool(&message.ABTest)
-		stream.SerializeBool(&message.Pro)
-		stream.SerializeAddress(&message.ClientAddress)
-		stream.SerializeAddress(&message.ServerAddress)
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		stream.SerializeUint64(&message.ClientToServerPacketsSent)
-		stream.SerializeUint64(&message.ServerToClientPacketsSent)
-		stream.SerializeUint64(&message.ClientToServerPacketsLost)
-		stream.SerializeUint64(&message.ServerToClientPacketsLost)
-		stream.SerializeUint64(&message.ClientToServerPacketsOutOfOrder)
-		stream.SerializeUint64(&message.ServerToClientPacketsOutOfOrder)
-
-		stream.SerializeUint64(&message.StartTimestamp)
-		stream.SerializeUint32(&message.SessionDuration)
-
-		stream.SerializeBool(&message.EverOnNext)
-
-		if message.EverOnNext {
-
-			stream.SerializeUint64(&message.EnvelopeBytesUpSum)
-			stream.SerializeUint64(&message.EnvelopeBytesDownSum)
-			stream.SerializeUint32(&message.DurationOnNext)
-		}
-	}
-
-	// next only
-
-	if message.Next {
-
-		stream.SerializeInteger(&message.NextRTT, 0, SessionUpdateMessageMaxRTT)
-		stream.SerializeInteger(&message.NextJitter, 0, SessionUpdateMessageMaxJitter)
-		stream.SerializeInteger(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss)
-		stream.SerializeInteger(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT)
-		stream.SerializeInteger(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT)
-
-		stream.SerializeInteger(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays)
-		for i := 0; i < int(message.NumNextRelays); i++ {
-			stream.SerializeUint64(&message.NextRelays[i])
-			stream.SerializeUint64(&message.NextRelayPrice[i])
-		}
-
-		stream.SerializeUint64(&message.TotalPrice)
-		stream.SerializeBool(&message.Uncommitted)
-		stream.SerializeBool(&message.Multipath)
-		stream.SerializeBool(&message.RTTReduction)
-		stream.SerializeBool(&message.PacketLossReduction)
-		stream.SerializeBool(&message.RouteChanged)
-
-		stream.SerializeUint64(&message.NextBytesUp)
-		stream.SerializeUint64(&message.NextBytesDown)
-	}
-
-	// error state only
-
-	errorState := false
-
-	if stream.IsWriting() {
-		errorState =
-			message.FallbackToDirect ||
-				message.MultipathVetoed ||
-				message.Mispredicted ||
-				message.Vetoed ||
-				message.LatencyWorse ||
-				message.NoRoute ||
-				message.NextLatencyTooHigh ||
-				message.CommitVeto ||
-				message.UnknownDatacenter ||
-				message.DatacenterNotEnabled ||
-				message.BuyerNotLive ||
-				message.StaleRouteMatrix
-	}
-
-	stream.SerializeBool(&errorState)
-
-	if errorState {
-
-		stream.SerializeBool(&message.FallbackToDirect)
-		stream.SerializeBool(&message.MultipathVetoed)
-		stream.SerializeBool(&message.Mispredicted)
-		stream.SerializeBool(&message.Vetoed)
-		stream.SerializeBool(&message.LatencyWorse)
-		stream.SerializeBool(&message.NoRoute)
-		stream.SerializeBool(&message.NextLatencyTooHigh)
-		stream.SerializeBool(&message.CommitVeto)
-		stream.SerializeBool(&message.UnknownDatacenter)
-		stream.SerializeBool(&message.DatacenterNotEnabled)
-		stream.SerializeBool(&message.BuyerNotLive)
-		stream.SerializeBool(&message.StaleRouteMatrix)
-	}
-
-	return stream.Error()
-}
-
-func (message *SessionUpdateMessage) Read(buffer []byte) error {
-
-	readStream := encoding.CreateReadStream(buffer)
-
-	return message.Serialize(readStream)
-}
-
-func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
-
-	writeStream := encoding.CreateWriteStream(buffer[:])
-
-	err := message.Serialize(writeStream)
-	if err != nil {
-		panic(err)
-	}
-
-	writeStream.Flush()
-
-	packetBytes := writeStream.GetBytesProcessed()
-
-	return buffer[:packetBytes]
-}
-
-func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
-
-	e := make(map[string]bigquery.Value)
-
-	// always
-
-	e["timestamp"] = int(message.Timestamp)
-	e["sessionID"] = int(message.SessionId)
-	e["sliceNumber"] = int(message.SliceNumber)
-	e["directRTT"] = int(message.DirectMinRTT)
-	e["directMaxRTT"] = int(message.DirectMaxRTT)
-	e["directPrimeRTT"] = int(message.DirectPrimeRTT)
-	e["directJitter"] = int(message.DirectJitter)
-	e["directPacketLoss"] = int(message.DirectPacketLoss)
-	e["realPacketLoss"] = float64(message.RealPacketLoss) + float64(message.RealPacketLoss_Frac)/256.0
-	e["realJitter"] = int(message.RealJitter)
-
-	if message.Next {
-		e["next"] = true
-	}
-
-	if message.Flagged {
-		e["flagged"] = true
-	}
-
-	if message.Summary {
-		e["summary"] = true
-	}
-
-	if message.UseDebug {
-		e["debug"] = message.Debug
-	}
-
-	if message.RouteDiversity > 0 {
-		e["routeDiversity"] = int(message.RouteDiversity)
-	}
-
-	if message.UserFlags > 0 {
-		e["userFlags"] = int(message.UserFlags)
-	}
-
-	if message.TryBeforeYouBuy {
-		e["tryBeforeYouBuy"] = message.TryBeforeYouBuy
-	}
-
-	// first slice and summary slice only
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		e["datacenterID"] = int(message.DatacenterId)
-		e["buyerID"] = int(message.BuyerId)
-		e["userHash"] = int(message.UserHash)
-		e["envelopeBytesUp"] = int(message.EnvelopeBytesUp)
-		e["envelopeBytesDown"] = int(message.EnvelopeBytesDown)
-		e["latitude"] = message.Latitude
-		e["longitude"] = message.Longitude
-		e["clientAddress"] = message.ClientAddress
-		e["serverAddress"] = message.ServerAddress
-		e["isp"] = message.ISP
-		e["connectionType"] = int(message.ConnectionType)
-		e["platformType"] = int(message.PlatformType)
-		e["sdkVersion"] = fmt.Sprintf("%d.%d.%d", message.SDKVersion_Major, message.SDKVersion_Minor, message.SDKVersion_Patch)
-
-		if message.NumTags > 0 {
-			tags := make([]bigquery.Value, message.NumTags)
-			for i := 0; i < int(message.NumTags); i++ {
-				tags[i] = int(message.Tags[i])
-			}
-			e["tags"] = tags
-		}
-
-		if message.ABTest {
-			e["abTest"] = true
-		}
-
-		if message.Pro {
-			e["pro"] = true
-		}
-	}
-
-	// summary slice only
-
-	if message.Summary {
-
-		e["clientToServerPacketsSent"] = int(message.ClientToServerPacketsSent)
-		e["serverToClientPacketsSent"] = int(message.ServerToClientPacketsSent)
-		e["clientToServerPacketsLost"] = int(message.ClientToServerPacketsLost)
-		e["serverToClientPacketsLost"] = int(message.ServerToClientPacketsLost)
-		e["clientToServerPacketsOutOfOrder"] = int(message.ClientToServerPacketsOutOfOrder)
-		e["serverToClientPacketsOutOfOrder"] = int(message.ServerToClientPacketsOutOfOrder)
-
-		if message.EverOnNext {
-			e["everOnNext"] = true
-		}
-
-		e["sessionDuration"] = int(message.SessionDuration)
-
-		if message.EverOnNext {
-			e["envelopeBytesUpSum"] = int(message.EnvelopeBytesUpSum)
-			e["envelopeBytesDownSum"] = int(message.EnvelopeBytesDownSum)
-			e["durationOnNext"] = int(message.DurationOnNext)
-		}
-
-		e["startTimestamp"] = int(message.StartTimestamp)
-	}
-
-	// next only
-
-	if message.Next {
-
-		e["nextRTT"] = int(message.NextRTT)
-		e["nextJitter"] = int(message.NextJitter)
-		e["nextPacketLoss"] = int(message.NextPacketLoss)
-		e["predictedNextRTT"] = int(message.PredictedNextRTT)
-		e["nearRelayRTT"] = int(message.NearRelayRTT)
-
-		if message.NumNextRelays > 0 {
-
-			nextRelays := make([]bigquery.Value, message.NumNextRelays)
-			nextRelayPrice := make([]bigquery.Value, message.NumNextRelays)
-
-			for i := 0; i < int(message.NumNextRelays); i++ {
-				nextRelays[i] = int(message.NextRelays[i])
-				nextRelayPrice[i] = int(message.NextRelayPrice[i])
-			}
-
-			e["nextRelays"] = nextRelays
-			e["nextRelayPrice"] = nextRelayPrice
-		}
-
-		e["totalPrice"] = int(message.TotalPrice)
-
-		if message.Uncommitted {
-			e["uncommitted"] = true
-		}
-
-		if message.Multipath {
-			e["multipath"] = true
-		}
-
-		if message.RTTReduction {
-			e["rttReduction"] = true
-		}
-
-		if message.PacketLossReduction {
-			e["packetLossReduction"] = true
-		}
-
-		if message.RouteChanged {
-			e["routeChanged"] = true
-		}
-
-		e["nextBytesUp"] = int(message.NextBytesUp)
-		e["nextBytesDown"] = int(message.NextBytesDown)
-
-	}
-
-	// error state only
-	
-	if message.FallbackToDirect {
-		e["fallbackToDirect"] = true
-	}
-
-	if message.MultipathVetoed {
-		e["multipathVetoed"] = true
-	}
-
-	if message.Mispredicted {
-		e["mispredicted"] = true
-	}
-
-	if message.Vetoed {
-		e["vetoed"] = true
-	}
-
-	if message.LatencyWorse {
-		e["latencyWorse"] = true
-	}
-
-	if message.NoRoute {
-		e["noRoute"] = true
-	}
-
-	if message.NextLatencyTooHigh {
-		e["nextLatencyTooHigh"] = true
-	}
-
-	if message.CommitVeto {
-		e["commitVeto"] = true
-	}
-
-	if message.UnknownDatacenter {
-		e["unknownDatacenter"] = true
-	}
-
-	if message.DatacenterNotEnabled {
-		e["datacenterNotEnabled"] = true
-	}
-
-	if message.BuyerNotLive {
-		e["buyerNotLive"] = true
-	}
-
-	if message.StaleRouteMatrix {
-		e["staleRouteMatrix"] = true
-	}
-
-	return e, "", nil
-}
-
-func (message *SessionUpdateMessage) Clamp() {
-
-	if common.Clamp(&message.DirectMinRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("DirectMinRTT was clamped!")
-	}
-
-	if common.Clamp(&message.DirectMaxRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("DirectMaxRTT was clamped!")
-	}
-
-	if common.Clamp(&message.DirectPrimeRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("DirectPrimeRTT was clamped!")
-	}
-
-	if common.Clamp(&message.DirectJitter, 0, SessionUpdateMessageMaxJitter) {
-		core.Warn("DirectMinRTT was clamped!")
-	}
-
-	if common.Clamp(&message.DirectPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
-		core.Warn("DirectPacketLoss was clamped!")
-	}
-
-	if common.Clamp(&message.RealPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
-		core.Warn("RealPacketLoss was clamped!")
-	}
-
-	if common.Clamp(&message.RealPacketLoss_Frac, 0, 255) {
-		core.Warn("RealPacketLoss_Frac was clamped!")
-	}
-
-	if common.Clamp(&message.RealJitter, 0, SessionUpdateMessageMaxJitter) {
-		core.Warn("RealPacketJitter was clamped!")
-	}
-
-	if common.ClampString(&message.Debug, SessionUpdateMessageMaxDebugLength) {
-		core.Warn("Debug was clamped!")
-	}
-
-	if common.Clamp(&message.RouteDiversity, 0, SessionUpdateMessageMaxRouteDiversity) {
-		core.Warn("RouteDiversity was clamped!")
-	}
-
-	if common.ClampString(&message.ISP, SessionUpdateMessageMaxISPLength) {
-		core.Warn("ISP was clamped!")
-	}
-
-	if common.Clamp(&message.ConnectionType, 0, SessionUpdateMessageMaxConnectionType) {
-		core.Warn("RealPacketLoss was clamped!")
-	}
-
-	if common.Clamp(&message.PlatformType, 0, SessionUpdateMessageMaxPlatformType) {
-		core.Warn("PlatformType was clamped!")
-	}
-
-	if common.Clamp(&message.NumTags, 0, SessionUpdateMessageMaxTags) {
-		core.Warn("NumTags was clamped!")
-	}
-
-	if common.Clamp(&message.NextRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("NextRTT was clamped!")
-	}
-
-	if common.Clamp(&message.NextJitter, 0, SessionUpdateMessageMaxJitter) {
-		core.Warn("NextJitter was clamped!")
-	}
-
-	if common.Clamp(&message.NextPacketLoss, 0, SessionUpdateMessageMaxPacketLoss) {
-		core.Warn("NextPacketLoss was clamped!")
-	}
-
-	if common.Clamp(&message.PredictedNextRTT, 0, SessionUpdateMessageMaxRTT) {
-		core.Warn("PredictedNextRTT was clamped!")
-	}
-
-	if common.Clamp(&message.NearRelayRTT, 0, SessionUpdateMessageMaxNearRelayRTT) {
-		core.Warn("NearRelayRTT was clamped!")
-	}
-
-	if common.Clamp(&message.NumNextRelays, 0, SessionUpdateMessageMaxRelays) {
-		core.Warn("NumNextRelays was clamped!")
-	}
-}
-*/

@@ -222,8 +222,10 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		DatacenterNotEnabled: common.RandomBool(),
 		BuyerNotLive:         common.RandomBool(),
 		StaleRouteMatrix:     common.RandomBool(),
+		*/
 	}
 
+/*
 	// first slice and summary slice
 
 	if message.SliceNumber == 0 || message.Summary {
@@ -243,10 +245,8 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.NumTags = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxTags+10))
 		message.ABTest = common.RandomBool()
 		message.Pro = common.RandomBool()
-		*/
 	}
 
-/*
 	// summary slice only
 
 	if message.Summary {
