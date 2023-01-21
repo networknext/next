@@ -76,7 +76,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 			if i == j {
 				fmt.Printf("-1,")
 			} else {
-				index := core.TriMatrixIndex(i,j)
+				index := core.TriMatrixIndex(i, j)
 				cost := costMatrix.Costs[index]
 				fmt.Printf("%d,", cost)
 			}

@@ -717,13 +717,13 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-		if requestPacket.SliceNumber >= 2 && requestPacket.ServerEvents != 0x123 {
-			panic("server events not set on session update")
+		if requestPacket.SliceNumber >= 2 && requestPacket.GameEvents != 0x123 {
+			panic("game events not set on session update")
 		}
 	}
 
-	if requestPacket.ServerEvents > 0 {
-		fmt.Printf("server events %x\n", requestPacket.ServerEvents)
+	if requestPacket.GameEvents > 0 {
+		fmt.Printf("game events %x\n", requestPacket.GameEvents)
 	}
 
 	// build response packet
@@ -735,12 +735,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// direct route
 
 		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
-			SessionId:          requestPacket.SessionId,
-			SliceNumber:        requestPacket.SliceNumber,
-			NumNearRelays:      int32(numRelays),
-			RouteType:          int32(packets.SDK5_RouteTypeDirect),
-			NumTokens:          0,
-			Tokens:             nil,
+			SessionId:     requestPacket.SessionId,
+			SliceNumber:   requestPacket.SliceNumber,
+			NumNearRelays: int32(numRelays),
+			RouteType:     int32(packets.SDK5_RouteTypeDirect),
+			NumTokens:     0,
+			Tokens:        nil,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -814,12 +814,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// contruct the session update response packet
 
 		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
-			SessionId:          requestPacket.SessionId,
-			SliceNumber:        requestPacket.SliceNumber,
-			RouteType:          routeType,
-			Multipath:          multipath,
-			NumTokens:          int32(numTokens),
-			Tokens:             tokenData,
+			SessionId:   requestPacket.SessionId,
+			SliceNumber: requestPacket.SliceNumber,
+			RouteType:   routeType,
+			Multipath:   multipath,
+			NumTokens:   int32(numTokens),
+			Tokens:      tokenData,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {
