@@ -13903,7 +13903,7 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
     if ( !entry )
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. not adding server event %x", next_address_to_string( address, buffer ), server_events );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. not adding game event %x", next_address_to_string( address, buffer ), server_events );
         return;
     }
 
@@ -15715,16 +15715,16 @@ void next_server_event( struct next_server_t * server, const struct next_address
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server event. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring game event. server is flushed" );
         return;
     }
     
-    // send server event command to internal server
+    // send game event command to internal server
 
     next_server_command_server_event_t * command = (next_server_command_server_event_t*) next_malloc( server->context, sizeof( next_server_command_server_event_t ) );
     if ( !command )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server event failed. could not create server event command" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "game event failed. could not create game event command" );
         return;
     }
 
