@@ -793,6 +793,7 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	sliceNumber := uint32(100)
 
 	sessionData := packets.GenerateRandomSessionData()
+	sessionData.RouteState.Next = false
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 	sessionData.NextEnvelopeBytesUpSum = 0
