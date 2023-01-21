@@ -18,6 +18,8 @@ DONE
 
 	Clean up and simplify the session update message
 
+	Rework the session update handler to unify around "session flags" concept, passing these flags directly to the session update message -> bigquery.
+
 TODO
 
 	Write out the session update message from the session update handler (quite involved...)

@@ -1029,8 +1029,9 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.DatacenterId = state.Request.DatacenterId
 	message.Latitude = state.Output.Latitude
 	message.Longitude = state.Output.Longitude
-
 	message.SliceNumber = state.Input.SliceNumber
+	message.SessionFlags = state.SessionFlags
+	message.GameEvents = state.Request.ServerEvents // todo: rename to game events
 
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
@@ -1038,8 +1039,7 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.DirectKbpsUp = state.Request.DirectKbpsUp
 	message.DirectKbpsDown = state.Request.DirectKbpsDown
 
-	message.Next = state.Request.Next
-	if message.Next {
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss

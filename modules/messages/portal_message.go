@@ -94,7 +94,7 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
-	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (message.SessionFlags & SessionFlags_Next) != 0 {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
@@ -208,11 +208,7 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct kbps down")
 	}
 
-	if !encoding.ReadBool(buffer, &index, &message.Next) {
-		return fmt.Errorf("failed to read next")
-	}
-
-	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (message.SessionFlags & SessionFlags_Next) != 0 {
 
 		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
 			return fmt.Errorf("failed to read next rtt")
