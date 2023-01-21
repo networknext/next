@@ -735,12 +735,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// direct route
 
 		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
-			SessionId:          requestPacket.SessionId,
-			SliceNumber:        requestPacket.SliceNumber,
-			NumNearRelays:      int32(numRelays),
-			RouteType:          int32(packets.SDK5_RouteTypeDirect),
-			NumTokens:          0,
-			Tokens:             nil,
+			SessionId:     requestPacket.SessionId,
+			SliceNumber:   requestPacket.SliceNumber,
+			NumNearRelays: int32(numRelays),
+			RouteType:     int32(packets.SDK5_RouteTypeDirect),
+			NumTokens:     0,
+			Tokens:        nil,
 		}
 
 		for i := 0; i < numRelays; i++ {
@@ -814,12 +814,12 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// contruct the session update response packet
 
 		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
-			SessionId:          requestPacket.SessionId,
-			SliceNumber:        requestPacket.SliceNumber,
-			RouteType:          routeType,
-			Multipath:          multipath,
-			NumTokens:          int32(numTokens),
-			Tokens:             tokenData,
+			SessionId:   requestPacket.SessionId,
+			SliceNumber: requestPacket.SliceNumber,
+			RouteType:   routeType,
+			Multipath:   multipath,
+			NumTokens:   int32(numTokens),
+			Tokens:      tokenData,
 		}
 
 		if numRelays > packets.SDK5_MaxNearRelays {

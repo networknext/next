@@ -270,11 +270,11 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateResponsePacket {
 
 	packet := packets.SDK5_SessionUpdateResponsePacket{
-		SessionId:          rand.Uint64(),
-		SliceNumber:        rand.Uint32(),
-		SessionDataBytes:   int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
-		HasNearRelays:      common.RandomBool(),
-		HasDebug:           common.RandomBool(),
+		SessionId:        rand.Uint64(),
+		SliceNumber:      rand.Uint32(),
+		SessionDataBytes: int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
+		HasNearRelays:    common.RandomBool(),
+		HasDebug:         common.RandomBool(),
 	}
 
 	if packet.HasDebug {

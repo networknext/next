@@ -304,7 +304,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 			if packet.HasNearRelayPings {
 				stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
 				stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 			}
 		}
 	}
@@ -470,7 +470,7 @@ type SDK5_SessionData struct {
 	SessionVersion                uint32
 	SliceNumber                   uint32
 	ExpireTimestamp               uint64
-	Initial                       bool        // todo: do we still need this?
+	Initial                       bool // todo: do we still need this?
 	Latitude                      float32
 	Longitude                     float32
 	RouteChanged                  bool

@@ -10,9 +10,9 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -3129,6 +3129,7 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
 }
+
 // --------------------------------------------------------------
 
 func Test_SessionUpdate_Post_SliceZero(t *testing.T) {

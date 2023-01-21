@@ -13,50 +13,47 @@ const (
 	PortalMessageVersion_Write = 1
 
 	// todo: constants module
-	MaxNearRelays = 32
+	MaxNearRelays  = 32
 	MaxRouteRelays = 5
 )
 
 type PortalMessage struct {
-	Version          byte
+	Version byte
 
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
 
-	SessionId        uint64
-	BuyerId          uint64
-	DatacenterId     uint64
-	Latitude         float32
-	Longitude        float32
-	ClientAddress    net.UDPAddr
-	ServerAddress    net.UDPAddr
+	SessionId     uint64
+	BuyerId       uint64
+	DatacenterId  uint64
+	Latitude      float32
+	Longitude     float32
+	ClientAddress net.UDPAddr
+	ServerAddress net.UDPAddr
+	SliceNumber   uint32
+	SessionFlags  uint64
+	GameEvents    uint64
 
-	SliceNumber      	      uint32
-	
-	DirectRTT                 float32
-	DirectJitter              float32
-	DirectPacketLoss          float32
-	DirectKbpsUp              uint32
-	DirectKbpsDown            uint32
-	
-	Next                      bool
-	NextRTT                   float32
-	NextJitter                float32
-	NextPacketLoss            float32
-	NextKbpsUp                uint32
-	NextKbpsDown              uint32
-	NextBandwidthOverLimit    bool
-	NextPredictedRTT          uint32
-	NextNumRouteRelays        uint32
-	NextRouteRelayId          [MaxRouteRelays]uint64
+	DirectRTT        float32
+	DirectJitter     float32
+	DirectPacketLoss float32
+	DirectKbpsUp     uint32
+	DirectKbpsDown   uint32
 
-	RealJitter                float32
-	RealPacketLoss            float32
-	RealOutOfOrder            float32
+	NextRTT                float32
+	NextJitter             float32
+	NextPacketLoss         float32
+	NextKbpsUp             uint32
+	NextKbpsDown           uint32
+	NextBandwidthOverLimit bool
+	NextPredictedRTT       uint32
+	NextNumRouteRelays     uint32
+	NextRouteRelayId       [MaxRouteRelays]uint64
 
-	Reported         bool
-	FallbackToDirect bool
+	RealJitter     float32
+	RealPacketLoss float32
+	RealOutOfOrder float32
 
 	NumNearRelays       uint32
 	NearRelayId         [MaxNearRelays]uint64
@@ -87,8 +84,9 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.Longitude)
 	encoding.WriteAddress(buffer, &index, &message.ClientAddress)
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
-
 	encoding.WriteUint32(buffer, &index, message.SliceNumber)
+	encoding.WriteUint64(buffer, &index, message.SessionFlags)
+	encoding.WriteUint64(buffer, &index, message.GameEvents)
 
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
@@ -96,8 +94,7 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
-	encoding.WriteBool(buffer, &index, message.Next)
-	if message.Next {
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
@@ -114,9 +111,6 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RealJitter)
 	encoding.WriteFloat32(buffer, &index, message.RealPacketLoss)
 	encoding.WriteFloat32(buffer, &index, message.RealOutOfOrder)
-
-	encoding.WriteBool(buffer, &index, message.Reported)
-	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
 
 	encoding.WriteUint32(buffer, &index, message.NumNearRelays)
 	for i := 0; i < int(message.NumNearRelays); i++ {
@@ -186,6 +180,14 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read slice number")
 	}
 
+	if !encoding.ReadUint64(buffer, &index, &message.SessionFlags) {
+		return fmt.Errorf("failed to read session flags")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.GameEvents) {
+		return fmt.Errorf("failed to read game events")
+	}
+
 	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {
 		return fmt.Errorf("failed to read direct rtt")
 	}
@@ -210,7 +212,7 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read next")
 	}
 
-	if message.Next {
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
 
 		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
 			return fmt.Errorf("failed to read next rtt")
@@ -262,14 +264,6 @@ func (message *PortalMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RealOutOfOrder) {
 		return fmt.Errorf("failed to read real out of order")
-	}
-
-	if !encoding.ReadBool(buffer, &index, &message.Reported) {
-		return fmt.Errorf("failed to read reported")
-	}
-
-	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
-		return fmt.Errorf("failed to read fallback to direct")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumNearRelays) {

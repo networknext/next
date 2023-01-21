@@ -26,6 +26,16 @@ TODO
 
 	-----------
 
+	Rename to "game events" all the way down to the sdk5
+
+	-----------
+
+	Add match id to both portal data and session update data by default (first slice only, and summary...)
+
+	Then work out a new API to link the session with a match (start of session, with tags...), separate from setting match data (end of match).
+
+	-----------
+
 	Add unit test to make sure we write out session update message
 
 	Add unit test to make sure we write out portal message
