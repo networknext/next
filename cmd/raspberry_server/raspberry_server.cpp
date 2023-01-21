@@ -123,7 +123,7 @@ int main()
     const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
     if ( raspberry_backend_address_override )
     {
-    	next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+        next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
@@ -139,17 +139,17 @@ int main()
 
     while ( file && fgets( buffer, sizeof(buffer), file ) != NULL )
     {
-		next_address_t address;
-		if ( next_address_parse( &address, buffer ) == NEXT_OK )
-		{
-			next_address_to_string( &address, server_address );
-			break;
-		}
+        next_address_t address;
+        if ( next_address_parse( &address, buffer ) == NEXT_OK )
+        {
+            next_address_to_string( &address, server_address );
+            break;
+        }
     }
 
     if ( file )
     {
-    	pclose( file );
+        pclose( file );
     }
 
     // start server

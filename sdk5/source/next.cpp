@@ -3162,18 +3162,18 @@ struct NextClientStatsPacket
         bool has_near_relay_pings = false;
         if ( Stream::IsWriting )
         {
-        	has_near_relay_pings = num_near_relays > 0;
+            has_near_relay_pings = num_near_relays > 0;
         }
         serialize_bool( stream, has_near_relay_pings );
         if ( has_near_relay_pings )
         {
-	        for ( int i = 0; i < num_near_relays; ++i )
-	        {
-	            serialize_uint64( stream, near_relay_ids[i] );
-	            serialize_int( stream, near_relay_rtt[i], 0, 255 );
-	            serialize_int( stream, near_relay_jitter[i], 0, 255 );
-	            serialize_float( stream, near_relay_packet_loss[i] );
-	        }
+            for ( int i = 0; i < num_near_relays; ++i )
+            {
+                serialize_uint64( stream, near_relay_ids[i] );
+                serialize_int( stream, near_relay_rtt[i], 0, 255 );
+                serialize_int( stream, near_relay_jitter[i], 0, 255 );
+                serialize_float( stream, near_relay_packet_loss[i] );
+            }
         }
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_lost_server_to_client );
@@ -7734,7 +7734,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( direct_route_stats.packet_loss > client->client_stats.direct_max_packet_loss_seen )
         {
-        	client->client_stats.direct_max_packet_loss_seen = direct_route_stats.packet_loss;
+            client->client_stats.direct_max_packet_loss_seen = direct_route_stats.packet_loss;
         }
 
 #if NEXT_DEVELOPMENT
@@ -8423,9 +8423,9 @@ void next_client_update( next_client_t * client )
 
                 if ( !packet_received->direct )
                 {
-	                next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-	                const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
-	                next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+                    next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
+                    const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
+                    next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
@@ -13903,7 +13903,7 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
     if ( !entry )
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. not adding server event %x", next_address_to_string( address, buffer ), server_events );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. not adding game event %x", next_address_to_string( address, buffer ), server_events );
         return;
     }
 
@@ -14178,7 +14178,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
         next_platform_mutex_guard( &server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-		return;
+        return;
     }
 
 #if NEXT_DEVELOPMENT
@@ -14574,9 +14574,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server update response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    	    next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
-	        next_assert( notify_direct_only );
-	        notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
+            next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
+            next_assert( notify_direct_only );
+            notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify_direct_only );
             return;
@@ -14730,14 +14730,14 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             // IMPORTANT: hold near relay stats for the rest of the session
             if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
             {
-            	session->num_held_near_relays = session->stats_num_near_relays;
-            	for ( int j = 0; j < session->stats_num_near_relays; j++ )
-            	{
-            		session->held_near_relay_ids[j] = session->stats_near_relay_ids[j];	
-            		session->held_near_relay_rtt[j] = session->stats_near_relay_rtt[j];
-            		session->held_near_relay_jitter[j] = session->stats_near_relay_jitter[j];
-            		session->held_near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];	
-            	}
+                session->num_held_near_relays = session->stats_num_near_relays;
+                for ( int j = 0; j < session->stats_num_near_relays; j++ )
+                {
+                    session->held_near_relay_ids[j] = session->stats_near_relay_ids[j];    
+                    session->held_near_relay_rtt[j] = session->stats_near_relay_rtt[j];
+                    session->held_near_relay_jitter[j] = session->stats_near_relay_jitter[j];
+                    session->held_near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];    
+                }
             }
 
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
@@ -15715,16 +15715,16 @@ void next_server_event( struct next_server_t * server, const struct next_address
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server event. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring game event. server is flushed" );
         return;
     }
     
-    // send server event command to internal server
+    // send game event command to internal server
 
     next_server_command_server_event_t * command = (next_server_command_server_event_t*) next_malloc( server->context, sizeof( next_server_command_server_event_t ) );
     if ( !command )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server event failed. could not create server event command" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "game event failed. could not create game event command" );
         return;
     }
 

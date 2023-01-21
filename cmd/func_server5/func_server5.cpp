@@ -43,7 +43,7 @@ bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
 bool tags_multi = false;
-bool server_events = false;
+bool game_events = false;
 bool match_data = false;
 bool flush = false;
 
@@ -88,7 +88,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( next_server_session_upgraded( server, from ) && session_exists )
         {
-            if ( server_events && !flush )
+            if ( game_events && !flush )
             {
                 uint64_t event1 = (1<<10);
                 uint64_t event2 = (1<<20);
@@ -201,10 +201,10 @@ int main()
         tags_multi = true;
     }
 
-    const char * server_events_env = getenv( "SERVER_EVENTS" );
-    if ( server_events_env )
+    const char * game_events_env = getenv( "GAME_EVENTS" );
+    if ( game_events_env )
     {
-        server_events = true;
+        game_events = true;
     }
 
     const char * match_data_env = getenv( "SERVER_MATCH_DATA" );
@@ -256,7 +256,7 @@ int main()
             if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
                 continue;
 
-            if ( server_events )
+            if ( game_events )
             {
                 next_server_event( server, &client_address, event1 | event2 | event3 );
             }
