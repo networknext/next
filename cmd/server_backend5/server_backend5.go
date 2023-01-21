@@ -19,11 +19,12 @@ var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
 var routingPrivateKey []byte
 
-var serverInitMessageChannel    chan *messages.ServerInitMessage
-var serverUpdateMessageChannel  chan *messages.ServerUpdateMessage
-var portalMessageChannel        chan *messages.PortalMessage
-var sessionUpdateMessageChannel chan *messages.SessionUpdateMessage
-var matchDataMessageChannel     chan *messages.MatchDataMessage
+var serverInitMessageChannel     chan *messages.ServerInitMessage
+var serverUpdateMessageChannel   chan *messages.ServerUpdateMessage
+var portalMessageChannel         chan *messages.PortalMessage
+var nearRelayPingsMessageChannel chan *messages.NearRelayPingsMessage
+var sessionUpdateMessageChannel  chan *messages.SessionUpdateMessage
+var matchDataMessageChannel      chan *messages.MatchDataMessage
 
 func main() {
 
@@ -57,12 +58,14 @@ func main() {
 	serverInitMessageChannel = make(chan *messages.ServerInitMessage, channelSize)
 	serverUpdateMessageChannel = make(chan *messages.ServerUpdateMessage, channelSize)
 	portalMessageChannel = make(chan *messages.PortalMessage, channelSize)
+	nearRelayPingsMessageChannel = make(chan *messages.NearRelayPingsMessage, channelSize)
 	sessionUpdateMessageChannel = make(chan *messages.SessionUpdateMessage, channelSize)
 	matchDataMessageChannel = make(chan *messages.MatchDataMessage, channelSize)
 
 	processServerInitMessages()
 	processServerUpdateMessages()
 	processPortalMessages()
+	processNearRelayPingsMessages()
 	processSessionUpdateMessages()
 	processMatchDataMessages()
 
@@ -109,6 +112,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.ServerInitMessageChannel = serverInitMessageChannel
 	handler.ServerUpdateMessageChannel = serverUpdateMessageChannel
 	handler.PortalMessageChannel = portalMessageChannel
+	handler.NearRelayPingsMessageChannel = nearRelayPingsMessageChannel
 	handler.SessionUpdateMessageChannel = sessionUpdateMessageChannel
 	handler.MatchDataMessageChannel = matchDataMessageChannel
 
@@ -155,6 +159,16 @@ func processPortalMessages() {
 			message := <-portalMessageChannel
 			_ = message
 			core.Debug("processed portal message")
+		}
+	}()
+}
+
+func processNearRelayPingsMessages() {
+	go func() {
+		for {
+			message := <-nearRelayPingsMessageChannel
+			_ = message
+			core.Debug("processed near relay pings message")
 		}
 	}()
 }

@@ -98,13 +98,15 @@ type SessionUpdateState struct {
 	FailedToWriteResponsePacket               bool
 	FailedToWriteSessionData                  bool
 	LocationVeto                              bool
+	SentPortalMessage                         bool
+	SentNearRelayPingsMessage                 bool
 	SentSessionUpdateMessage                  bool
-	SentPortalData                            bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
 
-	PortalMessageChannel        chan<- *messages.PortalMessage
-	SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
+	PortalMessageChannel         chan<- *messages.PortalMessage
+	SessionUpdateMessageChannel  chan<- *messages.SessionUpdateMessage
+	NearRelayPingsMessageChannel chan<- *messages.NearRelayPingsMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -515,6 +517,19 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
+
+	/*
+		Send the near relay pings message
+
+		This gives us access to near relay pings data for analytics.
+	*/
+
+	// todo: it would be best if we could ping near relays multiple times in a session
+	// when we can do this, we should adjust this check to send near relay ping messages
+	// each time we have a new set of near relay pings from the SDK
+	if state.Request.SliceNumber == 1 {
+		sendNearRelayPingsMessage(state)
+	}
 
 	return true
 }
@@ -1081,7 +1096,38 @@ func sendPortalMessage(state *SessionUpdateState) {
 
 	if state.PortalMessageChannel != nil {
 		state.PortalMessageChannel <- &message
-		state.SentPortalData = true
+		state.SentPortalMessage = true
+	}
+}
+
+func sendNearRelayPingsMessage(state *SessionUpdateState) {
+
+	message := messages.NearRelayPingsMessage{}
+
+	message.Version = messages.NearRelayPingsMessageVersion_Write
+
+	message.Timestamp = uint64(time.Now().Unix())
+
+	message.BuyerId = state.Request.BuyerId
+	message.SessionId = state.Output.SessionId
+	message.UserHash = state.Request.UserHash
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
+	message.ClientAddress = state.Request.ClientAddress
+	message.ConnectionType = byte(state.Request.ConnectionType)
+	message.PlatformType = byte(state.Request.PlatformType)
+
+	message.NumNearRelays = uint32(state.Request.NumNearRelays)
+	for i := 0; i < int(state.Request.NumNearRelays); i++ {
+		message.NearRelayId[i] = state.Request.NearRelayIds[i]
+		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
+	}
+
+	if state.NearRelayPingsMessageChannel != nil {
+		state.NearRelayPingsMessageChannel <- &message
+		state.SentNearRelayPingsMessage = true
 	}
 }
 
