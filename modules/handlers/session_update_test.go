@@ -322,17 +322,43 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 	assert.NotNil(t, state.Debug)
 }
 
-// todo: we need tests for
+func Test_SessionUpdate_Pre_ClientNextBandwidthOverLimit(t *testing.T) {
 
-/*
-	if state.Request.ClientNextBandwidthOverLimit {
-		state.SessionFlags |= messages.SessionFlags_ClientNextBandwidthOverLimit
-	}
+	t.Parallel()
 
-	if state.Request.ServerNextBandwidthOverLimit {
-		state.SessionFlags |= messages.SessionFlags_ServerNextBandwidthOverLimit
-	}
-*/
+	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	state.Request.ClientNextBandwidthOverLimit = true
+
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.False(t, result)
+	assert.True(t, (state.SessionFlags&messages.SessionFlags_ClientNextBandwidthOverLimit) != 0)
+}
+
+func Test_SessionUpdate_Pre_ServerNextBandwidthOverLimit(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	state.Request.ServerNextBandwidthOverLimit = true
+
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.False(t, result)
+	assert.True(t, (state.SessionFlags&messages.SessionFlags_ServerNextBandwidthOverLimit) != 0)
+}
 
 // --------------------------------------------------------------
 
@@ -617,6 +643,55 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
 }
 
+func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+	sessionData.PrevPacketsSentClientToServer = 1000
+	sessionData.PrevPacketsSentServerToClient = 1000
+	sessionData.PrevPacketsLostClientToServer = 0
+	sessionData.PrevPacketsLostServerToClient = 0
+
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+
+	state.Request.PacketsSentClientToServer = 2000
+	state.Request.PacketsSentServerToClient = 2000
+	state.Request.PacketsOutOfOrderClientToServer = 100
+	state.Request.PacketsOutOfOrderServerToClient = 50
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.True(t, state.ReadSessionData)
+	assert.False(t, (state.SessionFlags&messages.SessionFlags_FailedToReadSessionData) != 0)
+	assert.False(t, (state.SessionFlags&messages.SessionFlags_BadSessionId) != 0)
+	assert.False(t, (state.SessionFlags&messages.SessionFlags_BadSliceNumber) != 0)
+	assert.Equal(t, state.Output.SessionId, sessionId)
+	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
+
+	assert.Equal(t, state.RealOutOfOrder, float32(10.0))
+}
+
 func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 
 	t.Parallel()
@@ -659,13 +734,86 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	assert.Equal(t, state.RealJitter, float32(100.0))
 }
 
-// todo: need a test for
-/*
-	if state.Input.RouteState.Next {
-		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
-		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
-	}
-*/
+func Test_SessionUpdate_ExistingSession_EnvelopeBandwidth(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+	sessionData.RouteState.Next = true
+	sessionData.NextEnvelopeBytesUpSum = 1000
+	sessionData.NextEnvelopeBytesDownSum = 1000
+
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+	state.Request.JitterClientToServer = 50.0
+	state.Request.JitterServerToClient = 100.0
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(321000))
+	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(1281000))
+}
+
+func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
+	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.ServerBackendPublicKey = serverBackendPublicKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey
+
+	sessionId := uint64(0x1234556134512)
+	sliceNumber := uint32(100)
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SessionId = sessionId
+	sessionData.SliceNumber = sliceNumber
+	sessionData.NextEnvelopeBytesUpSum = 0
+	sessionData.NextEnvelopeBytesDownSum = 0
+
+	writeSessionData := writeSessionData(sessionData)
+
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
+	state.Request.SessionId = sessionId
+	state.Request.SliceNumber = sliceNumber
+	state.Request.JitterClientToServer = 50.0
+	state.Request.JitterServerToClient = 100.0
+
+	handlers.SessionUpdate_ExistingSession(state)
+
+	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(0))
+	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(0))
+}
 
 // --------------------------------------------------------------
 
@@ -3176,7 +3324,31 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	assert.False(t, state.Response.HasNearRelays)
 }
 
-// todo: test for 	state.Output.SessionDuration += packets.SDK5_BillingSliceSeconds
+func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+
+	state.RoutingPrivateKey = routingPrivateKey
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	state.From = core.ParseAddress("127.0.0.1:40000")
+	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+
+	state.Request.SliceNumber = 1
+
+	handlers.SessionUpdate_Post(state)
+
+	assert.False(t, state.GetNearRelays)
+	assert.Equal(t, state.Output.SessionDuration, uint32(packets.SDK5_BillingSliceSeconds))
+}
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 

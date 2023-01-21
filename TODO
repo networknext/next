@@ -43,91 +43,14 @@ DONE
 		NextEnvelopeBytesUpSum              uint64
 		NextEnvelopeBytesDownSum            uint64
 		DurationOnNext                      uint32
-
-TODO
-
-	Verify that we're updating certain fields in session state
-
 		SessionDuration                     uint32
 		StartTimestamp                      uint64
 
-	-----------
+	Update unit tests for session update handler so we cover new codepaths.
 
-	Review contents of session data. Do we need everytihng that is in there?
-
-	Can we optimize by having the SDK pass up different quantities? Is this still secure?
-
-	-----------
-
-	Rename to "game events" all the way down to the sdk5
-
-	-----------
-
-	Add match id to both portal data and session update data by default (first slice only, and summary...)
-
-	Then work out a new API to link the session with a match (start of session, with tags...), separate from setting match data (end of match).
-
-	-----------
-
-	Add unit test to make sure we write out session update message
-
-	Add unit test to make sure we write out portal message
-
-	Add unit test to make sure we write out near relay message 
-
-	etc...
-
-	-----------
+TODO
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------
-
-	Extend server backend 5 to write portal messages and send them to redis streams (needs configuration env vars for this...)
-
-	Defaults should work in local.
-
-	---------
-
-	Implement a portal_cruncher_new service using the new service framework
-
-	Setup a number of threads via env var.
-
-	Verify that the new portal cruncher receives portal messages.
-
-	---------
-
-	Work out how to implement new portal cruncher... optimize as you go.
-
-	---------
-
-	Verify that portal functionality is working with raspberry clients in dev.
-
-	---------
 
 
 
@@ -184,6 +107,24 @@ Essentials:
 
 
 Nice to have:
+
+	-----------
+
+	Rename to "game events" all the way down to the sdk5
+
+	-----------
+
+	Add match id to both portal data and session update data by default (first slice only, and summary...)
+
+	Then work out a new API to link the session with a match (start of session, with tags...), separate from setting match data (end of match).
+
+	-----------
+
+	Add unit test to make sure we write out session update message
+
+	Add unit test to make sure we write out portal message
+
+	Add unit test to make sure we write out near relay message 
 
 	--------------
 

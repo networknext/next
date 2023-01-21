@@ -301,8 +301,8 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	*/
 
 	if state.Input.RouteState.Next {
-		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
-		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * 8 * packets.SDK5_BillingSliceSeconds
+		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK5_BillingSliceSeconds / 8
+		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK5_BillingSliceSeconds / 8
 	}
 
 	/*
