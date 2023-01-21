@@ -197,7 +197,7 @@ type ServerConfig struct {
 	disable_autodetect             bool
 	force_resolve_hostname_timeout bool
 	force_autodetect_timeout       bool
-	server_events                  bool
+	game_events                    bool
 	match_data                     bool
 	flush                          bool
 }
@@ -271,8 +271,8 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, "NEXT_FORCE_AUTODETECT_TIMEOUT=1")
 	}
 
-	if config.server_events {
-		cmd.Env = append(cmd.Env, "SERVER_EVENTS=1")
+	if config.game_events {
+		cmd.Env = append(cmd.Env, "GAME_EVENTS=1")
 	}
 
 	if config.match_data {
@@ -2906,9 +2906,9 @@ func test_client_connect_before_ready() {
 
 }
 
-func test_server_events() {
+func test_game_events() {
 
-	fmt.Printf("test_server_events\n")
+	fmt.Printf("test_game_events\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
@@ -2918,7 +2918,7 @@ func test_server_events() {
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.server_events = true
+	serverConfig.game_events = true
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
@@ -3264,9 +3264,9 @@ func test_flush_retry() {
 
 }
 
-func test_flush_server_events_and_match_data() {
+func test_flush_game_events_and_match_data() {
 
-	fmt.Printf("test_flush_server_events_and_match_data\n")
+	fmt.Printf("test_flush_game_events_and_match_data\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 40.0
@@ -3276,7 +3276,7 @@ func test_flush_server_events_and_match_data() {
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.server_events = true
+	serverConfig.game_events = true
 	serverConfig.match_data = true
 	serverConfig.flush = true
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
@@ -3336,9 +3336,9 @@ func test_flush_server_events_and_match_data() {
 
 }
 
-func test_flush_server_events_and_match_data_retry() {
+func test_flush_game_events_and_match_data_retry() {
 
-	fmt.Printf("test_flush_server_events_and_match_data_retry\n")
+	fmt.Printf("test_flush_game_events_and_match_data_retry\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 30.0
@@ -3348,7 +3348,7 @@ func test_flush_server_events_and_match_data_retry() {
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.server_events = true
+	serverConfig.game_events = true
 	serverConfig.match_data = true
 	serverConfig.flush = true
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
@@ -3485,14 +3485,14 @@ func main() {
 		test_server_ready_resolve_hostname_timeout,
 		test_server_ready_autodetect_timeout,
 		test_client_connect_before_ready,
-		test_server_events,
+		test_game_events,
 		test_match_id,
 		test_match_values,
 		test_match_data_retry,
 		test_flush,
 		test_flush_retry,
-		test_flush_server_events_and_match_data,
-		test_flush_server_events_and_match_data_retry,
+		test_flush_game_events_and_match_data,
+		test_flush_game_events_and_match_data_retry,
 		test_big_packets,
 	}
 
