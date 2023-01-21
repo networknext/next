@@ -1,15 +1,15 @@
 package main
 
 import (
-	"net"
-	"fmt"
-	"time"
-	"net/http"
 	"context"
-	"sync"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"strconv"
 	"strings"
-	"io/ioutil"
+	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 
@@ -77,7 +77,7 @@ func processUpdates() {
 		for {
 			update := <-updateChannel
 			pipe := redisClient.TxPipeline()
-			pipe.Set(ctx, fmt.Sprintf("raspberry-server-%d/%s", RaspberryBackendVersion, update.address.String()), "", 30 * time.Second)
+			pipe.Set(ctx, fmt.Sprintf("raspberry-server-%d/%s", RaspberryBackendVersion, update.address.String()), "", 30*time.Second)
 			_, err := pipe.Exec(ctx)
 			if err != nil {
 				core.Error("failed to store server update: %v", err)

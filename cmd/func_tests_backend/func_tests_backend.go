@@ -1977,7 +1977,7 @@ func test_relay_backend() {
 				}
 				response.Body.Close()
 			}
-			
+
 			response, err = client.Get("http://127.0.0.1:30001/lb_health")
 			if err == nil && response.StatusCode == 200 {
 				buffer, err := ioutil.ReadAll(response.Body)
@@ -1987,7 +1987,7 @@ func test_relay_backend() {
 				}
 				response.Body.Close()
 			}
-			
+
 			if readyCount == 2 {
 				break
 			}
