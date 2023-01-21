@@ -158,7 +158,6 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint64(buffer, &index, message.UserHash)
 		encoding.WriteFloat32(buffer, &index, message.Latitude)
 		encoding.WriteFloat32(buffer, &index, message.Longitude)
-		/*
 		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
 		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 		encoding.WriteUint8(buffer, &index, message.ConnectionType)
@@ -166,10 +165,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
-		*/
 	}
 
-/*
 	// summary slice only
 
 	if (message.SessionFlags & SessionFlags_Summary) != 0 {
@@ -185,7 +182,6 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint32(buffer, &index, message.DurationOnNext)
 		encoding.WriteUint64(buffer, &index, message.StartTimestamp)
 	}
-*/
 
 	return buffer[:index]
 }
@@ -334,7 +330,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read longitude")
 		}
 
-		/*
 		if !encoding.ReadAddress(buffer, &index, &message.ClientAddress) {
 			return fmt.Errorf("failed to read client address")
 		}
@@ -362,10 +357,8 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
 			return fmt.Errorf("failed to read sdk version patch")
 		}
-		*/
 	}
 
-/*
 	// summary slice only
 
 	if (message.SessionFlags & SessionFlags_Summary) != 0 {
@@ -394,10 +387,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read server to client packets out of order")
 		}
 
-		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsOutOfOrder) {
-			return fmt.Errorf("failed to read server to client packets out of order")
-		}
-
 		if !encoding.ReadUint32(buffer, &index, &message.SessionDuration) {
 			return fmt.Errorf("failed to read session duration")
 		}
@@ -418,7 +407,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read start timestamp")
 		}
 	}
-*/
 
 	return nil
 }

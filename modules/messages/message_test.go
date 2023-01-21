@@ -234,17 +234,29 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.UserHash = rand.Uint64()
 		message.Latitude = float32(common.RandomInt(-90,+90))
 		message.Longitude = float32(common.RandomInt(-180,+180))
-		/*
-		encoding.WriteFloat32(buffer, &index, message.Latitude)
-		encoding.WriteFloat32(buffer, &index, message.Longitude)
-		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
-		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
-		encoding.WriteUint8(buffer, &index, message.ConnectionType)
-		encoding.WriteUint8(buffer, &index, message.PlatformType)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
-		*/
+		message.ClientAddress = common.RandomAddress()
+		message.ServerAddress = common.RandomAddress()
+		message.ConnectionType = uint8(common.RandomInt(0,255))
+		message.PlatformType = uint8(common.RandomInt(0,255))
+		message.SDKVersion_Major = uint8(common.RandomInt(0,255))
+		message.SDKVersion_Minor = uint8(common.RandomInt(0,255))
+		message.SDKVersion_Patch = uint8(common.RandomInt(0,255))
+	}
+
+	// summary only
+
+	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
+		message.ClientToServerPacketsSent = rand.Uint64()
+		message.ServerToClientPacketsSent = rand.Uint64()
+		message.ClientToServerPacketsLost = rand.Uint64()
+		message.ServerToClientPacketsLost = rand.Uint64()
+		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
+		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
+		message.SessionDuration = rand.Uint32()
+		message.EnvelopeBytesUp = rand.Uint64()
+		message.EnvelopeBytesDown = rand.Uint64()
+		message.DurationOnNext = rand.Uint32()
+		message.StartTimestamp = rand.Uint64()
 	}
 
 	return message

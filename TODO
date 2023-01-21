@@ -14,19 +14,15 @@ DONE
 
 	Verify that we receive the near relays message in the happy path
 
-TODO
-
 	Remove near relays from the session update message
 
-	-----------
+	Clean up and simplify the session update message
 
-	Review the session update message and remove things in it that we no longer need
+TODO
 
-	Simplify the session update message, maybe we have a session summary message, and a regular session update message.
+	Write out the session update message from the session update handler (quite involved...)
 
-	Use simpler serialization. We don't need bitpacking for messages...
-
-	Do we still need data on the first slice? Yes, for the bigquery driven session view
+	Verify we get the session update message in the happy path
 
 	-----------
 
@@ -100,13 +96,21 @@ TODO
 
 Essentials:
 
+    --------------
+
+    Send portal messages to redis streams
+
 	--------------
 
-	Send messages to analytics from server backend 5 via google pubsub.
+	Portal cruncher new
 
 	--------------
 
-	Extend analytics service to insert billing messages into bigquery.
+	Send rest of server backend messages to google pubsub
+
+	--------------
+
+	Extend analytics service to insert messages into bigquery.
 
 	--------------
 
@@ -233,5 +237,11 @@ Nice to have:
 	--------------
 
 	Consider renaming "Server Events" to "Game Events" in SDK5
+
+	--------------
+
+	Put "MatchId" into session data (first).
+
+	This way we can easily look up from a session the match it is in.
 
 	--------------
