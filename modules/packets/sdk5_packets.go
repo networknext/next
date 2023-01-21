@@ -344,7 +344,6 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		SessionVersion:                uint32(common.RandomInt(0, 255)),
 		SliceNumber:                   rand.Uint32(),
 		ExpireTimestamp:               rand.Uint64(),
-		Initial:                       common.RandomBool(),
 		RouteChanged:                  common.RandomBool(),
 		RouteNumRelays:                int32(common.RandomInt(0, SDK5_MaxRelaysPerRoute)),
 		RouteCost:                     int32(common.RandomInt(0, SDK5_InvalidRouteValue)),
@@ -465,21 +464,20 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 // ------------------------------------------------------------
 
 type SDK5_SessionData struct {
-	Version                       uint32
+	Version                       uint32       // todo: version could easily be a byte
 	SessionId                     uint64
 	SessionVersion                uint32
 	SliceNumber                   uint32
 	ExpireTimestamp               uint64
-	Initial                       bool // todo: do we still need this?
 	Latitude                      float32
 	Longitude                     float32
-	RouteChanged                  bool
+	RouteChanged                  bool         // todo: do we still need this?
 	RouteNumRelays                int32
 	RouteCost                     int32
 	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
 	RouteState                    core.RouteState
-	EverOnNext                    bool
-	FallbackToDirect              bool
+	EverOnNext                    bool         // todo: isn't this just equivalent to duration on next != 0?
+	FallbackToDirect              bool         // todo: do we really need this here?
 	PrevPacketsSentClientToServer uint64
 	PrevPacketsSentServerToClient uint64
 	PrevPacketsLostClientToServer uint64
@@ -513,8 +511,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&sessionData.SliceNumber)
 
 	stream.SerializeUint64(&sessionData.ExpireTimestamp)
-
-	stream.SerializeBool(&sessionData.Initial)
 
 	stream.SerializeFloat32(&sessionData.Latitude)
 	stream.SerializeFloat32(&sessionData.Longitude)

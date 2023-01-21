@@ -54,7 +54,7 @@ type SessionUpdateState struct {
 	RealJitter     float32
 	RealOutOfOrder float32
 
-	// route diversity is the number unique near relays with viable routes
+	// route diversity is the number of unique near relays with viable routes
 	RouteDiversity int32
 
 	// for route planning
@@ -280,7 +280,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	*/
 
 	state.Output = state.Input
-	state.Output.Initial = false
 	state.Output.SliceNumber += 1
 	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 
@@ -513,7 +512,6 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
 	state.Output.SessionVersion++
-	state.Output.Initial = true
 
 	numTokens := routeNumRelays + 2
 
