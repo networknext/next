@@ -126,7 +126,6 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.DirectBytesUp)
 	encoding.WriteUint64(buffer, &index, message.DirectBytesDown)
 
-/*
 	// next only
 
 	if (message.SessionFlags & SessionFlags_Next) != 0 {
@@ -142,6 +141,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		}
 	}
 
+/*
 	// first slice only
 
 	if message.SliceNumber == 0 {
@@ -254,7 +254,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct bytes down")
 	}
 
-/*
 	// next only
 
 	if (message.SessionFlags & SessionFlags_Next) != 0 {
@@ -294,6 +293,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
+/*
 	// first slice only
 
 	if message.SliceNumber == 0 {

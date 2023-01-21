@@ -202,7 +202,20 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		DirectBytesDown:  rand.Uint64(),
 	}
 
-	// todo
+	// next only
+
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+		message.NextRTT = float32(common.RandomInt(0,1000))
+		message.NextJitter = float32(common.RandomInt(0,1000))
+		message.NextPacketLoss = float32(common.RandomInt(0,100))
+		message.NextBytesUp = rand.Uint64()
+		message.NextBytesDown = rand.Uint64()
+		message.NextPredictedRTT = float32(common.RandomInt(0,1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0,messages.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelays[i] = rand.Uint64()
+		}
+	}
 
 	return message
 }
