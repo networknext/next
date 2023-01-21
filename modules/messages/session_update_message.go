@@ -13,57 +13,77 @@ const (
 	SessionUpdateMessageVersion_Write = 1
 
 	// todo: constants module
-	MaxDebugLength      = 1024
-	MaxTags             = 8
+	MaxTags = 8
 
-	SessionFlags_Next                 = (1<<0)
-	SessionFlags_Reported             = (1<<1)
-	SessionFlags_Debug                = (1<<2)
-	SessionFlags_FallbackToDirect     = (1<<3)
-	SessionFlags_Mispredict           = (1<<4)
-	SessionFlags_LatencyWorse         = (1<<5)
-	SessionFlags_NoRoute              = (1<<6)
-	SessionFlags_NextLatencyTooHigh   = (1<<7)
-	SessionFlags_UnknownDatacenter    = (1<<8)
-	SessionFlags_DatacenterNotEnabled = (1<<9)
-	SessionFlags_StaleRouteMatrix     = (1<<10)
-	SessionFlags_ABTest               = (1<<11)
-	SessionFlags_Aborted              = (1<<12)
-	SessionFlags_LatencyReduction     = (1<<13)
-	SessionFlags_PacketLossReduction  = (1<<14)
-	SessionFlags_EverOnNext           = (1<<15)
-	SessionFlags_Summary              = (1<<16)
+	SessionFlags_Next                            = (1 << 0)
+	SessionFlags_Reported                        = (1 << 1)
+	SessionFlags_Summary                         = (1 << 2)
+	SessionFlags_FallbackToDirect                = (1 << 3)
+	SessionFlags_Mispredict                      = (1 << 4)
+	SessionFlags_LatencyWorse                    = (1 << 5)
+	SessionFlags_NoRoute                         = (1 << 6)
+	SessionFlags_NextLatencyTooHigh              = (1 << 7)
+	SessionFlags_UnknownDatacenter               = (1 << 8)
+	SessionFlags_DatacenterNotEnabled            = (1 << 9)
+	SessionFlags_StaleRouteMatrix                = (1 << 10)
+	SessionFlags_ABTest                          = (1 << 11)
+	SessionFlags_Aborted                         = (1 << 12)
+	SessionFlags_LatencyReduction                = (1 << 13)
+	SessionFlags_PacketLossReduction             = (1 << 14)
+	SessionFlags_EverOnNext                      = (1 << 15)
+	SessionFlags_SessionDataSignatureCheckFailed = (1 << 16)
+	SessionFlags_FailedToReadSessionData         = (1 << 17)
+	SessionFlags_LongDuration                    = (1 << 18)
+	SessionFlags_ClientPingTimedOut              = (1 << 19)
+	SessionFlags_BadSessionId                    = (1 << 20)
+	SessionFlags_BadSliceNumber                  = (1 << 21)
+	SessionFlags_AnalysisOnly                    = (1 << 22)
+	SessionFlags_NoRelaysInDatacenter            = (1 << 23)
+	SessionFlags_NoNearRelays                    = (1 << 24)
+	SessionFlags_NoRouteRelays                   = (1 << 25)
+	SessionFlags_RouteRelayNoLongerExists        = (1 << 26)
+	SessionFlags_RouteChanged                    = (1 << 27)
+	SessionFlags_RouteContinued                  = (1 << 28)
+	SessionFlags_RouteNoLongerExists             = (1 << 29)
+	SessionFlags_TakeNetworkNext                 = (1 << 30)
+	SessionFlags_StayDirect                      = (1 << 31)
+	SessionFlags_LeftNetworkNext                 = (1 << 32)
+	SessionFlags_FailedToWriteResponsePacket     = (1 << 33)
+	SessionFlags_FailedToWriteSessionData        = (1 << 34)
+	SessionFlags_LocationVeto                    = (1 << 35)
+	SessionFlags_ClientNextBandwidthOverLimit    = (1 << 36)
+	SessionFlags_ServerNextBandwidthOverLimit    = (1 << 37)
 )
 
 type SessionUpdateMessage struct {
 
 	// always
 
-	Version             byte
-	Timestamp           uint64
-	SessionId           uint64
-	SliceNumber         uint32
-	RealPacketLoss      float32
-	RealJitter          float32
-	RealOutOfOrder      float32
-	SessionFlags        uint64
-	GameEvents          uint64
-	DirectRTT           float32
-	DirectJitter        float32
-	DirectPacketLoss    float32
-	DirectBytesUp       uint64
-	DirectBytesDown     uint64
+	Version          byte
+	Timestamp        uint64
+	SessionId        uint64
+	SliceNumber      uint32
+	RealPacketLoss   float32
+	RealJitter       float32
+	RealOutOfOrder   float32
+	SessionFlags     uint64
+	GameEvents       uint64
+	DirectRTT        float32
+	DirectJitter     float32
+	DirectPacketLoss float32
+	DirectKbpsUp     uint32
+	DirectKbpsDown   uint32
 
 	// next only
 
-	NextRTT             float32
-	NextJitter          float32
-	NextPacketLoss      float32
-	NextPredictedRTT    float32
-	NextBytesUp         uint64
-	NextBytesDown       uint64
-	NextNumRouteRelays  uint32
-	NextRouteRelays     [MaxRouteRelays]uint64
+	NextRTT            float32
+	NextJitter         float32
+	NextPacketLoss     float32
+	NextKbpsUp         uint32
+	NextKbpsDown       uint32
+	NextPredictedRTT   uint32
+	NextNumRouteRelays uint32
+	NextRouteRelayId   [MaxRouteRelays]uint64
 
 	// first slice only
 
@@ -72,18 +92,18 @@ type SessionUpdateMessage struct {
 
 	// first slice and summary slice only
 
-	DatacenterId      uint64
-	BuyerId           uint64
-	UserHash          uint64
-	Latitude          float32
-	Longitude         float32
-	ClientAddress     net.UDPAddr
-	ServerAddress     net.UDPAddr
-	ConnectionType    byte
-	PlatformType      byte
-	SDKVersion_Major  byte
-	SDKVersion_Minor  byte
-	SDKVersion_Patch  byte
+	DatacenterId     uint64
+	BuyerId          uint64
+	UserHash         uint64
+	Latitude         float32
+	Longitude        float32
+	ClientAddress    net.UDPAddr
+	ServerAddress    net.UDPAddr
+	ConnectionType   byte
+	PlatformType     byte
+	SDKVersion_Major byte
+	SDKVersion_Minor byte
+	SDKVersion_Patch byte
 
 	// summary slice only
 
@@ -93,10 +113,10 @@ type SessionUpdateMessage struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	SessionDuration                 uint32
-	EnvelopeBytesUp  	            uint64
-	EnvelopeBytesDown               uint64
+	TotalEnvelopeBytesUp            uint64
+	TotalEnvelopeBytesDown          uint64
 	DurationOnNext                  uint32
+	SessionDuration                 uint32
 	StartTimestamp                  uint64
 }
 
@@ -123,8 +143,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
 	encoding.WriteFloat32(buffer, &index, message.DirectPacketLoss)
-	encoding.WriteUint64(buffer, &index, message.DirectBytesUp)
-	encoding.WriteUint64(buffer, &index, message.DirectBytesDown)
+	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
+	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
 	// next only
 
@@ -132,12 +152,12 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
-		encoding.WriteFloat32(buffer, &index, message.NextPredictedRTT)		
-		encoding.WriteUint64(buffer, &index, message.NextBytesUp)
-		encoding.WriteUint64(buffer, &index, message.NextBytesDown)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
+		encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
 		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			encoding.WriteUint64(buffer, &index, message.NextRouteRelays[i])
+			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 		}
 	}
 
@@ -152,7 +172,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// first slice or summary slice
 
-	if message.SliceNumber == 0 || (message.SessionFlags & SessionFlags_Summary) != 0 {
+	if message.SliceNumber == 0 || (message.SessionFlags&SessionFlags_Summary) != 0 {
 		encoding.WriteUint64(buffer, &index, message.DatacenterId)
 		encoding.WriteUint64(buffer, &index, message.BuyerId)
 		encoding.WriteUint64(buffer, &index, message.UserHash)
@@ -177,8 +197,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsOutOfOrder)
 		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsOutOfOrder)
 		encoding.WriteUint32(buffer, &index, message.SessionDuration)
-		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesUp)
-		encoding.WriteUint64(buffer, &index, message.EnvelopeBytesDown)
+		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesUp)
+		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesDown)
 		encoding.WriteUint32(buffer, &index, message.DurationOnNext)
 		encoding.WriteUint64(buffer, &index, message.StartTimestamp)
 	}
@@ -244,12 +264,12 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct packet loss")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesUp) {
-		return fmt.Errorf("failed to read direct bytes up")
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsUp) {
+		return fmt.Errorf("failed to read direct kbps up")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.DirectBytesDown) {
-		return fmt.Errorf("failed to read direct bytes down")
+	if !encoding.ReadUint32(buffer, &index, &message.DirectKbpsDown) {
+		return fmt.Errorf("failed to read direct kbps down")
 	}
 
 	// next only
@@ -268,16 +288,16 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read next packet loss")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NextPredictedRTT) {
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+			return fmt.Errorf("failed to read next kbps up")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+			return fmt.Errorf("failed to read next kbps down")
+		}
+
+		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
 			return fmt.Errorf("failed to read next predicted rtt")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.NextBytesUp) {
-			return fmt.Errorf("failed to read next bytes up")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.NextBytesDown) {
-			return fmt.Errorf("failed to read next bytes down")
 		}
 
 		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
@@ -285,7 +305,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelays[i]) {
+			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
 				return fmt.Errorf("failed to read next route relay id")
 			}
 		}
@@ -308,7 +328,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 
 	// first slice or summary
 
-	if message.SliceNumber == 0 || (message.SessionFlags & SessionFlags_Summary) != 0 {
+	if message.SliceNumber == 0 || (message.SessionFlags&SessionFlags_Summary) != 0 {
 
 		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
 			return fmt.Errorf("failed to read datacenter id")
@@ -391,12 +411,12 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read session duration")
 		}
 
-		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesUp) {
-			return fmt.Errorf("failed to read envelope bytes up sum")
+		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesUp) {
+			return fmt.Errorf("failed to read total envelope bytes up sum")
 		}
 
-		if !encoding.ReadUint64(buffer, &index, &message.EnvelopeBytesDown) {
-			return fmt.Errorf("failed to read envelope bytes down sum")
+		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesDown) {
+			return fmt.Errorf("failed to read total envelope bytes down sum")
 		}
 
 		if !encoding.ReadUint32(buffer, &index, &message.DurationOnNext) {

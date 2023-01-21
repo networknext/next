@@ -752,9 +752,9 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_sdk5 test_client_connect_before_ready
 
-        - name: "test_server_events"
+        - name: "test_game_events"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_server_events
+            - cd ./dist && ./func_tests_sdk5 test_game_events
 
         - name: "test_match_id"
           commands:
@@ -821,13 +821,13 @@ blocks:
 
       jobs:
 
-        - name: "test_flush_server_events_and_match_data"
+        - name: "test_flush_game_events_and_match_data"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_flush_server_events_and_match_data
+            - cd ./dist && ./func_tests_sdk5 test_flush_game_events_and_match_data
 
-        - name: "test_flush_server_events_and_match_data_retry"
+        - name: "test_flush_game_events_and_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_flush_server_events_and_match_data_retry
+            - cd ./dist && ./func_tests_sdk5 test_flush_game_events_and_match_data_retry
 
         - name: "test_big_packets"
           commands:
