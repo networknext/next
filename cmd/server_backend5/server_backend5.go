@@ -2,7 +2,7 @@ package main
 
 import (
 	"net"
-	
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -19,12 +19,12 @@ var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
 var routingPrivateKey []byte
 
-var serverInitMessageChannel     chan *messages.ServerInitMessage
-var serverUpdateMessageChannel   chan *messages.ServerUpdateMessage
-var portalMessageChannel         chan *messages.PortalMessage
+var serverInitMessageChannel chan *messages.ServerInitMessage
+var serverUpdateMessageChannel chan *messages.ServerUpdateMessage
+var portalMessageChannel chan *messages.PortalMessage
 var nearRelayPingsMessageChannel chan *messages.NearRelayPingsMessage
-var sessionUpdateMessageChannel  chan *messages.SessionUpdateMessage
-var matchDataMessageChannel      chan *messages.MatchDataMessage
+var sessionUpdateMessageChannel chan *messages.SessionUpdateMessage
+var matchDataMessageChannel chan *messages.MatchDataMessage
 
 func main() {
 

@@ -59,21 +59,21 @@ static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
 
 struct thread_shim_data_t
 {
-	void * context;
-	void * real_thread_data;
-	next_platform_thread_func_t real_thread_function;
+    void * context;
+    void * real_thread_data;
+    next_platform_thread_func_t real_thread_function;
 };
 
 static DWORD WINAPI thread_function_shim( void * data )
 {
-	next_assert( data );
-	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
-	void * context = shim_data->context;
-	void * real_thread_data = shim_data->real_thread_data;
-	next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
-	next_free( context, data );
-	real_thread_function( real_thread_data );
-	return 0;
+    next_assert( data );
+    thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
+    void * context = shim_data->context;
+    void * real_thread_data = shim_data->real_thread_data;
+    next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
+    next_free( context, data );
+    real_thread_function( real_thread_data );
+    return 0;
 }
 
 next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t thread_function, void * arg )
@@ -88,8 +88,8 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     next_assert( shim_data );
     if ( !shim_data )
     {
-    	next_free( context, thread );
-    	return NULL;
+        next_free( context, thread );
+        return NULL;
     }
     shim_data->context = context;
     shim_data->real_thread_function = thread_function;
@@ -100,7 +100,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     if ( thread->handle == NULL )
     {
         next_free( context, thread );
-    	next_free( context, shim_data );
+        next_free( context, shim_data );
         return NULL;
     }
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/modules/encoding"	
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -14,19 +14,18 @@ const (
 )
 
 type NearRelayPingsMessage struct {
+	Version byte
 
-	Version             byte
+	Timestamp uint64
 
-	Timestamp           uint64
-
-	BuyerId             uint64
-	SessionId           uint64
-	UserHash            uint64
-	Latitude            float32
-	Longitude           float32
-	ClientAddress       net.UDPAddr
-	ConnectionType      byte
-	PlatformType        byte
+	BuyerId        uint64
+	SessionId      uint64
+	UserHash       uint64
+	Latitude       float32
+	Longitude      float32
+	ClientAddress  net.UDPAddr
+	ConnectionType byte
+	PlatformType   byte
 
 	NumNearRelays       uint32
 	NearRelayId         [MaxNearRelays]uint64
