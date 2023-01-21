@@ -12,6 +12,7 @@ const (
 	PortalMessageVersion_Max   = 1
 	PortalMessageVersion_Write = 1
 
+	// todo: constants module
 	MaxNearRelays = 32
 	MaxRouteRelays = 5
 )

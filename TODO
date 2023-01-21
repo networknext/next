@@ -1,30 +1,66 @@
 DONE
 
-	Define portal message and make sure it has all data we need
+	Add the near relays message
 
-	Fill out the portal message as much as possible and send it to the channel
+	Code the read/write
 
-	Add next bandwidth exceeded up/down bools to portal data
+	Generate a random near relays message
 
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily. ()
+	Unit test it
 
-	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
+	Send it out from the session update handler
 
-	Implement random portal message function
+	Add code to process the near relays message in the server backend 5
 
-	Implement unit test for portal message
+	Verify that we receive the near relays message in the happy path
 
-	Implement write portal message
+	Remove near relays from the session update message
 
-	Implement read portal message
-
-	Verify unit test passes for portal message
-
-	Implement code in server_backend5 cmd to process portal messages on channel.
+	Clean up and simplify the session update message
 
 TODO
 
-	Verify that we receive portal messages in happy path
+	Write out the session update message from the session update handler (quite involved...)
+
+	Verify we get the session update message in the happy path
+
+	-----------
+
+	Add unit test to make sure we write out session update message
+
+	Add unit test to make sure we write out portal message
+
+	Add unit test to make sure we write out near relay message 
+
+	etc...
+
+	-----------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------
 
@@ -58,20 +94,23 @@ TODO
 
 
 
-
-
-
-
-
 Essentials:
 
+    --------------
+
+    Send portal messages to redis streams
+
 	--------------
 
-	Send messages to analytics from server backend 5 via google pubsub.
+	Portal cruncher new
 
 	--------------
 
-	Extend analytics service to insert billing messages into bigquery.
+	Send rest of server backend messages to google pubsub
+
+	--------------
+
+	Extend analytics service to insert messages into bigquery.
 
 	--------------
 
@@ -190,5 +229,19 @@ Nice to have:
 	Would be nice if the relay backend would talk to the relay over its UDP port and say hi, and if this heartbeat was a prerequisite for the relay coming online.
 
 	This way misconfigured relays can't cause problems.
+
+	--------------
+
+	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
+
+	--------------
+
+	Consider renaming "Server Events" to "Game Events" in SDK5
+
+	--------------
+
+	Put "MatchId" into session data (first).
+
+	This way we can easily look up from a session the match it is in.
 
 	--------------
