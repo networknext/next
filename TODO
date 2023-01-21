@@ -20,11 +20,27 @@ DONE
 
 	Rework the session update handler to unify around "session flags" concept, passing these flags directly to the session update message -> bigquery.
 
-TODO
+	Pass session flags and game events to portal
 
-	Write out the session update message from the session update handler (quite involved...)
+	Pass always session update message data from session update handler
 
 	Verify we get the session update message in the happy path
+
+TODO
+
+	Pass next only data
+
+	Pass first slice only session data
+
+	Pass first slice or summary slice data
+
+	Pass summary slice only data
+
+	-----------
+
+	Review contents of session data. Do we need everytihng that is in there?
+
+	Can we optimize by having the SDK pass up different quantities? Is this still secure?
 
 	-----------
 
