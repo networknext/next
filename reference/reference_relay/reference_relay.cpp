@@ -5612,9 +5612,13 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    relay_address.port = bind_address.port;
+
     printf( "\nRelay socket opened on port %d\n\n", relay_address.port );
+
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
+    printf( "Relay address is '%s'\n", relay_address_buffer );
 
     fflush( stdout );
 

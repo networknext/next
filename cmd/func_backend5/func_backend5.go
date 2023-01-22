@@ -237,7 +237,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 	if err != nil {
-		fmt.Printf("bad resolve addr %s\n", relay_address)
+		fmt.Printf("bad resolve addr '%s'\n", relay_address)
 		return
 	}
 

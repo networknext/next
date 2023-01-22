@@ -292,7 +292,7 @@ func func_sdk4() {
 }
 
 func func_sdk5() {
-	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey))
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5 test_network_next_route", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func func_backend4() {

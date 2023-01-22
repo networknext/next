@@ -64,18 +64,11 @@ func relay(configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 	}
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "RELAY_DEV=1")
-	cmd.Env = append(cmd.Env, "RELAY_MASTER=127.0.0.1")
-	cmd.Env = append(cmd.Env, "RELAY_PORT=0")
-	cmd.Env = append(cmd.Env, "RELAY_NAME=local")
-	cmd.Env = append(cmd.Env, "RELAY_UPDATE_KEY=eyqNheTBdx+97qd3Nkf/QvjaSDQVQQzHvkhX6w9cvMO276rgKZ7VIPHwaoNE7f9SiQW6yThhEC5onwpBEFFdaw==")
-	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
-	cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
 	cmd.Env = append(cmd.Env, "RELAY_ADDRESS=127.0.0.1")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
+	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+	cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
 	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
-	cmd.Env = append(cmd.Env, "RELAY_BIND_ADDRESS=127.0.0.1")
-	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1")
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
 
