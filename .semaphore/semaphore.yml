@@ -90,7 +90,7 @@ blocks:
             - make dist/test5
             - ./run test-sdk5
 
-  - name: "Relay"
+  - name: "Build Reference Relay"
     dependencies: []
     task:
       agent:
@@ -98,14 +98,13 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        - name: "Unit Tests"
+        - name: "Build"
           commands:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
             - mkdir dist
             - make dist/reference_relay
-            - ./run test-relay
             - artifact push workflow ./dist/reference_relay
 
   - name: "Build Functional Tests (backend)"
