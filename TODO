@@ -18,7 +18,11 @@ DONE
 
 TODO
 
-	To unblock dev working, just deploy a reference relay binary.
+	To unblock dev working, just deploy a reference relay binary...
+
+	Verify that we have raspberry pi's running in dev.
+
+	Now scale up the number of clients and servers to at least 100 clients.
 
 	-------
 

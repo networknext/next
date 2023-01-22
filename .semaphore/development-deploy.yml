@@ -263,3 +263,4 @@ blocks:
           commands:
             - artifact pull workflow reference_relay
             - gsutil cp reference_relay gs://development_artifacts/reference_relay
+            - gsutil cp reference_relay gs://relay_artifacts/relay-reference

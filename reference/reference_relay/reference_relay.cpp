@@ -7470,14 +7470,14 @@ int main( int argc, const char ** argv )
 
     printf( "    router public key is '%s'\n", router_public_key_env );
 
-    const char * relay_gateway = relay_platform_getenv( "RELAY_GATEWAY" );
-    if ( !relay_gateway )
+    const char * relay_backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
+    if ( !relay_backend_hostname )
     {
-        printf( "\nerror: RELAY_GATEWAY not set\n\n" );
+        printf( "\nerror: RELAY_BACKEND_HOSTNAME not set\n\n" );
         return 1;
     }
 
-    printf( "    relay gateway is '%s'\n", relay_gateway );
+    printf( "    relay backend hostname is '%s'\n", relay_backend_hostname );
 
     if ( relay_initialize() != RELAY_OK )
     {
@@ -7509,7 +7509,11 @@ int main( int argc, const char ** argv )
         printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
 
-    relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
+    relay_address_t bind_address;
+    bind_address.type = RELAY_ADDRESS_IPV4;
+    bind_address.port = relay_address.port;
+
+    relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
     if ( socket == NULL )
     {
         printf( "\ncould not create socket\n\n" );
@@ -7598,7 +7602,7 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-        if ( relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+        if ( relay_update( curl, relay_backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -7637,7 +7641,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, relay_gateway, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }
