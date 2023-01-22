@@ -26,6 +26,10 @@ namespace core
     ContinueResponse = 107,
     NearPing = 116,
     NearPong = 117,
+
+    // sdk5
+    NewNearPing = 20,
+    NewNearPong = 21,
   };
 
   template <typename T>
@@ -56,6 +60,8 @@ namespace core
       PACKET_TYPE_SWITCH_MACRO(ContinueResponse);
       PACKET_TYPE_SWITCH_MACRO(NearPing);
       PACKET_TYPE_SWITCH_MACRO(NearPong);
+      PACKET_TYPE_SWITCH_MACRO(NewNearPing);
+      PACKET_TYPE_SWITCH_MACRO(NewNearPong);
       default: {
         str = "Unknown";
       } break;
