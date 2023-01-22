@@ -60,11 +60,12 @@ type SDK5_Handler struct {
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 
-	ServerInitMessageChannel    chan<- *messages.ServerInitMessage
-	ServerUpdateMessageChannel  chan<- *messages.ServerUpdateMessage
-	PortalMessageChannel        chan<- *messages.PortalMessage
-	SessionUpdateMessageChannel chan<- *messages.SessionUpdateMessage
-	MatchDataMessageChannel     chan<- *messages.MatchDataMessage
+	ServerInitMessageChannel     chan<- *messages.ServerInitMessage
+	ServerUpdateMessageChannel   chan<- *messages.ServerUpdateMessage
+	PortalMessageChannel         chan<- *messages.PortalMessage
+	NearRelayPingsMessageChannel chan<- *messages.NearRelayPingsMessage
+	SessionUpdateMessageChannel  chan<- *messages.SessionUpdateMessage
+	MatchDataMessageChannel      chan<- *messages.MatchDataMessage
 }
 
 func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -455,13 +456,17 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 		RouteType:   packets.SDK5_RouteTypeDirect,
 	}
 
+	state.PortalMessageChannel = handler.PortalMessageChannel
+	state.NearRelayPingsMessageChannel = handler.NearRelayPingsMessageChannel
+	state.SessionUpdateMessageChannel = handler.SessionUpdateMessageChannel
+
 	// track the length of session update handlers
 
 	timeStart := time.Now()
 	defer func() {
 		milliseconds := float64(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
-			state.LongDuration = true
+			state.SessionFlags |= messages.SessionFlags_LongDuration
 		}
 		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 	}()

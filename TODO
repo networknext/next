@@ -1,49 +1,54 @@
 DONE
 
-	Define portal message and make sure it has all data we need
+	Add the near relays message
 
-	Fill out the portal message as much as possible and send it to the channel
+	Code the read/write
 
-	Add next bandwidth exceeded up/down bools to portal data
+	Generate a random near relays message
 
-	Get the pusher service live in the dev environment so we can make changes to the database.bin easily. ()
+	Unit test it
 
-	SDK5 server backend needs to move to 40000 port by default. Can adjust it to 45000 in run.go as needed. (van)
+	Send it out from the session update handler
+
+	Add code to process the near relays message in the server backend 5
+
+	Verify that we receive the near relays message in the happy path
+
+	Remove near relays from the session update message
+
+	Clean up and simplify the session update message
+
+	Rework the session update handler to unify around "session flags" concept, passing these flags directly to the session update message -> bigquery.
+
+	Pass session flags and game events to portal
+
+	Pass always session update message data from session update handler
+
+	Verify we get the session update message in the happy path
+
+	Switch to direct kbps up/down, next kbps up/down in session update message
+
+	Pass next only data
+
+	Pass first slice only session data
+
+	Pass first slice or summary slice data
+
+	Pass summary slice only data
+
+	Implement real out of order
+
+	Track these vars in session data
+
+		NextEnvelopeBytesUpSum              uint64
+		NextEnvelopeBytesDownSum            uint64
+		DurationOnNext                      uint32
+		SessionDuration                     uint32
+		StartTimestamp                      uint64
+
+	Update unit tests for session update handler so we cover new codepaths.
 
 TODO
-
-	Implement random portal message function
-
-	Implement unit test for portal message
-
-	Implement code in server_backend5 cmd to process portal messages, write them, and send to redis streams.
-
-	---------
-
-	Implement a portal_cruncher_new service using the new service framework
-
-	Setup a number of threads.
-
-	Verify that the new portal cruncher receives portal messages.
-
-	---------
-
-	Make sure that real packet loss is calculated correctly, if not then pass it up from the SDK
-
-	Extend session update to calculate real out of order.
-
-	---------
-
-	Work out how to implement new portal cruncher... optimize as you go.
-
-	---------
-
-	Verify that portal functionality is working with raspberry clients in dev.
-
-	---------
-
-
-
 
 
 
@@ -57,13 +62,21 @@ TODO
 
 Essentials:
 
+    --------------
+
+    Send portal messages to redis streams
+
 	--------------
 
-	Send messages to analytics from server backend 5 via google pubsub.
+	Portal cruncher new
 
 	--------------
 
-	Extend analytics service to insert billing messages into bigquery.
+	Send rest of server backend messages to google pubsub
+
+	--------------
+
+	Extend analytics service to insert messages into bigquery.
 
 	--------------
 
@@ -85,10 +98,6 @@ Essentials:
 
 	--------------
 
-	SDK5 server backend 5 MIG in dev needs to move to 45000 port. Van
-
-	--------------
-
 
 
 
@@ -98,6 +107,44 @@ Essentials:
 
 
 Nice to have:
+
+	-----------
+
+	Rename to "game events" all the way down to the sdk5
+
+	-----------
+
+	Add match id to both portal data and session update data by default (first slice only, and summary...)
+
+	Then work out a new API to link the session with a match (start of session, with tags...), separate from setting match data (end of match).
+
+	-----------
+
+	Add unit test to make sure we write out session update message
+
+	Add unit test to make sure we write out portal message
+
+	Add unit test to make sure we write out near relay message 
+
+	--------------
+
+	Simplified debug string for first slice: "first slice always goes direct" without a bunch of other junk.
+
+	Printing out names of near relays would be nice etc.
+
+	--------------
+
+	Code in service.go to only shut down service once various subsystems have reported that they're complete
+
+	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
+
+	--------------
+
+	Change SDK to pass up the real packet loss, real jitter, real out of order etc.
+
+	We don't need to store multiple uint64 in session data to calculate this
+
+	It's wasteful to pass this data back to the client with each session update response.
 
 	--------------
 
@@ -166,5 +213,19 @@ Nice to have:
 	Would be nice if the relay backend would talk to the relay over its UDP port and say hi, and if this heartbeat was a prerequisite for the relay coming online.
 
 	This way misconfigured relays can't cause problems.
+
+	--------------
+
+	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
+
+	--------------
+
+	Consider renaming "Server Events" to "Game Events" in SDK5
+
+	--------------
+
+	Put "MatchId" into session data (first).
+
+	This way we can easily look up from a session the match it is in.
 
 	--------------

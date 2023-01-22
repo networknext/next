@@ -128,8 +128,8 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func sendTrafficToMe(service *common.Service) func () bool {
-	return func () bool {
+func sendTrafficToMe(service *common.Service) func() bool {
+	return func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
@@ -192,7 +192,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		relayData := service.RelayData()
 		relayJSON := RelayJSON{}
-			relayJSON.RelayIds = make([]string, relayData.NumRelays)
+		relayJSON.RelayIds = make([]string, relayData.NumRelays)
 		relayJSON.RelayNames = relayData.RelayNames
 		relayJSON.RelayAddresses = make([]string, relayData.NumRelays)
 		relayJSON.RelayDatacenterIds = make([]string, relayData.NumRelays)
@@ -204,7 +204,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 		}
 		relayJSON.DestRelays = make([]string, relayData.NumRelays)
 		for i := 0; i < relayData.NumRelays; i++ {
-		relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
+			relayJSON.RelayIds[i] = fmt.Sprintf("%016x", relayData.RelayIds[i])
 			relayJSON.RelayAddresses[i] = relayData.RelayAddresses[i].String()
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {

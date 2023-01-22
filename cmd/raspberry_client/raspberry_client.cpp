@@ -96,7 +96,7 @@ uint64_t raspberry_user_id()
     srand(time(NULL));
     for ( int i = 0; i < 8; i++ )
     {
-    	data[i] = rand() % 256;
+        data[i] = rand() % 256;
     }
     memcpy((char*)&user_id, data, 8);
 
@@ -105,7 +105,7 @@ uint64_t raspberry_user_id()
 
 void client_thread_function( void * data )
 {
-	(void) data;
+    (void) data;
 
     uint64_t user_id = raspberry_user_id();
 
@@ -127,107 +127,107 @@ void client_thread_function( void * data )
 
     while ( !quit )
     {
-	    // update list of server addresses
+        // update list of server addresses
 
-    	num_servers = 0;
+        num_servers = 0;
 
-	    char cmd[1024];
-	    snprintf( cmd, sizeof(cmd), "curl http://%s/servers --max-time 10 2>/dev/null", raspberry_backend_address );
-	    FILE * file = popen( cmd, "r" );
-    	if ( !file )
-    	{
-    		next_printf( NEXT_LOG_LEVEL_ERROR, "could not get list of servers" );
-    		exit(1);
-    	}
+        char cmd[1024];
+        snprintf( cmd, sizeof(cmd), "curl http://%s/servers --max-time 10 2>/dev/null", raspberry_backend_address );
+        FILE * file = popen( cmd, "r" );
+        if ( !file )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "could not get list of servers" );
+            exit(1);
+        }
 
-    	char buffer[1024];
-	    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    	{
-    		if ( num_servers >= MaxServers )
-    			break;
-    		int i = 0;
-    		while ( true )
-    		{
-    			if ( buffer[i] == '\0' )
-    				break;
-    			if ( buffer[i] == '\n' || buffer[i] == '\r' )
-    			{
-    				buffer[i] = '\0';
-    				break;
-    			}
-    			i++;
-    		}
-    		next_address_t address;
-    		if ( next_address_parse( &address, buffer ) == NEXT_OK )
-    		{
-    			server_addresses[num_servers] = address;
-    			num_servers++;
-    		}
-    		else
-    		{
-    			printf( "could not parse '%s'\n", buffer );
-    		}
-    	}
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( num_servers >= MaxServers )
+                break;
+            int i = 0;
+            while ( true )
+            {
+                if ( buffer[i] == '\0' )
+                    break;
+                if ( buffer[i] == '\n' || buffer[i] == '\r' )
+                {
+                    buffer[i] = '\0';
+                    break;
+                }
+                i++;
+            }
+            next_address_t address;
+            if ( next_address_parse( &address, buffer ) == NEXT_OK )
+            {
+                server_addresses[num_servers] = address;
+                num_servers++;
+            }
+            else
+            {
+                printf( "could not parse '%s'\n", buffer );
+            }
+        }
 
-    	pclose( file );
+        pclose( file );
 
-    	// if we don't have any servers to connect to, just wait 10 seconds and try again
+        // if we don't have any servers to connect to, just wait 10 seconds and try again
 
-    	if ( num_servers == 0 )
-    	{
-    		next_printf( NEXT_LOG_LEVEL_INFO, "no servers found" );
-    		next_sleep( 10.0 );
-    		continue;
-    	}
+        if ( num_servers == 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "no servers found" );
+            next_sleep( 10.0 );
+            continue;
+        }
 
-    	// create a client
+        // create a client
 
-	    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
-	    if ( client == NULL )
-	    {
-	        printf( "error: failed to create client\n" );
-	        exit(1);
-	    }
+        next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+        if ( client == NULL )
+        {
+            printf( "error: failed to create client\n" );
+            exit(1);
+        }
 
-	    // connect to random server and send packets for game length of time
+        // connect to random server and send packets for game length of time
 
-	    char connect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
-	    
-	    next_address_to_string( &server_addresses[rand() % num_servers], connect_address );
+        char connect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        
+        next_address_to_string( &server_addresses[rand() % num_servers], connect_address );
 
-	    next_client_open_session( client, connect_address );
+        next_client_open_session( client, connect_address );
 
-	    uint8_t packet_data[8];
-	    memcpy( packet_data, &user_id, 8 );
+        uint8_t packet_data[8];
+        memcpy( packet_data, &user_id, 8 );
 
-	    double connect_time = next_time();
+        double connect_time = next_time();
 
-	    double game_length = 240 + rand() % 120;
+        double game_length = 240 + rand() % 120;
 
-	    while ( !quit )
-	    {
-	        next_client_send_packet( client, packet_data, sizeof( packet_data ) );
+        while ( !quit )
+        {
+            next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
-	        next_client_update( client );
+            next_client_update( client );
 
-	        if ( next_time() > connect_time + game_length )
-	        	break;
+            if ( next_time() > connect_time + game_length )
+                break;
 
-	        next_sleep( 1.0f );
-	    }
+            next_sleep( 1.0f );
+        }
 
-	    next_client_destroy( client );
-	}
+        next_client_destroy( client );
+    }
 }
 
 void run_clients( int num_clients )
 {
-	for ( int i = 0; i < num_clients; i++ )
-	{
-	    next_platform_thread_t * thread = next_platform_thread_create( NULL, client_thread_function, NULL );
-	    next_assert( thread );
-	    (void) thread;
-	}
+    for ( int i = 0; i < num_clients; i++ )
+    {
+        next_platform_thread_t * thread = next_platform_thread_create( NULL, client_thread_function, NULL );
+        next_assert( thread );
+        (void) thread;
+    }
 }
 
 extern const char * next_platform_getenv( const char * name );
@@ -253,7 +253,7 @@ int main()
     const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
     if ( raspberry_backend_address_override )
     {
-    	next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+        next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
     }
 
     int num_clients = 25;
@@ -270,10 +270,10 @@ int main()
 
     while ( !quit )
     {
-    	next_sleep( 1.0 );
+        next_sleep( 1.0 );
     }
 
-	next_term();
+    next_term();
 
     return 0;
 }
