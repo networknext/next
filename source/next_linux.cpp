@@ -541,21 +541,21 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
 
 struct thread_shim_data_t
 {
-	void * context;
-	void * real_thread_data;
-	next_platform_thread_func_t real_thread_function;
+    void * context;
+    void * real_thread_data;
+    next_platform_thread_func_t real_thread_function;
 };
 
 static void* thread_function_shim( void * data )
 {
-	next_assert( data );
-	thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
-	void * context = shim_data->context;
-	void * real_thread_data = shim_data->real_thread_data;
-	next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
-	next_free( context, data );
-	real_thread_function( real_thread_data );
-	return NULL;
+    next_assert( data );
+    thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
+    void * context = shim_data->context;
+    void * real_thread_data = shim_data->real_thread_data;
+    next_platform_thread_func_t real_thread_function = shim_data->real_thread_function;
+    next_free( context, data );
+    real_thread_function( real_thread_data );
+    return NULL;
 }
 
 next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t thread_function, void * arg )
@@ -570,8 +570,8 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     next_assert( shim_data );
     if ( !shim_data )
     {
-    	next_free( context, thread );
-    	return NULL;
+        next_free( context, thread );
+        return NULL;
     }
     shim_data->context = context;
     shim_data->real_thread_function = thread_function;
