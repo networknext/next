@@ -1,55 +1,10 @@
 DONE
 
-	Add the near relays message
-
-	Code the read/write
-
-	Generate a random near relays message
-
-	Unit test it
-
-	Send it out from the session update handler
-
-	Add code to process the near relays message in the server backend 5
-
-	Verify that we receive the near relays message in the happy path
-
-	Remove near relays from the session update message
-
-	Clean up and simplify the session update message
-
-	Rework the session update handler to unify around "session flags" concept, passing these flags directly to the session update message -> bigquery.
-
-	Pass session flags and game events to portal
-
-	Pass always session update message data from session update handler
-
-	Verify we get the session update message in the happy path
-
-	Switch to direct kbps up/down, next kbps up/down in session update message
-
-	Pass next only data
-
-	Pass first slice only session data
-
-	Pass first slice or summary slice data
-
-	Pass summary slice only data
-
-	Implement real out of order
-
-	Track these vars in session data
-
-		NextEnvelopeBytesUpSum              uint64
-		NextEnvelopeBytesDownSum            uint64
-		DurationOnNext                      uint32
-		SessionDuration                     uint32
-		StartTimestamp                      uint64
-
-	Update unit tests for session update handler so we cover new codepaths.
-
 TODO
 
+	Raspberry pi's are working, except they don't seem to have any routable near relays.
+
+	We need some more logs to see what's going on with the set of near relays to ping...
 
 
 
