@@ -1576,7 +1576,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		} else {
 			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
 		}
-	}	
+	}
 
 	// should we try to reduce latency?
 
@@ -1726,7 +1726,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 		} else {
 			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
 		}
-	}	
+	}
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
