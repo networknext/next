@@ -1,119 +1,62 @@
 DONE
 
+	The relay needs to be updated to support the new style near relay pings
+
+	Brought across enough code to read the new near relay ping packet
+
+	Brought across code to support basic and advanced packet filter
+
+	Tracked relay address so I can check advanced packet filter and write pittle + chonkle
+
+	Verified that relay connects with happy path relay gateway and receives new near relay ping packets
+
+	Calculate the from address data when the near relay packet comes in
+
+	Not only does the relay not have new near relay pings, it does not have support for the new sdk5 packet types.
+
+	This is turning in to a lot of work...
+
 TODO
 
-	The relay needs to be updated to support the new style pings
+	To unblock dev working, just deploy a reference relay binary.
 
-#define NEXT_RELAY_PING_PACKET                                         20
-#define NEXT_RELAY_PONG_PACKET                                         21
-	
-int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
-{
-    uint8_t * p = packet_data;
-    next_write_uint8( &p, NEXT_RELAY_PING_PACKET );
-    uint8_t * a = p; p += 15;
-    next_write_uint64( &p, ping_sequence );
-    next_write_uint64( &p, session_id );
-    next_write_bytes( &p, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
-    uint8_t * b = p; p += 2;
-    int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    return packet_length;
-}
+	-------
 
-int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
-{
-    uint8_t * p = packet_data;
-    next_write_uint8( &p, NEXT_RELAY_PONG_PACKET );
-    uint8_t * a = p; p += 15;
-    next_write_uint64( &p, ping_sequence );
-    next_write_uint64( &p, session_id );
-    uint8_t * b = p; p += 2;
-    int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    return packet_length;
-}
+	The relay needs to get and store the upcoming, current and previous magic values
 
-void test_relay_ping_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
+	These values need to be accessible by the relay threads
 
-        uint8_t ping_token[NEXT_ENCRYPTED_PING_TOKEN_BYTES];
-        next_random_bytes( ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
+	How to best do this?
 
-        uint64_t ping_sequence = i;
-        uint64_t ping_session_id = 0x12345;
+	-------
 
-        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
+	Check the advanced packet filter on the relay ping packet
 
-        next_check( packet_bytes >= 0 );
-        next_check( packet_bytes <= NEXT_MTU + 27 );
+	Verify the near relay ping packets still get through
 
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+	-------
 
-        next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
+	Write the response pong packet
 
-        const uint8_t * p = packet_data + 16;
-        uint64_t read_ping_sequence = next_read_uint64( &p );
-        uint64_t read_ping_session_id = next_read_uint64( &p );
+	Make sure it passes the basic and advanced packet filters
 
-        next_check( read_ping_sequence == ping_sequence );
-        next_check( read_ping_session_id == ping_session_id );
+	Verify that the client5 actually gets the pongs
 
-        next_check( memcmp( packet_data + 1 + 15 + 8 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
-    }
-}
+	-------
 
-void test_relay_pong_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
+	Deploy new relay version in dev
 
-        uint64_t pong_sequence = i;
-        uint64_t pong_session_id = 0x123456;
+	Verify that raspberry pi's now get near relay pings and go across network next
 
-        int packet_bytes = next_write_relay_pong_packet( packet_data, pong_sequence, pong_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
+	-------
 
-        next_check( packet_bytes >= 0 );
-        next_check( packet_bytes <= NEXT_MTU + 27 );
 
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
 
-        next_check( packet_data[0] == NEXT_RELAY_PONG_PACKET );
 
-        const uint8_t * p = packet_data + 16;
-        uint64_t read_pong_sequence = next_read_uint64( &p );
-        uint64_t read_pong_session_id = next_read_uint64( &p );
 
-        next_check( read_pong_sequence == pong_sequence );
-        next_check( read_pong_session_id == pong_session_id );
-    }
-}
+
+
+
 
 
 
@@ -289,5 +232,13 @@ Nice to have:
 	Put "MatchId" into session data (first).
 
 	This way we can easily look up from a session the match it is in.
+
+	--------------
+
+	I'm not sure the expire timestamp in the server backend was even working correctly.
+
+	Investigate how the expire timestamp was used, calculated and if it was even doing anything...
+
+	Also investigate relay concept of time in reference vs. real relay
 
 	--------------
