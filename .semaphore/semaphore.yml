@@ -68,6 +68,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
+            - mkdir dist
             - make dist/test4
             - ./run test-sdk4
 
@@ -85,6 +86,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
+            - mkdir dist
             - make dist/test5
             - ./run test-sdk5
 
@@ -101,6 +103,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
+            - mkdir dist
             - make dist/reference_relay
             - ./run test-relay
             - artifact push workflow ./dist/reference_relay
