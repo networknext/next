@@ -75,9 +75,12 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
 
+	// todo: not ready yet
+	/*
 	if !service.Local {
 		service.LoadIP2Location()
 	}
+	*/
 
 	service.UpdateMagic()
 
@@ -116,11 +119,15 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.SessionUpdateMessageChannel = sessionUpdateMessageChannel
 	handler.MatchDataMessageChannel = matchDataMessageChannel
 
+	// todo: not ready yet
+	handler.LocateIP = locateIP_Local
+	/*
 	if service.Local {
 		handler.LocateIP = locateIP_Local
 	} else {
 		handler.LocateIP = locateIP_Real
 	}
+	*/
 
 	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
 }
