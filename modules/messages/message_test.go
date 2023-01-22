@@ -183,141 +183,167 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 	message := messages.SessionUpdateMessage{
 
+		Version: byte(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Max)),
+
 		// always
 
-		Version:             uint32(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Min)),
-		Timestamp:           rand.Uint64(),
-		SessionId:           rand.Uint64(),
-		SliceNumber:         rand.Uint32(),
-		DirectMinRTT:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectMaxRTT:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectPrimeRTT:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10)),
-		DirectJitter:        int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10)),
-		DirectPacketLoss:    int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
-		RealPacketLoss:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10)),
-		RealPacketLoss_Frac: uint32(common.RandomInt(0, 300)),
-		RealJitter:          uint32(common.RandomInt(0, messages.SessionUpdateMessageMaxJitter+10)),
-		Next:                common.RandomBool(),
-		Flagged:             common.RandomBool(),
-		Summary:             common.RandomBool(),
-		UseDebug:            common.RandomBool(),
-		Debug:               common.RandomString(messages.SessionUpdateMessageMaxDebugLength + 10),
-		RouteDiversity:      int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRouteDiversity+10)),
-		UserFlags:           rand.Uint64(),
-		TryBeforeYouBuy:     common.RandomBool(),
-
-		// error state only
-
-		FallbackToDirect:     common.RandomBool(),
-		MultipathVetoed:      common.RandomBool(),
-		Mispredicted:         common.RandomBool(),
-		Vetoed:               common.RandomBool(),
-		LatencyWorse:         common.RandomBool(),
-		NoRoute:              common.RandomBool(),
-		NextLatencyTooHigh:   common.RandomBool(),
-		CommitVeto:           common.RandomBool(),
-		UnknownDatacenter:    common.RandomBool(),
-		DatacenterNotEnabled: common.RandomBool(),
-		BuyerNotLive:         common.RandomBool(),
-		StaleRouteMatrix:     common.RandomBool(),
+		Timestamp:        rand.Uint64(),
+		SessionId:        rand.Uint64(),
+		SliceNumber:      rand.Uint32(),
+		RealPacketLoss:   float32(common.RandomInt(0, 100)),
+		RealJitter:       float32(common.RandomInt(0, 1000)),
+		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
+		SessionFlags:     rand.Uint64(),
+		GameEvents:       rand.Uint64(),
+		DirectRTT:        float32(common.RandomInt(0, 1000)),
+		DirectJitter:     float32(common.RandomInt(0, 1000)),
+		DirectPacketLoss: float32(common.RandomInt(0, 100)),
+		DirectKbpsUp:     rand.Uint32(),
+		DirectKbpsDown:   rand.Uint32(),
 	}
 
-	// first slice and summary slice
+	// next only
 
-	if message.SliceNumber == 0 || message.Summary {
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+		message.NextRTT = float32(common.RandomInt(0, 1000))
+		message.NextJitter = float32(common.RandomInt(0, 1000))
+		message.NextPacketLoss = float32(common.RandomInt(0, 100))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = rand.Uint64()
+		}
+	}
 
+	// first slice only
+
+	if message.SliceNumber == 0 {
+		message.NumTags = byte(common.RandomInt(0, messages.MaxTags))
+		for i := 0; i < int(message.NumTags); i++ {
+			message.Tags[i] = rand.Uint64()
+		}
+	}
+
+	// first slice or summary
+
+	if message.SliceNumber == 0 || (message.SessionFlags&messages.SessionFlags_Summary) != 0 {
 		message.DatacenterId = rand.Uint64()
 		message.BuyerId = rand.Uint64()
 		message.UserHash = rand.Uint64()
-		message.EnvelopeBytesUp = rand.Uint64()
-		message.EnvelopeBytesDown = rand.Uint64()
-		message.Latitude = rand.Float32()
-		message.Longitude = rand.Float32()
+		message.Latitude = float32(common.RandomInt(-90, +90))
+		message.Longitude = float32(common.RandomInt(-180, +180))
 		message.ClientAddress = common.RandomAddress()
 		message.ServerAddress = common.RandomAddress()
-		message.ISP = common.RandomString(messages.SessionUpdateMessageMaxISPLength)
-		message.ConnectionType = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxConnectionType+10))
-		message.PlatformType = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPlatformType+10))
-		message.NumTags = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxTags+10))
-		message.ABTest = common.RandomBool()
-		message.Pro = common.RandomBool()
+		message.ConnectionType = uint8(common.RandomInt(0, 255))
+		message.PlatformType = uint8(common.RandomInt(0, 255))
+		message.SDKVersion_Major = uint8(common.RandomInt(0, 255))
+		message.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
+		message.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
 	}
 
-	// summary slice only
+	// summary only
 
-	if message.Summary {
-
+	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
 		message.ClientToServerPacketsSent = rand.Uint64()
 		message.ServerToClientPacketsSent = rand.Uint64()
 		message.ClientToServerPacketsLost = rand.Uint64()
 		message.ServerToClientPacketsLost = rand.Uint64()
 		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
 		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
-		message.NumNearRelays = int32(common.RandomInt(0, messages.SessionUpdateMessageMaxNearRelays))
-		message.EverOnNext = common.RandomBool()
 		message.SessionDuration = rand.Uint32()
-
-		if message.EverOnNext {
-			message.EnvelopeBytesUpSum = rand.Uint64()
-			message.EnvelopeBytesDownSum = rand.Uint64()
-			message.DurationOnNext = rand.Uint32()
-		}
-
+		message.TotalEnvelopeBytesUp = rand.Uint64()
+		message.TotalEnvelopeBytesDown = rand.Uint64()
+		message.DurationOnNext = rand.Uint32()
 		message.StartTimestamp = rand.Uint64()
 	}
 
-	// next only
+	return message
+}
 
-	if message.Next {
+func GenerateRandomPortalMessage() messages.PortalMessage {
 
-		message.NextRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10))
-		message.NextJitter = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
-		message.NextPacketLoss = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
-		message.PredictedNextRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRTT+10))
-		message.NearRelayRTT = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
-		message.NumNextRelays = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxRelays+10))
-		message.TotalPrice = rand.Uint64()
-		message.Uncommitted = common.RandomBool()
-		message.Multipath = common.RandomBool()
-		message.RTTReduction = common.RandomBool()
-		message.PacketLossReduction = common.RandomBool()
-		message.RouteChanged = common.RandomBool()
-		message.NextBytesUp = rand.Uint64()
-		message.NextBytesDown = rand.Uint64()
+	message := messages.PortalMessage{
+		Version: byte(common.RandomInt(messages.PortalMessageVersion_Min, messages.PortalMessageVersion_Max)),
+
+		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
+		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
+		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),
+		SessionId:        rand.Uint64(),
+		BuyerId:          rand.Uint64(),
+		DatacenterId:     rand.Uint64(),
+		Latitude:         float32(common.RandomInt(-90, +90)),
+		Longitude:        float32(common.RandomInt(-180, +180)),
+		ClientAddress:    common.RandomAddress(),
+		ServerAddress:    common.RandomAddress(),
+
+		SliceNumber:      rand.Uint32(),
+		DirectRTT:        float32(common.RandomInt(0, 1000)),
+		DirectJitter:     float32(common.RandomInt(0, 1000)),
+		DirectPacketLoss: float32(common.RandomInt(0, 100)),
+		DirectKbpsUp:     rand.Uint32(),
+		DirectKbpsDown:   rand.Uint32(),
+
+		SessionFlags: rand.Uint64(),
+		GameEvents:   rand.Uint64(),
+
+		RealPacketLoss: float32(common.RandomInt(0, 100)),
+		RealJitter:     float32(common.RandomInt(0, 1000)),
+		RealOutOfOrder: float32(common.RandomInt(0, 100)),
+
+		NumNearRelays: uint32(common.RandomInt(0, messages.MaxNearRelays)),
 	}
 
-	message.Clamp()
-
-	// post clamp
-
-	if message.SliceNumber == 0 || message.Summary {
-
-		for i := 0; i < int(message.NumTags); i++ {
-			message.Tags[i] = rand.Uint64()
+	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+		message.NextRTT = float32(common.RandomInt(0, 1000))
+		message.NextJitter = float32(common.RandomInt(0, 1000))
+		message.NextPacketLoss = float32(common.RandomInt(0, 100))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = rand.Uint64()
 		}
 	}
 
-	if message.Summary {
-
-		for i := 0; i < int(message.NumNearRelays); i++ {
-			message.NearRelayIds[i] = rand.Uint64()
-			message.NearRelayRTTs[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxNearRelayRTT+10))
-			message.NearRelayJitters[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxJitter+10))
-			message.NearRelayPacketLosses[i] = int32(common.RandomInt(-10, messages.SessionUpdateMessageMaxPacketLoss+10))
-		}
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		message.NearRelayId[i] = rand.Uint64()
+		message.NearRelayRTT[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayJitter[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 100))
+		message.NearRelayRoutable[i] = common.RandomBool()
 	}
 
-	if message.Next {
+	return message
+}
 
-		for i := 0; i < int(message.NumNextRelays); i++ {
-			message.NextRelays[i] = rand.Uint64()
-			message.NextRelayPrice[i] = rand.Uint64()
-		}
+func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
+
+	message := messages.NearRelayPingsMessage{
+		Version: byte(common.RandomInt(messages.NearRelayPingsMessageVersion_Min, messages.NearRelayPingsMessageVersion_Max)),
+
+		Timestamp: rand.Uint64(),
+
+		BuyerId:        rand.Uint64(),
+		SessionId:      rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		Latitude:       float32(common.RandomInt(-90, +90)),
+		Longitude:      float32(common.RandomInt(-180, +180)),
+		ClientAddress:  common.RandomAddress(),
+		ConnectionType: byte(common.RandomInt(0, 255)),
+		PlatformType:   byte(common.RandomInt(0, 255)),
+
+		NumNearRelays: uint32(common.RandomInt(0, messages.MaxNearRelays)),
 	}
 
-	// clamp again for array entries
-
-	message.Clamp()
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		message.NearRelayId[i] = rand.Uint64()
+		message.NearRelayRTT[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayJitter[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 100))
+	}
 
 	return message
 }
@@ -404,5 +430,23 @@ func TestSessionUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomSessionUpdateMessage()
 		readMessage := messages.SessionUpdateMessage{}
 		MessageReadWriteTest[*messages.SessionUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestPortalMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalMessage()
+		readMessage := messages.PortalMessage{}
+		MessageReadWriteTest[*messages.PortalMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestNearRelayPingsMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomNearRelayPingsMessage()
+		readMessage := messages.NearRelayPingsMessage{}
+		MessageReadWriteTest[*messages.NearRelayPingsMessage](&writeMessage, &readMessage, t)
 	}
 }

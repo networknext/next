@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"golang.org/x/crypto/nacl/box"
+	"os"
 )
 
 func main() {

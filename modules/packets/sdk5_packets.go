@@ -172,24 +172,23 @@ func (packet *SDK5_ServerUpdateResponsePacket) Serialize(stream encoding.Stream)
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateRequestPacket struct {
-	Version              SDKVersion
-	BuyerId              uint64
-	DatacenterId         uint64
-	SessionId            uint64
-	SliceNumber          uint32
-	RetryNumber          int32
-	SessionDataBytes     int32
-	SessionData          [SDK5_MaxSessionDataSize]byte
-	SessionDataSignature [SDK5_SignatureBytes]byte
-	ClientAddress        net.UDPAddr
-	ServerAddress        net.UDPAddr
-	ClientRoutePublicKey [crypto.Box_PublicKeySize]byte
-	ServerRoutePublicKey [crypto.Box_PublicKeySize]byte
-	UserHash             uint64
-	PlatformType         int32
-	ConnectionType       int32
-	Next                 bool
-
+	Version                         SDKVersion
+	BuyerId                         uint64
+	DatacenterId                    uint64
+	SessionId                       uint64
+	SliceNumber                     uint32
+	RetryNumber                     int32
+	SessionDataBytes                int32
+	SessionData                     [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature            [SDK5_SignatureBytes]byte
+	ClientAddress                   net.UDPAddr
+	ServerAddress                   net.UDPAddr
+	ClientRoutePublicKey            [crypto.Box_PublicKeySize]byte
+	ServerRoutePublicKey            [crypto.Box_PublicKeySize]byte
+	UserHash                        uint64
+	PlatformType                    int32
+	ConnectionType                  int32
+	Next                            bool
 	Reported                        bool
 	FallbackToDirect                bool
 	ClientNextBandwidthOverLimit    bool
@@ -198,7 +197,7 @@ type SDK5_SessionUpdateRequestPacket struct {
 	HasNearRelayPings               bool
 	NumTags                         int32
 	Tags                            [SDK5_MaxTags]uint64
-	ServerEvents                    uint64
+	GameEvents                      uint64
 	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
@@ -266,12 +265,12 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeBool(&packet.HasNearRelayPings)
 
 	hasTags := stream.IsWriting() && packet.SliceNumber == 0 && packet.NumTags > 0
-	hasServerEvents := stream.IsWriting() && packet.ServerEvents != 0
+	hasGameEvents := stream.IsWriting() && packet.GameEvents != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
 	stream.SerializeBool(&hasTags)
-	stream.SerializeBool(&hasServerEvents)
+	stream.SerializeBool(&hasGameEvents)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
@@ -282,8 +281,8 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 		}
 	}
 
-	if hasServerEvents {
-		stream.SerializeUint64(&packet.ServerEvents)
+	if hasGameEvents {
+		stream.SerializeUint64(&packet.GameEvents)
 	}
 
 	stream.SerializeFloat32(&packet.DirectRTT)
@@ -304,7 +303,7 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 			if packet.HasNearRelayPings {
 				stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK5_MaxNearRelayRTT)
 				stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK5_MaxNearRelayJitter)
-				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i] );
+				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
 			}
 		}
 	}
@@ -344,11 +343,9 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		SessionVersion:                uint32(common.RandomInt(0, 255)),
 		SliceNumber:                   rand.Uint32(),
 		ExpireTimestamp:               rand.Uint64(),
-		Initial:                       common.RandomBool(),
 		RouteChanged:                  common.RandomBool(),
 		RouteNumRelays:                int32(common.RandomInt(0, SDK5_MaxRelaysPerRoute)),
 		RouteCost:                     int32(common.RandomInt(0, SDK5_InvalidRouteValue)),
-		EverOnNext:                    common.RandomBool(),
 		FallbackToDirect:              common.RandomBool(),
 		PrevPacketsSentClientToServer: rand.Uint64(),
 		PrevPacketsSentServerToClient: rand.Uint64(),
@@ -358,6 +355,8 @@ func GenerateRandomSessionData() SDK5_SessionData {
 		WroteSummary:                  common.RandomBool(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
+		SessionDuration:               rand.Uint32(),
+		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
 	}
 
@@ -465,30 +464,32 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 // ------------------------------------------------------------
 
 type SDK5_SessionData struct {
-	Version                       uint32
-	SessionId                     uint64
-	SessionVersion                uint32
-	SliceNumber                   uint32
-	ExpireTimestamp               uint64
-	Initial                       bool        // todo: do we still need this?
-	Latitude                      float32
-	Longitude                     float32
-	RouteChanged                  bool
-	RouteNumRelays                int32
-	RouteCost                     int32
-	RouteRelayIds                 [SDK5_MaxRelaysPerRoute]uint64
-	RouteState                    core.RouteState
-	EverOnNext                    bool
-	FallbackToDirect              bool
-	PrevPacketsSentClientToServer uint64
-	PrevPacketsSentServerToClient uint64
-	PrevPacketsLostClientToServer uint64
-	PrevPacketsLostServerToClient uint64
-	WriteSummary                  bool
-	WroteSummary                  bool
-	NextEnvelopeBytesUpSum        uint64
-	NextEnvelopeBytesDownSum      uint64
-	DurationOnNext                uint32
+	Version                             uint32
+	SessionId                           uint64
+	SessionVersion                      uint32
+	SliceNumber                         uint32
+	ExpireTimestamp                     uint64
+	Latitude                            float32
+	Longitude                           float32
+	RouteChanged                        bool
+	RouteNumRelays                      int32
+	RouteCost                           int32
+	RouteRelayIds                       [SDK5_MaxRelaysPerRoute]uint64
+	RouteState                          core.RouteState
+	FallbackToDirect                    bool
+	PrevPacketsSentClientToServer       uint64
+	PrevPacketsSentServerToClient       uint64
+	PrevPacketsLostClientToServer       uint64
+	PrevPacketsLostServerToClient       uint64
+	PrevPacketsOutOfOrderClientToServer uint64
+	PrevPacketsOutOfOrderServerToClient uint64
+	WriteSummary                        bool
+	WroteSummary                        bool
+	NextEnvelopeBytesUpSum              uint64
+	NextEnvelopeBytesDownSum            uint64
+	DurationOnNext                      uint32
+	SessionDuration                     uint32
+	StartTimestamp                      uint64
 }
 
 func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
@@ -513,8 +514,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&sessionData.SliceNumber)
 
 	stream.SerializeUint64(&sessionData.ExpireTimestamp)
-
-	stream.SerializeBool(&sessionData.Initial)
 
 	stream.SerializeFloat32(&sessionData.Latitude)
 	stream.SerializeFloat32(&sessionData.Longitude)
@@ -549,7 +548,6 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
-	stream.SerializeBool(&sessionData.EverOnNext)
 	stream.SerializeBool(&sessionData.FallbackToDirect)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
@@ -566,7 +564,9 @@ func (sessionData *SDK5_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.WroteSummary)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
+	stream.SerializeUint32(&sessionData.SessionDuration)
 	stream.SerializeUint32(&sessionData.DurationOnNext)
+	stream.SerializeUint64(&sessionData.StartTimestamp)
 
 	return stream.Error()
 }

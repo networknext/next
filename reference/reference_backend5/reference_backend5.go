@@ -630,24 +630,24 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 // --------------------------------------------------------------------------------
 
 type NextBackendSessionResponsePacket struct {
-	VersionMajor       uint32
-	VersionMinor       uint32
-	VersionPatch       uint32
-	SessionId          uint64
-	SliceNumber        uint32
-	SessionDataBytes   int32
-	SessionData        [NEXT_MAX_SESSION_DATA_BYTES]byte
+	VersionMajor         uint32
+	VersionMinor         uint32
+	VersionPatch         uint32
+	SessionId            uint64
+	SliceNumber          uint32
+	SessionDataBytes     int32
+	SessionData          [NEXT_MAX_SESSION_DATA_BYTES]byte
 	SessionDataSignature [NEXT_SESSION_DATA_SIGNATURE_BYTES]byte
-	RouteType          int32
-	HasNearRelays      bool
-	NumNearRelays      int32
-	NearRelayIds       []uint64
-	NearRelayAddresses []net.UDPAddr
-	NumTokens          int32
-	Tokens             []byte
-	Multipath          bool
-	HasDebug           bool
-	Debug              string
+	RouteType            int32
+	HasNearRelays        bool
+	NumNearRelays        int32
+	NearRelayIds         []uint64
+	NearRelayAddresses   []net.UDPAddr
+	NumTokens            int32
+	Tokens               []byte
+	Multipath            bool
+	HasDebug             bool
+	Debug                string
 }
 
 func (packet NextBackendSessionResponsePacket) Serialize(stream Stream) error {
@@ -2813,11 +2813,11 @@ func main() {
 				// direct route
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					SessionId:          sessionUpdate.SessionId,
-					SliceNumber:        sessionUpdate.SliceNumber,
-					RouteType:          int32(NEXT_ROUTE_TYPE_DIRECT),
-					NumTokens:          0,
-					Tokens:             nil,
+					SessionId:   sessionUpdate.SessionId,
+					SliceNumber: sessionUpdate.SliceNumber,
+					RouteType:   int32(NEXT_ROUTE_TYPE_DIRECT),
+					NumTokens:   0,
+					Tokens:      nil,
 				}
 
 				sessionData.Route = nil
@@ -2894,12 +2894,12 @@ func main() {
 				}
 
 				sessionResponse = &NextBackendSessionResponsePacket{
-					SliceNumber:        sessionUpdate.SliceNumber,
-					SessionId:          sessionUpdate.SessionId,
-					RouteType:          routeType,
-					NumTokens:          int32(numNodes),
-					Tokens:             tokens,
-					Multipath:          true,
+					SliceNumber: sessionUpdate.SliceNumber,
+					SessionId:   sessionUpdate.SessionId,
+					RouteType:   routeType,
+					NumTokens:   int32(numNodes),
+					Tokens:      tokens,
+					Multipath:   true,
 				}
 
 				sessionData.Route = route

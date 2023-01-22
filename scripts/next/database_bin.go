@@ -555,7 +555,7 @@ func checkBuyersInBinFile() {
 			fmt.Printf("\n%s:\n%+v\n", buyer.CompanyCode, buyer.RouteShader)
 		}
 	}
-	fmt.Println()	
+	fmt.Println()
 
 	fmt.Printf("Internal configs:\n")
 	for _, buyer := range buyers {
@@ -563,7 +563,7 @@ func checkBuyersInBinFile() {
 			fmt.Printf("\n%s:\n%+v\n", buyer.CompanyCode, buyer.InternalConfig)
 		}
 	}
-	fmt.Println()	
+	fmt.Println()
 }
 
 func checkDCMapsInBinFile() {
