@@ -4778,20 +4778,20 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
-                    relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
+                    relay_printf( "ignoring route request. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
                 relay_route_token_t token;
                 if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
-                    relay_printf( "ignoring route request. could not read route token" );
+                    relay_printf( "ignoring route request. could not read route token [sdk5]" );
                     continue;
                 }
 
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignoring route request. route token expired" );
+                    relay_printf( "ignoring route request. route token expired [sdk5]" );
                     continue;
                 }
 
@@ -4817,7 +4817,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay->sessions->insert( std::make_pair(hash, session) );
                     relay->envelope_bandwidth_kbps_up += session->kbps_up;
                     relay->envelope_bandwidth_kbps_down += session->kbps_down;
-                    printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+                    printf( "session created: %" PRIx64 ".%d [sdk5]\n", token.session_id, token.session_version );
                 }
                 relay_platform_mutex_release( relay->mutex );
 
@@ -4847,7 +4847,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
-                    relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
+                    relay_printf( "ignored route response packet. wrong packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -4858,7 +4858,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored route response packet. could not peek header" );
+                    relay_printf( "ignored route response packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -4870,13 +4870,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( !session )
                 {
-                    relay_printf( "ignored route response packet. could not find session" );
+                    relay_printf( "ignored route response packet. could not find session [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored route response packet. expired" );
+                    relay_printf( "ignored route response packet. expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -4887,13 +4887,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
-                    relay_printf( "ignored route response packet. packet already received (%d <= %d)", clean_sequence, session->server_to_client_sequence );
+                    relay_printf( "ignored route response packet. packet already received (%d <= %d) [sdk5]", clean_sequence, session->server_to_client_sequence );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored route response packet. header did not verify" );
+                    relay_printf( "ignored route response packet. header did not verify [sdk5]" );
                     continue;
                 }
 
@@ -4922,20 +4922,20 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
                 {
-                    relay_printf( "ignoring continue request. bad packet size (%d)", packet_bytes );
+                    relay_printf( "ignoring continue request. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
                 relay_continue_token_t token;
                 if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
-                    relay_printf( "ignoring continue request. could not read continue token" );
+                    relay_printf( "ignoring continue request. could not read continue token [sdk5]" );
                     continue;
                 }
 
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored continue request. token expired" );
+                    relay_printf( "ignored continue request. token expired [sdk5]" );
                     continue;
                 }
 
@@ -4947,13 +4947,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( !session )
                 {
-                    relay_printf( "ignored continue request. could not find session" );
+                    relay_printf( "ignored continue request. could not find session [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored continue request. session expired" );
+                    relay_printf( "ignored continue request. session expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -4962,7 +4962,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( session->expire_timestamp != token.expire_timestamp )
                 {
-                    printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+                    printf( "session continued: %" PRIx64 ".%d [sdk5]\n", token.session_id, token.session_version );
                 }
 
                 session->expire_timestamp = token.expire_timestamp;
@@ -4993,7 +4993,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
-                    relay_printf( "ignored continue response packet. wrong packet size (%d)", packet_bytes );
+                    relay_printf( "ignored continue response packet. wrong packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -5004,7 +5004,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored continue response packet. could not peek header" );
+                    relay_printf( "ignored continue response packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -5016,13 +5016,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( !session )
                 {
-                    relay_printf( "ignored continue response packet. could not find session" );
+                    relay_printf( "ignored continue response packet. could not find session [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored continue response packet. expired" );
+                    relay_printf( "ignored continue response packet. expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5033,13 +5033,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
-                    relay_printf( "ignored continue response packet. packet already received (%d <= %d)", clean_sequence, session->server_to_client_sequence );
+                    relay_printf( "ignored continue response packet. packet already received (%d <= %d) [sdk5]", clean_sequence, session->server_to_client_sequence );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored continue response packet. header did not verify" );
+                    relay_printf( "ignored continue response packet. header did not verify [sdk5]" );
                     continue;
                 }
 
@@ -5068,13 +5068,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
-                    relay_printf( "ignored client to server packet. packet too small (%d)", packet_bytes );
+                    relay_printf( "ignored client to server packet. packet too small (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
                 if ( packet_bytes > RELAY_HEADER_BYTES_SDK5 + RELAY_MTU )
                 {
-                    relay_printf( "ignored client to server packet. packet too big (%d)", packet_bytes );
+                    relay_printf( "ignored client to server packet. packet too big (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -5085,7 +5085,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored client to server packet. could not peek header" );
+                    relay_printf( "ignored client to server packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -5096,13 +5096,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
-                    relay_printf( "ignored client to server packet. could not find session" );
+                    relay_printf( "ignored client to server packet. could not find session [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored client to server packet. session expired" );
+                    relay_printf( "ignored client to server packet. session expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5113,13 +5113,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( relay_replay_protection_already_received( &session->replay_protection_client_to_server, clean_sequence ) )
                 {
-                    relay_printf( "ignored client to server packet. already received" );
+                    relay_printf( "ignored client to server packet. already received [sdk5]" );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored client to server packet. could not verify header" );
+                    relay_printf( "ignored client to server packet. could not verify header [sdk5]" );
                     continue;
                 }
 
@@ -5153,13 +5153,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
-                    relay_printf( "ignored server to client packet. packet too small (%d)", packet_bytes );
+                    relay_printf( "ignored server to client packet. packet too small (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
                 if ( packet_bytes > RELAY_HEADER_BYTES_SDK5 + RELAY_MTU )
                 {
-                    relay_printf( "ignored server to client packet. packet too big (%d)", packet_bytes );
+                    relay_printf( "ignored server to client packet. packet too big (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -5170,7 +5170,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored server to client packet. could not peek header" );
+                    relay_printf( "ignored server to client packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -5181,13 +5181,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
-                    relay_printf( "ignored server to client packet. could not find session" );
+                    relay_printf( "ignored server to client packet. could not find session [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored server to client packet. session expired" );
+                    relay_printf( "ignored server to client packet. session expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5198,13 +5198,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, clean_sequence ) )
                 {
-                    relay_printf( "ignored server to client packet. already received" );
+                    relay_printf( "ignored server to client packet. already received [sdk5]" );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored server to client packet. could not verify header" );
+                    relay_printf( "ignored server to client packet. could not verify header [sdk5]" );
                     continue;
                 }
 
@@ -5238,7 +5238,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
-                    relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
+                    relay_printf( "ignored session ping packet. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -5249,7 +5249,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored session ping packet. could not peek header" );
+                    relay_printf( "ignored session ping packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -5260,13 +5260,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
-                    relay_printf( "ignored session ping packet. session does not exist" );
+                    relay_printf( "ignored session ping packet. session does not exist [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored session ping packet. session expired" );
+                    relay_printf( "ignored session ping packet. session expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5277,13 +5277,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( clean_sequence <= session->client_to_server_sequence )
                 {
-                    relay_printf( "ignored session ping packet. already received (%d <= %d)", int(clean_sequence), int(session->client_to_server_sequence) );
+                    relay_printf( "ignored session ping packet. already received (%d <= %d) [sdk5]", int(clean_sequence), int(session->client_to_server_sequence) );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored session ping packet. could not verify header" );
+                    relay_printf( "ignored session ping packet. could not verify header [sdk5]" );
                     continue;
                 }
 
@@ -5315,7 +5315,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
-                    relay_printf( "ignored session pong packet. bad packet size (%d)", packet_bytes );
+                    relay_printf( "ignored session pong packet. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 
@@ -5327,7 +5327,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored session pong packet. could not peek header" );
+                    relay_printf( "ignored session pong packet. could not peek header [sdk5]" );
                     continue;
                 }
 
@@ -5338,13 +5338,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
-                    relay_printf( "ignored session pong packet. session does not exist" );
+                    relay_printf( "ignored session pong packet. session does not exist [sdk5]" );
                     continue;
                 }
 
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
-                    relay_printf( "ignored session pong packet. session expired" );
+                    relay_printf( "ignored session pong packet. session expired [sdk5]" );
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5355,13 +5355,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
-                    relay_printf( "ignored session pong packet. already received (%d <= %d)", int(clean_sequence), int(session->server_to_client_sequence) );
+                    relay_printf( "ignored session pong packet. already received (%d <= %d) [sdk5]", int(clean_sequence), int(session->server_to_client_sequence) );
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-                    relay_printf( "ignored session pong packet. could not verify header" );
+                    relay_printf( "ignored session pong packet. could not verify header [sdk5]" );
                     continue;
                 }
 
@@ -5393,7 +5393,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             {
                 if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {
-                    relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
+                    relay_printf( "ignored relay near ping packet. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
 

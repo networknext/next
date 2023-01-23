@@ -7,7 +7,7 @@ export RELAY_PRIVATE_KEY=z8kiGRNyGcMz1BfFC8aBtPI10y2OQkSz2VJrz0QXP2M=
 
 # inputs specific to the environment (these change infrequently)
 
-export RELAY_VERSION=2.1.1
+export RELAY_VERSION=reference
 export RELAY_BACKEND_HOSTNAME=http://34.117.3.168
 export RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
 export VPN_ADDRESS=45.33.53.242

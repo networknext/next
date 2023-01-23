@@ -600,18 +600,6 @@ func main() {
 	var loglines uint
 	relaylogfs.UintVar(&loglines, "n", 10, "the number of log lines to display")
 
-	relaydisablefs := flag.NewFlagSet("relay disable", flag.ExitOnError)
-
-	var hardDisable bool
-	relaydisablefs.BoolVar(&hardDisable, "hard", false, "hard disable the relay(s), killing the process immediately")
-
-	relayupdatefs := flag.NewFlagSet("relay update", flag.ExitOnError)
-
-	var updateOpts updateOptions
-	relayupdatefs.Uint64Var(&updateOpts.coreCount, "cores", 0, "number of cores for the relay to utilize")
-	relayupdatefs.BoolVar(&updateOpts.force, "force", false, "force the relay update regardless of the version")
-	relayupdatefs.BoolVar(&updateOpts.hard, "hard", false, "hard update the relay(s), killing the process immediately")
-
 	fakerelaysfs := flag.NewFlagSet("fake relays", flag.ExitOnError)
 
 	// Create staging database.bin with N fake relays
@@ -1228,7 +1216,7 @@ func main() {
 			{
 				Name:       "logs",
 				ShortUsage: "next relay logs <regex> [regex]",
-				ShortHelp:  "Print the last n journalctl lines for each matching relay, if the n flag is unset it defaults to 10",
+				ShortHelp:  "View the journalctl logs for a relay",
 				FlagSet:    relaylogfs,
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) == 0 {
@@ -1259,32 +1247,31 @@ func main() {
 				},
 			},
 			{
-				Name:       "enable",
-				ShortUsage: "next relay enable [regex...]",
-				ShortHelp:  "Enable the specified relay(s)",
+				Name:       "start",
+				ShortUsage: "next relay start [regex...]",
+				ShortHelp:  "Start the specified relay(s)",
 				Exec: func(_ context.Context, args []string) error {
 					regexes := []string{".*"}
 					if len(args) > 0 {
 						regexes = args
 					}
 
-					enableRelays(env, regexes)
+					startRelays(env, regexes)
 
 					return nil
 				},
 			},
 			{
-				Name:       "disable",
-				ShortUsage: "next relay disable [regex...]",
-				ShortHelp:  "Disable the specified relay(s)",
-				FlagSet:    relaydisablefs,
+				Name:       "stop",
+				ShortUsage: "next relay stop [regex...]",
+				ShortHelp:  "Stop the specified relay(s)",
 				Exec: func(_ context.Context, args []string) error {
 					regexes := []string{".*"}
 					if len(args) > 0 {
 						regexes = args
 					}
 
-					disableRelays(env, regexes, hardDisable, false)
+					stopRelays(env, regexes)
 
 					return nil
 				},
@@ -1345,35 +1332,6 @@ func main() {
 					}
 
 					modifyRelayField(env, args[0], args[1], args[2])
-					return nil
-				},
-			},
-		},
-	}
-
-	var routesCommand = &ffcli.Command{
-		Name:       "routes",
-		ShortUsage: "next routes <name-1> <name-2>",
-		ShortHelp:  "List routes between relays",
-		Exec: func(_ context.Context, args []string) error {
-
-			if len(args) == 0 {
-				routes(env, []string{}, []string{}, 0, 0)
-				return nil
-			}
-
-			routes(env, []string{args[0]}, []string{args[1]}, 0, 0)
-			return nil
-		},
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "selection",
-				ShortUsage: "next routes selection <relay name>",
-				ShortHelp:  "Select routes between sets of relays",
-				FlagSet:    routesfs,
-				Exec: func(ctx context.Context, args []string) error {
-					routes(env, srcRelays, destRelays, routeRTT, routeHash)
-
 					return nil
 				},
 			},
@@ -2392,7 +2350,6 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 		sessionsCommand,
 		relaysCommand,
 		relayCommand,
-		routesCommand,
 		datacentersCommand,
 		datacenterCommand,
 		customersCommand,

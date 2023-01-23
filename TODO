@@ -16,13 +16,130 @@ DONE
 
 	This is turning in to a lot of work...
 
+	To unblock dev working, just deploy a reference relay binary...
+
+	It took a long time, but the reference relay was deployed.
+
+	Setup so there is only two relays. Both in google. So I can ssh in and see the logs as the route request doesn't get through.
+
 TODO
 
-	To unblock dev working, just deploy a reference relay binary...
+	---------------
+
+	Jan 23 04:34:11 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:12 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:12 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:12 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:13 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:13 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:13 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:14 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+	Jan 23 04:34:14 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+
+	---------------
+
+	Relays should not be able to go "online" unless the relays are enabled.
+
+	eg. google.southcarolina was totally disabled/removed/deleted -- but still showed up in online relays. wtf?
+
+	And now somehow google.southcarolina is in the database.bin in dev, even though it's deleted? I don't know how...
+
+	---------------
+
+	Raspberry pi clients can ping relays now, but they quickly fail because the route request doesn't get through.
+
+	What's going wrong?
+
+-----------------------------
+
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: ------------------------------
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550125: debug: client received route update packet from server
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: --------------------------------------
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 21/29 source relays are routable
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 1 dest relay
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: try to reduce latency
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: forcing network next
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: best route cost is 36
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: found 24 suitable routes in [36,136] from 21/29 near relays
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: route diversity 17
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: take network next: google.virginia.3 - google.iowa.1
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: route cost is 53
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: multipath
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: --------------------------------------
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550165: info: client near relay pings completed
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550668: info: client next route
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550690: info: client multipath enabled
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550729: debug: client sent route update ack packet to server
+Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550779: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100010.897979: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100011.234007: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100011.545971: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100011.857868: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100012.137913: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100012.449866: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100012.761865: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100013.039031: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100013.349806: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100013.661822: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100013.973834: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100014.233785: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100014.545766: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100014.857713: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.133729: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.445634: debug: client sent route request to relay: 35.236.236.4:40000
+Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.653652: error: client route request timed out
+Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.653691: info: client fallback to direct
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-------
 
 	Verify that we have raspberry pi's running in dev.
 
 	Now scale up the number of clients and servers to at least 100 clients.
+
+	-------
+
+	If raspberry client falls back to direct, restart the client ASAP to save time.
+
+	-------
+
+	Reference relay needs the upgrade functionality implemented
+
+	This way we can easily switch between reference and real relay.
+
+	Right now, the reference relay is a dead end.
 
 	-------
 
