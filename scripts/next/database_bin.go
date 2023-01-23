@@ -11,10 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	// todo: we don't wan to be using old modules
+	// todo: we don't want to be using old modules
 	"github.com/networknext/backend/modules-old/backend"
 	"github.com/networknext/backend/modules-old/routing"
-	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 )
 
 func getLocalDatabaseBin() {
@@ -72,28 +71,4 @@ func getLocalDatabaseBin() {
 	if err != nil {
 		fmt.Printf("Failed to write database file")
 	}
-}
-
-func getDatabaseBin(
-	env Environment,
-) {
-
-	args := localjsonrpc.NextBinFileHandlerArgs{}
-	var reply localjsonrpc.NextBinFileHandlerReply
-
-	if err := makeRPCCall(env, &reply, "RelayFleetService.NextBinFileHandler", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	var buffer bytes.Buffer
-	encoder := gob.NewEncoder(&buffer)
-	encoder.Encode(reply.DBWrapper)
-
-	err := ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
-	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
-		handleRunTimeError(fmt.Sprintf("could not write database.bin to the filesystem: %v\n", err), 0)
-	}
-
 }

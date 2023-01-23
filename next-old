@@ -1,0 +1,12 @@
+#!/bin/bash
+
+unset -v latest
+for file in scripts/next-old/*.go; do
+	[[ $file -nt $latest ]] && latest=$file
+done
+
+if [ ! -f ./dist/next-old ] || [ $latest -nt ./dist/next-old ]; then
+	go build -o ./dist/next-old scripts/next-old/*.go || { echo 'failed to build next-old.go' ; exit 1; }
+fi
+
+./dist/next-old "$@"
