@@ -22,10 +22,6 @@ DONE
 
 	Setup so there is only two relays. Both in google. So I can ssh in and see the logs as the route request doesn't get through.
 
-TODO
-
-	---------------
-
 	Jan 23 04:34:11 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
 	Jan 23 04:34:12 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
 	Jan 23 04:34:12 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
@@ -35,6 +31,119 @@ TODO
 	Jan 23 04:34:13 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
 	Jan 23 04:34:14 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
 	Jan 23 04:34:14 dev-google-virginia-3 relay[55106]: ignoring route request. could not read route token
+
+TODO
+
+	We need more logs on the server backend, and the relay and on the client and server to track down what's going on with the route token issue above.
+
+	It's difficult for me to think of any issue that would cause the route token to not decrypt like this, especially when it works fine in dev.
+
+	One possibly thing is that the token is encoded relative to the wrong relay public/private keypair -- so it can't decrypt.
+
+	This is the first thing that should be checked...
+
+	google.virginia.3 /app/relay.env:
+
+		RELAY_PUBLIC_KEY=5KcEWA5Digp5hBm5TOfXtX3twEk/etE0SB8rwlIrjWQ=
+		RELAY_PRIVATE_KEY=SCrHFjgowY4n4fEkPZnS8wvxseCUiwFGHvaCSkJItqo=
+		RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+
+	Relay public key is incorrect:
+
+		9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+
+	I think google.virginia.3 is just misconfigured.
+
+	Is google.lasvegas.1 misconfigured too?
+
+		Jan 23 15:48:16 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+		Jan 23 15:48:16 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+		Jan 23 15:48:16 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+		Jan 23 15:48:16 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+		Jan 23 15:48:17 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+		Jan 23 15:48:17 dev-google-losangeles-1 relay[41516]: ignoring route request. could not read route token
+
+	Are all dev relays misconfigured?
+
+	Database says, google.lasvegas.1
+
+		Public Key: 9RE5x98+BBXFd3z3KEX4wArJtVGxjuj5k02OtPavqUk=
+
+	/app/relay.env says:
+
+		RELAY_PUBLIC_KEY=xKAh+sLW1ghyIkHfOVzkinZZU0mjZF52a+aQ1cv9RRg=
+		RELAY_PRIVATE_KEY=Goql8jwWRUYZpV8XtTPjXC+pDLUzrQ0zpbi8OvElHYw=
+
+	Totally different. They're all desynced!!!
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	---------------
+
+	You don't seem to be able to edit the relay public key in the admin tool?
+
+	Ideally, we should be able to edit the relay address, the relay public key to adjust a relay if we need to roll a new key.
+
+	Pretty confident right now that certain relays in dev are misconfigured, with the wrong public key set in relay.env vs. in the database for this reason.
+
+	---------------
+
+	We need a way to check relay public keys set in relay.env vs. relay public keys set in the database / database.bin
+
+	Normally, this should happen when the relay fails to init because the signature check fails.
+
+	But right now it's failing to happen because the relay 
 
 	---------------
 
@@ -50,7 +159,7 @@ TODO
 
 	What's going wrong?
 
------------------------------
+	-----------------------------
 
 Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: ------------------------------
 Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550125: debug: client received route update packet from server

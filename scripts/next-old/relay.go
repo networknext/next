@@ -385,7 +385,7 @@ func checkRelays(
 
 }
 
-func relayLog(env Environment, regexes []string) {
+func relayLogs(env Environment, lines uint, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for _, relay := range relays {

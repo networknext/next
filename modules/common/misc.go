@@ -60,30 +60,20 @@ func Clamp[T Number](value *T, min T, max T) bool {
 	return false
 }
 
-func ClampString(value *string, maxLength int) bool {
-	// IMPORTANT: only on simple ascii strings please
-	byteArray := []byte(*value)
-	if len(byteArray) > maxLength-1 {
-		*value = string(byteArray[:maxLength-1]) // IMPORTANT: -1 is for compatibility with C null terminated strings
-		return true
-	}
-	return false
+func HashString(s string) uint64 {
+	hash := fnv.New64a()
+	hash.Write([]byte(s))
+	return hash.Sum64()
 }
 
 func HashTag(tag string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(tag))
-	return hash.Sum64()
+	return HashString(tag)
 }
 
 func DatacenterId(datacenterName string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(datacenterName))
-	return hash.Sum64()
+	return HashString(datacenterName)
 }
 
 func RelayId(relayAddress string) uint64 {
-	hash := fnv.New64a()
-	hash.Write([]byte(relayAddress))
-	return hash.Sum64()
+	return HashString(relayAddress)
 }

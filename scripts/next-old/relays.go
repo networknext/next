@@ -419,6 +419,87 @@ func relays(
 
 }
 
+func addRelayJS(env Environment, r relay) {
+
+	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
+	if err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	machineType, err := routing.ParseMachineType(r.Type)
+	if err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	args := localjsonrpc.JSAddRelayArgs{
+		Name:                r.Name,
+		Addr:                r.Addr,
+		InternalAddr:        r.InternalAddr,
+		PublicKey:           r.PublicKey,
+		SellerID:            r.Seller,       // not used
+		DatacenterID:        r.DatacenterID, // hex
+		NICSpeedMbps:        int64(r.NicSpeedMbps),
+		IncludedBandwidthGB: int64(r.IncludedBandwidthGB),
+		ManagementAddr:      r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(routing.DollarsToNibblins(r.EgressPriceOverride)),
+		MRC:                 int64(routing.DollarsToNibblins(r.MRC)),
+		Overage:             int64(routing.DollarsToNibblins(r.Overage)),
+		BWRule:              int64(bwRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           r.StartDate,
+		EndDate:             r.EndDate,
+		Type:                int64(machineType),
+		BillingSupplier:     r.BillingSupplier,
+		Version:             r.Version,
+	}
+
+	var reply localjsonrpc.JSAddRelayReply
+	if err := makeRPCCall(env, &reply, "OpsService.JSAddRelay", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Printf("Relay \"%s\" added to storage.\n", r.Name)
+
+}
+
+func removeRelay(env Environment, name string) {
+	relays := getRelayInfo(env, name)
+
+	if len(relays) == 0 {
+		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", name), 0)
+	}
+
+	info := relays[0]
+
+	if info.state == routing.RelayStateDecommissioned.String() {
+		fmt.Printf("Relay \"%s\" already removed\n", info.name)
+		os.Exit(0)
+	}
+
+	if info.state != routing.RelayStateDisabled.String() {
+		fmt.Printf("Relay %s must be disabled prior to removal.\n\n", info.name)
+		os.Exit(0)
+	}
+
+	args := localjsonrpc.RemoveRelayArgs{
+		RelayID: info.id,
+	}
+
+	var reply localjsonrpc.RemoveRelayReply
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveRelay", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Printf("Relay \"%s\" removed.\n", info.name)
+}
+
 func countRelays(env Environment, regex string) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
