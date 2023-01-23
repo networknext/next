@@ -695,6 +695,16 @@ func main() {
 		},
 	}
 
+	var keygenCommand = &ffcli.Command{
+		Name:       "keygen",
+		ShortUsage: "next keygen",
+		ShortHelp:  "Generate a relay keypair",
+		Exec: func(_ context.Context, args []string) error {
+			keygen()
+			return nil
+		},
+	}
+
 	var sshCommand = &ffcli.Command{
 		Name:       "ssh",
 		ShortUsage: "next ssh <relay name>",
@@ -800,6 +810,7 @@ func main() {
 		logCommand,
 		startCommand,
 		stopCommand,
+		keygenCommand,
 		sshCommand,
 		costCommand,
 		optimizeCommand,

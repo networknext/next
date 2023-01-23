@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func main() {
+func keygen() {
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		fmt.Printf("error: could not generate relay keypair\n")
