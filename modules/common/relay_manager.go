@@ -323,7 +323,6 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relay.Name = sourceEntry.relayName
 		relay.Address = sourceEntry.relayAddress
 		relay.Sessions = sourceEntry.sessions
-		relay.Version = sourceEntry.relayVersion
 
 		relay.Status = RELAY_STATUS_ONLINE
 
@@ -335,6 +334,10 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 
 		if expired {
 			relay.Status = RELAY_STATUS_OFFLINE
+		}
+
+		if relay.Status == RELAY_STATUS_ONLINE {
+			relay.Version = sourceEntry.relayVersion
 		}
 
 		relays = append(relays, relay)
