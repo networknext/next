@@ -182,52 +182,54 @@ func main() {
 	    }
 	}
 
-/*
 	// route shaders
 
-	rows, err = pgsql.Query("SELECT id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next FROM route_shaders")
-	if err != nil {
-        fmt.Printf("error: could not extract route shaders: %v\n", err)
-        os.Exit(1)
+    type RouteShaderRow struct {
+        id uint64
+        buyer_id uint64
+        ab_test bool
+        acceptable_latency int
+        acceptable_packet_loss float32
+        analysis_only bool
+        bandwidth_envelope_down_kbps int
+        bandwidth_envelope_up_kbps int
+        disable_network_next bool
+		latency_threshold int
+        multipath bool
+        reduce_latency bool
+        reduce_packet_loss bool
+        selection_percent int
+        max_latency_tradeoff int
+        max_next_rtt int
+        route_switch_threshold int
+        route_select_threshold int
+        rtt_veto_default int
+        rtt_veto_multipath int
+        rtt_veto_packetloss int
+        force_next bool
     }
 
-	defer rows.Close()
+    routeShaderRows := make([]RouteShaderRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next FROM route_shaders")
+		if err != nil {
+	        fmt.Printf("error: could not extract route shader: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\nroute shaders:\n")
+		defer rows.Close()
 
-	for rows.Next() {
+		for rows.Next() {
+			row := RouteShaderRow{}
+	        if err := rows.Scan(&row.id, &row.buyer_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next); err != nil {
+	            fmt.Printf("error: failed to scan route shader row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        routeShaderRows = append(routeShaderRows, row)
+	    }
+	}
 
-        var id uint64
-        var buyer_id uint64
-        var ab_test bool
-        var acceptable_latency int
-        var acceptable_packet_loss float32
-        var analysis_only bool
-        var bandwidth_envelope_down_kbps int
-        var bandwidth_envelope_up_kbps int
-        var disable_network_next bool
-        var latency_threshold int
-        var multipath bool
-        var reduce_latency bool
-        var reduce_packet_loss bool
-        var selection_percent int
-        var max_latency_tradeoff int
-        var max_next_rtt int
-        var route_switch_threshold int
-        var route_select_threshold int
-        var rtt_veto_default int
-        var rtt_veto_multipath int
-        var rtt_veto_packetloss int
-        var force_next bool
-
-        if err := rows.Scan(&id, &buyer_id, &ab_test, &acceptable_latency, &acceptable_packet_loss, &analysis_only, &bandwidth_envelope_down_kbps, &bandwidth_envelope_up_kbps, &disable_network_next, &latency_threshold, &multipath, &reduce_latency, &reduce_packet_loss, &selection_percent, &max_latency_tradeoff, &max_next_rtt, &route_switch_threshold, &route_select_threshold, &rtt_veto_default, &rtt_veto_multipath, &rtt_veto_packetloss, &force_next); err != nil {
-            fmt.Printf("error: failed to scan route shader row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("%d: %d, %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next)
-    }
-
+/*
 	// datacenter maps
 
 	rows, err = pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM datacenter_maps")
@@ -281,4 +283,9 @@ func main() {
 	for _, row := range customerRows {		
         fmt.Printf("%d: %s, %s, %v, %v\n", row.id, row.customer_name, row.customer_code, row.live, row.debug)
 	}
+
+	fmt.Printf("\nroute shaders:\n")
+	for _, row := range routeShaderRows {		
+        fmt.Printf("%d: %d, %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.id, row.buyer_id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
+    }
 }
