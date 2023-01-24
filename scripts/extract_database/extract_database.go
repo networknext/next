@@ -152,35 +152,37 @@ func main() {
 	    }
 	}
 
-/*
 	// customers
 
-	rows, err = pgsql.Query("SELECT id, customer_name, customer_code, live, debug FROM customers")
-	if err != nil {
-        fmt.Printf("error: could not extract customers: %v\n", err)
-        os.Exit(1)
+    type CustomerRow struct {
+        id uint64
+        customer_name string
+        customer_code string
+        live bool
+        debug bool
     }
 
-	defer rows.Close()
+    customerRows := make([]CustomerRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT id, customer_name, customer_code, live, debug FROM customers")
+		if err != nil {
+	        fmt.Printf("error: could not extract customers: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\ncustomers:\n")
+		defer rows.Close()
 
-	for rows.Next() {
+		for rows.Next() {
+			row := CustomerRow{}
+	        if err := rows.Scan(&row.id, &row.customer_name, &row.customer_code, &row.live, &row.debug); err != nil {
+	            fmt.Printf("error: failed to scan customer row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        customerRows = append(customerRows, row)
+	    }
+	}
 
-        var id uint64
-        var customer_name string
-        var customer_code string
-        var live bool
-        var debug bool
-
-        if err := rows.Scan(&id, &customer_name, &customer_code, &live, &debug); err != nil {
-            fmt.Printf("error: failed to scan customer row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("%d: %s, %s, %v, %v\n", id, customer_name, customer_code, live, debug)
-    }
-
+/*
 	// route shaders
 
 	rows, err = pgsql.Query("SELECT id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next FROM route_shaders")
@@ -272,11 +274,11 @@ func main() {
 
 	fmt.Printf("\nsellers:\n")
 	for _, row := range sellerRows {		
-        fmt.Printf("%d: %s, %s, %d\n", row.id, row.name, row.public_key_base64, row.customer_id)
+        fmt.Printf("%d: %s, %d\n", row.id, row.name, row.customer_id.Int64)
 	}
 
-	fmt.Printf("\nsellers:\n")
-	for _, row := range sellerRows {		
-        fmt.Printf("%d: %s, %d\n", row.id, row.name, row.customer_id.Int64)
+	fmt.Printf("\ncustomers:\n")
+	for _, row := range customerRows {		
+        fmt.Printf("%d: %s, %s, %v, %v\n", row.id, row.customer_name, row.customer_code, row.live, row.debug)
 	}
 }
