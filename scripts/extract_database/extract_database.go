@@ -62,11 +62,11 @@ func main() {
         fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %d, %d, %d\n", id, name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions)
     }
 
-	// relays
+	// datacenters
 
 	rows, err = pgsql.Query("SELECT id, display_name, enabled, latitude, longitude, seller_id FROM datacenters")
 	if err != nil {
-        fmt.Printf("error: could not extract databases: %v\n", err)
+        fmt.Printf("error: could not extract datacenters: %v\n", err)
         os.Exit(1)
     }
 
@@ -89,5 +89,32 @@ func main() {
         }
 
         fmt.Printf("%d: %s, %v, %.1f, %.1f, %d\n", id, name, enabled, latitude, longitude, seller_id)
+    }
+
+	// buyers
+
+	rows, err = pgsql.Query("SELECT id, short_name, public_key_base64, customer_id FROM buyers")
+	if err != nil {
+        fmt.Printf("error: could not extract buyers: %v\n", err)
+        os.Exit(1)
+    }
+
+	defer rows.Close()
+
+	fmt.Printf("\nbuyers:\n")
+
+	for rows.Next() {
+
+        var id uint64
+        var name string
+        var public_key_base64 string
+        var customer_id uint64
+
+        if err := rows.Scan(&id, &name, &public_key_base64, &customer_id); err != nil {
+            fmt.Printf("error: failed to scan buyer row: %v\n", err)
+            os.Exit(1)
+        }
+
+        fmt.Printf("%d: %s, %s, %d\n", id, name, public_key_base64, customer_id)
     }
 }
