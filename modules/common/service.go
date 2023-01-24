@@ -726,7 +726,7 @@ func generateRelayData(database *db.Database) *RelayData {
 	})
 
 	for i := range relayData.RelayArray {
-		relayData.RelayHash[relayData.RelayArray[i].ID] = relayData.RelayArray[i]
+		relayData.RelayHash[relayData.RelayArray[i].Id] = relayData.RelayArray[i]
 	}
 
 	relayData.RelayAddresses = make([]net.UDPAddr, numRelays)
@@ -736,8 +736,8 @@ func generateRelayData(database *db.Database) *RelayData {
 	relayData.RelayDatacenterIds = make([]uint64, numRelays)
 
 	for i := 0; i < numRelays; i++ {
-		relayData.RelayIds[i] = relayData.RelayArray[i].ID
-		relayData.RelayAddresses[i] = relayData.RelayArray[i].Addr
+		relayData.RelayIds[i] = relayData.RelayArray[i].Id
+		relayData.RelayAddresses[i] = relayData.RelayArray[i].PublicAddress
 		relayData.RelayNames[i] = relayData.RelayArray[i].Name
 		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Latitude)
 		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)

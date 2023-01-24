@@ -97,6 +97,7 @@ CREATE TABLE relays (
   ssh_user varchar not null default 'root',
   public_key_base64 varchar not null,
   private_key_base64 varchar,
+  version varchar,
   mrc integer not null default 0,
   port_speed integer not null default 1000,
   max_sessions integer not null default 0,

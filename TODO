@@ -12,17 +12,16 @@ DONE
 
 	Read in all the rows for each table and print out
 
-TODO
-
 	Transform rows in table to arrays of row structs in golang, then print out the row structs at the end.
 
-	-------------
-
-	Transform row structs into a real "Database" object, linking together object pointers according to ids.
-
-	-------------
-
 	Print out the database struct to verify.
+
+TODO
+
+	Now transform the rows into real database and core structs...
+
+	-------------
+
 
 	-------------
 

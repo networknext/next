@@ -583,8 +583,8 @@ INSERT INTO relays(
 VALUES(
 	'linode.atlanta',
 	'45.79.196.195',
-	'RELAY_PUBLIC_KEY=fUFfw6vkvqv2z+SPFr+I5ZcMpp+p0KxkaLq162MB+jI=',
-	'RELAY_PRIVATE_KEY=NDyymSNlYO/lCyFDsx7FARildlNStM+tLdzWABZsOdk=',
+	'fUFfw6vkvqv2z+SPFr+I5ZcMpp+p0KxkaLq162MB+jI=',
+	'NDyymSNlYO/lCyFDsx7FARildlNStM+tLdzWABZsOdk=',
 	(select id from datacenters where display_name = 'linode.atlanta')
 );
 

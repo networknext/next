@@ -11,16 +11,20 @@ import (
 )
 
 type Relay struct {
-	ID           uint64
-	Name         string
-	Addr         net.UDPAddr
-	InternalAddr net.UDPAddr
-	Version      string
-	PublicKey    []byte
-	Seller       Seller
-	Datacenter   Datacenter
-	MaxSessions  uint32
-	NICSpeedMbps int32
+	Id              uint64
+	Name            string
+	DatacenterId    uint64
+	PublicAddress   net.UDPAddr
+	InternalAddress net.UDPAddr
+	SSHAddress      net.UDPAddr
+	SSHUser         string
+	PublicKey       []byte
+	PrivateKey      []byte
+	MaxSessions     int
+	PortSpeed       int
+	Version         string
+	Seller          Seller
+	Datacenter      Datacenter
 }
 
 type Buyer struct {

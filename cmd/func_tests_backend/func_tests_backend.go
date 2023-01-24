@@ -1780,9 +1780,9 @@ func test_relay_backend() {
 
 		relay := db.Relay{}
 
-		relay.ID = relayIds[i]
+		relay.Id = relayIds[i]
 		relay.Name = relayNames[i]
-		relay.Addr = relayAddresses[i]
+		relay.PublicAddress = relayAddresses[i]
 		relay.Version = "test"
 		relay.Datacenter.ID = relayDatacenterIds[i]
 		relay.Datacenter.Name = datacenterNames[relay.Datacenter.ID]

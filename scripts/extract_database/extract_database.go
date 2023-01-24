@@ -4,9 +4,28 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"net"
+	"time"
+	"strconv"
+	"encoding/base64"
 
 	_ "github.com/lib/pq"
+
+	db "github.com/networknext/backend/modules/database"
 )
+
+func ParseAddress(input string) net.UDPAddr {
+	address := net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
 
 func main() {
 
@@ -39,6 +58,7 @@ func main() {
         ssh_user string
         public_key_base64 string
         private_key_base64 string
+        version sql.NullString
         mrc int
         port_speed int
         max_sessions int    	
@@ -46,7 +66,7 @@ func main() {
 
     relayRows := make([]RelayRow, 0)
     {
-		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions FROM relays")
+		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
 		if err != nil {
 	        fmt.Printf("error: could not extract relays: %v\n", err)
 	        os.Exit(1)
@@ -56,7 +76,7 @@ func main() {
 
 		for rows.Next() {
 			row := RelayRow{}
-	        if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
+	        if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
 	            fmt.Printf("error: failed to scan relay row: %v\n", err)
 	            os.Exit(1)
 	        }
@@ -261,7 +281,7 @@ func main() {
 
 	fmt.Printf("\nrelays:\n")
 	for _, row := range relayRows {		
-        fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %d, %d, %d\n", row.id, row.name, row.datacenter, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.mrc, row.port_speed, row.max_sessions)
+        fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d\n", row.id, row.name, row.datacenter, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions)
 	}
 
 	fmt.Printf("\ndatacenters:\n")
@@ -293,4 +313,73 @@ func main() {
 	for _, row := range datacenterMapRows {		
         fmt.Printf("(%d,%d): %v\n", row.buyer_id, row.datacenter_id, row.enable_acceleration)
     }
+
+    // index rows by ids
+
+    // ...
+
+    // build database
+
+    fmt.Printf("\nbuilding network next database...\n")
+
+	database := db.CreateDatabase()
+
+	database.CreationTime = time.Now().Format("Monday 02 January 2006 15:04:05 MST")
+	database.Creator = "extract_database"
+
+	database.Relays = make([]db.Relay, len(relayRows))
+
+	for i, row := range relayRows {		
+
+		fmt.Printf("relay %d\n", i)
+
+		relay := &database.Relays[i]
+
+		relay.Id = row.id
+		relay.Name = row.name
+		// relay.DatacenterId = (hash datacenter name)
+		
+		relay.PublicAddress = ParseAddress(row.public_ip)
+		relay.PublicAddress.Port = row.public_port
+		
+		relay.InternalAddress = ParseAddress(row.internal_ip)
+		relay.InternalAddress.Port = row.internal_port
+		
+		relay.SSHAddress = ParseAddress(row.ssh_ip)
+		relay.SSHUser = row.ssh_user
+		
+		relay.PublicKey, err = base64.StdEncoding.DecodeString(row.public_key_base64)
+		if err != nil {
+			fmt.Printf("error: could not decode public key base64 for relay %s: %v\n", relay.Name, err)
+			os.Exit(1)
+		}
+		if len(relay.PublicKey) != 32 {
+			fmt.Printf("error: relay public key must be 32 bytes\n")
+			os.Exit(1)
+		}
+
+		relay.PrivateKey, err = base64.StdEncoding.DecodeString(row.private_key_base64)
+		if err != nil {
+			fmt.Printf("error: could not decode private key base64 for relay %s: %v\n", relay.Name, err)
+		}
+		if len(relay.PrivateKey) != 32 {
+			fmt.Printf("error: relay private key must be 32 bytes\n")
+			os.Exit(1)
+		}
+
+		relay.MaxSessions = row.max_sessions
+		relay.PortSpeed = row.port_speed
+		relay.Version = row.version.String
+	}
+
+	/*
+	Seller          Seller
+	Datacenter      Datacenter
+	*/
+
+	// print database
+
+	fmt.Printf("\ndatabase:\n%+v\n", database)
+
+	database.Save("database.bin")
 }

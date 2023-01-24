@@ -562,7 +562,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 		relay, _ := state.Database.RelayMap[relayId]
 
-		relayAddresses[i] = &relay.Addr
+		relayAddresses[i] = &relay.PublicAddress
 
 		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
