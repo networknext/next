@@ -327,7 +327,16 @@ func main() {
 	database.CreationTime = time.Now().Format("Monday 02 January 2006 15:04:05 MST")
 	database.Creator = "extract_database"
 
+	database.Datacenters = make([]db.Datacenters, len(datacenterRows))
 	database.Relays = make([]db.Relay, len(relayRows))
+
+	// todo: customers
+
+	// todo: sellers
+
+	// todo: buyers
+
+	// todo: datacenters
 
 	for i, row := range relayRows {		
 
@@ -337,8 +346,7 @@ func main() {
 
 		relay.Id = row.id
 		relay.Name = row.name
-		// relay.DatacenterId = (hash datacenter name)
-		
+
 		relay.PublicAddress = ParseAddress(row.public_ip)
 		relay.PublicAddress.Port = row.public_port
 		
@@ -370,12 +378,16 @@ func main() {
 		relay.MaxSessions = row.max_sessions
 		relay.PortSpeed = row.port_speed
 		relay.Version = row.version.String
-	}
 
-	/*
-	Seller          Seller
-	Datacenter      Datacenter
-	*/
+		// todo
+		/*
+		Seller          Seller
+		Datacenter      Datacenter
+		*/
+
+		// todo: need to get datacenter by postgresql id, then get datacenter name of the datacenter, and hash it fnv1a 64bit -> datacenter id
+		// relay.DatacenterId = (hash datacenter name)
+	}
 
 	// print database
 
