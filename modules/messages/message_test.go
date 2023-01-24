@@ -226,9 +226,9 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		}
 	}
 
-	// first slice or summary
+	// summary only
 
-	if message.SliceNumber == 0 || (message.SessionFlags&messages.SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
 		message.DatacenterId = rand.Uint64()
 		message.BuyerId = rand.Uint64()
 		message.UserHash = rand.Uint64()
@@ -241,11 +241,6 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.SDKVersion_Major = uint8(common.RandomInt(0, 255))
 		message.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
 		message.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
-	}
-
-	// summary only
-
-	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
 		message.ClientToServerPacketsSent = rand.Uint64()
 		message.ServerToClientPacketsSent = rand.Uint64()
 		message.ClientToServerPacketsLost = rand.Uint64()

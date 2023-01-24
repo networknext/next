@@ -1,10 +1,11 @@
--- create role engineering login createdb createrole;
--- create role customer login;
--- create role operations login;
--- create role johnnyb;
--- grant engineering to johnnyb;
--- create database nn owner=engineering
--- \c nn
+create role engineering login createdb createrole;
+create role customer login;
+create role operations login;
+create role glenn;
+grant engineering to glenn;
+create database nn owner=engineering
+\c nn
+
 drop table if exists relays;
 
 drop table if exists datacenter_maps;
@@ -278,4 +279,4 @@ insert into relay_states values (4, 'decommissioned');
 insert into relay_states values (5, 'offline');
 
 -- metadata
- update metadata set sync_sequence_number = 0;
+update metadata set sync_sequence_number = 0;

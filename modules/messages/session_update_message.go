@@ -326,9 +326,9 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
-	// first slice or summary
+	// summary only
 
-	if message.SliceNumber == 0 || (message.SessionFlags&SessionFlags_Summary) != 0 {
+	if (message.SessionFlags&SessionFlags_Summary) != 0 {
 
 		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
 			return fmt.Errorf("failed to read datacenter id")
@@ -377,11 +377,6 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
 			return fmt.Errorf("failed to read sdk version patch")
 		}
-	}
-
-	// summary slice only
-
-	if (message.SessionFlags & SessionFlags_Summary) != 0 {
 
 		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsSent) {
 			return fmt.Errorf("failed to read client to server packets sent")
