@@ -124,33 +124,35 @@ func main() {
 	    }
 	}
 
-/*
 	// sellers
 
-	rows, err = pgsql.Query("SELECT id, short_name, customer_id FROM sellers")
-	if err != nil {
-        fmt.Printf("error: could not extract sellers: %v\n", err)
-        os.Exit(1)
+    type SellerRow struct {
+        id uint64
+        name string
+        customer_id sql.NullInt64
     }
 
-	defer rows.Close()
+    sellerRows := make([]SellerRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT id, short_name, customer_id FROM sellers")
+		if err != nil {
+	        fmt.Printf("error: could not extract sellers: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\nsellers:\n")
+		defer rows.Close()
 
-	for rows.Next() {
+		for rows.Next() {
+			row := SellerRow{}
+	        if err := rows.Scan(&row.id, &row.name, &row.customer_id); err != nil {
+	            fmt.Printf("error: failed to scan seller row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        sellerRows = append(sellerRows, row)
+	    }
+	}
 
-        var id uint64
-        var name string
-        var customer_id sql.NullInt64
-
-        if err := rows.Scan(&id, &name, &customer_id); err != nil {
-            fmt.Printf("error: failed to scan seller row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("%d: %s, %d\n", id, name, customer_id.Int64)
-    }
-
+/*
 	// customers
 
 	rows, err = pgsql.Query("SELECT id, customer_name, customer_code, live, debug FROM customers")
@@ -266,5 +268,15 @@ func main() {
 	fmt.Printf("\nbuyers:\n")
 	for _, row := range buyerRows {		
         fmt.Printf("%d: %s, %s, %d\n", row.id, row.name, row.public_key_base64, row.customer_id)
+	}
+
+	fmt.Printf("\nsellers:\n")
+	for _, row := range sellerRows {		
+        fmt.Printf("%d: %s, %s, %d\n", row.id, row.name, row.public_key_base64, row.customer_id)
+	}
+
+	fmt.Printf("\nsellers:\n")
+	for _, row := range sellerRows {		
+        fmt.Printf("%d: %s, %d\n", row.id, row.name, row.customer_id.Int64)
 	}
 }
