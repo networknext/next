@@ -117,4 +117,58 @@ func main() {
 
         fmt.Printf("%d: %s, %s, %d\n", id, name, public_key_base64, customer_id)
     }
+
+	// sellers
+
+	rows, err = pgsql.Query("SELECT id, short_name, customer_id FROM sellers")
+	if err != nil {
+        fmt.Printf("error: could not extract sellers: %v\n", err)
+        os.Exit(1)
+    }
+
+	defer rows.Close()
+
+	fmt.Printf("\nsellers:\n")
+
+	for rows.Next() {
+
+        var id uint64
+        var name string
+        var customer_id sql.NullInt64
+
+        if err := rows.Scan(&id, &name, &customer_id); err != nil {
+            fmt.Printf("error: failed to scan seller row: %v\n", err)
+            os.Exit(1)
+        }
+
+        fmt.Printf("%d: %s, %d\n", id, name, customer_id.Int64)
+    }
+
+	// customers
+
+	rows, err = pgsql.Query("SELECT id, customer_name, customer_code, live, debug, looker_seats FROM customers")
+	if err != nil {
+        fmt.Printf("error: could not extract customers: %v\n", err)
+        os.Exit(1)
+    }
+
+	defer rows.Close()
+
+	fmt.Printf("\ncustomers:\n")
+
+	for rows.Next() {
+
+        var id uint64
+        var customer_name string
+        var customer_code string
+        var live bool
+        var debug bool
+
+        if err := rows.Scan(&id, &customer_name, &customer_code, &live, &debug,); err != nil {
+            fmt.Printf("error: failed to scan customer row: %v\n", err)
+            os.Exit(1)
+        }
+
+        fmt.Printf("%d: %s, %s, %v, %v\n", id, customer_name, customer_code, live, debug)
+    }
 }
