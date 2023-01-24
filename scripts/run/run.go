@@ -166,6 +166,10 @@ func main() {
 		ref_backend4()
 	} else if command == "ref-backend5" {
 		ref_backend5()
+	} else if command == "create-sql" {
+		create_sql()
+	} else if command == "destroy-sql" {
+		destroy_sql()
 	}
 
 	cleanup()
@@ -336,4 +340,12 @@ func ref_backend4() {
 
 func ref_backend5() {
 	bash(fmt.Sprintf("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./dist/reference_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
+}
+
+func create_sql() {
+	bash("psql postgres -f ./sql/create.sql")
+}
+
+func destroy_sql() {
+	bash("psql postgres -f ./sql/destroy.sql")
 }
