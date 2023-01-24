@@ -166,14 +166,14 @@ func main() {
 		ref_backend4()
 	} else if command == "ref-backend5" {
 		ref_backend5()
-	} else if command == "create-sql" {
-		create_sql()
-	} else if command == "destroy-sql" {
-		destroy_sql()
-	} else if command == "dev-sql" {
-		dev_sql()
-	} else if command == "local-sql" {
-		local_sql()
+	} else if command == "sql-create" {
+		sql_create()
+	} else if command == "sql-destroy" {
+		sql_destroy()
+	} else if command == "sql-dev" {
+		sql_dev()
+	} else if command == "sql-local" {
+		sql_local()
 	}
 
 	cleanup()
@@ -346,18 +346,18 @@ func ref_backend5() {
 	bash(fmt.Sprintf("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./dist/reference_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
-func create_sql() {
+func sql_create() {
 	bash("psql postgres -f ./sql/create.sql")
 }
 
-func destroy_sql() {
+func sql_destroy() {
 	bash("psql postgres -f ./sql/destroy.sql")
 }
 
-func dev_sql() {
+func sql_dev() {
 	bash("psql postgres -f ./sql/dev.sql")
 }
 
-func local_sql() {
+func sql_local() {
 	bash("psql postgres -f ./sql/local.sql")
 }

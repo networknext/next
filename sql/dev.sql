@@ -1,34 +1,382 @@
 
 \c network_next
 
-INSERT INTO customers (
-	active, 
+INSERT INTO customers 
+(
+	live,
 	debug, 
-	automatic_signin_domain, 
 	customer_name, 
-	customer_code) 
+	customer_code
+) 
 VALUES (
 	true,
 	true,
-	'networknext.com',
 	'Raspberry',
-	'raspberry');
+	'raspberry'
+);
+
+INSERT INTO buyers
+(
+	public_key_base64, 
+	customer_id
+) 
+VALUES(
+	'UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==',
+	(select id from customers where customer_code = 'raspberry')
+);
+
+INSERT INTO sellers(short_name) VALUES('google');
+INSERT INTO sellers(short_name) VALUES('amazon');
+INSERT INTO sellers(short_name) VALUES('vultr');
+INSERT INTO sellers(short_name) VALUES('linode');
+
+-- amazon datacenters
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'amazon.ohio.2',
+	40.4173, 
+	-82.9071,
+	(select id from sellers where short_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'amazon.oregon.1',
+	45.8399,
+	-119.7006,
+	(select id from sellers where short_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'amazon.sanjose.1',
+	37.3387,
+	-121.8853,
+	(select id from sellers where short_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'amazon.saopaulo',
+	-23.5558, 
+	-46.6396,
+	(select id from sellers where short_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'amazon.virginia.1',
+	39.0438,
+	-77.4874,
+	(select id from sellers where short_name = 'amazon')
+);
+
+-- google datacenters
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.dallas.1',
+	32.7767,
+	-96.7970,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.iowa.1',
+	41.2619,
+	-95.8608,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.lasvegas.1',
+	36.1716,
+	-115.1391,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.losangeles.1',
+	34.0522,
+	118.2437,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.oregon.2',
+	45.8399,
+	-119.7006,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.saltlakecity.1',
+	40.7608,
+	-111.8910,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.santiago.1',
+	-33.4489,
+	-70.6693,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.saopaulo.1',
+	-23.5558, 
+	-46.6396,
+	(select id from sellers where short_name = 'google')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'google.virginia.3',
+	39.0438,
+	-77.4874,
+	(select id from sellers where short_name = 'google')
+);
+
+-- linode datacenters
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'linode.atlanta',
+	33.7488,
+	-84.3877,
+	(select id from sellers where short_name = 'linode')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'linode.dallas',
+	32.7767,
+	-96.7970,
+	(select id from sellers where short_name = 'linode')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'linode.fremont',
+	37.3387,
+	-121.8853,
+	(select id from sellers where short_name = 'linode')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'linode.newark',
+	40.7357,
+	-74.1724,
+	(select id from sellers where short_name = 'linode')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'linode.toronto',
+	43.6532,
+	79.3832,
+	(select id from sellers where short_name = 'linode')
+);
+
+-- vultr datacenters 
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.atlanta',
+	33.7488,
+	-84.3877,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.chicago',
+	41.8781,
+	-87.6298,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.dallas',
+	32.7767,
+	-96.7970,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.honolulu',
+	21.3099,
+	-157.8581,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.losangeles',
+	34.0522,
+	118.2437,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.miami',
+	25.7617,
+	-80.1918,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.newyork',
+	40.7128,
+	-74.0060,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.seattle',
+	47.6062,
+	-122.3321,
+	(select id from sellers where short_name = 'vultr')
+);
+
+INSERT INTO datacenters(
+	display_name, 
+	latitude, 
+	longitude, 
+	seller_id )
+VALUES(
+	'vultr.siliconvalley',
+	37.3387,
+	-121.8853,
+	(select id from sellers where short_name = 'vultr')
+);
+
+-- todo: relays! =p
 
 /*
-INSERT INTO customers (active, debug, automatic_signin_domain, customer_name, customer_code) VALUES (true,false,'networknext.com','Network Next','next');
-INSERT INTO customers (active, debug, automatic_signin_domain, customer_name, customer_code) VALUES(true,false,'','Ghost Army','ghost-army');
-INSERT INTO customers (active, debug, automatic_signin_domain, customer_name, customer_code) VALUES(true,false,'','Local','local');
-
-INSERT INTO buyers (is_live_customer, debug, public_key, short_name, customer_id) VALUES(true,false,'\x95e37b0fbfbdbebdb8b93e1fd416bc3c412f21003f5241992e54feb1d78b4472ac56a699abbdb767','local', (select id from customers where customer_name = 'Local'));
-INSERT INTO buyers (is_live_customer, debug, public_key, short_name, customer_id) VALUES(true,false,'\x52fdfc072182654f163f5f0f9a621d729566c74d10037c4d7bbb0407d1e2c649','ghost-army', (select id from customers where customer_name = 'Ghost Army'));
-
-INSERT INTO sellers (public_egress_price, public_ingress_price, short_name, customer_id) VALUES(20000000000,10000000000,'local', (select id from customers where customer_code = 'local'));
-INSERT INTO sellers (public_egress_price, public_ingress_price, short_name, customer_id) VALUES(40000000000,30000000000,'ghost', (select id from customers where customer_code = 'ghost-army'));
-
-INSERT INTO datacenters (display_name, enabled, latitude, longitude, supplier_name, street_address,  seller_id ) VALUES('local',true,70.500000000000000001,120.5,'supplier.local.name','Somewhere, USA', ( select id from sellers where short_name = 'local'));
-INSERT INTO datacenters (display_name, enabled, latitude, longitude, supplier_name, street_address,  seller_id ) VALUES('local.locale.name',true,70.500000000000000001,120.5,'supplier.local.name','Somewhere, USA',  ( select id from sellers where short_name = 'local'));
-INSERT INTO datacenters (display_name, enabled, latitude, longitude, supplier_name, street_address,  seller_id ) VALUES('ghost-army.locale.name',true,70.500000000000000001,120.5,'supplier.ghost.name','Somewhere, Else, USA',  ( select id from sellers where short_name = 'ghost'));
-
 INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES (12, 'local.locale.0','2020-12-02 14:17:20.2359045-05:00',10000, '127.0.0.2', 10000, '1.2.3.40', 1000, 19700000000000,26000000000000,1000, '127.0.0.1',10000, '\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22, 'root', '2020-12-02 14:17:20.2359043-05:00',2, ( select id from datacenters where display_name = 'local'), 1, 0);
 INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.10','2020-12-02 14:17:20.2571494-05:00',10000,'127.0.0.3',10000,'4.3.2.10',1000,19700000000000,26000000000000,1000,'127.0.0.2',10000,'\xeb9d18a44784045d87f3c67cf22746e995af5a25367951baa2ff6cd471c483f1',22,'root','2020-12-02 14:17:20.2571492-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,2);
 INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.1','2020-12-02 14:17:20.7728489-05:00',10000,'127.0.0.2',10001,'1.2.3.41',1001,19700000000000,26000000000000,1000,'127.0.0.1',10001,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.7728484-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
