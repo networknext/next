@@ -1,139 +1,25 @@
+DONE
 
-psql postgres
-CREATE ROLE admin WITH LOGIN PASSWORD 'password';
-ALTER ROLE admin CREATEDB;
+	Learn SQL
 
-psql postgres -U admin
+	Remove cruft and clean up the database schema.
 
-DROP USER newuser;
+	Write code to create the SQL database locally.
 
-drop database nn;
+	Write code to destry the SQL database locally.
 
-create database nn;
+TODO
 
+	Fill the SQL database with the dev environment data I need.
 
+	Write code to read a database instance from postgres, and write it out to database.bin
 
+	Deploy the manually fixed database.bin to dev.
 
+	We should now have working relays and raspberry pi's...
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------------
-
-	You don't seem to be able to edit the relay public key in the admin tool?
-
-	Ideally, we should be able to edit the relay address, the relay public key to adjust a relay if we need to roll a new key.
-
-	Pretty confident right now that certain relays in dev are misconfigured, with the wrong public key set in relay.env vs. in the database for this reason.
-
-	---------------
-
-	We need a way to check relay public keys set in relay.env vs. relay public keys set in the database / database.bin
-
-	Normally, this should happen when the relay fails to init because the signature check fails.
-
-	But right now it's failing to happen because the relay 
-
-	---------------
-
-	Relays should not be able to go "online" unless the relays are enabled.
-
-	eg. google.southcarolina was totally disabled/removed/deleted -- but still showed up in online relays. wtf?
-
-	And now somehow google.southcarolina is in the database.bin in dev, even though it's deleted? I don't know how...
-
-	---------------
-
-	Raspberry pi clients can ping relays now, but they quickly fail because the route request doesn't get through.
-
-	What's going wrong?
-
-	-----------------------------
-
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: ------------------------------
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550125: debug: client received route update packet from server
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: --------------------------------------
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 21/29 source relays are routable
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 1 dest relay
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: try to reduce latency
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: forcing network next
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: best route cost is 36
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: found 24 suitable routes in [36,136] from 21/29 near relays
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: route diversity 17
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: take network next: google.virginia.3 - google.iowa.1
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: route cost is 53
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: multipath
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: --------------------------------------
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550165: info: client near relay pings completed
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550668: info: client next route
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550690: info: client multipath enabled
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550729: debug: client sent route update ack packet to server
-Jan 23 02:44:42 raspberry-client-mig-jwz0 app[91155]: 100010.550779: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100010.897979: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100011.234007: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:43 raspberry-client-mig-jwz0 app[91155]: 100011.545971: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100011.857868: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100012.137913: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:44 raspberry-client-mig-jwz0 app[91155]: 100012.449866: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100012.761865: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100013.039031: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:45 raspberry-client-mig-jwz0 app[91155]: 100013.349806: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100013.661822: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100013.973834: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100014.233785: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:46 raspberry-client-mig-jwz0 app[91155]: 100014.545766: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100014.857713: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.133729: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.445634: debug: client sent route request to relay: 35.236.236.4:40000
-Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.653652: error: client route request timed out
-Jan 23 02:44:47 raspberry-client-mig-jwz0 app[91155]: 100015.653691: info: client fallback to direct
 
 
 

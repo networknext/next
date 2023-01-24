@@ -170,6 +170,10 @@ func main() {
 		create_sql()
 	} else if command == "destroy-sql" {
 		destroy_sql()
+	} else if command == "dev-sql" {
+		dev_sql()
+	} else if command == "local-sql" {
+		local_sql()
 	}
 
 	cleanup()
@@ -348,4 +352,12 @@ func create_sql() {
 
 func destroy_sql() {
 	bash("psql postgres -f ./sql/destroy.sql")
+}
+
+func dev_sql() {
+	bash("psql postgres -f ./sql/dev.sql")
+}
+
+func local_sql() {
+	bash("psql postgres -f ./sql/local.sql")
 }
