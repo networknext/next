@@ -11,6 +11,8 @@ import (
 
 	_ "github.com/lib/pq"
 
+	// "github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
 	db "github.com/networknext/backend/modules/database"
 )
 
@@ -327,7 +329,6 @@ func main() {
 	database.CreationTime = time.Now().Format("Monday 02 January 2006 15:04:05 MST")
 	database.Creator = "extract_database"
 
-	database.Datacenters = make([]db.Datacenters, len(datacenterRows))
 	database.Relays = make([]db.Relay, len(relayRows))
 
 	// todo: customers
@@ -344,12 +345,13 @@ func main() {
 
 		relay := &database.Relays[i]
 
-		relay.Id = row.id
 		relay.Name = row.name
 
 		relay.PublicAddress = ParseAddress(row.public_ip)
 		relay.PublicAddress.Port = row.public_port
 		
+		relay.Id = common.HashString(relay.PublicAddress.String())
+
 		relay.InternalAddress = ParseAddress(row.internal_ip)
 		relay.InternalAddress.Port = row.internal_port
 		
