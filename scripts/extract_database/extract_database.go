@@ -22,6 +22,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("successfully connected to postgres\n")
+
+	// relays
+
 	rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions FROM relays")
 	if err != nil {
         fmt.Printf("error: could not extract relays: %v\n", err)
@@ -29,8 +33,6 @@ func main() {
     }
 
 	defer rows.Close()
-
-	fmt.Printf("successfully connected to postgres\n")
 
 	fmt.Printf("\nrelays:\n")
 
@@ -58,5 +60,34 @@ func main() {
         }
 
         fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %d, %d, %d\n", id, name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions)
+    }
+
+	// relays
+
+	rows, err = pgsql.Query("SELECT id, display_name, enabled, latitude, longitude, seller_id FROM datacenters")
+	if err != nil {
+        fmt.Printf("error: could not extract databases: %v\n", err)
+        os.Exit(1)
+    }
+
+	defer rows.Close()
+
+	fmt.Printf("\ndatacenters:\n")
+
+	for rows.Next() {
+
+        var id uint64
+        var name string
+        var enabled bool
+        var latitude float32
+        var longitude float32
+        var seller_id uint64
+
+        if err := rows.Scan(&id, &name, &enabled, &latitude, &longitude, &seller_id); err != nil {
+            fmt.Printf("error: failed to scan datacenter row: %v\n", err)
+            os.Exit(1)
+        }
+
+        fmt.Printf("%d: %s, %v, %.1f, %.1f, %d\n", id, name, enabled, latitude, longitude, seller_id)
     }
 }
