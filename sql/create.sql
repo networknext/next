@@ -14,10 +14,10 @@ CREATE TABLE customers (
   automatic_signin_domain varchar null,
   customer_name varchar not null,
   customer_code varchar not null,
-  buyer_tos_signer_email varchar not null,
-  buyer_tos_signer_first_name varchar not null,
-  buyer_tos_signer_last_name varchar not null,
-  buyer_tos_signed_timestamp varchar not null,
+  tos_signer_email varchar not null,
+  tos_signer_first_name varchar not null,
+  tos_signer_last_name varchar not null,
+  tos_signed_timestamp varchar not null,
   looker_seats integer not null default 0,
   primary key (id)
 );
