@@ -213,7 +213,7 @@ func main() {
     {
 		rows, err := pgsql.Query("SELECT id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next FROM route_shaders")
 		if err != nil {
-	        fmt.Printf("error: could not extract route shader: %v\n", err)
+	        fmt.Printf("error: could not extract route shaders: %v\n", err)
 	        os.Exit(1)
 	    }
 
@@ -229,33 +229,33 @@ func main() {
 	    }
 	}
 
-/*
 	// datacenter maps
 
-	rows, err = pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM datacenter_maps")
-	if err != nil {
-        fmt.Printf("error: could not extract datacenter maps: %v\n", err)
-        os.Exit(1)
+    type DatacenterMapRow struct {
+        buyer_id uint64
+        datacenter_id uint64
+        enable_acceleration bool
     }
 
-	defer rows.Close()
+    datacenterMapRows := make([]DatacenterMapRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM datacenter_maps")
+		if err != nil {
+	        fmt.Printf("error: could not extract datacenter maps: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\ndatacenter maps:\n")
+		defer rows.Close()
 
-	for rows.Next() {
-
-        var buyer_id uint64
-        var datacenter_id uint64
-        var enable_acceleration bool
-
-        if err := rows.Scan(&buyer_id, &datacenter_id, &enable_acceleration); err != nil {
-            fmt.Printf("error: failed to scan datacenter maps row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("(%d,%d): %v\n", buyer_id, datacenter_id, enable_acceleration)
-    }
-    */
+		for rows.Next() {
+			row := DatacenterMapRow{}
+	        if err := rows.Scan(&row.buyer_id, &row.datacenter_id, &row.enable_acceleration); err != nil {
+	            fmt.Printf("error: failed to scan datacenter map row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        datacenterMapRows = append(datacenterMapRows, row)
+	    }
+	}
 
     // print out rows
 
@@ -287,5 +287,10 @@ func main() {
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {		
         fmt.Printf("%d: %d, %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.id, row.buyer_id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
+    }
+
+	fmt.Printf("\ndatacenter maps:\n")
+	for _, row := range datacenterMapRows {		
+        fmt.Printf("(%d,%d): %v\n", row.buyer_id, row.datacenter_id, row.enable_acceleration)
     }
 }
