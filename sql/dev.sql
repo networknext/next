@@ -36,7 +36,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'amazon.ohio.2',
 	40.4173, 
@@ -48,7 +48,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'amazon.oregon.1',
 	45.8399,
@@ -60,7 +60,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'amazon.sanjose.1',
 	37.3387,
@@ -72,9 +72,9 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
-	'amazon.saopaulo',
+	'amazon.saopaulo.1',
 	-23.5558, 
 	-46.6396,
 	(select id from sellers where short_name = 'amazon')
@@ -84,7 +84,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'amazon.virginia.1',
 	39.0438,
@@ -98,7 +98,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.dallas.1',
 	32.7767,
@@ -110,7 +110,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.iowa.1',
 	41.2619,
@@ -122,7 +122,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.lasvegas.1',
 	36.1716,
@@ -134,7 +134,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.losangeles.1',
 	34.0522,
@@ -146,7 +146,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.oregon.2',
 	45.8399,
@@ -158,7 +158,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.saltlakecity.1',
 	40.7608,
@@ -170,7 +170,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.santiago.1',
 	-33.4489,
@@ -182,7 +182,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.saopaulo.1',
 	-23.5558, 
@@ -194,7 +194,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'google.virginia.3',
 	39.0438,
@@ -208,7 +208,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'linode.atlanta',
 	33.7488,
@@ -220,7 +220,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'linode.dallas',
 	32.7767,
@@ -232,7 +232,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'linode.fremont',
 	37.3387,
@@ -244,7 +244,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'linode.newark',
 	40.7357,
@@ -256,7 +256,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'linode.toronto',
 	43.6532,
@@ -270,7 +270,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.atlanta',
 	33.7488,
@@ -282,7 +282,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.chicago',
 	41.8781,
@@ -294,7 +294,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.dallas',
 	32.7767,
@@ -306,7 +306,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.honolulu',
 	21.3099,
@@ -318,7 +318,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.losangeles',
 	34.0522,
@@ -330,7 +330,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.miami',
 	25.7617,
@@ -342,7 +342,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.newyork',
 	40.7128,
@@ -354,7 +354,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.seattle',
 	47.6062,
@@ -366,7 +366,7 @@ INSERT INTO datacenters(
 	display_name, 
 	latitude, 
 	longitude, 
-	seller_id )
+	seller_id)
 VALUES(
 	'vultr.siliconvalley',
 	37.3387,
@@ -374,30 +374,297 @@ VALUES(
 	(select id from sellers where short_name = 'vultr')
 );
 
--- todo: relays! =p
+-- amazon relays
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'amazon.ohio.2',
+	'3.138.73.252',
+	40000,
+	'3.138.73.252',
+	22,
+	'ubuntu',
+	'ZlpZo9pD3sFPXynxtc5IV+02TrUmHYuxJc1uffyQkmI=',
+	'vLKdOuM8tpbcF6ZtkeThlkYNVT7SWPd9c2eAdvFQQq0=',
+	(select id from datacenters where display_name = 'amazon.ohio.2')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'amazon.oregon.1',
+	'44.242.70.57',
+	40000,
+	'44.242.70.57',
+	22,
+	'ubuntu',
+	'MIxnbFMdR04xFwwipYtokcymfh0+xCGCbaryAb5U9zw=',
+	'la9ykstfh8f93K7+sKbIi7GQhAW9GIaGkBRs61d47tM=',
+	(select id from datacenters where display_name = 'amazon.oregon.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'amazon.sanjose.1',
+	'52.52.246.62',
+	40000,
+	'52.52.246.62',
+	22,
+	'ubuntu',
+	'HgZtHcZWzyihZUunYoU6Jmh2wnoEQEM3skDOo5Q4Nyo=',
+	'dxG105dIZhb8ajIMyRZKSIPBaBXQG/fsveOZR4eAivg=',
+	(select id from datacenters where display_name = 'amazon.sanjose.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'amazon.saopaulo.1',
+	'54.94.14.133',
+	40000,
+	'54.94.14.133',
+	22,
+	'ubuntu',
+	'cwuB9C364MMEVeFOvo0VFH+HueZzesjyJ9FIP5gpBhw=',
+	'nvtdVeYSmEFVFo1sUTg3y4C1pvhM5w3JKl5PIc/UWC0=',
+	(select id from datacenters where display_name = 'amazon.saopaulo.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'amazon.virginia.1',
+	'34.232.104.206',
+	40000,
+	'34.232.104.206',
+	22,
+	'ubuntu',
+	'WvoyGHCOBSyNPamA1qQ4WlSTpnBhIWepht0utgUSPQ8=',
+	'R9IfNVadwq8PPNu21VvwSROoccGwr9z7xT8VlMPTeas=',
+	(select id from datacenters where display_name = 'amazon.virginia.1')
+);
+
+-- google relays
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.iowa.1',
+	'35.226.96.92',
+	40000,
+	'35.226.96.92',
+	22,
+	'root',
+	'fjv8SS5z4/YCc6a8JSrv/YdJPTWjAeSSUzpkrPk+4MA=',
+	'SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=',
+	(select id from datacenters where display_name = 'google.iowa.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.lasvegas.1',
+	'34.125.125.84',
+	40000,
+	'34.125.125.84',
+	22,
+	'root',
+	'xKAh+sLW1ghyIkHfOVzkinZZU0mjZF52a+aQ1cv9RRg=',
+	'Goql8jwWRUYZpV8XtTPjXC+pDLUzrQ0zpbi8OvElHYw=',
+	(select id from datacenters where display_name = 'google.lasvegas.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.losangeles.1',
+	'34.94.28.121',
+	40000,
+	'34.94.28.121',
+	22,
+	'root',
+	'XVnmFpOfx7DmuhZkrkHw+UpuIegRCNBDlHSlfOH/ozo=',
+	'KzRn1WQHVMJftQe/UoCUqgCeCea46u4iWBN/1ADlXNg=',
+	(select id from datacenters where display_name = 'google.losangeles.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.oregon.1',
+	'34.168.209.101',
+	40000,
+	'34.168.209.101',
+	22,
+	'root',
+	'fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38=',
+	'Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=',
+	(select id from datacenters where display_name = 'google.oregon.2')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.saltlakecity.1',
+	'34.106.29.193',
+	40000,
+	'34.106.29.193',
+	22,
+	'root',
+	'9AftbXkssUIQfK9/zsG/KsPaONd/Uq9FeM/x5iHkGlQ=',
+	'sNA5bYajFhUo561VEkpqr6KnTlEK4bDrSUyY5NsDv8E=',
+	(select id from datacenters where display_name = 'google.saltlakecity.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.santiago.1',
+	'34.176.85.20',
+	40000,
+	'34.176.85.20',
+	22,
+	'root',
+	'E1ZkLyobOMFZPP7cbqpKcEEb79Z0ZIW/IDaUSWliOl0=',
+	'opsJFrG1lO5HUZanT5+RML0qdJaFj5ws8YIOVNtRcG0=',
+	(select id from datacenters where display_name = 'google.santiago.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.saopaulo.1',
+	'34.151.248.241',
+	40000,
+	'34.151.248.241',
+	22,
+	'root',
+	'qunlVxGncMg5b650wXgtYBmJAzetry+K9ancBayMWzw=',
+	'1vpJ9L6jntr+KvqHSkZvgH9EnkVE/stS+60pfAdXEkg=',
+	(select id from datacenters where display_name = 'google.saopaulo.1')
+);
+
+INSERT INTO relays(
+	display_name,
+	public_ip,
+	public_port,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	datacenter)
+VALUES(
+	'google.virginia.3',
+	'35.236.236.4',
+	40000,
+	'35.236.236.4',
+	22,
+	'root',
+	'5KcEWA5Digp5hBm5TOfXtX3twEk/etE0SB8rwlIrjWQ=',
+	'SCrHFjgowY4n4fEkPZnS8wvxseCUiwFGHvaCSkJItqo=',
+	(select id from datacenters where display_name = 'google.virginia.3')
+);
 
 /*
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES (12, 'local.locale.0','2020-12-02 14:17:20.2359045-05:00',10000, '127.0.0.2', 10000, '1.2.3.40', 1000, 19700000000000,26000000000000,1000, '127.0.0.1',10000, '\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22, 'root', '2020-12-02 14:17:20.2359043-05:00',2, ( select id from datacenters where display_name = 'local'), 1, 0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.10','2020-12-02 14:17:20.2571494-05:00',10000,'127.0.0.3',10000,'4.3.2.10',1000,19700000000000,26000000000000,1000,'127.0.0.2',10000,'\xeb9d18a44784045d87f3c67cf22746e995af5a25367951baa2ff6cd471c483f1',22,'root','2020-12-02 14:17:20.2571492-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,2);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.1','2020-12-02 14:17:20.7728489-05:00',10000,'127.0.0.2',10001,'1.2.3.41',1001,19700000000000,26000000000000,1000,'127.0.0.1',10001,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.7728484-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.11','2020-12-02 14:17:20.7898231-05:00',10000,'127.0.0.3',10001,'4.3.2.11',1001,19700000000000,26000000000000,1000,'127.0.0.2',10001,'\x32ef12ccbd7c87a97124a942dc98bbd728023c1d89d2ba99b9a12631b78669b1',22,'root','2020-12-02 14:17:20.7898228-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,4);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.2','2020-12-02 14:17:20.8088554-05:00',10000,'127.0.0.2',10002,'1.2.3.42',1002,19700000000000,26000000000000,1000,'127.0.0.1',10002,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.8088552-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.12','2020-12-02 14:17:20.8239802-05:00',10000,'127.0.0.3',10002,'4.3.2.12',1002,19700000000000,26000000000000,1000,'127.0.0.2',10002,'\xaf85babacbe5169d6e93113be24f9c3ef49ec2c3c5ffe5df4542aa5f98446dec',22,'root','2020-12-02 14:17:20.8239801-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.3','2020-12-02 14:17:20.836607-05:00',10000,'127.0.0.2',10003,'1.2.3.43',1003,19700000000000,26000000000000,1000,'127.0.0.1',10003,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.8366068-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.13','2020-12-02 14:17:20.8537285-05:00',10000,'127.0.0.3',10003,'4.3.2.13',1003,19700000000000,26000000000000,1000,'127.0.0.2',10003,'\x8cccdf6728de6bcaef02ceebc7f0778591a7604729e0af70b6885369e3f95588',22,'root','2020-12-02 14:17:20.8537284-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.4','2020-12-02 14:17:20.8663192-05:00',10000,'127.0.0.2',10004,'1.2.3.44',1004,19700000000000,26000000000000,1000,'127.0.0.1',10004,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.866319-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.14','2020-12-02 14:17:20.899672-05:00',10000,'127.0.0.3',10004,'4.3.2.14',1004,19700000000000,26000000000000,1000,'127.0.0.2',10004,'\x26e5cb0a5002d518597b1e02d6488a6faaf4e6f2f2ad2af28af289e7ecac0ab7',22,'root','2020-12-02 14:17:20.8996718-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,4);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.5','2020-12-02 14:17:20.9287827-05:00',10000,'127.0.0.2',10005,'1.2.3.45',1005,19700000000000,26000000000000,1000,'127.0.0.1',10005,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.9287825-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.15','2020-12-02 14:17:20.9682462-05:00',10000,'127.0.0.3',10005,'4.3.2.15',1005,19700000000000,26000000000000,1000,'127.0.0.2',10005,'\x20d92d5832e11b69b8094c518ad7c705df88c8a11867cf780211617cb77408c3',22,'root','2020-12-02 14:17:20.968246-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,5);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.6','2020-12-02 14:17:20.9860507-05:00',10000,'127.0.0.2',10006,'1.2.3.46',1006,19700000000000,26000000000000,1000,'127.0.0.1',10006,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:20.9860505-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.16','2020-12-02 14:17:20.9986479-05:00',10000,'127.0.0.3',10006,'4.3.2.16',1006,19700000000000,26000000000000,1000,'127.0.0.2',10006,'\x133aebddac0c6ad9a86f62370ec9a701d7e4038f2992524bba10cbd580dcfe91',22,'root','2020-12-02 14:17:20.9986477-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,5);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.7','2020-12-02 14:17:21.0171667-05:00',10000,'127.0.0.2',10007,'1.2.3.47',1007,19700000000000,26000000000000,1000,'127.0.0.1',10007,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:21.0171665-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.17','2020-12-02 14:17:21.0356654-05:00',10000,'127.0.0.3',10007,'4.3.2.17',1007,19700000000000,26000000000000,1000,'127.0.0.2',10007,'\x944613829818b3b4076f684cbf77fcb8fdf027ffa52d9e2b064f892c282d0e5b',22,'root','2020-12-02 14:17:21.0356653-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,2);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.8','2020-12-02 14:17:21.0489671-05:00',10000,'127.0.0.2',10008,'1.2.3.48',1008,19700000000000,26000000000000,1000,'127.0.0.1',10008,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:21.0489669-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.18','2020-12-02 14:17:21.0662655-05:00',10000,'127.0.0.3',10008,'4.3.2.18',1008,19700000000000,26000000000000,1000,'127.0.0.2',10008,'\x1b8f4555ca5f357dd6686f5691b5ad476ffe2d701f06a002a9b3151cf60adcbe',22,'root','2020-12-02 14:17:21.0662654-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,2);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.9','2020-12-02 14:17:21.0837497-05:00',10000,'127.0.0.2',10009,'1.2.3.49',1009,19700000000000,26000000000000,1000,'127.0.0.1',10009,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:21.0837496-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
-INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.19','2020-12-02 14:17:21.0967574-05:00',10000,'127.0.0.3',10009,'4.3.2.19',1009,19700000000000,26000000000000,1000,'127.0.0.2',10009,'\xcd13985636c60236f35907330c11f4e50651fc3db1f681f898da3365ab256bf8',22,'root','2020-12-02 14:17:21.0967573-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,0);
-
 INSERT INTO datacenter_maps VALUES('local',1,2);
 INSERT INTO datacenter_maps VALUES('ghost-army.map',2,3);
 */
