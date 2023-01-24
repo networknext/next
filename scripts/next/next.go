@@ -705,6 +705,21 @@ func main() {
 		},
 	}
 
+	var keysCommand = &ffcli.Command{
+		Name:       "keys",
+		ShortUsage: "next keys <relay name>",
+		ShortHelp:  "Print out relay keys",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) == 0 {
+				handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
+			}
+
+			keys(env, args)
+
+			return nil
+		},
+	}
+
 	var sshCommand = &ffcli.Command{
 		Name:       "ssh",
 		ShortUsage: "next ssh <relay name>",
@@ -864,6 +879,7 @@ func main() {
 		startCommand,
 		stopCommand,
 		keygenCommand,
+		keysCommand,
 		sshCommand,
 		costCommand,
 		optimizeCommand,

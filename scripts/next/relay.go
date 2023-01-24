@@ -395,3 +395,14 @@ func relayLog(env Environment, regexes []string) {
 		}
 	}
 }
+
+func keys(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		for _, relay := range relays {
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
+			break
+		}
+	}
+}
