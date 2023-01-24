@@ -772,6 +772,10 @@ VALUES(
 	(select id from datacenters where display_name = 'vultr.seattle')
 );
 
+-- route shader for raspberry
+
+INSERT INTO route_shaders(force_next,buyer_id) VALUES(true, (select id from buyers where short_name = 'raspberry'));
+
 -- enable datacenters for buyers
 
 INSERT INTO datacenter_maps VALUES(
