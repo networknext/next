@@ -10,15 +10,39 @@ DONE
 
 	Fill the SQL database with the dev environment data I need.
 
+	Read in all the rows for each table and print out
+
 TODO
 
-	Write code to read a database instance from postgres, and write it out to database.bin
+	Transform rows in table to arrays of row structs in golang, then print out the row structs at the end.
+
+	-------------
+
+	Transform row structs into a real "Database" object, linking together object pointers according to ids.
+
+	-------------
+
+	Print out the database struct to verify.
+
+	-------------
+
+	Generate a database.bin file.
+
+	-------------
 
 	Deploy the manually fixed database.bin to dev.
 
 	We should now have working relays and raspberry pi's...
 
+	-------------
 
+	Standardize the code to read from SQL into the database.go module.
+
+	Add correct error handling, eg. return error with detailed description of what went wrong.
+
+	Call into the database function from the extract_database tool.
+
+	-------------
 
 
 

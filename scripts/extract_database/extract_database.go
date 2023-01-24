@@ -26,71 +26,76 @@ func main() {
 
 	// relays
 
-	rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions FROM relays")
-	if err != nil {
-        fmt.Printf("error: could not extract relays: %v\n", err)
-        os.Exit(1)
+    type RelayRow struct {
+        id uint64
+        name string
+        datacenter uint64
+        public_ip string
+        public_port int
+        internal_ip string
+        internal_port int
+        ssh_ip string
+        ssh_port int
+        ssh_user string
+        public_key_base64 string
+        private_key_base64 string
+        mrc int
+        port_speed int
+        max_sessions int    	
     }
 
-	defer rows.Close()
+    relayRows := make([]RelayRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions FROM relays")
+		if err != nil {
+	        fmt.Printf("error: could not extract relays: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\nrelays:\n")
+		defer rows.Close()
 
-	for rows.Next() {
-
-        var id uint64
-        var name string
-        var datacenter uint64
-        var public_ip string
-        var public_port int
-        var internal_ip string
-        var internal_port int
-        var ssh_ip string
-        var ssh_port int
-        var ssh_user string
-        var public_key_base64 string
-        var private_key_base64 string
-        var mrc int
-        var port_speed int
-        var max_sessions int
-
-        if err := rows.Scan(&id, &name, &datacenter, &public_ip, &public_port, &internal_ip, &internal_port, &ssh_ip, &ssh_port, &ssh_user, &public_key_base64, &private_key_base64, &mrc, &port_speed, &max_sessions); err != nil {
-            fmt.Printf("error: failed to scan relay row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %d, %d, %d\n", id, name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, mrc, port_speed, max_sessions)
-    }
+		for rows.Next() {
+			row := RelayRow{}
+	        if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
+	            fmt.Printf("error: failed to scan relay row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        relayRows = append(relayRows, row)
+	    }
+	}
 
 	// datacenters
 
-	rows, err = pgsql.Query("SELECT id, display_name, enabled, latitude, longitude, seller_id FROM datacenters")
-	if err != nil {
-        fmt.Printf("error: could not extract datacenters: %v\n", err)
-        os.Exit(1)
+    type DatacenterRow struct {
+        id uint64
+        name string
+        enabled bool
+        latitude float32
+        longitude float32
+        seller_id uint64
     }
 
-	defer rows.Close()
+    datacenterRows := make([]DatacenterRow, 0)
+    {
+		rows, err := pgsql.Query("SELECT id, display_name, enabled, latitude, longitude, seller_id FROM datacenters")
+		if err != nil {
+	        fmt.Printf("error: could not extract datacenters: %v\n", err)
+	        os.Exit(1)
+	    }
 
-	fmt.Printf("\ndatacenters:\n")
+		defer rows.Close()
 
-	for rows.Next() {
+		for rows.Next() {
+			row := DatacenterRow{}
+	        if err := rows.Scan(&row.id, &row.name, &row.enabled, &row.latitude, &row.longitude, &row.seller_id); err != nil {
+	            fmt.Printf("error: failed to scan datacenter row: %v\n", err)
+	            os.Exit(1)
+	        }
+	        datacenterRows = append(datacenterRows, row)
+	    }
+	}
 
-        var id uint64
-        var name string
-        var enabled bool
-        var latitude float32
-        var longitude float32
-        var seller_id uint64
-
-        if err := rows.Scan(&id, &name, &enabled, &latitude, &longitude, &seller_id); err != nil {
-            fmt.Printf("error: failed to scan datacenter row: %v\n", err)
-            os.Exit(1)
-        }
-
-        fmt.Printf("%d: %s, %v, %.1f, %.1f, %d\n", id, name, enabled, latitude, longitude, seller_id)
-    }
-
+/*
 	// buyers
 
 	rows, err = pgsql.Query("SELECT id, short_name, public_key_base64, customer_id FROM buyers")
@@ -216,4 +221,43 @@ func main() {
 
         fmt.Printf("%d: %d, %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", id, buyer_id, ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next)
     }
+
+	// datacenter maps
+
+	rows, err = pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM datacenter_maps")
+	if err != nil {
+        fmt.Printf("error: could not extract datacenter maps: %v\n", err)
+        os.Exit(1)
+    }
+
+	defer rows.Close()
+
+	fmt.Printf("\ndatacenter maps:\n")
+
+	for rows.Next() {
+
+        var buyer_id uint64
+        var datacenter_id uint64
+        var enable_acceleration bool
+
+        if err := rows.Scan(&buyer_id, &datacenter_id, &enable_acceleration); err != nil {
+            fmt.Printf("error: failed to scan datacenter maps row: %v\n", err)
+            os.Exit(1)
+        }
+
+        fmt.Printf("(%d,%d): %v\n", buyer_id, datacenter_id, enable_acceleration)
+    }
+    */
+
+    // print out rows
+
+	fmt.Printf("\nrelays:\n")
+	for _, row := range relayRows {		
+        fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %d, %d, %d\n", row.id, row.name, row.datacenter, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.mrc, row.port_speed, row.max_sessions)
+	}
+
+	fmt.Printf("\ndatacenters:\n")
+	for _, row := range datacenterRows {		
+        fmt.Printf("%d: %s, %v, %.1f, %.1f, %d\n", row.id, row.name, row.enabled, row.latitude, row.longitude, row.seller_id)
+	}
 }
