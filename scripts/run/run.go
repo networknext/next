@@ -174,6 +174,8 @@ func main() {
 		sql_dev()
 	} else if command == "sql-local" {
 		sql_local()
+	} else if command == "extract-database" {
+		extract_database()
 	}
 
 	cleanup()
@@ -360,4 +362,8 @@ func sql_dev() {
 
 func sql_local() {
 	bash("psql postgres -f ./sql/local.sql")
+}
+
+func extract_database() {
+	bash("go run scripts/extract_database/extract_database.go")
 }

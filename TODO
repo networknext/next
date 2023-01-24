@@ -8,9 +8,9 @@ DONE
 
 	Write code to destry the SQL database locally.
 
-TODO
-
 	Fill the SQL database with the dev environment data I need.
+
+TODO
 
 	Write code to read a database instance from postgres, and write it out to database.bin
 
