@@ -1,6 +1,6 @@
 version: v1.0
 
-name: Happy Path
+name: Functional Tests (Backend)
 
 fail_fast:
   stop:
