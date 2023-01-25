@@ -238,3 +238,9 @@ promotions:
     pipeline_file: development-deploy.yml
     auto_promote:
       when: branch = 'dev' AND result = 'passed'
+
+  - name: "Functional Tests"
+    pipeline_file: functional-tests.yml
+
+  - name: "Happy Path"
+    pipeline_file: happy-path.yml

@@ -1,64 +1,78 @@
 DONE
 
-	Fix this on server backend 5:
-
-		[2023-01-24 23:34:47] updated route matrix: 10 relays
-		[2023-01-24 23:34:47] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:48] updated route matrix: 10 relays
-		[2023-01-24 23:34:48] error: unknown buyer id: bdbebdbf0f7be395
-
-	Feels like there is something desyncing the database.bin...
-
-	Deploy the manually fixed database.bin to dev
-
-	I'm still getting:
-
-		Jan 25 17:40:42 raspberry-client-mig-jwz0 app[91155]: 326554.636635: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:43 raspberry-client-mig-jwz0 app[91155]: 326554.948599: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:43 raspberry-client-mig-jwz0 app[91155]: 326555.212571: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:43 raspberry-client-mig-jwz0 app[91155]: 326555.524569: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:44 raspberry-client-mig-jwz0 app[91155]: 326555.836530: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:44 raspberry-client-mig-jwz0 app[91155]: 326556.116129: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:44 raspberry-client-mig-jwz0 app[91155]: 326556.428494: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:45 raspberry-client-mig-jwz0 app[91155]: 326556.740496: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:45 raspberry-client-mig-jwz0 app[91155]: 326557.052412: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:45 raspberry-client-mig-jwz0 app[91155]: 326557.312385: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:45 raspberry-client-mig-jwz0 app[91155]: 326557.624369: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:46 raspberry-client-mig-jwz0 app[91155]: 326557.936363: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:46 raspberry-client-mig-jwz0 app[91155]: 326558.220324: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:46 raspberry-client-mig-jwz0 app[91155]: 326558.532303: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:47 raspberry-client-mig-jwz0 app[91155]: 326558.844277: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:47 raspberry-client-mig-jwz0 app[91155]: 326559.107802: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:47 raspberry-client-mig-jwz0 app[91155]: 326559.416236: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 25 17:40:47 raspberry-client-mig-jwz0 app[91155]: 326559.624230: error: client route request timed out
-		Jan 25 17:40:47 raspberry-client-mig-jwz0 app[91155]: 326559.624276: info: client fallback to direct
-
-	On the relay I see this:
-
-		amazon.ohio.2 [dev] ~ # sudo journalctl -fu relay -n 100
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:57 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-		Jan 25 17:41:58 ip-172-31-28-247 relay[5833]: sendto (0.0.0.0) failed: Invalid argument
-
-	?!!!
+	Build artifacts really belongs in the main build step, only publish artifacts should be done in the deploy.
 
 TODO
+
+	Make func tests a promotion
+
+	Make happy path a promotion
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	----------------
 
 	Concurrent map read in happy path. Not sure what is causing this:
 
@@ -83,16 +97,6 @@ TODO
 
 		https://pkg.go.dev/sync
 
-	----------------
-
-	Build artifacts really belongs in the main build step, only publish artifacts should be done in the deploy.
-
-	----------------
-
-	Get new relay version requires nocache:
-
-		wget https://storage.googleapis.com/relay_artifacts/relay-reference --no-cache
-		
 	----------------
 
 
