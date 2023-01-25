@@ -8,7 +8,7 @@ fail_fast:
 
 agent:
   machine:
-    type: e1-standard-2
+    type: e1-standard-8
     os_image: ubuntu2004
 
 global_job_config:
@@ -20,17 +20,9 @@ blocks:
   - name: "Happy Path"
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-
       jobs:
-
         - name: "run happy-path-no-wait"
-
           commands:
-
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
