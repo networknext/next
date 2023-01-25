@@ -3612,7 +3612,6 @@ type TestData struct {
 	routeNumRelays int32
 	routeRelays    [MaxRelaysPerRoute]int32
 
-	internal           InternalConfig
 	routeShader        RouteShader
 	routeState         RouteState
 	multipathVetoUsers map[uint64]bool
@@ -3655,8 +3654,6 @@ func NewTestData(env *TestEnvironment) *TestData {
 
 	test.multipathVetoUsers = map[uint64]bool{}
 
-	test.internal = NewInternalConfig()
-
 	test.userId = 100
 
 	return test
@@ -3668,7 +3665,6 @@ func (test *TestData) TakeNetworkNext() bool {
 		test.fullRelaySet,
 		&test.routeShader,
 		&test.routeState,
-		&test.internal,
 		test.directLatency,
 		test.directPacketLoss,
 		test.sourceRelays,
@@ -3690,7 +3686,6 @@ func (test *TestData) StayOnNetworkNext() (bool, bool) {
 		test.relayNames,
 		&test.routeShader,
 		&test.routeState,
-		&test.internal,
 		test.directLatency,
 		test.nextLatency,
 		test.predictedLatency,
@@ -3964,7 +3959,7 @@ func TestTakeNetworkNext_ReduceLatency_LackOfDiversity(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
-	test.internal.RouteDiversity = 5
+	test.routeShader.RouteDiversity = 5
 
 	result := test.TakeNetworkNext()
 
@@ -5587,8 +5582,7 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 	test.destRelays = []int32{1}
 
 	test.routeShader.ReduceLatency = false
-
-	test.internal.ForceNext = true
+	test.routeShader.ForceNext = true
 
 	test.routeState.Next = false
 
@@ -5618,8 +5612,7 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	test.directLatency = int32(30)
 
 	test.routeShader.ReduceLatency = false
-
-	test.internal.ForceNext = true
+	test.routeShader.ForceNext = true
 
 	test.routeState.Next = false
 
@@ -5666,8 +5659,7 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
-
-	test.internal.ForceNext = true
+	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
@@ -5706,8 +5698,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	test.destRelays = []int32{}
 
 	test.routeShader.ReduceLatency = false
-
-	test.internal.ForceNext = true
+	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
@@ -5755,8 +5746,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	test.destRelays = []int32{1}
 
 	test.routeShader.ReduceLatency = false
-
-	test.internal.ForceNext = true
+	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}

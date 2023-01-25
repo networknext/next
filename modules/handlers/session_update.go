@@ -569,8 +569,8 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 			prevRelayIndex := routeRelays[i-1]
 			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
 			prev, _ := state.Database.RelayMap[prevId]
-			if prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
-				relayAddresses[i] = &relay.InternalAddr
+			if prev.Seller.Id == relay.Seller.Id && relay.InternalAddress.String() != ":0" {
+				relayAddresses[i] = &relay.InternalAddress
 			}
 		}
 
@@ -689,7 +689,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
-			&state.Buyer.InternalConfig,
 			int32(state.Request.DirectRTT),
 			state.RealPacketLoss,
 			state.SourceRelays,
@@ -770,7 +769,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
-			&state.Buyer.InternalConfig,
 			directLatency,
 			nextLatency,
 			predictedLatency,

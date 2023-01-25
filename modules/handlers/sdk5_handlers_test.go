@@ -794,7 +794,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:        localDatacenterId,
+		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,
@@ -1290,7 +1290,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:        localDatacenterId,
+		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,
@@ -1704,7 +1704,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	localDatacenterId := common.DatacenterId("local")
 
 	localDatacenter := database.Datacenter{
-		ID:        localDatacenterId,
+		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,
 		Longitude: 20,

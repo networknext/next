@@ -37,6 +37,7 @@ type Buyer struct {
 }
 
 type Seller struct {
+	Id   uint64
 	Name string
 }
 
@@ -59,7 +60,7 @@ type Database struct {
 	Relays         []Relay
 	RelayMap       map[uint64]Relay
 	BuyerMap       map[uint64]Buyer
-	SellerMap      map[string]Seller
+	SellerMap      map[uint64]Seller
 	DatacenterMap  map[uint64]Datacenter
 	DatacenterMaps map[uint64]map[uint64]DatacenterMap
 	//                   ^ BuyerId  ^ DatacenterId
@@ -73,7 +74,7 @@ func CreateDatabase() *Database {
 		Relays:         []Relay{},
 		RelayMap:       make(map[uint64]Relay),
 		BuyerMap:       make(map[uint64]Buyer),
-		SellerMap:      make(map[string]Seller),
+		SellerMap:      make(map[uint64]Seller),
 		DatacenterMap:  make(map[uint64]Datacenter),
 		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
 	}

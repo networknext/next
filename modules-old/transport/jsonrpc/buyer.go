@@ -1786,12 +1786,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
-		if err := s.Storage.AddInternalConfig(ctx, core.NewInternalConfig(), buyerID); err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() failed to add new buyer's internal config")
-			core.Error("%v", err)
-			return err
-		}
-
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 
@@ -1818,14 +1812,9 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// save old route shader, internal config, and banned users to bring over to new buyer
 	routeShader, routeShaderErr := s.Storage.RouteShader(ctx, oldBuyerID)
-	internalConfig, internalConfigErr := s.Storage.InternalConfig(ctx, oldBuyerID)
 
 	// Remove everything that has a FK to old buyer ID
 	if err = s.Storage.RemoveRouteShader(ctx, oldBuyerID); err != nil {
-		core.Error("%v", err)
-	}
-
-	if err = s.Storage.RemoveInternalConfig(ctx, oldBuyerID); err != nil {
 		core.Error("%v", err)
 	}
 
@@ -1857,15 +1846,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		err := s.Storage.AddRouteShader(ctx, routeShader, buyerID)
 		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to add old route shader to new buyer: %v", err)
-			core.Error("%v", err)
-			return err
-		}
-	}
-
-	if internalConfigErr == nil {
-		err := s.Storage.AddInternalConfig(ctx, internalConfig, buyerID)
-		if err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() failed to add old internal config to new buyer: %v", err)
 			core.Error("%v", err)
 			return err
 		}
@@ -2229,205 +2209,6 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // ===============================================================================================================
-// Internal Config Related Functions
-
-type JSInternalConfig struct {
-	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
-	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
-	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
-	RTTVeto_Default                int64 `json:"rttVeto_Default"`
-	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
-	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
-	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
-	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
-	ForceNext                      bool  `json:"forceNext"`
-	LargeCustomer                  bool  `json:"largeCustomer"`
-	Uncommitted                    bool  `json:"uncommitted"`
-	MaxRTT                         int64 `json:"maxRTT"`
-	HighFrequencyPings             bool  `json:"highFrequencyPings"`
-	RouteDiversity                 int64 `json:"routeDiversity"`
-	MultipathThreshold             int64 `json:"multipathThreshold"`
-	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
-	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
-}
-
-type InternalConfigArg struct {
-	BuyerID string `json:"buyerID"`
-}
-
-type InternalConfigReply struct {
-	InternalConfig JSInternalConfig
-}
-
-func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	ic, err := s.Storage.InternalConfig(r.Context(), buyerID)
-	if err != nil {
-		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
-		core.Error("%v", err)
-		return err
-	}
-
-	jsonIC := JSInternalConfig{
-		RouteSelectThreshold: int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold: int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:   int64(ic.MaxLatencyTradeOff),
-		RTTVeto_Default:      int64(ic.RTTVeto_Default),
-		RTTVeto_Multipath:    int64(ic.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:   int64(ic.RTTVeto_PacketLoss),
-		ForceNext:            ic.ForceNext,
-		MaxRTT:               int64(ic.MaxNextRTT),
-		HighFrequencyPings:   ic.HighFrequencyPings,
-		RouteDiversity:       int64(ic.RouteDiversity),
-	}
-
-	reply.InternalConfig = jsonIC
-	return nil
-}
-
-type JSAddInternalConfigArgs struct {
-	BuyerID        string           `json:"buyerID"`
-	InternalConfig JSInternalConfig `json:"internalConfig"`
-}
-
-type JSAddInternalConfigReply struct{}
-
-func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	ic := core.InternalConfig{
-		RouteSelectThreshold: int32(arg.InternalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold: int32(arg.InternalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:   int32(arg.InternalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:      int32(arg.InternalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:    int32(arg.InternalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:   int32(arg.InternalConfig.RTTVeto_PacketLoss),
-		ForceNext:            arg.InternalConfig.ForceNext,
-		MaxNextRTT:           int32(arg.InternalConfig.MaxRTT),
-		HighFrequencyPings:   arg.InternalConfig.HighFrequencyPings,
-		RouteDiversity:       int32(arg.InternalConfig.RouteDiversity),
-	}
-
-	err = s.Storage.AddInternalConfig(r.Context(), ic, buyerID)
-	if err != nil {
-		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
-	}
-
-	return nil
-}
-
-type UpdateInternalConfigArgs struct {
-	BuyerID    uint64 `json:"buyerID"`
-	HexBuyerID string `json:"hexBuyerID"`
-	Field      string `json:"field"`
-	Value      string `json:"value"`
-}
-
-type UpdateInternalConfigReply struct{}
-
-func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	var err error
-	var buyerID uint64
-
-	if args.HexBuyerID == "" {
-		buyerID = args.BuyerID
-	} else {
-		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
-		if err != nil {
-			return fmt.Errorf("Can not parse HexBuyerID: %s", args.HexBuyerID)
-		}
-	}
-
-	// sort out the value type here (comes from the next tool and javascript UI as a string)
-	switch args.Field {
-	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
-		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
-		"ReducePacketLossMinSliceNumber":
-		newInt, err := strconv.ParseInt(args.Value, 10, 32)
-		if err != nil {
-			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
-		}
-		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newInt32)
-		if err != nil {
-			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
-			core.Error("%v", err)
-			return err
-		}
-
-	case "TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
-		"HighFrequencyPings", "EnableVanityMetrics":
-		newValue, err := strconv.ParseBool(args.Value)
-		if err != nil {
-			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
-		}
-
-		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newValue)
-		if err != nil {
-			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
-			core.Error("%v", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", args.Field)
-	}
-
-	return nil
-}
-
-type RemoveInternalConfigArg struct {
-	BuyerID string `json:"buyerID"`
-}
-
-type RemoveInternalConfigReply struct{}
-
-func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	err = s.Storage.RemoveInternalConfig(r.Context(), buyerID)
-	if err != nil {
-		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
-	}
-
-	return nil
-}
-
-// ===============================================================================================================
 // Route Shader Related Functions
 
 type JSRouteShader struct {
@@ -2480,7 +2261,6 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
 		ReduceLatency:             rs.ReduceLatency,
-		ReduceJitter:              rs.ReduceJitter,
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		Multipath:                 rs.Multipath,
 		AcceptableLatency:         int64(rs.AcceptableLatency),
@@ -2519,7 +2299,6 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
 		ABTest:                    arg.RouteShader.ABTest,
 		ReduceLatency:             arg.RouteShader.ReduceLatency,
-		ReduceJitter:              arg.RouteShader.ReduceJitter,
 		ReducePacketLoss:          arg.RouteShader.ReducePacketLoss,
 		Multipath:                 arg.RouteShader.Multipath,
 		AcceptableLatency:         int32(arg.RouteShader.AcceptableLatency),

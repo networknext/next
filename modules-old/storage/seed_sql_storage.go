@@ -505,33 +505,10 @@ func SeedSQLStorage(
 			}
 		}
 
-		// add InternalConfigs, RouteShaders and BannedUsers
+		// add RouteShaders and BannedUsers
 
 		// fmt.Printf("localBuyer ID: %016x\n", localBuyer.ID)
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
-
-		internalConfig := core.InternalConfig{
-			RouteSelectThreshold: 5,
-			RouteSwitchThreshold: 10,
-			MaxLatencyTradeOff:   10,
-			RTTVeto_Default:      -10,
-			RTTVeto_PacketLoss:   -20,
-			RTTVeto_Multipath:    -20,
-			ForceNext:            true,
-			MaxNextRTT:           300,
-			HighFrequencyPings:   true,
-			RouteDiversity:       0,
-		}
-
-		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)
-		if err != nil {
-			return fmt.Errorf("Error adding InternalConfig for local buyer: %v", err)
-		}
-
-		err = db.AddInternalConfig(ctx, internalConfig, ghostBuyer.ID)
-		if err != nil {
-			return fmt.Errorf("Error adding InternalConfig for local buyer: %v", err)
-		}
 
 		localRouteShader := core.NewRouteShader()
 
@@ -634,9 +611,6 @@ func SeedSQLStorageStaging(
 
 	// Add buyer internal configs and route shaders
 	for buyerID, buyer := range database.BuyerMap {
-		if err = db.AddInternalConfig(ctx, buyer.InternalConfig, buyerID); err != nil {
-			return fmt.Errorf("AddInternalConfig() err: %v", err)
-		}
 		if err = db.AddRouteShader(ctx, buyer.RouteShader, buyerID); err != nil {
 			return fmt.Errorf("AddRouteShader() err: %v", err)
 		}

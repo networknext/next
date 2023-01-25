@@ -140,18 +140,6 @@ type Storer interface {
 	// RemoveFeatureFlagByName removes an existing flag from storage
 	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
 
-	// InternalConfig returns the internal config for the given buyer ID
-	InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error)
-
-	// AddInternalConfig adds the provided InternalConfig to the database
-	AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error
-
-	// UpdateInternalConfig updates the specified field in an InternalConfig record
-	UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error
-
-	// RemoveInternalConfig removes a record from the InternalConfigs table
-	RemoveInternalConfig(ctx context.Context, buyerID uint64) error
-
 	// RouteShader returns a slice of route shaders for the given buyer ID
 	RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error)
 

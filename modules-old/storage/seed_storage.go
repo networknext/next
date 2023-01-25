@@ -23,8 +23,6 @@ func SeedStorage(
 ) error {
 	routeShader := core.NewRouteShader()
 	routeShader.AnalysisOnly = false
-	internalConfig := core.NewInternalConfig()
-	internalConfig.ForceNext = true
 
 	shouldFill := true
 	if shouldFill {
@@ -62,7 +60,6 @@ func SeedStorage(
 			Live:           true,
 			PublicKey:      customerPublicKey,
 			RouteShader:    routeShader,
-			InternalConfig: internalConfig,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -72,7 +69,6 @@ func SeedStorage(
 			Live:           true,
 			PublicKey:      customerPublicKey,
 			RouteShader:    routeShader,
-			InternalConfig: internalConfig,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}

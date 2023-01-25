@@ -442,7 +442,6 @@ type FetchBuyerInformationReply struct {
 	PublicKey           string               `json:"public_key"`
 	LookerSeats         int32                `json:"looker_seats"`
 	RouteShader         core.RouteShader     `json:"route_shader"`
-	InternalConfig      core.InternalConfig  `json:"internal_config"`
 	MappedDatacenters   []buyerDatacenterMap `json:"mapped_datacenters"`
 }
 
@@ -479,7 +478,6 @@ func (s *OpsService) FetchBuyerInformation(r *http.Request, args *FetchBuyerInfo
 		reply.LookerSeats = int32(buyer.LookerSeats)
 
 		reply.RouteShader = buyer.RouteShader
-		reply.InternalConfig = buyer.InternalConfig
 
 		reply.MappedDatacenters = make([]buyerDatacenterMap, 0)
 
@@ -584,13 +582,6 @@ func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRo
 		}
 	}
 
-	if buyer.RouteShader.ReduceJitter != args.RouteShader.ReduceJitter {
-		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "ReduceJitter", args.RouteShader.ReduceJitter); err != nil {
-			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
-			wasError = true
-		}
-	}
-
 	if buyer.RouteShader.AcceptableLatency != args.RouteShader.AcceptableLatency && (args.RouteShader.AcceptableLatency >= 0 && args.RouteShader.AcceptableLatency < 1024) {
 		if err := s.Storage.UpdateRouteShader(ctx, buyer.ID, "AcceptableLatency", args.RouteShader.AcceptableLatency); err != nil {
 			core.Error("UpdateBuyerRouteShader(): %v", err.Error())
@@ -642,122 +633,6 @@ func (s *OpsService) UpdateBuyerRouteShader(r *http.Request, args *UpdateBuyerRo
 
 	if wasError {
 		core.Error("UpdateBuyerRouteShader(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	return nil
-}
-
-type UpdateBuyerInternalConfigArgs struct {
-	CustomerCode   string              `json:"customer_code"`
-	InternalConfig core.InternalConfig `json:"internal_config"`
-}
-
-type UpdateBuyerInternalConfigReply struct{}
-
-func (s *OpsService) UpdateBuyerInternalConfig(r *http.Request, args *UpdateBuyerInternalConfigArgs, reply *UpdateBuyerInternalConfigReply) error {
-	ctx := r.Context()
-
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-		return &err
-	}
-
-	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, args.CustomerCode)
-	if err != nil {
-		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	// Check if there is an internal config to update
-	if _, err := s.Storage.InternalConfig(ctx, buyer.ID); err != nil {
-		// If there isn't one, add the default internal config to be updated
-		if err := s.Storage.AddInternalConfig(ctx, core.NewInternalConfig(), buyer.ID); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): failed to add default internal config: %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			return &err
-		}
-	}
-
-	// TODO: Update functions should be using database ID here
-
-	wasError := false
-
-	if buyer.InternalConfig.ForceNext != args.InternalConfig.ForceNext {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "ForceNext", args.InternalConfig.ForceNext); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.HighFrequencyPings != args.InternalConfig.HighFrequencyPings {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "HighFrequencyPings", args.InternalConfig.HighFrequencyPings); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.MaxLatencyTradeOff != args.InternalConfig.MaxLatencyTradeOff && (args.InternalConfig.MaxLatencyTradeOff >= 0 && args.InternalConfig.MaxLatencyTradeOff < 1024) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxLatencyTradeOff", args.InternalConfig.MaxLatencyTradeOff); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.MaxNextRTT != args.InternalConfig.MaxNextRTT && (args.InternalConfig.MaxNextRTT >= 0 && args.InternalConfig.MaxNextRTT < 1024) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "MaxRTT", args.InternalConfig.MaxNextRTT); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RouteDiversity != args.InternalConfig.RouteDiversity && (args.InternalConfig.RouteDiversity >= 0) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteDiversity", args.InternalConfig.RouteDiversity); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RouteSelectThreshold != args.InternalConfig.RouteSelectThreshold && (args.InternalConfig.RouteSelectThreshold >= 0) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSelectThreshold", args.InternalConfig.RouteSelectThreshold); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RouteSwitchThreshold != args.InternalConfig.RouteSwitchThreshold && (args.InternalConfig.RouteSwitchThreshold >= 0) {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RouteSwitchThreshold", args.InternalConfig.RouteSwitchThreshold); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RTTVeto_Default != args.InternalConfig.RTTVeto_Default {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Default", args.InternalConfig.RTTVeto_Default); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RTTVeto_Multipath != args.InternalConfig.RTTVeto_Multipath {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_Multipath", args.InternalConfig.RTTVeto_Multipath); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if buyer.InternalConfig.RTTVeto_PacketLoss != args.InternalConfig.RTTVeto_PacketLoss {
-		if err := s.Storage.UpdateInternalConfig(ctx, buyer.ID, "RTTVeto_PacketLoss", args.InternalConfig.RTTVeto_PacketLoss); err != nil {
-			core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if wasError {
-		core.Error("UpdateBuyerInternalConfig(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}

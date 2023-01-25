@@ -262,15 +262,15 @@ func StartRedisDataCollection(service *common.Service) {
 
 				metaPipeline := redisClient.Pipeline()
 
-				sessionIDsRetreivedMap := make(map[string]bool)
-				for _, sessionID := range topSessionsA {
-					metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
-					sessionIDsRetreivedMap[sessionID] = true
+				sessionIdsRetreivedMap := make(map[string]bool)
+				for _, sessionId := range topSessionsA {
+					metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionId))
+					sessionIdsRetreivedMap[sessionId] = true
 				}
-				for _, sessionID := range topSessionsB {
-					if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-						metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionID))
-						sessionIDsRetreivedMap[sessionID] = true
+				for _, sessionId := range topSessionsB {
+					if _, ok := sessionIdsRetreivedMap[sessionId]; !ok {
+						metaPipeline.Get(ctx, fmt.Sprintf("sm-%s", sessionId))
+						sessionIdsRetreivedMap[sessionId] = true
 					}
 				}
 
@@ -309,11 +309,12 @@ func StartRedisDataCollection(service *common.Service) {
 					sessions = sessionMetasNext
 				}
 
-				var slice transport.SessionSlice // TODO: don't use transport
+				// todo: we don't want to use old module transport stuff here
+				var slice transport.SessionSlice
 				for i := 0; i < len(sessions); i++ {
 
 					currentSession := sessions[i]
-					sessionID := currentSession.ID
+					sessionId := currentSession.ID
 
 					topSessions[i] = TopSession{
 						Meta: SessionMeta{
@@ -327,9 +328,9 @@ func StartRedisDataCollection(service *common.Service) {
 						},
 					}
 
-					slices, err := redisClient.LRange(ctx, fmt.Sprintf("ss-%016x", sessionID), 0, -1).Result()
+					slices, err := redisClient.LRange(ctx, fmt.Sprintf("ss-%016x", sessionId), 0, -1).Result()
 					if err != nil {
-						core.Error("failed to look up slice data for session %016x: %v", sessionID, err)
+						core.Error("failed to look up slice data for session %016x: %v", sessionId, err)
 						continue
 					}
 
@@ -376,14 +377,14 @@ func StartRedisDataCollection(service *common.Service) {
 				countsPipeline := redisClient.Pipeline()
 
 				for _, buyer := range buyerMap {
-					buyerID := fmt.Sprintf("%016x", buyer.ID)
+					buyerId := fmt.Sprintf("%016x", buyer.Id)
 
-					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerID, minutes-1))
+					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerId, minutes-1))
 					if err != nil {
 						core.Error("failed to get first set of next counts: %v", err)
 						continue
 					}
-					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerID, minutes))
+					countsPipeline.HLen(ctx, fmt.Sprintf("n-%s-%d", buyerId, minutes))
 					if err != nil {
 						core.Error("failed to get second set of next counts: %v", err)
 						continue
@@ -419,13 +420,13 @@ func StartRedisDataCollection(service *common.Service) {
 				}
 
 				for _, buyer := range buyerMap {
-					buyerID := fmt.Sprintf("%016x", buyer.ID)
-					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerID, minutes-1))
+					buyerId := fmt.Sprintf("%016x", buyer.Id)
+					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerId, minutes-1))
 					if err != nil {
 						core.Error("failed to get first set of next counts: %v", err)
 						continue
 					}
-					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerID, minutes))
+					countsPipeline.HVals(ctx, fmt.Sprintf("c-%s-%d", buyerId, minutes))
 					if err != nil {
 						core.Error("failed to get second set of next counts: %v", err)
 						continue

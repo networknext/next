@@ -13,7 +13,6 @@ import (
 
 	_ "github.com/lib/pq"
 
-	// "github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	db "github.com/networknext/backend/modules/database"
 )
@@ -231,11 +230,12 @@ func main() {
 		rtt_veto_multipath           int
 		rtt_veto_packetloss          int
 		force_next                   bool
+		route_diversity              int
 	}
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next FROM route_shaders")
+		rows, err := pgsql.Query("SELECT id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next, route_diversity FROM route_shaders")
 		if err != nil {
 			fmt.Printf("error: could not extract route shaders: %v\n", err)
 			os.Exit(1)
@@ -245,7 +245,7 @@ func main() {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next); err != nil {
+			if err := rows.Scan(&row.id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next, &row.route_diversity); err != nil {
 				fmt.Printf("error: failed to scan route shader row: %v\n", err)
 				os.Exit(1)
 			}
@@ -368,11 +368,12 @@ func main() {
 
 		seller := db.Seller{}
 
+		seller.Id = row.id
 		seller.Name = row.name
 
-		database.SellerMap[seller.Name] = seller
+		database.SellerMap[seller.Id] = seller
 
-		fmt.Printf("seller %d: %s\n", i, seller.Name)
+		fmt.Printf("seller %d: %s [%d]\n", i, seller.Name, seller.Id)
 	}
 
 	for i, row := range buyerRows {
@@ -431,6 +432,7 @@ func main() {
 		buyer.RouteShader.RTTVeto_PacketLoss = int32(route_shader_row.rtt_veto_packetloss)
 		buyer.RouteShader.MaxNextRTT = int32(route_shader_row.max_next_rtt)
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
+		buyer.RouteShader.RouteDiversity = route_shader_row.route_diversity
 
 		database.BuyerMap[buyer.Id] = buyer
 
@@ -527,7 +529,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		relay.Seller = database.SellerMap[seller_row.name]
+		relay.Seller = database.SellerMap[seller_row.id]
 
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
 

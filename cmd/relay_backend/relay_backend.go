@@ -419,6 +419,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numUnroutable := numSamples - numRoutable
 
+				// todo: we don't have this anymore
+				/*
 				bwSentPercent := float32(0)
 				bwRecvPercent := float32(0)
 
@@ -426,6 +428,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					bwSentPercent = float32(relayUpdateRequest.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
 					bwRecvPercent = float32(relayUpdateRequest.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
 				}
+				*/
 
 				envSentPercent := float32(0)
 				envRecvPercent := float32(0)
@@ -449,13 +452,16 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					Version:                  messages.RelayStatsMessageVersion_Write,
 					Timestamp:                uint64(time.Now().Unix()),
 					NumSessions:              uint32(numSessions),
-					MaxSessions:              maxSessions,
+					MaxSessions:              uint32(maxSessions),
 					NumRoutable:              uint32(numRoutable),
 					NumUnroutable:            uint32(numUnroutable),
 					Full:                     full,
 					CPUUsage:                 float32(cpuUsage),
+					// todo: we don't have this
+					/*
 					BandwidthSentPercent:     bwSentPercent,
 					BandwidthReceivedPercent: bwRecvPercent,
+					*/
 					EnvelopeSentPercent:      envSentPercent,
 					EnvelopeReceivedPercent:  envRecvPercent,
 					BandwidthSentMbps:        float32(relayUpdateRequest.BandwidthSentKbps),

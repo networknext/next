@@ -126,10 +126,10 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			}
 
 			var address string
-			if sellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddr.String() != ":0" {
-				address = relayData.RelayArray[i].InternalAddr.String()
+			if sellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddress.String() != ":0" {
+				address = relayData.RelayArray[i].InternalAddress.String()
 			} else {
-				address = relayData.RelayArray[i].Addr.String()
+				address = relayData.RelayArray[i].PublicAddress.String()
 			}
 
 			responsePacket.RelayId[index] = relayData.RelayIds[i]

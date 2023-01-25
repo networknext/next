@@ -484,11 +484,6 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 		core.Error("Buyer() no rows were returned!")
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
-		ic, err := db.InternalConfig(ctx, ephemeralBuyerID)
-		if err != nil {
-			ic = core.NewInternalConfig()
-		}
-
 		rs, err := db.RouteShader(ctx, ephemeralBuyerID)
 		if err != nil {
 			rs = core.NewRouteShader()
@@ -513,7 +508,6 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			StandardLocationFee: buyer.StandardLocationFee,
 			PublicKey:           buyer.PublicKey,
 			RouteShader:         rs,
-			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
 			LookerSeats:         buyer.LookerSeats,
@@ -576,10 +570,6 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer customer code", resourceRef: companyCode}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
-		ic, err := db.InternalConfig(ctx, buyer.ID)
-		if err != nil {
-			ic = core.NewInternalConfig()
-		}
 
 		rs, err := db.RouteShader(ctx, buyer.ID)
 		if err != nil {
@@ -601,7 +591,6 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			StandardLocationFee: buyer.StandardLocationFee,
 			PublicKey:           buyer.PublicKey,
 			RouteShader:         rs,
-			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
 			LookerSeats:         buyer.LookerSeats,
@@ -660,11 +649,6 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 
 		buyerIDs[buyer.ID] = buyer.DatabaseID
 
-		ic, err := db.InternalConfig(ctx, buyer.ID)
-		if err != nil {
-			ic = core.NewInternalConfig()
-		}
-
 		rs, err := db.RouteShader(ctx, buyer.ID)
 		if err != nil {
 			rs = core.NewRouteShader()
@@ -691,7 +675,6 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			StandardLocationFee: buyer.StandardLocationFee,
 			PublicKey:           buyer.PublicKey,
 			RouteShader:         rs,
-			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
 			LookerSeats:         buyer.LookerSeats,
@@ -2832,7 +2815,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			ABTest:                    sqlRS.ABTest,
 			ReduceLatency:             sqlRS.ReduceLatency,
 			ReducePacketLoss:          sqlRS.ReducePacketLoss,
-			ReduceJitter:              sqlRS.ReduceJitter,
 			Multipath:                 sqlRS.Multipath,
 			AcceptableLatency:         int32(sqlRS.AcceptableLatency),
 			LatencyThreshold:          int32(sqlRS.LatencyThreshold),
@@ -2847,365 +2829,6 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 		core.Error("RouteShader() QueryRow returned an error: %v", err)
 		return core.RouteShader{}, err
 	}
-}
-
-// InternalConfig returns the InternalConfig entry for the specified buyer
-func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (core.InternalConfig, error) {
-	var querySQL bytes.Buffer
-	var sqlIC sqlInternalConfig
-	var row *sql.Row
-	var err error
-
-	retryCount := 0
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	querySQL.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
-	querySQL.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
-	querySQL.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
-	querySQL.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	querySQL.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number "))
-	querySQL.Write([]byte("from rs_internal_configs where buyer_id = ( "))
-	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1)"))
-
-	for retryCount < MAX_RETRIES {
-		row = db.Client.QueryRowContext(ctx, querySQL.String(), int64(ephemeralBuyerID))
-		err = row.Scan(
-			&sqlIC.MaxLatencyTradeOff,
-			&sqlIC.MaxRTT,
-			&sqlIC.MultipathOverloadThreshold,
-			&sqlIC.RouteSwitchThreshold,
-			&sqlIC.RouteSelectThreshold,
-			&sqlIC.RTTVetoDefault,
-			&sqlIC.RTTVetoMultipath,
-			&sqlIC.RTTVetoPacketLoss,
-			&sqlIC.TryBeforeYouBuy,
-			&sqlIC.ForceNext,
-			&sqlIC.LargeCustomer,
-			&sqlIC.Uncommitted,
-			&sqlIC.HighFrequencyPings,
-			&sqlIC.RouteDiversity,
-			&sqlIC.MultipathThreshold,
-			&sqlIC.EnableVanityMetrics,
-			&sqlIC.ReducePacketLossMinSliceNumber,
-		)
-		switch err {
-		case context.Canceled:
-			retryCount = retryCount + 1
-		default:
-			retryCount = MAX_RETRIES
-		}
-	}
-
-	switch err {
-	case context.Canceled:
-		core.Error("InternalConfig() connection with the database timed out!")
-		return core.InternalConfig{}, err
-	case sql.ErrNoRows:
-		// By default buyers do not have a custom internal config so will not
-		// have an entry in the rs_internal_configs table. We probably don't need
-		// to log an error here. However, the return is checked and the
-		// default core.InternalConfig is applied to the buyer if an error
-		// is returned.
-		// core.Error("InternalConfig() no rows were returned!")
-		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
-	case nil:
-		internalConfig := core.InternalConfig{
-			RouteSelectThreshold: int32(sqlIC.RouteSelectThreshold),
-			RouteSwitchThreshold: int32(sqlIC.RouteSwitchThreshold),
-			MaxLatencyTradeOff:   int32(sqlIC.MaxLatencyTradeOff),
-			RTTVeto_Default:      int32(sqlIC.RTTVetoDefault),
-			RTTVeto_PacketLoss:   int32(sqlIC.RTTVetoPacketLoss),
-			RTTVeto_Multipath:    int32(sqlIC.RTTVetoMultipath),
-			ForceNext:            sqlIC.ForceNext,
-			MaxNextRTT:           int32(sqlIC.MaxRTT),
-			HighFrequencyPings:   sqlIC.HighFrequencyPings,
-			RouteDiversity:       int32(sqlIC.RouteDiversity),
-		}
-		return internalConfig, nil
-	default:
-		core.Error("InternalConfig() QueryRow returned an error: %v", err)
-		return core.InternalConfig{}, err
-	}
-
-}
-
-// AddInternalConfig adds an InternalConfig for the specified buyer
-func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ephemeralBuyerID uint64) error {
-	var sql bytes.Buffer
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold: int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold: int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:   int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:       int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:    int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:     int64(ic.RTTVeto_Multipath),
-		ForceNext:            ic.ForceNext,
-		MaxRTT:               int64(ic.MaxNextRTT),
-		HighFrequencyPings:   ic.HighFrequencyPings,
-		RouteDiversity:       int64(ic.RouteDiversity),
-	}
-
-	sql.Write([]byte("insert into rs_internal_configs "))
-	sql.Write([]byte("(max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
-	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
-	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
-	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $18)"))
-	sql.Write([]byte(")"))
-
-	result, err := ExecRetry(
-		ctx,
-		db,
-		sql,
-		internalConfig.MaxLatencyTradeOff,
-		internalConfig.MaxRTT,
-		internalConfig.MultipathOverloadThreshold,
-		internalConfig.RouteSwitchThreshold,
-		internalConfig.RouteSelectThreshold,
-		internalConfig.RTTVetoDefault,
-		internalConfig.RTTVetoMultipath,
-		internalConfig.RTTVetoPacketLoss,
-		internalConfig.TryBeforeYouBuy,
-		internalConfig.ForceNext,
-		internalConfig.LargeCustomer,
-		internalConfig.Uncommitted,
-		internalConfig.HighFrequencyPings,
-		internalConfig.RouteDiversity,
-		internalConfig.MultipathThreshold,
-		internalConfig.EnableVanityMetrics,
-		internalConfig.ReducePacketLossMinSliceNumber,
-		int64(ephemeralBuyerID),
-	)
-	if err != nil {
-		core.Error("AddInternalConfig() error adding internal config: %v", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		core.Error("AddInternalConfig() RowsAffected returned an error")
-		return err
-	}
-	if rows != 1 {
-		core.Error("AddInternalConfig() RowsAffected <> 1")
-		return err
-	}
-
-	return nil
-}
-
-func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
-	var sql bytes.Buffer
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	buyerID := int64(ephemeralBuyerID)
-	sql.Write([]byte("delete from rs_internal_configs where buyer_id = "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
-
-	result, err := ExecRetry(
-		ctx,
-		db,
-		sql,
-		buyerID,
-	)
-	if err != nil {
-		core.Error("RemoveInternalConfig() error removing internal config: %v", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		core.Error("RemoveInternalConfig() RowsAffected returned an error")
-		return err
-	}
-	if rows != 1 {
-		core.Error("RemoveInternalConfig() RowsAffected <> 1")
-		return err
-	}
-
-	return nil
-}
-
-func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
-	var updateSQL bytes.Buffer
-	var args []interface{}
-	var err error
-
-	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
-	defer cancel()
-
-	switch field {
-	case "RouteSelectThreshold":
-		routeSelectThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSelectThreshold, int64(ephemeralBuyerID))
-	case "RouteSwitchThreshold":
-		routeSwitchThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSwitchThreshold, int64(ephemeralBuyerID))
-	case "MaxLatencyTradeOff":
-		maxLatencyTradeOff, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxLatencyTradeOff, int64(ephemeralBuyerID))
-	case "RTTVeto_Default":
-		rttVetoDefault, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoDefault, int64(ephemeralBuyerID))
-	case "RTTVeto_PacketLoss":
-		rttVetoPacketLoss, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoPacketLoss, int64(ephemeralBuyerID))
-	case "RTTVeto_Multipath":
-		rttVetoMultipath, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoMultipath, int64(ephemeralBuyerID))
-	case "MultipathOverloadThreshold":
-		multipathOverloadThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathOverloadThreshold, int64(ephemeralBuyerID))
-	case "TryBeforeYouBuy":
-		tryBeforeYouBuy, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, tryBeforeYouBuy, int64(ephemeralBuyerID))
-	case "ForceNext":
-		forceNext, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("ForceNext: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, forceNext, int64(ephemeralBuyerID))
-	case "LargeCustomer":
-		largeCustomer, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, largeCustomer, int64(ephemeralBuyerID))
-	case "Uncommitted":
-		uncommitted, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, uncommitted, int64(ephemeralBuyerID))
-	case "HighFrequencyPings":
-		highFrequencyPings, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, highFrequencyPings, int64(ephemeralBuyerID))
-	case "MaxNextRTT":
-		maxRTT, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MaxNextRTT: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxRTT, int64(ephemeralBuyerID))
-	case "RouteDiversity":
-		routeDiversity, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeDiversity, int64(ephemeralBuyerID))
-	case "MultipathThreshold":
-		multipathThreshold, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathThreshold, int64(ephemeralBuyerID))
-	case "EnableVanityMetrics":
-		enableVanityMetrics, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, enableVanityMetrics, int64(ephemeralBuyerID))
-	case "ReducePacketLossMinSliceNumber":
-		reducePacketLossMinSliceNumber, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
-		}
-		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id="))
-		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reducePacketLossMinSliceNumber, int64(ephemeralBuyerID))
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
-	}
-
-	result, err := ExecRetry(
-		ctx,
-		db,
-		updateSQL,
-		args...,
-	)
-	if err != nil {
-		core.Error("UpdateInternalConfig() error modifying internal_config record: %v", err)
-		return err
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		core.Error("UpdateInternalConfig() RowsAffected returned an error")
-		return err
-	}
-	if rows != 1 {
-		core.Error("UpdateInternalConfig() RowsAffected <> 1")
-		return err
-	}
-
-	return nil
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemeralBuyerID uint64) error {
@@ -3226,7 +2849,6 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		Multipath:                 rs.Multipath,
 		ReduceLatency:             rs.ReduceLatency,
 		ReducePacketLoss:          rs.ReducePacketLoss,
-		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
 		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}

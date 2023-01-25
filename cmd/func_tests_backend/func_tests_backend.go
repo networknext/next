@@ -1784,14 +1784,14 @@ func test_relay_backend() {
 		relay.Name = relayNames[i]
 		relay.PublicAddress = relayAddresses[i]
 		relay.Version = "test"
-		relay.Datacenter.ID = relayDatacenterIds[i]
-		relay.Datacenter.Name = datacenterNames[relay.Datacenter.ID]
-		relay.Datacenter.Latitude = datacenterLatitudes[relay.Datacenter.ID]
-		relay.Datacenter.Longitude = datacenterLongitudes[relay.Datacenter.ID]
+		relay.Datacenter.Id = relayDatacenterIds[i]
+		relay.Datacenter.Name = datacenterNames[relay.Datacenter.Id]
+		relay.Datacenter.Latitude = datacenterLatitudes[relay.Datacenter.Id]
+		relay.Datacenter.Longitude = datacenterLongitudes[relay.Datacenter.Id]
 
 		database.Relays = append(database.Relays, relay)
 
-		database.RelayMap[relay.ID] = relay
+		database.RelayMap[relay.Id] = relay
 	}
 
 	// write the database out to a temporary file

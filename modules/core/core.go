@@ -1385,7 +1385,6 @@ type RouteShader struct {
 	RTTVeto_PacketLoss        int32   `json:"rtt_veto_packet_loss"`
 	MaxNextRTT                int32   `json:"max_next_rtt"`
 	ForceNext                 bool    `json:"force_next"`
-	HighFrequencyPings        bool    `json:"high_frequency_pings"`
 	RouteDiversity            int32   `json:"route_diversity"`
 }
 
@@ -1412,7 +1411,6 @@ func NewRouteShader() RouteShader {
 		RTTVeto_PacketLoss:        -30,
 		MaxNextRTT:                300,
 		ForceNext:                 false,
-		HighFrequencyPings:        true,
 		RouteDiversity:            0,
 	}
 }

@@ -43,6 +43,7 @@ CREATE TABLE route_shaders (
   rtt_veto_multipath integer not null default 20,
   rtt_veto_packetloss integer not null default 30,
   force_next boolean not null default false,
+  route_diversity int not null default 0,
   primary key (id)
 );
 

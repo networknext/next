@@ -24,7 +24,6 @@ type Buyer struct {
 	StandardLocationFee float64
 	PublicKey           []byte
 	RouteShader         core.RouteShader
-	InternalConfig      core.InternalConfig
 	DatabaseID          int64 // sql PK
 	CustomerID          int64 // sql FK
 	LookerSeats         int64
