@@ -232,11 +232,11 @@ blocks:
 
 promotions:
 
+  - name: "Development Deployment"
+    pipeline_file: development-deploy.yml
+
   - name: "Functional Tests"
     pipeline_file: functional-tests.yml
 
   - name: "Happy Path"
     pipeline_file: happy-path.yml
-
-  - name: "Development Deployment"
-    pipeline_file: development-deploy.yml
