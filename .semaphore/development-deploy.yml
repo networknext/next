@@ -20,8 +20,6 @@ blocks:
 
   - name: "Publish Artifacts"
 
-    dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
-
     task:
 
       prologue:
