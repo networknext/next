@@ -89,6 +89,12 @@ TODO
 
 	----------------
 
+	Get new relay version requires nocache:
+
+		wget https://storage.googleapis.com/relay_artifacts/relay-reference --no-cache
+		
+	----------------
+
 
 
 

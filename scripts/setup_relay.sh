@@ -61,7 +61,7 @@ cd ~
 
 # download the relay binary and rename it to 'relay'
 
-wget https://storage.googleapis.com/relay_artifacts/relay-$RELAY_VERSION
+wget https://storage.googleapis.com/relay_artifacts/relay-$RELAY_VERSION --no-cache
 sudo mv relay-$RELAY_VERSION relay
 sudo chmod +x relay
 

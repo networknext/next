@@ -4,6 +4,7 @@
  */
 
 #include "reference_relay.h"
+#include "reference_relay_version.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -5572,7 +5573,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 int main( int argc, const char ** argv )
 {
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-        printf( "reference\n" );
+        printf( "%s\n", RELAY_VERSION );
         fflush( stdout );
         exit(0);
     }

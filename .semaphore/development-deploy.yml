@@ -121,5 +121,7 @@ blocks:
         - name: "Reference Relay"
           commands:
             - artifact pull workflow reference_relay
-            - gsutil cp reference_relay gs://development_artifacts/reference_relay
-            - gsutil cp reference_relay gs://relay_artifacts/relay-reference
+            - mv reference_relay relay
+            - export VERSION=`./relay version`
+            - mv relay relay-$VERSION
+            - gsutil cp relay-$VERSION gs://relay_artifacts/            
