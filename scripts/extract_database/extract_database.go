@@ -332,6 +332,13 @@ func main() {
 		customerIndex[row.id] = row
 	}
 
+	// index buyers by postgres id
+
+	buyerIndex := make(map[uint64]BuyerRow)
+	for _, row := range buyerRows {
+		buyerIndex[row.id] = row
+	}
+
 	// index sellers by postgres id
 
 	sellerIndex := make(map[uint64]SellerRow)
@@ -527,11 +534,47 @@ func main() {
 		database.RelayMap[relay.Id] = *relay
 	}
 
-	// todo: database maps
+	for i, row := range datacenterMapRows {
+
+		buyer_row, buyer_exists := buyerIndex[row.buyer_id]
+		if !buyer_exists {
+			fmt.Printf("error: datacenter map doesn't have a buyer?!\n")
+			os.Exit(1)
+		}
+
+		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
+		if !datacenter_exists {
+			fmt.Printf("error: datacenter map doesn't have a datacenter?!\n")
+			os.Exit(1)
+		}
+
+		buyerName := buyer_row.name
+		buyerId := uint64(0)
+		datacenterName := datacenter_row.name
+		datacenterId := common.DatacenterId(datacenterName)
+
+		for _,v := range database.BuyerMap {
+			if v.Name == buyerName {
+				buyerId = v.Id
+			}
+		}
+
+		if buyerId == 0 {
+			fmt.Printf("error: could not find runtime buyer id for buyer %s?!\n", buyerName)
+			os.Exit(1)
+		}
+
+		fmt.Printf("datacenter map %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)
+
+		datacenterMap := db.DatacenterMap{}
+		datacenterMap.EnableAcceleration = row.enable_acceleration
+		if database.DatacenterMaps[buyerId] == nil {
+			database.DatacenterMaps[buyerId] = make(map[uint64]db.DatacenterMap)
+		}
+		database.DatacenterMaps[buyerId][datacenterId] = datacenterMap
+	}
 
 	// print database
-
-	// fmt.Printf("\ndatabase:\n%+v\n", database)
 
 	database.Save("database.bin")
 }
