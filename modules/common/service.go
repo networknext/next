@@ -766,16 +766,16 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	// todo: bring this back once the database update is finished
 	/*
-	for _, buyer := range database.BuyerMap {
-		if buyer.Live {
-			for _, datacenter := range database.DatacenterMaps[buyer.ID] {
-				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterID]
-				for j := 0; j < len(datacenterRelays); j++ {
-					relayData.DestRelays[datacenterRelays[j]] = true
+		for _, buyer := range database.BuyerMap {
+			if buyer.Live {
+				for _, datacenter := range database.DatacenterMaps[buyer.ID] {
+					datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterID]
+					for j := 0; j < len(datacenterRelays); j++ {
+						relayData.DestRelays[datacenterRelays[j]] = true
+					}
 				}
 			}
 		}
-	}
 	*/
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent

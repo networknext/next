@@ -15,16 +15,21 @@ VALUES (
 	'raspberry'
 );
 
+INSERT INTO route_shaders(short_name,force_next) VALUES('raspberry', true);
+
 INSERT INTO buyers
 (
 	short_name,
 	public_key_base64, 
-	customer_id
+	customer_id,
+	route_shader_id
+
 ) 
 VALUES(
 	'raspberry',
 	'UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==',
-	(select id from customers where customer_code = 'raspberry')
+	(select id from customers where customer_code = 'raspberry'),
+	(select id from route_shaders where short_name = 'raspberry')
 );
 
 INSERT INTO sellers(short_name) VALUES('google');
@@ -771,10 +776,6 @@ VALUES(
 	'U6zE8ysmZ57jUWRUs/MtC4BV25GlJK/xr1ABWLnxumg=',
 	(select id from datacenters where display_name = 'vultr.siliconvalley')
 );
-
--- route shader for raspberry
-
-INSERT INTO route_shaders(force_next,buyer_id) VALUES(true, (select id from buyers where short_name = 'raspberry'));
 
 -- enable datacenters for buyers
 

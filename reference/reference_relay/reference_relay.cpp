@@ -5477,10 +5477,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 int main( int argc, const char ** argv )
 {
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-		printf( "reference\n" );
-		fflush( stdout );
-		exit(0);
-	}
+        printf( "reference\n" );
+        fflush( stdout );
+        exit(0);
+    }
 
     printf( "\nNetwork Next Reference Relay\n");
 
@@ -5594,14 +5594,14 @@ int main( int argc, const char ** argv )
     relay_address_t bind_address;
     if ( relay_address.data.ipv4[0] == 127 && relay_address.data.ipv4[1] == 0 && relay_address.data.ipv4[2] == 0 && relay_address.data.ipv4[3] == 1 )
     {
-    	printf( "\nBinding to 127.0.0.1:%d\n", relay_address.port );
-    	bind_address = relay_address;
+        printf( "\nBinding to 127.0.0.1:%d\n", relay_address.port );
+        bind_address = relay_address;
     }
     else
     {
-    	printf( "\nBinding to 0.0.0.0:%d\n", relay_address.port );
-	    bind_address.type = RELAY_ADDRESS_IPV4;
-	    bind_address.port = relay_address.port;
+        printf( "\nBinding to 0.0.0.0:%d\n", relay_address.port );
+        bind_address.type = RELAY_ADDRESS_IPV4;
+        bind_address.port = relay_address.port;
     }
 
     relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );

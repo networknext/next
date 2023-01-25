@@ -1369,7 +1369,6 @@ type RouteShader struct {
 	SelectionPercent          int     `json:"selection_percentage"`
 	ABTest                    bool    `json:"ab_test"`
 	ReduceLatency             bool    `json:"reduce_latency"`
-	ReduceJitter              bool    `json:"reduce_jitter"`
 	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
 	Multipath                 bool    `json:"multipath"`
 	AcceptableLatency         int32   `json:"acceptable_latency"`
@@ -1378,6 +1377,16 @@ type RouteShader struct {
 	PacketLossSustained       float32 `json:"packet_loss_sustained"`
 	BandwidthEnvelopeUpKbps   int32   `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps int32   `json:"bandwidth_envelope_down_kbps"`
+	RouteSelectThreshold      int32   `json:"route_select_threshold"`
+	RouteSwitchThreshold      int32   `json:"route_switch_threshold"`
+	MaxLatencyTradeOff        int32   `json:"max_latency_trade_off"`
+	RTTVeto_Default           int32   `json:"rtt_veto_default"`
+	RTTVeto_Multipath         int32   `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss        int32   `json:"rtt_veto_packet_loss"`
+	MaxNextRTT                int32   `json:"max_next_rtt"`
+	ForceNext                 bool    `json:"force_next"`
+	HighFrequencyPings        bool    `json:"high_frequency_pings"`
+	RouteDiversity            int32   `json:"route_diversity"`
 }
 
 func NewRouteShader() RouteShader {
@@ -1387,7 +1396,6 @@ func NewRouteShader() RouteShader {
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
-		ReduceJitter:              true,
 		ReducePacketLoss:          true,
 		Multipath:                 true,
 		AcceptableLatency:         0,
@@ -1396,6 +1404,16 @@ func NewRouteShader() RouteShader {
 		PacketLossSustained:       0.1,
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
+		RouteSelectThreshold:      2,
+		RouteSwitchThreshold:      5,
+		MaxLatencyTradeOff:        20,
+		RTTVeto_Default:           -10,
+		RTTVeto_Multipath:         -20,
+		RTTVeto_PacketLoss:        -30,
+		MaxNextRTT:                300,
+		ForceNext:                 false,
+		HighFrequencyPings:        true,
+		RouteDiversity:            0,
 	}
 }
 
@@ -1421,34 +1439,6 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	PLSustainedCounter  uint32
-}
-
-type InternalConfig struct {
-	RouteSelectThreshold int32 `json:"route_select_threshold"`
-	RouteSwitchThreshold int32 `json:"route_switch_threshold"`
-	MaxLatencyTradeOff   int32 `json:"max_latency_trade_off"`
-	RTTVeto_Default      int32 `json:"rtt_veto_default"`
-	RTTVeto_Multipath    int32 `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss   int32 `json:"rtt_veto_packet_loss"`
-	MaxNextRTT           int32 `json:"max_next_rtt"`
-	ForceNext            bool  `json:"force_next"`
-	HighFrequencyPings   bool  `json:"high_frequency_pings"`
-	RouteDiversity       int32 `json:"route_diversity"`
-}
-
-func NewInternalConfig() InternalConfig {
-	return InternalConfig{
-		RouteSelectThreshold: 2,
-		RouteSwitchThreshold: 5,
-		MaxLatencyTradeOff:   20,
-		RTTVeto_Default:      -10,
-		RTTVeto_Multipath:    -20,
-		RTTVeto_PacketLoss:   -30,
-		MaxNextRTT:           300,
-		ForceNext:            false,
-		HighFrequencyPings:   true,
-		RouteDiversity:       0,
-	}
 }
 
 func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteState, debug *string) bool {
@@ -1540,7 +1530,7 @@ func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteSt
 	return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
+func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, routeShader *RouteShader, routeState *RouteState, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(userId, routeShader, routeState, debug) {
 		if debug != nil {
@@ -1586,7 +1576,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 			if debug != nil {
 				*debug += "try to reduce latency\n"
 			}
-			maxCost = directLatency - (routeShader.LatencyThreshold + internal.RouteSelectThreshold)
+			maxCost = directLatency - (routeShader.LatencyThreshold + routeShader.RouteSelectThreshold)
 			reduceLatency = true
 		} else {
 			if debug != nil {
@@ -1615,13 +1605,13 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
-		maxCost = directLatency + internal.MaxLatencyTradeOff - internal.RouteSelectThreshold
+		maxCost = directLatency + routeShader.MaxLatencyTradeOff - routeShader.RouteSelectThreshold
 		reducePacketLoss = true
 	}
 
 	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
 
-	if internal.ForceNext {
+	if routeShader.ForceNext {
 		if debug != nil {
 			*debug += "forcing network next\n"
 		}
@@ -1635,7 +1625,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	bestRouteNumRelays := int32(0)
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
-	selectThreshold := internal.RouteSelectThreshold
+	selectThreshold := routeShader.RouteSelectThreshold
 
 	hasRoute, routeDiversity := GetBestRoute_Initial(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
@@ -1650,9 +1640,9 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	// if we don't have enough route diversity, we can't take network next
 
-	if routeDiversity < internal.RouteDiversity {
+	if routeDiversity < routeShader.RouteDiversity {
 		if debug != nil {
-			*debug += fmt.Sprintf("not enough route diversity. %d < %d\n", routeDiversity, internal.RouteDiversity)
+			*debug += fmt.Sprintf("not enough route diversity. %d < %d\n", routeDiversity, routeShader.RouteDiversity)
 		}
 		routeState.LackOfDiversity = true
 		return false
@@ -1669,9 +1659,9 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	// if the next route RTT is too high, don't take it
 
-	if internal.MaxNextRTT > 0 && bestRouteCost > internal.MaxNextRTT {
+	if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
 		if debug != nil {
-			*debug += fmt.Sprintf("not taking network next. best route is higher than max next rtt %d\n", internal.MaxNextRTT)
+			*debug += fmt.Sprintf("not taking network next. best route is higher than max next rtt %d\n", routeShader.MaxNextRTT)
 		}
 		return false
 	}
@@ -1686,7 +1676,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	Debug("direct latency = %d", directLatency)
 	Debug("next latency = %d", nextLatency)
@@ -1747,16 +1737,16 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	maxCost := int32(math.MaxInt32)
 
-	if !internal.ForceNext {
+	if !routeShader.ForceNext {
 
-		rttVeto := internal.RTTVeto_Default
+		rttVeto := routeShader.RTTVeto_Default
 
 		if routeState.ReducePacketLoss {
-			rttVeto = internal.RTTVeto_PacketLoss
+			rttVeto = routeShader.RTTVeto_PacketLoss
 		}
 
 		if routeState.Multipath {
-			rttVeto = internal.RTTVeto_Multipath
+			rttVeto = routeShader.RTTVeto_Multipath
 		}
 
 		if !routeState.Multipath {
@@ -1799,7 +1789,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 	bestRouteNumRelays := int32(0)
 	bestRouteRelays := [MaxRelaysPerRoute]int32{}
 
-	routeSwitched, routeLost := GetBestRoute_Update(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, internal.RouteSelectThreshold, internal.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
+	routeSwitched, routeLost := GetBestRoute_Update(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, maxCost, routeShader.RouteSelectThreshold, routeShader.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
 	routeState.RouteLost = routeLost
 
@@ -1815,9 +1805,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	// if the next route RTT is too high, leave network next
 
-	if internal.MaxNextRTT > 0 && bestRouteCost > internal.MaxNextRTT {
+	if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
 		if debug != nil {
-			*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, internal.MaxNextRTT)
+			*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, routeShader.MaxNextRTT)
 		}
 		routeState.NextLatencyTooHigh = true
 		return false, false
@@ -1844,9 +1834,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, internal *InternalConfig, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry, fullRelaySet map[int32]bool, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
-	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(userId, routeMatrix, fullRelaySet, relayNames, routeShader, routeState, internal, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
+	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(userId, routeMatrix, fullRelaySet, relayNames, routeShader, routeState, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 
 	if routeState.Next && !stayOnNetworkNext {
 		routeState.Next = false

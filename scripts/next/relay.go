@@ -19,7 +19,6 @@ import (
 )
 
 const (
-
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`

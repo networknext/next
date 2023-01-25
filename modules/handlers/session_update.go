@@ -244,7 +244,7 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.StartTimestamp = uint64(time.Now().Unix())
-	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK5_BillingSliceSeconds * 2
+	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK5_BillingSliceSeconds*2
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output

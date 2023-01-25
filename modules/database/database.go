@@ -28,12 +28,12 @@ type Relay struct {
 }
 
 type Buyer struct {
-	Id             uint64
-	Name           string
-	Live           bool
-	Debug          bool
-	PublicKey      []byte
-	RouteShader    core.RouteShader
+	Id          uint64
+	Name        string
+	Live        bool
+	Debug       bool
+	PublicKey   []byte
+	RouteShader core.RouteShader
 }
 
 type Seller struct {

@@ -328,7 +328,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 
 	// summary only
 
-	if (message.SessionFlags&SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & SessionFlags_Summary) != 0 {
 
 		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
 			return fmt.Errorf("failed to read datacenter id")
