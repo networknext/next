@@ -4165,14 +4165,14 @@ int next_init( void * context, next_config_t * config_in )
             const uint8_t * p = decode_buffer;
             config.client_customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
-            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: \"%s\"", customer_public_key );
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: '%s'", customer_public_key );
             config.valid_customer_public_key = true;
         }
         else
         {
             if ( customer_public_key[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "customer public key is invalid: \"%s\"", customer_public_key );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "customer public key is invalid: '%s'", customer_public_key );
             }
         }
     }
@@ -4199,7 +4199,7 @@ int next_init( void * context, next_config_t * config_in )
         {
             if ( customer_private_key[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid: \"%s\"", customer_private_key );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid" );
             }
         }
     }
