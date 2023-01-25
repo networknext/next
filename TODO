@@ -60,9 +60,59 @@ DONE
 
 TODO
 
-	There is something wrong with the relay on AWS. Not sure what it is... but, maybe it's the bind to 0.0.0.0?
+	Concurrent map read in happy path. Not sure what is causing this:
 
-	Adding more logs to see what's up...
+		fatal error: concurrent map read and map writereceived relay update for 'local.3' 00:27
+		506goroutine 32 [running]: 00:27
+		507github.com/networknext/backend/modules/common.(*RelayManager).GetRelays(0xc00007eb40, 0x63d181b1, {0xc00004c320, 0xa, 0xc000130060?}, {0xc0000014a0, 0xa, 0x11bb440?}, {0xc0003041e0, 0xa, ...}) 00:27
+		508	/home/semaphore/backend/modules/common/relay_manager.go:352 +0x4ad 00:27
+		509github.com/networknext/backend/modules/common.(*RelayManager).GetRelaysCSV(0x0?, 0x2?, {0xc00004c320?, 0x2d?, 0x2d?}, {0xc0000014a0?, 0xc00004c370?, 0xa?}, {0xc0003041e0, 0xa, ...}) 00:27
+		510	/home/semaphore/backend/modules/common/relay_manager.go:436 +0x65 00:27
+		511main.UpdateRouteMatrix.func1() 00:27
+		512	/home/semaphore/backend/cmd/relay_backend/relay_backend.go:489 +0x1a5 00:27
+		513created by main.UpdateRouteMatrix 00:27
+		514	/home/semaphore/backend/cmd/relay_backend/relay_backend.go:471 +0xcc 00:27
+		515goroutine 1 [chan receive]: 00:27
+		516github.com/networknext/backend/modules/common.(*Service).WaitForShutdown(0xc0000b8580) 00:27
+		517	/home/semaphore/backend/modules/common/service.go:563 +0xb3 00:27
+		518main.main() 00:27
+		519	/home/semaphore/backend/cmd/relay_backend/relay_backend.go:128 +0xf18 00:27
+		520goroutine 19 [select]: 00:27
+
+	Fix by switching to sync.Map:
+
+		https://pkg.go.dev/sync
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-------------
 

@@ -5572,7 +5572,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 int main( int argc, const char ** argv )
 {
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-        printf( "reference\n" );
+        printf( "reference-1.0\n" );
         fflush( stdout );
         exit(0);
     }
