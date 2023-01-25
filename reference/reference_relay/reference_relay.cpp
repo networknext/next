@@ -4252,7 +4252,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
         }
-        /*
+
+// ==================================================================================================================================================================================
+
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
         {
             // todo
@@ -4744,7 +4746,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->bytes_sent += packet_bytes - 16;
             }
         }
-        */
+
+// ==================================================================================================================================================================================
+
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
         {
             // todo
