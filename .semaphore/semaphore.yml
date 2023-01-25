@@ -25,17 +25,24 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        - name: "Build Sodium"
+
+        - name: "Build Dependencies"
+
           commands:
 
             - checkout
-
             - cd ~/backend/libs/sodium
             - ./configure
             - make -j
             - sudo make -j install
             - sudo ldconfig
+            - cd ~/backend
+            - make -j ./dist/reference_relay ./dist/libnext4.so ./dist/libnext5.so
             - artifact push workflow /usr/local/lib/libsodium.so
+            - artifact push workflow ./dist/reference_relay
+            - artifact push workflow ./dist/libnext4.so
+            - artifact push workflow ./dist/libnext5.so
+
 
   - name: "Backend"
     dependencies: []
@@ -200,7 +207,7 @@ blocks:
 
   - name: "Build Artifacts (Native)"
 
-    dependencies: []
+    dependencies: ["Dependencies"]
 
     task:
 
@@ -229,14 +236,6 @@ blocks:
             - artifact pull workflow libnext5.so
             - make -j dist/raspberry_client.dev.tar.gz
             - artifact push workflow dist/raspberry_client.dev.tar.gz
-
-        - name: "Build Reference Relay"
-          commands:
-            - sudo apt-get install -y libsodium-dev
-            - cp envs/local.env .env
-            - mkdir dist
-            - make dist/reference_relay
-            - artifact push workflow ./dist/reference_relay
 
 
 promotions:
