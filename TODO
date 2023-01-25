@@ -60,9 +60,13 @@ DONE
 
 TODO
 
+	There is something wrong with the relay on AWS. Not sure what it is... but, maybe it's the bind to 0.0.0.0?
+
+	Adding more logs to see what's up...
+
 	-------------
 
-	There is something wrong with the relay on AWS. Not sure what it is... but, maybe it's the bind to 0.0.0.0?
+	Reference relay should have a version
 
 	-------------
 

@@ -555,14 +555,14 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
-
 		relayIndex := routeRelays[i]
-
 		relayId := state.RouteMatrix.RelayIds[relayIndex]
-
-		relay, _ := state.Database.RelayMap[relayId]
-
+		relay, relay_exists := state.Database.RelayMap[relayId]
+		if !relay_exists {
+			panic("relay does not exist?!")
+		}
 		relayAddresses[i] = &relay.PublicAddress
+		relayPublicKeys[i] = relay.PublicKey
 
 		// todo: disabled for now, need to fix and bring it back
 		/*
@@ -576,8 +576,6 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 			}
 		}
 		*/
-
-		relayPublicKeys[i] = relay.PublicKey
 	}
 
 	// server node
