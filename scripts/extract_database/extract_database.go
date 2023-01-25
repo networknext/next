@@ -432,7 +432,7 @@ func main() {
 		buyer.RouteShader.RTTVeto_PacketLoss = int32(route_shader_row.rtt_veto_packetloss)
 		buyer.RouteShader.MaxNextRTT = int32(route_shader_row.max_next_rtt)
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
-		buyer.RouteShader.RouteDiversity = route_shader_row.route_diversity
+		buyer.RouteShader.RouteDiversity = int32(route_shader_row.route_diversity)
 
 		database.BuyerMap[buyer.Id] = buyer
 
