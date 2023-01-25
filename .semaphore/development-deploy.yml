@@ -107,6 +107,7 @@ blocks:
           commands:
             - artifact pull workflow reference_relay
             - mv reference_relay relay
+            - chmod +x relay
             - export VERSION=`./relay version`
             - mv relay relay-$VERSION
             - gsutil cp relay-$VERSION gs://relay_artifacts/            
