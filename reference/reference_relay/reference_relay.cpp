@@ -4228,7 +4228,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         int packet_id = packet_data[0];
 
         // todo
-        printf( "received packet type %d\n", packet_id );
+        char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        relay_address_to_string( &from, from_string );
+        printf( "received packet type %d from %s\n", packet_id, from_string );
 
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
