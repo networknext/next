@@ -763,7 +763,12 @@ func generateRelayData(database *db.Database) *RelayData {
 	// determine which relays are dest relays for at least one buyer
 
 	relayData.DestRelays = make([]bool, numRelays)
+	for i := range relayData.DestRelays {
+		relayData.DestRelays[i] = true
+	}
 
+	// todo: we gotta fix this...
+	/*
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
 			for _, datacenter := range database.DatacenterMaps[buyer.Id] {
@@ -777,6 +782,7 @@ func generateRelayData(database *db.Database) *RelayData {
 			}
 		}
 	}
+	*/
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 

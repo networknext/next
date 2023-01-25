@@ -4227,6 +4227,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
         int packet_id = packet_data[0];
 
+        // todo
+        printf( "received packet type %d\n", packet_id );
+
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
             packet_data[0] = RELAY_PONG_PACKET;
@@ -4776,6 +4779,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
+            	// todo
+            	printf( "received route request packet [sdk5]\n" );
+
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
                     relay_printf( "ignoring route request. bad packet size (%d) [sdk5]", packet_bytes );
@@ -5712,6 +5718,8 @@ int main( int argc, const char ** argv )
             }
         }
 
+        // todo: disable expire sessions for the moment
+        /*
         relay_platform_mutex_acquire( relay.mutex );
         std::map<uint64_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
@@ -5729,6 +5737,7 @@ int main( int argc, const char ** argv )
             }
         }
         relay_platform_mutex_release( relay.mutex );
+        */
 
         relay_platform_sleep( 1.0 );
     }

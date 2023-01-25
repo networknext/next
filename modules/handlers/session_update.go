@@ -564,6 +564,8 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 		relayAddresses[i] = &relay.PublicAddress
 
+		// todo: disabled for now, need to fix and bring it back
+		/*
 		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
@@ -573,6 +575,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 				relayAddresses[i] = &relay.InternalAddress
 			}
 		}
+		*/
 
 		relayPublicKeys[i] = relay.PublicKey
 	}
@@ -1100,7 +1103,9 @@ func sendPortalMessage(state *SessionUpdateState) {
 		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
 		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
-		message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
+
+		// todo: this appears to be incorrect
+		// message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
 	}
 
 	if state.PortalMessageChannel != nil {

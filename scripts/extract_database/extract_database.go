@@ -481,6 +481,10 @@ func main() {
 		relay.SSHAddress = ParseAddress(row.ssh_ip)
 		relay.SSHUser = row.ssh_user
 
+		// todo: if SSH address is not specified, set it to public address by default
+
+		// todo: if internal address is not specified, make sure it is set to some consistent value that I can check, eg. hasInternalAddress
+
 		relay.PublicKey, err = base64.StdEncoding.DecodeString(row.public_key_base64)
 		if err != nil {
 			fmt.Printf("error: could not decode public key base64 for relay %s: %v\n", relay.Name, err)
