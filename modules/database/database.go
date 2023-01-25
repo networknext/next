@@ -43,7 +43,7 @@ type Seller struct {
 type Datacenter struct {
 	Id        uint64
 	Name      string
-	Latitude  float32 // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
+	Latitude  float32
 	Longitude float32
 }
 

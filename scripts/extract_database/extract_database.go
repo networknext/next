@@ -332,6 +332,13 @@ func main() {
     	customerIndex[row.id] = row
     }
 
+    // index sellers by postgres id
+
+    sellerIndex := make(map[uint64]SellerRow)
+    for _, row := range sellerRows {
+    	sellerIndex[row.id] = row
+    }
+
     // build database
 
     fmt.Printf("\nbuilding network next database...\n\n")
@@ -388,7 +395,30 @@ func main() {
 		fmt.Printf("buyer %d: %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Id, buyer.Live, buyer.Debug)
  	}
 
- 	// todo: datacenters
+	for i, row := range datacenterRows {
+
+		datacenter := db.Datacenter{}
+
+		datacenter.Id = common.DatacenterId(row.name)
+		datacenter.Name = row.name
+		datacenter.Latitude = row.latitude
+		datacenter.Longitude = row.longitude
+
+		seller_row, seller_exists := sellerIndex[row.seller_id]
+		if !seller_exists {
+			fmt.Printf("error: datacenter %s doesn't have a seller?!\n", datacenter.Name)
+			os.Exit(1)
+		}
+
+		if !strings.Contains(datacenter.Name, seller_row.name) {
+			fmt.Printf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.name)
+			os.Exit(1)
+		}
+
+		database.DatacenterMap[datacenter.Id] = datacenter
+
+		fmt.Printf("datacenter %d: %s [%x] (%.1f,%.1f)\n", i, datacenter.Name, datacenter.Id, datacenter.Latitude, datacenter.Longitude)
+    }
 
 	for i, row := range relayRows {		
 
@@ -432,31 +462,35 @@ func main() {
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter]
 		if !datacenter_exists {
-			fmt.Printf("error: datacenter index %d doesn't exist for relay %s\n", row.name)
+			fmt.Printf("error: relay %s doesn't have a datacenter?!\n", relay.Name)
 			os.Exit(1)
 		}
 
 		relay.DatacenterId = common.DatacenterId(datacenter_row.name)
 
 		if !strings.Contains(relay.Name, datacenter_row.name) {
-			fmt.Printf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
+			fmt.Printf("error: relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
 			os.Exit(1)
 		}
+
+		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
+		if relay.Datacenter.Id != relay.DatacenterId {
+			fmt.Printf("error: relay '%s' has a bad datacenter?!\n", relay.Name)
+			os.Exit(1)
+		}
+
+		seller_row, seller_exists := sellerIndex[datacenter_row.seller_id]
+		if !seller_exists {
+			fmt.Printf("error: relay %s doesn't have a seller?!\n", relay.Name)
+			os.Exit(1)
+		}
+
+		relay.Seller = database.SellerMap[seller_row.name]
 
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
 
 		database.RelayMap[relay.Id] = *relay
 	}
-
-	// link
-
-	// ...
-
-	// todo
-	/*
-	Seller          Seller
-	Datacenter      Datacenter
-	*/
 
 	// print database
 

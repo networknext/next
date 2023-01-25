@@ -16,22 +16,27 @@ DONE
 
 	Print out the database struct to verify.
 
-TODO
-
-	Now transform the rows into real database and core structs...
-
-	-------------
-
-
-	-------------
-
 	Generate a database.bin file.
 
+	Link relays to datacenter objects
+
+	Link relays ot seller objects
+
+TODO
+
+	Read route shader in to the buyer
+
+	Read in datacenter maps
+
 	-------------
 
-	Deploy the manually fixed database.bin to dev.
+	Fix all the code to compile and work with new route shader only (no internal data), and with changes to database objects
 
-	We should now have working relays and raspberry pi's...
+	-------------
+
+	Deploy the manually fixed database.bin to dev
+
+	We should now have working relays and raspberry pi's!
 
 	-------------
 
