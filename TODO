@@ -83,6 +83,12 @@ TODO
 
 		https://pkg.go.dev/sync
 
+	----------------
+
+	Build artifacts really belongs in the main build step, only publish artifacts should be done in the deploy.
+
+	----------------
+
 
 
 

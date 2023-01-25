@@ -5572,7 +5572,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 int main( int argc, const char ** argv )
 {
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-        printf( "reference-1.0\n" );
+        printf( "reference\n" );
         fflush( stdout );
         exit(0);
     }
@@ -5685,7 +5685,20 @@ int main( int argc, const char ** argv )
         printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
 
-    relay_platform_socket_t * socket = relay_platform_socket_create( &relay_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
+    // IMPORTANT: Bind to 127.0.0.1 if specified, otherwise bind to 0.0.0.0
+    relay_address_t bind_address;
+    if ( relay_address.data.ipv4[0] == 127 && relay_address.data.ipv4[1] == 0 && relay_address.data.ipv4[2] == 0 && relay_address.data.ipv4[3] == 1 )
+    {
+        printf( "\nBinding to 127.0.0.1:%d\n", relay_address.port );
+        bind_address = relay_address;
+    }
+    else
+    {
+        bind_address = relay_address;
+        printf( "\nBinding to 0.0.0.0:%d\n", relay_address.port );
+    }
+
+    relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
     if ( socket == NULL )
     {
         printf( "\ncould not create socket\n\n" );
@@ -5693,11 +5706,13 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    relay_address.port = bind_address.port;
+
     printf( "\nRelay socket opened on port %d\n\n", relay_address.port );
 
     char relay_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_address, relay_address_buffer );
-    printf( "Relay address is '%s'\n\n", relay_address_buffer );
+    printf( "Relay address is '%s'\n", relay_address_buffer );
 
     fflush( stdout );
 
