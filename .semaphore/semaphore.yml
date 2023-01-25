@@ -90,7 +90,6 @@ blocks:
             - make dist/test5
             - ./run test-sdk5
 
-blocks:
 
   - name: "Build Artifacts (Scripts)"
 
