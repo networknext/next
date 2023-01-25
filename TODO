@@ -1,107 +1,13 @@
 DONE
 
-	Learn SQL
+TODO
 
-	Remove cruft and clean up the database schema.
+	Fix this on server backend 5:
 
-	Write code to create the SQL database locally.
-
-	Write code to destry the SQL database locally.
-
-	Fill the SQL database with the dev environment data I need.
-
-	Read in all the rows for each table and print out
-
-	Transform rows in table to arrays of row structs in golang, then print out the row structs at the end.
-
-	Print out the database struct to verify.
-
-	Generate a database.bin file.
-
-	Link relays to datacenter objects
-
-	Link relays to seller objects
-
-	Read route shader in to the buyer
-
-	Read in datacenter maps
-
-	Make sure everything builds
-
-	Fix unit tests
-
-	Build a working local database.bin via local.sql
-
-	Save the local.bin somewhere (envs?) and copy it when we select "next local"
-
-	Remove all the old database crap from the next tool...
-
-	Verify that happy path passes
-
-	Right now it looks like we can't find any next routes.
-
-	Not sure what is going on here, problem with relay configuration? route matrix? bad database in route matrix?
-
-	See this in the server backend:
-
-		[2023-01-24 23:34:39] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:40] updated route matrix: 10 relays
-		[2023-01-24 23:34:40] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:41] updated route matrix: 10 relays
-		[2023-01-24 23:34:41] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:42] updated route matrix: 10 relays
-		[2023-01-24 23:34:42] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:43] updated route matrix: 10 relays
-		[2023-01-24 23:34:43] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:44] updated route matrix: 10 relays
-		[2023-01-24 23:34:44] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:45] updated route matrix: 10 relays
-		[2023-01-24 23:34:45] error: unknown buyer id: bdbebdbf0f7be395
-		[2023-01-24 23:34:46] updated route matrix: 10 relays
-		[2023-01-24 23:34:46] error: unknown buyer id: bdbebdbf0f7be395
 		[2023-01-24 23:34:47] updated route matrix: 10 relays
 		[2023-01-24 23:34:47] error: unknown buyer id: bdbebdbf0f7be395
 		[2023-01-24 23:34:48] updated route matrix: 10 relays
 		[2023-01-24 23:34:48] error: unknown buyer id: bdbebdbf0f7be395
-
-	Fixed by marking all dest relays as enabled, temporarily...
-
-	Now I see:
-
-		100010.478887: info: client multipath enabled
-		100010.478913: debug: client sent route update ack packet to server
-		100010.478969: debug: client sent route request to relay: 127.0.0.1:2001
-		100010.743079: debug: client sent route request to relay: 127.0.0.1:2001
-		100011.000738: debug: client sent route request to relay: 127.0.0.1:2001
-		100011.260109: debug: client sent route request to relay: 127.0.0.1:2001
-		100011.522360: debug: client sent route request to relay: 127.0.0.1:2001
-		100011.782711: debug: client sent route request to relay: 127.0.0.1:2001
-		100012.052581: debug: client sent route request to relay: 127.0.0.1:2001
-		100012.308142: debug: client sent route request to relay: 127.0.0.1:2001
-		100012.567987: debug: client sent route request to relay: 127.0.0.1:2001
-		100012.825407: debug: client sent route request to relay: 127.0.0.1:2001
-		100013.080874: debug: client sent route request to relay: 127.0.0.1:2001
-		100013.336841: debug: client sent route request to relay: 127.0.0.1:2001
-		100013.595628: debug: client sent route request to relay: 127.0.0.1:2001
-		100013.857622: debug: client sent route request to relay: 127.0.0.1:2001
-		100014.124531: debug: client sent route request to relay: 127.0.0.1:2001
-		100014.390405: debug: client sent route request to relay: 127.0.0.1:2001
-		100014.645296: debug: client sent route request to relay: 127.0.0.1:2001
-		100014.912366: debug: client sent route request to relay: 127.0.0.1:2001
-		100015.171617: debug: client sent route request to relay: 127.0.0.1:2001
-		100015.424498: debug: client sent route request to relay: 127.0.0.1:2001
-		100015.480391: error: client route request timed out
-		100015.480426: info: client fallback to direct
-
-	What's interesting is that I don't see any negative logs on the relays.
-
-	What's going on here?
-
-	Suspect, broken internal address functionality with new database.
-
-	Most likely, the null internal address is no longer ":0" and we are sending udp packets to 0.0.0.0...
-
-TODO
 
 	-------------
 

@@ -226,8 +226,6 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 		core.Log("we are no longer the leader")
 	}
 
-	core.Debug("master instance: %+v", masterInstance)
-
 	// get data from master instance
 
 	pipe = leaderElection.redisClient.Pipeline()
