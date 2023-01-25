@@ -16,6 +16,8 @@ global_job_config:
       - checkout
       - cp envs/local.env .env
 
+blocks:
+
   - name: "Publish Artifacts"
 
     dependencies: ["Build Artifacts (Scripts)", "Build Artifacts (Golang)", "Build Artifacts (Native)"]
