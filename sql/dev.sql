@@ -509,7 +509,7 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter)
 VALUES(
-	'google.oregon.1',
+	'google.oregon.2',
 	'34.168.209.101',
 	'fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38=',
 	'Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=',
@@ -769,7 +769,7 @@ VALUES(
 	'149.28.197.73',
 	'pbyRbBQA94+qyIJhJaQ8ZRiIfDgzrL4ucfb+Z/NUni8=',
 	'U6zE8ysmZ57jUWRUs/MtC4BV25GlJK/xr1ABWLnxumg=',
-	(select id from datacenters where display_name = 'vultr.seattle')
+	(select id from datacenters where display_name = 'vultr.siliconvalley')
 );
 
 -- route shader for raspberry

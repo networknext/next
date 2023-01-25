@@ -28,30 +28,28 @@ type Relay struct {
 }
 
 type Buyer struct {
-	ID             uint64
+	Id             uint64
+	Name           string
 	Live           bool
 	Debug          bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader
-	InternalConfig core.InternalConfig
 }
 
 type Seller struct {
-	ID   string
 	Name string
 }
 
 type Datacenter struct {
-	ID        uint64
+	Id        uint64
 	Name      string
 	Latitude  float32 // todo: need to put in Latitude and Longitude fields in BinWrapper struct to make this work
 	Longitude float32
 }
 
-// todo: what's really going on here? It's a per-buyer, per-datacenter struct? or something?
 type DatacenterMap struct {
-	BuyerID            uint64
-	DatacenterID       uint64
+	BuyerId            uint64
+	DatacenterId       uint64
 	EnableAcceleration bool
 }
 
@@ -63,7 +61,7 @@ type Database struct {
 	BuyerMap       map[uint64]Buyer
 	SellerMap      map[string]Seller
 	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap // todo: this is really just a map from (buyerId,datacenterId) -> true/false for enabling a datacenter. surely there is a better way to express this
+	DatacenterMaps map[uint64]map[uint64]DatacenterMap
 	//                   ^ BuyerId  ^ DatacenterId
 }
 

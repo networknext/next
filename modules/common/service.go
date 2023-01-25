@@ -741,7 +741,7 @@ func generateRelayData(database *db.Database) *RelayData {
 		relayData.RelayNames[i] = relayData.RelayArray[i].Name
 		relayData.RelayLatitudes[i] = float32(relayData.RelayArray[i].Datacenter.Latitude)
 		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)
-		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.ID
+		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.Id
 	}
 
 	// build a mapping from relay id to relay index
@@ -764,6 +764,8 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	relayData.DestRelays = make([]bool, numRelays)
 
+	// todo: bring this back once the database update is finished
+	/*
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
 			for _, datacenter := range database.DatacenterMaps[buyer.ID] {
@@ -774,6 +776,7 @@ func generateRelayData(database *db.Database) *RelayData {
 			}
 		}
 	}
+	*/
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 
@@ -789,9 +792,9 @@ func generateRelayData(database *db.Database) *RelayData {
 func applyOverlay(database *db.Database, overlay *db.Overlay) {
 	if overlay != nil {
 		for _, buyer := range overlay.BuyerMap {
-			_, ok := database.BuyerMap[buyer.ID]
+			_, ok := database.BuyerMap[buyer.Id]
 			if !ok {
-				database.BuyerMap[buyer.ID] = buyer
+				database.BuyerMap[buyer.Id] = buyer
 			}
 		}
 	}

@@ -7,7 +7,9 @@ import (
 	"net"
 	"time"
 	"strconv"
+	"strings"
 	"encoding/base64"
+	"encoding/binary"
 
 	_ "github.com/lib/pq"
 
@@ -316,13 +318,23 @@ func main() {
         fmt.Printf("(%d,%d): %v\n", row.buyer_id, row.datacenter_id, row.enable_acceleration)
     }
 
-    // index rows by ids
+    // index datacenters by postgres id
 
-    // ...
+    datacenterIndex := make(map[uint64]DatacenterRow)
+    for _, row := range datacenterRows {
+    	datacenterIndex[row.id] = row
+    }
+
+    // index customers by postgres id
+
+    customerIndex := make(map[uint64]CustomerRow)
+    for _, row := range customerRows {
+    	customerIndex[row.id] = row
+    }
 
     // build database
 
-    fmt.Printf("\nbuilding network next database...\n")
+    fmt.Printf("\nbuilding network next database...\n\n")
 
 	database := db.CreateDatabase()
 
@@ -331,17 +343,54 @@ func main() {
 
 	database.Relays = make([]db.Relay, len(relayRows))
 
-	// todo: customers
+	for i, row := range sellerRows {
 
-	// todo: sellers
+		seller := db.Seller{}
 
-	// todo: buyers
+		seller.Name = row.name
 
-	// todo: datacenters
+		database.SellerMap[seller.Name] = seller
+
+		fmt.Printf("seller %d: %s\n", i, seller.Name)
+ 	}
+
+	for i, row := range buyerRows {
+
+		buyer := db.Buyer{}
+
+		buyer.Name = row.name
+
+		data, err := base64.StdEncoding.DecodeString(row.public_key_base64)
+		if err != nil {
+			fmt.Printf("error: could not decode public key base64 for buyer %s: %v\n", buyer.Name, err)
+			os.Exit(1)
+		}
+
+		if len(data) != 40 {
+			fmt.Printf("error: buyer public key data must be 40 bytes\n")
+			os.Exit(1)
+		}
+
+		buyer.Id = binary.LittleEndian.Uint64(data[:8])
+		buyer.PublicKey = data[8:40]
+
+		customer_row, customer_exists := customerIndex[row.customer_id]
+		if !customer_exists {
+			fmt.Printf("error: customer %d does not exist?!\n")
+			os.Exit(1)
+		}
+
+		buyer.Live = customer_row.live
+		buyer.Debug = customer_row.debug
+
+		database.BuyerMap[buyer.Id] = buyer
+
+		fmt.Printf("buyer %d: %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Id, buyer.Live, buyer.Debug)
+ 	}
+
+ 	// todo: datacenters
 
 	for i, row := range relayRows {		
-
-		fmt.Printf("relay %d\n", i)
 
 		relay := &database.Relays[i]
 
@@ -381,19 +430,37 @@ func main() {
 		relay.PortSpeed = row.port_speed
 		relay.Version = row.version.String
 
-		// todo
-		/*
-		Seller          Seller
-		Datacenter      Datacenter
-		*/
+		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter]
+		if !datacenter_exists {
+			fmt.Printf("error: datacenter index %d doesn't exist for relay %s\n", row.name)
+			os.Exit(1)
+		}
 
-		// todo: need to get datacenter by postgresql id, then get datacenter name of the datacenter, and hash it fnv1a 64bit -> datacenter id
-		// relay.DatacenterId = (hash datacenter name)
+		relay.DatacenterId = common.DatacenterId(datacenter_row.name)
+
+		if !strings.Contains(relay.Name, datacenter_row.name) {
+			fmt.Printf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
+			os.Exit(1)
+		}
+
+		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
+
+		database.RelayMap[relay.Id] = *relay
 	}
+
+	// link
+
+	// ...
+
+	// todo
+	/*
+	Seller          Seller
+	Datacenter      Datacenter
+	*/
 
 	// print database
 
-	fmt.Printf("\ndatabase:\n%+v\n", database)
+	// fmt.Printf("\ndatabase:\n%+v\n", database)
 
 	database.Save("database.bin")
 }

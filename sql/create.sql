@@ -105,3 +105,5 @@ CREATE TABLE relays (
   primary key (id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id)
 );
+
+CREATE UNIQUE INDEX unique_public_ip_and_port ON relays(public_ip, public_port)
