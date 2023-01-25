@@ -2,11 +2,14 @@ DONE
 
 	Build artifacts really belongs in the main build step, only publish artifacts should be done in the deploy.
 
-TODO
-
 	Make func tests a promotion
 
 	Make happy path a promotion
+
+	Split up functional tests so we can selectively run them as needed
+
+TODO
+
 	
 
 

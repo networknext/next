@@ -235,8 +235,14 @@ promotions:
   - name: "Development Deployment"
     pipeline_file: development-deploy.yml
 
-  - name: "Functional Tests"
-    pipeline_file: functional-tests.yml
+  - name: "Functional Tests (Backend)"
+    pipeline_file: functional-tests-backend.yml
+
+  - name: "Functional Tests (SDK4)"
+    pipeline_file: functional-tests-sdk4.yml
+
+  - name: "Functional Tests (SDK5)"
+    pipeline_file: functional-tests-sdk5.yml
 
   - name: "Happy Path"
     pipeline_file: happy-path.yml
