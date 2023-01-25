@@ -103,16 +103,6 @@ blocks:
             - artifact pull workflow libsodium.so
             - gsutil cp libsodium.so gs://development_artifacts/libsodium.so
 
-        - name: "SDK4"
-          commands:
-            - artifact pull workflow libnext4.so
-            - gsutil cp libnext4.so gs://development_artifacts/libnext4.so
-
-        - name: "SDK5"
-          commands:
-            - artifact pull workflow libnext5.so
-            - gsutil cp libnext5.so gs://development_artifacts/libnext5.so
-
         - name: "Reference Relay"
           commands:
             - artifact pull workflow reference_relay
