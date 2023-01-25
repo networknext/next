@@ -1,7 +1,5 @@
 DONE
 
-TODO
-
 	Fix this on server backend 5:
 
 		[2023-01-24 23:34:47] updated route matrix: 10 relays
@@ -9,9 +7,9 @@ TODO
 		[2023-01-24 23:34:48] updated route matrix: 10 relays
 		[2023-01-24 23:34:48] error: unknown buyer id: bdbebdbf0f7be395
 
-	-------------
+	Feels like there is something desyncing the database.bin...
 
-	Make sure that func tests pass
+TODO
 
 	Deploy the manually fixed database.bin to dev
 

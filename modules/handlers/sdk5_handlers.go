@@ -261,14 +261,6 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
 		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
-
-		// todo
-		fmt.Printf("------------------------\n")
-		for k, _ := range handler.Database.BuyerMap {
-			fmt.Printf("%x\n", k)
-		}
-		fmt.Printf("------------------------\n")
-
 		responsePacket.Response = packets.SDK5_ServerInitResponseUnknownBuyer
 		handler.Events[SDK5_HandlerEvent_UnknownBuyer] = true
 	}
