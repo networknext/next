@@ -39,13 +39,10 @@ blocks:
             - make clean
             - make func-test-sdk5
 
-            - mv dist/reference_relay dist/reference_relay5
             - artifact push workflow dist/func_client5
             - artifact push workflow dist/func_server5
             - artifact push workflow dist/func_backend5
             - artifact push workflow dist/func_tests_sdk5
-            - artifact push workflow dist/reference_relay5
-            - artifact push workflow dist/libnext5.so
 
 
   - name: "Run Functional Tests (sdk5) - A"
@@ -70,7 +67,7 @@ blocks:
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
             - artifact pull workflow func_tests_sdk5
-            - artifact pull workflow reference_relay5
+            - artifact pull workflow reference_relay
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
 
@@ -78,15 +75,11 @@ blocks:
             - chmod +x func_server5
             - chmod +x func_backend5
             - chmod +x func_tests_sdk5
-            - chmod +x reference_relay5
-            - chmod +x libnext5.so
-            - chmod +x libsodium.so
+            - chmod +x reference_relay
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
-
-            - mv reference_relay5 reference_relay
 
             - cd ~
 
@@ -315,7 +308,7 @@ blocks:
             - artifact pull workflow func_server5
             - artifact pull workflow func_backend5
             - artifact pull workflow func_tests_sdk5
-            - artifact pull workflow reference_relay5
+            - artifact pull workflow reference_relay
             - artifact pull workflow libnext5.so
             - artifact pull workflow libsodium.so
 
@@ -323,9 +316,7 @@ blocks:
             - chmod +x func_server5
             - chmod +x func_backend5
             - chmod +x func_tests_sdk5
-            - chmod +x reference_relay5
-            - chmod +x libnext5.so
-            - chmod +x libsodium.so
+            - chmod +x reference_relay
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib

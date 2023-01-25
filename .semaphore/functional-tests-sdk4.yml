@@ -39,13 +39,10 @@ blocks:
             - make clean
             - make func-test-sdk4
 
-            - mv dist/reference_relay dist/reference_relay4
             - artifact push workflow dist/func_client4
             - artifact push workflow dist/func_server4
             - artifact push workflow dist/func_backend4
             - artifact push workflow dist/func_tests_sdk4
-            - artifact push workflow dist/reference_relay4
-            - artifact push workflow dist/libnext4.so
 
 
   - name: "Run Functional Tests (sdk4)"
@@ -67,7 +64,7 @@ blocks:
             - artifact pull workflow func_server4
             - artifact pull workflow func_backend4
             - artifact pull workflow func_tests_sdk4
-            - artifact pull workflow reference_relay4
+            - artifact pull workflow reference_relay
             - artifact pull workflow libnext4.so
             - artifact pull workflow libsodium.so
 
@@ -75,15 +72,11 @@ blocks:
             - chmod +x func_server4
             - chmod +x func_backend4
             - chmod +x func_tests_sdk4
-            - chmod +x reference_relay4
-            - chmod +x libnext4.so
-            - chmod +x libsodium.so
+            - chmod +x reference_relay
 
             - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo ldconfig
-
-            - mv reference_relay4 reference_relay
 
             - cd ~
 
