@@ -99,15 +99,6 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 		NumRoutable:              rand.Uint32(),
 		NumUnroutable:            rand.Uint32(),
 		Full:                     common.RandomBool(),
-		CPUUsage:                 rand.Float32(),
-		BandwidthSentPercent:     rand.Float32(),
-		BandwidthReceivedPercent: rand.Float32(),
-		EnvelopeSentPercent:      rand.Float32(),
-		EnvelopeReceivedPercent:  rand.Float32(),
-		BandwidthSentMbps:        rand.Float32(),
-		BandwidthReceivedMbps:    rand.Float32(),
-		EnvelopeSentMbps:         rand.Float32(),
-		EnvelopeReceivedMbps:     rand.Float32(),
 	}
 
 	return message

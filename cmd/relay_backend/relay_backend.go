@@ -375,7 +375,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					break
 				}
 
-				// build relay stats
+				// build ping stats message
 
 				numRoutable := 0
 
@@ -385,6 +385,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				sampleJitter := make([]float32, numSamples)
 				samplePacketLoss := make([]float32, numSamples)
 				sampleRoutable := make([]bool, numSamples)
+				
 				for i := 0; i < numSamples; i++ {
 
 					rtt := relayUpdateRequest.SampleRTT[i]
@@ -417,35 +418,11 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					}
 				}
 
+				// build relay stats message
+
 				numUnroutable := numSamples - numRoutable
-
-				// todo: we don't have this anymore
-				/*
-				bwSentPercent := float32(0)
-				bwRecvPercent := float32(0)
-
-				if relayData.RelayArray[relayIndex].NICSpeedMbps > 0 {
-					bwSentPercent = float32(relayUpdateRequest.BandwidthSentKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
-					bwRecvPercent = float32(relayUpdateRequest.BandwidthRecvKbps/uint64(relayData.RelayArray[relayIndex].NICSpeedMbps)) * 100.0
-				}
-				*/
-
-				envSentPercent := float32(0)
-				envRecvPercent := float32(0)
-
-				if relayUpdateRequest.EnvelopeUpKbps > 0 {
-					envSentPercent = float32(relayUpdateRequest.BandwidthSentKbps/relayUpdateRequest.EnvelopeUpKbps) * 100.0
-				}
-
-				if relayUpdateRequest.EnvelopeUpKbps > 0 {
-					envRecvPercent = float32(relayUpdateRequest.BandwidthRecvKbps/relayUpdateRequest.EnvelopeDownKbps) * 100.0
-				}
-
-				cpuUsage := relayUpdateRequest.CPU
-
 				maxSessions := relayData.RelayArray[relayIndex].MaxSessions
 				numSessions := relayUpdateRequest.SessionCount
-
 				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
 
 				relayStatsMessage := messages.RelayStatsMessage{
@@ -456,18 +433,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					NumRoutable:              uint32(numRoutable),
 					NumUnroutable:            uint32(numUnroutable),
 					Full:                     full,
-					CPUUsage:                 float32(cpuUsage),
-					// todo: we don't have this
-					/*
-					BandwidthSentPercent:     bwSentPercent,
-					BandwidthReceivedPercent: bwRecvPercent,
-					*/
-					EnvelopeSentPercent:      envSentPercent,
-					EnvelopeReceivedPercent:  envRecvPercent,
-					BandwidthSentMbps:        float32(relayUpdateRequest.BandwidthSentKbps),
-					BandwidthReceivedMbps:    float32(relayUpdateRequest.BandwidthRecvKbps),
-					EnvelopeSentMbps:         float32(relayUpdateRequest.EnvelopeUpKbps),
-					EnvelopeReceivedMbps:     float32(relayUpdateRequest.EnvelopeDownKbps),
 				}
 
 				// update relay stats

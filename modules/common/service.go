@@ -764,19 +764,19 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	relayData.DestRelays = make([]bool, numRelays)
 
-	// todo: bring this back once the database update is finished
-	/*
-		for _, buyer := range database.BuyerMap {
-			if buyer.Live {
-				for _, datacenter := range database.DatacenterMaps[buyer.ID] {
-					datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterID]
-					for j := 0; j < len(datacenterRelays); j++ {
-						relayData.DestRelays[datacenterRelays[j]] = true
-					}
+	for _, buyer := range database.BuyerMap {
+		if buyer.Live {
+			for _, datacenter := range database.DatacenterMaps[buyer.Id] {
+				if !datacenter.EnableAcceleration {
+					continue
+				}
+				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterId]
+				for j := 0; j < len(datacenterRelays); j++ {
+					relayData.DestRelays[datacenterRelays[j]] = true
 				}
 			}
 		}
-	*/
+	}
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 
@@ -1078,6 +1078,10 @@ func (service *Service) UseLooker() {
 	service.lookerHandler = lookerHandler
 }
 
+// todo: this is so incredibly specific to the website service. it belongs there, not here
+// service.go is only for things that are proven out and are useful across multiple services
+// for example, the ability to easily talk to looker with standard env vars is good in here
+// but specific queries like below to support only the website cruncher are not. -- glenn
 func (service *Service) FetchWebsiteStats() (LookerStats, error) {
 	return service.lookerHandler.RunWebsiteStatsQuery()
 }

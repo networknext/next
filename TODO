@@ -22,17 +22,31 @@ DONE
 
 	Link relays to seller objects
 
-TODO
-
 	Read route shader in to the buyer
 
 	Read in datacenter maps
 
+	Make sure everything builds
+
+	Fix unit tests
+
+	Build a working local database.bin via local.sql
+
+	Save the local.bin somewhere (envs?) and copy it when we select "next local"
+
+	Remove all the old database crap from the next tool...
+
+TODO
+
+	Verify that happy path passes
+
+	Right now it looks like we can't find any next routes.
+
+	Not sure what is going on here, problem with relay configuration? route matrix? bad database in route matrix?
+
 	-------------
 
-	Fix all the code to compile and work with new route shader only (no internal data), and with changes to database objects
-
-	-------------
+	Make sure that func tests pass
 
 	Deploy the manually fixed database.bin to dev
 
@@ -320,5 +334,9 @@ Nice to have:
 	Investigate how the expire timestamp was used, calculated and if it was even doing anything...
 
 	Also investigate relay concept of time in reference vs. real relay
+
+	--------------
+
+	Relay stats message needs to be revisited. Make sure it doesn't have old crap in it
 
 	--------------

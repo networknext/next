@@ -8,9 +8,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-
-	// todo: we want to remove this
-	"github.com/networknext/backend/modules-old/analytics"
 )
 
 const (
@@ -121,78 +118,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	if m.Version >= 3 && m.Version < 7 {
-
-		numRelayEntries := uint32(0)
-
-		stream.SerializeUint32(&numRelayEntries)
-
-		// todo: we don't want to use the old "analytics" module here
-
-		var relayStats []analytics.RelayStatsEntry
-
-		if stream.IsReading() {
-			relayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
-		}
-
-		for i := uint32(0); i < numRelayEntries; i++ {
-
-			entry := &relayStats[i]
-
-			stream.SerializeUint64(&entry.Timestamp)
-			stream.SerializeUint64(&entry.ID)
-			stream.SerializeUint32(&entry.NumSessions)
-			stream.SerializeUint32(&entry.MaxSessions)
-			stream.SerializeUint32(&entry.NumRoutable)
-			stream.SerializeUint32(&entry.NumUnroutable)
-
-			if m.Version >= 4 {
-				stream.SerializeBool(&entry.Full)
-			}
-
-			if m.Version >= 5 {
-				stream.SerializeFloat32(&entry.CPUUsage)
-
-				stream.SerializeFloat32(&entry.BandwidthSentPercent)
-				stream.SerializeFloat32(&entry.BandwidthReceivedPercent)
-
-				stream.SerializeFloat32(&entry.EnvelopeSentPercent)
-				stream.SerializeFloat32(&entry.EnvelopeReceivedPercent)
-
-				stream.SerializeFloat32(&entry.BandwidthSentMbps)
-				stream.SerializeFloat32(&entry.BandwidthReceivedMbps)
-
-				stream.SerializeFloat32(&entry.EnvelopeSentMbps)
-				stream.SerializeFloat32(&entry.EnvelopeReceivedMbps)
-			}
-		}
-
-		numPingEntries := uint32(0)
-
-		stream.SerializeUint32(&numPingEntries)
-
-		var pingStats []analytics.PingStatsEntry
-
-		if stream.IsReading() {
-			pingStats = make([]analytics.PingStatsEntry, numPingEntries)
-		}
-
-		for i := uint32(0); i < numPingEntries; i++ {
-
-			entry := &pingStats[i]
-
-			stream.SerializeUint64(&entry.Timestamp)
-			stream.SerializeUint64(&entry.RelayA)
-			stream.SerializeUint64(&entry.RelayB)
-			stream.SerializeFloat32(&entry.RTT)
-			stream.SerializeFloat32(&entry.Jitter)
-			stream.SerializeFloat32(&entry.PacketLoss)
-			stream.SerializeBool(&entry.Routable)
-			stream.SerializeString(&entry.InstanceID, 64)
-			stream.SerializeBool(&entry.Debug)
-		}
-	}
-
 	if m.Version >= 4 {
 
 		numFullRelayIds := uint32(len(m.FullRelayIds))
@@ -209,51 +134,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			if stream.IsReading() {
 				relayIndex, _ := m.RelayIdToIndex[m.FullRelayIds[i]]
 				m.FullRelayIndexSet[relayIndex] = true
-			}
-		}
-	}
-
-	if m.Version == 6 {
-
-		// dummy vars because we don't support this feature anymore
-		var InternalAddressClientRoutableRelayIDs []uint64
-		var InternalAddressClientRoutableRelayAddresses []net.UDPAddr // internal IPs only
-		var InternalAddressClientRoutableRelayAddrMap map[uint64]net.UDPAddr
-		var DestFirstRelayIDs []uint64
-		var DestFirstRelayIDsSet map[uint64]bool
-
-		numInternalAddressClientRoutableRelayIDs := uint32(len(InternalAddressClientRoutableRelayIDs))
-		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)
-
-		if stream.IsReading() {
-			InternalAddressClientRoutableRelayIDs = make([]uint64, numInternalAddressClientRoutableRelayIDs)
-			InternalAddressClientRoutableRelayAddresses = make([]net.UDPAddr, numInternalAddressClientRoutableRelayIDs)
-			InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
-		}
-
-		for i := uint32(0); i < numInternalAddressClientRoutableRelayIDs; i++ {
-			stream.SerializeUint64(&InternalAddressClientRoutableRelayIDs[i])
-			stream.SerializeAddress(&InternalAddressClientRoutableRelayAddresses[i])
-
-			if stream.IsReading() {
-				InternalAddressClientRoutableRelayAddrMap[InternalAddressClientRoutableRelayIDs[i]] = InternalAddressClientRoutableRelayAddresses[i]
-			}
-		}
-
-		numDestFirstRelayIDs := uint32(len(DestFirstRelayIDs))
-
-		stream.SerializeUint32(&numDestFirstRelayIDs)
-
-		if stream.IsReading() {
-			DestFirstRelayIDs = make([]uint64, numDestFirstRelayIDs)
-			DestFirstRelayIDsSet = make(map[uint64]bool)
-		}
-
-		for i := uint32(0); i < numDestFirstRelayIDs; i++ {
-			stream.SerializeUint64(&DestFirstRelayIDs[i])
-
-			if stream.IsReading() {
-				DestFirstRelayIDsSet[DestFirstRelayIDs[i]] = true
 			}
 		}
 	}

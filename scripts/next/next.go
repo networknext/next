@@ -529,12 +529,8 @@ func main() {
 			env.Write()
 
 			if args[0] == "local" {
-				// Set up everything needed to run the database.bin generator
-				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
-				os.Setenv("FEATURE_POSTGRESQL", "false")
-				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
-				os.Setenv("NEXT_CUSTOMER_PUBLIC_KEY", "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
-				getLocalDatabaseBin()
+
+				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
 
 				// Start redis server if it isn't already
 				runnable := exec.Command("ps", "aux")

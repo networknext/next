@@ -310,7 +310,7 @@ func main() {
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %d, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
+		fmt.Printf("%d: %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
 	}
 
 	fmt.Printf("\ndatacenter maps:\n")
@@ -579,4 +579,14 @@ func main() {
 	// print database
 
 	database.Save("database.bin")
+
+	// load it back in to be sure
+
+	loaded, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin: %v\n", err)
+		os.Exit(1)
+	}
+
+	_ = loaded
 }

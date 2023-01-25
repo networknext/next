@@ -14,13 +14,15 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/networknext/backend/modules-old/transport"
-	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/rs/cors"
+
+	// todo: old modules in new code are verboten
+	"github.com/networknext/backend/modules-old/transport"
+	"github.com/networknext/backend/modules-old/transport/middleware"
 )
 
 const (
