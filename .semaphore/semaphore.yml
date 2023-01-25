@@ -64,7 +64,6 @@ blocks:
 
             - cd ~/backend
             - ./run test
-            - cache store
 
   - name: "SDK4"
     dependencies: []
@@ -134,7 +133,6 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - cd ~/backend
-            - cache restore
 
       jobs:
 
