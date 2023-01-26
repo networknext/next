@@ -928,6 +928,8 @@ func main() {
 
 func printDatabase() {
 
+	// todo: if the env is not "local", pull down the database.bin from the admin service
+
 	// load the database
 
 	database, err := db.LoadDatabase("database.bin")
@@ -938,7 +940,7 @@ func printDatabase() {
 
 	// header
 
-	fmt.Printf("\nHeader:\n\n")
+	fmt.Printf("Header:\n\n")
 
 	type HeaderRow struct {
 		Creator      string
@@ -1000,4 +1002,31 @@ func printDatabase() {
 	}
 
 	table.Output(sellers)
+
+	// datacenters
+
+	fmt.Printf("\nDatacenters:\n\n")
+
+	type DatacenterRow struct {
+		Name      string
+		Id        string
+		Latitude  string
+		Longitude string
+	}
+
+	datacenters := []DatacenterRow{}
+
+	for _, v := range database.DatacenterMap {
+		
+		row := DatacenterRow{
+			Id:    fmt.Sprintf("%0x", v.Id),
+			Name:  v.Name,
+			Latitude: fmt.Sprintf("%+3.2f", v.Latitude),
+			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
+		}
+
+		datacenters = append(datacenters, row)
+	}
+
+	table.Output(datacenters)
 }
