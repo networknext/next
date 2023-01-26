@@ -1,0 +1,32 @@
+version: v1.0
+
+name: Unit Tests (SDK5)
+
+fail_fast:
+  stop:
+    when: "true"
+
+agent:
+  machine:
+    type: e1-standard-8
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: google-cloud-platform
+
+blocks:
+
+  - name: "Run Unit Tests (SDK5)"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Unit Tests"
+          commands:
+            - sudo apt-get install -y libsodium-dev
+            - checkout
+            - cp envs/local.env .env
+            - export LD_LIBRARY_PATH=.
+            - mkdir dist
+            - make dist/test5
+            - ./run test-sdk5

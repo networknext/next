@@ -37,7 +37,7 @@ blocks:
             - sudo make -j install
             - sudo ldconfig
             - cd ~/backend
-            - make clean
+            - mkdir dist
             - make -j ./dist/reference_relay ./dist/libnext4.so ./dist/libnext5.so
             - artifact push workflow /usr/local/lib/libsodium.so
             - artifact push workflow ./dist/reference_relay
@@ -234,6 +234,21 @@ promotions:
 
   - name: "Development Deployment"
     pipeline_file: development-deploy.yml
+
+  - name: "Unit Tests (Backend)"
+    pipeline_file: unit-tests-backend.yml
+    auto_promote:
+      when: "result = 'passed' and change_in('/modules')"
+
+  - name: "Unit Tests (SDK4)"
+    pipeline_file: unit-tests-sdk4.yml
+    auto_promote:
+      when: "result = 'passed' and change_in('/sdk4')"
+
+  - name: "Unit Tests (SDK5)"
+    pipeline_file: unit-tests-sdk5.yml
+    auto_promote:
+      when: "result = 'passed' and change_in('/sdk5')"
 
   - name: "Functional Tests (Backend)"
     pipeline_file: functional-tests-backend.yml

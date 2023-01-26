@@ -1,0 +1,29 @@
+version: v1.0
+
+name: Unit Tests (Backend)
+
+fail_fast:
+  stop:
+    when: "true"
+
+agent:
+  machine:
+    type: e1-standard-8
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: google-cloud-platform
+
+blocks:
+
+  - name: "Run Unit Tests (Backend)"
+    dependencies: []
+    task:
+      jobs:
+
+        - name: "Unit Tests"
+          commands:
+            - checkout
+            - sudo apt-get install -y libsodium-dev
+            - go test modules/...

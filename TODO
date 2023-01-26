@@ -16,10 +16,6 @@ DONE
 
 	Get 1000 raspberry pi clients working in dev with the traffic load spread across all relays.
 
-TODO
-
-	-------------
-
 	Reduce spammy logs in relays
 
 		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 82e0b056de0eba21.16 [sdk5]
@@ -45,13 +41,23 @@ TODO
 		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 11941608cab80efb.4 [sdk5]
 		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.133.84.224:51046
 
+TODO
+
+	-------------
+
+	Split out unit tests to run conditionally on changed files
+
+	-------------
+
+	Command to load a relay version, eg. "next load google.iowa.1 reference-1.0.5"
+
 	-------------
 
 	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
 
 	-------------
 
-	next database would be cool. print out the current database.bin -- would also be cool if on non-local environments, it would pull down the latest database version and print it.
+	"next database" would be cool. print out the current database.bin -- would also be cool if on non-local environments, it would pull down the latest database version and print it.
 
 	-------------
 
@@ -60,14 +66,6 @@ TODO
 	Add correct error handling, eg. return error with detailed description of what went wrong.
 
 	Call into the database function from the extract_database tool.
-
-	-------------
-
-	Reference relay needs the upgrade functionality implemented
-
-	This way we can easily switch between reference and real relay.
-
-	Right now, the reference relay is a dead end.
 
 	----------------
 
@@ -89,10 +87,6 @@ TODO
 		518main.main() 00:27
 		519	/home/semaphore/backend/cmd/relay_backend/relay_backend.go:128 +0xf18 00:27
 		520goroutine 19 [select]: 00:27
-
-	Fix by switching to sync.Map:
-
-		https://pkg.go.dev/sync
 
 	----------------
 
@@ -383,3 +377,8 @@ Nice to have:
 	Relay stats message needs to be revisited. Make sure it doesn't have old crap in it
 
 	--------------
+
+	We are very close to removing libsodium from golang. It should be possible. If we do this, it becomes much easier to build and run golang services, as they are fully native.
+
+	--------------
+	
