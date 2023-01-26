@@ -18,6 +18,7 @@ global_job_config:
 blocks:
 
   - name: "Libraries"
+    dependencies: []
     task:
       agent:
         machine:
@@ -45,6 +46,7 @@ blocks:
 
 
   - name: "Backend"
+    dependencies: []
     run: 
       when: "change_in('/modules/')"
     task:
@@ -80,6 +82,7 @@ blocks:
             - ./run test-sdk4
 
   - name: "SDK5"
+    dependencies: []
     run:
       when: "change_in('/sdk5/')"
     task:
@@ -100,6 +103,7 @@ blocks:
 
 
   - name: "Build Artifacts (Scripts)"
+    dependencies: []
     task:
       jobs:
         - name: "Bootstrap"
@@ -109,6 +113,8 @@ blocks:
 
 
   - name: "Build Artifacts (Golang)"
+
+    dependencies: []
 
     task:
 
@@ -185,6 +191,8 @@ blocks:
 
 
   - name: "Build Artifacts (Native)"
+
+    dependencies: []
 
     task:
 
