@@ -63,6 +63,7 @@ blocks:
             - go test modules/...
 
   - name: "SDK4"
+    dependencies: []
     run:
       when: "change_in('/sdk4/')"
     task:
