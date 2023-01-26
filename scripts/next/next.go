@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/networknext/backend/modules/common"
+	db "github.com/networknext/backend/modules/database"
 
 	// todo: we don't want to use old modules here
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
@@ -31,6 +32,7 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
+	"github.com/modood/table"
 )
 
 const (
@@ -606,6 +608,16 @@ func main() {
 		},
 	}
 
+	var databaseCommand = &ffcli.Command{
+		Name:       "database",
+		ShortUsage: "next database",
+		ShortHelp:  "Print the database for the current environment",
+		Exec: func(_ context.Context, args []string) error {
+			printDatabase()
+			return nil
+		},
+	}
+
 	var hashCommand = &ffcli.Command{
 		Name:       "hash",
 		ShortUsage: "next hash (string)",
@@ -870,6 +882,7 @@ func main() {
 		authCommand,
 		selectCommand,
 		envCommand,
+		databaseCommand,
 		relaysCommand,
 		logCommand,
 		startCommand,
@@ -911,4 +924,80 @@ func main() {
 	}
 
 	fmt.Printf("\n")
+}
+
+func printDatabase() {
+
+	// load the database
+
+	database, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin: %v\n", err)
+		os.Exit(1)
+	}
+
+	// header
+
+	fmt.Printf("\nHeader:\n\n")
+
+	type HeaderRow struct {
+		Creator      string
+		CreationTime string
+	}
+
+	header := [1]HeaderRow{}
+
+	header[0] = HeaderRow{Creator: database.Creator, CreationTime: database.CreationTime}
+
+	table.Output(header[:])
+
+	// buyers
+
+	fmt.Printf("\nBuyers:\n\n")
+
+	type BuyerRow struct {
+		Name     string
+		Id       string
+		Live     string
+		Debug    string
+	}
+
+	buyers := []BuyerRow{}
+
+	for _, v := range database.BuyerMap {
+		
+		row := BuyerRow{
+			Id:    fmt.Sprintf("%0x", v.Id),
+			Name:  v.Name,
+			Live:  fmt.Sprintf("%v", v.Live),
+			Debug: fmt.Sprintf("%v", v.Debug),
+		}
+
+		buyers = append(buyers, row)
+	}
+
+	table.Output(buyers)
+
+	// sellers
+
+	fmt.Printf("\nSellers:\n\n")
+
+	type SellerRow struct {
+		Name     string
+		Id       string
+	}
+
+	sellers := []SellerRow{}
+
+	for _, v := range database.SellerMap {
+		
+		row := SellerRow{
+			Id:    fmt.Sprintf("%0x", v.Id),
+			Name:  v.Name,
+		}
+
+		sellers = append(sellers, row)
+	}
+
+	table.Output(sellers)
 }
