@@ -122,7 +122,7 @@ blocks:
         commands:
             - sudo apt-get install -y libsodium-dev
             - checkout
-            - cache load
+            - cache restore
 
       jobs:
 
