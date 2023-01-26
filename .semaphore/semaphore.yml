@@ -17,7 +17,7 @@ global_job_config:
 
 blocks:
 
-  - name: "Dependencies"
+  - name: "Libraries"
     dependencies: []
     task:
       agent:
@@ -26,7 +26,7 @@ blocks:
           os_image: ubuntu2004
       jobs:
 
-        - name: "Build Dependencies"
+        - name: "Build Libraries"
 
           commands:
 
@@ -46,28 +46,25 @@ blocks:
 
 
   - name: "Backend"
+    run: 
+      when: "change_in('/modules/')"
     dependencies: []
-    when: "change_in('/modules/') OR change_in('/cmd/')"
     task:
       agent:
         machine:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-
         - name: "Unit Tests"
-
           commands:
-
             - checkout
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev
-
-            - cd ~/backend
-            - ./run test
+            - go test modules/...
 
   - name: "SDK4"
-    when: "change_in('/sdk4/')"
+    run:
+      when: "change_in('/sdk4/')"
     dependencies: []
     task:
       agent:
@@ -86,7 +83,8 @@ blocks:
             - ./run test-sdk4
 
   - name: "SDK5"
-    when: "change_in('/sdk5/')"
+    run:
+      when: "change_in('/sdk5/')"
     dependencies: []
     task:
       agent:
@@ -132,11 +130,8 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get update
             - sudo apt-get install -y libsodium-dev
             - checkout
-            - cd ~/backend
-
       jobs:
 
         - name: "Analytics"
@@ -202,8 +197,6 @@ blocks:
 
   - name: "Build Artifacts (Native)"
 
-    dependencies: ["Dependencies"]
-
     task:
 
       agent:
@@ -213,7 +206,6 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get update
             - sudo apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
@@ -222,13 +214,11 @@ blocks:
 
         - name: "Raspberry Server"
           commands:
-            - artifact pull workflow libnext5.so
             - make -j dist/raspberry_server.dev.tar.gz
             - artifact push workflow dist/raspberry_server.dev.tar.gz
 
         - name: "Raspberry Client"
           commands:
-            - artifact pull workflow libnext5.so
             - make -j dist/raspberry_client.dev.tar.gz
             - artifact push workflow dist/raspberry_client.dev.tar.gz
 
