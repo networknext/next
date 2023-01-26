@@ -41,8 +41,25 @@ TODO
 		Jan 26 01:35:30 raspberry-client-mig-jwz0 app[91155]: 355040.633642: debug: client sent route request to relay: 3.138.73.252:40000
 		Jan 26 01:35:31 raspberry-client-mig-jwz0 app[91155]: 355040.737629: error: client route request timed out
 		Jan 26 01:35:31 raspberry-client-mig-jwz0 app[91155]: 355040.737668: info: client fallback to direct
-		
+	
+	Now I'm back here:
 
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
+		Jan 26 01:44:39 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
+		Jan 26 01:44:39 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
 
 
 

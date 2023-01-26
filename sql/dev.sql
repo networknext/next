@@ -474,8 +474,8 @@ INSERT INTO relays(
 VALUES(
 	'google.iowa.1',
 	'35.226.96.92',
-	'fjv8SS5z4/YCc6a8JSrv/YdJPTWjAeSSUzpkrPk+4MA=',
-	'SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=',
+	'ZlpZo9pD3sFPXynxtc5IV+02TrUmHYuxJc1uffyQkmI=',
+	'vLKdOuM8tpbcF6ZtkeThlkYNVT7SWPd9c2eAdvFQQq0=',
 	(select id from datacenters where display_name = 'google.iowa.1')
 );
 

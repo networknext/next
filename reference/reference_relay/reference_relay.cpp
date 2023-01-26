@@ -5604,7 +5604,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay_address_to_string( &pings[i].address, to_address);
             printf("sending relay ping packet to %s\n", to_address);
             */
-            
+
             relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
         }
 
@@ -5853,8 +5853,6 @@ int main( int argc, const char ** argv )
             }
         }
 
-        // todo: disable expire sessions for the moment
-        /*
         relay_platform_mutex_acquire( relay.mutex );
         std::map<uint64_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
@@ -5872,7 +5870,6 @@ int main( int argc, const char ** argv )
             }
         }
         relay_platform_mutex_release( relay.mutex );
-        */
 
         relay_platform_sleep( 1.0 );
     }
