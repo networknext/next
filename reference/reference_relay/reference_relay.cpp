@@ -3993,7 +3993,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     relay_write_uint64(&p, relay->sessions->size());
     relay_write_uint8(&p, uint8_t(shutdown));
-    relay_write_string(&p, "reference", 32);
+    relay_write_string(&p, RELAY_VERSION, 32);
 
     uint8_t cpu = 0;
     relay_write_uint8(&p, cpu);
