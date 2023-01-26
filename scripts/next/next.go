@@ -24,7 +24,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"regexp"
+	"path"
+	"errors"
+	"crypto/rand"
+	"golang.org/x/crypto/nacl/box"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	db "github.com/networknext/backend/modules/database"
 
@@ -1117,3 +1123,731 @@ func printDatabase() {
 		table.Output(properties)
 	}
 }
+
+func getFleetRelays(
+	env Environment,
+	relayCount int64,
+	alphaSort bool,
+	regexName string,
+
+) {
+
+	var reply localjsonrpc.RelayFleetReply = localjsonrpc.RelayFleetReply{}
+	var args = localjsonrpc.RelayFleetArgs{}
+
+	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	// name,address,id,status,sessions,version
+	relays := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions int
+		Version  string
+	}{}
+
+	filtered := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions int
+		Version  string
+	}{}
+
+	for _, relay := range reply.RelayFleet {
+
+		maxSessions, err := strconv.Atoi(relay.Sessions)
+		if err != nil {
+			maxSessions = -1
+		}
+
+		relays = append(relays, struct {
+			Name     string
+			Address  string
+			Id       string
+			Status   string
+			Sessions int
+			Version  string
+		}{
+			relay.Name,
+			strings.Split(relay.Address, ":")[0],
+			strings.ToUpper(relay.Id),
+			relay.Status,
+			maxSessions,
+			relay.Version,
+		})
+	}
+
+	for _, relay := range relays {
+		if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
+			filtered = append(filtered, relay)
+			continue
+		}
+	}
+
+	if alphaSort {
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Name < filtered[j].Name
+		})
+	} else {
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Sessions > filtered[j].Sessions
+		})
+	}
+
+	outputRelays := []struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions string
+		Version  string
+	}{}
+
+	for _, relay := range filtered {
+
+		sessions := fmt.Sprintf("%d", relay.Sessions)
+
+		if relay.Sessions == -1 {
+			sessions = ""
+		}
+		outputRelays = append(outputRelays, struct {
+			Name     string
+			Address  string
+			Id       string
+			Status   string
+			Sessions string
+			Version  string
+		}{
+			relay.Name,
+			relay.Address,
+			relay.Id,
+			relay.Status,
+			sessions,
+			relay.Version,
+		})
+	}
+
+	//  limit the number of relays displayed
+	if relayCount != 0 {
+		table.Output(outputRelays[0:relayCount])
+	} else {
+		table.Output(outputRelays)
+	}
+}
+
+// ----------------------------------------------------------------
+
+func testForSSHKey(env Environment) {
+	if env.SSHKeyFilePath == "" {
+		handleRunTimeError(fmt.Sprintln("The ssh key file name is not set, set it with 'next ssh key <path>'"), 0)
+	}
+
+	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
+		handleRunTimeError(fmt.Sprintf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'\n", env.SSHKeyFilePath), 0)
+	}
+}
+
+func SSHInto(env Environment, relayName string) {
+
+	riot := false
+	if strings.Split(relayName, ".")[0] == "riot" {
+		riot = true
+	}
+
+	relays := getRelayInfo(env, relayName)
+	if len(relays) == 0 {
+		handleRunTimeError(fmt.Sprintf("no relays matches the regex '%s'\n", relayName), 0)
+	}
+	info := relays[0]
+	testForSSHKey(env)
+	con := NewSSHConn(info.user, info.sshAddr, info.sshPort, env.SSHKeyFilePath)
+	fmt.Printf("Connecting to %s\n", relayName)
+	con.Connect(riot)
+}
+
+type SSHConn struct {
+	user    string
+	address string
+	port    string
+	keyfile string
+}
+
+func NewSSHConn(user, address string, port string, authKeyFilename string) SSHConn {
+	return SSHConn{
+		user:    user,
+		address: address,
+		port:    port,
+		keyfile: authKeyFilename,
+	}
+}
+
+func (con SSHConn) commonSSHCommands() []string {
+	args := make([]string, 6)
+	args[0] = "-i"
+	args[1] = con.keyfile
+	args[2] = "-p"
+	args[3] = con.port
+	args[4] = "-o"
+	args[5] = "StrictHostKeyChecking=no"
+	return args
+}
+
+func (con SSHConn) Connect(isRiotRelay bool) {
+	args := con.commonSSHCommands()
+	if isRiotRelay {
+		args = append(args, "-R 9000")
+	}
+	args = append(args, "-tt", con.user+"@"+con.address)
+	if !runCommandEnv("ssh", args, nil) {
+		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
+	}
+}
+
+func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
+	args := con.commonSSHCommands()
+	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
+	if !runCommandEnv("ssh", args, nil) {
+		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 0)
+	}
+
+	return true
+}
+
+func (con SSHConn) IssueCmdAndGetOutput(cmd string) (string, error) {
+	args := con.commonSSHCommands()
+	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
+	return runCommandGetOutput("ssh", args, nil)
+}
+
+// TestConnect tries to connect for 60 seconds using ssh's connection timeout functionality
+func (con SSHConn) TestConnect() bool {
+	args := con.commonSSHCommands()
+	args = append(args, "-o", "ConnectTimeout=60", "-tt", con.user+"@"+con.address, "--", ":")
+	_, err := runCommandGetOutput("ssh", args, nil)
+	return err == nil
+}
+
+// ------------------------------------------------------------------------------
+
+const (
+	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
+
+	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
+
+	VersionCheckScript = `lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})"`
+)
+
+func unitFormat(bits uint64) string {
+	const (
+		kilo = 1000
+		mega = 1000000
+		giga = 1000000000
+	)
+
+	if bits > giga {
+		return fmt.Sprintf("%.02fGb/s", float64(bits)/float64(giga))
+	}
+
+	if bits > mega {
+		return fmt.Sprintf("%.02fMb/s", float64(bits)/float64(mega))
+	}
+
+	if bits > kilo {
+		return fmt.Sprintf("%.02fKb/s", float64(bits)/float64(kilo))
+	}
+
+	return fmt.Sprintf("%d", bits)
+}
+
+type relayInfo struct {
+	id          uint64
+	name        string
+	user        string
+	sshAddr     string
+	sshPort     string
+	publicAddr  string
+	publicKey   string
+	nicSpeed    string
+	firestoreID string
+	state       string
+	version     string
+}
+
+func getRelayInfo(env Environment, regex string) []relayInfo {
+	args := localjsonrpc.RelaysArgs{
+		Regex: regex,
+	}
+
+	var reply localjsonrpc.RelaysReply
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return nil
+	}
+
+	relays := make([]relayInfo, len(reply.Relays))
+
+	for i, r := range reply.Relays {
+		relays[i] = relayInfo{
+			id:         r.ID,
+			name:       r.Name,
+			user:       r.SSHUser,
+			sshAddr:    r.ManagementAddr,
+			sshPort:    fmt.Sprintf("%d", r.SSHPort),
+			publicAddr: r.Addr,
+			publicKey:  r.PublicKey,
+			nicSpeed:   fmt.Sprintf("%d", r.NICSpeedMbps),
+			state:      r.State,
+			version:    r.Version,
+		}
+	}
+
+	return relays
+}
+
+func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayInfo {
+	args := localjsonrpc.RelaysArgs{}
+
+	var reply localjsonrpc.RelaysReply
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
+		handleJSONRPCError(env, err)
+		return nil
+	}
+
+	if len(reply.Relays) == 0 {
+		handleRunTimeError(fmt.Sprintln("could not find a single relay"), 0)
+	}
+
+	relays := make([]relayInfo, len(reply.Relays))
+
+	for i, relay := range reply.Relays {
+		relays[i] = relayInfo{
+			id:         relay.ID,
+			name:       relay.Name,
+			user:       relay.SSHUser,
+			sshAddr:    relay.ManagementAddr,
+			sshPort:    fmt.Sprintf("%d", relay.SSHPort),
+			publicAddr: relay.Addr,
+		}
+	}
+
+	return relays
+}
+
+func startRelays(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}
+			fmt.Printf("starting relay %s\n", relay.name)
+			testForSSHKey(env)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			if !con.ConnectAndIssueCmd(StartRelayScript) {
+				continue
+			}
+		}
+	}
+}
+
+func stopRelays(env Environment, regexes []string) bool {
+	success := true
+	testForSSHKey(env)
+	script := StopRelayScript
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}
+			fmt.Printf("stopping relay %s\n", relay.name)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			if !con.ConnectAndIssueCmd(script) {
+				success = false
+				continue
+			}
+		}
+	}
+
+	return success
+}
+
+func relayLog(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		for _, relay := range relays {
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd("journalctl -fu relay -n 1000")
+			break
+		}
+	}
+}
+
+func keys(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		for _, relay := range relays {
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
+			break
+		}
+	}
+}
+
+// --------------------------------------------------------------------------------------------
+
+func keygen() {
+	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		fmt.Printf("error: could not generate relay keypair\n")
+		os.Exit(1)
+	}
+	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
+	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
+	fmt.Printf("export RELAY_PUBLIC_KEY=%s\n", publicKeyBase64)
+	fmt.Printf("export RELAY_PRIVATE_KEY=%s\n", privateKeyBase64)
+}
+
+// --------------------------------------------------------------------------------------------
+
+const (
+
+	// todo: stuff below seems like a duplication of the new envs/local.env etc...
+
+	PortalHostnameLocal   = "localhost:20000"
+	PortalHostnameDev     = "portal-dev.networknext.com"
+	PortalHostnameStaging = "portal-staging.networknext.com"
+	PortalHostnameProd    = "portal.networknext.com"
+
+	RouterPublicKeyLocal   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyDev     = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyStaging = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyProd    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+
+	RelayArtifactURLDev     = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.staging.tar.gz"
+	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
+
+	RelayBackendHostnameLocal   = "localhost"
+	RelayBackendHostnameDev     = "34.117.47.154"
+	RelayBackendHostnameStaging = "35.190.44.124"
+	RelayBackendHostnameProd    = "35.227.196.44"
+
+	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30005"
+	RelayBackendURLDev     = "http://" + RelayBackendHostnameDev
+	RelayBackendURLStaging = "http://" + RelayBackendHostnameStaging
+	RelayBackendURLProd    = "http://" + RelayBackendHostnameProd
+)
+
+type Environment struct {
+	CLIRelease   string `json:"-"`
+	CLIBuildTime string `json:"-"`
+
+	RemoteRelease   string `json:"-"`
+	RemoteBuildTime string `json:"-"`
+
+	Name           string `json:"name"`
+	Hostname       string `json:"hostname"`
+	AuthToken      string `json:"auth_token"`
+	SSHKeyFilePath string `json:"ssh_key_filepath"`
+}
+
+func (e *Environment) String() string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("Environment: %s\n", e.Name))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.PortalHostname()))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("AuthToken:\n\n    %s\n\n", e.AuthToken))
+	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
+
+	return sb.String()
+}
+
+func (e *Environment) Exists() bool {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+
+	envFilePath := path.Join(homeDir, ".nextenv")
+
+	if _, err := os.Stat(envFilePath); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (e *Environment) Read() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+
+	envFilePath := path.Join(homeDir, ".nextenv")
+
+	f, err := os.Open(envFilePath)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(e); err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+}
+
+func (e *Environment) Write() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+
+	envFilePath := path.Join(homeDir, ".nextenv")
+
+	f, err := os.Create(envFilePath)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+	defer f.Close()
+
+	if err := json.NewEncoder(f).Encode(e); err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
+	}
+}
+
+func (e *Environment) Clean() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
+	}
+
+	envFilePath := path.Join(homeDir, ".nextenv")
+
+	err = os.RemoveAll(envFilePath)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
+
+	}
+}
+
+func (e *Environment) PortalHostname() string {
+	if hostname, err := e.switchEnvLocal(PortalHostnameLocal, PortalHostnameDev, PortalHostnameStaging, PortalHostnameProd); err == nil {
+		return hostname
+	}
+	return e.Hostname
+}
+
+func (e *Environment) RouterPublicKey() (string, error) {
+	return e.switchEnvLocal(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyStaging, RouterPublicKeyProd)
+}
+
+func (e *Environment) RelayBackendURL() (string, error) {
+	return e.switchEnvLocal(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLStaging, RelayBackendURLProd)
+}
+
+func (e *Environment) RelayArtifactURL() (string, error) {
+	return e.switchEnv(RelayArtifactURLDev, RelayArtifactURLStaging, RelayArtifactURLProd)
+}
+
+func (e *Environment) RelayBackendHostname() (string, error) {
+	return e.switchEnvLocal(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameStaging, RelayBackendHostnameProd)
+}
+
+// todo: holy shit this is bad?
+func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
+	switch e.Name {
+	case "local":
+		return ifIsLocal, nil
+	case "dev":
+		return ifIsDev, nil
+	case "staging":
+		return ifIsStaging, nil
+	case "prod":
+		return ifIsProd, nil
+	default:
+		return "", errors.New("Environment does not match 'local', 'dev', 'staging', or 'prod'")
+	}
+}
+
+// todo: would be nice if we didn't hard code envs, and they were defined by the set of .env files under "envs" directory...
+func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
+	switch e.Name {
+	case "dev":
+		return ifIsDev, nil
+	case "staging":
+		return ifIsStaging, nil
+	case "prod":
+		return ifIsProd, nil
+	default:
+		return "", errors.New("Environment does not match 'dev', 'staging', or 'prod'")
+	}
+}
+
+// -------------------------------------------------------------------------------------------
+
+func getCostMatrix(env Environment, fileName string) {
+	args := localjsonrpc.NextCostMatrixHandlerArgs{}
+
+	var reply localjsonrpc.NextCostMatrixHandlerReply
+	if err := makeRPCCall(env, &reply, "RelayFleetService.NextCostMatrixHandler", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	err := ioutil.WriteFile(fileName, reply.CostMatrix, 0777)
+	if err != nil {
+		err := fmt.Errorf("getCostMatrix() error writing %s to filesystem: %v", fileName, err)
+		handleRunTimeError(fmt.Sprintf("could not write %s to the filesystem: %v\n", fileName, err), 0)
+	}
+
+}
+
+func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
+
+	costMatrixData, err := os.ReadFile(costMatrixFilename)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not read the cost matrix file: %v\n", err), 1)
+	}
+
+	var costMatrix common.CostMatrix
+
+	err = costMatrix.Read(costMatrixData)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("error reading cost matrix: %v\n", err), 1)
+	}
+
+	numRelays := len(costMatrix.RelayIds)
+
+	numDestRelays := 0
+	for i := range costMatrix.DestRelays {
+		if costMatrix.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
+	numCPUs := runtime.NumCPU()
+	numSegments := numRelays
+	if numCPUs < numRelays {
+		numSegments = numRelays / 5
+		if numSegments == 0 {
+			numSegments = 1
+		}
+	}
+
+	routeMatrix := &common.RouteMatrix{
+		Version:            common.RouteMatrixVersion_Write,
+		RelayIds:           costMatrix.RelayIds,
+		RelayAddresses:     costMatrix.RelayAddresses,
+		RelayNames:         costMatrix.RelayNames,
+		RelayLatitudes:     costMatrix.RelayLatitudes,
+		RelayLongitudes:    costMatrix.RelayLongitudes,
+		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
+		DestRelays:         costMatrix.DestRelays,
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
+	}
+
+	routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not write route matrix: %v", err), 1)
+	}
+
+	err = os.WriteFile(routeMatrixFilename, routeMatrixData, 0644)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
+	}
+
+	// todo: temporary -- print out route matrix as csv
+
+	fmt.Printf(",")
+	for i := range costMatrix.RelayNames {
+		fmt.Printf("%s,", costMatrix.RelayNames[i])
+	}
+	fmt.Printf("\n")
+	for i := range costMatrix.RelayNames {
+		fmt.Printf("%s,", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Printf("-1,")
+			} else {
+				index := core.TriMatrixIndex(i, j)
+				cost := costMatrix.Costs[index]
+				fmt.Printf("%d,", cost)
+			}
+		}
+		fmt.Printf("\n")
+	}
+	fmt.Printf("\n")
+
+	// todo: temporary -- print out dest relays
+
+	fmt.Printf("dest relays: ")
+	for i := range costMatrix.RelayNames {
+		if costMatrix.DestRelays[i] {
+			fmt.Printf("%s,", costMatrix.RelayNames[i])
+		}
+	}
+	fmt.Printf("\n\n")
+}
+
+func analyzeRouteMatrix(inputFile string) {
+
+	routeMatrixFilename := "optimize.bin"
+
+	routeMatrixData, err := ioutil.ReadFile(routeMatrixFilename)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
+	}
+
+	var routeMatrix common.RouteMatrix
+
+	err = routeMatrix.Read(routeMatrixData)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
+	}
+
+	analysis := routeMatrix.Analyze()
+
+	fmt.Printf("RTT Improvement\n\n")
+
+	fmt.Printf("    None: %.1f%%\n", analysis.RTTBucket_NoImprovement)
+	fmt.Printf("    0-5ms: %.1f%%\n", analysis.RTTBucket_0_5ms)
+	fmt.Printf("    5-10ms: %.1f%%\n", analysis.RTTBucket_5_10ms)
+	fmt.Printf("    10-15ms: %.1f%%\n", analysis.RTTBucket_10_15ms)
+	fmt.Printf("    15-20ms: %.1f%%\n", analysis.RTTBucket_15_20ms)
+	fmt.Printf("    20-25ms: %.1f%%\n", analysis.RTTBucket_20_25ms)
+	fmt.Printf("    25-30ms: %.1f%%\n", analysis.RTTBucket_25_30ms)
+	fmt.Printf("    30-35ms: %.1f%%\n", analysis.RTTBucket_30_35ms)
+	fmt.Printf("    35-40ms: %.1f%%\n", analysis.RTTBucket_35_40ms)
+	fmt.Printf("    40-45ms: %.1f%%\n", analysis.RTTBucket_40_45ms)
+	fmt.Printf("    45-50ms: %.1f%%\n", analysis.RTTBucket_45_50ms)
+	fmt.Printf("    50ms+: %.1f%%\n", analysis.RTTBucket_50ms_Plus)
+
+	fmt.Printf("\nRoute Summary:\n\n")
+
+	fmt.Printf("    %d relays\n", len(routeMatrix.RelayIds))
+	fmt.Printf("    %d total routes\n", analysis.TotalRoutes)
+	fmt.Printf("    %.1f routes per-relay pair on average\n", analysis.AverageNumRoutes)
+	fmt.Printf("    %.1f relays per-route on average\n", analysis.AverageRouteLength)
+	fmt.Printf("    %.1f%% of relay pairs have only one route\n", analysis.OneRoutePercent)
+	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
+	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
+}
+
+// -------------------------------------------------------------------------------------------

@@ -8,7 +8,13 @@ DONE
 
 	Hook up database validation where it's needed
 
+	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
+
 TODO
+
+	-------------
+
+	Command to load a relay version, eg. "next load google.iowa.1 reference-1.0.5"
 
 	-------------
 
@@ -21,14 +27,6 @@ TODO
 	Add correct error handling, eg. return error with detailed description of what went wrong.
 
 	Call into the database function from the extract_database tool.
-
-	-------------
-
-	Command to load a relay version, eg. "next load google.iowa.1 reference-1.0.5"
-
-	-------------
-
-	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
 
 	----------------
 
