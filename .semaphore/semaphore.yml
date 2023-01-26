@@ -47,8 +47,6 @@ blocks:
 
   - name: "Backend"
     dependencies: []
-    run: 
-      when: "change_in('/modules/')"
     task:
       agent:
         machine:
@@ -61,11 +59,10 @@ blocks:
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev
             - go test ./modules/...
+            - cache store
 
   - name: "SDK4"
     dependencies: []
-    run:
-      when: "change_in('/sdk4/')"
     task:
       agent:
         machine:
@@ -84,8 +81,6 @@ blocks:
 
   - name: "SDK5"
     dependencies: []
-    run:
-      when: "change_in('/sdk5/')"
     task:
       agent:
         machine:
@@ -101,7 +96,6 @@ blocks:
             - mkdir dist
             - make dist/test5
             - cd dist && ./test5
-
 
   - name: "Build Artifacts (Scripts)"
     dependencies: []
@@ -128,6 +122,8 @@ blocks:
         commands:
             - sudo apt-get install -y libsodium-dev
             - checkout
+            - cache load
+
       jobs:
 
         - name: "Analytics"
