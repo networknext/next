@@ -39,6 +39,8 @@ func main() {
 		ispSyncFile,
 	)
 
+	// todo: disabled for the moment, see comment below
+	/*
 	databaseSyncFile := common.SyncFile{
 		DownloadURL: envvar.GetString("DATABASE_DOWNLOAD_URI", "gs://network-next-local/database.bin"),
 	}
@@ -53,10 +55,11 @@ func main() {
 		envvar.GetList("BIN_FILE_DESTINATION_MIGS", []string{}),
 		envvar.GetString("OUTPUT_PATH", ""),
 		"",
-		service.ValidateBinFiles,
+		service.ValidateBinFiles,       // todo: no, create your own function here to load the database.bin and validate them. do not call out to service here, we need to validate BEFORE we move the files to a place where service tries to load them
 		databaseSyncFile,
 		overlaySyncFile,
 	)
+	*/
 
 	service.SyncFiles(fileSyncConfig)
 

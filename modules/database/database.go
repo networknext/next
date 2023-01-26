@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io/ioutil"
+	"errors"
 	"net"
 	"os"
 
@@ -115,7 +116,28 @@ func (database *Database) Save(filename string) error {
 	return nil
 }
 
-// todo: validation function
+func (database *Database) Validate() error {
+
+	if database.IsEmpty() {
+		return errors.New("database is empty")
+	}
+
+	// todo: each relay must have a valid datacenter
+
+	// todo: each datacenter must have valid seller
+
+	// todo: buyer must have a valid non-zero buyer id
+
+	// todo: if a relay has an internal ip address, it must not be "0.0.0.0"
+
+	// todo: relay ssh address must not be 0.0.0.0 -- it should be set to the 
+
+	// todo: relay internal address, external address and ssh address ports must not be zero
+
+	// todo: if a relay has both public and private keypair specified, decrypt/encrypt something with them, to make sure the keypair is valid -- catch errors early
+
+	return nil
+}
 
 func (database *Database) IsEmpty() bool {
 

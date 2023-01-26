@@ -588,6 +588,14 @@ func main() {
 
 	database.Save("database.bin")
 
+	// validate the database
+
+	err = database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
 	// load it back in to be sure
 
 	loaded, err := db.LoadDatabase("database.bin")
@@ -596,5 +604,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	_ = loaded
+	// validate the loaded database, just to be extra sure
+
+	err = loaded.Validate()
+	if err != nil {
+		fmt.Printf("error: loaded database did not validate: %v\n", err)
+		os.Exit(1)
+	}
 }

@@ -166,7 +166,6 @@ func (service *Service) LoadDatabase() {
 
 	applyOverlay(service.database, service.databaseOverlay)
 
-	// TODO: should this be part of the database.bin validation?
 	service.databaseRelayData = generateRelayData(service.database)
 	if service.databaseRelayData == nil {
 		core.Error("generate relay data failed")
@@ -178,22 +177,16 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath, overlayPath)
 }
 
-func (service *Service) ValidateBinFiles(filenames []string) bool {
-
-	database, _ := loadDatabase(filenames[0], filenames[1])
-
-	return validateBinFiles(database)
-
-}
-
 func validateBinFiles(database *db.Database) bool {
-
 	if database == nil {
+		core.Error("database is nil")
 		return false
 	}
-
-	return !database.IsEmpty()
-
+	err := database.Validate()
+	if err != nil {
+		core.Error("database.bin did not validate: %v", err)
+	}
+	return err == nil
 }
 
 func (service *Service) LoadIP2Location() {
@@ -829,9 +822,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 					continue
 				}
 
-				// TODO: should this be part of database.bin validation?
 				newRelayData := generateRelayData(newDatabase)
-
 				if newRelayData == nil {
 					continue
 				}

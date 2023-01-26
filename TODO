@@ -2,15 +2,17 @@ DONE
 
 	Optimize unit test builds
 
+	"next database" would be cool. print out the current database.bin
+
+	Sketch out database validation
+
 TODO
+
+	Hook up database validation where it's needed
 
 	-------------
 
-	"next database" would be cool. print out the current database.bin
-
-	Do it with a functions inside database module, so it can be done elsewhere as well.
-
-	Or, use the nice table output thing used in "next relays" ?
+	Actually implement database validation
 
 	-------------
 
