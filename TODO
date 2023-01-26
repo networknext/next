@@ -10,6 +10,8 @@ DONE
 
 	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
 
+	clean up next tool source code
+
 TODO
 
 	-------------

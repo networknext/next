@@ -12,8 +12,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-
-	"github.com/networknext/backend/modules-old/analytics"
 )
 
 const RouteMatrixSerializeVersion = 7
@@ -32,8 +30,6 @@ type RouteMatrix struct {
 	CreatedAt                                   uint64
 	Version                                     uint32
 	DestRelays                                  []bool
-	PingStats                                   []analytics.PingStatsEntry
-	RelayStats                                  []analytics.RelayStatsEntry
 	FullRelayIDs                                []uint64
 	FullRelayIndicesSet                         map[int32]bool
 	InternalAddressClientRoutableRelayIDs       []uint64
@@ -119,68 +115,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 		for i := range m.DestRelays {
 			stream.SerializeBool(&m.DestRelays[i])
-		}
-	}
-
-	if m.Version >= 3 && m.Version < 7 {
-
-		numRelayEntries := uint32(len(m.RelayStats))
-		stream.SerializeUint32(&numRelayEntries)
-
-		if stream.IsReading() {
-			m.RelayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
-		}
-
-		for i := uint32(0); i < numRelayEntries; i++ {
-			entry := &m.RelayStats[i]
-
-			stream.SerializeUint64(&entry.Timestamp)
-			stream.SerializeUint64(&entry.ID)
-			stream.SerializeUint32(&entry.NumSessions)
-			stream.SerializeUint32(&entry.MaxSessions)
-			stream.SerializeUint32(&entry.NumRoutable)
-			stream.SerializeUint32(&entry.NumUnroutable)
-
-			if m.Version >= 4 {
-				stream.SerializeBool(&entry.Full)
-			}
-
-			if m.Version >= 5 {
-				stream.SerializeFloat32(&entry.CPUUsage)
-
-				stream.SerializeFloat32(&entry.BandwidthSentPercent)
-				stream.SerializeFloat32(&entry.BandwidthReceivedPercent)
-
-				stream.SerializeFloat32(&entry.EnvelopeSentPercent)
-				stream.SerializeFloat32(&entry.EnvelopeReceivedPercent)
-
-				stream.SerializeFloat32(&entry.BandwidthSentMbps)
-				stream.SerializeFloat32(&entry.BandwidthReceivedMbps)
-
-				stream.SerializeFloat32(&entry.EnvelopeSentMbps)
-				stream.SerializeFloat32(&entry.EnvelopeReceivedMbps)
-			}
-		}
-
-		numPingEntries := uint32(len(m.PingStats))
-		stream.SerializeUint32(&numPingEntries)
-
-		if stream.IsReading() {
-			m.PingStats = make([]analytics.PingStatsEntry, numPingEntries)
-		}
-
-		for i := uint32(0); i < numPingEntries; i++ {
-			entry := &m.PingStats[i]
-
-			stream.SerializeUint64(&entry.Timestamp)
-			stream.SerializeUint64(&entry.RelayA)
-			stream.SerializeUint64(&entry.RelayB)
-			stream.SerializeFloat32(&entry.RTT)
-			stream.SerializeFloat32(&entry.Jitter)
-			stream.SerializeFloat32(&entry.PacketLoss)
-			stream.SerializeBool(&entry.Routable)
-			stream.SerializeString(&entry.InstanceID, 64)
-			stream.SerializeBool(&entry.Debug)
 		}
 	}
 
