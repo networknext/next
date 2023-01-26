@@ -5622,7 +5622,7 @@ int main( int argc, const char ** argv )
         exit(0);
     }
 
-    printf( "\nNetwork Next Reference Relay\n");
+    printf( "\nNetwork Next Reference Relay (%s)\n", RELAY_VERSION );
 
     printf( "\nEnvironment:\n\n" );
 
