@@ -1,63 +1,16 @@
 DONE
 
-	Build artifacts really belongs in the main build step, only publish artifacts should be done in the deploy.
-
-	Make func tests a promotion
-
-	Make happy path a promotion
-
-	Split up functional tests so we can selectively run them as needed
-
-	It was the internal addresses being sent down as 0.0.0.0 addresses for relay pings
-
-	Database needs to be extended to include a bool "HasExternalAddress"
-
-	Deploy fix and verify relays don't freak out with 0.0.0.0 address.	
-
-	Get 1000 raspberry pi clients working in dev with the traffic load spread across all relays.
-
-	Reduce spammy logs in relays
-
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 82e0b056de0eba21.16 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.173.158.212:56964
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: d96e3093d6efe984.6 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.173.158.212:56964
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: dc239cd98b782b8c.1 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.28.236.180:33030
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: a2386ba069d0544.8 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.134.89.65:36864
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: a9f84d1b713518d1.3 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.27.167.54:53884
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 19062637e0e62f4e.3 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.29.1.141:52211
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: d22372fcc7aed4b8.5 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.171.122.13:48943
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 1c7de76059a73893.3 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.171.122.13:48943
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: a8014d4f7fa17f99.2 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.171.122.13:48943
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 1542f3ca42b42d62.2 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.171.122.13:48943
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: session continued: 11941608cab80efb.4 [sdk5]
-		Jan 26 03:28:29 dev-google-iowa-1 relay[2241]: sending continue request packet to next hop 34.133.84.224:51046
+	Optimize unit test builds
 
 TODO
 
 	-------------
 
-	Split out unit tests to run conditionally on changed files
+	"next database" would be cool. print out the current database.bin
 
-	-------------
+	Do it with a functions inside database module, so it can be done elsewhere as well.
 
-	Command to load a relay version, eg. "next load google.iowa.1 reference-1.0.5"
-
-	-------------
-
-	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
-
-	-------------
-
-	"next database" would be cool. print out the current database.bin -- would also be cool if on non-local environments, it would pull down the latest database version and print it.
+	Or, use the nice table output thing used in "next relays" ?
 
 	-------------
 
@@ -66,6 +19,14 @@ TODO
 	Add correct error handling, eg. return error with detailed description of what went wrong.
 
 	Call into the database function from the extract_database tool.
+
+	-------------
+
+	Command to load a relay version, eg. "next load google.iowa.1 reference-1.0.5"
+
+	-------------
+
+	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
 
 	----------------
 
@@ -155,51 +116,6 @@ TODO
 
 
 
-	-------
-
-	The relay needs to get and store the upcoming, current and previous magic values
-
-	These values need to be accessible by the relay threads
-
-	How to best do this?
-
-	-------
-
-	Check the advanced packet filter on the relay ping packet
-
-	Verify the near relay ping packets still get through
-
-	-------
-
-	Write the response pong packet
-
-	Make sure it passes the basic and advanced packet filters
-
-	Verify that the client5 actually gets the pongs
-
-	-------
-
-	Deploy new relay version in dev
-
-	Verify that raspberry pi's now get near relay pings and go across network next
-
-	-------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Essentials:
 
     --------------
@@ -238,6 +154,9 @@ Essentials:
 
 	--------------
 
+	We need a new relay implementation. The current relay is garbage.
+
+	--------------
 
 
 
@@ -356,10 +275,6 @@ Nice to have:
 
 	--------------
 
-	Consider renaming "Server Events" to "Game Events" in SDK5
-
-	--------------
-
 	Put "MatchId" into session data (first).
 
 	This way we can easily look up from a session the match it is in.
@@ -381,4 +296,23 @@ Nice to have:
 	We are very close to removing libsodium from golang. It should be possible. If we do this, it becomes much easier to build and run golang services, as they are fully native.
 
 	--------------
-	
+
+	We need to track client no packets in 0.1 sec, 0.25sec, 0.5sec, 1.0 sec.
+
+	This way we can identify if we are likely seeing thread starvation on the server
+
+	They currently have 1000 server threads on the server, and this is potentially causing serious starvation issues with packets... (!!!!)
+
+	--------------
+
+	Can we do something to detect thread starvation on the server and warn?
+
+	It looks like we've been in production with thread starvation with Blue Mammoth for a while now, and it would be much better if we could catch this ourselves, before it becomse a customer problem.
+
+	--------------
+
+	Relays should detect and count when they can't read the route token
+
+	This indicates a misconfigured relay. This should get loaded up into bigquery so it can be searched on by data science.
+
+	--------------
