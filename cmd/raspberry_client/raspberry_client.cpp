@@ -167,6 +167,9 @@ void client_thread_function( void * data )
 
         while ( !quit )
         {
+            if ( next_client_fallback_to_direct( client ) )
+                break;
+
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
             next_client_update( client );

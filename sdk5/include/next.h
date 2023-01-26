@@ -322,6 +322,8 @@ NEXT_EXPORT_FUNC const struct next_address_t * next_client_server_address( struc
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_client_ready( struct next_client_t * client );
 
+NEXT_EXPORT_FUNC NEXT_BOOL next_client_fallback_to_direct( struct next_client_t * client );
+
 // -----------------------------------------
 
 struct next_server_stats_t

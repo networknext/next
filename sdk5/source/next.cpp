@@ -8478,6 +8478,12 @@ NEXT_BOOL next_client_ready( next_client_t * client )
     return client->ready ? NEXT_TRUE : NEXT_FALSE;
 }
 
+NEXT_BOOL next_client_fallback_to_direct( struct next_client_t * client )
+{
+    next_assert( client );
+    return client->client_stats.fallback_to_direct;
+}
+
 void next_client_send_packet( next_client_t * client, const uint8_t * packet_data, int packet_bytes )
 {
     next_client_verify_sentinels( client );
