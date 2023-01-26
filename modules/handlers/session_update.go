@@ -566,15 +566,15 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 		// todo: disabled for now, need to fix and bring it back
 		/*
-		// use private address (when it exists) when sending between two relays belonging to the same seller
-		if i > 0 {
-			prevRelayIndex := routeRelays[i-1]
-			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
-			prev, _ := state.Database.RelayMap[prevId]
-			if prev.Seller.Id == relay.Seller.Id && relay.InternalAddress.String() != ":0" {
-				relayAddresses[i] = &relay.InternalAddress
+			// use private address (when it exists) when sending between two relays belonging to the same seller
+			if i > 0 {
+				prevRelayIndex := routeRelays[i-1]
+				prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
+				prev, _ := state.Database.RelayMap[prevId]
+				if prev.Seller.Id == relay.Seller.Id && relay.InternalAddress.String() != ":0" {
+					relayAddresses[i] = &relay.InternalAddress
+				}
 			}
-		}
 		*/
 	}
 

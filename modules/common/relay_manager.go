@@ -258,7 +258,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 		return costs
 	}
 
- 	// todo: i'd rather just have one codepath used here all the time
+	// todo: i'd rather just have one codepath used here all the time
 
 	// real cost matrix for dev and prod
 

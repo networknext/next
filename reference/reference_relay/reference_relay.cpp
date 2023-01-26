@@ -4810,8 +4810,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-            	// todo
-            	printf( "received route request packet [sdk5]\n" );
+                // todo
+                printf( "received route request packet [sdk5]\n" );
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {

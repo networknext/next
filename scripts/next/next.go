@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,10 +31,10 @@ import (
 	// todo: we don't want to use old modules here
 	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
 
+	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
 	"github.com/ybbus/jsonrpc"
-	"github.com/modood/table"
 )
 
 const (
@@ -926,6 +928,8 @@ func main() {
 	fmt.Printf("\n")
 }
 
+// -------------------------------------------------------------------------------------------------------
+
 func printDatabase() {
 
 	// todo: if the env is not "local", pull down the database.bin from the admin service
@@ -939,8 +943,6 @@ func printDatabase() {
 	}
 
 	// header
-
-	fmt.Printf("Header:\n\n")
 
 	type HeaderRow struct {
 		Creator      string
@@ -958,16 +960,18 @@ func printDatabase() {
 	fmt.Printf("\nBuyers:\n\n")
 
 	type BuyerRow struct {
-		Name     string
-		Id       string
-		Live     string
-		Debug    string
+		Name  string
+		Id    string
+		Live  string
+		Debug string
 	}
 
 	buyers := []BuyerRow{}
 
 	for _, v := range database.BuyerMap {
-		
+
+		// todo: want to reconstruct customer public key here for checking
+
 		row := BuyerRow{
 			Id:    fmt.Sprintf("%0x", v.Id),
 			Name:  v.Name,
@@ -978,6 +982,8 @@ func printDatabase() {
 		buyers = append(buyers, row)
 	}
 
+	sort.SliceStable(buyers, func(i, j int) bool { return buyers[i].Name < buyers[j].Name })
+
 	table.Output(buyers)
 
 	// sellers
@@ -985,21 +991,23 @@ func printDatabase() {
 	fmt.Printf("\nSellers:\n\n")
 
 	type SellerRow struct {
-		Name     string
-		Id       string
+		Name string
+		Id   string
 	}
 
 	sellers := []SellerRow{}
 
 	for _, v := range database.SellerMap {
-		
+
 		row := SellerRow{
-			Id:    fmt.Sprintf("%0x", v.Id),
-			Name:  v.Name,
+			Id:   fmt.Sprintf("%0x", v.Id),
+			Name: v.Name,
 		}
 
 		sellers = append(sellers, row)
 	}
+
+	sort.SliceStable(sellers, func(i, j int) bool { return sellers[i].Id < sellers[j].Id })
 
 	table.Output(sellers)
 
@@ -1017,16 +1025,95 @@ func printDatabase() {
 	datacenters := []DatacenterRow{}
 
 	for _, v := range database.DatacenterMap {
-		
+
 		row := DatacenterRow{
-			Id:    fmt.Sprintf("%0x", v.Id),
-			Name:  v.Name,
-			Latitude: fmt.Sprintf("%+3.2f", v.Latitude),
+			Id:        fmt.Sprintf("%0x", v.Id),
+			Name:      v.Name,
+			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
 			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
 		}
 
 		datacenters = append(datacenters, row)
 	}
 
+	sort.SliceStable(datacenters, func(i, j int) bool { return datacenters[i].Name < datacenters[j].Name })
+
 	table.Output(datacenters)
+
+	// relays
+
+	fmt.Printf("\nRelays:\n\n")
+
+	type RelayRow struct {
+		Name            string
+		Id              string
+		PublicAddress   string
+		InternalAddress string
+		PublicKey       string
+		PrivateKey      string
+	}
+
+	relays := []RelayRow{}
+
+	for _, v := range database.RelayMap {
+
+		row := RelayRow{
+			Id:            fmt.Sprintf("%0x", v.Id),
+			Name:          v.Name,
+			PublicAddress: v.PublicAddress.String(),
+			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
+			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
+		}
+
+		if v.HasInternalAddress {
+			row.InternalAddress = v.InternalAddress.String()
+		}
+
+		relays = append(relays, row)
+	}
+
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].Name < relays[j].Name })
+
+	table.Output(relays)
+
+	// route shaders
+
+	type PropertyRow struct {
+		Property string
+		Value    string
+	}
+
+	for _, v := range database.BuyerMap {
+
+		fmt.Printf("\nRoute Shader for '%s'\n\n", v.Name)
+
+		routeShader := v.RouteShader
+
+		properties := []PropertyRow{}
+
+		properties = append(properties, PropertyRow{"Disable Network Next", fmt.Sprintf("%v", routeShader.DisableNetworkNext)})
+		properties = append(properties, PropertyRow{"Analysis Only", fmt.Sprintf("%v", routeShader.AnalysisOnly)})
+		properties = append(properties, PropertyRow{"AB Test", fmt.Sprintf("%v", routeShader.ABTest)})
+		properties = append(properties, PropertyRow{"Reduce Latency", fmt.Sprintf("%v", routeShader.ReduceLatency)})
+		properties = append(properties, PropertyRow{"Reduce Packet Loss", fmt.Sprintf("%v", routeShader.ReducePacketLoss)})
+		properties = append(properties, PropertyRow{"Multipath", fmt.Sprintf("%v", routeShader.Multipath)})
+		properties = append(properties, PropertyRow{"Force Next", fmt.Sprintf("%v", routeShader.ForceNext)})
+		properties = append(properties, PropertyRow{"Selection Percent", fmt.Sprintf("%d%%", routeShader.SelectionPercent)})
+		properties = append(properties, PropertyRow{"Acceptable Latency", fmt.Sprintf("%dms", routeShader.AcceptableLatency)})
+		properties = append(properties, PropertyRow{"Latency Threshold", fmt.Sprintf("%dms", routeShader.LatencyThreshold)})
+		properties = append(properties, PropertyRow{"Acceptable Packet Loss", fmt.Sprintf("%.1f%%", routeShader.AcceptablePacketLoss)})
+		properties = append(properties, PropertyRow{"Packet Loss Sustained", fmt.Sprintf("%.1f%%", routeShader.PacketLossSustained)})
+		properties = append(properties, PropertyRow{"Bandwidth Envelope Up", fmt.Sprintf("%dkbps", routeShader.BandwidthEnvelopeUpKbps)})
+		properties = append(properties, PropertyRow{"Bandwidth Envelope Down", fmt.Sprintf("%dkbps", routeShader.BandwidthEnvelopeDownKbps)})
+		properties = append(properties, PropertyRow{"Route Select Threshold", fmt.Sprintf("%dms", routeShader.RouteSelectThreshold)})
+		properties = append(properties, PropertyRow{"Route Switch Threshold", fmt.Sprintf("%dms", routeShader.RouteSwitchThreshold)})
+		properties = append(properties, PropertyRow{"Max Latency Trade Off", fmt.Sprintf("%dms", routeShader.MaxLatencyTradeOff)})
+		properties = append(properties, PropertyRow{"RTT Veto (Default)", fmt.Sprintf("%dms", routeShader.RTTVeto_Default)})
+		properties = append(properties, PropertyRow{"RTT Veto (Multipath)", fmt.Sprintf("%dms", routeShader.RTTVeto_Multipath)})
+		properties = append(properties, PropertyRow{"RTT Veto (PacketLoss)", fmt.Sprintf("%dms", routeShader.RTTVeto_PacketLoss)})
+		properties = append(properties, PropertyRow{"Max Next RTT", fmt.Sprintf("%dms", routeShader.MaxNextRTT)})
+		properties = append(properties, PropertyRow{"Route Diversity", fmt.Sprintf("%d", routeShader.RouteDiversity)})
+
+		table.Output(properties)
+	}
 }

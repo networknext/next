@@ -385,7 +385,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				sampleJitter := make([]float32, numSamples)
 				samplePacketLoss := make([]float32, numSamples)
 				sampleRoutable := make([]bool, numSamples)
-				
+
 				for i := 0; i < numSamples; i++ {
 
 					rtt := relayUpdateRequest.SampleRTT[i]
@@ -426,13 +426,13 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
 
 				relayStatsMessage := messages.RelayStatsMessage{
-					Version:                  messages.RelayStatsMessageVersion_Write,
-					Timestamp:                uint64(time.Now().Unix()),
-					NumSessions:              uint32(numSessions),
-					MaxSessions:              uint32(maxSessions),
-					NumRoutable:              uint32(numRoutable),
-					NumUnroutable:            uint32(numUnroutable),
-					Full:                     full,
+					Version:       messages.RelayStatsMessageVersion_Write,
+					Timestamp:     uint64(time.Now().Unix()),
+					NumSessions:   uint32(numSessions),
+					MaxSessions:   uint32(maxSessions),
+					NumRoutable:   uint32(numRoutable),
+					NumUnroutable: uint32(numUnroutable),
+					Full:          full,
 				}
 
 				// update relay stats

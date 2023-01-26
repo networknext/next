@@ -769,19 +769,19 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	// todo: we gotta fix this...
 	/*
-	for _, buyer := range database.BuyerMap {
-		if buyer.Live {
-			for _, datacenter := range database.DatacenterMaps[buyer.Id] {
-				if !datacenter.EnableAcceleration {
-					continue
-				}
-				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterId]
-				for j := 0; j < len(datacenterRelays); j++ {
-					relayData.DestRelays[datacenterRelays[j]] = true
+		for _, buyer := range database.BuyerMap {
+			if buyer.Live {
+				for _, datacenter := range database.DatacenterMaps[buyer.Id] {
+					if !datacenter.EnableAcceleration {
+						continue
+					}
+					datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterId]
+					for j := 0; j < len(datacenterRelays); j++ {
+						relayData.DestRelays[datacenterRelays[j]] = true
+					}
 				}
 			}
 		}
-	}
 	*/
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent

@@ -563,7 +563,7 @@ func main() {
 		datacenterName := datacenter_row.name
 		datacenterId := common.DatacenterId(datacenterName)
 
-		for _,v := range database.BuyerMap {
+		for _, v := range database.BuyerMap {
 			if v.Name == buyerName {
 				buyerId = v.Id
 			}

@@ -11,21 +11,21 @@ import (
 )
 
 type Relay struct {
-	Id              uint64
-	Name            string
-	DatacenterId    uint64
-	PublicAddress   net.UDPAddr
+	Id                 uint64
+	Name               string
+	DatacenterId       uint64
+	PublicAddress      net.UDPAddr
 	HasInternalAddress bool
-	InternalAddress net.UDPAddr
-	SSHAddress      net.UDPAddr
-	SSHUser         string
-	PublicKey       []byte
-	PrivateKey      []byte
-	MaxSessions     int
-	PortSpeed       int
-	Version         string
-	Seller          Seller
-	Datacenter      Datacenter
+	InternalAddress    net.UDPAddr
+	SSHAddress         net.UDPAddr
+	SSHUser            string
+	PublicKey          []byte
+	PrivateKey         []byte
+	MaxSessions        int
+	PortSpeed          int
+	Version            string
+	Seller             Seller
+	Datacenter         Datacenter
 }
 
 type Buyer struct {
@@ -115,13 +115,15 @@ func (database *Database) Save(filename string) error {
 	return nil
 }
 
+// todo: validation function
+
 func (database *Database) IsEmpty() bool {
 
-	if database.CreationTime == "" {
+	if database.CreationTime != "" {
 		return false
 	}
 
-	if database.Creator == "" {
+	if database.Creator != "" {
 		return false
 	}
 

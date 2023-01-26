@@ -55,20 +55,20 @@ func SeedStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:             customerID,
-			CompanyCode:    "local",
-			Live:           true,
-			PublicKey:      customerPublicKey,
-			RouteShader:    routeShader,
+			ID:          customerID,
+			CompanyCode: "local",
+			Live:        true,
+			PublicKey:   customerPublicKey,
+			RouteShader: routeShader,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 		if err := db.AddBuyer(ctx, routing.Buyer{
-			ID:             0,
-			CompanyCode:    "ghost-army",
-			Live:           true,
-			PublicKey:      customerPublicKey,
-			RouteShader:    routeShader,
+			ID:          0,
+			CompanyCode: "ghost-army",
+			Live:        true,
+			PublicKey:   customerPublicKey,
+			RouteShader: routeShader,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}

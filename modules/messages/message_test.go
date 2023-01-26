@@ -91,14 +91,14 @@ func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 
 	message := messages.RelayStatsMessage{
-		Version:                  byte(common.RandomInt(messages.RelayStatsMessageVersion_Min, messages.RelayStatsMessageVersion_Max)),
-		Timestamp:                uint64(time.Now().Unix()),
-		ID:                       rand.Uint64(),
-		NumSessions:              rand.Uint32(),
-		MaxSessions:              rand.Uint32(),
-		NumRoutable:              rand.Uint32(),
-		NumUnroutable:            rand.Uint32(),
-		Full:                     common.RandomBool(),
+		Version:       byte(common.RandomInt(messages.RelayStatsMessageVersion_Min, messages.RelayStatsMessageVersion_Max)),
+		Timestamp:     uint64(time.Now().Unix()),
+		ID:            rand.Uint64(),
+		NumSessions:   rand.Uint32(),
+		MaxSessions:   rand.Uint32(),
+		NumRoutable:   rand.Uint32(),
+		NumUnroutable: rand.Uint32(),
+		Full:          common.RandomBool(),
 	}
 
 	return message
