@@ -115,8 +115,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		responsePacket.Timestamp = uint64(time.Now().Unix())
 		responsePacket.TargetVersion = relay.Version
 
-		sellerName := relay.Seller.Name
-
 		index := 0
 
 		for i := range relayData.RelayIds {
@@ -125,15 +123,18 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				continue
 			}
 
+			// todo: bring this back. and don't compare strings...
+			/*
 			var address string
-			if sellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddress.String() != ":0" {
+			if relayData.ResellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddress.String() != ":0" {
 				address = relayData.RelayArray[i].InternalAddress.String()
 			} else {
 				address = relayData.RelayArray[i].PublicAddress.String()
 			}
+			*/
 
 			responsePacket.RelayId[index] = relayData.RelayIds[i]
-			responsePacket.RelayAddress[index] = address
+			responsePacket.RelayAddress[index] = relayData.RelayArray[i].PublicAddress.String()
 
 			index++
 		}

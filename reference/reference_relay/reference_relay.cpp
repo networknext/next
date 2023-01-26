@@ -4256,6 +4256,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
 // ==================================================================================================================================================================================
 
+/*
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
         {
             // todo
@@ -4747,6 +4748,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->bytes_sent += packet_bytes - 16;
             }
         }
+*/
 
 // ==================================================================================================================================================================================
 
@@ -5561,6 +5563,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             packet_data[0] = RELAY_PING_PACKET;
             uint8_t * p = packet_data + 1;
             relay_write_uint64( &p, pings[i].sequence );
+
+            // todo
+            char to_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_to_string( &pings[i].address, to_address);
+            printf("sending relay ping packet to %s\n", to_address);
+
             relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
         }
 

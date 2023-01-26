@@ -8,9 +8,15 @@ DONE
 
 	Split up functional tests so we can selectively run them as needed
 
+	It was the internal addresses being sent down as 0.0.0.0 addresses for relay pings
+
+	Database needs to be extended to include a bool "HasExternalAddress"
+
 TODO
 
-	
+	Deploy fix and verify relays don't freak out with 0.0.0.0 address.	
+
+		
 
 
 

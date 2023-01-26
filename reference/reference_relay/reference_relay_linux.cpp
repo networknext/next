@@ -276,11 +276,14 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s [ipv6]", address_string, strerror( errno ) );
         }
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
     {
+        // todo
+        printf( "to = %d.%d.%d.%d\n", (int)to->data.ipv4[0], (int)to->data.ipv4[1], (int)to->data.ipv4[2], (int)to->data.ipv4[3] );
+
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
@@ -294,7 +297,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
         {
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s", address_string, strerror( errno ) );
+            relay_printf( "sendto (%s) failed: %s [ipv4]", address_string, strerror( errno ) );
         }
     }
     else

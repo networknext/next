@@ -15,6 +15,7 @@ type Relay struct {
 	Name            string
 	DatacenterId    uint64
 	PublicAddress   net.UDPAddr
+	HasInternalAddress bool
 	InternalAddress net.UDPAddr
 	SSHAddress      net.UDPAddr
 	SSHUser         string

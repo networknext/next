@@ -478,12 +478,16 @@ func main() {
 		relay.InternalAddress = ParseAddress(row.internal_ip)
 		relay.InternalAddress.Port = row.internal_port
 
+		if relay.InternalAddress.String() != "0.0.0.0:0" {
+			relay.HasInternalAddress = true
+		}
+
 		relay.SSHAddress = ParseAddress(row.ssh_ip)
 		relay.SSHUser = row.ssh_user
 
-		// todo: if SSH address is not specified, set it to public address by default
-
-		// todo: if internal address is not specified, make sure it is set to some consistent value that I can check, eg. hasInternalAddress
+		if relay.SSHAddress.String() == "0.0.0.0:0" {
+			relay.SSHAddress = relay.PublicAddress
+		}
 
 		relay.PublicKey, err = base64.StdEncoding.DecodeString(row.public_key_base64)
 		if err != nil {
