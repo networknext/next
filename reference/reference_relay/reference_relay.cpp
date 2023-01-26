@@ -5643,22 +5643,6 @@ int main( int argc, const char ** argv )
     char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     printf( "    relay address is '%s'\n", relay_address_to_string( &relay_address, address_buffer ) );
 
-    const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
-    if ( !relay_private_key_env )
-    {
-        printf( "\nerror: RELAY_PRIVATE_KEY not set\n\n" );
-        return 1;
-    }
-
-    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
-    if ( relay_base64_decode_data( relay_private_key_env, relay_private_key, RELAY_PRIVATE_KEY_BYTES ) != RELAY_PRIVATE_KEY_BYTES )
-    {
-        printf( "\nerror: invalid relay private key\n\n" );
-        return 1;
-    }
-
-    printf( "    relay private key is '%s'\n", relay_private_key_env );
-
     const char * relay_public_key_env = relay_platform_getenv( "RELAY_PUBLIC_KEY" );
     if ( !relay_public_key_env )
     {
@@ -5674,6 +5658,22 @@ int main( int argc, const char ** argv )
     }
 
     printf( "    relay public key is '%s'\n", relay_public_key_env );
+
+    const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
+    if ( !relay_private_key_env )
+    {
+        printf( "\nerror: RELAY_PRIVATE_KEY not set\n\n" );
+        return 1;
+    }
+
+    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
+    if ( relay_base64_decode_data( relay_private_key_env, relay_private_key, RELAY_PRIVATE_KEY_BYTES ) != RELAY_PRIVATE_KEY_BYTES )
+    {
+        printf( "\nerror: invalid relay private key\n\n" );
+        return 1;
+    }
+
+    printf( "    relay private key is '%s'\n", relay_private_key_env );
 
     const char * router_public_key_env = relay_platform_getenv( "RELAY_ROUTER_PUBLIC_KEY" );
     if ( !router_public_key_env )

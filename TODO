@@ -16,51 +16,6 @@ DONE
 
 TODO
 
-	I'm still getting this:
-
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: --------------------------------------
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355035.736487: info: client next route
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355035.736500: info: client multipath enabled
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355035.736531: debug: client sent route update ack packet to server
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355035.837898: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355036.149943: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:26 raspberry-client-mig-jwz0 app[91155]: 355036.429923: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:27 raspberry-client-mig-jwz0 app[91155]: 355036.741907: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:27 raspberry-client-mig-jwz0 app[91155]: 355037.053933: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:27 raspberry-client-mig-jwz0 app[91155]: 355037.317477: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:27 raspberry-client-mig-jwz0 app[91155]: 355037.625803: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:28 raspberry-client-mig-jwz0 app[91155]: 355037.937771: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:28 raspberry-client-mig-jwz0 app[91155]: 355038.249781: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:28 raspberry-client-mig-jwz0 app[91155]: 355038.529789: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:29 raspberry-client-mig-jwz0 app[91155]: 355038.841719: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:29 raspberry-client-mig-jwz0 app[91155]: 355039.153754: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:29 raspberry-client-mig-jwz0 app[91155]: 355039.417729: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:30 raspberry-client-mig-jwz0 app[91155]: 355039.729701: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:30 raspberry-client-mig-jwz0 app[91155]: 355040.041685: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:30 raspberry-client-mig-jwz0 app[91155]: 355040.324367: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:30 raspberry-client-mig-jwz0 app[91155]: 355040.633642: debug: client sent route request to relay: 3.138.73.252:40000
-		Jan 26 01:35:31 raspberry-client-mig-jwz0 app[91155]: 355040.737629: error: client route request timed out
-		Jan 26 01:35:31 raspberry-client-mig-jwz0 app[91155]: 355040.737668: info: client fallback to direct
-	
-	Now I'm back here:
-
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:37 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:38 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-		Jan 26 01:44:39 dev-google-iowa-1 relay[1734]: received route request packet [sdk5]
-		Jan 26 01:44:39 dev-google-iowa-1 relay[1734]: ignoring route request. could not read route token [sdk5]
-
 
 
 
