@@ -281,9 +281,6 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
     {
-        // todo
-        printf( "to = %d.%d.%d.%d\n", (int)to->data.ipv4[0], (int)to->data.ipv4[1], (int)to->data.ipv4[2], (int)to->data.ipv4[3] );
-
         sockaddr_in socket_address;
         memset( &socket_address, 0, sizeof( socket_address ) );
         socket_address.sin_family = AF_INET;
