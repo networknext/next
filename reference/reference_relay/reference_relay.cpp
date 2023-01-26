@@ -4228,15 +4228,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
         int packet_id = packet_data[0];
 
+        /*
         // todo
         char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string( &from, from_string );
         printf( "received packet type %d from %s\n", packet_id, from_string );
+        */
 
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
+            /*
             // todo
             printf("relay ping packet\n");
+            */
 
             packet_data[0] = RELAY_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, 1 + 8 );
@@ -4244,8 +4248,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         }
         else if ( packet_id == RELAY_PONG_PACKET && packet_bytes == 1 + 8 )
         {
+            /*
             // todo
             printf("relay pong packet\n");
+            */
 
             relay_platform_mutex_acquire( relay->mutex );
             const uint8_t * p = packet_data + 1;
@@ -4754,8 +4760,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
         {
+            /*
             // todo
             printf( "(sdk5 group packet)\n");
+            */
 
             if ( !relay_basic_packet_filter_sdk5( packet_data, packet_bytes ))
             {
@@ -4962,8 +4970,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received route continue request packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
                 {
@@ -5041,8 +5051,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received route continue response packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
@@ -5112,10 +5124,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( continue_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( continue_response_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
                     printf( "sending continue response packet to prev hop %s\n", prev_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
 
@@ -5124,8 +5138,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received client to server packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
@@ -5205,10 +5221,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( client_to_server_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( client_to_server_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
                     printf( "sending client to server packet to next hop %s\n", next_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
 
@@ -5217,8 +5235,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received server to client packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
                 {
@@ -5298,10 +5318,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( server_to_client_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( server_to_client_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
                     printf( "sending server to client packet to previous hop %s\n", prev_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
 
@@ -5310,8 +5332,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received session ping packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
@@ -5383,10 +5407,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( session_ping_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
                     printf( "sending session ping packet to next hop %s\n", next_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
 
@@ -5395,8 +5421,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received session pong packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
@@ -5469,10 +5497,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( session_pong_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( session_pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
  
+                    /*
                     // todo
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
                     printf( "sending session pong packet to prev hop %s\n", prev_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
 
@@ -5481,8 +5511,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
+                /*
                 // todo
                 printf( "received near relay ping packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {
@@ -5503,10 +5535,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( pong_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char pong_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &from, pong_address );
                     printf( "sent near relay pong packet [sdk5] back to %s\n", pong_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
 
@@ -5564,11 +5598,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             uint8_t * p = packet_data + 1;
             relay_write_uint64( &p, pings[i].sequence );
 
+            /*
             // todo
             char to_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( &pings[i].address, to_address);
             printf("sending relay ping packet to %s\n", to_address);
-
+            */
+            
             relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
         }
 
