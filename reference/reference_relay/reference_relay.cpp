@@ -5695,8 +5695,10 @@ int main( int argc, const char ** argv )
     }
     else
     {
-        bind_address = relay_address;
         printf( "\nBinding to 0.0.0.0:%d\n", relay_address.port );
+        memset( &bind_address, 0, sizeof(bind_address) );
+        bind_address.type = RELAY_ADDRESS_IPV4;
+        bind_address.port = relay_address.port;
     }
 
     relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
