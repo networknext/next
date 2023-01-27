@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
+	// todo
+	/*
 	"bytes"
 	"context"
 	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -19,12 +21,14 @@ import (
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/rs/cors"
-
-	// todo: old modules in new code are verboten
-	"github.com/networknext/backend/modules-old/transport"
-	"github.com/networknext/backend/modules-old/transport/middleware"
+	*/
 )
 
+func main() {
+	fmt.Printf("hello website cruncher world. old modules are no longer allowed\n")
+}
+
+/*
 const (
 	TOP_SESSIONS_COUNT            = 10
 	STATS_DATASTORE               = "live_stats"
@@ -601,3 +605,4 @@ func updateDataStore(service *common.Service, stats common.LookerStats, topSessi
 }
 
 // -----------------------------------------------------------------------------------------
+*/

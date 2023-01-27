@@ -23,9 +23,6 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
 
-	// todo: we want to move this to a new module ("middleware"?) or common as needed
-	"github.com/networknext/backend/modules-old/transport/middleware"
-
 	"github.com/gorilla/mux"
 	"github.com/oschwald/geoip2-golang"
 )
@@ -378,7 +375,7 @@ func versionHandlerFunc(buildTime string, commitMessage string, commitHash strin
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		middleware.CORSControlHandlerFunc(allowedOrigins, w, r)
+		CORSControlHandlerFunc(allowedOrigins, w, r)
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(version); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

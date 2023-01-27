@@ -514,7 +514,7 @@ func main() {
 				regexName = args[0]
 			}
 
-			getFleetRelays(env, relaysCount, relaysAlphaSort, regexName)
+			printRelays(env, relaysCount, relaysAlphaSort, regexName)
 
 			return nil
 		},
@@ -847,17 +847,26 @@ func main() {
 
 // -------------------------------------------------------------------------------------------------------
 
+var cachedDatabase *db.Database
+
+func getDatabase() *db.Database {
+	if cachedDatabase != nil {
+		return cachedDatabase
+	}
+	cachedDatabase, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin: %v\n", err)
+		os.Exit(1)
+		return nil
+	}
+	return cachedDatabase
+}
+
 func printDatabase() {
 
 	// todo: if the env is not "local", pull down the database.bin from the admin service
 
-	// load the database
-
-	database, err := db.LoadDatabase("database.bin")
-	if err != nil {
-		fmt.Printf("error: could not load database.bin: %v\n", err)
-		os.Exit(1)
-	}
+	database := getDatabase()
 
 	// header
 
@@ -1035,33 +1044,86 @@ func printDatabase() {
 	}
 }
 
-func getFleetRelays(
-	env Environment,
-	relayCount int64,
-	alphaSort bool,
-	regexName string,
+type RelayFleetEntry struct {
+	Name     string `json:"name"`
+	Address  string `json:"address"`
+	Id       string `json:"hex_id"`
+	Status   string `json:"status"`
+	Sessions string `json:"sessions"`
+	Version  string `json:"version"`
+}
 
-) {
+type RelayFleetArgs struct{}
 
-	// todo: implement this with the database.bin directly
+type RelayFleetReply struct {
+	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
+}
 
-	/*
-	var reply localjsonrpc.RelayFleetReply = localjsonrpc.RelayFleetReply{}
-	var args = localjsonrpc.RelayFleetArgs{}
-
-	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
+func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
+	protocol := "https"
+	if env.PortalHostname() == PortalHostnameLocal {
+		protocol = "http"
 	}
 
-	// name,address,id,status,sessions,version
-	relays := []struct {
+	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+		CustomHeaders: map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+		},
+	})
+
+	if err := rpcClient.CallFor(&reply, method, params); err != nil {
+		switch e := err.(type) {
+		case *jsonrpc.HTTPError:
+			switch e.Code {
+			case http.StatusUnauthorized:
+				// Refresh token and try again
+				if err := refreshAuth(env); err != nil {
+					handleRunTimeError(err.Error(), 1)
+				}
+				env.Read()
+
+				rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+					CustomHeaders: map[string]string{
+						"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+					},
+				})
+
+				if err := rpcClient.CallFor(&reply, method, params); err != nil {
+					return err
+				}
+			default:
+				return err
+			}
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
+
+	var reply RelayFleetReply = RelayFleetReply{}
+	var args = RelayFleetArgs{}
+	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
+		fmt.Printf("error: could not get relays\n")
+	   return
+	}
+
+   /*
+	type RelayRow struct {
 		Name     string
 		Address  string
 		Id       string
 		Status   string
 		Sessions int
 		Version  string
+	}
+
+	// todo: we need to make a minimal call to the admin service here just to get the session count, state and version for all relays
+
+	// name,address,id,status,sessions,version
+	relays := []struct {
 	}{}
 
 	filtered := []struct {

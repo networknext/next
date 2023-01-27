@@ -1,14 +1,22 @@
 DONE
 
-TODO
-
 	Setup a dev.bin database file under envs
 
 	Copy this file to database.bin when you go "next select dev"
 
-	Change all the next tool stuff to not use JSON RPC. It just works directly off the local database file.
+	Write a lazy eval function that loads the database.bin as needed (once only, per-next tool invocation)
 
-	It can be updated in future to do JSON again, or it can auto-pull down teh database.bin for the env as needed (perhaps on "next select [env]")
+TODO
+
+	Get "next relays" working again
+
+	-------------
+
+	Get "next ssh [relay]" working off the database.bin
+
+	-------------
+
+	Extend "next database" to print out the 
 
 	-------------
 
