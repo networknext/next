@@ -54,12 +54,13 @@ blocks:
       jobs:
         - name: "Build Binaries"
           commands:
-            - cache restore
+            - cache restore binaries-$SEMAPHORE_GIT_BRANCH
             - checkout
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev
             - make rebuild
-            - cache store
+            - cache delete binaries-$SEMAPHORE_GIT_BRANCH
+            - cache store binaries-$SEMAPHORE_GIT_BRANCH
 
   - name: "Backend"
     dependencies: []
