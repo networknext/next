@@ -186,7 +186,7 @@ func help() {
 }
 
 func test() {
-	bash("./scripts/test-backend.sh")
+	bash("go test ./modules/...")
 }
 
 func test_sdk4() {
@@ -259,12 +259,12 @@ func portal() {
 
 func happy_path() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("go run ./scripts/happy_path/happy_path.go")
+	bash("go run ./tools/happy_path/happy_path.go")
 }
 
 func happy_path_no_wait() {
 	fmt.Printf("\ndon't worry. be happy.\n\n")
-	bash("go run ./scripts/happy_path/happy_path.go 1")
+	bash("go run ./tools/happy_path/happy_path.go 1")
 }
 
 func server4() {
@@ -294,7 +294,7 @@ func bigquery_emulator() {
 }
 
 func setup_emulators() {
-	bash("go run ./scripts/setup_emulators/setup_emulators.go")
+	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
 func func_sdk4() {
@@ -337,7 +337,7 @@ func raspberry_server() {
 }
 
 func relay_keygen() {
-	bash("go run scripts/relay_keygen/relay_keygen.go")
+	bash("go run tools/relay_keygen/relay_keygen.go")
 }
 
 func ref_backend4() {
@@ -365,5 +365,5 @@ func sql_local() {
 }
 
 func extract_database() {
-	bash("go run scripts/extract_database/extract_database.go")
+	bash("go run tools/extract_database/extract_database.go")
 }
