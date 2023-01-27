@@ -711,6 +711,23 @@ func main() {
 		},
 	}
 
+	var loadCommand = &ffcli.Command{
+		Name:       "load",
+		ShortUsage: "next load [regex...] [version]",
+		ShortHelp:  "Load the specific relay binary version on a relay",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 2 {
+				handleRunTimeError(fmt.Sprintf("Please provide a relay name and a version"), 0)
+			}
+			regex := args[0]
+			version := args[1]
+
+			loadRelays(env, regex, version)
+
+			return nil
+		},
+	}
+
 	var keygenCommand = &ffcli.Command{
 		Name:       "keygen",
 		ShortUsage: "next keygen",
@@ -895,6 +912,7 @@ func main() {
 		logCommand,
 		startCommand,
 		stopCommand,
+		loadCommand,
 		keygenCommand,
 		keysCommand,
 		sshCommand,
@@ -1337,33 +1355,9 @@ func (con SSHConn) TestConnect() bool {
 
 const (
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
-
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
-
-	VersionCheckScript = `lsb_release -r | grep -Po "([0-9]{2}\.[0-9]{2})"`
+	LoadRelayScript = `sudo systemctl stop relay && rm -f relay* && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && sudo journalctl -fu relay -n 1000`
 )
-
-func unitFormat(bits uint64) string {
-	const (
-		kilo = 1000
-		mega = 1000000
-		giga = 1000000000
-	)
-
-	if bits > giga {
-		return fmt.Sprintf("%.02fGb/s", float64(bits)/float64(giga))
-	}
-
-	if bits > mega {
-		return fmt.Sprintf("%.02fMb/s", float64(bits)/float64(mega))
-	}
-
-	if bits > kilo {
-		return fmt.Sprintf("%.02fKb/s", float64(bits)/float64(kilo))
-	}
-
-	return fmt.Sprintf("%d", bits)
-}
 
 type relayInfo struct {
 	id          uint64
@@ -1374,7 +1368,6 @@ type relayInfo struct {
 	publicAddr  string
 	publicKey   string
 	nicSpeed    string
-	firestoreID string
 	state       string
 	version     string
 }
@@ -1484,6 +1477,23 @@ func stopRelays(env Environment, regexes []string) bool {
 	}
 
 	return success
+}
+
+func loadRelays(env Environment, regex string, version string) {
+	relays := getRelayInfo(env, regex)
+	if len(relays) == 0 {
+		fmt.Printf("no relays matched the regex '%s'\n", regex)
+		return
+	}
+	for _, relay := range relays {
+		if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+			continue
+		}
+		fmt.Printf("loading relay-%s onto %s\n", version, relay.name)
+		testForSSHKey(env)
+		con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+		con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
+	}
 }
 
 func relayLog(env Environment, regexes []string) {
