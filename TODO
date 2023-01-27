@@ -6,17 +6,17 @@ DONE
 
 	Write a lazy eval function that loads the database.bin as needed (once only, per-next tool invocation)
 
-TODO
-
 	Get "next relays" working again
 
+	Get "next ssh [relay]" working again
+
+	Get "next cost" working again
+
+TODO
+
 	-------------
 
-	Get "next ssh [relay]" working off the database.bin
-
-	-------------
-
-	Extend "next database" to print out the 
+	Extend "next database" to print out the combined customer public key base64 (for visual comparison)
 
 	-------------
 
@@ -28,11 +28,11 @@ TODO
 
 	-------------
 
-	Actually implement database validation
+	Bring back internal addresses for google relays
 
 	-------------
 
-	Bring back internal addresses for google relays
+	Actually implement database validation
 
 	-------------
 
@@ -117,7 +117,7 @@ Essentials:
 
 	--------------
 
-	Portal cruncher new
+	Portal cruncher
 
 	--------------
 
