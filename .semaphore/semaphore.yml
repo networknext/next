@@ -55,6 +55,7 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
+            - cache restore
             - checkout
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev

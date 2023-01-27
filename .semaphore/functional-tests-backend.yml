@@ -45,6 +45,8 @@ blocks:
             - artifact push workflow dist/relay_gateway
             - artifact push workflow dist/relay_backend
 
+            - cache store
+
   - name: "Run Functional Tests (backend)"
     dependencies: ["Build Functional Tests (backend)"]
     task:
