@@ -44,6 +44,22 @@ blocks:
             - artifact push workflow ./dist/libnext4.so
             - artifact push workflow ./dist/libnext5.so
 
+  - name: "Binaries"
+    dependencies: []
+    task:
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+      jobs:
+        - name: "Build Binaries"
+          commands:
+            - cache restore
+            - checkout
+            - cp envs/local.env .env
+            - sudo apt-get install -y libsodium-dev
+            - make rebuild
+            - cache store
 
   - name: "Backend"
     dependencies: []
@@ -55,12 +71,12 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
-            - cache restore
             - checkout
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev
             - go test ./modules/...
-            - cache store
+            - cache restore
+            - cache store golang vendor/bundle
 
   - name: "SDK4"
     dependencies: []
