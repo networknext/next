@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"io"
@@ -425,7 +426,7 @@ func main() {
 
 			// todo: temporary -- copy envs/dev.bin to database.bin when we select dev
 			if args[0] == "dev" {
-				bash("rm -f database.bin && cp envs/local.bin database.bin")
+				bash("rm -f database.bin && cp envs/dev.bin database.bin")
 			}
 
 			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get environment vars for the env
@@ -888,23 +889,27 @@ func printDatabase() {
 	fmt.Printf("\nBuyers:\n\n")
 
 	type BuyerRow struct {
-		Name  string
-		Id    string
-		Live  string
-		Debug string
+		Name            string
+		Id              string
+		Live            string
+		Debug           string
+		PublicKeyBase64 string
 	}
 
 	buyers := []BuyerRow{}
 
 	for _, v := range database.BuyerMap {
 
-		// todo: want to reconstruct customer public key here for checking
+		data := make([]byte, 8+32)
+		binary.LittleEndian.PutUint64(data, v.Id)
+		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
 			Id:    fmt.Sprintf("%0x", v.Id),
 			Name:  v.Name,
 			Live:  fmt.Sprintf("%v", v.Live),
 			Debug: fmt.Sprintf("%v", v.Debug),
+			PublicKeyBase64: base64.StdEncoding.EncodeToString(data),
 		}
 
 		buyers = append(buyers, row)
