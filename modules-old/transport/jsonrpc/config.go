@@ -2,12 +2,9 @@ package jsonrpc
 
 import (
 	"net/http"
-
-	"github.com/networknext/backend/modules-old/storage"
 )
 
 type ConfigService struct {
-	Storage storage.Storer
 }
 
 type FeatureFlag struct {

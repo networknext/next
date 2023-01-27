@@ -5,17 +5,13 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
-	"sort"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	// "github.com/dgrijalva/jwt-go"
 
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/storage"
 	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules-old/transport/notifications"
 
@@ -28,15 +24,10 @@ const (
 
 type AuthService struct {
 	AuthenticationClient *notifications.Auth0AuthClient
-	HubSpotClient        *notifications.HubSpotClient
 	mu                   sync.Mutex
 	RoleCache            map[string]*management.Role
 	MailChimpManager     notifications.MailChimpHandler
-	JobManager           storage.JobManager
-	RoleManager          storage.RoleManager
-	UserManager          storage.UserManager
 	SlackClient          notifications.SlackClient
-	Storage              storage.Storer
 }
 
 type AccountsArgs struct {
@@ -77,6 +68,9 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+
+	// todo: gotta rebuild this off the new sql stuff
+	/*
 	ctx := r.Context()
 	reply.UserAccounts = make([]account, 0)
 
@@ -92,13 +86,6 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 	if requestCustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("AllAccounts(): %v", err.Error())
-		return &err
-	}
-
-	customer, err := s.Storage.Customer(ctx, requestCustomerCode)
-	if err != nil {
-		core.Error("AllAccounts(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
@@ -128,12 +115,16 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 
 		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
+	*/
 
 	return nil
 }
 
 func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 	var totalUsers []*management.User
+
+	// todo: gotta rebuild this off sql directly
+	/*
 	keepSearching := true
 	page := 0
 
@@ -151,11 +142,15 @@ func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 		}
 		page = page + 1
 	}
+	*/
 
 	return totalUsers, nil
 }
 
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+
+	// todo: gotta rebuild this off sql
+	/*
 	ctx := r.Context()
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
@@ -221,11 +216,15 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 
 	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin, company.BuyerTOSSignedTimestamp != "")
+	*/
 
 	return nil
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+
+	// todo
+	/*
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("DeleteUserAccount(): %v", err.Error())
@@ -278,11 +277,15 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+	*/
 
 	return nil
 }
 
 func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+
+	// todo
+	/*
 	var adminString string = "Admin"
 	var accounts []account
 
@@ -414,7 +417,10 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		}
 		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin, customer.BuyerTOSSignedTimestamp != ""))
 	}
+	
 	reply.UserAccounts = accounts
+	*/
+
 	return nil
 }
 
@@ -499,6 +505,9 @@ type UserDatabaseReply struct {
 }
 
 func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, reply *UserDatabaseReply) error {
+
+	// todo
+	/*
 	reply.Entries = make([]databaseEntry, 0)
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
@@ -556,6 +565,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 		reply.Entries = append(reply.Entries, entry)
 	}
+	*/
 
 	return nil
 }
@@ -570,6 +580,8 @@ type RolesReply struct {
 }
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+
+	/*
 	reply.Roles = make([]*management.Role, 0)
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
@@ -638,10 +650,15 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	sort.Slice(reply.Roles, func(i, j int) bool {
 		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
 	})
+	*/
+
 	return nil
 }
 
 func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+
+	// todo
+	/*
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UserRoles(): %v", err.Error())
@@ -663,11 +680,15 @@ func (s *AuthService) UserRoles(r *http.Request, args *RolesArgs, reply *RolesRe
 	}
 
 	reply.Roles = userRoles.Roles
+	*/
 
 	return nil
 }
 
 func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
+
+	// todo
+	/*
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateUserRoles(): %v", err.Error())
@@ -771,6 +792,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	sort.Slice(reply.Roles, func(i, j int) bool {
 		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
 	})
+	*/
+
 	return nil
 }
 
@@ -783,6 +806,9 @@ type SetupCompanyAccountArgs struct {
 type SetupCompanyAccountReply struct{}
 
 func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAccountArgs, reply *SetupCompanyAccountReply) error {
+
+	// todo
+	/*
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("SetupCompanyAccount(): %v", err.Error())
@@ -896,6 +922,8 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 			}
 		}
 	}
+	*/
+
 	return nil
 }
 
@@ -908,6 +936,9 @@ type UpdateAccountDetailsArgs struct {
 type UpdateAccountDetailsReply struct{}
 
 func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountDetailsArgs, reply *UpdateAccountDetailsReply) error {
+
+	// todo
+	/*
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateAccountDetails(): %v", err.Error())
@@ -964,6 +995,8 @@ func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountD
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+	*/
+
 	return nil
 }
 
@@ -974,6 +1007,9 @@ type ResetPasswordEmailArgs struct {
 type ResetPasswordEmailReply struct{}
 
 func (s *AuthService) ResetPasswordEmail(r *http.Request, args *ResetPasswordEmailArgs, reply *ResetPasswordEmailReply) error {
+
+	// todo
+	/*
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
@@ -993,6 +1029,7 @@ func (s *AuthService) ResetPasswordEmail(r *http.Request, args *ResetPasswordEma
 		core.Error("ResetPasswordEmail(): %v: Failed to send reset password email", err.Error())
 		return &err
 	}
+	*/
 
 	return nil
 }
@@ -1004,6 +1041,9 @@ type VerifyEmailArgs struct {
 type VerifyEmailReply struct{}
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+
+	// todo
+	/*
 	if !middleware.VerifyAnyRole(r, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("ResendVerificationEmail(): %v", err.Error())
@@ -1020,6 +1060,7 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+	*/
 
 	return nil
 }
@@ -1060,6 +1101,8 @@ type UpdateDomainsArgs struct {
 type UpdateDomainsReply struct{}
 
 func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomainsArgs, reply *UpdateDomainsReply) error {
+
+	/*
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateAutoSignupDomains(): %v", err.Error())
@@ -1082,6 +1125,7 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 		core.Error("UpdateAutoSignupDomains(): %v: Failed to update customer auto signup domains", err.Error())
 		return &err
 	}
+	*/
 
 	return nil
 }
@@ -1558,113 +1602,13 @@ type ProcessNewSignupReply struct {
 }
 
 func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupArgs, reply *ProcessNewSignupReply) error {
+
+	/*
 	message := fmt.Sprintf("%s %s signed up on the Portal! :tada:\nEmail: %s\nCompany Name: %s\nCompany Website: %s", args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
 
 	// If we error here we don't worry about it. Setting up everything is more important and the error shouldn't hinder the rest of the sign up process on the portal side
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		core.Error("ProcessNewSignup(): %v: Failed to send slack notification", err.Error())
-	}
-
-	if s.HubSpotClient.APIKey != "" {
-		companies, err := s.HubSpotClient.CompanyEntrySearch(args.CompanyName, args.CompanyWebsite)
-		if err != nil {
-			core.Error("ProcessNewSignup(): %v: Failed to fetch company entries from hubspot", err.Error())
-		}
-
-		foundCompanyID := ""
-		if len(companies) != 0 {
-			foundCompanyID = companies[0].ID
-		}
-
-		contacts, err := s.HubSpotClient.ContactEntrySearch(args.FirstName, args.LastName, args.Email)
-		if err != nil {
-			core.Error("ProcessNewSignup(): %v: Failed to fetch contact entries from hubspot", err.Error())
-		}
-
-		foundContactID := ""
-		if len(contacts) != 0 {
-			foundContactID = contacts[0].ID
-		}
-
-		message := fmt.Sprintf("First name: %s - Last name: %s - Email: %s - Company name: %s - Website: %s", args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
-
-		// Company and contact do not exist
-		if foundCompanyID == "" && foundContactID == "" {
-			// Create contact and associate it with NewFunnelCo with notes about sign up
-			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
-			if err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error())
-			} else {
-				if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, newContactID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to new contact", err.Error())
-				}
-				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, notifications.NewFunnelCoID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to associate new contact to NewFunnelCo", err.Error())
-				}
-				if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error())
-				}
-				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to create new contact note", err.Error())
-				}
-			}
-		}
-
-		// Company exists but contact does not
-		if foundCompanyID != "" && foundContactID == "" {
-			// Create contact and associate it to NewFunnelCo with notes about sign up
-			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
-			if err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error())
-			} else {
-				if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, newContactID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to associate found company to new contact", err.Error())
-				}
-				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, foundCompanyID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to associate new contact to found company", err.Error())
-				}
-				if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to create found company note", err.Error())
-				}
-				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
-					core.Error("ProcessNewSignup(): %v: Failed to create new contact note", err.Error())
-				}
-			}
-		}
-
-		// Company doesn't exist but contact does
-		if foundCompanyID == "" && foundContactID != "" {
-			// Associate contact with NewFunnelCo with note about signup with company name and website
-			if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, foundContactID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to found contact", err.Error())
-			}
-			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, notifications.NewFunnelCoID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to associate found contact to NewFunnelCo", err.Error())
-			}
-			if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error())
-			}
-			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to create found contact note", err.Error())
-			}
-		}
-
-		// Company and contact exist
-		if foundCompanyID != "" && foundContactID != "" {
-			// Associate the company and contact and make notes on both entries about the sign up
-			if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, foundContactID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to associate found company to found contact", err.Error())
-			}
-			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, foundCompanyID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to associate found contact to found company", err.Error())
-			}
-			if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to create found company note", err.Error())
-			}
-			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
-				core.Error("ProcessNewSignup(): %v: Failed to create found contact note", err.Error())
-			}
-		}
 	}
 
 	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
@@ -1686,11 +1630,14 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+	*/
 
 	return nil
 }
 
 func (s *AuthService) RefreshAuthRolesCache() error {
+
+	/*
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -1707,6 +1654,7 @@ func (s *AuthService) RefreshAuthRolesCache() error {
 	for _, r := range roles {
 		s.RoleCache[r.GetName()] = r
 	}
+	*/
 
 	return nil
 }
@@ -1726,6 +1674,8 @@ func (s *AuthService) RoleCacheToArray(removeAdmin bool) []*management.Role {
 }
 
 func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
+
+	/*
 	allUserAccounts, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
 		core.Error("CleanUpExplorerRoles(): %v: Failed to fetch user list", err.Error())
@@ -1777,6 +1727,7 @@ func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
 			}
 		}
 	}
+	*/
 
 	return nil
 }
