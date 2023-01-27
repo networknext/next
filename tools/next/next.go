@@ -228,23 +228,7 @@ func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, stri
 	return true, output
 }
 
-func runCommandInteractive(command string, args []string) bool {
-	cmd := exec.Command(command, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		return false
-	}
-	return true
-}
-
-func bash(command string) bool {
-	return runCommand("bash", []string{"-c", command})
-}
-
-func bashQuiet(command string) (bool, string) {
+func bash(command string) (bool, string) {
 	return runCommandQuiet("bash", []string{"-c", command}, false)
 }
 
@@ -386,56 +370,12 @@ func main() {
 		env.Read()
 	}
 
-	buyersfs := flag.NewFlagSet("buyers", flag.ExitOnError)
-	var buyersIdSigned bool
-	buyersfs.BoolVar(&buyersIdSigned, "signed", false, "Display buyer IDs as signed ints")
-
-	buyerfs := flag.NewFlagSet("buyers", flag.ExitOnError)
-	var csvOutput bool
-	var signedIDs bool
-	buyerfs.BoolVar(&csvOutput, "csv", false, "Send output to CSV file")
-	buyerfs.BoolVar(&signedIDs, "signed", false, "Display buyer and datacenter IDs as signed ints")
-
-	datacentersfs := flag.NewFlagSet("datacenters", flag.ExitOnError)
-	var datacenterIdSigned bool
-	datacentersfs.BoolVar(&datacenterIdSigned, "signed", false, "Display datacenter IDs as signed ints")
-
-	var datacentersCSV bool
-	datacentersfs.BoolVar(&datacentersCSV, "csv", false, "Send output to CSV instead of the command line")
-
-	sessionsfs := flag.NewFlagSet("sessions", flag.ExitOnError)
-	var sessionCount int64
-	sessionsfs.Int64Var(&sessionCount, "n", 0, "number of top sessions to display (default: all)")
-	var buyerName string
-	sessionsfs.StringVar(&buyerName, "buyer", "", "specify a buyer to filter sessions on")
-
-	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
-
-	// Limit the number of relays displayed, in descending order of sessions carried
+   relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 	var relaysCount int64
-	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
+	relaysfs.Int64Var(&relaysCount, "n", 0, "Number of relays to display (default: all)")
 
 	var relaysAlphaSort bool
 	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
-
-	relaysDbFs := flag.NewFlagSet("relays state", flag.ExitOnError)
-
-	// -list and -csv should work with all other flags
-	// Show only a list or relay names
-	var relaysListFlag bool
-	relaysDbFs.BoolVar(&relaysListFlag, "list", false, "show list of names")
-
-	// Return a CSV file instead of a table
-	var csvOutputFlag bool
-	relaysDbFs.BoolVar(&csvOutputFlag, "csv", false, "output in csv format")
-
-	// Return all relays at this version
-	var relayVersionFilter string
-	relaysDbFs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
-
-	// Display relay IDs as signed ints instead of the default hex
-	var relayIDSigned bool
-	relaysDbFs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
@@ -461,7 +401,7 @@ func main() {
 
 			if args[0] == "local" {
 
-				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
+				bash("rm -f database.bin && cp envs/local.bin database.bin")
 
 				// Start redis server if it isn't already
 				runnable := exec.Command("ps", "aux")
@@ -484,7 +424,7 @@ func main() {
 
 			// todo: temporary -- copy envs/dev.bin to database.bin when we select dev
 			if args[0] == "dev" {
-				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
+				bash("rm -f database.bin && cp envs/local.bin database.bin")
 			}
 
 			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
