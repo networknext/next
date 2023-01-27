@@ -1603,25 +1603,26 @@ func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, 
 
 // -------------------------------------------------------------------------------------------
 
+type NextCostMatrixHandlerArgs struct{}
+
+type NextCostMatrixHandlerReply struct {
+	CostMatrix []byte `json:"costMatrix"`
+}
+
 func getCostMatrix(env Environment, fileName string) {
 
-	// todo: need endpoint to call for this
-	/*
-	args := localjsonrpc.NextCostMatrixHandlerArgs{}
+	args := NextCostMatrixHandlerArgs{}
 
-	var reply localjsonrpc.NextCostMatrixHandlerReply
+	var reply NextCostMatrixHandlerReply
 	if err := makeRPCCall(env, &reply, "RelayFleetService.NextCostMatrixHandler", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
+		fmt.Printf("error: could not get cost matrix\n")
+		os.Exit(1)
 	}
 
 	err := ioutil.WriteFile(fileName, reply.CostMatrix, 0777)
 	if err != nil {
-		err := fmt.Errorf("getCostMatrix() error writing %s to filesystem: %v", fileName, err)
 		handleRunTimeError(fmt.Sprintf("could not write %s to the filesystem: %v\n", fileName, err), 0)
 	}
-	*/
-
 }
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
