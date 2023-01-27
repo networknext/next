@@ -256,11 +256,9 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 		}
 
 		return costs
-	}
+	}	
 
-	// todo: i'd rather just have one codepath used here all the time
-
-	// real cost matrix for dev and prod
+	// production code
 
 	relayManager.mutex.RLock()
 
@@ -349,8 +347,6 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relays = append(relays, relay)
 	}
 
-	relayManager.mutex.RUnlock()
-
 	// pick up any relays that the relay manager doesn't know about as offline
 
 	for i := 0; i < len(relayIds); i++ {
@@ -371,6 +367,8 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 
 		relays = append(relays, relay)
 	}
+
+	relayManager.mutex.RUnlock()
 
 	// sort to make sure the set of relays is stable order over time
 
