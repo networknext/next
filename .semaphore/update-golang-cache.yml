@@ -19,6 +19,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - make rebuild
+            - ./next select local
             - ./run test
             - cache delete golang
             - cache store golang /home/semaphore/go/pkg/mod
