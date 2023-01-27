@@ -713,16 +713,16 @@ func main() {
 
 	var loadCommand = &ffcli.Command{
 		Name:       "load",
-		ShortUsage: "next load [regex...] [version]",
-		ShortHelp:  "Load the specific relay binary version on a relay",
+		ShortUsage: "next load [version] [regex...]",
+		ShortHelp:  "Load the specific relay binary version onto one or more relays",
 		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 2 {
-				handleRunTimeError(fmt.Sprintf("Please provide a relay name and a version"), 0)
+			if len(args) < 2 {
+				handleRunTimeError(fmt.Sprintf("Please provide a version and at least one relay name"), 0)
 			}
-			regex := args[0]
-			version := args[1]
+			version := args[0]
+			regexes := args[1:]
 
-			loadRelays(env, regex, version)
+			loadRelays(env, regexes, version)
 
 			return nil
 		},
@@ -1356,7 +1356,7 @@ func (con SSHConn) TestConnect() bool {
 const (
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
-	LoadRelayScript = `sudo systemctl stop relay && rm -f relay* && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && sudo journalctl -fu relay -n 1000`
+	LoadRelayScript = `sudo systemctl stop relay && rm -f relay* && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 )
 
 type relayInfo struct {
@@ -1479,20 +1479,22 @@ func stopRelays(env Environment, regexes []string) bool {
 	return success
 }
 
-func loadRelays(env Environment, regex string, version string) {
-	relays := getRelayInfo(env, regex)
-	if len(relays) == 0 {
-		fmt.Printf("no relays matched the regex '%s'\n", regex)
-		return
-	}
-	for _, relay := range relays {
-		if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+func loadRelays(env Environment, regexes []string, version string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		fmt.Printf("loading relay-%s onto %s\n", version, relay.name)
-		testForSSHKey(env)
-		con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-		con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}
+			fmt.Printf("loading relay-%s onto %s\n", version, relay.name)
+			testForSSHKey(env)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
+		}
 	}
 }
 

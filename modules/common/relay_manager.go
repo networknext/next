@@ -342,6 +342,10 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 			relay.Version = sourceEntry.relayVersion
 		}
 
+		if relay.Status != RELAY_STATUS_ONLINE {
+			relay.Sessions = 0
+		}
+
 		relays = append(relays, relay)
 	}
 
