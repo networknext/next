@@ -23,6 +23,7 @@ blocks:
       jobs:
         - name: "run happy-path-no-wait"
           commands:
+            - cache restore
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend

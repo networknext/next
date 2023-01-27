@@ -30,6 +30,8 @@ blocks:
         - name: "Build"
           commands:
 
+            - cache restore
+
             - sudo apt-get install -y libsodium-dev
 
             - checkout
