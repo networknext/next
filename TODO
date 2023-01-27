@@ -16,9 +16,11 @@ DONE
 
 	Extend "next database" so it prints a table of dest relays per-customer.
 
-TODO
-
 	Bring back the code that extracts the set of dest relays from the database relay maps.
+
+	Verify that we have raspberry pi sessions in dev again w. the dest relay code
+
+TODO
 
 	-------------
 
@@ -27,6 +29,18 @@ TODO
 	-------------
 
 	Actually implement database validation
+
+	-------------
+
+	Simplify the database.bin and overlay.bin updates. The service.go will pull these files down from google cloud storage, vs. being pushed to from the sync service.-
+
+	-------------
+
+	Simplify the sync service radically. All it does is periodically download the IP2location files and stick them in google cloud storage.
+
+	-------------
+
+	Implement an extremely simple portal service that just provides the necessary endpoints + auth needed to get the backend of the next tool working.
 
 	-------------
 
@@ -112,12 +126,6 @@ Essentials:
 	--------------
 
 	Portal cruncher
-
-	--------------
-
-	Simplify sync. It just downloads from URL and stores in google cloud storage at some frequency.
-
-	The actual pull down from google cloud storage is done inside service.go as needed, by each VM.
 
 	--------------
 
@@ -311,5 +319,13 @@ Nice to have:
 	--------------
 
 	Add confirmation for all "next" tool actions that modify relays... especially "reboot", "upgrade", "start", "stop" and so on.
+
+	--------------
+
+	New relay really needs a series of counters that get updated with each update sent to the backend.
+
+	These counters can be for bad things that we want to track, so we have the data by timestamp inserted into bigquery for analysis.
+
+	eg. could not read route token, for example.
 
 	--------------

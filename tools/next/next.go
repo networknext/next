@@ -1090,21 +1090,6 @@ func printDatabase() {
 	table.Output(destinationDatacenters)
 }
 
-type RelayFleetEntry struct {
-	Name     string `json:"name"`
-	Address  string `json:"address"`
-	Id       string `json:"hex_id"`
-	Status   string `json:"status"`
-	Sessions string `json:"sessions"`
-	Version  string `json:"version"`
-}
-
-type RelayFleetArgs struct{}
-
-type RelayFleetReply struct {
-	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
-}
-
 func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
 	protocol := "https"
 	if env.PortalHostname() == PortalHostnameLocal {
@@ -1145,6 +1130,21 @@ func makeRPCCall(env Environment, reply interface{}, method string, params inter
 		}
 	}
 	return nil
+}
+
+type RelayFleetEntry struct {
+	Name     string `json:"name"`
+	Address  string `json:"address"`
+	Id       string `json:"hex_id"`
+	Status   string `json:"status"`
+	Sessions string `json:"sessions"`
+	Version  string `json:"version"`
+}
+
+type RelayFleetArgs struct{}
+
+type RelayFleetReply struct {
+	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
 }
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {

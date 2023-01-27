@@ -480,6 +480,9 @@ func main() {
 
 		if relay.InternalAddress.String() != "0.0.0.0:0" {
 			relay.HasInternalAddress = true
+			if relay.InternalAddress.Port == 0 {
+				relay.InternalAddress.Port = relay.PublicAddress.Port
+			}
 		}
 
 		relay.SSHAddress = ParseAddress(row.ssh_ip)

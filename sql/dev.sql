@@ -107,18 +107,6 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.dallas.1',
-	32.7767,
-	-96.7970,
-	(select id from sellers where short_name = 'google')
-);
-
-INSERT INTO datacenters(
-	display_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
 	'google.iowa.1',
 	41.2619,
 	-95.8608,
@@ -468,12 +456,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.iowa.1',
 	'35.226.96.92',
+	'10.128.0.8',
 	'ZlpZo9pD3sFPXynxtc5IV+02TrUmHYuxJc1uffyQkmI=',
 	'vLKdOuM8tpbcF6ZtkeThlkYNVT7SWPd9c2eAdvFQQq0=',
 	(select id from datacenters where display_name = 'google.iowa.1')
@@ -482,12 +472,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.lasvegas.1',
 	'34.125.125.84',
+	'10.182.0.7',
 	'xKAh+sLW1ghyIkHfOVzkinZZU0mjZF52a+aQ1cv9RRg=',
 	'Goql8jwWRUYZpV8XtTPjXC+pDLUzrQ0zpbi8OvElHYw=',
 	(select id from datacenters where display_name = 'google.lasvegas.1')
@@ -496,12 +488,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.losangeles.1',
 	'34.94.28.121',
+	'10.168.0.4',
 	'XVnmFpOfx7DmuhZkrkHw+UpuIegRCNBDlHSlfOH/ozo=',
 	'KzRn1WQHVMJftQe/UoCUqgCeCea46u4iWBN/1ADlXNg=',
 	(select id from datacenters where display_name = 'google.losangeles.1')
@@ -510,12 +504,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.oregon.2',
 	'34.168.209.101',
+	'10.138.0.12',
 	'fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38=',
 	'Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=',
 	(select id from datacenters where display_name = 'google.oregon.2')
@@ -524,12 +520,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.saltlakecity.1',
 	'34.106.29.193',
+	'10.180.0.6',
 	'9AftbXkssUIQfK9/zsG/KsPaONd/Uq9FeM/x5iHkGlQ=',
 	'sNA5bYajFhUo561VEkpqr6KnTlEK4bDrSUyY5NsDv8E=',
 	(select id from datacenters where display_name = 'google.saltlakecity.1')
@@ -538,12 +536,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.santiago.1',
 	'34.176.85.20',
+	'10.194.0.5',
 	'E1ZkLyobOMFZPP7cbqpKcEEb79Z0ZIW/IDaUSWliOl0=',
 	'opsJFrG1lO5HUZanT5+RML0qdJaFj5ws8YIOVNtRcG0=',
 	(select id from datacenters where display_name = 'google.santiago.1')
@@ -552,12 +552,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.saopaulo.1',
 	'34.151.248.241',
+	'10.158.0.15',
 	'qunlVxGncMg5b650wXgtYBmJAzetry+K9ancBayMWzw=',
 	'1vpJ9L6jntr+KvqHSkZvgH9EnkVE/stS+60pfAdXEkg=',
 	(select id from datacenters where display_name = 'google.saopaulo.1')
