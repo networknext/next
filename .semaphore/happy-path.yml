@@ -11,10 +11,6 @@ agent:
     type: e1-standard-8
     os_image: ubuntu2004
 
-global_job_config:
-  secrets:
-    - name: google-cloud-platform
-
 blocks:
 
   - name: "Happy Path"
@@ -31,4 +27,4 @@ blocks:
             - ./next select local
             - ./run happy-path-no-wait
             - cache delete happy-path-$SEMAPHORE_GIT_BRANCH
-            - cache store happy-path-$SEMAPHORE_GIT_BRANCH
+            - cache store happy-path-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod

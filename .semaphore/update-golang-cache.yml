@@ -1,0 +1,23 @@
+version: v1.0
+
+name: Update Golang Cache
+
+agent:
+  machine:
+    type: e1-standard-8
+    os_image: ubuntu2004
+
+blocks:
+
+  - name: "Update Golang Cache"
+    dependencies: []
+    task:
+      jobs:
+        - name: "rebuild everything and update golang cache"
+          commands:
+            - checkout
+            - sudo apt-get install -y libsodium-dev redis-server
+            - cd ~/backend
+            - make rebuild
+            - cache delete golang
+            - cache store golang /home/semaphore/go/pkg/mod
