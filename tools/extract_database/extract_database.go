@@ -577,6 +577,8 @@ func main() {
 		fmt.Printf("datacenter map %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)
 
 		datacenterMap := db.DatacenterMap{}
+		datacenterMap.BuyerId = buyerId
+		datacenterMap.DatacenterId = datacenterId
 		datacenterMap.EnableAcceleration = row.enable_acceleration
 		if database.DatacenterMaps[buyerId] == nil {
 			database.DatacenterMaps[buyerId] = make(map[uint64]db.DatacenterMap)

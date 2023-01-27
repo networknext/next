@@ -1049,6 +1049,45 @@ func printDatabase() {
 
 		table.Output(properties)
 	}
+
+	// destination datacenters
+
+	fmt.Printf("\nDestination datacenters:\n\n")
+
+	type DestinationDatacenterRow struct {
+		Datacenter string
+		Buyers []string
+	}
+
+	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
+
+	for _, v1 := range database.DatacenterMaps {
+		for _, v2 := range v1 {
+			if !v2.EnableAcceleration {
+				continue
+			}
+			buyerId := v2.BuyerId
+			datacenterId := v2.DatacenterId
+			entry := destinationDatacenterMap[datacenterId]
+			if entry == nil {
+				entry = &DestinationDatacenterRow{}
+				entry.Datacenter = database.DatacenterMap[datacenterId].Name
+				destinationDatacenterMap[datacenterId] = entry
+			}
+			entry.Buyers = append(entry.Buyers, database.BuyerMap[buyerId].Name)
+		}
+	}
+
+	destinationDatacenters := make([]DestinationDatacenterRow, 0)
+
+	for _, v := range destinationDatacenterMap {
+		sort.SliceStable(v.Buyers, func(i, j int) bool { return v.Buyers[i] < v.Buyers[j] })
+		destinationDatacenters = append(destinationDatacenters, *v)
+	}
+
+	sort.SliceStable(destinationDatacenters, func(i, j int) bool { return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter })
+
+	table.Output(destinationDatacenters)
 }
 
 type RelayFleetEntry struct {

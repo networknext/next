@@ -136,6 +136,8 @@ func (database *Database) Validate() error {
 
 	// todo: if a relay has both public and private keypair specified, decrypt/encrypt something with them, to make sure the keypair is valid -- catch errors early
 
+	// todo: datacenter maps must have valid datacenter id and buyer ids (would have caught an error I just found...)
+
 	return nil
 }
 

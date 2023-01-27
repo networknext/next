@@ -12,13 +12,9 @@ DONE
 
 	Get "next cost" working again
 
-TODO
-
-	-------------
-
 	Extend "next database" to print out the combined customer public key base64 (for visual comparison)
 
-	-------------
+TODO
 
 	Extend "next database" so it prints a table of dest relays per-customer.
 
