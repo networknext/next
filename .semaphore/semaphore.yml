@@ -132,11 +132,8 @@ blocks:
 
         - name: "Portal"
           commands:
-            - cache restore portal-$SEMAPHORE_GIT_BRANCH
             - make dist/portal.dev.tar.gz
             - artifact push workflow dist/portal.dev.tar.gz
-            - cache delete portal-$SEMAPHORE_GIT_BRANCH
-            - cache store portal-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod
 
         - name: "Portal Cruncher"
           commands:
