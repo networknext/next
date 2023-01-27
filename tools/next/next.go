@@ -380,7 +380,7 @@ func main() {
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
-		ShortHelp:  "Authorize the operator tool to interact with the Portal API",
+		ShortHelp:  "Authorize the operator tool",
 		Exec: func(_ context.Context, args []string) error {
 			refreshAuth(env)
 			return nil
@@ -406,7 +406,6 @@ func main() {
 				// Start redis server if it isn't already
 				runnable := exec.Command("ps", "aux")
 				buffer, err := runnable.CombinedOutput()
-
 				if err != nil {
 					fmt.Printf("Failed to run ps aux: %v\n", err)
 				}
@@ -427,7 +426,7 @@ func main() {
 				bash("rm -f database.bin && cp envs/local.bin database.bin")
 			}
 
-			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
+			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get environment vars for the env
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
 
 			if _, err := os.Stat(envFilePath); err != nil {
