@@ -132,11 +132,13 @@ func (database *Database) Validate() error {
 
 	// todo: relay ssh address must not be 0.0.0.0 -- it should be set to the 
 
-	// todo: relay internal address, external address and ssh address ports must not be zero
+	// todo: relay internal address, external address *and* ssh address ports must not be zero
 
 	// todo: if a relay has both public and private keypair specified, decrypt/encrypt something with them, to make sure the keypair is valid -- catch errors early
 
-	// todo: each relay must have a unique name, and a unique public ip:port
+	// todo: each relay must have a unique name
+
+	// todo: each relay must have a unique public ip:port
 
 	// todo: datacenter maps must have valid datacenter id and buyer ids (would have caught an error I just found...)
 

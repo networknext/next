@@ -123,18 +123,15 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				continue
 			}
 
-			// todo: bring this back. and don't compare strings...
-			/*
-				var address string
-				if relayData.ResellerName == relayData.RelayArray[i].Seller.Name && relayData.RelayArray[i].InternalAddress.String() != ":0" {
-					address = relayData.RelayArray[i].InternalAddress.String()
-				} else {
-					address = relayData.RelayArray[i].PublicAddress.String()
-				}
-			*/
+			var address string
+			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress {
+				address = relayData.RelayArray[i].InternalAddress.String()
+			} else {
+				address = relayData.RelayArray[i].PublicAddress.String()
+			}
 
 			responsePacket.RelayId[index] = relayData.RelayIds[i]
-			responsePacket.RelayAddress[index] = relayData.RelayArray[i].PublicAddress.String()
+			responsePacket.RelayAddress[index] = address
 
 			index++
 		}

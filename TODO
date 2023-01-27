@@ -20,11 +20,31 @@ DONE
 
 	Verify that we have raspberry pi sessions in dev again w. the dest relay code
 
+	Fix uniqueness constraints for database
+
+	Generate data for dev.bin with internal addresses for google relays
+
+	Bring back the code that enables internal address use
+
 TODO
 
-	-------------
+	Deploy the code to dev and verify we are getting pings and proper use with internal addresses between google relays.
 
-	Bring back internal addresses for google relays
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
 
 	-------------
 
