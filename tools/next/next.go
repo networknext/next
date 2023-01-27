@@ -711,16 +711,51 @@ func main() {
 		},
 	}
 
+	var upgradeCommand = &ffcli.Command{
+		Name:       "upgrade",
+		ShortUsage: "next upgrade [regex...]",
+		ShortHelp:  "Upgrade the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			upgradeRelays(env, regexes)
+
+			return nil
+		},
+	}
+
+	var rebootCommand = &ffcli.Command{
+		Name:       "reboot",
+		ShortUsage: "next reboot [regex...]",
+		ShortHelp:  "Reboot the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			rebootRelays(env, regexes)
+
+			return nil
+		},
+	}
+
 	var loadCommand = &ffcli.Command{
 		Name:       "load",
 		ShortUsage: "next load [version] [regex...]",
 		ShortHelp:  "Load the specific relay binary version onto one or more relays",
 		Exec: func(_ context.Context, args []string) error {
-			if len(args) < 2 {
-				handleRunTimeError(fmt.Sprintf("Please provide a version and at least one relay name"), 0)
+			if len(args) < 1 {
+				handleRunTimeError(fmt.Sprintf("Please provide a version"), 0)
 			}
 			version := args[0]
-			regexes := args[1:]
+			regexes := []string{".*"}
+			if len(args) > 1 {
+				regexes = args[1:]
+			}
 
 			loadRelays(env, regexes, version)
 
@@ -913,6 +948,8 @@ func main() {
 		startCommand,
 		stopCommand,
 		loadCommand,
+		upgradeCommand,
+		rebootCommand,
 		keygenCommand,
 		keysCommand,
 		sshCommand,
@@ -1330,10 +1367,7 @@ func (con SSHConn) Connect(isRiotRelay bool) {
 func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address, "--", cmd)
-	if !runCommandEnv("ssh", args, nil) {
-		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 0)
-	}
-
+	runCommandEnv("ssh", args, nil)
 	return true
 }
 
@@ -1356,7 +1390,9 @@ func (con SSHConn) TestConnect() bool {
 const (
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
-	LoadRelayScript = `sudo systemctl stop relay && rm -f relay* && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `sudo systemctl stop relay && rm -rf relay && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	UpgradeRelayScript = `sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
+	RebootRelayScript = `sudo reboot`
 )
 
 type relayInfo struct {
@@ -1479,7 +1515,48 @@ func stopRelays(env Environment, regexes []string) bool {
 	return success
 }
 
+func upgradeRelays(env Environment, regexes []string) {
+	testForSSHKey(env)
+	script := UpgradeRelayScript
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}			
+			fmt.Printf("upgrading relay %s\n", relay.name)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd(script)
+		}
+	}
+}
+
+func rebootRelays(env Environment, regexes []string) {
+	testForSSHKey(env)
+	script := RebootRelayScript
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}			
+			fmt.Printf("rebooting relay %s\n", relay.name)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd(script)
+		}
+	}
+}
+
 func loadRelays(env Environment, regexes []string, version string) {
+	testForSSHKey(env)
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {

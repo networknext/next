@@ -318,3 +318,7 @@ Nice to have:
 	This indicates a misconfigured relay. This should get loaded up into bigquery so it can be searched on by data science.
 
 	--------------
+
+	Add confirmation for all "next" tool actions that modify relays... especially "reboot", "upgrade", "start", "stop" and so on.
+
+	--------------
