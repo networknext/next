@@ -44,26 +44,6 @@ blocks:
             - artifact push workflow ./dist/libnext4.so
             - artifact push workflow ./dist/libnext5.so
 
-  - name: "Binaries"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-      jobs:
-        - name: "Build Binaries"
-          commands:
-            - cache -h
-            - cache list
-            - cache restore binaries-$SEMAPHORE_GIT_BRANCH
-            - checkout
-            - cp envs/local.env .env
-            - sudo apt-get install -y libsodium-dev
-            - make rebuild
-            - cache delete binaries-$SEMAPHORE_GIT_BRANCH
-            - cache store binaries-$SEMAPHORE_GIT_BRANCH
-
   - name: "Backend"
     dependencies: []
     task:
@@ -74,11 +54,13 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
-            - cache restore
+            - cache restore backend-test-$SEMAPHORE_GIT_BRANCH
             - checkout
             - cp envs/local.env .env
             - sudo apt-get install -y libsodium-dev
             - go test ./modules/...
+            - cache delete backend-test-$SEMAPHORE_GIT_BRANCH
+            - cache store backend-test-$SEMAPHORE_GIT_BRANCH
 
   - name: "SDK4"
     dependencies: []
@@ -141,7 +123,6 @@ blocks:
         commands:
             - sudo apt-get install -y libsodium-dev
             - checkout
-            - cache restore
 
       jobs:
 
@@ -152,8 +133,11 @@ blocks:
 
         - name: "Portal"
           commands:
+            - cache restore portal-$SEMAPHORE_GIT_BRANCH
             - make dist/portal.dev.tar.gz
             - artifact push workflow dist/portal.dev.tar.gz
+            - cache delete portal-$SEMAPHORE_GIT_BRANCH
+            - cache store portal-$SEMAPHORE_GIT_BRANCH
 
         - name: "Portal Cruncher"
           commands:
