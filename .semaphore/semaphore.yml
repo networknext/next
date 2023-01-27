@@ -60,7 +60,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - go test ./modules/...
             - cache delete backend-test-$SEMAPHORE_GIT_BRANCH
-            - cache store backend-test-$SEMAPHORE_GIT_BRANCH
+            - cache store backend-test-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod
 
   - name: "SDK4"
     dependencies: []
@@ -137,7 +137,7 @@ blocks:
             - make dist/portal.dev.tar.gz
             - artifact push workflow dist/portal.dev.tar.gz
             - cache delete portal-$SEMAPHORE_GIT_BRANCH
-            - cache store portal-$SEMAPHORE_GIT_BRANCH
+            - cache store portal-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod
 
         - name: "Portal Cruncher"
           commands:
@@ -156,8 +156,11 @@ blocks:
 
         - name: "Server Backend 5"
           commands:
+            - cache restore server-backend5-$SEMAPHORE_GIT_BRANCH
             - make dist/server_backend5.dev.tar.gz
             - artifact push workflow dist/server_backend5.dev.tar.gz
+            - cache delete server-backend5-$SEMAPHORE_GIT_BRANCH
+            - cache store server-backend5-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod
 
         - name: "Sync"
           commands:
