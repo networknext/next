@@ -4262,11 +4262,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
 // ==================================================================================================================================================================================
 
-/*
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
         {
+        	/*
             // todo
             printf("(sdk4 packet group)\n");
+            */
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK4 )
             {
@@ -4754,7 +4755,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->bytes_sent += packet_bytes - 16;
             }
         }
-*/
 
 // ==================================================================================================================================================================================
 
@@ -4810,8 +4810,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-                // todo
-                printf( "received route request packet [sdk5]\n" );
+            	/*
+            	// todo
+            	printf( "received route request packet [sdk5]\n" );
+            	*/
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
@@ -4875,10 +4877,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &token.next_address, next_hop_address );
                     printf( "sending route request packet to next hop %s\n", next_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
@@ -4887,8 +4891,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK5 )
             {
+            	/*
                 // todo
                 printf( "received route response packet [sdk5]\n" );
+                */
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
@@ -4958,10 +4964,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
                     printf( "sending route response packet to previous hop %s\n", prev_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
 
@@ -5039,10 +5047,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( continue_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( continue_request_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
+                    /*
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
                     printf( "sending continue request packet to next hop %s\n", next_hop_address );
+                    */
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
 

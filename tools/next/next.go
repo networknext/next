@@ -711,6 +711,38 @@ func main() {
 		},
 	}
 
+	var upgradeCommand = &ffcli.Command{
+		Name:       "upgrade",
+		ShortUsage: "next upgrade [regex...]",
+		ShortHelp:  "Upgrade the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			upgradeRelays(env, regexes)
+
+			return nil
+		},
+	}
+
+	var rebootCommand = &ffcli.Command{
+		Name:       "reboot",
+		ShortUsage: "next reboot [regex...]",
+		ShortHelp:  "Reboot the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			rebootRelays(env, regexes)
+
+			return nil
+		},
+	}
+
 	var loadCommand = &ffcli.Command{
 		Name:       "load",
 		ShortUsage: "next load [regex...] [version]",
@@ -1357,6 +1389,8 @@ const (
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 	LoadRelayScript = `sudo systemctl stop relay && rm -f relay* && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && sudo journalctl -fu relay -n 1000`
+	UpgradeRelayScript = `sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo dist-upgrade -y && sudo autoremove -y && sudo reboot`
+	RebootRelayScript = `sudo reboot`
 )
 
 type relayInfo struct {
@@ -1477,6 +1511,46 @@ func stopRelays(env Environment, regexes []string) bool {
 	}
 
 	return success
+}
+
+func upgradeRelays(env Environment, regexes []string) {
+	testForSSHKey(env)
+	script := UpgradeRelayScript
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}			
+			fmt.Printf("upgrading relay %s\n", relay.name)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd(script)
+		}
+	}
+}
+
+func rebootRelays(env Environment, regexes []string) {
+	testForSSHKey(env)
+	script := RebootRelayScript
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for _, relay := range relays {
+			if strings.Contains(relay.name, "-removed-") || relay.state != "enabled" {
+				continue
+			}			
+			fmt.Printf("rebooting relay %s\n", relay.name)
+			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
+			con.ConnectAndIssueCmd(script)
+		}
+	}
 }
 
 func loadRelays(env Environment, regex string, version string) {
