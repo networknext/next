@@ -2,6 +2,22 @@ DONE
 
 TODO
 
+	Setup a dev.bin database file under envs
+
+	Copy this file to database.bin when you go "next select dev"
+
+	Change all the next tool stuff to not use JSON RPC. It just works directly off the local database file.
+
+	It can be updated in future to do JSON again, or it can auto-pull down teh database.bin for the env as needed (perhaps on "next select [env]")
+
+	-------------
+
+	Extend "next database" so it prints a table of dest relays per-customer.
+
+	-------------
+
+	Bring back the code that extracts the set of dest relays from the database relay maps.
+
 	-------------
 
 	Actually implement database validation
