@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"regexp"
 	"path"
 	"errors"
 	"crypto/rand"
@@ -34,16 +33,15 @@ import (
 	"github.com/networknext/backend/modules/common"
 	db "github.com/networknext/backend/modules/database"
 
-	// todo: we don't want to use old modules here
-	localjsonrpc "github.com/networknext/backend/modules-old/transport/jsonrpc"
-
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tidwall/gjson"
-	"github.com/ybbus/jsonrpc"
 )
 
 const (
+
+	// todo: we must not store client secrets in our source code
+
 	// Prod
 	PROD_AUTH0_AUDIENCE      = "https://next-prod.networknext.com"
 	PROD_AUTH0_CLIENT_ID     = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
@@ -305,34 +303,9 @@ func readJSONData(entity string, args []string) []byte {
 // level 0: user error
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
-	fmt.Println()
 	fmt.Printf(msg)
 	fmt.Println()
 	os.Exit(level)
-}
-
-func handleJSONRPCError(env Environment, err error) {
-	handleJSONRPCErrorCustom(env, err, fmt.Sprint(err))
-}
-
-func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
-	switch e := err.(type) {
-	case *jsonrpc.HTTPError:
-		switch e.Code {
-		case http.StatusUnauthorized:
-			handleRunTimeError(fmt.Sprintf("%d: %s - use `next auth` to authorize the operator tool\n", e.Code, http.StatusText(e.Code)), 0)
-		default:
-			handleRunTimeError(fmt.Sprintf("%d: %s\n", e.Code, http.StatusText(e.Code)), 0)
-		}
-	default:
-		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'dev', or 'local' with\nnext select <env>\n", err), 0)
-		} else {
-			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
-		}
-	}
-	os.Exit(1)
-
 }
 
 func refreshAuth(env Environment) error {
@@ -396,58 +369,6 @@ func refreshAuth(env Environment) error {
 
 	fmt.Print("Successfully authorized\n")
 	return nil
-}
-
-func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
-	protocol := "https"
-	if env.PortalHostname() == PortalHostnameLocal {
-		protocol = "http"
-	}
-
-	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-		CustomHeaders: map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-		},
-	})
-
-	if err := rpcClient.CallFor(&reply, method, params); err != nil {
-		switch e := err.(type) {
-		case *jsonrpc.HTTPError:
-			switch e.Code {
-			case http.StatusUnauthorized:
-				// Refresh token and try again
-				if err := refreshAuth(env); err != nil {
-					handleRunTimeError(err.Error(), 1)
-				}
-				env.Read()
-
-				rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-					CustomHeaders: map[string]string{
-						"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-					},
-				})
-
-				if err := rpcClient.CallFor(&reply, method, params); err != nil {
-					return err
-				}
-			default:
-				return err
-			}
-		default:
-			return err
-		}
-	}
-	return nil
-}
-
-// used to decode dcMap hex strings from json
-type dcMapStrings struct {
-	BuyerID    string `json:"buyer_id"`
-	Datacenter string `json:"datacenter"`
-}
-
-func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n}", dcm.BuyerID, dcm.Datacenter)
 }
 
 func main() {
@@ -559,6 +480,11 @@ func main() {
 					}
 				}
 
+			}
+
+			// todo: temporary -- copy envs/dev.bin to database.bin when we select dev
+			if args[0] == "dev" {
+				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
 			}
 
 			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get envs!
@@ -1178,6 +1104,9 @@ func getFleetRelays(
 
 ) {
 
+	// todo: implement this with the database.bin directly
+
+	/*
 	var reply localjsonrpc.RelayFleetReply = localjsonrpc.RelayFleetReply{}
 	var args = localjsonrpc.RelayFleetArgs{}
 
@@ -1285,6 +1214,7 @@ func getFleetRelays(
 	} else {
 		table.Output(outputRelays)
 	}
+	*/
 }
 
 // ----------------------------------------------------------------
