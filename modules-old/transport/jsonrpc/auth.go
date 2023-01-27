@@ -16,7 +16,6 @@ import (
 
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/storage"
-	"github.com/networknext/backend/modules-old/transport/looker"
 	"github.com/networknext/backend/modules-old/transport/middleware"
 	"github.com/networknext/backend/modules-old/transport/notifications"
 
@@ -38,7 +37,6 @@ type AuthService struct {
 	UserManager          storage.UserManager
 	SlackClient          notifications.SlackClient
 	Storage              storage.Storer
-	LookerClient         *looker.LookerClient
 }
 
 type AccountsArgs struct {
@@ -1777,14 +1775,6 @@ func (s *AuthService) CleanUpExplorerRoles(ctx context.Context) error {
 					removedUsers = append(removedUsers, a.GetID())
 				}
 			}
-		}
-	}
-
-	// Loop through removed user IDs and delete them from our Looker account
-	for _, userID := range removedUsers {
-		err := s.LookerClient.RemoveLookerUserByAuth0ID(userID)
-		if err != nil {
-			return err
 		}
 	}
 

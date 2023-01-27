@@ -602,15 +602,6 @@ func main() {
 				env.Write()
 				fmt.Printf("Selected %s environment\n", env.Name)
 			}
-
-			env.RemoteRelease = "Unknown"
-			env.RemoteBuildTime = "Unknown"
-			var reply localjsonrpc.CurrentReleaseReply = localjsonrpc.CurrentReleaseReply{}
-			if err := makeRPCCall(env, &reply, "OpsService.CurrentRelease", localjsonrpc.CurrentReleaseArgs{}); err == nil {
-				env.RemoteRelease = reply.Release
-				env.RemoteBuildTime = reply.BuildTime
-			}
-
 			fmt.Print(env.String())
 			return nil
 		},
@@ -1409,6 +1400,9 @@ type relayInfo struct {
 }
 
 func getRelayInfo(env Environment, regex string) []relayInfo {
+	
+	// todo: need to get this back, so we can SSH into relays
+	/*
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
@@ -1437,8 +1431,12 @@ func getRelayInfo(env Environment, regex string) []relayInfo {
 	}
 
 	return relays
+	*/
+	// todo
+	return []relayInfo{}
 }
 
+/*
 func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayInfo {
 	args := localjsonrpc.RelaysArgs{}
 
@@ -1467,6 +1465,7 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 
 	return relays
 }
+*/
 
 func startRelays(env Environment, regexes []string) {
 	for _, regex := range regexes {
@@ -1792,6 +1791,9 @@ func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, 
 // -------------------------------------------------------------------------------------------
 
 func getCostMatrix(env Environment, fileName string) {
+
+	// todo: need endpoint to call for this
+	/*
 	args := localjsonrpc.NextCostMatrixHandlerArgs{}
 
 	var reply localjsonrpc.NextCostMatrixHandlerReply
@@ -1805,6 +1807,7 @@ func getCostMatrix(env Environment, fileName string) {
 		err := fmt.Errorf("getCostMatrix() error writing %s to filesystem: %v", fileName, err)
 		handleRunTimeError(fmt.Sprintf("could not write %s to the filesystem: %v\n", fileName, err), 0)
 	}
+	*/
 
 }
 

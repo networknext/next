@@ -7,7 +7,6 @@ import (
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/networknext/backend/modules-old/routing"
-	"github.com/networknext/backend/modules-old/transport/looker"
 )
 
 type Storer interface {
@@ -157,69 +156,4 @@ type Storer interface {
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
 	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
-
-	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
-
-	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error)
-
-	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
-
-	GetAnalyticsDashboardSubCategoriesByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboardCategory, error)
-
-	// AddAnalyticsDashboardCategory adds a new dashboard category
-	AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, parentCategoryID int64) error
-
-	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
-	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
-
-	// RemoveAnalyticsDashboardCategory remove a dashboard category by label
-	RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error
-
-	// UpdateAnalyticsDashboardByID update a dashboard category label by id
-	UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error
-
-	// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
-	GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
-	GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error)
-
-	// GetPremiumAnalyticsDashboards get all premium looker dashboards
-	GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
-
-	// GetFreeAnalyticsDashboards get all free looker dashboards
-	GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
-
-	// GetAdminAnalyticsDashboards get all admin looker dashboards
-	GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
-	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboards get all looker dashboards
-	GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboardByID get looker dashboard by id
-	GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboardByID get looker dashboard by id
-	GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error)
-
-	// GetAnalyticsDashboardByName get looker dashboard by name
-	GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error)
-
-	// AddAnalyticsDashboard adds a new dashboard
-	AddAnalyticsDashboard(ctx context.Context, order int32, name string, adminOnly bool, premium bool, lookerID int64, customerID int64, categoryID int64) error
-
-	// RemoveAnalyticsDashboardByID remove looker dashboard by id
-	RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error
-
-	// RemoveAnalyticsDashboardByName remove looker dashboard by name
-	RemoveAnalyticsDashboardByName(ctx context.Context, name string) error
-
-	// UpdateAnalyticsDashboardByID update looker dashboard looker id by dashboard id
-	UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error
 }
