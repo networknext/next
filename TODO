@@ -1,21 +1,5 @@
 DONE
 
-	Optimize unit test builds
-
-	"next database" would be cool. print out the current database.bin
-
-	Sketch out database validation
-
-	Hook up database validation where it's needed
-
-	raspberry client should detect when it has fallen back to direct and restart the client. will make iteration faster.
-
-	clean up next tool source code
-
-	Command to load a relay version, eg. "next load reference-1.0.5 google.iowa.1 "
-
-	Fix concurrent map read/write in relay manager
-
 TODO
 
 	-------------

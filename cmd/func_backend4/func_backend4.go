@@ -29,7 +29,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/networknext/backend/modules-old/billing"
 	"github.com/networknext/backend/modules-old/crypto_old"
 	"github.com/networknext/backend/modules-old/routing"
 	"github.com/networknext/backend/modules-old/transport"
@@ -342,7 +341,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		sessionData.Version = transport.SessionDataVersion
 		sessionData.SessionID = sessionUpdate.SessionID
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
-		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		sessionData.Location = routing.LocationNullIsland
 	} else {
 		if err := transport.UnmarshalSessionData(&sessionData, sessionUpdate.SessionData[:]); err != nil {
@@ -351,7 +350,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
-		sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+		sessionData.ExpireTimestamp += 10
 	}
 
 	nearRelays := backend.GetNearRelays()
@@ -495,7 +494,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), nextRoute.RelayPublicKeys[:], routerPrivateKey[:])
 			routeType = routing.RouteTypeContinue
 		} else {
-			sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+			sessionData.ExpireTimestamp += 10
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)

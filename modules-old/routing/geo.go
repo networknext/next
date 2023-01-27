@@ -10,11 +10,8 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/networknext/backend/modules/encoding"
-
-	"github.com/networknext/backend/modules-old/metrics"
 
 	"github.com/oschwald/geoip2-golang"
 )
@@ -238,22 +235,13 @@ type MaxmindDB struct {
 	ispReader  *geoip2.Reader
 }
 
-func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
-	metrics.Invocations.Add(1)
-	durationStart := time.Now()
-
+func (mmdb *MaxmindDB) Sync(ctx context.Context) error {
 	if err := mmdb.OpenCity(ctx); err != nil {
-		metrics.ErrorMetrics.FailedToSync.Add(1)
 		return fmt.Errorf("could not open maxmind db uri: %v", err)
 	}
 	if err := mmdb.OpenISP(ctx); err != nil {
-		metrics.ErrorMetrics.FailedToSyncISP.Add(1)
 		return fmt.Errorf("could not open maxmind db isp uri: %v", err)
 	}
-
-	duration := time.Since(durationStart)
-	metrics.DurationGauge.Set(float64(duration.Milliseconds()))
-
 	return nil
 }
 
