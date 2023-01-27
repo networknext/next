@@ -19,12 +19,10 @@ blocks:
       jobs:
         - name: "run happy-path-no-wait"
           commands:
-            - cache restore happy-path-$SEMAPHORE_GIT_BRANCH
+            - cache restore golang
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - make rebuild
             - ./next select local
             - ./run happy-path-no-wait
-            - cache delete happy-path-$SEMAPHORE_GIT_BRANCH
-            - cache store happy-path-$SEMAPHORE_GIT_BRANCH /home/semaphore/go/pkg/mod
