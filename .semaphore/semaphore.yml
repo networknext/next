@@ -237,5 +237,5 @@ promotions:
     pipeline_file: happy-path.yml
 
   - name: "Update Golang Cache"
-    pipeline_File: update-golang-cache.yml
+    pipeline_file: update-golang-cache.yml
     
