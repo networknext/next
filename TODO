@@ -65,11 +65,29 @@ TODO
 
 	But the regular relay updates are coming in?
 
-		
+	Looks like clearing history is triggering, why?
 
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: ==============================================================
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: route optimization: 26 relays in 20.446798ms
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: received 2 messages (1264 bytes) from redis pubsub
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: [34.168.209.101:40000] received update for google.oregon.2 [b79d96976666501a]
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: [34.168.209.101:40000] google.oregon.2 -> google.iowa.1: rtt = 38.8, jitter = 0.3, pl = 0.00%
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: =============================================================
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: clearing history for (b79d96976666501a,357632dc51bc4049)
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: update entry (b79d96976666501a,357632dc51bc4049) -> rtt = 6580.0, jitter = 6566.8, pl = 6566.67
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: =============================================================
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: [35.226.96.92:40000] received update for google.iowa.1 [357632dc51bc4049]
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: [35.226.96.92:40000] google.iowa.1 -> google.oregon.2: rtt = 38.7, jitter = 0.2, pl = 0.00%
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: =============================================================
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: clearing history for (357632dc51bc4049,b79d96976666501a)
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: update entry (357632dc51bc4049,b79d96976666501a) -> rtt = 171.6, jitter = 0.2, pl = 8.10
+		Jan 28 23:03:57 relay-backend-mig-plr6 app[5306]: =============================================================
 
+	Max RTT, jitter and PL are excluded:
 
+		maxRTT=1000.0, maxJitter=1000.0, maxPacketLoss=100.0
 
+	
 
 
 

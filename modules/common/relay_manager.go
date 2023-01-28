@@ -330,6 +330,8 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 
 	// special permissive cost matrix for local
 
+	// todo: really we should unify here. i think lack of unification caused problems in prod that didn't repro in local
+
 	if local {
 		for i := range costs {
 			costs[i] = -1
@@ -350,17 +352,39 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				}
 			}
 		}
-
 		return costs
 	}	
 
 	// production code
 
-	// todo
-	fmt.Printf("maxRTT=%.1f, maxJitter=%.1f, maxPacketLoss=%.1f\n", maxRTT, maxJitter, maxPacketLoss)
-
 	relayManager.mutex.RLock()
 
+	for i := range costs {
+		costs[i] = -1
+	}
+	activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
+	for i := 0; i < numRelays; i++ {
+		sourceRelayId := uint64(relayIds[i])
+		_, sourceActive := activeRelayHash[sourceRelayId]
+		if !sourceActive {
+			continue
+		}
+		for j := 0; j < i; j++ {
+			index := TriMatrixIndex(i, j)
+			destRelayId := uint64(relayIds[j])
+			_, destActive := activeRelayHash[destRelayId]
+			if destActive {
+				rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
+				if rtt < maxRTT && jitter < maxJitter && packetLoss < maxPacketLoss {
+					costs[index] = int32(math.Ceil(float64(rtt)))
+				} else {
+					costs[index] = -1
+				}
+			}
+		}
+	}
+
+	/*
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
 		for j := 0; j < i; j++ {
@@ -374,6 +398,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 			}
 		}
 	}
+	*/
 
 	relayManager.mutex.RUnlock()
 
