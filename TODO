@@ -59,21 +59,15 @@ DONE
 
 	Set also the relay name on both google.iowa and google.oregon
 
-TODO
-
 	Make the relay internal address optional
 
-	------------
+	Extend route token to have next/prev internal flags inside the address space in the relay token
 
-	The key thing to work out now is HOW does the relay know when it is sending to an internal address?
+	The reason the realy ping/pongs were working, is that they did not check for advanced packet filter. If they did, the pings would be broken too.
 
-	For the relay pings, this can be sent down in the ping data (as part of the array).
+TODO
 
-	For the route token, it really needs to be included in the token itself.
-
-	Is it possible to do this in a way that doesn't break route token compatibility with sdk4?
-
-	Probably yes, but only if we use the blank space in the "next address" (19 bytes) when it is ipv4.
+	Disable the internal address stuff in the server backend temporarily, to make sure the new relay code w. the address code is compatible with existing tokens
 
 	------------
 
