@@ -4879,13 +4879,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-                    /*
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &token.next_address, next_hop_address );
-                    printf( "sending route request packet to next hop %s\n", next_hop_address );
-                    */
-
+                    printf( "[%s] forwarding route request packet to next hop %s\n", from_address, next_hop_address );
+                
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
                     relay->bytes_sent += packet_bytes;

@@ -14,21 +14,15 @@ DONE
 
 	Database is correct on server backend 5.
 
+	Added logs to relay and internal address code. Disable token expiry on reference relay.
+
 TODO
 
-	Theories:
+	Still getting the route request timing out issue. What's going on?
+	
+	google.oregon:	
 
-		1. The time sync is screwed up on the reference relay, and it's causing the problems.
-
-		2. The internal address is breaking things. Likely, since I turned that back on.
-
-			^--- *** BINGO IT IS MOST LIKELY THIS ***
-
-	Steps:
-
-		Now eliminate the internal address stuff.
-
-		Look over the internal address stuff, and put in logs to see if they are fucked or something...
+		34.168.209.101:40000  │ 10.138.0.12:40000 │ fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38= │ Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=
 
 
 
@@ -46,9 +40,19 @@ TODO
 
 
 
+	---------------
 
+	When a relay initializes, it should fully verify it is able to work,
 
+	eg. verify UDP port is working
 
+	Verify that it can read/write test tokens sent to it from the backend
+
+	Verify that it is configured with the correct public and internal address
+
+	---------------
+
+	I'd like to see leader election state as a nice table under "/leader"
 
 	---------------
 
