@@ -6,13 +6,66 @@ DONE
 
 	There must be something wrong in the relay manager building the cost matrix.
 
-TODO
-
 	gcloud compute ssh --zone "us-central1-a" "relay-backend-mig-6ssb"  --project "network-next-v3-dev"
 
+TODO
 
+	Yeah it really looks like the relay manager is boned:
 
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 5119.0, jitter = 5100.2, pl = 5100.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (1) source relay exists does not exist?!
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: (2) source relay last update time = 1674944500
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: [debug] rtt = 10000.0, jitter = 10000.0, pl = 10000.0
+		Jan 28 22:21:41 relay-backend-mig-b3mx app[5300]: =============================================================
 
+	But the regular relay updates are coming in?
+
+		
 
 
 

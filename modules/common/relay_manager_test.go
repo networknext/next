@@ -233,7 +233,7 @@ func TestRelayManager(t *testing.T) {
 
 	assert.Equal(t, activeRelays[0].Id, relayIds[1]) // only relay "B" is still online
 
-	// we should the shutting down relays in the relays array
+	// we should see the shutting down relays in the relays array
 
 	relays = relayManager.GetRelays(currentTime, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 

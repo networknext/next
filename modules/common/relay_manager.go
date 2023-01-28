@@ -95,16 +95,29 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 	   In addition, we "poison" the history buffer for any newly seen relay pair by setting RTT, Jitter
 	   and Packet Loss values very high, so we won't route any traffic across it, until it has proven
 	   itself to be stable for at least 5 minutes.
-
-	   ps. The data structure used to store relay stats is designed primarily to minimize lock contention.
 	*/
 
 	// look up the entry corresponding to the source relay, or create it if it doesn't exist
 
 	relayManager.mutex.Lock()
 
+	// todo
+	/*
+		iowa:   357632dc51bc4049
+		oregon: b79d96976666501a
+	*/
+
+	debug := relayId == 0x357632dc51bc4049 || relayId == 0x357632dc51bc4049
+
+	if debug {
+		fmt.Printf("=============================================================\n")
+	}
+
 	sourceEntry, exists := relayManager.sourceEntries[relayId]
 	if !exists {
+		if debug {
+			fmt.Printf("source entry %x does not exist. adding new one\n", relayId)
+		}
 		sourceEntry = &RelayManagerSourceEntry{}
 		sourceEntry.destEntries = make(map[uint64]*RelayManagerDestEntry)
 		relayManager.sourceEntries[relayId] = sourceEntry
@@ -126,8 +139,16 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 		destRelayId := sampleRelayId[i]
 
+		// todo
+		if destRelayId != 0x357632dc51bc4049 && destRelayId != 0x357632dc51bc4049 {
+			continue
+		}
+
 		destEntry, exists := sourceEntry.destEntries[destRelayId]
 		if !exists {
+			if debug {
+				fmt.Printf("dest entry %x does not exist. adding new one\n", destRelayId)
+			}
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.destEntries[destRelayId] = destEntry
 		}
@@ -137,6 +158,9 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		// don't get routed across, until at least 5 minutes has passed!
 
 		if currentTime-destEntry.lastUpdateTime > RelayTimeout {
+			if debug {
+				fmt.Printf("clearing history for (%x,%x)\n", relayId, destRelayId)
+			}
 			for j := 0; j < HistorySize; j++ {
 				destEntry.historyIndex = 0
 				destEntry.historyRTT[j] = InvalidRouteValue
@@ -153,9 +177,21 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destEntry.jitter = historyMean(destEntry.historyJitter[:])
 		destEntry.packetLoss = historyMean(destEntry.historyPacketLoss[:])
 
+		if debug {
+			fmt.Printf("clearing history for (%x,%x)\n", relayId, destRelayId)
+		}
+
 		destEntry.historyIndex = (destEntry.historyIndex + 1) % HistorySize
 
 		destEntry.lastUpdateTime = currentTime
+
+		if debug {
+			fmt.Printf("update entry (%x,%x) -> rtt = %.1f, jitter = %.1f, pl = %.2f\n", relayId, destRelayId, destEntry.rtt, destEntry.jitter, destEntry.packetLoss)
+		}
+	}
+
+	if debug {
+		fmt.Printf("=============================================================\n")
 	}
 
 	relayManager.mutex.Unlock()
@@ -177,7 +213,6 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 		oregon: b79d96976666501a
 	*/
 
-
 	debug := (sourceRelayId == 0x357632dc51bc4049 && destRelayId == 0xb79d96976666501a) || (sourceRelayId == 0xb79d96976666501a) || (destRelayId == 0x357632dc51bc4049)
 
 	if debug {
@@ -189,7 +224,7 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 		sourceEntry, exists := relayManager.sourceEntries[sourceRelayId]
 
 		if debug && !exists {
-			fmt.Printf("(1) source relay exists does not exist?!\n")
+			fmt.Printf("(1) source entry for relay %x does not exist?!\n", sourceRelayId)
 		}
 
 		if exists {
@@ -227,7 +262,7 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 		sourceEntry, exists := relayManager.sourceEntries[destRelayId]
 
 		if debug && !exists {
-			fmt.Printf("(2) source relay exists does not exist?!\n")
+			fmt.Printf("(2) source entry for relay %x does not exist?!\n", destRelayId)
 		}
 
 		if exists {
@@ -320,6 +355,9 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 	}	
 
 	// production code
+
+	// todo
+	fmt.Printf("maxRTT=%.1f, maxJitter=%.1f, maxPacketLoss=%.1f\n", maxRTT, maxJitter, maxPacketLoss)
 
 	relayManager.mutex.RLock()
 

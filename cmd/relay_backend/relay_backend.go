@@ -325,8 +325,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				var relayUpdateRequest packets.RelayUpdateRequestPacket
 
-				// todo: fix up these logs...
-
 				err = relayUpdateRequest.Read(message)
 				if err != nil {
 					core.Error("could not read relay update: %v", err)
