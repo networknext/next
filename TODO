@@ -14,6 +14,10 @@ TODO
 
 		3. The database is somehow messed up, and that's breaking things. Deploying the database logs will fix that.
 
+		4. When I rebooted or upgraded the relays they broke for some reason
+
+		5. Somehow the sync or pusher service is fucking stuff up (pushing a bad database.bin?!)
+
 	Steps:
 
 		Deploy new code and verify the database is corerct on the relay gateway.
