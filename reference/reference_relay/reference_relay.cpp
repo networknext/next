@@ -4882,7 +4882,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     // todo
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &token.next_address, next_hop_address );
-                    printf( "[%s] forwarding route request packet to next hop %s\n", from_address, next_hop_address );
+                    printf( "[%s] forwarding route request packet to next hop %s\n", from_string, next_hop_address );
                 
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
