@@ -325,6 +325,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				var relayUpdateRequest packets.RelayUpdateRequestPacket
 
+				// todo: fix up these logs...
+
 				err = relayUpdateRequest.Read(message)
 				if err != nil {
 					core.Error("could not read relay update: %v", err)
@@ -348,8 +350,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				}
 
 				relayName := relayData.RelayNames[relayIndex]
+				relayAddress := relayData.RelayAddresses[relayIndex].String()
 
-				core.Debug("received relay update for '%s'", relayName)
+				core.Debug("[%s] received update for %s [%x]", relayAddress, relayName, relayId)
 
 				// process samples in the relay update
 

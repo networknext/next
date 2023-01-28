@@ -262,7 +262,7 @@ func happy_path(wait bool) int {
 	relay_gateway_sees_relays := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_gateway_stdout.String(), " - relay update") &&
+		if strings.Contains(relay_gateway_stdout.String(), "received update for local.") &&
 			strings.Contains(relay_gateway_stdout.String(), "sent batch 0 containing 5 messages") {
 			relay_gateway_sees_relays = true
 			break
@@ -285,11 +285,11 @@ func happy_path(wait bool) int {
 	relay_backend_1_sees_relays := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.0'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.1'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.2'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.3'") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received relay update for 'local.4'") {
+		if strings.Contains(relay_backend_1_stdout.String(), "received update for local.0") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received update for local.1") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received update for local.2") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received update for local.3") &&
+			strings.Contains(relay_backend_1_stdout.String(), "received update for local.4") {
 			relay_backend_1_sees_relays = true
 			break
 		}
@@ -311,11 +311,11 @@ func happy_path(wait bool) int {
 	relay_backend_2_sees_relays := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.0'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.1'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.2'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.3'") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received relay update for 'local.4'") {
+		if strings.Contains(relay_backend_2_stdout.String(), "received update for local.0") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received update for local.1") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received update for local.2") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received update for local.3") &&
+			strings.Contains(relay_backend_2_stdout.String(), "received update for local.4") {
 			relay_backend_2_sees_relays = true
 			break
 		}
