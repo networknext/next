@@ -368,7 +368,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						continue
 					}
 					name := relayData.RelayNames[index]
-					core.Debug("[%s] %d: %s [%x]: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
+					if rtt < 1000.0 && pl < 100.0 {
+						core.Debug("[%s] %d: %s [%x]: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
+					}
 				}
 
 				// process samples in the relay update
