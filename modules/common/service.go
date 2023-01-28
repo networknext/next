@@ -126,6 +126,7 @@ func CreateService(serviceName string) *Service {
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
+	service.Router.HandleFunc("/database", service.databaseHandlerFunc())
 	service.Router.HandleFunc("/lb_health", service.lbHealthHandlerFunc())
 	service.Router.HandleFunc("/vm_health", service.vmHealthHandlerFunc())
 
@@ -669,9 +670,14 @@ func loadDatabase(databasePath string) (*db.Database) {
 
 	err = database.Validate() 
 	if err != nil {
-		fmt.Printf("database.bin does not validate: %v", err)
+		core.Error("database.bin does not validate: %v", err)
 		return nil
 	}
+
+	// todo
+	fmt.Printf("=======================================================\n")
+	fmt.Printf("%s\n", database.String())
+	fmt.Printf("=======================================================\n")
 
 	return database
 }
@@ -857,6 +863,16 @@ func (service *Service) statusHandlerFunc() func(w http.ResponseWriter, r *http.
 		if err := json.NewEncoder(w).Encode(*data); err != nil {
 			core.Error("could not write status data to json: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func (service *Service) databaseHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		database := service.Database()
+		if database {
+			fmt.Fprint(w, database.String())
+			w.Header().Set("Content-Type", "next/plain")
 		}
 	}
 }
