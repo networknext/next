@@ -26,6 +26,7 @@
 #define RELAY_HEADER_BYTES_SDK5                                   33
 
 #define RELAY_ADDRESS_BYTES                                       19
+#define RELAY_ADDRESS_BYTES_SHORT                                  7
 #define RELAY_ADDRESS_BUFFER_SAFETY                               32
 
 #define RELAY_REPLAY_PROTECTION_BUFFER_SIZE                      256
@@ -518,6 +519,37 @@ void relay_read_address( const uint8_t ** buffer, relay_address_t * address )
     assert( *buffer - start == RELAY_ADDRESS_BYTES );
 }
 
+void relay_read_address_short( const uint8_t ** buffer, relay_address_t * address )
+{
+    const uint8_t * start = *buffer;
+
+    address->type = relay_read_uint8( buffer );
+
+    if ( address->type == RELAY_ADDRESS_IPV4 )
+    {
+        for ( int j = 0; j < 4; ++j )
+        {
+            address->data.ipv4[j] = relay_read_uint8( buffer );
+        }
+        address->port = relay_read_uint16( buffer );
+        for ( int i = 0; i < 12; ++i )
+        {
+            uint8_t dummy = relay_read_uint8( buffer ); (void) dummy;
+        }
+    }
+    else
+    {
+        for ( int i = 0; i < RELAY_ADDRESS_BYTES_SHORT - 1; ++i )
+        {
+            uint8_t dummy = relay_read_uint8( buffer ); (void) dummy;
+        }
+    }
+
+    (void) start;
+
+    assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
+}
+
 void relay_write_address( uint8_t ** buffer, const relay_address_t * address )
 {
     assert( buffer );
@@ -561,6 +593,42 @@ void relay_write_address( uint8_t ** buffer, const relay_address_t * address )
     (void) start;
 
     assert( *buffer - start == RELAY_ADDRESS_BYTES );
+}
+
+void relay_write_address_short( uint8_t ** buffer, const relay_address_t * address )
+{
+    assert( buffer );
+    assert( *buffer );
+    assert( address );
+
+    uint8_t * start = *buffer;
+
+    (void) buffer;
+
+    if ( address->type == RELAY_ADDRESS_IPV4 )
+    {
+        relay_write_uint8( buffer, RELAY_ADDRESS_IPV4 );
+        for ( int i = 0; i < 4; ++i )
+        {
+            relay_write_uint8( buffer, address->data.ipv4[i] );
+        }
+        relay_write_uint16( buffer, address->port );
+        for ( int i = 0; i < 12; ++i )
+        {
+            relay_write_uint8( buffer, 0 );
+        }
+    }
+    else
+    {
+        for ( int i = 0; i < RELAY_ADDRESS_BYTES_SHORT; ++i )
+        {
+            relay_write_uint8( buffer, 0 );
+        }
+    }
+
+    (void) start;
+
+    assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
 }
 
 const char * relay_address_to_string( const relay_address_t * address, char * buffer )
@@ -2276,6 +2344,8 @@ struct relay_route_token_t
     int kbps_up;
     int kbps_down;
     relay_address_t next_address;
+    uint8_t next_internal;
+    uint8_t prev_internal;
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
 };
 
@@ -2296,7 +2366,15 @@ void relay_write_route_token( relay_route_token_t * token, uint8_t * buffer, int
     relay_write_uint8( &buffer, token->session_version );
     relay_write_uint32( &buffer, token->kbps_up );
     relay_write_uint32( &buffer, token->kbps_down );
-    relay_write_address( &buffer, &token->next_address );
+    relay_write_address_short( &buffer, &token->next_address );
+    relay_write_uint8( &buffer, token->next_internal );
+    relay_write_uint8( &buffer, token->prev_internal );
+    for ( int i = 0; i < RELAY_ADDRESS_BYTES - (RELAY_ADDRESS_BYTES_SHORT + 2); ++i )
+    {
+        uint8_t dummy = 0;
+        relay_write_uint8( &buffer, dummy );
+    }
+
     relay_write_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
 
     assert( buffer - start == RELAY_ROUTE_TOKEN_BYTES );
@@ -2316,7 +2394,15 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->session_version = relay_read_uint8( &buffer );
     token->kbps_up = relay_read_uint32( &buffer );
     token->kbps_down = relay_read_uint32( &buffer );
-    relay_read_address( &buffer, &token->next_address );
+    relay_read_address_short( &buffer, &token->next_address );
+    token->next_internal = relay_read_uint8( &buffer );
+    token->prev_internal = relay_read_uint8( &buffer );
+    for ( int i = 0; i < RELAY_ADDRESS_BYTES - (RELAY_ADDRESS_BYTES_SHORT + 2); ++i )
+    {
+        uint8_t dummy = relay_read_uint8( &buffer );
+        (void) dummy;
+    }
+
     relay_read_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
     assert( buffer - start == RELAY_ROUTE_TOKEN_BYTES );
 }
@@ -3809,6 +3895,8 @@ struct relay_session_t
     int kbps_down;
     relay_address_t prev_address;
     relay_address_t next_address;
+    uint8_t prev_internal;
+    uint8_t next_internal;
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
     relay_replay_protection_t replay_protection_server_to_client;
     relay_replay_protection_t replay_protection_client_to_server;
@@ -4862,6 +4950,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     session->kbps_down = token.kbps_down;
                     session->prev_address = from;
                     session->next_address = token.next_address;
+                    session->prev_internal = token.prev_internal;
+                    session->next_internal = token.next_internal;
                     memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
                     relay_replay_protection_reset( &session->replay_protection_client_to_server );
                     relay_replay_protection_reset( &session->replay_protection_server_to_client );
@@ -4881,25 +4971,44 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_address_data_sdk5( &token.next_address, next_address_data, &next_address_bytes, &next_address_port );
 
-                // todo: here we need to switch between public and internal address, when we are sending to an internal address
-
-                uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
-
-                if ( packet_bytes > 0 )
+                if ( !token.next_internal )
                 {
-                    assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
-                    // todo: same here
-                    assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-                    // todo
-                    char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
-                    relay_address_to_string( &token.next_address, next_hop_address );
-                    printf( "[%s] forwarding route request packet to next hop %s\n", from_string, next_hop_address );
-                
-                    relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+                        // todo
+                        char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                        relay_address_to_string( &token.next_address, next_hop_address );
+                        printf( "[%s] forwarding route request packet to next hop %s (public address)\n", from_string, next_hop_address );
+                    
+                        relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
-                    relay->bytes_sent += packet_bytes;
+                        relay->bytes_sent += packet_bytes;
+                    }
+                }
+                else
+                {
+                    uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay->has_internal_address );
+                        assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+
+                        // todo
+                        char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                        relay_address_to_string( &token.next_address, next_hop_address );
+                        printf( "[%s] forwarding route request packet to next hop %s (internal address)\n", from_string, next_hop_address );
+                    
+                        relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+
+                        relay->bytes_sent += packet_bytes;
+                    }
                 }
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK5 )
@@ -4970,23 +5079,41 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
 
-                // todo: public vs internal address here
-                uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
-
-                if ( packet_bytes > 0 )
+                if ( !session->prev_internal )
                 {
-                    assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
-                    // todo: public vs. internal address here again
-                    assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-                    char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
-                    relay_address_to_string( &session->prev_address, prev_hop_address );
-                    printf( "[%s] sending route response packet to previous hop %s\n", from_string, prev_hop_address );
+                        char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                        relay_address_to_string( &session->prev_address, prev_hop_address );
+                        printf( "[%s] sending route response packet to previous hop %s\n", from_string, prev_hop_address );
 
-                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
+                        relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
 
-                    relay->bytes_sent += packet_bytes;
+                        relay->bytes_sent += packet_bytes;
+                    }
+                }
+                else
+                {
+                    uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+
+                        char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                        relay_address_to_string( &session->prev_address, prev_hop_address );
+                        printf( "[%s] sending route response packet to previous hop %s\n", from_string, prev_hop_address );
+
+                        relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
+
+                        relay->bytes_sent += packet_bytes;
+                    }
                 }
             }
 
@@ -5553,6 +5680,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored relay near ping packet. bad packet size (%d) [sdk5]", packet_bytes );
                     continue;
                 }
+
+                // todo: pings aren't checking the packet filters here. the basic packet filter will pass, but the advanced will not, until the array of "internal" flags are passed down to the relay from the relay backend
 
                 const uint8_t * const_p = p;
 
