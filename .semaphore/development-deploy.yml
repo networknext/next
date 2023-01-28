@@ -98,11 +98,6 @@ blocks:
             - artifact pull workflow raspberry_client.dev.tar.gz
             - gsutil cp raspberry_client.dev.tar.gz gs://development_artifacts/
 
-        - name: "Sodium"
-          commands:
-            - artifact pull workflow libsodium.so
-            - gsutil cp libsodium.so gs://development_artifacts/libsodium.so
-
         - name: "Reference Relay"
           commands:
             - artifact pull workflow reference_relay

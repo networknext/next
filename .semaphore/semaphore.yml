@@ -27,7 +27,6 @@ blocks:
             - checkout
             - mkdir dist
             - make -j ./dist/reference_relay ./dist/libnext4.so ./dist/libnext5.so
-            - artifact push workflow /usr/local/lib/libsodium.so
             - artifact push workflow ./dist/reference_relay
             - artifact push workflow ./dist/libnext4.so
             - artifact push workflow ./dist/libnext5.so
