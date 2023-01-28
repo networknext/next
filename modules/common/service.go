@@ -777,6 +777,9 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 			case <-ticker.C:
 
 				newDatabase := loadDatabase(databasePath)
+				if newDatabase == nil {
+					continue
+				}
 
 				newRelayData := generateRelayData(newDatabase)
 				if newRelayData == nil {

@@ -36,37 +36,69 @@ DONE
 
 TODO
 
-	For some reason, google.losangeles cannot post a relay update. Check if it's still in the database...
+	Seems like google.losangeles can't talk to the relay gateway for some reason. The http request isn't even getting through?!
 
 	---------------
 
-	Seems like lots of relays are jumbled up. Mismatch in database.bin format vs. code?
+	It seems like clients are having route request timeout again, which I think is related to the internal address logic.
+
+	Now, I see this on relays:
+
+		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: session destroyed: c75bbd9e97c50c07.1
+		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:43 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
+		Jan 28 02:15:43 dev-google-oregon-2 relay[10329]: session destroyed: 8a1ced46c0d45910.1
+
+	What?!
 
 	---------------
 
-	We really need a way to extract the database from a service while it's running, especially, relay_gateway, relay_backend, server_backend5
+	Actions I need to take:
 
-	There should be an endpoint that just dumps the database to a text file for inspection. Add it.
+		1. relay gateway, relay backend, and server backend 5 need a pass on logs so I can easily see what's going on
+
+		2. relay gateway, relay backend, server backend 5 all need a "/database" endpoint that prints out the current contents of the database
+
+		3. I have no idea what is going on with google.losangeles (?!)
+
+		4. reference_relay needs a log pass, so I can get a better filtering on logs grep. by session id, ip address etc...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 
+	next ssh google.lasvegas hangs. previously, it would pattern match...
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-	-------------
+	---------------
 
 	Actually implement database validation
 
@@ -373,5 +405,9 @@ Nice to have:
 	These counters can be for bad things that we want to track, so we have the data by timestamp inserted into bigquery for analysis.
 
 	eg. could not read route token, for example.
+
+	--------------
+
+	Should be functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in database.bin files being injected.
 
 	--------------
