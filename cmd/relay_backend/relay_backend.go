@@ -363,12 +363,12 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					jitter := relayUpdateRequest.SampleJitter[i]
 					pl := relayUpdateRequest.SamplePacketLoss[i]
 					id := relayUpdateRequest.SampleRelayId[i]
-					index, ok := relayData.RelayIdToIndex[relayId]
+					index, ok := relayData.RelayIdToIndex[id]
 					if !ok {
 						continue
 					}
 					name := relayData.RelayNames[index]
-					core.Debug("[%s] %d: %s [%x]: rtt = %d, jitter = %d, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
+					core.Debug("[%s] %d: %s [%x]: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
 				}
 
 				// process samples in the relay update
