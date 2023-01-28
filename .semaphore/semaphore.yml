@@ -11,10 +11,6 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 
-global_job_config:
-  secrets:
-    - name: google-cloud-platform
-
 blocks:
 
   - name: "Libraries"
@@ -25,18 +21,10 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-
         - name: "Build Libraries"
-
           commands:
-
+            - sudo apt-get install -y libsodium-dev
             - checkout
-            - cd ~/backend/libs/sodium
-            - ./configure
-            - make -j
-            - sudo make -j install
-            - sudo ldconfig
-            - cd ~/backend
             - mkdir dist
             - make -j ./dist/reference_relay ./dist/libnext4.so ./dist/libnext5.so
             - artifact push workflow /usr/local/lib/libsodium.so
