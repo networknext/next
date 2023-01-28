@@ -954,9 +954,13 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 
 	for _, relay := range reply.RelayFleet {
 
-		maxSessions, err := strconv.Atoi(relay.Sessions)
+		sessions, err := strconv.Atoi(relay.Sessions)
 		if err != nil {
-			maxSessions = -1
+			sessions = -1
+		}
+
+		if relay.Status == "offline" {
+			sessions = -1
 		}
 
 		relays = append(relays, RelayRow{
@@ -964,7 +968,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 			strings.Split(relay.Address, ":")[0],
 			strings.ToUpper(relay.Id),
 			relay.Status,
-			maxSessions,
+			sessions,
 			relay.Version,
 		})
 	}
@@ -987,6 +991,12 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	}
 
 	outputRelays := filtered
+
+	for i := range outputRelays {
+		if outputRelays[i].Sessions < 0 {
+			outputRelays[i].Sessions = 0
+		}
+	} 
 
 	if relayCount != 0 {
 		table.Output(outputRelays[0:relayCount])
