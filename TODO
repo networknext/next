@@ -1,88 +1,18 @@
 DONE
 
-	Added "/database" endpoint to service.go for verifying what database version the service has.
-
-	Add better logs to the reference relay, around the "route request" packets...
-
-	google.losangeles is just BROKEN. It can't even ping the relay backend. It's not us... kill the instance.
-
-	Deploy new code and verify the database is correct on the relay gateway.
-
-	Database is correct on relay gateway.
-
-	Database is corerct on relay backend.
-
-	Database is correct on server backend 5.
-
-	Added logs to relay and internal address code. Disable token expiry on reference relay.
-
-	Still getting the route request timing out issue. What's going on?
-	
-	google.oregon:	
-
-		34.168.209.101:40000  │ 10.138.0.12:40000 │ fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38= │ Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=
-
-	I see on google.oregon:
-
-		[34.170.113.0:59201] forwarding route request packet to next hop 10.128.0.8:40000
-
-	So it is using the internal address.
-
-	Is the internal address correct?
-
-	Yes: 10.128.0.8
-
-	Is google.iowa receiving the route request packet?
-
-		Jan 28 16:26:00 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:00 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:04 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-		Jan 28 16:26:04 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
-
-	The relay needs to know its own internal address, in order to encode the packet as per-the address it will be received from.
-
-	I propose that the internal address needs to be configured via env var on the relay, and checked on init.
-
-	Add the internal address to relay configuration.
-
-	Set the internal address on both google.iowa and google.oregon
-
-	Set also the relay name on both google.iowa and google.oregon
-
-	Make the relay internal address optional
-
-	Extend route token to have next/prev internal flags inside the address space in the relay token
-
-	The reason the realy ping/pongs were working, is that they did not check for advanced packet filter. If they did, the pings would be broken too.
-
-	Disable the internal address stuff in the server backend temporarily, to make sure the new relay code w. the address code is compatible with existing tokens
-
-	The problem now seems to be that the two relays aren't pinging each other and getting tokens.
-
-	Removed internal relay pings and this was fixed.
+	Increased batch duration to 1.1 seconds in dev. This should ensure that generally, all relay updates come in in one message, once per-second.
 
 TODO
 
-	It feels like the raspberry clients get "stuck" once they fallback to direct.
-
-	Check logs and see what's up
-
-	---------------
+	Still seeing no routes between relays in dev.
 
 	Add more logs to debug what's going on here.
 
-		1. Logs on the ping/pong processing between relays
+		1. Logs showing the ping/pong processing between relays
+
 		2. Logs in the relay *backend* as each relay reports the ping results, per-relay.
+
+		3. (if easy) Logs showing when relays are considered not connected (no updates for n seconds...)
 
 	---------------
 

@@ -352,11 +352,26 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				relayName := relayData.RelayNames[relayIndex]
 				relayAddress := relayData.RelayAddresses[relayIndex].String()
 
+				// debug
+
 				core.Debug("[%s] received update for %s [%x]", relayAddress, relayName, relayId)
 
-				// process samples in the relay update
-
 				numSamples := int(relayUpdateRequest.NumSamples)
+
+				for i := 0; i < numSamples; i++ {
+					rtt := relayUpdateRequest.SampleRTT[i]
+					jitter := relayUpdateRequest.SampleJitter[i]
+					pl := relayUpdateRequest.SamplePacketLoss[i]
+					id := relayUpdateRequest.SampleRelayId[i]
+					index, ok := relayData.RelayIdToIndex[relayId]
+					if !ok {
+						continue
+					}
+					name := relayData.RelayNames[index]
+					core.Debug("[%s] %d: %s [%x]: rtt = %d, jitter = %d, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
+				}
+
+				// process samples in the relay update
 
 				currentTime := time.Now().Unix()
 
