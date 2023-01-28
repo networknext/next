@@ -131,18 +131,6 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.losangeles.1',
-	34.0522,
-	118.2437,
-	(select id from sellers where short_name = 'google')
-);
-
-INSERT INTO datacenters(
-	display_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
 	'google.oregon.2',
 	45.8399,
 	-119.7006,
@@ -483,22 +471,6 @@ VALUES(
 	'xKAh+sLW1ghyIkHfOVzkinZZU0mjZF52a+aQ1cv9RRg=',
 	'Goql8jwWRUYZpV8XtTPjXC+pDLUzrQ0zpbi8OvElHYw=',
 	(select id from datacenters where display_name = 'google.lasvegas.1')
-);
-
-INSERT INTO relays(
-	display_name,
-	public_ip,
-	internal_ip,
-	public_key_base64,
-	private_key_base64,
-	datacenter)
-VALUES(
-	'google.losangeles.1',
-	'34.94.28.121',
-	'10.168.0.4',
-	'XVnmFpOfx7DmuhZkrkHw+UpuIegRCNBDlHSlfOH/ozo=',
-	'KzRn1WQHVMJftQe/UoCUqgCeCea46u4iWBN/1ADlXNg=',
-	(select id from datacenters where display_name = 'google.losangeles.1')
 );
 
 INSERT INTO relays(

@@ -4,6 +4,12 @@ DONE
 
 	Add better logs to the reference relay, around the "route request" packets...
 
+	google.losangeles is just BROKEN. It can't even ping the relay backend. It's not us... kill the instance.
+
+	Deploy new code and verify the database is correct on the relay gateway.
+
+	Database appears to be correct!
+
 TODO
 
 	Theories:
@@ -20,7 +26,6 @@ TODO
 
 	Steps:
 
-		Deploy new code and verify the database is corerct on the relay gateway.
 
 
 
