@@ -16,16 +16,78 @@ DONE
 
 	Added logs to relay and internal address code. Disable token expiry on reference relay.
 
-TODO
-
 	Still getting the route request timing out issue. What's going on?
 	
 	google.oregon:	
 
 		34.168.209.101:40000  │ 10.138.0.12:40000 │ fqbsO0Yw/mP82T0JIPblltGtf9xsLbtSqiWaF5/xv38= │ Hy4r9eTSq9vEeiYyaOyghdll39FZndwCzihzZQ6RVqA=
 
+	I see on google.oregon:
 
+		[34.170.113.0:59201] forwarding route request packet to next hop 10.128.0.8:40000
 
+	So it is using the internal address.
+
+	Is the internal address correct?
+
+	Yes: 10.128.0.8
+
+	Is google.iowa receiving the route request packet?
+
+		Jan 28 16:26:00 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:00 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:01 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:02 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:03 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:04 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+		Jan 28 16:26:04 dev-google-iowa-1 relay[14546]: [10.138.0.12:40000] advanced packet filter dropped packet 9 [sdk5]
+
+	The relay needs to know its own internal address, in order to encode the packet as per-the address it will be received from.
+
+	I propose that the internal address needs to be configured via env var on the relay, and checked on init.
+
+	Add the internal address to relay configuration.
+
+	Set the internal address on both google.iowa and google.oregon
+
+	Set also the relay name on both google.iowa and google.oregon
+
+TODO
+
+	Make the relay internal address optional
+
+	------------
+
+	The key thing to work out now is HOW does the relay know when it is sending to an internal address?
+
+	For the relay pings, this can be sent down in the ping data (as part of the array).
+
+	For the route token, it really needs to be included in the token itself.
+
+	Is it possible to do this in a way that doesn't break route token compatibility with sdk4?
+
+	Probably yes, but only if we use the blank space in the "next address" (19 bytes) when it is ipv4.
+
+	------------
+
+	Extend the relay init to return the internal address of the relay so it can be checked.
+
+	Extend the runtime logic to only allow usage of the internal address, if BOTH relays have an internal address, and they are the same supplier.
+
+	This is because if we are sending to an internal address we need to encode relative to OUR internal address, and otherwise the sender won't know it.
+
+	Verify that we get routes across google in dev.
+
+	Bring all the relays back up. Everything should be working again.
+
+	Make sure that the client 
 
 
 
