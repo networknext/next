@@ -568,12 +568,14 @@ VALUES(
 INSERT INTO relays(
 	display_name,
 	public_ip,
+	internal_ip,
 	public_key_base64,
 	private_key_base64,
 	datacenter)
 VALUES(
 	'google.virginia.3',
 	'35.236.236.4',
+	'10.150.0.19',
 	'5KcEWA5Digp5hBm5TOfXtX3twEk/etE0SB8rwlIrjWQ=',
 	'SCrHFjgowY4n4fEkPZnS8wvxseCUiwFGHvaCSkJItqo=',
 	(select id from datacenters where display_name = 'google.virginia.3')

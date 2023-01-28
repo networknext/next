@@ -524,8 +524,8 @@ func main() {
 	}
 
 	var logCommand = &ffcli.Command{
-		Name:       "log",
-		ShortUsage: "next log <regex> [regex]",
+		Name:       "logs",
+		ShortUsage: "next logs <regex> [regex]",
 		ShortHelp:  "View the journalctl log for a relay",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {

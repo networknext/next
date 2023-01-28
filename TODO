@@ -26,9 +26,17 @@ DONE
 
 	Bring back the code that enables internal address use
 
+	Deploy updated database.bin to dev
+
+	Deploy the code to dev 
+
+	Verify we are getting pings and proper use with internal addresses between google relays
+
+	Looks good!
+
 TODO
 
-	Deploy the code to dev and verify we are getting pings and proper use with internal addresses between google relays.
+	For some reason, google.losangeles cannot post a relay update. Check if it's still in the database...
 
 
 
@@ -61,6 +69,12 @@ TODO
 	-------------
 
 	Implement an extremely simple portal service that just provides the necessary endpoints + auth needed to get the backend of the next tool working.
+
+	-------------
+
+	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
+
+	I really want to eyeball that relays have the correct internal addresses, dynamically from the relay backend.
 
 	-------------
 
