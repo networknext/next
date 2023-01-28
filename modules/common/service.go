@@ -674,11 +674,6 @@ func loadDatabase(databasePath string) (*db.Database) {
 		return nil
 	}
 
-	// todo
-	fmt.Printf("=======================================================\n")
-	fmt.Printf("%s\n", database.String())
-	fmt.Printf("=======================================================\n")
-
 	return database
 }
 
@@ -870,7 +865,7 @@ func (service *Service) statusHandlerFunc() func(w http.ResponseWriter, r *http.
 func (service *Service) databaseHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		database := service.Database()
-		if database {
+		if database != nil {
 			fmt.Fprint(w, database.String())
 			w.Header().Set("Content-Type", "next/plain")
 		}

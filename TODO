@@ -1,74 +1,22 @@
 DONE
 
-	Setup a dev.bin database file under envs
+	Added "/database" endpoint to service.go for verifying what database version the service has.
 
-	Copy this file to database.bin when you go "next select dev"
-
-	Write a lazy eval function that loads the database.bin as needed (once only, per-next tool invocation)
-
-	Get "next relays" working again
-
-	Get "next ssh [relay]" working again
-
-	Get "next cost" working again
-
-	Extend "next database" to print out the combined customer public key base64 (for visual comparison)
-
-	Extend "next database" so it prints a table of dest relays per-customer.
-
-	Bring back the code that extracts the set of dest relays from the database relay maps.
-
-	Verify that we have raspberry pi sessions in dev again w. the dest relay code
-
-	Fix uniqueness constraints for database
-
-	Generate data for dev.bin with internal addresses for google relays
-
-	Bring back the code that enables internal address use
-
-	Deploy updated database.bin to dev
-
-	Deploy the code to dev 
-
-	Verify we are getting pings and proper use with internal addresses between google relays
-
-	Looks good!
+	Add better logs to the reference relay, around the "route request" packets...
 
 TODO
 
-	Seems like google.losangeles can't talk to the relay gateway for some reason. The http request isn't even getting through?!
+	Theories:
 
-	---------------
+		1. The time sync is screwed up on the reference relay, and it's causing the problems.
 
-	It seems like clients are having route request timeout again, which I think is related to the internal address logic.
+		2. The internal address is breaking things. Likely, since I turned that back on.
 
-	Now, I see this on relays:
+		3. The database is somehow messed up, and that's breaking things. Deploying the database logs will fix that.
 
-		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: session destroyed: c75bbd9e97c50c07.1
-		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:41 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:42 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:43 dev-google-oregon-2 relay[10329]: ignoring route request. route token expired [sdk5]
-		Jan 28 02:15:43 dev-google-oregon-2 relay[10329]: session destroyed: 8a1ced46c0d45910.1
+	Steps:
 
-	What?!
-
-	---------------
-
-	Actions I need to take:
-
-		1. relay gateway, relay backend, and server backend 5 need a pass on logs so I can easily see what's going on
-
-		2. relay gateway, relay backend, server backend 5 all need a "/database" endpoint that prints out the current contents of the database
-
-		3. I have no idea what is going on with google.losangeles (?!)
-
-		4. reference_relay needs a log pass, so I can get a better filtering on logs grep. by session id, ip address etc...
+		Deploy new code and verify the database is corerct on the relay gateway.
 
 
 

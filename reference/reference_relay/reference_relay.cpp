@@ -4080,6 +4080,8 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         printf( "Relay initialized\n" );
         fflush( stdout );
         relay->initialize_router_timestamp = timestamp;
+
+        printf("initialize timestamp = %" PRId64 "\n", timestamp);
     }
 
     uint32_t num_relays = relay_read_uint32( &q );
@@ -4760,14 +4762,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
         else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
         {
-            /*
-            // todo
-            printf( "(sdk5 group packet)\n");
-            */
+        	char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        	relay_address_to_string( &from, from_string );
 
-            if ( !relay_basic_packet_filter_sdk5( packet_data, packet_bytes ))
+            if ( !relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) )
             {
-                relay_printf( "relay basic packet filter dropped packet" );
+                relay_printf( "[%s] basic packet filter dropped packet [sdk5]", from_string );
                 continue;
             }
 
@@ -4797,7 +4797,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 {
                     if ( !relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_address_data, relay_address_bytes, relay_address_port, packet_bytes ) )
                     {
-                        relay_printf( "relay advanced packet filter dropped packet (packet type %d)", packet_id );
+                        relay_printf( "[%s] advanced packet filter dropped packet %d [sdk5]", from_string, packet_id );
                         continue;
                     }
                 }
@@ -4810,27 +4810,26 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-            	/*
-            	// todo
             	printf( "received route request packet [sdk5]\n" );
-            	*/
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
-                    relay_printf( "ignoring route request. bad packet size (%d) [sdk5]", packet_bytes );
+                    relay_printf( "[%s] ignoring route request. bad packet size (%d) [sdk5]", from_string, packet_bytes );
                     continue;
                 }
 
                 relay_route_token_t token;
                 if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
-                    relay_printf( "ignoring route request. could not read route token [sdk5]" );
+                    relay_printf( "[%s] ignoring route request. could not read route token [sdk5]", from_string );
                     continue;
                 }
 
-                if ( token.expire_timestamp < relay_timestamp( relay ) )
+                uint64_t current_timestamp = relay_timestamp( relay );
+                if ( token.expire_timestamp < current_timestamp )
                 {
-                    relay_printf( "ignoring route request. route token expired [sdk5]" );
+                    relay_printf( "[%s] ignoring route request. route token expired [sdk5]", from_string );
+                    printf("%" PRId64 " < %" PRId64 "\n", token.expire_timestamp, current_timestamp );
                     continue;
                 }
 
