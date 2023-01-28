@@ -4825,6 +4825,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 uint64_t current_timestamp = relay_timestamp( relay );
                 if ( token.expire_timestamp < current_timestamp )
                 {
@@ -4832,6 +4834,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf("%" PRId64 " < %" PRId64 "\n", token.expire_timestamp, current_timestamp );
                     continue;
                 }
+                */
 
                 uint64_t hash = token.session_id ^ token.session_version;
 
@@ -4924,6 +4927,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "ignored route response packet. expired [sdk5]" );
@@ -4932,6 +4937,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -4995,11 +5001,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "ignored continue request. token expired [sdk5]" );
                     continue;
                 }
+                */
 
                 uint64_t hash = token.session_id ^ token.session_version;
 

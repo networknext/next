@@ -573,6 +573,8 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 				relayAddresses[i] = &relay.InternalAddress
 			}
 		}
+		// todo
+		fmt.Printf("relay %d: %s\n", i, relayAddresses[i].String())
 	}
 
 	// server node

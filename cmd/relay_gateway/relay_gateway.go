@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"fmt"
 	"time"
 
 	"github.com/networknext/backend/modules/common"
@@ -127,6 +128,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 			var address string
 			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress {
+				// todo
+				fmt.Printf("has internal address: %s\n", relayData.RelayArray[i].InternalAddress.String())
 				address = relayData.RelayArray[i].InternalAddress.String()
 			} else {
 				address = relayData.RelayArray[i].PublicAddress.String()

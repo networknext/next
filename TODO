@@ -24,20 +24,11 @@ TODO
 
 			^--- *** BINGO IT IS MOST LIKELY THIS ***
 
-		3. The database is somehow messed up, and that's breaking things. Deploying the database logs will fix that.
-
-			^--- proven wrong
-
-		4. When I rebooted or upgraded the relays they broke for some reason
-
-			^--- probably correct for google.losangeles
-
-		5. Somehow the sync or pusher service is fucking stuff up (pushing a bad database.bin?!)
-
-			^--- disproven. the database is fine.
-
 	Steps:
 
+		Now eliminate the internal address stuff.
+
+		Look over the internal address stuff, and put in logs to see if they are fucked or something...
 
 
 
@@ -59,9 +50,13 @@ TODO
 
 
 
+	---------------
 
+	Would be nice to see the database as html tables
 
+	---------------
 
+	I really want an easy way to see the cost matrix as html
 
 	---------------
 
@@ -73,11 +68,11 @@ TODO
 
 	-------------
 
-	Simplify the database.bin and overlay.bin updates. The service.go will pull these files down from google cloud storage, vs. being pushed to from the sync service.-
+	Simplify the database.bin updates so the service.go is responsible for pulling down from google cloud storage
 
 	-------------
 
-	Simplify the sync service radically. All it does is periodically download the IP2location files and stick them in google cloud storage.
+	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
 
 	-------------
 
@@ -367,6 +362,12 @@ Nice to have:
 
 	Add confirmation for all "next" tool actions that modify relays... especially "reboot", "upgrade", "start", "stop" and so on.
 
+	OR, just disable these tool actions in prod.
+
+	--------------
+
+	Disable SSH related actions in "local". They don't have anywhere to go...
+
 	--------------
 
 	New relay really needs a series of counters that get updated with each update sent to the backend.
@@ -377,6 +378,6 @@ Nice to have:
 
 	--------------
 
-	Should be functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in database.bin files being injected.
+	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in database.bin files being injected.
 
 	--------------
