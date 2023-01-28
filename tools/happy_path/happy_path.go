@@ -116,7 +116,7 @@ func happy_path(wait bool) int {
 	relay_gateway_initialized := false
 
 	for i := 0; i < 10; i++ {
-		if strings.Contains(relay_gateway_stdout.String(), "loaded database: 'database.bin'") &&
+		if strings.Contains(relay_gateway_stdout.String(), "loaded database: database.bin") &&
 			strings.Contains(relay_gateway_stdout.String(), "starting http server on port 30000") &&
 			strings.Contains(relay_gateway_stdout.String(), "updated magic values: ") {
 			relay_gateway_initialized = true
@@ -141,7 +141,7 @@ func happy_path(wait bool) int {
 
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
-			strings.Contains(relay_backend_1_stdout.String(), "loaded database: 'database.bin'") &&
+			strings.Contains(relay_backend_1_stdout.String(), "loaded database: database.bin") &&
 			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
 			relay_backend_1_initialized = true
 			break
@@ -165,7 +165,7 @@ func happy_path(wait bool) int {
 
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
-			strings.Contains(relay_backend_2_stdout.String(), "loaded database: 'database.bin'") &&
+			strings.Contains(relay_backend_2_stdout.String(), "loaded database: database.bin") &&
 			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
 			relay_backend_2_initialized = true
 			break

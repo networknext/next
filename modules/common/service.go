@@ -69,7 +69,6 @@ type Service struct {
 
 	databaseMutex     sync.RWMutex
 	database          *db.Database
-	databaseOverlay   *db.Overlay
 	databaseRelayData *RelayData
 
 	statusMutex sync.RWMutex
@@ -153,16 +152,13 @@ func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineI
 func (service *Service) LoadDatabase() {
 
 	databasePath := envvar.GetString("DATABASE_PATH", "database.bin")
-	overlayPath := envvar.GetString("OVERLAY_PATH", "overlay.bin")
 
-	service.database, service.databaseOverlay = loadDatabase(databasePath, overlayPath)
+	service.database = loadDatabase(databasePath)
 
-	if !validateBinFiles(service.database) {
-		core.Error("bin files failed validation")
+	if service.database == nil {
+		core.Error("database is nil")
 		os.Exit(1)
 	}
-
-	applyOverlay(service.database, service.databaseOverlay)
 
 	service.databaseRelayData = generateRelayData(service.database)
 	if service.databaseRelayData == nil {
@@ -172,7 +168,7 @@ func (service *Service) LoadDatabase() {
 
 	core.Log("loaded database: %s", databasePath)
 
-	service.watchDatabase(service.Context, databasePath, overlayPath)
+	service.watchDatabase(service.Context, databasePath)
 }
 
 func validateBinFiles(database *db.Database) bool {
@@ -661,44 +657,23 @@ func (service *Service) watchIP2Location(ctx context.Context, filenames []string
 
 // -----------------------------------------------------------------------
 
-func loadDatabase(databasePath string, overlayPath string) (*db.Database, *db.Overlay) {
+func loadDatabase(databasePath string) (*db.Database) {
 
 	// load database (required)
 
 	database, err := db.LoadDatabase(databasePath)
 	if err != nil {
 		core.Error("error: could not read database: %v", err)
-		return nil, nil
+		return nil
 	}
 
-	if database.IsEmpty() {
-		core.Error("error: database is empty")
-	}
-
-	core.Debug("loaded database: '%s'", databasePath)
-
-	// load overlay (optional)
-
-	overlay, err := db.LoadOverlay(overlayPath)
+	err = database.Validate() 
 	if err != nil {
-		core.Debug("failed to load overlay: %v", err)
-		return database, nil
+		fmt.Printf("database.bin does not validate: %v", err)
+		return nil
 	}
 
-	if overlay.IsEmpty() {
-		core.Debug("overlay is empty")
-		return database, nil
-	}
-
-	// IMPORTANT: discard the overlay if it's older than the database
-	if database.CreationTime > overlay.CreationTime {
-		core.Debug("overlay is older than database")
-		return database, nil
-	}
-
-	core.Debug("loaded overlay: '%s'", overlayPath)
-
-	return database, overlay
+	return database
 }
 
 func generateRelayData(database *db.Database) *RelayData {
@@ -785,18 +760,7 @@ func generateRelayData(database *db.Database) *RelayData {
 	return relayData
 }
 
-func applyOverlay(database *db.Database, overlay *db.Overlay) {
-	if overlay != nil {
-		for _, buyer := range overlay.BuyerMap {
-			_, ok := database.BuyerMap[buyer.Id]
-			if !ok {
-				database.BuyerMap[buyer.Id] = buyer
-			}
-		}
-	}
-}
-
-func (service *Service) watchDatabase(ctx context.Context, databasePath string, overlayPath string) {
+func (service *Service) watchDatabase(ctx context.Context, databasePath string) {
 
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
@@ -812,23 +776,15 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 			case <-ticker.C:
 
-				newDatabase, newOverlay := loadDatabase(databasePath, overlayPath)
-
-				if !validateBinFiles(newDatabase) {
-					core.Error("new bin file failed validation")
-					continue
-				}
+				newDatabase := loadDatabase(databasePath)
 
 				newRelayData := generateRelayData(newDatabase)
 				if newRelayData == nil {
 					continue
 				}
 
-				applyOverlay(newDatabase, newOverlay)
-
 				service.databaseMutex.Lock()
 				service.database = newDatabase
-				service.databaseOverlay = newOverlay
 				service.databaseRelayData = newRelayData
 				service.databaseMutex.Unlock()
 			}
