@@ -126,6 +126,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				continue
 			}
 
+			// todo: bring back internal address pings when ready
+			/*
 			var address string
 			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress {
 				// todo
@@ -134,6 +136,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			} else {
 				address = relayData.RelayArray[i].PublicAddress.String()
 			}
+			*/
 
 			responsePacket.RelayId[index] = relayData.RelayIds[i]
 			responsePacket.RelayAddress[index] = address

@@ -65,9 +65,32 @@ DONE
 
 	The reason the realy ping/pongs were working, is that they did not check for advanced packet filter. If they did, the pings would be broken too.
 
+	Disable the internal address stuff in the server backend temporarily, to make sure the new relay code w. the address code is compatible with existing tokens
+
 TODO
 
-	Disable the internal address stuff in the server backend temporarily, to make sure the new relay code w. the address code is compatible with existing tokens
+	The problem now seems to be that the two relays aren't pinging each other and getting tokens.
+
+	I'll need to add more logs to debug what's going on here.
+
+	1. Logs on the ping/pong processing between relays
+	2. Logs in the relay *backend* as each relay reports the ping results, per-relay.
+
+	---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------
 
