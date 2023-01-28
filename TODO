@@ -67,14 +67,22 @@ DONE
 
 	Disable the internal address stuff in the server backend temporarily, to make sure the new relay code w. the address code is compatible with existing tokens
 
-TODO
-
 	The problem now seems to be that the two relays aren't pinging each other and getting tokens.
 
-	I'll need to add more logs to debug what's going on here.
+	Removed internal relay pings and this was fixed.
 
-	1. Logs on the ping/pong processing between relays
-	2. Logs in the relay *backend* as each relay reports the ping results, per-relay.
+TODO
+
+	It feels like the raspberry clients get "stuck" once they fallback to direct.
+
+	Check logs and see what's up
+
+	---------------
+
+	Add more logs to debug what's going on here.
+
+		1. Logs on the ping/pong processing between relays
+		2. Logs in the relay *backend* as each relay reports the ping results, per-relay.
 
 	---------------
 
