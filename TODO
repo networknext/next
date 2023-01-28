@@ -38,6 +38,18 @@ TODO
 
 	For some reason, google.losangeles cannot post a relay update. Check if it's still in the database...
 
+	---------------
+
+	Seems like lots of relays are jumbled up. Mismatch in database.bin format vs. code?
+
+	---------------
+
+	We really need a way to extract the database from a service while it's running, especially, relay_gateway, relay_backend, server_backend5
+
+	There should be an endpoint that just dumps the database to a text file for inspection. Add it.
+
+	---------------
+
 
 
 

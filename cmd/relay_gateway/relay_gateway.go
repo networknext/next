@@ -65,17 +65,15 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			}
 		}()
 
-		core.Debug("%s - relay update", request.RemoteAddr)
-
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Error("%s - relay update unsupported content type", request.RemoteAddr)
+			core.Error("[%s] unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			core.Error("%s - relay update could not read request body: %v", request.RemoteAddr, err)
+			core.Error("[%s] could not read request body: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError) // 500
 			return
 		}
@@ -85,13 +83,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = relayUpdateRequest.Peek(body)
 		if err != nil {
-			core.Error("%s - relay update could not peek relay update request", request.RemoteAddr)
+			core.Error("[%s] could not peek relay update request", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
-			core.Error("%s - relay update version mismatch: %d != %d", request.RemoteAddr, relayUpdateRequest.Version, packets.VersionNumberRelayUpdateRequest)
+			core.Error("[%s] version mismatch", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -102,12 +100,16 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Error("%s - could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), relayId)
+			core.Error("[%s] unknown relay")
 			writer.WriteHeader(http.StatusNotFound) // 404
 			return
 		}
 
-		// build the response packet
+		// relay update accepted
+
+		relayName := relay.Name
+
+		core.Debug("[%s] received update for %s [%x]", request.RemoteAddr, relayName, relayId)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
