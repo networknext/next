@@ -8,7 +8,11 @@ DONE
 
 	Deploy new code and verify the database is correct on the relay gateway.
 
-	Database appears to be correct!
+	Database is correct on relay gateway.
+
+	Database is corerct on relay backend.
+
+	Database is correct on server backend 5.
 
 TODO
 
@@ -18,11 +22,19 @@ TODO
 
 		2. The internal address is breaking things. Likely, since I turned that back on.
 
+			^--- *** BINGO IT IS MOST LIKELY THIS ***
+
 		3. The database is somehow messed up, and that's breaking things. Deploying the database logs will fix that.
+
+			^--- proven wrong
 
 		4. When I rebooted or upgraded the relays they broke for some reason
 
+			^--- probably correct for google.losangeles
+
 		5. Somehow the sync or pusher service is fucking stuff up (pushing a bad database.bin?!)
+
+			^--- disproven. the database is fine.
 
 	Steps:
 
