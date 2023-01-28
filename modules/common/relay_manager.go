@@ -107,7 +107,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		oregon: b79d96976666501a
 	*/
 
-	debug := relayId == 0x357632dc51bc4049 || relayId == 0x357632dc51bc4049
+	debug := relayId == 0x357632dc51bc4049 || relayId == 0xb79d96976666501a
 
 	if debug {
 		fmt.Printf("=============================================================\n")
@@ -140,7 +140,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destRelayId := sampleRelayId[i]
 
 		// todo
-		if destRelayId != 0x357632dc51bc4049 && destRelayId != 0x357632dc51bc4049 {
+		if destRelayId != 0x357632dc51bc4049 && destRelayId != 0xb79d96976666501a {
 			continue
 		}
 
