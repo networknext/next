@@ -8,6 +8,7 @@ DONE
 
 TODO
 
+	gcloud compute ssh --zone "us-central1-a" "relay-backend-mig-6ssb"  --project "network-next-v3-dev"
 
 
 
@@ -17,15 +18,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-	---------------
 
 
 

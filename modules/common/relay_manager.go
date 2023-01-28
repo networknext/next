@@ -171,10 +171,36 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 	destJitter := float32(InvalidRouteValue)
 	destPacketLoss := float32(InvalidRouteValue)
 
+	// todo
+	/*
+		iowa:   357632dc51bc4049
+		oregon: b79d96976666501a
+	*/
+
+
+	debug := (sourceRelayId == 0x357632dc51bc4049 && destRelayId == 0xb79d96976666501a) || (sourceRelayId == 0xb79d96976666501a) || (destRelayId == 0x357632dc51bc4049)
+
+	if debug {
+		fmt.Printf("=============================================================\n")
+	}
+
 	// get source ping values
 	{
 		sourceEntry, exists := relayManager.sourceEntries[sourceRelayId]
+
+		if debug && !exists {
+			fmt.Printf("(1) source relay exists does not exist?!\n")
+		}
+
 		if exists {
+
+			if debug {
+				fmt.Printf("(1) source relay last update time = %d\n", sourceEntry.lastUpdateTime)
+				if sourceEntry.shuttingDown {
+					fmt.Printf("(1) source relay is shutting down?!\n")
+				}
+			}
+
 			if currentTime-sourceEntry.lastUpdateTime < RelayTimeout && !sourceEntry.shuttingDown {
 				destEntry, exists := sourceEntry.destEntries[destRelayId]
 				if exists {
@@ -182,7 +208,15 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 						sourceRTT = destEntry.rtt
 						sourceJitter = destEntry.jitter
 						sourcePacketLoss = destEntry.packetLoss
+					} else {
+						if debug {
+							fmt.Printf("(1) dest entry has timed out?!\n")
+						}
 					}
+				}
+			} else {
+				if debug {
+					fmt.Printf("(1) source entry has timed out?!\n")
 				}
 			}
 		}
@@ -191,15 +225,37 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 	// get dest ping values
 	{
 		sourceEntry, exists := relayManager.sourceEntries[destRelayId]
+
+		if debug && !exists {
+			fmt.Printf("(2) source relay exists does not exist?!\n")
+		}
+
 		if exists {
+
+			if debug {
+				fmt.Printf("(2) source relay last update time = %d\n", sourceEntry.lastUpdateTime)
+				if sourceEntry.shuttingDown {
+					fmt.Printf("(2) source relay is shutting down?!\n")
+				}
+			}
+
 			if currentTime-sourceEntry.lastUpdateTime < RelayTimeout && !sourceEntry.shuttingDown {
 				destEntry, exists := sourceEntry.destEntries[sourceRelayId]
+
 				if exists {
 					if currentTime-destEntry.lastUpdateTime < RelayTimeout {
 						destRTT = destEntry.rtt
 						destJitter = destEntry.jitter
 						destPacketLoss = destEntry.packetLoss
+					} else {
+						if debug {
+							fmt.Printf("(2) dest entry has timed out?!\n")
+						}
 					}
+				}
+			} else {
+				if debug {
+					fmt.Printf("(2) source entry has timed out?!\n")
 				}
 			}
 		}
@@ -221,6 +277,11 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 
 	if destPacketLoss > packetLoss {
 		packetLoss = destPacketLoss
+	}
+
+	if debug {
+		fmt.Printf("[debug] rtt = %.1f, jitter = %.1f, pl = %.1f\n", rtt, jitter, packetLoss)
+		fmt.Printf("=============================================================\n")
 	}
 
 	return rtt, jitter, packetLoss

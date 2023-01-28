@@ -113,8 +113,6 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
-	// todo: "/costs" to print out cost matrix as a 2d matrix in html
-
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
 	service.StartWebServer()
