@@ -441,3 +441,7 @@ Nice to have:
 	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in database.bin files being injected.
 
 	--------------
+
+	There should be relay functional tests.
+
+	--------------

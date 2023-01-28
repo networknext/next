@@ -168,14 +168,20 @@ void client_thread_function( void * data )
         while ( !quit )
         {
             if ( next_client_fallback_to_direct( client ) )
+            {
+                printf( "client has fallen back to direct. reconnecting...\n");
                 break;
+            }
 
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
             next_client_update( client );
 
             if ( next_time() > connect_time + game_length )
+            {
+                printf( "game has finished. reconnecting...\n");
                 break;
+            }
 
             next_sleep( 1.0f );
         }
