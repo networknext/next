@@ -2,23 +2,28 @@ DONE
 
 	Increased batch duration to 1.1 seconds in dev. This should ensure that generally, all relay updates come in in one message, once per-second.
 
+	Logs in the relay backend showing pings between relays demonstrate that the pings are going just fine.
+
+	There must be something wrong in the relay manager building the cost matrix.
+
 TODO
 
-	Still seeing no routes between relays in dev.
 
-	Add more logs to debug what's going on here.
 
-		1. Logs showing the ping/pong processing between relays
 
-		2. Logs in the relay *backend* as each relay reports the ping results, per-relay.
 
-		3. (if easy) Logs showing when relays are considered not connected (no updates for n seconds...)
 
-	---------------
 
-	Theories. Could be something wrong with the concurrency change made recently to the relay manager.
 
-	Could just be that the relay manager is problematic.
+
+
+
+
+
+
+
+
+
 
 	---------------
 
@@ -411,3 +416,9 @@ Nice to have:
 	There should be relay functional tests.
 
 	--------------
+
+	There should be unit tests, functional load tests for the relay manager.
+
+	It's a problematic component. It must be absolutely solid.
+
+	---------------

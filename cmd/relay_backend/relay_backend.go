@@ -113,6 +113,8 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 
+	// todo: "/costs" to print out cost matrix as a 2d matrix in html
+
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
 	service.StartWebServer()
@@ -369,7 +371,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					}
 					name := relayData.RelayNames[index]
 					if rtt < 1000.0 && pl < 100.0 {
-						core.Debug("[%s] %d: %s [%x]: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, i, name, id, rtt, jitter, pl)
+						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
 					}
 				}
 
@@ -511,6 +513,11 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				// build the cost matrix
 
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+
+				// todo
+				fmt.Printf("==============================================================\n")
+				fmt.Printf("%+v\n", costs)
+				fmt.Printf("==============================================================\n")
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
