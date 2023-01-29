@@ -28,6 +28,26 @@ TODO
 
 	Also, the mispredicts could also be happening due to jitter coming in, and not using the 5 minute filter.
 
+	Now seeing:
+
+		101192.604461: error: client next pong timed out. falling back to direct
+
+	Going over amazon relay. Is the amazon relay fucked, or is the next pong broken in some way?
+
+	This sucks...
+
+	---------------------------------
+
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955046: info: client near relay pings completed
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955411: info: client next route
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955436: info: client multipath enabled
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955481: debug: client sent route update ack packet to server
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955543: debug: client sent route request to relay: 34.125.125.84:40000
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101585.039294: debug: client received route response from relay
+	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101585.039437: debug: client network next route is confirmed
+	Jan 29 03:49:30 raspberry-client-mig-whcl app[9303]: 101590.035023: error: client next pong timed out. falling back to direct
+
+	---------------------------------
 
 
 

@@ -5149,6 +5149,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored continue request. session expired [sdk5]", from_string );
@@ -5157,6 +5158,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 if ( session->expire_timestamp != token.expire_timestamp )
                 {
@@ -5247,6 +5249,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored continue response packet. session expired [sdk5]", from_string );
@@ -5255,6 +5259,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5356,6 +5361,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored client to server packet. session expired [sdk5]", from_string );
@@ -5364,6 +5371,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5470,6 +5478,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored server to client packet. session expired [sdk5]", from_string );
@@ -5478,6 +5488,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5580,6 +5591,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored session ping packet. session expired [sdk5]", from_string );
@@ -5588,6 +5601,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5689,6 +5703,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo
+                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
                     relay_printf( "[%s] ignored session pong packet. session expired [sdk5]", from_string );
@@ -5697,6 +5713,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
+                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
