@@ -167,16 +167,6 @@ void client_thread_function( void * data )
 
         while ( !quit )
         {
-            // todo
-            /*
-            if ( next_client_fallback_to_direct( client ) )
-            */
-            if ( next_client_stats(client)->fallback_to_direct )
-            {
-                printf( "client has fallen back to direct. reconnecting...\n");
-                break;
-            }
-
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
             next_client_update( client );
