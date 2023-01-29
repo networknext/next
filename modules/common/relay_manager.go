@@ -72,8 +72,6 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 	sourceEntry, exists := relayManager.sourceEntries[relayId]
 	if !exists {
-		// todo
-		fmt.Printf("source entry %x does not exist. adding new one\n", relayId)
 		sourceEntry = &RelayManagerSourceEntry{}
 		sourceEntry.destEntries = make(map[uint64]*RelayManagerDestEntry)
 		relayManager.sourceEntries[relayId] = sourceEntry
@@ -97,8 +95,6 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 		destEntry, exists := sourceEntry.destEntries[destRelayId]
 		if !exists {
-			// todo
-			fmt.Printf("dest entry %x does not exist. adding new one\n", destRelayId)
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.destEntries[destRelayId] = destEntry
 		}
@@ -332,6 +328,7 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 		activeRelay.Sessions = sourceEntry.sessions
 		activeRelay.Version = sourceEntry.relayVersion
 
+		// todo
 		// expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
 
 		shuttingDown := sourceEntry.shuttingDown

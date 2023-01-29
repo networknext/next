@@ -1,7 +1,8 @@
 # input specific to this relay (these change with each relay you set up)
 
 export RELAY_NAME=linode.newark
-export RELAY_ADDRESS=172.105.104.156:40000
+export RELAY_PUBLIC_ADDRESS=172.105.104.156:40000
+#export RELAY_INTERNAL_ADDRESS=10.1.0.5:40000
 export RELAY_PUBLIC_KEY=j31ln+qWzsS/ZY3rjLBdsE94dKIZmWhhvWGUL5/E6hM=
 export RELAY_PRIVATE_KEY=z8kiGRNyGcMz1BfFC8aBtPI10y2OQkSz2VJrz0QXP2M=
 
