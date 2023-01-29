@@ -184,6 +184,9 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 	activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
 
 	fmt.Printf("active relays: %+v\n", activeRelayHash)
+	fmt.Printf("relay ids: %+v\n", relayIds)
+	fmt.Printf("num relays: %d\n", numRelays)
+	fmt.Printf("current time: %d\n", currentTime)
 
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
@@ -193,6 +196,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				destRelayId := uint64(relayIds[j])
 				_, destActive := activeRelayHash[destRelayId]
 				if destActive {
+					fmt.Printf("active pair (%x,%x)\n", sourceRelayId, destRelayId)
 					index := TriMatrixIndex(i, j)
 					costs[index] = 0
 					/*
