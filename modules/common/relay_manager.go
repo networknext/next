@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"math"
 	"net"
 	"sort"
 	"sync"
@@ -184,6 +183,8 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 
 	activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
 
+	fmt.Printf("active relays: %+v\n", activeRelayHash)
+
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
 		_, sourceActive := activeRelayHash[sourceRelayId]
@@ -192,6 +193,9 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				destRelayId := uint64(relayIds[j])
 				_, destActive := activeRelayHash[destRelayId]
 				if destActive {
+					index := TriMatrixIndex(i, j)
+					costs[index] = 0
+					/*
 					relayManager.mutex.RLock()
 					rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
 					relayManager.mutex.RUnlock()
@@ -199,6 +203,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 						index := TriMatrixIndex(i, j)
 						costs[index] = int32(math.Ceil(float64(rtt)))
 					}
+					*/
 				}
 			}
 		}
