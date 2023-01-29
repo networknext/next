@@ -33,10 +33,12 @@ func main() {
 	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
-	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "local")
+	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", service.Env)
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
+
+	// todo: google project id should probably be mandatory for this service
 
 	core.Log("cost matrix uri: %s", costMatrixURI)
 	core.Log("route matrix uri: %s", routeMatrixURI)

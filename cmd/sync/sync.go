@@ -6,6 +6,15 @@
 package main
 
 import (
+	"fmt"
+)
+
+func main() {
+	fmt.Printf("sync service\n")
+}
+
+/*
+import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
@@ -39,8 +48,6 @@ func main() {
 		ispSyncFile,
 	)
 
-	// todo: disabled for the moment, see comment below
-	/*
 	databaseSyncFile := common.SyncFile{
 		DownloadURL: envvar.GetString("DATABASE_DOWNLOAD_URI", "gs://network-next-local/database.bin"),
 	}
@@ -59,7 +66,6 @@ func main() {
 		databaseSyncFile,
 		overlaySyncFile,
 	)
-	*/
 
 	service.SyncFiles(fileSyncConfig)
 
@@ -69,3 +75,4 @@ func main() {
 
 	service.WaitForShutdown()
 }
+*/

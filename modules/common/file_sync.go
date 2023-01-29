@@ -1,5 +1,6 @@
 package common
 
+/*
 import (
 	"context"
 	"errors"
@@ -168,7 +169,7 @@ func DownloadFile(ctx context.Context, googleCloudHandler *GoogleCloudHandler, d
 
 }
 
-func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath string) error {
+func DownloadFile(ctx context.Context, downloadURL string, filePath string) error {
 
 	var httpResponse *http.Response
 	var err error
@@ -221,24 +222,4 @@ func DownloadFileFromURL(ctx context.Context, downloadURL string, filePath strin
 
 	return nil
 }
-
-func PushFileToVMs(ctx context.Context, googleCloudHandler *GoogleCloudHandler, filePath string, outputPath string, vmNames []string) error {
-
-	if len(vmNames) == 0 {
-		return nil
-	}
-
-	hadError := false
-	for _, vm := range vmNames {
-		if err := googleCloudHandler.CopyFromLocalToRemote(ctx, filePath, outputPath, vm); err != nil {
-			core.Error("failed to copy file to vm: %v", err)
-			hadError = true
-		}
-	}
-
-	if hadError {
-		return errors.New("failed to upload file to one or more vms")
-	}
-
-	return nil
-}
+*/

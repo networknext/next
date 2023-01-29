@@ -137,6 +137,12 @@ func CreateService(serviceName string) *Service {
 	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
 	if service.GoogleProjectId != "" {
 		core.Log("google project id: %s", service.GoogleProjectId)
+		googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
+		if err != nil {
+			core.Error("failed to create google cloud handler: %v", err)
+			os.Exit(1)
+		}
+		service.googleCloudHandler = googleCloudHandler
 	}
 
 	service.sendTrafficToMe = func() bool { return true }
@@ -183,6 +189,8 @@ func validateBinFiles(database *db.Database) bool {
 	}
 	return err == nil
 }
+
+// todo: where the fuck did my optimized mndb code go? It's much faster to query just the lat/long record as I had it, vs. getting the whole city record and pulling the lat/long from that -- where did that code go?!
 
 func (service *Service) LoadIP2Location() {
 
@@ -256,14 +264,12 @@ func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bo
 }
 
 func locateIP(reader *geoip2.Reader, ip net.IP) (float32, float32) {
+	// my fast code has been removed and replaced with this?! why?
 	city, err := reader.City(ip)
 	if err != nil {
 		core.Error("city look up failed: %v", err)
 		return 0, 0
 	}
-
-	core.Debug("city record: %+v", city)
-
 	return float32(city.Location.Latitude), float32(city.Location.Longitude)
 }
 
@@ -273,9 +279,6 @@ func locateISP(reader *geoip2.Reader, ip net.IP) (int, string) {
 		core.Error("isp look up failed: %v", err)
 		return -1, ""
 	}
-
-	core.Debug("isp record: %+v", isp)
-
 	return int(isp.AutonomousSystemNumber), isp.ISP
 }
 
@@ -998,31 +1001,6 @@ func (service *Service) updateMagicLoop() {
 	}()
 }
 
-// ----------------------------------------------------------
-
-func isLeaderFunc(service *Service) func() bool {
-	return func() bool {
-		return service.IsLeader()
-	}
-}
-
-func (service *Service) setupStorage() {
-
-	googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
-	if err != nil {
-		core.Error("failed to create google cloud handler: %v", err)
-		os.Exit(1)
-	}
-
-	service.googleCloudHandler = googleCloudHandler
-}
-
-func (service *Service) SyncFiles(config *FileSyncConfig) {
-	config.Print()
-	service.setupStorage()
-	StartFileSync(service.Context, config, service.googleCloudHandler, isLeaderFunc(service))
-}
-
 // ---------------------------------------------------------------------------------------------------
 
 func (service *Service) UseLooker() {
@@ -1052,8 +1030,11 @@ func (service *Service) UseLooker() {
 // service.go is only for things that are proven out and are useful across multiple services
 // for example, the ability to easily talk to looker with standard env vars is good in here
 // but specific queries like below to support only the website cruncher are not. -- glenn
+
+/*
 func (service *Service) FetchWebsiteStats() (LookerStats, error) {
 	return service.lookerHandler.RunWebsiteStatsQuery()
 }
+*/
 
 // ----------------------------------------------------------

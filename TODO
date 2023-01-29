@@ -4,7 +4,77 @@ DONE
 
 	Standardize the function that extracts the database from SQL into the database module
 
+	Remove sync stuff in common and clean up service.go
+
+	Disable existing sync service
+
 TODO
+
+	Pull down the database.bin from google cloud storage directly inside service.go, before loading the database.bin
+
+	Bring back my optimized ip2location code that got removed
+
+	Pull down the ip2location files from google cloud storage directly inside service.go, before reloading the ip2location readers
+
+	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -12,14 +82,6 @@ TODO
 
 
 Essentials:
-
-	-------------
-
-	Simplify the database.bin updates so the service.go is responsible for pulling down database.bin from google cloud storage (optional, only applied if the env var is set to do so)
-
-	-------------
-
-	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
 
 	--------------
 
