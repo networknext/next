@@ -12,6 +12,8 @@ DONE
 
 	Deploy to dev and verify that the database.bin gets reloaded periodically
 
+	It seems that one of the raspberry backends was in a bad state. If this happens again, check the logs it is probably crashing.
+
 TODO
 
 	--------------
