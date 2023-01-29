@@ -20,13 +20,13 @@ DONE
 
 	Also, the raspberry pi server was getting overloaded.
 
-TODO
-
 	Now I see "mispredict" happening on the next route. It's because I have the costs set to "1" instead of the values in the cost matrix.
 
 	Fix this, and the mispredicts should go away.
 
 	Also, the mispredicts could also be happening due to jitter coming in, and not using the 5 minute filter.
+
+	Increased route switch threshold.
 
 	Now seeing:
 
@@ -36,18 +36,28 @@ TODO
 
 	This sucks...
 
-	---------------------------------
+	What's happening is that the route is expiring.
 
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955046: info: client near relay pings completed
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955411: info: client next route
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955436: info: client multipath enabled
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955481: debug: client sent route update ack packet to server
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101584.955543: debug: client sent route request to relay: 34.125.125.84:40000
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101585.039294: debug: client received route response from relay
-	Jan 29 03:49:25 raspberry-client-mig-whcl app[9303]: 101585.039437: debug: client network next route is confirmed
-	Jan 29 03:49:30 raspberry-client-mig-whcl app[9303]: 101590.035023: error: client next pong timed out. falling back to direct
+TODO
 
-	---------------------------------
+	Something is definitely broken with token and route expiry.
+
+	What the fuck.
+
+	Gotta debug this and work out what's going on...
+
+	-----------
+
+	Frequent "no servers found" when a client restarts is weird.
+
+	There should always be servers.
+
+	-----------
+
+
+
+
+
 
 
 
