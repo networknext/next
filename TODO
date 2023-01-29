@@ -8,23 +8,45 @@ DONE
 
 	Disable existing sync service
 
-TODO
-
 	Pull down the database.bin from google cloud storage directly inside service.go, before loading the database.bin
 
-	Bring back my optimized ip2location code that got removed
+	Deploy to dev and verify that the database.bin gets reloaded periodically
 
-	Pull down the ip2location files from google cloud storage directly inside service.go, before reloading the ip2location readers
+TODO
 
-	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
+	--------------
 
+	Clean up the super intensive logs in the relay code and wrap them with #if RELAY_INTENSIVE_DEBUG or similar
 
+	--------------
 
+	Define set of relay counters as array of uint64_t in reference relay
 
+	--------------
 
+	Pass the relay counters up to the relay backend with each relay update
 
+	--------------
 
+	Implement a debug visualization on relay backend: "relay_counters"
 
+	--------------
+
+	Deploy the new code and verify that relay counters are visible in dev.
+
+	--------------
+
+	Extend relay stats, or add a new message to make sure relay counters get uploaded to bigquery from the relay backend leader
+
+	This lets data science investigate relay counters by time as well. Check if relays are working correctly or having problems.
+
+	--------------
+
+	I think we need counters from the raspberry pi clients as well, or at least servers.
+
+	For example, I need to see the number of fallbacks to direct easily. This is how we will verify in dev that we can make deployments without disruption.
+
+	--------------
 
 
 
@@ -83,14 +105,6 @@ TODO
 
 Essentials:
 
-	--------------
-
-	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
-
-	--------------
-
-	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
-
     --------------
 
     Add extensive HTML visualization endpoints:
@@ -106,6 +120,7 @@ Essentials:
 	    5. Cost matrix as HTML table via "/cost_matrix"
 
 	    6. Active relays as HTML table via "/active_relays"
+
 
     --------------
 
@@ -129,7 +144,7 @@ Essentials:
 
     --------------
 
-    Add extensive verification when a relay start to catch configuration errors:
+    Add extensive verification when a relay starts to catch configuration errors:
 
 		1. Verify UDP port is working
 
@@ -143,6 +158,18 @@ Essentials:
 
     --------------
 
+	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
+
+	--------------
+
+	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
+
+	--------------
+
+	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
+
+	--------------
+
     Send portal messages to redis streams
 
 	--------------
@@ -152,6 +179,12 @@ Essentials:
 	--------------
 
 	Send rest of server backend messages to google pubsub
+
+	--------------
+
+	Extend relay stats, or add a new message to make sure relay counters get uploaded to bigquery from the relay backend leader
+
+	This lets data science investigate relay counters by time as well. Check if relays are working correctly or having problems.
 
 	--------------
 
@@ -337,5 +370,9 @@ Nice to have:
 	There should be unit tests, functional load tests for the relay manager.
 
 	It's a problematic component. It must be absolutely solid.
+
+	---------------
+
+	Extend "next ssh" to ssh into google Vms by name, if no relay is found
 
 	---------------
