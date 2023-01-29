@@ -15,7 +15,7 @@ VALUES (
 	'raspberry'
 );
 
-INSERT INTO route_shaders(short_name,force_next,route_select_threshold) VALUES('raspberry', true, 300);
+INSERT INTO route_shaders(short_name,force_next,route_select_threshold,route_switch_threshold) VALUES('raspberry', true, 300, 300);
 
 INSERT INTO buyers
 (
