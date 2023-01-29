@@ -780,11 +780,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		routerPrivateKey := [packets.SDK5_PrivateKeyBytes]byte{}
 		copy(routerPrivateKey[:], TestRouterPrivateKey)
 
-		tokenAddresses := make([]*net.UDPAddr, numRouteRelays+2)
-		tokenAddresses[0] = &requestPacket.ClientAddress
-		tokenAddresses[len(tokenAddresses)-1] = &requestPacket.ServerAddress
+		tokenAddresses := make([]net.UDPAddr, numRouteRelays+2)
+		tokenAddresses[0] = requestPacket.ClientAddress
+		tokenAddresses[len(tokenAddresses)-1] = requestPacket.ServerAddress
 		for i := 0; i < numRouteRelays; i++ {
-			tokenAddresses[1+i] = &relayAddresses[i]
+			tokenAddresses[1+i] = relayAddresses[i]
 		}
 
 		tokenPublicKeys := make([][]byte, numRouteRelays+2)

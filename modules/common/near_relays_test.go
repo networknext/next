@@ -34,7 +34,7 @@ func TestGetNearRelays_Basic(t *testing.T) {
 
 	for i := range relayIds {
 		relayIds[i] = uint64(i)
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 	}
 
 	// setup half the relays near the player, and the other half near the destination
@@ -88,7 +88,7 @@ func TestGetNearRelays_Dest(t *testing.T) {
 
 	for i := range relayIds {
 		relayIds[i] = uint64(i)
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		relayLatitudes[i] = DestinationLatitude + float32(common.RandomInt(-10, +10))
 		relayLongitudes[i] = DestinationLongitude + float32(common.RandomInt(-10, +10))
 	}
@@ -129,7 +129,7 @@ func TestGetNearRelays_OutOfWay(t *testing.T) {
 
 	for i := range relayIds {
 		relayIds[i] = uint64(i)
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		if i < 50 {
 			relayLatitudes[i] = PlayerLatitude + float32(common.RandomInt(0, +10))
 			relayLongitudes[i] = PlayerLongitude + float32(common.RandomInt(0, +10))

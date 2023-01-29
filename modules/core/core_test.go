@@ -89,13 +89,13 @@ func CheckNilAddress(t *testing.T) {
 	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
 	WriteAddress(buffer, address)
 	readAddress := ReadAddress(buffer)
-	assert.True(t, readAddress == nil)
+	assert.Equal(t, readAddress, net.UDPAddr{})
 }
 
 func CheckIPv4Address(t *testing.T, addressString string, expected string) {
 	address := ParseAddress(addressString)
 	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
-	WriteAddress(buffer, address)
+	WriteAddress(buffer, &address)
 	readAddress := ReadAddress(buffer)
 	readAddressString := readAddress.String()
 	assert.Equal(t, expected, readAddressString)
@@ -104,7 +104,7 @@ func CheckIPv4Address(t *testing.T, addressString string, expected string) {
 func CheckIPv6Address(t *testing.T, addressString string, expected string) {
 	address := ParseAddress(addressString)
 	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
-	WriteAddress(buffer, address)
+	WriteAddress(buffer, &address)
 	readAddress := ReadAddress(buffer)
 	assert.Equal(t, readAddress.IP, address.IP)
 	assert.Equal(t, readAddress.Port, address.Port)
@@ -388,7 +388,7 @@ func TestOptimize(t *testing.T) {
 
 type TestRelayData struct {
 	name       string
-	address    *net.UDPAddr
+	address    net.UDPAddr
 	publicKey  []byte
 	privateKey []byte
 	index      int
@@ -1136,7 +1136,7 @@ func TestRouteTokens(t *testing.T) {
 
 	// write a bunch of tokens to a buffer
 
-	addresses := make([]*net.UDPAddr, NEXT_MAX_NODES)
+	addresses := make([]net.UDPAddr, NEXT_MAX_NODES)
 	for i := range addresses {
 		addresses[i] = ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
@@ -1170,8 +1170,6 @@ func TestRouteTokens(t *testing.T) {
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i != NEXT_MAX_NODES-1 {
 			assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
-		} else {
-			assert.True(t, routeToken.NextAddress == nil)
 		}
 		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}

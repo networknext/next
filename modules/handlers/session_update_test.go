@@ -55,7 +55,7 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters
 
 	relayAddresses := make([]net.UDPAddr, numRelays)
 	for i := range relayAddresses {
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
 	relayNames := make([]string, numRelays)
@@ -886,7 +886,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
@@ -912,9 +912,9 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -952,7 +952,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -1048,9 +1048,9 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, InternalAddress: *relay_address_c_internal, Seller: seller, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, Seller: seller, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller
 
@@ -1086,7 +1086,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -1178,9 +1178,9 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1288,9 +1288,9 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1353,7 +1353,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -1376,9 +1376,9 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1460,7 +1460,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -1560,7 +1560,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -1583,9 +1583,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1667,7 +1667,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -1782,7 +1782,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -1805,9 +1805,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1889,7 +1889,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -1976,7 +1976,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NewTokens))
 	assert.Equal(t, len(state.Response.Tokens), NewTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses = make([]*net.UDPAddr, NewTokens)
+	addresses = make([]net.UDPAddr, NewTokens)
 	addresses[1] = relay_address_b
 	addresses[2] = relay_address_c
 	addresses[3] = serverAddress
@@ -2047,7 +2047,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -2070,9 +2070,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2162,7 +2162,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -2266,7 +2266,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -2289,9 +2289,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2379,7 +2379,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -2480,7 +2480,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -2503,9 +2503,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2593,7 +2593,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
 
-	addresses := make([]*net.UDPAddr, NumTokens)
+	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
 	addresses[2] = relay_address_b
 	addresses[3] = relay_address_c
@@ -2702,7 +2702,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -2725,9 +2725,9 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2843,7 +2843,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-	state.From = serverAddress
+	state.From = &serverAddress
 
 	state.Output.SessionId = 0x123457
 	state.Output.SessionVersion = 100
@@ -2866,9 +2866,9 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -3030,9 +3030,9 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -3080,9 +3080,9 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
 	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
 
-	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
-	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
-	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
+	state.RouteMatrix.RelayAddresses[0] = relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = relay_address_c
 
 	// get near relays
 
@@ -3172,9 +3172,9 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: *relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: *relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: *relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
+	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller
 
@@ -3220,9 +3220,9 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
 	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
 
-	state.RouteMatrix.RelayAddresses[0] = *relay_address_a
-	state.RouteMatrix.RelayAddresses[1] = *relay_address_b
-	state.RouteMatrix.RelayAddresses[2] = *relay_address_c
+	state.RouteMatrix.RelayAddresses[0] = relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = relay_address_c
 
 	// setup near relays
 
@@ -3281,8 +3281,8 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 0
 
@@ -3307,8 +3307,8 @@ func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 1
 
@@ -3333,8 +3333,8 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Input.RouteState.Next = true
 	state.Request.SliceNumber = 1
@@ -3361,8 +3361,8 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
 
@@ -3394,8 +3394,8 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
 
@@ -3425,8 +3425,8 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
@@ -3453,8 +3453,8 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
@@ -3483,8 +3483,8 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	state.From = core.ParseAddress("127.0.0.1:40000")
-	state.ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
 
 	state.Input = packets.GenerateRandomSessionData()
 	state.Output = state.Input
@@ -3508,16 +3508,16 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	// make sure the advanced packet filter passes
 
-	to := state.From
-	from := state.ServerBackendAddress
+	to_address := state.From
+	from_address := state.ServerBackendAddress
 
 	var emptyMagic [8]byte
 
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+	fromAddressData, fromAddressPort := core.GetAddressData(from_address, fromAddressBuffer[:])
+	toAddressData, toAddressPort := core.GetAddressData(to_address, toAddressBuffer[:])
 
 	assert.True(t, core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)))
 

@@ -472,11 +472,11 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		routerPrivateKey := [crypto_old.KeySize]byte{}
 		copy(routerPrivateKey[:], crypto_old.RouterPrivateKey)
 
-		tokenAddresses := make([]*net.UDPAddr, nextRoute.NumRelays+2)
-		tokenAddresses[0] = &sessionUpdate.ClientAddress
-		tokenAddresses[len(tokenAddresses)-1] = &sessionUpdate.ServerAddress
+		tokenAddresses := make([]net.UDPAddr, nextRoute.NumRelays+2)
+		tokenAddresses[0] = sessionUpdate.ClientAddress
+		tokenAddresses[len(tokenAddresses)-1] = sessionUpdate.ServerAddress
 		for i := 0; i < nextRoute.NumRelays; i++ {
-			tokenAddresses[1+i] = &nearRelayAddresses[i]
+			tokenAddresses[1+i] = nearRelayAddresses[i]
 		}
 
 		tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)

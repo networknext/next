@@ -540,7 +540,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses [core.NEXT_MAX_NODES]*net.UDPAddr
+	var routeAddresses [core.NEXT_MAX_NODES]net.UDPAddr
 	var routePublicKeys [core.NEXT_MAX_NODES][]byte
 
 	// client node (no address specified...)
@@ -561,7 +561,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 		if !relay_exists {
 			panic("relay does not exist?!")
 		}
-		relayAddresses[i] = &relay.PublicAddress
+		relayAddresses[i] = relay.PublicAddress
 		relayPublicKeys[i] = relay.PublicKey
 
 		// todo: disabled until we get the next/prev internal implemented in the token
@@ -582,7 +582,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	// server node
 
-	routeAddresses[numTokens-1] = state.From
+	routeAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// debug print the route

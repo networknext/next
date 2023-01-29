@@ -161,7 +161,7 @@ func GenerateRandomMatchDataRequestPacket() packets.SDK5_MatchDataRequestPacket 
 	packet := packets.SDK5_MatchDataRequestPacket{
 		Version:        packets.SDKVersion{1, 2, 3},
 		BuyerId:        12341241,
-		ServerAddress:  *core.ParseAddress("127.0.0.1:44444"),
+		ServerAddress:  core.ParseAddress("127.0.0.1:44444"),
 		DatacenterId:   184283418,
 		UserHash:       210987451,
 		SessionId:      987249128471,
@@ -194,8 +194,8 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		SliceNumber:                     rand.Uint32(),
 		RetryNumber:                     int32(common.RandomInt(0, packets.SDK5_MaxSessionUpdateRetries)),
 		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
-		ClientAddress:                   *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
-		ServerAddress:                   *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
+		ClientAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
+		ServerAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		UserHash:                        rand.Uint64(),
 		HasNearRelayPings:               common.RandomBool(),
 		Next:                            common.RandomBool(),
@@ -294,7 +294,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
 		for i := 0; i < int(packet.NumNearRelays); i++ {
 			packet.NearRelayIds[i] = uint64(i * 32)
-			packet.NearRelayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
+			packet.NearRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
 		}
 	}
 

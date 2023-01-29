@@ -37,7 +37,7 @@ func getMagicValues() ([]byte, []byte, []byte) {
 type TestHarness struct {
 	handler                    SDK5_Handler
 	conn                       *net.UDPConn
-	from                       *net.UDPAddr
+	from                       net.UDPAddr
 	signPublicKey              [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
 	signPrivateKey             [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	serverInitMessageChannel   chan *messages.ServerInitMessage
@@ -64,7 +64,7 @@ func CreateTestHarness() *TestHarness {
 
 	harness.handler = SDK5_Handler{}
 	harness.handler.MaxPacketSize = 4096
-	harness.handler.ServerBackendAddress = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
+	harness.handler.ServerBackendAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
 	harness.handler.GetMagicValues = getMagicValues
 
 	fmt.Printf("server backend address is %s\n", harness.handler.ServerBackendAddress.String())
@@ -94,7 +94,7 @@ func TestPacketTooSmall_SDK5(t *testing.T) {
 
 	packetData := make([]byte, 10)
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
 
@@ -136,7 +136,7 @@ func TestUnsupportedPacketType_SDK5(t *testing.T) {
 
 		packetData[0] = packetType
 
-		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+		SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 		assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
 
@@ -174,7 +174,7 @@ func TestBasicPacketFilterFailed_SDK5(t *testing.T) {
 		packetData[i] = byte(i)
 	}
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BasicPacketFilterFailed])
 
@@ -223,7 +223,7 @@ func TestAdvancedPacketFilterFailed_SDK5(t *testing.T) {
 
 	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_AdvancedPacketFilterFailed])
 
@@ -272,7 +272,7 @@ func TestNoRouteMatrix_SDK5(t *testing.T) {
 
 	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoRouteMatrix])
 
@@ -323,7 +323,7 @@ func TestNoDatabase_SDK5(t *testing.T) {
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_NoDatabase])
 
@@ -375,7 +375,7 @@ func TestUnknownBuyer_SDK5(t *testing.T) {
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
 	harness.handler.Database = database.CreateDatabase()
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownBuyer])
 
@@ -450,7 +450,7 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 
 	// run the packet through the handler, it should fail the signature check
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SignatureCheckFailed])
 
@@ -533,7 +533,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 
@@ -627,7 +627,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
 	// run the packet through the handler, we should see that the SDK is too old
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 
@@ -715,7 +715,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_UnknownDatacenter])
 
@@ -814,7 +814,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 		DatacenterName: "local",
 	}
 
-	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_INIT_REQUEST_PACKET, 1500, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write server init request packet: %v", err)
 		return
@@ -876,7 +876,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 			var toAddressBuffer [32]byte
 
 			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData, toAddressPort := core.GetAddressData(clientAddress, toAddressBuffer[:])
+			toAddressData, toAddressPort := core.GetAddressData(&clientAddress, toAddressBuffer[:])
 
 			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
 				core.Debug("advanced packet filter failed")
@@ -923,7 +923,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 			break
 		}
 
-		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+		SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
@@ -1031,7 +1031,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 
@@ -1125,7 +1125,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
 	// run the packet through the handler, we should see that the SDK is too old
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 
@@ -1213,7 +1213,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.False(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerInitRequestPacket])
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_ProcessServerUpdateRequestPacket])
@@ -1309,7 +1309,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 		DatacenterId: common.DatacenterId("local"),
 	}
 
-	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, 1500, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write server update request packet: %v", err)
 		return
@@ -1371,7 +1371,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 			var toAddressBuffer [32]byte
 
 			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData, toAddressPort := core.GetAddressData(clientAddress, toAddressBuffer[:])
+			toAddressData, toAddressPort := core.GetAddressData(&clientAddress, toAddressBuffer[:])
 
 			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
 				core.Debug("advanced packet filter failed")
@@ -1417,7 +1417,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 			break
 		}
 
-		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+		SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])
@@ -1531,7 +1531,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_BuyerNotLive])
 
@@ -1625,7 +1625,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 
 	// run the packet through the handler, we should see that the SDK is too old
 
-	SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+	SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK5_HandlerEvent_SDKTooOld])
 
@@ -1717,7 +1717,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	packet := packets.SDK5_MatchDataRequestPacket{
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        buyerId,
-		ServerAddress:  *core.ParseAddress("127.0.0.1:10000"),
+		ServerAddress:  core.ParseAddress("127.0.0.1:10000"),
 		DatacenterId:   common.DatacenterId("local"),
 		UserHash:       uint64(123456789213),
 		SessionId:      uint64(5213412421413),
@@ -1730,7 +1730,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 		packet.MatchValues[i] = float64(i)
 	}
 
-	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_MATCH_DATA_REQUEST_PACKET, 1500, clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+	packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_MATCH_DATA_REQUEST_PACKET, 1500, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write match data request packet: %v", err)
 		return
@@ -1792,7 +1792,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 			var toAddressBuffer [32]byte
 
 			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData, toAddressPort := core.GetAddressData(clientAddress, toAddressBuffer[:])
+			toAddressData, toAddressPort := core.GetAddressData(&clientAddress, toAddressBuffer[:])
 
 			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
 				core.Debug("advanced packet filter failed")
@@ -1838,7 +1838,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 			break
 		}
 
-		SDK5_PacketHandler(&harness.handler, harness.conn, harness.from, packetData)
+		SDK5_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_PacketTooSmall])
 		assert.False(t, harness.handler.Events[SDK5_HandlerEvent_UnsupportedPacketType])

@@ -163,14 +163,14 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	}
 }
 
-func ReadAddress(buffer []byte) *net.UDPAddr {
+func ReadAddress(buffer []byte) net.UDPAddr {
 	addressType := buffer[0]
 	if addressType == ADDRESS_IPV4 {
-		return &net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
+		return net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
 	} else if addressType == ADDRESS_IPV6 {
-		return &net.UDPAddr{IP: buffer[1:17], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:19])))}
+		return net.UDPAddr{IP: buffer[1:17], Port: ((int)(binary.LittleEndian.Uint16(buffer[17:19])))}
 	}
-	return nil
+	return net.UDPAddr{}
 }
 
 // ---------------------------------------------------
@@ -815,7 +815,7 @@ type RouteToken struct {
 	SessionVersion  uint8
 	KbpsUp          uint32
 	KbpsDown        uint32
-	NextAddress     *net.UDPAddr
+	NextAddress     net.UDPAddr
 	PrivateKey      [crypto.Box_PrivateKeySize]byte
 }
 
@@ -833,7 +833,7 @@ func WriteRouteToken(token *RouteToken, buffer []byte) {
 	buffer[8+8] = token.SessionVersion
 	binary.LittleEndian.PutUint32(buffer[8+8+1:], token.KbpsUp)
 	binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.KbpsDown)
-	WriteAddress(buffer[8+8+1+4+4:], token.NextAddress)
+	WriteAddress(buffer[8+8+1+4+4:], &token.NextAddress)
 	copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.PrivateKey[:])
 }
 
@@ -869,7 +869,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []*net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
 	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
