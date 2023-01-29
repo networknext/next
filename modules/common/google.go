@@ -63,7 +63,6 @@ func (g *GoogleCloudHandler) CopyFromLocalToBucket(ctx context.Context, fileName
 
 func (g *GoogleCloudHandler) CopyFromLocalToRemote(ctx context.Context, localPath string, outputPath string, instanceName string) error {
 
-	// Call gsutil to copy the tmp file over to the instance
 	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", localPath, fmt.Sprintf("%s:%s", instanceName, outputPath))
 
 	buffer, err := runnable.CombinedOutput()

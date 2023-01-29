@@ -92,7 +92,7 @@ type Service struct {
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *db.Database
 
-	googleCloudHandler *GoogleCloudHandler
+	google *GoogleCloudHandler
 
 	lookerHandler *LookerHandler
 
@@ -137,12 +137,12 @@ func CreateService(serviceName string) *Service {
 	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
 	if service.GoogleProjectId != "" {
 		core.Log("google project id: %s", service.GoogleProjectId)
-		googleCloudHandler, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
+		google, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
 		if err != nil {
 			core.Error("failed to create google cloud handler: %v", err)
 			os.Exit(1)
 		}
-		service.googleCloudHandler = googleCloudHandler
+		service.google = google
 	}
 
 	service.sendTrafficToMe = func() bool { return true }
@@ -160,10 +160,22 @@ func (service *Service) LoadDatabase() {
 
 	databasePath := envvar.GetString("DATABASE_PATH", "database.bin")
 
-	service.database = loadDatabase(databasePath)
+	var err error
+
+	service.database, err = db.LoadDatabase(databasePath)
+	if err != nil {
+		core.Error("could not read database: %v", err)
+		os.Exit(1)
+	}
 
 	if service.database == nil {
 		core.Error("database is nil")
+		os.Exit(1)
+	}
+
+	err = service.database.Validate() 
+	if err != nil {
+		core.Error("database does not validate: %v", err)
 		os.Exit(1)
 	}
 
@@ -176,18 +188,6 @@ func (service *Service) LoadDatabase() {
 	core.Log("loaded database: %s", databasePath)
 
 	service.watchDatabase(service.Context, databasePath)
-}
-
-func validateBinFiles(database *db.Database) bool {
-	if database == nil {
-		core.Error("database is nil")
-		return false
-	}
-	err := database.Validate()
-	if err != nil {
-		core.Error("database.bin did not validate: %v", err)
-	}
-	return err == nil
 }
 
 // todo: where the fuck did my optimized mndb code go? It's much faster to query just the lat/long record as I had it, vs. getting the whole city record and pulling the lat/long from that -- where did that code go?!
@@ -263,6 +263,7 @@ func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bo
 
 }
 
+// todo: why double up these functions?!
 func locateIP(reader *geoip2.Reader, ip net.IP) (float32, float32) {
 	// my fast code has been removed and replaced with this?! why?
 	city, err := reader.City(ip)
@@ -662,25 +663,6 @@ func (service *Service) watchIP2Location(ctx context.Context, filenames []string
 
 // -----------------------------------------------------------------------
 
-func loadDatabase(databasePath string) (*db.Database) {
-
-	// load database (required)
-
-	database, err := db.LoadDatabase(databasePath)
-	if err != nil {
-		core.Error("error: could not read database: %v", err)
-		return nil
-	}
-
-	err = database.Validate() 
-	if err != nil {
-		core.Error("database.bin does not validate: %v", err)
-		return nil
-	}
-
-	return database
-}
-
 func generateRelayData(database *db.Database) *RelayData {
 
 	relayData := &RelayData{}
@@ -767,6 +749,7 @@ func generateRelayData(database *db.Database) *RelayData {
 
 func (service *Service) watchDatabase(ctx context.Context, databasePath string) {
 
+	databaseURL := envvar.GetString("DATABASE_URL", "")
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
 	go func() {
@@ -781,20 +764,80 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 
 			case <-ticker.C:
 
-				newDatabase := loadDatabase(databasePath)
-				if newDatabase == nil {
-					continue
-				}
+				if databaseURL != "" {
 
-				newRelayData := generateRelayData(newDatabase)
-				if newRelayData == nil {
-					continue
-				}
+					// reload from google cloud storage
 
-				service.databaseMutex.Lock()
-				service.database = newDatabase
-				service.databaseRelayData = newRelayData
-				service.databaseMutex.Unlock()
+					core.Debug("reloading database from google cloud storage: %s", databaseURL)
+
+					tempFile := databasePath + "-temp"
+
+					service.google.CopyFromBucketToLocal(ctx, databaseURL, tempFile)
+
+					newDatabase, err := db.LoadDatabase(tempFile)
+					if err != nil {
+						core.Warn("could not read new database: %v", err)
+						break
+					}
+
+					if newDatabase == nil {
+						core.Warn("new database is nil")
+						break
+					}
+
+					err = service.database.Validate() 
+					if err != nil {
+						core.Warn("new database does not validate: %v", err)
+						break
+					}
+
+					newRelayData := generateRelayData(service.database)
+					if newRelayData == nil {
+						core.Warn("new database failed to generate relay data")
+						break
+					}
+
+					os.Rename(tempFile, databasePath)
+
+					service.databaseMutex.Lock()
+					service.database = newDatabase
+					service.databaseRelayData = newRelayData
+					service.databaseMutex.Unlock()
+
+				} else {
+
+					// reload from disk
+
+					core.Debug("reloading database from disk: %s", databasePath)
+
+					newDatabase, err := db.LoadDatabase(databasePath)
+					if err != nil {
+						core.Warn("could not read new database: %v", err)
+						break
+					}
+
+					if newDatabase == nil {
+						core.Warn("new database is nil")
+						break
+					}
+
+					err = service.database.Validate() 
+					if err != nil {
+						core.Warn("new database does not validate: %v", err)
+						break
+					}
+
+					newRelayData := generateRelayData(service.database)
+					if newRelayData == nil {
+						core.Warn("new database failed to generate relay data")
+						break
+					}
+
+					service.databaseMutex.Lock()
+					service.database = newDatabase
+					service.databaseRelayData = newRelayData
+					service.databaseMutex.Unlock()
+				}
 			}
 		}
 	}()
