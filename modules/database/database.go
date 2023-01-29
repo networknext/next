@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"io/ioutil"
-	"errors"
 	"net"
 	"os"
 	"fmt"
@@ -125,28 +124,85 @@ func (database *Database) Save(filename string) error {
 func (database *Database) Validate() error {
 
 	if database.IsEmpty() {
-		return errors.New("database is empty")
+		return fmt.Errorf("database is empty")
 	}
 
-	// todo: each relay must have a valid datacenter
+	for id, datacenter := range database.DatacenterMap {
+		if id != datacenter.Id {
+			return fmt.Errorf("datacenter %s has mismatched id (%d vs. %d)", datacenter.Name, datacenter.Id, id)
+		}
+	}
 
-	// todo: each datacenter must have valid seller
+	for id, seller := range database.SellerMap {
+		if id != seller.Id {
+			return fmt.Errorf("seller %s has mismatched id (%d vs. %d)", seller.Name, seller.Id, id)
+		}
+	}
 
-	// todo: buyer must have a valid non-zero buyer id
+	for id, buyer := range database.BuyerMap {
+		if id != buyer.Id {
+			return fmt.Errorf("buyer %s has mismatched id (%d vs. %d)", buyer.Name, buyer.Id, id)
+		}
+	}
 
-	// todo: if a relay has an internal ip address, it must not be "0.0.0.0"
+	for id, relay := range database.RelayMap {
+		if id != relay.Id {
+			return fmt.Errorf("relay %s has mismatched id (%d vs. %d)", relay.Name, relay.Id, id)
+		}
+		_, sellerExists := database.SellerMap[relay.Seller.Id]
+		if !sellerExists {
+			return fmt.Errorf("relay %s seller does not exist", relay.Name)
+		}
+		_, datacenterExists := database.DatacenterMap[relay.Datacenter.Id]
+		if !datacenterExists {
+			return fmt.Errorf("relay %s datacenter does not exist", relay.Name)
+		}
+		if relay.PublicAddress.IP.String() == "0.0.0.0" {
+			return fmt.Errorf("relay %s public address is 0.0.0.0", relay.Name)
+		}
+		if relay.PublicAddress.Port == 0 {
+			return fmt.Errorf("relay %s public address port is zero", relay.Name)
+		}
+		if relay.HasInternalAddress {
+			if relay.InternalAddress.IP.String() == "0.0.0.0" {
+				return fmt.Errorf("relay %s internal address is 0.0.0.0", relay.Name)
+			}
+			if relay.InternalAddress.Port == 0 {
+				return fmt.Errorf("relay %s internal address port is zero", relay.Name)
+			}
+		}
+		if relay.SSHAddress.IP.String() == "0.0.0.0" {
+			return fmt.Errorf("relay %s ssh address is 0.0.0.0", relay.Name)
+		}
+		if relay.SSHAddress.Port == 0 {
+			return fmt.Errorf("relay %s ssh address port is zero", relay.Name)
+		}
+	}
 
-	// todo: relay ssh address must not be 0.0.0.0 -- it should be set to the 
+	relayNames := make(map[string]int)
+	relayAddresses := make(map[string]int)
 
-	// todo: relay internal address, external address *and* ssh address ports must not be zero
+	for _, relay := range database.RelayMap {
+		if _, nameAlreadyExists := relayNames[relay.Name]; nameAlreadyExists {
+			return fmt.Errorf("there is more than one relay with the name '%s'", relay.Name)
+		}
+		if _, addressAlreadyExists := relayAddresses[relay.PublicAddress.String()]; addressAlreadyExists {
+			return fmt.Errorf("there is more than one relay with the public address '%s'", relay.PublicAddress.String())
+		}
+		relayNames[relay.Name] = 1
+		relayAddresses[relay.PublicAddress.String()] = 1
+	}
 
-	// todo: if a relay has both public and private keypair specified, decrypt/encrypt something with them, to make sure the keypair is valid -- catch errors early
-
-	// todo: each relay must have a unique name
-
-	// todo: each relay must have a unique public ip:port
-
-	// todo: datacenter maps must have valid datacenter id and buyer ids (would have caught an error I just found...)
+	for buyerId, buyerMap := range database.DatacenterMaps {
+		for datacenterId, entry := range buyerMap {
+			if entry.DatacenterId != datacenterId {
+				return fmt.Errorf("bad datacenter id in datacenter maps: %d vs %d", datacenterId, entry.DatacenterId)
+			}
+			if entry.BuyerId != buyerId {
+				return fmt.Errorf("bad buyer id in datacenter maps: %d vs %d", buyerId, entry.BuyerId)
+			}
+		}
+	}
 
 	return nil
 }
