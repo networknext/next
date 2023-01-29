@@ -4101,7 +4101,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     if ( ret != 0 )
     {
-        printf( "warning: could not post relay update\n" );
+        printf( "error: could not post relay update\n" );
         return RELAY_ERROR;
     }
 
@@ -4133,8 +4133,6 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         printf( "Relay initialized\n" );
         fflush( stdout );
         relay->initialize_router_timestamp = timestamp;
-
-        printf("initialize timestamp = %" PRId64 "\n", timestamp);
     }
 
     uint32_t num_relays = relay_read_uint32( &q );
@@ -4269,12 +4267,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( relay->initialize_router_timestamp == 0 )
             continue;
 
+        // todo: wrap this with #if RELAY_DEVELOPMENT or similar
         if ( relay->fake_packet_loss_start_time >= 0.0f )
         {
             const double current_time = relay_platform_time();
             if ( current_time >= relay->fake_packet_loss_start_time && ( ( rand() % 100 ) < relay->fake_packet_loss_percent ) )
             {
-                printf( "relay drop packet\n" );
                 continue;
             }
         }
@@ -4452,10 +4450,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+#if INTENSIVE_RELAY_DEBUGGING
                 if ( session->expire_timestamp != token.expire_timestamp )
                 {
                     printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
                 }
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 session->expire_timestamp = token.expire_timestamp;
 
@@ -4842,7 +4842,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t current_timestamp = relay_timestamp( relay );
                 if ( token.expire_timestamp < current_timestamp )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. route token expired [sdk5]\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     printf("%" PRId64 " < %" PRId64 "\n", token.expire_timestamp, current_timestamp );
                     continue;
                 }
@@ -4872,7 +4874,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay->sessions->insert( std::make_pair(hash, session) );
                     relay->envelope_bandwidth_kbps_up += session->kbps_up;
                     relay->envelope_bandwidth_kbps_down += session->kbps_down;
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "session created: %" PRIx64 ".%d [sdk5]\n", token.session_id, token.session_version );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 }
                 relay_platform_mutex_release( relay->mutex );
 
@@ -4972,7 +4976,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. expired [sdk5]\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5074,7 +5080,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 /*
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "ignored continue request. token expired [sdk5]\n" );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     continue;
                 }
                 */
@@ -5096,7 +5104,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue request. session expired [sdk5]\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5106,7 +5116,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 if ( session->expire_timestamp != token.expire_timestamp )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "session continued: %" PRIx64 ".%d [sdk5]\n", token.session_id, token.session_version );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 }
 
                 session->expire_timestamp = token.expire_timestamp;
@@ -5206,7 +5218,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. session expired [sdk5]\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5594,7 +5608,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. session expired [sdk5]\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -6193,7 +6209,9 @@ int main( int argc, const char ** argv )
         {
             if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )
             {
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay.envelope_bandwidth_kbps_up -= iter->second->kbps_up;
                 relay.envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                 iter = relay.sessions->erase( iter );

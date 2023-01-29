@@ -16,7 +16,7 @@ export ENVIRONMENT=dev
 
 # remove any old journalctl files to free up disk space (if necessary)
 
-sudo journalctl --vacuum-size 200M
+sudo journalctl --vacuum-size 10M
 
 # clean up old packages from apt-get to free up disk space (if necessary)
 
