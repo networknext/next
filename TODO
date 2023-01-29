@@ -1,14 +1,10 @@
 DONE
 
-TODO
-
 	Implement database validation
 
 	Standardize the function that extracts the database from SQL into the database module
 
-	Simplify the database.bin updates so the service.go is responsible for pulling down database.bin from google cloud storage (optional, only applied if the env var is set to do so)
-
-	--------------
+TODO
 
 
 
@@ -16,6 +12,10 @@ TODO
 
 
 Essentials:
+
+	-------------
+
+	Simplify the database.bin updates so the service.go is responsible for pulling down database.bin from google cloud storage (optional, only applied if the env var is set to do so)
 
 	-------------
 

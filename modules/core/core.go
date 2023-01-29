@@ -121,8 +121,8 @@ const (
 	IPAddressIPv6 = 2
 )
 
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
+func ParseAddress(input string) net.UDPAddr {
+	address := net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
 	if err != nil {
 		address.IP = net.ParseIP(input)

@@ -1502,7 +1502,7 @@ func test_relay_manager() {
 
 	for i := range relayIds {
 		relayIds[i] = common.RelayId(relayNames[i])
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 	}
 
 	// get costs once per-second
@@ -1593,7 +1593,7 @@ func test_optimize() {
 	for i := range relayIds {
 		relayNames[i] = fmt.Sprintf("relay%d", i)
 		relayIds[i] = common.RelayId(relayNames[i])
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		relayLatitudes[i] = float32(common.RandomInt(-90, +90))
 		relayLongitudes[i] = float32(common.RandomInt(-90, +90))
 		relayDatacenterIds[i] = uint64(common.RandomInt(0, 5))
@@ -1763,7 +1763,7 @@ func test_relay_backend() {
 
 	for i := range relayIds {
 		relayNames[i] = fmt.Sprintf("relay%d", i)
-		relayAddresses[i] = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		relayIds[i] = common.RelayId(relayAddresses[i].String())
 		relayDatacenterIds[i] = uint64(common.RandomInt(0, NumDatacenters-1))
 		destRelays[i] = true

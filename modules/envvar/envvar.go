@@ -91,7 +91,7 @@ func GetBase64(name string, defaultValue []byte) []byte {
 	return value
 }
 
-func GetAddress(name string, defaultValue *net.UDPAddr) *net.UDPAddr {
+func GetAddress(name string, defaultValue net.UDPAddr) net.UDPAddr {
 	valueString, ok := os.LookupEnv(name)
 	if !ok {
 		return defaultValue
@@ -100,5 +100,5 @@ func GetAddress(name string, defaultValue *net.UDPAddr) *net.UDPAddr {
 	if err != nil {
 		return defaultValue
 	}
-	return value
+	return *value
 }

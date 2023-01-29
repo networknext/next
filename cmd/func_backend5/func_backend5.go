@@ -395,7 +395,7 @@ func StartWebServer() {
 
 func StartUDPServer() {
 
-	serverBackendAddress = *core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+	serverBackendAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 
 	config := common.UDPServerConfig{}
 	config.Port = NEXT_SERVER_BACKEND_PORT

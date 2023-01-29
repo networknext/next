@@ -42,7 +42,7 @@ func RandomString(length int) string {
 }
 
 func RandomAddress() net.UDPAddr {
-	return *core.ParseAddress(fmt.Sprintf("%d.%d.%d.%d:%d", rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(65536)))
+	return core.ParseAddress(fmt.Sprintf("%d.%d.%d.%d:%d", rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(256), rand.Intn(65536)))
 }
 
 type Number interface {
