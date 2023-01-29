@@ -5765,7 +5765,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
                 // todo
-                printf( "received near relay ping packet [sdk5]\n" );
+                printf( "[%s] received near relay ping packet [sdk5]\n", from_string );
 
                 if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {

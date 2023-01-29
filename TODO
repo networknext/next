@@ -6,7 +6,7 @@ DONE
 
 	There must be something wrong in the relay manager building the cost matrix.
 
-	gcloud compute ssh --zone "us-central1-a" "relay-backend-mig-6ssb"  --project "network-next-v3-dev"
+	gcloud compute ssh --zone "us-central1-a" --project "network-next-v3-dev" raspberry-client-mig-whcl
 
 	Radically gutted the relay manager so it's not totally stupid.
 
@@ -14,14 +14,19 @@ DONE
 
 	Just have to update the reference relay to support all packet types again, and it's ready to go.
 
+	It feels like each time I add a new relay, the sessions reset.
+
+	This is strange. It shouldn't happen... it's because I don't have the "wait 5 minutes" before a relay is ready thing.
+
+	Also, the raspberry pi server was getting overloaded.
+
 TODO
-	
-	Really seems like there is something up with the expire timestamp, current timestamp or something... ?!
 
+	Now I see "mispredict" happening on the next route. It's because I have the costs set to "1" instead of the values in the cost matrix.
 
+	Fix this, and the mispredicts should go away.
 
-
-
+	Also, the mispredicts could also be happening due to jitter coming in, and not using the 5 minute filter.
 
 
 

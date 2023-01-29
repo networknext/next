@@ -191,10 +191,6 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				destRelayId := uint64(relayIds[j])
 				_, destActive := activeRelayHash[destRelayId]
 				if destActive {
-					index := TriMatrixIndex(i, j)
-					costs[index] = 1
-					// todo
-					/*
 					relayManager.mutex.RLock()
 					rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
 					relayManager.mutex.RUnlock()
@@ -202,7 +198,6 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 						index := TriMatrixIndex(i, j)
 						costs[index] = int32(math.Ceil(float64(rtt)))
 					}
-					*/
 				}
 			}
 		}
