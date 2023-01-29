@@ -332,11 +332,11 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 		activeRelay.Sessions = sourceEntry.sessions
 		activeRelay.Version = sourceEntry.relayVersion
 
-		expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
+		// expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
 
 		shuttingDown := sourceEntry.shuttingDown
 
-		if expired || shuttingDown {
+		if shuttingDown { // expired || shuttingDown {
 			continue
 		}
 
@@ -351,11 +351,14 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 }
 
 func (relayManager *RelayManager) GetActiveRelayHash(currentTime int64) map[uint64]Relay {
+
 	activeRelays := relayManager.GetActiveRelays(currentTime)
+
 	activeRelayHash := make(map[uint64]Relay)
 	for i := range activeRelays {
 		activeRelayHash[activeRelays[i].Id] = activeRelays[i]
 	}
+
 	return activeRelayHash
 }
 
