@@ -93,8 +93,6 @@ struct relay_address_t
     uint8_t type;
 };
 
-void relay_printf( const char * format, ... );
-
 int relay_address_parse( relay_address_t * address, const char * address_string_in );
 
 const char * relay_address_to_string( const relay_address_t * address, char * buffer );

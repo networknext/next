@@ -378,3 +378,13 @@ Nice to have:
 	Extend "next ssh" to ssh into google Vms by name, if no relay is found
 
 	---------------
+
+	I really can't answer the question "why are half the relays not carrying sessions in dev?"
+
+	Is it just a property of the optimizer, eg. it will go away if I disable mispredict and set all costs to zero?
+
+	Or is there some sort of bias causing this. It seems important to explore this and work it out.
+
+	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
+
+	---------------
