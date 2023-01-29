@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <alloca.h>
+#include <stdio.h>
 
 static double time_start;
 
