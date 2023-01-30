@@ -20,13 +20,15 @@ DONE
 
 	Instrument the ref relay code to increment the counters
 
-TODO
-
 	Pass the relay counters up to the relay backend with each relay update
 
-	--------------
+TODO
 
-	Receive and process the counters. I want to see the counter totals per-relay, and the sum of the differences across all relays.
+	Receive the counters in each relay update, pass it on to the relay update message forwarded over pubsub.
+
+	Keep track of the counters first on a per-relay basis, this means there is an array of counters per-relay in the relay manager.
+
+	After this is working, keep track of counters in total, this means, when a new counter comes in, sub the previous value to get the delta, then add the delta to the grand total.
 
 	--------------
 

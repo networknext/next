@@ -15,6 +15,7 @@ const (
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
 	MaxRelays                        = 1000
+	NumCounters                      = 78
 )
 
 // --------------------------------------------------------------------------
@@ -44,6 +45,8 @@ type RelayUpdateRequestPacket struct {
 	EnvelopeDownKbps  uint64
 	BandwidthSentKbps uint64
 	BandwidthRecvKbps uint64
+	NumCounters       uint32
+	Counters          [NumCounters]uint64
 }
 
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
@@ -74,6 +77,11 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, packet.EnvelopeDownKbps)
 	encoding.WriteUint64(buffer, &index, packet.BandwidthSentKbps)
 	encoding.WriteUint64(buffer, &index, packet.BandwidthRecvKbps)
+
+	encoding.WriteUint32(buffer, &index, packet.NumCounters)
+	for i := 0; i < int(packet.NumCounters); i++ {
+		encoding.WriteUint64(buffer, &index, packet.Counters[i])
+	}
 
 	return buffer[:index]
 }
@@ -162,6 +170,20 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &packet.BandwidthRecvKbps) {
 		return errors.New("could not read bandwidth received kbps")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &packet.NumCounters) {
+		return errors.New("could not read num counters")
+	}
+
+	if packet.NumCounters != NumCounters {
+		return errors.New("wrong number of counters")
+	}
+
+	for i := 0; i < int(packet.NumCounters); i++ {
+		if !encoding.ReadUint64(buffer, &index, &packet.Counters[i]) {
+			return errors.New("could not read counter")
+		}
 	}
 
 	return nil
