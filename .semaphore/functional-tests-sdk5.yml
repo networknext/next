@@ -56,6 +56,7 @@ blocks:
       prologue:
         commands:
 
+            - sudo apt-get install -y libsodium-dev
             - mkdir -p dist
             - cd dist
 
