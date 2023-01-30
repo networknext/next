@@ -16,13 +16,17 @@ DONE
 
 	Clean up the super intensive logs in the relay code and wrap them with #if RELAY_INTENSIVE_DEBUG or similar
 
+	Define set of relay counters as array of uint64_t in reference relay
+
+	Instrument the ref relay code to increment the counters
+
 TODO
 
-	Define set of relay counters as array of uint64_t in reference relay
+	Pass the relay counters up to the relay backend with each relay update
 
 	--------------
 
-	Pass the relay counters up to the relay backend with each relay update
+	Receive and process the counters. I want to see the counter totals per-relay, and the sum of the differences across all relays.
 
 	--------------
 
@@ -34,15 +38,13 @@ TODO
 
 	--------------
 
-	Extend relay stats, or add a new message to make sure relay counters get uploaded to bigquery from the relay backend leader
+	Track fallback to direct (sent directly up from clients) in raspberry backend.
 
-	This lets data science investigate relay counters by time as well. Check if relays are working correctly or having problems.
+	Store the fallbacks to direct in redis, with the time of fallback and the client address.
 
-	--------------
+	Print the fallback to directs out on request via an endpoint. Doesn't have to be fast.
 
-	I think we need counters from the raspberry pi clients as well, or at least servers.
-
-	For example, I need to see the number of fallbacks to direct easily. This is how we will verify in dev that we can make deployments without disruption.
+	Limit it to some maximum number, like 1024 entries...
 
 	--------------
 
