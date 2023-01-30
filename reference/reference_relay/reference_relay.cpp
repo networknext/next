@@ -4126,7 +4126,11 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay_write_float32( &p, stats.relay_packet_loss[i] );
     }
 
-    relay_write_uint64(&p, relay->sessions->size());
+    relay_platform_mutex_acquire( relay->mutex );
+    uint64_t sessions = relay->sessions->size();
+    relay_platform_mutex_release( relay->mutex );
+    relay_write_uint64(&p, sessions);
+
     relay_write_uint8(&p, uint8_t(shutdown));
     relay_write_string(&p, RELAY_VERSION, 32);
 
@@ -4136,11 +4140,17 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_up);
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_down);
 
+    // todo: is this really accurate? assumes exactly one second has elapsed since last update?
     uint64_t bandwidth_tx = uint64_t(relay->bytes_sent * 8.0 / 1000.0);
     uint64_t bandwidth_rx = uint64_t(relay->bytes_received * 8.0 / 1000.0);
-
     relay_write_uint64(&p, bandwidth_tx);
     relay_write_uint64(&p, bandwidth_rx);
+
+    relay_write_uint32( &p, NUM_RELAY_COUNTERS );
+    for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
+    {
+        relay_write_uint64(&p, relay->counters[i]);
+    }
 
     // reset bandwidth bytes sent / recv to accurately track bandwidth kbps
     // this is easier than subtracting previously sent / recv bytes
