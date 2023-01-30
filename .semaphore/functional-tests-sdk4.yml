@@ -63,7 +63,6 @@ blocks:
             - artifact pull workflow func_tests_sdk4
             - artifact pull workflow reference_relay
             - artifact pull workflow libnext4.so
-            - artifact pull workflow libsodium.so
 
             - chmod +x func_client4
             - chmod +x func_server4
@@ -71,7 +70,6 @@ blocks:
             - chmod +x func_tests_sdk4
             - chmod +x reference_relay
 
-            - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo ldconfig
 

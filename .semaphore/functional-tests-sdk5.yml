@@ -66,7 +66,6 @@ blocks:
             - artifact pull workflow func_tests_sdk5
             - artifact pull workflow reference_relay
             - artifact pull workflow libnext5.so
-            - artifact pull workflow libsodium.so
 
             - chmod +x func_client5
             - chmod +x func_server5
@@ -74,7 +73,6 @@ blocks:
             - chmod +x func_tests_sdk5
             - chmod +x reference_relay
 
-            - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
@@ -298,6 +296,7 @@ blocks:
       prologue:
         commands:
 
+            - sudo apt install libsodium-dev
             - mkdir -p dist
             - cd dist
 
@@ -307,7 +306,6 @@ blocks:
             - artifact pull workflow func_tests_sdk5
             - artifact pull workflow reference_relay
             - artifact pull workflow libnext5.so
-            - artifact pull workflow libsodium.so
 
             - chmod +x func_client5
             - chmod +x func_server5
@@ -315,7 +313,6 @@ blocks:
             - chmod +x func_tests_sdk5
             - chmod +x reference_relay
 
-            - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
 
