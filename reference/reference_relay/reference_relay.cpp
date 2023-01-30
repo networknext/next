@@ -6308,6 +6308,9 @@ int main( int argc, const char ** argv )
     relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
     relay_t relay;
+
+    memset( &relay, 0, sizeof(relay_t) );
+
     relay.relay_manager = nullptr;
     relay.relay_public_address = relay_public_address;
     relay.relay_internal_address = relay_internal_address;
