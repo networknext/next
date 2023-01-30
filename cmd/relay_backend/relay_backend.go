@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -112,6 +114,7 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
+    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -126,6 +129,14 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func relayCountersHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		relay_name := vars["relay_name"]
+		fmt.Fprintf(w, "Hello %s!", relay_name)
+	}
 }
 
 func sendTrafficToMe(service *common.Service) func() bool {
@@ -516,11 +527,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				// build the cost matrix
 
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
-
-				// todo
-				fmt.Printf("==============================================================\n")
-				fmt.Printf("%+v\n", costs)
-				fmt.Printf("==============================================================\n")
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

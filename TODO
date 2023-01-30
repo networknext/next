@@ -24,7 +24,13 @@ DONE
 
 	Receive the counters in each relay update, pass it on to the relay update message forwarded over pubsub.
 
+	Deployed and verified counters are coming through in dev.
+
 TODO
+
+	Add a packets sent counter. Right now we have a packets received counter, but not sent. Useful to have both.
+
+	--------------
 
 	Keep track of the counters first on a per-relay basis, this means there is an array of counters per-relay in the relay manager.
 
