@@ -6036,6 +6036,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
     RELAY_PLATFORM_THREAD_RETURN();
 }
 
+// ========================================================================================================================================
+
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
@@ -6096,6 +6098,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
     RELAY_PLATFORM_THREAD_RETURN();
 }
+
+// ========================================================================================================================================
 
 int main( int argc, const char ** argv )
 {
