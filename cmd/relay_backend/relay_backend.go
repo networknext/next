@@ -60,6 +60,8 @@ var ready bool
 
 var startTime time.Time
 
+var counterNames [common.NumRelayCounters]string
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -106,6 +108,8 @@ func main() {
 
 	service.LoadDatabase()
 
+	initCounterNames()
+
 	relayManager := common.CreateRelayManager()
 
 	service.Router.HandleFunc("/relays", relaysHandler)
@@ -131,6 +135,106 @@ func main() {
 	service.WaitForShutdown()
 }
 
+func initCounterNames() {
+	counterNames[0] = "RELAY_PING_PACKET_RECEIVED"
+	counterNames[1] = "RELAY_PONG_PACKET_RECEIVED"
+	counterNames[2] = "BASIC_PACKET_FILTER_DROPPED_PACKET"
+	counterNames[3] = "ADVANCED_PACKET_FILTER_DROPPED_PACKET"
+	counterNames[4] = "ROUTE_REQUEST_PACKET_RECEIVED"
+	counterNames[5] = "ROUTE_REQUEST_PACKET_BAD_SIZE"
+	counterNames[6] = "ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+	counterNames[7] = "ROUTE_REQUEST_PACKET_TOKEN_EXPIRED"
+	counterNames[8] = "SESSION_CREATED"
+	counterNames[9] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[10] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[11] = "ROUTE_RESPONSE_PACKET_RECEIVED"
+	counterNames[12] = "ROUTE_RESPONSE_PACKET_BAD_SIZE"
+	counterNames[13] = "ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[14] = "ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[15] = "ROUTE_RESPONSE_PACKET_SESSION_EXPIRED"
+	counterNames[16] = "ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED"
+	counterNames[17] = "ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+	counterNames[18] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[19] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[20] = "CONTINUE_REQUEST_PACKET_RECEIVED"
+	counterNames[21] = "CONTINUE_REQUEST_PACKET_BAD_SIZE"
+	counterNames[22] = "CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+	counterNames[23] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
+	counterNames[24] = "SESSION_CONTINUED"
+	counterNames[25] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[26] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[27] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
+	counterNames[28] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
+	counterNames[29] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[30] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
+	counterNames[31] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[32] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
+	counterNames[33] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+	counterNames[34] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[35] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[36] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
+	counterNames[37] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
+	counterNames[38] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
+	counterNames[39] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[40] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[41] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
+	counterNames[42] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
+	counterNames[43] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[44] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[45] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[46] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
+	counterNames[47] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
+	counterNames[48] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
+	counterNames[49] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[50] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[51] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
+	counterNames[52] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
+	counterNames[53] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[54] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[55] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[56] = "SESSION_PING_PACKET_RECEIVED"
+	counterNames[57] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
+	counterNames[58] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[59] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[60] = "SESSION_PING_PACKET_SESSION_EXPIRED"
+	counterNames[61] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
+	counterNames[62] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[63] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[64] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[65] = "SESSION_PONG_PACKET_RECEIVED"
+	counterNames[66] = "SESSION_PONG_PACKET_BAD_SIZE"
+	counterNames[67] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[68] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[69] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
+	counterNames[70] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
+	counterNames[71] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[72] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[73] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[74] = "NEAR_PING_PACKET_RECEIVED"
+	counterNames[75] = "NEAR_PING_PACKET_BAD_SIZE"
+	counterNames[76] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
+	counterNames[78] = "RELAY_PING_PACKET_SENT"
+}
+
+const htmlHeader = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="1">
+  <title>Relay Counters</title>
+  <style>
+	table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      text-align: center;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>`
+
+const htmlFooter = `</body></html>`
+
 func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -149,7 +253,17 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 		}
 		relayId := relayData.RelayIds[relayIndex]
 		counters := relayManager.GetRelayCounters(relayId)
-		fmt.Fprintf(w, "%s [%x] counters: %+v\n", relayName, relayId, counters)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "    <pre>%s\n\n<table>\n", relayName)
+		for i := range counterNames {
+			if counterNames[i] == "" {
+				continue
+			}
+			fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td></tr>\n", counterNames[i], counters[i])
+		}
+		fmt.Fprintf(w, "    </pre></table>\n")
+		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
 

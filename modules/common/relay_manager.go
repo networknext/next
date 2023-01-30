@@ -12,7 +12,7 @@ const RelayTimeout = 10
 
 const HistorySize = 300 // 5 minutes @ one relay update per-second
 
-const NumCounters = 100
+const NumRelayCounters = 100
 
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
@@ -53,13 +53,13 @@ type RelayManagerSourceEntry struct {
 	relayVersion   string
 	shuttingDown   bool
 	destEntries    map[uint64]*RelayManagerDestEntry
-	counters       [NumCounters]uint64
+	counters       [NumRelayCounters]uint64
 }
 
 type RelayManager struct {
 	mutex         sync.RWMutex
 	sourceEntries map[uint64]*RelayManagerSourceEntry
-	totalCounters [NumCounters]uint64
+	totalCounters [NumRelayCounters]uint64
 }
 
 func CreateRelayManager() *RelayManager {
@@ -118,7 +118,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 	// update relay counters
 
-	for i := 0; i < NumCounters; i++ {
+	for i := 0; i < NumRelayCounters; i++ {
 		sourceEntry.counters[i] = counters[i]
 	}
 
