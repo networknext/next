@@ -82,18 +82,18 @@
 
 #define RELAY_MAX_UPDATE_ATTEMPTS                                 30
 
-#define RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET                            		 0
-#define RELAY_COUNTER_RECEIVED_RELAY_PONG_PACKET                         			 1
+#define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                            		 0
+#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                         			 1
 #define RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET           					 2
 #define RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET        					 3
-#define RELAY_COUNTER_RECEIVED_ROUTE_REQUEST_PACKET                					 4
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                					 4
 #define RELAY_COUNTER_ROUTE_REQUEST_BAD_PACKET_SIZE                					 5
 #define RELAY_COUNTER_ROUTE_REQUEST_COULD_NOT_READ_TOKEN              		 		 6
 #define RELAY_COUNTER_ROUTE_REQUEST_TOKEN_EXPIRED                  					 7
 #define RELAY_COUNTER_SESSION_CREATED                              					 8
-#define RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_PUBLIC_ADDRESS				 9
-#define RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_INTERNAL_ADDRESS   	   		10
-#define RELAY_COUNTER_RECEIVED_ROUTE_RESPONSE_PACKET                       	   	    11
+#define RELAY_COUNTER_ROUTE_REQUEST_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS				 9
+#define RELAY_COUNTER_ROUTE_REQUEST_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS   	   		10
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                       	   	    11
 #define RELAY_COUNTER_ROUTE_RESPONSE_BAD_PACKET_SIZE                                12
 #define RELAY_COUNTER_ROUTE_RESPONSE_COULD_NOT_PEEK_HEADER                          13
 #define RELAY_COUNTER_ROUTE_RESPONSE_COULD_NOT_FIND_SESSION                         14
@@ -107,17 +107,18 @@
 #define RELAY_COUNTER_CONTINUE_REQUEST_COULD_NOT_READ_TOKEN                         22
 #define RELAY_COUNTER_CONTINUE_REQUEST_SESSION_EXPIRED                              23
 #define RELAY_COUNTER_SESSION_CONTINUED												24
-#define RELAY_COUNTER_CONTINUE_REQUEST_FORWARDING_TO_NEXT_HOP_PUBLIC_ADDRESS        25
-#define RELAY_COUNTER_CONTINUE_REQUEST_FORWARDING_TO_NEXT_HOP_INTERNAL_ADDRESS      26
+#define RELAY_COUNTER_CONTINUE_REQUEST_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS           25
+#define RELAY_COUNTER_CONTINUE_REQUEST_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS         26
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED								27
 #define RELAY_COUNTER_CONTINUE_RESPONSE_WRONG_PACKET_SIZE							28
 #define RELAY_COUNTER_CONTINUE_RESPONSE_COULD_NOT_PEEK_HEADER						29
-#define RELAY_COUNTER_CONTINUE_RESPONSE_COULD_NOT_FIND_SESSION						30
-#define RELAY_COUNTER_CONTINUE_RESPONSE_SESSION_EXPIRED 							31
-#define RELAY_COUNTER_CONTINUE_PACKET_ALREADY_RECEIVED 								32
-#define RELAY_COUNTER_CONTINUE_PACKET_HEADER_DID_NOT_VERIFY                         33
-#define RELAY_COUNTER_CONTINUE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS        34
-#define RELAY_COUNTER_CONTINUE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      35
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                     30
+#define RELAY_COUNTER_CONTINUE_RESPONSE_COULD_NOT_FIND_SESSION						31
+#define RELAY_COUNTER_CONTINUE_RESPONSE_SESSION_EXPIRED 							32
+#define RELAY_COUNTER_CONTINUE_RESPONSE_ALREADY_RECEIVED 							33
+#define RELAY_COUNTER_CONTINUE_RESPONSE_HEADER_DID_NOT_VERIFY                       34
+#define RELAY_COUNTER_CONTINUE_RESPONSE_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      35
+#define RELAY_COUNTER_CONTINUE_RESPONSE_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    36
 
 #define RELAY_COUNTER_MAX                                                           64
 
@@ -4327,7 +4328,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             printf("relay ping packet\n");
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            relay->counters[RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET]++;
+            relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             packet_data[0] = RELAY_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, 1 + 8 );
@@ -4339,7 +4340,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             printf("relay pong packet\n");
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            relay->counters[RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET]++;
+            relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             relay_platform_mutex_acquire( relay->mutex );
             const uint8_t * p = packet_data + 1;
@@ -4869,7 +4870,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
             	printf( "[%s] received route request packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-	            relay->counters[RELAY_COUNTER_RECEIVED_ROUTE_REQUEST_PACKET]++;
+	            relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED]++;
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
@@ -4958,7 +4959,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         printf( "[%s] forwarding route request packet to next hop %s (public address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     
-	                    relay->counters[RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
+	                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
@@ -4981,7 +4982,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         printf( "[%s] forwarding route request packet to next hop %s (internal address)\n", from_string, next_hop_address );
 #endif // #if #if INTENSIVE_RELAY_DEBUGGING
                     
-	                    relay->counters[RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
+	                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
@@ -4994,7 +4995,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received route response packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-	            relay->counters[RELAY_COUNTER_RECEIVED_ROUTE_RESPONSE_PACKET]++;
+	            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED]++;
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
                 {
@@ -5222,7 +5223,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->next_address, next_hop_address );
                         printf( "[%s] forwarding continue request packet to next hop %s (public address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_FORWARDING_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
+			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
 
@@ -5243,7 +5244,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->next_address, next_hop_address );
                         printf( "[%s] forwarding continue request packet to next hop %s (internal address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_FORWARDING_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
+			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
 
@@ -5318,7 +5319,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. packet already received (%d <= %d) [sdk5]\n", from_string, clean_sequence, session->server_to_client_sequence );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-	            	relay->counters[RELAY_COUNTER_CONTINUE_PACKET_ALREADY_RECEIVED]++;
+	            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                     continue;
                 }
 
@@ -5327,7 +5328,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. header did not verify [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-	            	relay->counters[RELAY_COUNTER_CONTINUE_PACKET_HEADER_DID_NOT_VERIFY]++;
+	            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_HEADER_DID_NOT_VERIFY]++;
                     continue;
                 }
 
@@ -5353,7 +5354,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->prev_address, prev_hop_address );
                         printf( "[%s] forwarding continue response packet to previous hop %s (public address)\n", from_string, prev_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-		            	relay->counters[RELAY_COUNTER_CONTINUE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
+		            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
                  
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
 
