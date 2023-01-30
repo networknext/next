@@ -14,13 +14,9 @@ DONE
 
 	It seems that one of the raspberry backends was in a bad state. If this happens again, check the logs it is probably crashing.
 
-TODO
-
-	--------------
-
 	Clean up the super intensive logs in the relay code and wrap them with #if RELAY_INTENSIVE_DEBUG or similar
 
-	--------------
+TODO
 
 	Define set of relay counters as array of uint64_t in reference relay
 

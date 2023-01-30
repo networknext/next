@@ -82,6 +82,20 @@
 
 #define RELAY_MAX_UPDATE_ATTEMPTS                                 30
 
+#define RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET                            0
+#define RELAY_COUNTER_RECEIVED_RELAY_PONG_PACKET                         	1
+#define RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET           			2
+#define RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET        			3
+#define RELAY_COUNTER_RECEIVED_ROUTE_REQUEST_PACKET                			4
+#define RELAY_COUNTER_ROUTE_REQUEST_BAD_PACKET_SIZE                			5
+#define RELAY_COUNTER_ROUTE_REQUEST_COULD_NOT_READ_ROUTE_TOKEN              6
+#define RELAY_COUNTER_ROUTE_REQUEST_TOKEN_EXPIRED                  			7
+#define RELAY_COUNTER_SESSION_CREATED                              			8
+#define RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_PUBLIC_ADDRESS		9
+#define RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_INTERNAL_ADDRESS   10
+
+#define RELAY_COUNTER_MAX                                                  64
+
 // -------------------------------------------------------------------------------------
 
 extern int relay_platform_init();
@@ -3892,6 +3906,7 @@ struct relay_t
     std::atomic<uint64_t> bytes_received;
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
+    std::atomic<uint64_t> counters[RELAY_COUNTER_MAX];
 };
 
 struct curl_buffer_t
@@ -4287,6 +4302,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             printf("relay ping packet\n");
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
+            relay->counters[RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET]++;
+
             packet_data[0] = RELAY_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, 1 + 8 );
             relay->bytes_sent += 1 + 8;
@@ -4296,6 +4313,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
             printf("relay pong packet\n");
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            relay->counters[RELAY_COUNTER_RECEIVED_RELAY_PING_PACKET]++;
 
             relay_platform_mutex_acquire( relay->mutex );
             const uint8_t * p = packet_data + 1;
@@ -4764,6 +4783,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] basic packet filter dropped packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+	
+	            relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
+
                 continue;
             }
 
@@ -4806,6 +4828,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] advanced packet filter dropped packet %d [sdk5]\n", from_string, packet_id );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+	            relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
+
                 continue;
             }
 
@@ -4820,11 +4845,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             	printf( "[%s] received route request packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
+	            relay->counters[RELAY_COUNTER_RECEIVED_ROUTE_REQUEST_PACKET]++;
+
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. bad packet size (%d) [sdk5]\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_BAD_PACKET_SIZE]++;
                     continue;
                 }
 
@@ -4834,6 +4862,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. could not read route token [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_COULD_NOT_READ_ROUTE_TOKEN]++;
                     continue;
                 }
 
@@ -4845,7 +4874,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. route token expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                    printf("%" PRId64 " < %" PRId64 "\n", token.expire_timestamp, current_timestamp );
+                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_TOKEN_EXPIRED]++;
                     continue;
                 }
                 */
@@ -4877,6 +4906,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "session created: %" PRIx64 ".%d [sdk5]\n", token.session_id, token.session_version );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_CREATED]++;
                 }
                 relay_platform_mutex_release( relay->mutex );
 
@@ -4904,6 +4934,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         printf( "[%s] forwarding route request packet to next hop %s (public address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     
+	                    relay->counters[RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
+
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
                         relay->bytes_sent += packet_bytes;
@@ -4925,6 +4957,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         printf( "[%s] forwarding route request packet to next hop %s (internal address)\n", from_string, next_hop_address );
 #endif // #if #if INTENSIVE_RELAY_DEBUGGING
                     
+	                    relay->counters[RELAY_COUNTER_FORWARD_ROUTE_REQUEST_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
+
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
                         relay->bytes_sent += packet_bytes;
