@@ -114,7 +114,7 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
-    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service))
+    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -131,11 +131,25 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func relayCountersHandler(service *common.Service) func(w http.ResponseWriter, r *http.Request) {
+func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		relay_name := vars["relay_name"]
-		fmt.Fprintf(w, "Hello %s!", relay_name)
+		relayName := vars["relay_name"]
+		relayData := service.RelayData()
+		relayIndex := -1
+		for i := range relayData.RelayNames {
+			if relayData.RelayNames[i] == relayName {
+				relayIndex = i
+				break
+			}
+		}
+		if relayIndex == -1 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		relayId := relayData.RelayIds[relayIndex]
+		counters := relayManager.GetRelayCounters(relayId)
+		fmt.Fprintf(w, "%s [%x] counters: %+v\n", relayName, relayId, counters)
 	}
 }
 
