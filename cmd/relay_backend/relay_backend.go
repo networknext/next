@@ -387,6 +387,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.SampleRTT[:numSamples],
 					relayUpdateRequest.SampleJitter[:numSamples],
 					relayUpdateRequest.SamplePacketLoss[:numSamples],
+					relayUpdateRequest.Counters[:],
 				)
 
 				if disableGooglePubsub {

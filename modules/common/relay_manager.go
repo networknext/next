@@ -12,6 +12,8 @@ const RelayTimeout = 10
 
 const HistorySize = 300 // 5 minutes @ one relay update per-second
 
+const NumCounters = 100
+
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }
@@ -51,11 +53,13 @@ type RelayManagerSourceEntry struct {
 	relayVersion   string
 	shuttingDown   bool
 	destEntries    map[uint64]*RelayManagerDestEntry
+	counters       [NumCounters]uint64
 }
 
 type RelayManager struct {
 	mutex         sync.RWMutex
 	sourceEntries map[uint64]*RelayManagerSourceEntry
+	totalCounters [NumCounters]uint64
 }
 
 func CreateRelayManager() *RelayManager {
@@ -64,7 +68,7 @@ func CreateRelayManager() *RelayManager {
 	return relayManager
 }
 
-func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32) {
+func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32, counters []uint64) {
 
 	// look up the entry corresponding to the source relay, or create it if it doesn't exist
 
@@ -110,6 +114,12 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destEntry.historyIndex = (destEntry.historyIndex + 1) % HistorySize
 
 		destEntry.lastUpdateTime = currentTime
+	}
+
+	// update relay counters
+
+	for i := 0; i < NumCounters; i++ {
+		sourceEntry.counters[i] = counters[i]
 	}
 
 	relayManager.mutex.Unlock()
@@ -377,4 +387,18 @@ func (relayManager *RelayManager) GetRelaysCSV(currentTime int64, relayIds []uin
 	}
 
 	return []byte(relaysCSV)
+}
+
+func (relayManager *RelayManager) GetRelayCounters(relayId uint64) []uint64 {
+	relayManager.mutex.RLock()
+	sourceEntry, ok := relayManager.sourceEntries[relayId]
+	relayManager.mutex.RUnlock()
+	if !ok {
+		return []uint64{}
+	}
+	return sourceEntry.counters[:]
+}
+
+func (relayManager *RelayManager) GetTotalCounters() []uint64 {
+	return relayManager.totalCounters[:]
 }

@@ -161,7 +161,7 @@
 #define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      76
 #define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    77
 
-#define NUM_RELAY_COUNTERS                                                                      78
+#define NUM_RELAY_COUNTERS                                                                     100
 
 // -------------------------------------------------------------------------------------
 

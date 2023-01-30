@@ -33,6 +33,8 @@ var TestRouterPrivateKey = []byte{}
 
 var TestBackendPrivateKey = []byte{}
 
+const NumCounters = 100
+
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
 
@@ -204,6 +206,8 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
+	// todo: we should really read this as a packet instead of manually reading it here below...
+
 	// parse the relay update request
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -331,6 +335,25 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	var numCounters uint32
+	if !encoding.ReadUint32(body, &index, &numCounters) {
+		fmt.Printf("could not read num counters\n")
+		return
+	}
+
+	if numCounters != NumCounters {
+		fmt.Printf("wrong number of counters: expected %d, got %d\n", NumCounters, numCounters)
+		return
+	}
+
+	counters := [NumCounters]uint64{}
+	for i := 0; i < NumCounters; i++ {
+		if !encoding.ReadUint64(body, &index, &counters[i]) {
+			fmt.Printf("could not read counter\n")
+			return
+		}
+	}
+
 	// process the relay update
 
 	relayPort := udpAddr.Port
@@ -340,7 +363,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	currentTime := time.Now().Unix()
 
 	backend.mutex.Lock()
-	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
 	backend.mutex.Unlock()
 
 	// get relays to ping

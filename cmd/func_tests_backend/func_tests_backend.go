@@ -1537,6 +1537,7 @@ func test_relay_manager() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
+	counters := make([]uint64, packets.NumCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1557,7 +1558,7 @@ func test_relay_manager() {
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
 					// fmt.Printf("relay update %d\n", index)
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 
@@ -1691,6 +1692,7 @@ func test_optimize() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
+	counters := make([]uint64, packets.NumCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1710,7 +1712,7 @@ func test_optimize() {
 					return
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 

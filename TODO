@@ -22,21 +22,23 @@ DONE
 
 	Pass the relay counters up to the relay backend with each relay update
 
-TODO
-
 	Receive the counters in each relay update, pass it on to the relay update message forwarded over pubsub.
+
+TODO
 
 	Keep track of the counters first on a per-relay basis, this means there is an array of counters per-relay in the relay manager.
 
+	Implement an endpoint "relay_counters/[relay_name]" to view these counters in a HTML table.
+
+	--------------
+
 	After this is working, keep track of counters in total, this means, when a new counter comes in, sub the previous value to get the delta, then add the delta to the grand total.
 
-	--------------
-
-	Implement a debug visualization on relay backend: "relay_counters"
+	Implement an endpoint "relay_counters" to see overall total counts (no relay name)
 
 	--------------
 
-	Deploy the new code and verify that relay counters are visible in dev.
+	Verify relay counters are visible in dev.
 
 	--------------
 
@@ -386,5 +388,9 @@ Nice to have:
 	Or is there some sort of bias causing this. It seems important to explore this and work it out.
 
 	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
+
+	---------------
+
+	There should be func tests for relay counters
 
 	---------------
