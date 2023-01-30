@@ -396,12 +396,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					}
 				}
 
-				fmt.Printf("--------------------------------------------------\n")
-				for i := 0; i < packets.NumCounters; i++ {
-					fmt.Printf("counter %d: %d\n", i, relayUpdateRequest.Counters[i])
-				}
-				fmt.Printf("--------------------------------------------------\n")
-
 				// process samples in the relay update
 
 				currentTime := time.Now().Unix()
