@@ -138,8 +138,30 @@
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER 							53
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS 	    	54
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      	55
+#define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              56
+#define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       57
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 58
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                59
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       60
+#define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      61
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               62
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    63
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  64
+#define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                              65
+#define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                              66
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                 67
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                                68
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                       69
+#define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                      70
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                               71
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS                72
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS              73
+#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 74
+#define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 75
+#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      76
+#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    77
 
-#define RELAY_COUNTER_MAX                                                                   	64
+#define NUM_RELAY_COUNTERS                                                                      78
 
 // -------------------------------------------------------------------------------------
 
@@ -3951,7 +3973,7 @@ struct relay_t
     std::atomic<uint64_t> bytes_received;
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
-    std::atomic<uint64_t> counters[RELAY_COUNTER_MAX];
+    std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
 };
 
 struct curl_buffer_t
@@ -5696,12 +5718,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received session ping packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED]++;
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. bad packet size (%d) [sdk5]\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE]++;
                     continue;
                 }
 
@@ -5715,6 +5739,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. could not peek header [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER]++;
                     continue;
                 }
 
@@ -5728,6 +5753,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. session does not exist [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST]++;
                     continue;
                 }
 
@@ -5738,6 +5764,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5752,6 +5779,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. already received (%d <= %d) [sdk5]\n", from_string, int(clean_sequence), int(session->client_to_server_sequence) );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED]++;
                     continue;
                 }
 
@@ -5760,6 +5788,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. could not verify header [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER]++;
                     continue;
                 }
 
@@ -5789,6 +5818,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->next_address, next_hop_address );
                         printf( "[%s] forwarding session ping packet to next hop %s (public address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                        relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
 
@@ -5810,6 +5840,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->next_address, next_hop_address );
                         printf( "[%s] forwarding session ping packet to next hop %s (internal address)\n", from_string, next_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                        relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
 
@@ -5822,12 +5853,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "received session pong packet [sdk5]\n" );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED]++;
 
                 if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. bad packet size (%d) [sdk5]\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE]++;
                     continue;
                 }
 
@@ -5842,6 +5875,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. could not peek header [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER]++;
                     continue;
                 }
 
@@ -5855,6 +5889,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. session does not exist [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST]++;
                     continue;
                 }
 
@@ -5865,6 +5900,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5879,6 +5915,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. already received (%d <= %d) [sdk5]\n", from_string, int(clean_sequence), int(session->server_to_client_sequence) );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED]++;
                     continue;
                 }
 
@@ -5887,6 +5924,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. could not verify header [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER]++;
                     continue;
                 }
 
@@ -5915,6 +5953,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->prev_address, prev_hop_address );
                         printf( "[%s] forwarding session pong packet to previous hop %s (public address)\n", from_string, prev_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                        relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
 
@@ -5935,6 +5974,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay_address_to_string( &session->prev_address, prev_hop_address );
                         printf( "[%s] forwarding session pong packet to previous hop %s (internal address)\n", from_string, prev_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                        relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
 
@@ -5947,16 +5987,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received near relay ping packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
                 if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored relay near ping packet. bad packet size (%d) [sdk5]\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE]++;
                     continue;
                 }
-
-                // todo: pings aren't checking the packet filters here. the basic packet filter will pass, but the advanced will not, until the array of "internal" flags are passed down to the relay from the relay backend
 
                 const uint8_t * const_p = p;
 
@@ -5973,6 +6013,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] responded with near relay pong packet [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG]++;
 
                     relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
 
@@ -6035,6 +6076,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay_address_to_string( &pings[i].address, to_address);
             printf("sending relay ping packet to %s\n", to_address);
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
 
             relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
         }
