@@ -1,26 +1,26 @@
 DONE
 
-TODO
-
 	Cost matrix as HTML table via "/cost_matrix_html" or equivalent
 
+	Relay backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
+
+TODO
+
 	--------------
 
-	Server backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
+	Track relay manager state for a specific relay, so I can debug stuff.
+
+	Then, turn back on the expiry and stuff like that and get it all working again...
 
 	--------------
 
-	Relays as HTML like "next relays" but on endpoint "/relays"
+	Relays as HTML like "next relays" but on endpoint "/relays_html"
 
 	--------------
 
 	Track counters in total, as well as just per-relay.
 
 	Add an endpoint to view the total counters.
-
-	--------------
-
-	Active relays as HTML table via "/active_relays"
 
 	--------------
 

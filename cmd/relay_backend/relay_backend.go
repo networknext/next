@@ -120,6 +120,7 @@ func main() {
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
   service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
   service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
+  service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -134,6 +135,83 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func routesHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		src := vars["src"]
+		dest := vars["dest"]
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+		routeMatrix := common.RouteMatrix{}
+		err := routeMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no route matrix\n")
+			return
+		}
+		fmt.Printf("relay names: %+v\n", routeMatrix.RelayNames)
+		src_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == src {
+				src_index = i
+				break
+			}
+		}
+		dest_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == dest {
+				dest_index = i
+				break
+			}
+		}
+		fmt.Printf("%s %s %d %d\n", src, dest, src_index, dest_index)
+		if src_index == -1 || dest_index == -1 || src_index == dest_index {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <title>Routes</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
+		fmt.Fprintf(w, "<table>\n")
+		fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
+		index := core.TriMatrixIndex(src_index, dest_index)
+		entry := routeMatrix.RouteEntries[index]
+		for i := 0; i < int(entry.NumRoutes); i++ {
+			routeRelays := ""
+			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
+				routeRelays += routeMatrix.RelayNames[j]
+				if j != int(entry.RouteNumRelays[i])-1 {
+					routeRelays += " - "
+				}
+			}
+			fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
+		}
+		fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
 }
 
 func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +268,12 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 				} else {
 					nope = true
 				}
+				clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+
 				if nope {
-					fmt.Fprintf(w, "<td bgcolor=\"red\"></td>")
+					fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
 				} else {
-					fmt.Fprintf(w, "<td bgcolor=\"green\">%s</td>", costString)
+					fmt.Fprintf(w, "<td %s bgcolor=\"green\">%s</td>", clickable, costString)
 				}
 			}
 			fmt.Fprintf(w, "</tr>\n")
