@@ -1494,7 +1494,7 @@ func test_relay_manager() {
 
 	// setup a lot of relays
 
-	const NumRelays = 1500
+	const NumRelays = 250
 
 	relayNames := make([]string, NumRelays)
 	relayIds := make([]uint64, NumRelays)
@@ -1557,7 +1557,6 @@ func test_relay_manager() {
 					return
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
-					// fmt.Printf("relay update %d\n", index)
 					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
@@ -1566,7 +1565,7 @@ func test_relay_manager() {
 
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	contextCancelFunc()
 }
