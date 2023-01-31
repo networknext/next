@@ -200,7 +200,7 @@ func routesHandler(service *common.Service, relayManager *common.RelayManager) f
 		for i := 0; i < int(entry.NumRoutes); i++ {
 			routeRelays := ""
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
-				routeRelays += routeMatrix.RelayNames[j]
+				routeRelays += routeMatrix.RelayNames[entry.RouteRelays[i][j]]
 				if j != int(entry.RouteNumRelays[i])-1 {
 					routeRelays += " - "
 				}
