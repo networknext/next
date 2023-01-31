@@ -32,9 +32,32 @@ DONE
 
 	Finish converting all counter names in golang
 
+	Convert the counters display to a html table. easier to read
+
 TODO
 
-	Convert the counters display to a html table. easier to read
+	Write a function to generate the a view of the database as html.
+
+	Hook this function up automatically in service.go to "/database" whenever a database is available.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 

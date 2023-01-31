@@ -915,11 +915,13 @@ func (service *Service) databaseHandlerFunc() func(w http.ResponseWriter, r *htt
 		if database == nil {
 			service.routeMatrixMutex.RLock()
 			database = service.routeMatrixDatabase
-			service.routeMatrixMutex.RUnlock()			
+			service.routeMatrixMutex.RUnlock()
+			fmt.Fprintf(w, "no database\n")
+			w.Header().Set("Content-Type", "text/plain")
 		}
 		if database != nil {
-			fmt.Fprint(w, database.String())
-			w.Header().Set("Content-Type", "next/plain")
+			database.WriteHTML(w)
+			w.Header().Set("Content-Type", "text/html")
 		}
 	}
 }
