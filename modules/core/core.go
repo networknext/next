@@ -541,7 +541,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						u := routeIndex[x]
 						routes[index].RouteCost[u] = routeManager.RouteCost[x]
 						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[x]
-						numRelays := int(routes[index].RouteNumRelays[x])
+						numRelays := int(routes[index].RouteNumRelays[u])
 						for v := 0; v < numRelays; v++ {
 							routes[index].RouteRelays[u][v] = routeManager.RouteRelays[x][v]
 						}

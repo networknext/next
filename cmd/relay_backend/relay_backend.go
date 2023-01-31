@@ -199,9 +199,12 @@ func routesHandler(service *common.Service, relayManager *common.RelayManager) f
 		entry := routeMatrix.RouteEntries[index]
 		for i := 0; i < int(entry.NumRoutes); i++ {
 			routeRelays := ""
-			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
-				routeRelays += routeMatrix.RelayNames[entry.RouteRelays[i][j]]
-				if j != int(entry.RouteNumRelays[i])-1 {
+			numRouteRelays := int(entry.RouteNumRelays[i])
+			for j := 0; j < numRouteRelays; j++ {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != numRouteRelays-1 {
 					routeRelays += " - "
 				}
 			}
