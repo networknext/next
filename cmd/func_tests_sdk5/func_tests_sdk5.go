@@ -65,7 +65,7 @@ func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 	}
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "RELAY_NAME=%s", name)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
 	cmd.Env = append(cmd.Env, "RELAY_ADDRESS=127.0.0.1")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
