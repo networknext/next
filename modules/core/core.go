@@ -25,7 +25,7 @@ import (
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 16
+const MaxRoutesPerEntry = 64
 const JitterThreshold = 15
 
 const NEXT_MAX_NODES = 7
