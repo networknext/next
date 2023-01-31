@@ -6,6 +6,30 @@ DONE
 
 TODO
 
+	Check over all the route matrix stuff for the relay
+
+	It seems that the route matrix entry has duplicates, with routes that have different hashes, but with the same relay ids... weird.
+
+	--------------
+
+	I think there is a bug in the route manager
+
+	There are no tests for the route manager. Why not? O_O
+
+	--------------
+
+	There's also a bug where all relays are set as dest relays. In dev, only one relay is dest relay, and optimize for everything else, except to that dest relay should be disabled.
+
+	Idea: Set an env var to decide between optimize 1 and optimize 2
+
+	--------------
+
+	Wait wait wait... why?
+
+		amazon.ohio.2 - amazon.oregon.1 - amazon.sanjose.1
+
+	When I'm viewing vultr.honolulu <-> amazon.ohio.2 (?!!!)
+
 	--------------
 
 	Track relay manager state for a specific relay, so I can debug stuff.

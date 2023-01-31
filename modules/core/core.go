@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sort"
 
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
@@ -24,7 +25,7 @@ import (
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 16
+const MaxRoutesPerEntry = 2 // todo: test -- 256 // todo: test
 const JitterThreshold = 15
 
 const NEXT_MAX_NODES = 7
@@ -186,7 +187,12 @@ type RouteManager struct {
 
 func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 
-	// IMPORTANT: Filter out routes with loops. They can happen *very* occasionally.
+	// if we are full, just return
+	if manager.NumRoutes == MaxRoutesPerEntry {
+		return		
+	}
+
+	// filter out routes with loops. They can happen *very* occasionally.
 	loopCheck := make(map[int32]int, len(relays))
 	for i := range relays {
 		if _, exists := loopCheck[relays[i]]; exists {
@@ -195,7 +201,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		loopCheck[relays[i]] = 1
 	}
 
-	// IMPORTANT: Filter out any route with two relays in the same datacenter. These routes are redundant.
+	// filter out any route with two relays in the same datacenter. These routes are redundant.
 	datacenterCheck := make(map[uint64]int, len(relays))
 	for i := range relays {
 		if _, exists := datacenterCheck[manager.RelayDatacenter[relays[i]]]; exists {
@@ -204,6 +210,26 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
 	}
 
+	// filter out any route with the same route hash as existing routes
+	routeHash := RouteHash(relays...)
+	for i := 0; i < manager.NumRoutes; i++ {
+		if manager.RouteHash[i] == routeHash {
+			return
+		}
+	}
+
+	// just add to end, sort later...
+	manager.RouteCost[manager.NumRoutes] = cost
+	manager.RouteHash[manager.NumRoutes] = routeHash
+	manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
+	for i := range relays {
+		manager.RouteRelays[manager.NumRoutes][i] = relays[i]
+	}
+	manager.NumRoutes++
+}
+
+// todo: this code has bugs
+/*
 	if manager.NumRoutes == 0 {
 
 		// no routes yet. add the route
@@ -309,7 +335,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		}
 
 	}
-}
+*/
 
 func RouteHash(relays ...int32) uint32 {
 	const prime = uint32(16777619)
@@ -386,6 +412,8 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 						// no direct route exists between i,j. subdivide valid routes so we don't miss indirect paths.
 
+						// todo: this is extremely inefficient. it would be best to reduce this after the fact to the n best routes or similar
+
 						for k := 0; k < numRelays; k++ {
 							if k == i || k == j {
 								continue
@@ -405,6 +433,9 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 					} else {
 
 						// direct route exists between i,j. subdivide only when a significant cost reduction occurs.
+
+						// todo
+						fmt.Printf("direct route %d->%d\n",i,j)
 
 						for k := 0; k < numRelays; k++ {
 							if k == i || k == j {
@@ -432,6 +463,9 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 					}
 
 					if numRoutes > 0 {
+
+						// todo: may be benefit here by sorting and restricting to best n indirects
+
 						indirect[i][j] = make([]Indirect, numRoutes)
 						copy(indirect[i][j], working)
 					}
@@ -443,7 +477,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 	wg.Wait()
 
-	// use the indirect matrix to subdivide a route up to 5 hops
+	// use the indirect matrix to subdivide routes
 
 	entryCount := TriMatrixLength(numRelays)
 
@@ -467,98 +501,54 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 				for j := 0; j < i; j++ {
 
-					ijIndex := TriMatrixIndex(i, j)
+					index := TriMatrixIndex(i, j)
 
-					if indirect[i][j] == nil {
+					var routeManager RouteManager
 
-						if cost[ijIndex] >= 0 {
+					routeManager.RelayDatacenter = relayDatacenter
 
-							// only direct route from i -> j exists, and it is suitable
+					// add the direct route if it exists
 
-							routes[ijIndex].DirectCost = cost[ijIndex]
-							routes[ijIndex].NumRoutes = 1
-							routes[ijIndex].RouteCost[0] = cost[ijIndex]
-							routes[ijIndex].RouteNumRelays[0] = 2
-							routes[ijIndex].RouteRelays[0][0] = int32(i)
-							routes[ijIndex].RouteRelays[0][1] = int32(j)
-							routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
+					if cost[index] >= 0 {
+						routeManager.AddRoute(cost[index], int32(i), int32(j))
+					}
 
-						} else {
+					// add subdivided routes i -> (k) -> j
 
-							// no route exists from i -> j
-
-						}
-
-					} else {
-
-						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
-
-						var routeManager RouteManager
-
-						routeManager.RelayDatacenter = relayDatacenter
-
+					if indirect[i][j] != nil {
 						for k := range indirect[i][j] {
-
-							if cost[ijIndex] >= 0 {
-								routeManager.AddRoute(cost[ijIndex], int32(i), int32(j))
-							}
-
-							y := indirect[i][j][k]
-
-							routeManager.AddRoute(y.cost, int32(i), y.relay, int32(j))
-
-							var x *Indirect
-							if indirect[i][y.relay] != nil {
-								x = &indirect[i][y.relay][0]
-							}
-
-							var z *Indirect
-							if indirect[j][y.relay] != nil {
-								z = &indirect[j][y.relay][0]
-							}
-
-							if x != nil {
-								ixIndex := TriMatrixIndex(i, int(x.relay))
-								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
-								yjIndex := TriMatrixIndex(int(y.relay), j)
-
-								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yjIndex], int32(i), x.relay, y.relay, int32(j))
-							}
-
-							if z != nil {
-								iyIndex := TriMatrixIndex(i, int(y.relay))
-								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := TriMatrixIndex(int(z.relay), j)
-
-								routeManager.AddRoute(cost[iyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), y.relay, z.relay, int32(j))
-							}
-
-							if x != nil && z != nil {
-								ixIndex := TriMatrixIndex(i, int(x.relay))
-								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
-								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
-								zjIndex := TriMatrixIndex(int(z.relay), j)
-
-								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), x.relay, y.relay, z.relay, int32(j))
-							}
-
-							numRoutes := routeManager.NumRoutes
-
-							routes[ijIndex].DirectCost = cost[ijIndex]
-
-							routes[ijIndex].NumRoutes = int32(numRoutes)
-
-							for u := 0; u < numRoutes; u++ {
-								routes[ijIndex].RouteCost[u] = routeManager.RouteCost[u]
-								routes[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
-								numRelays := int(routes[ijIndex].RouteNumRelays[u])
-								for v := 0; v < numRelays; v++ {
-									routes[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
-								}
-								routes[ijIndex].RouteHash[u] = routeManager.RouteHash[u]
-							}
+							ikj_cost := indirect[i][j][k].cost
+							k_relay := indirect[i][j][k].relay
+							routeManager.AddRoute(ikj_cost, int32(i), int32(k_relay), int32(j))
 						}
 					}
+
+					// todo: hack sort best routes 
+
+					numRoutes := routeManager.NumRoutes
+					routeIndex := make([]int, numRoutes)
+					for i := 0; i < numRoutes; i++ {
+						routeIndex[i] = i
+					}
+					sort.SliceStable(routeIndex, func(i, j int) bool { return routeManager.RouteCost[i] < routeManager.RouteCost[j] })
+
+					// store the best routes in the route matrix, in sorted order from lowest to highest cost
+
+					routes[index].DirectCost = cost[index]
+					routes[index].NumRoutes = int32(numRoutes)
+
+					for x := 0; x < numRoutes; x++ {
+						u := routeIndex[x]
+						routes[index].RouteCost[u] = routeManager.RouteCost[x]
+						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[x]
+						numRelays := int(routes[index].RouteNumRelays[x])
+						for v := 0; v < numRelays; v++ {
+							routes[index].RouteRelays[u][v] = routeManager.RouteRelays[x][v]
+						}
+						routes[index].RouteHash[u] = routeManager.RouteHash[x]
+					}
+
+					fmt.Printf("best routes: %+v\n", routes[index])
 				}
 			}
 
@@ -570,6 +560,74 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 	return routes
 }
 
+func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
+	return Optimize(numRelays, numSegments, cost, costThreshold, relayDatacenter)
+}
+
+/*
+// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
+
+var routeManager RouteManager
+
+routeManager.RelayDatacenter = relayDatacenter
+
+for k := range indirect[i][j] {
+
+	var x *Indirect
+	if indirect[i][y.relay] != nil {
+		x = &indirect[i][y.relay][0]
+	}
+
+	var z *Indirect
+	if indirect[j][y.relay] != nil {
+		z = &indirect[j][y.relay][0]
+	}
+
+	if x != nil {
+		ixIndex := TriMatrixIndex(i, int(x.relay))
+		xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+		yjIndex := TriMatrixIndex(int(y.relay), j)
+
+		routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yjIndex], int32(i), x.relay, y.relay, int32(j))
+	}
+
+	if z != nil {
+		iyIndex := TriMatrixIndex(i, int(y.relay))
+		yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+		zjIndex := TriMatrixIndex(int(z.relay), j)
+
+		routeManager.AddRoute(cost[iyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), y.relay, z.relay, int32(j))
+	}
+
+	if x != nil && z != nil {
+		ixIndex := TriMatrixIndex(i, int(x.relay))
+		xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+		yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+		zjIndex := TriMatrixIndex(int(z.relay), j)
+
+		routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), x.relay, y.relay, z.relay, int32(j))
+	}
+
+	numRoutes := routeManager.NumRoutes
+
+	routes[ijIndex].DirectCost = cost[ijIndex]
+
+	routes[ijIndex].NumRoutes = int32(numRoutes)
+
+	for u := 0; u < numRoutes; u++ {
+		routes[ijIndex].RouteCost[u] = routeManager.RouteCost[u]
+		routes[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
+		numRelays := int(routes[ijIndex].RouteNumRelays[u])
+		for v := 0; v < numRelays; v++ {
+			routes[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
+		}
+		routes[ijIndex].RouteHash[u] = routeManager.RouteHash[u]
+	}
+}
+*/
+
+
+/*
 func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
 
 	// build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
@@ -706,26 +764,23 @@ func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32
 
 					ijIndex := TriMatrixIndex(i, j)
 
-					if indirect[i][j] == nil {
+					if cost[ijIndex] >= 0 {
 
-						if cost[ijIndex] >= 0 {
+						// only direct route from i -> j exists, and it is suitable
 
-							// only direct route from i -> j exists, and it is suitable
+						routes[ijIndex].DirectCost = cost[ijIndex]
+						routes[ijIndex].NumRoutes = 1
+						routes[ijIndex].RouteCost[0] = cost[ijIndex]
+						routes[ijIndex].RouteNumRelays[0] = 2
+						routes[ijIndex].RouteRelays[0][0] = int32(i)
+						routes[ijIndex].RouteRelays[0][1] = int32(j)
+						routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
 
-							routes[ijIndex].DirectCost = cost[ijIndex]
-							routes[ijIndex].NumRoutes = 1
-							routes[ijIndex].RouteCost[0] = cost[ijIndex]
-							routes[ijIndex].RouteNumRelays[0] = 2
-							routes[ijIndex].RouteRelays[0][0] = int32(i)
-							routes[ijIndex].RouteRelays[0][1] = int32(j)
-							routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
+					} else {
 
-						} else {
+						// no route exists from i -> j
 
-							// no route exists from i -> j
-
-						}
-
+					}
 					} else {
 
 						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
@@ -806,6 +861,7 @@ func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32
 
 	return routes
 }
+*/
 
 // ---------------------------------------------------
 
@@ -960,6 +1016,17 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 			entry := &routeMatrix[index]
 
 			if entry.NumRoutes > 0 {
+				cost := sourceRelayCost[i] + entry.RouteCost[0] // first entry is always lowest cost
+				// todo
+				fmt.Printf("cost = %d\n", cost)
+				if cost < bestRouteCost {
+					bestRouteCost = cost
+				}
+			}
+
+			// todo: full calculations should be done in the optimizer, not here
+			/*
+			if entry.NumRoutes > 0 {
 
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
@@ -977,6 +1044,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 					}
 				}
 			}
+			*/
 		}
 	}
 
