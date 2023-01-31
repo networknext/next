@@ -153,7 +153,6 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 		<html lang="en">
 		<head>
 		  <meta charset="utf-8">
-		  <meta http-equiv="refresh" content="1">
 		  <title>Cost Matrix</title>
 		  <style>
 			table, th, td {
