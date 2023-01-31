@@ -210,26 +210,6 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
 	}
 
-	// filter out any route with the same route hash as existing routes
-	routeHash := RouteHash(relays...)
-	for i := 0; i < manager.NumRoutes; i++ {
-		if manager.RouteHash[i] == routeHash {
-			return
-		}
-	}
-
-	// just add to end, sort later...
-	manager.RouteCost[manager.NumRoutes] = cost
-	manager.RouteHash[manager.NumRoutes] = routeHash
-	manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
-	for i := range relays {
-		manager.RouteRelays[manager.NumRoutes][i] = relays[i]
-	}
-	manager.NumRoutes++
-}
-
-// todo: this code has bugs
-/*
 	if manager.NumRoutes == 0 {
 
 		// no routes yet. add the route
@@ -335,7 +315,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		}
 
 	}
-*/
+}
 
 func RouteHash(relays ...int32) uint32 {
 	const prime = uint32(16777619)
@@ -434,9 +414,6 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 						// direct route exists between i,j. subdivide only when a significant cost reduction occurs.
 
-						// todo
-						fmt.Printf("direct route %d->%d\n",i,j)
-
 						for k := 0; k < numRelays; k++ {
 							if k == i || k == j {
 								continue
@@ -462,10 +439,12 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 					}
 
-					if numRoutes > 0 {
+					const MaxIndirects = 8
 
-						// todo: may be benefit here by sorting and restricting to best n indirects
-
+					if numRoutes > MaxIndirects {
+						sort.SliceStable(working, func(i, j int) bool { return working[i].cost < working[j].cost })
+						copy(indirect[i][j], working[:MaxIndirects])
+					} else {
 						indirect[i][j] = make([]Indirect, numRoutes)
 						copy(indirect[i][j], working)
 					}
@@ -523,29 +502,21 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						}
 					}
 
-					// todo: hack sort best routes 
-
-					numRoutes := routeManager.NumRoutes
-					routeIndex := make([]int, numRoutes)
-					for i := 0; i < numRoutes; i++ {
-						routeIndex[i] = i
-					}
-					sort.SliceStable(routeIndex, func(i, j int) bool { return routeManager.RouteCost[i] < routeManager.RouteCost[j] })
-
 					// store the best routes in the route matrix, in sorted order from lowest to highest cost
+
+					numRoutes := int(routeManager.NumRoutes)
 
 					routes[index].DirectCost = cost[index]
 					routes[index].NumRoutes = int32(numRoutes)
 
-					for x := 0; x < numRoutes; x++ {
-						u := routeIndex[x]
-						routes[index].RouteCost[u] = routeManager.RouteCost[x]
-						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[x]
+					for u := 0; u < numRoutes; u++ {
+						routes[index].RouteCost[u] = routeManager.RouteCost[u]
+						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
 						numRelays := int(routes[index].RouteNumRelays[u])
 						for v := 0; v < numRelays; v++ {
-							routes[index].RouteRelays[u][v] = routeManager.RouteRelays[x][v]
+							routes[index].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
 						}
-						routes[index].RouteHash[u] = routeManager.RouteHash[x]
+						routes[index].RouteHash[u] = routeManager.RouteHash[u]
 					}
 				}
 			}
