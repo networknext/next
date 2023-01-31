@@ -34,60 +34,35 @@ DONE
 
 	Convert the counters display to a html table. easier to read
 
-TODO
-
 	Write a function to generate the a view of the database as html.
 
 	Hook this function up automatically in service.go to "/database" whenever a database is available.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
 
 	--------------
 
-	Add a packets sent counter. Right now we have a packets received counter, but not sent. Useful to have both.
+	Relays as HTML like "next relays" but on endpoint "/relays"
+	
+	--------------
+
+	Cost matrix as HTML table via "/cost_matrix" or equivalent
 
 	--------------
 
-	After this is working, keep track of counters in total, this means, when a new counter comes in, sub the previous value to get the delta, then add the delta to the grand total.
+	Track counters in total, as well as just per-relay.
 
-	Implement an endpoint "relay_counters" to see overall total counts (no relay name)
-
-	--------------
-
-	Verify relay counters are visible in dev.
+	Add an endpoint to view the total counters.
 
 	--------------
 
-	Track fallback to direct (sent directly up from clients) in raspberry backend.
-
-	Store the fallbacks to direct in redis, with the time of fallback and the client address.
-
-	Print the fallback to directs out on request via an endpoint. Doesn't have to be fast.
-
-	Limit it to some maximum number, like 1024 entries...
+	Active relays as HTML table via "/active_relays"
 
 	--------------
 
+	Add a packets sent counter to reference relay. Right now we have a packets received counter, but not sent. Useful to have both.
 
-
-
+	--------------
 
 
 
@@ -151,13 +126,6 @@ Essentials:
 		2. Relay manager internal state as HTML table under "/relay_manager"
 
 		3. History for a specific relay as a HTML table under "/history/[relay_name]"
-
-	    4. View database as HTML table via "/database"
-
-	    5. Cost matrix as HTML table via "/cost_matrix"
-
-	    6. Active relays as HTML table via "/active_relays"
-
 
     --------------
 
