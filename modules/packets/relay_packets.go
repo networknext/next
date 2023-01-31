@@ -15,7 +15,7 @@ const (
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
 	MaxRelays                        = 1000
-	NumCounters                      = 100
+	NumRelayCounters                 = 100
 )
 
 // --------------------------------------------------------------------------
@@ -46,7 +46,7 @@ type RelayUpdateRequestPacket struct {
 	BandwidthSentKbps uint64
 	BandwidthRecvKbps uint64
 	NumCounters       uint32
-	Counters          [NumCounters]uint64
+	Counters          [NumRelayCounters]uint64
 }
 
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
@@ -176,7 +176,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read num counters")
 	}
 
-	if packet.NumCounters != NumCounters {
+	if packet.NumCounters != NumRelayCounters {
 		return errors.New("wrong number of counters")
 	}
 
