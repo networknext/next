@@ -25,7 +25,7 @@ import (
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 2 // todo: test -- 256 // todo: test
+const MaxRoutesPerEntry = 64
 const JitterThreshold = 15
 
 const NEXT_MAX_NODES = 7
@@ -547,8 +547,6 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						}
 						routes[index].RouteHash[u] = routeManager.RouteHash[x]
 					}
-
-					fmt.Printf("best routes: %+v\n", routes[index])
 				}
 			}
 
