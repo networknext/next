@@ -480,8 +480,8 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 	packet.BandwidthSentKbps = rand.Uint64()
 	packet.BandwidthRecvKbps = rand.Uint64()
 
-	packet.NumCounters = packets.NumCounters
-	for i := 0; i < packets.NumCounters; i++ {
+	packet.NumCounters = packets.NumRelayCounters
+	for i := 0; i < packets.NumRelayCounters; i++ {
 		packet.Counters[i] = rand.Uint64()
 	}
 
