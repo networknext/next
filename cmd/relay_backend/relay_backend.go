@@ -118,7 +118,8 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
-    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+  service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+  service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -133,6 +134,75 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		costMatrix := common.CostMatrix{}
+		err := costMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no cost matrix\n")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <meta http-equiv="refresh" content="1">
+		  <title>Cost Matrix</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+		fmt.Fprintf(w, "<tr><td></td>")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+		}
+		fmt.Fprintf(w, "</tr>\n")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+			for j := range costMatrix.RelayNames {
+				if i == j {
+					fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+					continue
+				}
+				nope := false
+				costString := ""
+				index := core.TriMatrixIndex(i,j)
+				cost := costMatrix.Costs[index]
+				if cost >= 0 {
+					costString = fmt.Sprintf("%d", cost)
+				} else {
+					nope = true
+				}
+				if nope {
+					fmt.Fprintf(w, "<td bgcolor=\"red\"></td>")
+				} else {
+					fmt.Fprintf(w, "<td bgcolor=\"green\">%s</td>", costString)
+				}
+			}
+			fmt.Fprintf(w, "</tr>\n")
+		}
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
 }
 
 func initCounterNames() {
@@ -216,25 +286,6 @@ func initCounterNames() {
 	counterNames[78] = "RELAY_PING_PACKET_SENT"
 }
 
-const htmlHeader = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="1">
-  <title>Relay Counters</title>
-  <style>
-	table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      text-align: center;
-      padding: 10px;
-    }
-  </style>
-</head>
-<body>`
-
-const htmlFooter = `</body></html>`
-
 func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -254,15 +305,35 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 		relayId := relayData.RelayIds[relayIndex]
 		counters := relayManager.GetRelayCounters(relayId)
 		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <meta http-equiv="refresh" content="1">
+		  <title>Relay Counters</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
 		fmt.Fprintf(w, "%s\n", htmlHeader)
-		fmt.Fprintf(w, "    <pre>%s\n\n<table>\n", relayName)
+		fmt.Fprintf(w, "%s\n\n<table>\n", relayName)
 		for i := range counterNames {
 			if counterNames[i] == "" {
 				continue
 			}
 			fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td></tr>\n", counterNames[i], counters[i])
 		}
-		fmt.Fprintf(w, "    </pre></table>\n")
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
 		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }

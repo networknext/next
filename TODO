@@ -1,52 +1,16 @@
 DONE
 
-	Implement database validation
-
-	Standardize the function that extracts the database from SQL into the database module
-
-	Remove sync stuff in common and clean up service.go
-
-	Disable existing sync service
-
-	Pull down the database.bin from google cloud storage directly inside service.go, before loading the database.bin
-
-	Deploy to dev and verify that the database.bin gets reloaded periodically
-
-	It seems that one of the raspberry backends was in a bad state. If this happens again, check the logs it is probably crashing.
-
-	Clean up the super intensive logs in the relay code and wrap them with #if RELAY_INTENSIVE_DEBUG or similar
-
-	Define set of relay counters as array of uint64_t in reference relay
-
-	Instrument the ref relay code to increment the counters
-
-	Pass the relay counters up to the relay backend with each relay update
-
-	Receive the counters in each relay update, pass it on to the relay update message forwarded over pubsub.
-
-	Deployed and verified counters are coming through in dev.
-
-	Keep track of the counters first on a per-relay basis, this means there is an array of counters per-relay in the relay manager.
-
-	Implement an endpoint "relay_counters/[relay_name]" to view these counters in a HTML table.
-
-	Finish converting all counter names in golang
-
-	Convert the counters display to a html table. easier to read
-
-	Write a function to generate the a view of the database as html.
-
-	Hook this function up automatically in service.go to "/database" whenever a database is available.
-
 TODO
+
+	Cost matrix as HTML table via "/cost_matrix_html" or equivalent
+
+	--------------
+
+	Server backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
 
 	--------------
 
 	Relays as HTML like "next relays" but on endpoint "/relays"
-	
-	--------------
-
-	Cost matrix as HTML table via "/cost_matrix" or equivalent
 
 	--------------
 
