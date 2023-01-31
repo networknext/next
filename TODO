@@ -4,17 +4,66 @@ DONE
 
 	Relay backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
 
+	Add the optimization for more than n indirects, n=8 for example.
+
+	Bring back the subdivision in the optimizer
+
 TODO
 
-	Finish cleaning up optimizer code. Add the optimization for more than n indirects, n=8 for example.
+	Fix up all the unit tests	
 
+	--------------
 
+	Bring back the dest relays only in the optimize2
 
 	--------------
 
 	There is a bug where all relays are set as dest relays. In dev, only one relay is dest relay, and optimize for everything else, except to that dest relay should be disabled.
 
 	--------------
+
+	Get it all live and deployed
+
+	--------------
+
+	Relax.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Track relay manager state for a specific relay, so I can debug stuff.
 

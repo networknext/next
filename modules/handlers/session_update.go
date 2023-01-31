@@ -689,7 +689,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.Request.UserHash,
 			state.RouteMatrix.RouteEntries,
-			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
 			int32(state.Request.DirectRTT),
@@ -768,7 +767,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.Request.UserHash,
 			state.RouteMatrix.RouteEntries,
-			state.RouteMatrix.FullRelayIndexSet,
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
