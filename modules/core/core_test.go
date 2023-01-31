@@ -902,9 +902,6 @@ func TestFasterRoute4(t *testing.T) {
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
-	// todo
-	fmt.Printf("routes = %+v\n", routes)
-
 	// verify the optimizer finds the 4 hop route that is faster than direct
 
 	assert.Equal(t, 3, len(routes))
