@@ -32,6 +32,19 @@ TODO
 
 	Deploy to server backend and verify that traffic goes across internal addresses via counters
 
+	I can see that google.oregon is sending route request packets via internal addresses.
+
+	However, google.iowa.1 is not receiving those route request packets... at least, not over what it thinks is an internal address.
+
+	Is google.iowa filtering out packets with the basic/advanced packet filters?
+
+	Or is it just not receiving the route request packets at all?
+
+	---------------
+
+	Missing the session destroyed counter in the relay. These should all live at the top.
+
+	Want to see a num packets sent counter in relay, at the top.
 
 
 

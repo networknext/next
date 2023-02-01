@@ -428,8 +428,8 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 		  </style>
 		</head>
 		<body>`
-		fmt.Fprintf(w, "%s<br><br>\n", htmlHeader)
-		fmt.Fprintf(w, "%s\n\n<table>\n", relayName)
+		fmt.Fprintf(w, "%s>\n", htmlHeader)
+		fmt.Fprintf(w, "%s<br><br><table>\n", relayName)
 		for i := range counterNames {
 			if counterNames[i] == "" {
 				continue
