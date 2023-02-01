@@ -16,14 +16,50 @@ DONE
 
 	Get it all live and deployed
 
+	Turned expiry back on and dev is working fine
+
 TODO
-
-	Track relay manager state for a specific relay, so I can debug stuff.
-
-	Then, turn back on the expiry in the reference relay, and make sure it's working again in dev.
 
 	--------------
 
+	Bring back history.
+
+	Start with RTT history. Do it for 5 minutes (300 samples). Take the ***MAXIMUM RTT***
+
+	This includes clearing history for relays that aren't ready, have turned off, then come back on etc...
+
+	--------------
+
+	Visualize RTT history between two relays
+
+	This history is bidirectional, eg. history for A -> B, and another history for B -> A
+
+	This means:
+
+		/rtt_history/a/b
+
+	Is not the same as:
+
+		/rtt_history/b/a
+
+	Visualize the whole history as a table, scrolling right
+
+	Perhaps reduce history to 60 seconds, from 300.
+
+	Or, maybe visualize history as a 2d grid.
+
+	--------------
+
+	Provide some way to download the relay manager state as a binary, even a GOB, so I can write code to adjust how the relay manager works
+	and compare it with real data, to see how it improves route quality.
+
+	/relay_manager -> relay_manager.bin
+
+	Load as GOB.
+
+	Can play around locally...
+
+	--------------
 
 
 
