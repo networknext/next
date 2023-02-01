@@ -10,11 +10,11 @@ DONE
 
     This change can be made in the future by creating new relay ping and pong packet types.
 
+    Extend the route token read and write in the backend to use the short version of address with the next/prev internal flags
+
 TODO
 
-    --------------
-
-    Extend the route token read and write in the backend to use the short version of address with the next/prev internal flags
+	Deploy updated relay code without turning on next/prev internal flags and verify everything is still OK
 
 	--------------
 
@@ -325,3 +325,15 @@ Nice to have:
     New relay ping/pong that supports advanced packet filter.
 
     --------------
+
+    Jitter should not only include the jitter measurement, but also the deviation of RTT in the relay ping history.
+
+    --------------
+
+
+
+
+
+
+
+
