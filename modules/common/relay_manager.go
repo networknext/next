@@ -14,7 +14,7 @@ const RelayTimeout = 10
 
 const HistorySize = 60 // 60 seconds for faster iteration in dev
 
-const NumRelayCounters = 100
+const NumRelayCounters = 128
 
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2

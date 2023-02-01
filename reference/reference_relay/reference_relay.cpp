@@ -82,87 +82,102 @@
 
 #define RELAY_MAX_UPDATE_ATTEMPTS                                 30
 
-#define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                            		 		     0
-#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                         			 		     1
-#define RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET           					 		     2
-#define RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET        					 		     3
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                					 		     4
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE                					 		     5
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN              		 		 	 6
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                  					 	 7
-#define RELAY_COUNTER_SESSION_CREATED                              					 		     8
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS				 	 9
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS   	   			10
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                       	   	    		    11
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_BAD_SIZE                                			12
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                          		13
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                         		14
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                           	    	15
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                          			16
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                     			17
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		18
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		19
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED                              			20
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_BAD_SIZE                              			21
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                         		22
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     23
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                                   24
-#define RELAY_COUNTER_SESSION_CONTINUED															25
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS           		26
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS         		27
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED											28
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE										    29
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER							30
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                     			31
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION							32
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED 									33
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                       		34
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		35
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		36
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 											37
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL 										38
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG 											39
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER 					 		40
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION 							41
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED 									42
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED 									43
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER 							44
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS 				45
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS 				46
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED 									        47
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL 										48
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG 											49
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER 							50
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                			51
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED									52
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED 									53
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER 							54
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS 	    	55
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      	56
-#define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              57
-#define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       58
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 59
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                60
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       61
-#define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      62
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               63
-#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    64
-#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  65
-#define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                              66
-#define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                              67
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                 68
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                                69
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                       70
-#define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                      71
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                               72
-#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS                73
-#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS              74
-#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 75
-#define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 76
-#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      77
-#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    78
+#define RELAY_COUNTER_PACKETS_SENT                                                               0
+#define RELAY_COUNTER_PACKETS_RECEIVED                                                           1
+#define RELAY_COUNTER_BYTES_SENT                                                                 2
+#define RELAY_COUNTER_BYTES_RECEIVED                                                             3
+#define RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET                                         4
+#define RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET                                      5
+#define RELAY_COUNTER_SESSION_CREATED                                                            6
+#define RELAY_COUNTER_SESSION_CONTINUED                                                          7
+#define RELAY_COUNTER_SESSION_DESTROYED                                                          8
+#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                     9
+#define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                10
+#define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                            		 		        11
+#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                         			 		    12
 
-#define NUM_RELAY_COUNTERS                                                                     100
+#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 20
+#define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 21
+#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      22
+
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                					 		    30
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE                					 		    31
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN              		 		 	32
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                  					 	33
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS				 	34
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS   	   			35
+
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                       	   	    		    40
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_BAD_SIZE                                			41
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                          		42
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                         		43
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                           	    	44
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                          			45
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                     			46
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		47
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		48
+
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED                              			50
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_BAD_SIZE                              			51
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                         		52
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     53
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                                   54
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS           		55
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS         		56
+
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED											60
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE										    61
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER							62
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                     			63
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION							64
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED 									65
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                       		66
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		67
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		68
+
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 											70
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL 										71
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG 											72
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER 					 		73
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION 							74
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED 									75
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED 									76
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER 							77
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS 				78
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS 				79
+
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED 									        80
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL 										81
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG 											82
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER 							83
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                			84
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED									85
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED 									86
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER 							87
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS 	    	88
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      	89
+
+#define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              90
+#define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       91
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 92
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                93
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       94
+#define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      95
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               96
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    97
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  98
+
+#define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                             100
+#define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                             101
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                102
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                               103
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                      104
+#define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                     105
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                              106
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS               107
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS             108
+
+#define NUM_RELAY_COUNTERS                                                                     128
 
 // -------------------------------------------------------------------------------------
 
@@ -4369,6 +4384,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             packet_data[0] = RELAY_PONG_PACKET;
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, 1 + 8 );
+            relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
             relay->bytes_sent += 1 + 8;
         }
         else if ( packet_id == RELAY_PONG_PACKET && packet_bytes == 1 + 8 )
@@ -4440,7 +4456,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET_SDK4;
 
                 relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
-
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+ 
                 relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK4 )
@@ -4493,7 +4510,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 session->server_to_client_sequence = clean_sequence;
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
-
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+ 
                 relay->bytes_sent += packet_bytes;
             }
             else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK4 )
@@ -4546,6 +4564,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET_SDK4;
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
             }
@@ -4598,6 +4617,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 session->server_to_client_sequence = clean_sequence;
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes;
             }
@@ -4655,6 +4675,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes;
             }
@@ -4712,6 +4733,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes;
             }
@@ -4764,6 +4786,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 session->client_to_server_sequence = clean_sequence;
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes;
             }
@@ -4816,6 +4839,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 session->server_to_client_sequence = clean_sequence;
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes;
             }
@@ -4829,6 +4853,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 packet_data[0] = RELAY_NEAR_PONG_PACKET_SDK4;
 
                 relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
+                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                 relay->bytes_sent += packet_bytes - 16;
             }
@@ -5001,6 +5026,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 	                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5024,6 +5050,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 	                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5133,6 +5160,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 			            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5155,6 +5183,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 			            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5257,6 +5286,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5278,6 +5308,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5385,6 +5416,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 		            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
                  
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5406,6 +5438,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 			            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
                  
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5528,6 +5561,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 					    relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
                     
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5549,6 +5583,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 					    relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
                     
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5670,6 +5705,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 					    relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5692,6 +5728,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 					    relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5802,6 +5839,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5824,6 +5862,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5934,6 +5973,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5955,6 +5995,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                         relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                         relay->bytes_sent += packet_bytes;
                     }
@@ -5994,6 +6035,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG]++;
 
                     relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
+                    relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
 
                     relay->bytes_sent += packet_bytes;
                 }
@@ -6059,6 +6101,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
 
             relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
+            relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
         }
 
         relay_platform_sleep( 1.0 / 100.0 );

@@ -33,7 +33,7 @@ var TestRouterPrivateKey = []byte{}
 
 var TestBackendPrivateKey = []byte{}
 
-const NumCounters = 100
+const NumCounters = packets.NumRelayCounters
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000

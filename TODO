@@ -56,8 +56,25 @@ TODO
 
 	Want to see a num packets sent counter in relay, at the top.
 
+	---------------
 
+	Experiment with a different way for the main thread to get packets from the background thread in sdk5.
 
+	Remove the requirement to call next_client_update to pump packets (and commands) coming in.
+
+	---------------
+
+	Implement relay validation on join
+
+		1. Verify the relay has the correct public and internal addresses
+
+		2. Verify its public/private keypairs are valid (can encrypt/decrypt data)
+
+ 		3. Verify that it can read/write test tokens sent to it from the backend
+
+		4. On the relay backend side, verify that it can sign data with the expected private key.
+
+	---------------
 
 
 
@@ -105,18 +122,6 @@ TODO
 
 
 Essentials:
-
-    --------------
-
-    Add extensive verification when a relay starts to catch configuration errors:
-
-		1. Verify the relay can send and receive packets over the UDP port
-
-		2. Verify its public/private keypairs are valid (can encrypt/decrypt)
-
- 		3. Verify that it can read/write test tokens sent to it from the backend
-
-		4. Verify that it is configured with the correct public and internal address
 
     --------------
 
@@ -362,11 +367,3 @@ Nice to have:
     Jitter should not only include the jitter measurement, but also the deviation of RTT in the relay ping history.
 
     --------------
-
-
-
-
-
-
-
-
