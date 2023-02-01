@@ -275,7 +275,7 @@ func (database *Database) String() string {
 
 	// buyers
 
-	output += "\n\nBuyers:\n\n"
+	output += "\nBuyers:\n\n"
 
 	type BuyerRow struct {
 		Name            string
@@ -550,9 +550,9 @@ func (database *Database) WriteHTML(w io.Writer) {
 
 	fmt.Fprintf(w, "<br><br>Buyers:<br><br>")
 	fmt.Fprintf(w, "<table>\n")
-	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Name", "Id", "Debug", "Public Key Base64")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Name", "Id", "Live", "Debug", "Public Key Base64")
 	for i := range buyers {
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", buyers[i].Name, buyers[i].Id, buyers[i].Debug, buyers[i].PublicKeyBase64)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", buyers[i].Name, buyers[i].Id, buyers[i].Live, buyers[i].Debug, buyers[i].PublicKeyBase64)
 	}
 	fmt.Fprintf(w, "</table>\n")
 	
