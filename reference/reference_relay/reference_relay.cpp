@@ -4247,6 +4247,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     };
 
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
+    memset( relay_ping_data, 0, sizeof(relay_ping_data) );
 
     for ( uint32_t i = 0; i < num_relays; ++i )
     {

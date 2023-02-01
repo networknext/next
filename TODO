@@ -12,9 +12,15 @@ DONE
 
     Extend the route token read and write in the backend to use the short version of address with the next/prev internal flags
 
-TODO
-
 	Deploy updated relay code without turning on next/prev internal flags and verify everything is still OK
+
+TODO
+	
+	Looks like stuff is broken...
+
+	Pings seem to be broken between relays.
+
+	Did I screw up the internal write in the relay backend?
 
 	--------------
 
