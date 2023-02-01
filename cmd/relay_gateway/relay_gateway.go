@@ -125,22 +125,17 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				continue
 			}
 
-			// todo: bring back internal address pings when ready
 			address := relayData.RelayArray[i].PublicAddress.String()
-			/*
-			var address string
-			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress {
-				// todo
-				fmt.Printf("has internal address: %s\n", relayData.RelayArray[i].InternalAddress.String())
+
+			internal := uint8(0)
+			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress && relay.HasInternalAddress {
 				address = relayData.RelayArray[i].InternalAddress.String()
-			} else {
+				internal = 1
 			}
-			*/
 
 			responsePacket.RelayId[index] = relayData.RelayIds[i]
 			responsePacket.RelayAddress[index] = address
-
-			// todo: fill internal uint8's here as well
+			responsePacket.RelayInternal[index] = internal
 
 			index++
 		}

@@ -20,8 +20,6 @@ import (
 	"github.com/networknext/backend/modules/packets"
 )
 
-const InvalidRouteValue = 10000.0
-
 var maxRTT float32
 var maxJitter float32
 var maxPacketLoss float32
@@ -734,23 +732,21 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					sampleJitter[i] = jitter
 					samplePacketLoss[i] = pl
 
-					if rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue {
-						if jitter <= maxJitter && pl <= maxPacketLoss {
-							numRoutable++
-							sampleRoutable[i] = true
-						}
-
-						pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
-							Version:    messages.PingStatsMessageVersion_Write,
-							Timestamp:  uint64(time.Now().Unix()),
-							RelayA:     relayId,
-							RelayB:     sampleRelayId,
-							RTT:        rtt,
-							Jitter:     jitter,
-							PacketLoss: pl,
-							Routable:   sampleRoutable[i],
-						})
+					if rtt <= maxRTT && jitter <= maxJitter && pl <= maxPacketLoss {
+						numRoutable++
+						sampleRoutable[i] = true
 					}
+
+					pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
+						Version:    messages.PingStatsMessageVersion_Write,
+						Timestamp:  uint64(time.Now().Unix()),
+						RelayA:     relayId,
+						RelayB:     sampleRelayId,
+						RTT:        rtt,
+						Jitter:     jitter,
+						PacketLoss: pl,
+						Routable:   sampleRoutable[i],
+					})
 				}
 
 				// build relay stats message

@@ -502,6 +502,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	for i := 0; i < int(packet.NumRelays); i++ {
 		packet.RelayId[i] = rand.Uint64()
 		packet.RelayAddress[i] = common.RandomString(packets.MaxRelayAddressLength)
+		packet.RelayInternal[i] = common.RandomBool()
 	}
 
 	packet.TargetVersion = common.RandomString(packets.MaxRelayVersionStringLength)
