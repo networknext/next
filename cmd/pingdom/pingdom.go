@@ -1,8 +1,5 @@
 package main
 
-// todo: need to rebulid this off the new service architecture, only the leader does the uptime check
-// should write the uptime check results out to analytics service via pubsub
-
 import (
 	"net/http"
 	"os"
@@ -34,7 +31,6 @@ func main() {
 	serverBackendHostname = envvar.GetString("SERVER_BACKEND_HOSTNAME", "")
 	portalFrontendHostname = envvar.GetString("PORTAL_FRONTEND_HOSTNAME", "")
 	uptimeStatsPubsubTopic = envvar.GetString("UPTIME_STATS_PUBSUB_TOPIC", "uptime_stats")
-	// pingdom has a resoultion of 1 minute and this keeps us from going over API quota
 	pingInterval = envvar.GetDuration("PINGDOM_API_PING_INTERVAL", time.Minute*1)
 
 	core.Log("google project Id: %s", googleProjectId)

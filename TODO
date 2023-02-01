@@ -1,129 +1,20 @@
 DONE
 
-	Cost matrix as HTML table via "/cost_matrix_html" or equivalent
-
-	Relay backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
-
-	Add the optimization for more than n indirects, n=8 for example.
-
-	Bring back the subdivision in the optimizer
-
-	Fix up all the unit tests	
-
-	Fix happy path.
-
-	Fix sdk4/sdk5.
-
-	Get it all live and deployed
-
-	Turned expiry back on and dev is working fine
-
-	Provide some way to download the relay manager state as a binary, even a GOB, so I can write code to adjust how the relay manager works
-	and compare it with real data, to see how it improves route quality.
-
-	/relay_manager -> relay_manager.bin
-
-	Bring back history.
-
-	Start with RTT history. Do it for 5 minutes (300 samples). Take the ***MAXIMUM RTT***
-
 TODO
 
-	--------------
+    --------------
 
-	Bring back code that excludes relays for 5 minutes when they first come online.
+    Finish implementing internal address support
 
-	This means clearing the relay data if its out of date etc.
+	    1. Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
 
-	--------------
+	    2. Use this internal flag when sending pings to other relays to encode vs. public or internal address
 
-	Visualize RTT history between two relays
+	    3. Check basic and advanced packet filter on receiving ping packets
 
-	This history is bidirectional, eg. history for A -> B, and another history for B -> A
-
-	This means:
-
-		/rtt_history/a/b
-
-	Is not the same as:
-
-		/rtt_history/b/a
-
-	Visualize the whole history as a table, scrolling right
-
-	Perhaps reduce history to 60 seconds, from 300.
-
-	Or, maybe visualize history as a 2d grid.
+	    4. Extend code in backend to fill next/prev internal flags. Only set internal if BOTH relays have internal addresses and are same supplier.
 
 	--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Track counters in total, as well as just per-relay.
-
-	Add an endpoint to view the total counters.
-
-	--------------
-
-	Add a packets sent counter to reference relay. Right now we have a packets received counter, but not sent. Useful to have both.
-
-	--------------
-
 
 
 
@@ -179,50 +70,6 @@ Essentials:
 
     --------------
 
-    Add extensive HTML visualization endpoints:
-
-		1. Leader election state as a HTML table under "/leader"
-
-		2. Relay manager internal state as HTML table under "/relay_manager"
-
-		3. History for a specific relay as a HTML table under "/history/[relay_name]"
-
-    --------------
-
-    Finish implementing internal address support
-
-	    1. Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
-
-	    2. Use this internal flag when sending pings to other relays to encode vs. public or internal address
-
-	    3. Check basic and advanced packet filter on receiving ping packets
-
-	    4. Extend code in backend to fill next/prev internal flags. Only set internal if BOTH relays have internal addresses and are same supplier.
-
-    --------------
-
-    Debug what's wrong with expiry timestamps
-
-    --------------
-
-    Get ping history back in to the relay backend
-
-    --------------
-
-    Add extensive verification when a relay starts to catch configuration errors:
-
-		1. Verify UDP port is working
-
-		2. Verify its public/private keypairs are valid (can encrypt/decrypt)
-
- 		3. Verify that it can read/write test tokens sent to it from the backend
-
-		4. Verify that it is configured with the correct public and internal address
-
-		5. Verify that its name is correct
-
-    --------------
-
 	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
 
 	--------------
@@ -269,13 +116,7 @@ Essentials:
 
 	--------------
 
-	Extend the relay to support a secondary relay backend.
-
-	This will enable relays to be shared between dev and dev5, and prod and prod5.
-
-	--------------
-
-	We need a new relay implementation. The current relay is garbage.
+	Extend and clean up the current reference relay implementation so it is multithreaded.
 
 	--------------
 
@@ -455,3 +296,23 @@ Nice to have:
 	There should be func tests for relay counters
 
 	---------------
+
+	Add a packets sent counter to reference relay. Right now we have a packets received counter, but not sent. Useful to have both.
+
+	---------------
+
+	View leader election state as a HTML table under "/leader"
+
+    --------------
+
+    Add extensive verification when a relay starts to catch configuration errors:
+
+		1. Verify UDP port is working
+
+		2. Verify its public/private keypairs are valid (can encrypt/decrypt)
+
+ 		3. Verify that it can read/write test tokens sent to it from the backend
+
+		4. Verify that it is configured with the correct public and internal address
+
+    --------------
