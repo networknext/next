@@ -18,6 +18,11 @@ DONE
 
 	Turned expiry back on and dev is working fine
 
+	Provide some way to download the relay manager state as a binary, even a GOB, so I can write code to adjust how the relay manager works
+	and compare it with real data, to see how it improves route quality.
+
+	/relay_manager -> relay_manager.bin
+
 TODO
 
 	--------------
@@ -47,17 +52,6 @@ TODO
 	Perhaps reduce history to 60 seconds, from 300.
 
 	Or, maybe visualize history as a 2d grid.
-
-	--------------
-
-	Provide some way to download the relay manager state as a binary, even a GOB, so I can write code to adjust how the relay manager works
-	and compare it with real data, to see how it improves route quality.
-
-	/relay_manager -> relay_manager.bin
-
-	Load as GOB.
-
-	Can play around locally...
 
 	--------------
 

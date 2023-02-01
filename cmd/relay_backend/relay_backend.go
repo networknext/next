@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"net/http"
 	"os"
@@ -118,9 +119,10 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
-  service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
-  service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
-  service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
+    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+    service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
+    service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
+    service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -135,6 +137,24 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func relayManagerHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		copy := relayManager.Copy()
+		var buffer bytes.Buffer
+		err := gob.NewEncoder(&buffer).Encode(copy)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no relay manager\n")
+			return
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 }
 
 func routesHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {

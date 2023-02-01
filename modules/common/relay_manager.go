@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 	"math"
+
+	"github.com/huandu/go-clone"
 )
 
 const RelayTimeout = 10
@@ -410,4 +412,11 @@ func (relayManager *RelayManager) GetRelayCounters(relayId uint64) []uint64 {
 
 func (relayManager *RelayManager) GetTotalCounters() []uint64 {
 	return relayManager.totalCounters[:]
+}
+
+func (relayManager *RelayManager) Copy() *RelayManager {
+	relayManager.mutex.Lock()
+	copy := clone.Clone(relayManager).(*RelayManager)
+	relayManager.mutex.Unlock()
+	return copy
 }
