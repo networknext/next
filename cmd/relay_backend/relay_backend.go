@@ -109,7 +109,7 @@ func main() {
 
 	initCounterNames()
 
-	relayManager := common.CreateRelayManager()
+	relayManager := common.CreateRelayManager(service.Local)
 
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))

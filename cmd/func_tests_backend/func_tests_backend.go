@@ -1488,7 +1488,7 @@ func test_relay_manager() {
 
 	fmt.Printf("test_relay_manager\n")
 
-	relayManager := common.CreateRelayManager()
+	relayManager := common.CreateRelayManager(true)
 
 	ctx, contextCancelFunc := context.WithCancel(context.Background())
 
@@ -1575,7 +1575,7 @@ func test_optimize() {
 
 	fmt.Printf("test_optimize\n")
 
-	relayManager := common.CreateRelayManager()
+	relayManager := common.CreateRelayManager(true)
 
 	ctx, contextCancelFunc := context.WithCancel(context.Background())
 

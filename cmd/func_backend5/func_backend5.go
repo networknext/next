@@ -906,7 +906,7 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	backend.relayManager = common.CreateRelayManager()
+	backend.relayManager = common.CreateRelayManager(true)
 
 	backend.routeMatrix = &common.RouteMatrix{}
 

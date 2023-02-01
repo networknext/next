@@ -70,12 +70,14 @@ type RelayManagerSourceEntry struct {
 
 type RelayManager struct {
 	mutex         sync.RWMutex
+	Local         bool
 	SourceEntries map[uint64]*RelayManagerSourceEntry
 	TotalCounters [NumRelayCounters]uint64
 }
 
-func CreateRelayManager() *RelayManager {
+func CreateRelayManager(local bool) *RelayManager {
 	relayManager := &RelayManager{}
+	relayManager.Local = local
 	relayManager.SourceEntries = make(map[uint64]*RelayManagerSourceEntry)
 	return relayManager
 }
@@ -132,9 +134,15 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destEntry.HistoryJitter[destEntry.HistoryIndex] = sampleJitter[i]
 		destEntry.HistoryPacketLoss[destEntry.HistoryIndex] = samplePacketLoss[i]
 
-		destEntry.RTT = historyMax(destEntry.HistoryRTT[:])
-		destEntry.Jitter = historyMean(destEntry.HistoryJitter[:])
-		destEntry.PacketLoss = historyMean(destEntry.HistoryPacketLoss[:])
+		if !relayManager.Local {
+			destEntry.RTT = historyMax(destEntry.HistoryRTT[:])
+			destEntry.Jitter = historyMean(destEntry.HistoryJitter[:])
+			destEntry.PacketLoss = historyMean(destEntry.HistoryPacketLoss[:])
+		} else {
+			destEntry.RTT = sampleRTT[i]
+			destEntry.RTT = sampleJitter[i]
+			destEntry.RTT = samplePacketLoss[i]
+		}
 
 		destEntry.HistoryIndex = (destEntry.HistoryIndex + 1) % HistorySize
 
