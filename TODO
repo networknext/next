@@ -28,8 +28,6 @@ DONE
 
 	Unit test the next/prev internal flags in the route token
 
-TODO
-
 	Deploy to server backend and verify that traffic goes across internal addresses via counters
 
 	I can see that google.oregon is sending route request packets via internal addresses.
@@ -40,9 +38,21 @@ TODO
 
 	Or is it just not receiving the route request packets at all?
 
+	Confirm that the advanced packet filter is dropping the packets.
+
+	Is google.iowa.1 properly configured with its internal address?
+
+	It had the wrong internal address set via env var. This would have caused the packets to arrive, but get filtered out by the advanced packet filter.
+
+	Getting the relay validation on connect done is extremely important. Adding to essentials.
+
+	Internal addresses are working!
+
+TODO
+
 	---------------
 
-	Missing the session destroyed counter in the relay. These should all live at the top.
+	Move all the essential counters up top of the relay counters, eg. packets sent/received, sessions created, sessions continued, sessions destroyed
 
 	Want to see a num packets sent counter in relay, at the top.
 
@@ -95,6 +105,18 @@ TODO
 
 
 Essentials:
+
+    --------------
+
+    Add extensive verification when a relay starts to catch configuration errors:
+
+		1. Verify the relay can send and receive packets over the UDP port
+
+		2. Verify its public/private keypairs are valid (can encrypt/decrypt)
+
+ 		3. Verify that it can read/write test tokens sent to it from the backend
+
+		4. Verify that it is configured with the correct public and internal address
 
     --------------
 
@@ -330,18 +352,6 @@ Nice to have:
 	---------------
 
 	View leader election state as a HTML table under "/leader"
-
-    --------------
-
-    Add extensive verification when a relay starts to catch configuration errors:
-
-		1. Verify UDP port is working
-
-		2. Verify its public/private keypairs are valid (can encrypt/decrypt)
-
- 		3. Verify that it can read/write test tokens sent to it from the backend
-
-		4. Verify that it is configured with the correct public and internal address
 
     --------------
 
