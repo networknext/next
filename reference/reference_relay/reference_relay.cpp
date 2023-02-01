@@ -3965,6 +3965,7 @@ struct relay_t
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
+    uint8_t relay_internal[MAX_RELAYS];
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
@@ -4242,6 +4243,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     {
         uint64_t id;
         relay_address_t address;
+        uint8_t internal;
     };
 
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
@@ -4256,6 +4258,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
             error = true;
             break;
         }
+        relay_ping_data[i].internal = relay_read_uint8( &q );
     }
 
     if ( error )
@@ -4304,6 +4307,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     {
         relay->relay_ids[i] = relay_ping_data[i].id;
         relay->relay_addresses[i] = relay_ping_data[i].address;
+        relay->relay_internal[i] = relay_ping_data[i].internal;
     }
     relay->relays_dirty = true;
     memcpy( relay->upcoming_magic, &upcoming_magic, 8 );

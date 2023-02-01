@@ -220,7 +220,7 @@ type RelayUpdateResponsePacket struct {
 	NumRelays     uint32
 	RelayId       [MaxRelays]uint64
 	RelayAddress  [MaxRelays]string
-	RelayInternal []byte
+	RelayInternal [MaxRelays]byte
 	TargetVersion string
 	UpcomingMagic []byte
 	CurrentMagic  []byte
