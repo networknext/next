@@ -12,7 +12,7 @@ import (
 
 const RelayTimeout = 10
 
-const HistorySize = 300 // 5 minutes @ one relay update per-second
+const HistorySize = 60 // 60 seconds for faster iteration in dev
 
 const NumRelayCounters = 100
 
@@ -93,7 +93,15 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		relayManager.SourceEntries[relayId] = sourceEntry
 	}
 
-	// update stats for the source relay, then...
+	// time out any stale dest relay entries
+
+	for k,v := range sourceEntry.DestEntries {
+		if v.LastUpdateTime < currentTime - RelayTimeout {
+			fmt.Printf("timed out dest relay entry: %x|%x\n", relayId, k)
+			delete(sourceEntry.DestEntries, k)
+		}
+	}
+
 	// iterate across all samples and insert them into the history buffer
 	// in the dest entry corresponding to their relay pair (source,dest)
 
@@ -113,6 +121,11 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		if !exists {
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.DestEntries[destRelayId] = destEntry
+			for j := 0; j < HistorySize; j++ {
+				destEntry.HistoryRTT[j] = 10000.0
+				destEntry.HistoryJitter[j] = 10000.0
+				destEntry.HistoryPacketLoss[j] = 10000.0
+			}
 		}
 
 		destEntry.HistoryRTT[destEntry.HistoryIndex] = sampleRTT[i]

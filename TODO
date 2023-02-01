@@ -23,15 +23,17 @@ DONE
 
 	/relay_manager -> relay_manager.bin
 
-TODO
-
-	--------------
-
 	Bring back history.
 
 	Start with RTT history. Do it for 5 minutes (300 samples). Take the ***MAXIMUM RTT***
 
-	This includes clearing history for relays that aren't ready, have turned off, then come back on etc...
+TODO
+
+	--------------
+
+	Bring back code that excludes relays for 5 minutes when they first come online.
+
+	This means clearing the relay data if its out of date etc.
 
 	--------------
 
