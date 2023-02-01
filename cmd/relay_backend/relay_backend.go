@@ -242,9 +242,12 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 		      text-align: center;
 		      padding: 10px;
 		    }
+			cost{
+         	  color: white;
+      		}
 			*{
 		    font-family:Courier;
-		  }	  
+		    }	  
 		  </style>
 		</head>
 		<body>`
@@ -276,7 +279,7 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 				if nope {
 					fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
 				} else {
-					fmt.Fprintf(w, "<td %s bgcolor=\"green\">%s</td>", clickable, costString)
+					fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
 				}
 			}
 			fmt.Fprintf(w, "</tr>\n")
