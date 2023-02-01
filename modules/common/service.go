@@ -536,7 +536,6 @@ func (service *Service) UpdateRouteMatrix() {
 
 func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 	service.routeMatrixMutex.RLock()
-	// todo: this is super lame. just have a pointer to the database IN the route matrix dude...
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
 	service.routeMatrixMutex.RUnlock()

@@ -117,7 +117,7 @@ func OptimizeThread() {
 			relayDatacenterIds[i] = common.DatacenterId("local")
 		}
 
-		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 
 		numCPUs := runtime.NumCPU()
 		numSegments := numRelays
@@ -206,7 +206,7 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
-	// todo: we should really read this as a packet instead of manually reading it here below...
+	// todo: we should really read this as a packet instead of manually reading it here
 
 	// parse the relay update request
 

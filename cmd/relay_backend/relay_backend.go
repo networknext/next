@@ -118,7 +118,9 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
-    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+  service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+  service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
+  service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -133,6 +135,159 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func routesHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		src := vars["src"]
+		dest := vars["dest"]
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+		routeMatrix := common.RouteMatrix{}
+		err := routeMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no route matrix\n")
+			return
+		}
+		fmt.Printf("relay names: %+v\n", routeMatrix.RelayNames)
+		src_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == src {
+				src_index = i
+				break
+			}
+		}
+		dest_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == dest {
+				dest_index = i
+				break
+			}
+		}
+		fmt.Printf("%s %s %d %d\n", src, dest, src_index, dest_index)
+		if src_index == -1 || dest_index == -1 || src_index == dest_index {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <title>Routes</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
+		fmt.Fprintf(w, "<table>\n")
+		fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
+		index := core.TriMatrixIndex(src_index, dest_index)
+		entry := routeMatrix.RouteEntries[index]
+		for i := 0; i < int(entry.NumRoutes); i++ {
+			routeRelays := ""
+			numRouteRelays := int(entry.RouteNumRelays[i])
+			for j := 0; j < numRouteRelays; j++ {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != numRouteRelays-1 {
+					routeRelays += " - "
+				}
+			}
+			fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
+		}
+		fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
+}
+
+func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		costMatrix := common.CostMatrix{}
+		err := costMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no cost matrix\n")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <title>Cost Matrix</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			cost{
+         	  color: white;
+      		}
+			*{
+		    font-family:Courier;
+		    }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+		fmt.Fprintf(w, "<tr><td></td>")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+		}
+		fmt.Fprintf(w, "</tr>\n")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+			for j := range costMatrix.RelayNames {
+				if i == j {
+					fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+					continue
+				}
+				nope := false
+				costString := ""
+				index := core.TriMatrixIndex(i,j)
+				cost := costMatrix.Costs[index]
+				if cost >= 0 {
+					costString = fmt.Sprintf("%d", cost)
+				} else {
+					nope = true
+				}
+				clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+
+				if nope {
+					fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
+				} else {
+					fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
+				}
+			}
+			fmt.Fprintf(w, "</tr>\n")
+		}
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
 }
 
 func initCounterNames() {
@@ -159,81 +314,63 @@ func initCounterNames() {
 	counterNames[20] = "CONTINUE_REQUEST_PACKET_RECEIVED"
 	counterNames[21] = "CONTINUE_REQUEST_PACKET_BAD_SIZE"
 	counterNames[22] = "CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
-	counterNames[23] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
-	counterNames[24] = "SESSION_CONTINUED"
-	counterNames[25] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-	counterNames[26] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-	counterNames[27] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
-	counterNames[28] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
-	counterNames[29] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[30] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
-	counterNames[31] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
-	counterNames[32] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
-	counterNames[33] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
-	counterNames[34] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-	counterNames[35] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-	counterNames[36] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
-	counterNames[37] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
-	counterNames[38] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
-	counterNames[39] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[40] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
-	counterNames[41] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
-	counterNames[42] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
-	counterNames[43] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
-	counterNames[44] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-	counterNames[45] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-	counterNames[46] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
-	counterNames[47] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
-	counterNames[48] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
-	counterNames[49] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[50] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
-	counterNames[51] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
-	counterNames[52] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
-	counterNames[53] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
-	counterNames[54] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-	counterNames[55] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-	counterNames[56] = "SESSION_PING_PACKET_RECEIVED"
-	counterNames[57] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
-	counterNames[58] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[59] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
-	counterNames[60] = "SESSION_PING_PACKET_SESSION_EXPIRED"
-	counterNames[61] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
-	counterNames[62] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
-	counterNames[63] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-	counterNames[64] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-	counterNames[65] = "SESSION_PONG_PACKET_RECEIVED"
-	counterNames[66] = "SESSION_PONG_PACKET_BAD_SIZE"
-	counterNames[67] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[68] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
-	counterNames[69] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
-	counterNames[70] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
-	counterNames[71] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
-	counterNames[72] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-	counterNames[73] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-	counterNames[74] = "NEAR_PING_PACKET_RECEIVED"
-	counterNames[75] = "NEAR_PING_PACKET_BAD_SIZE"
-	counterNames[76] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
+	counterNames[23] = "CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED"
+	counterNames[24] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
+	counterNames[25] = "SESSION_CONTINUED"
+	counterNames[26] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[27] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[28] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
+	counterNames[29] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
+	counterNames[30] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[31] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
+	counterNames[32] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[33] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
+	counterNames[34] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+	counterNames[35] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[36] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[37] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
+	counterNames[38] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
+	counterNames[39] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
+	counterNames[40] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[41] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[42] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
+	counterNames[43] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
+	counterNames[44] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[45] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[46] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[47] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
+	counterNames[48] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
+	counterNames[49] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
+	counterNames[50] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[51] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[52] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
+	counterNames[53] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
+	counterNames[54] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[55] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[56] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[57] = "SESSION_PING_PACKET_RECEIVED"
+	counterNames[58] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
+	counterNames[59] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[60] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[61] = "SESSION_PING_PACKET_SESSION_EXPIRED"
+	counterNames[62] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
+	counterNames[63] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[64] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[65] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[66] = "SESSION_PONG_PACKET_RECEIVED"
+	counterNames[67] = "SESSION_PONG_PACKET_BAD_SIZE"
+	counterNames[68] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[69] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[70] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
+	counterNames[71] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
+	counterNames[72] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[73] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[74] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[75] = "NEAR_PING_PACKET_RECEIVED"
+	counterNames[76] = "NEAR_PING_PACKET_BAD_SIZE"
+	counterNames[77] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
 	counterNames[78] = "RELAY_PING_PACKET_SENT"
 }
-
-const htmlHeader = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="1">
-  <title>Relay Counters</title>
-  <style>
-	table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      text-align: center;
-      padding: 10px;
-    }
-  </style>
-</head>
-<body>`
-
-const htmlFooter = `</body></html>`
 
 func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -254,15 +391,35 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 		relayId := relayData.RelayIds[relayIndex]
 		counters := relayManager.GetRelayCounters(relayId)
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "%s\n", htmlHeader)
-		fmt.Fprintf(w, "    <pre>%s\n\n<table>\n", relayName)
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <meta http-equiv="refresh" content="1">
+		  <title>Relay Counters</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s<br><br>\n", htmlHeader)
+		fmt.Fprintf(w, "%s\n\n<table>\n", relayName)
 		for i := range counterNames {
 			if counterNames[i] == "" {
 				continue
 			}
 			fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td></tr>\n", counterNames[i], counters[i])
 		}
-		fmt.Fprintf(w, "    </pre></table>\n")
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
 		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
@@ -648,7 +805,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
-				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
+				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

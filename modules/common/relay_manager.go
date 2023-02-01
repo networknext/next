@@ -178,7 +178,7 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 	return rtt, jitter, packetLoss
 }
 
-func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
+func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32) []int32 {
 
 	numRelays := len(relayIds)
 

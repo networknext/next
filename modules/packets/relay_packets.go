@@ -61,7 +61,6 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumSamples); i++ {
 		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
-		// todo: these need to become uint8 values
 		encoding.WriteFloat32(buffer, &index, packet.SampleRTT[i])
 		encoding.WriteFloat32(buffer, &index, packet.SampleJitter[i])
 		encoding.WriteFloat32(buffer, &index, packet.SamplePacketLoss[i])
@@ -246,7 +245,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.PreviousMagic, 8)
 
-	// todo: remove this. we don't need internal addresses array anymore (as far as I can tell...)
+	// todo: recover internal addresses. we need this for sdk5
 	encoding.WriteUint32(buffer, &index, 0)
 
 	return buffer[:index]
@@ -307,7 +306,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read previous magic")
 	}
 
-	// todo: remove internal addresses. as far as I can tell they're no longer needed
+	// todo: reuse this. the internal addresses are needed for sdk5
 
 	var numInternalAddresses uint32
 	if !encoding.ReadUint32(buffer, &index, &numInternalAddresses) {

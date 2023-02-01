@@ -1,62 +1,126 @@
 DONE
 
-	Implement database validation
+	Cost matrix as HTML table via "/cost_matrix_html" or equivalent
 
-	Standardize the function that extracts the database from SQL into the database module
+	Relay backend "routes/src/dest" that show all the routes in the route matrix for the relay pair.
 
-	Remove sync stuff in common and clean up service.go
+	Add the optimization for more than n indirects, n=8 for example.
 
-	Disable existing sync service
+	Bring back the subdivision in the optimizer
 
-	Pull down the database.bin from google cloud storage directly inside service.go, before loading the database.bin
+	Fix up all the unit tests	
 
-	Deploy to dev and verify that the database.bin gets reloaded periodically
+	Fix happy path.
 
-	It seems that one of the raspberry backends was in a bad state. If this happens again, check the logs it is probably crashing.
+	Fix sdk4/sdk5.
 
-	Clean up the super intensive logs in the relay code and wrap them with #if RELAY_INTENSIVE_DEBUG or similar
+	Get it all live and deployed
 
-	Define set of relay counters as array of uint64_t in reference relay
-
-	Instrument the ref relay code to increment the counters
-
-	Pass the relay counters up to the relay backend with each relay update
-
-	Receive the counters in each relay update, pass it on to the relay update message forwarded over pubsub.
-
-	Deployed and verified counters are coming through in dev.
-
-	Keep track of the counters first on a per-relay basis, this means there is an array of counters per-relay in the relay manager.
-
-	Implement an endpoint "relay_counters/[relay_name]" to view these counters in a HTML table.
-
-	Finish converting all counter names in golang
-
-	Convert the counters display to a html table. easier to read
-
-	Write a function to generate the a view of the database as html.
-
-	Hook this function up automatically in service.go to "/database" whenever a database is available.
+	Turned expiry back on and dev is working fine
 
 TODO
 
 	--------------
 
-	Relays as HTML like "next relays" but on endpoint "/relays"
-	
+	Bring back history.
+
+	Start with RTT history. Do it for 5 minutes (300 samples). Take the ***MAXIMUM RTT***
+
+	This includes clearing history for relays that aren't ready, have turned off, then come back on etc...
+
 	--------------
 
-	Cost matrix as HTML table via "/cost_matrix" or equivalent
+	Visualize RTT history between two relays
+
+	This history is bidirectional, eg. history for A -> B, and another history for B -> A
+
+	This means:
+
+		/rtt_history/a/b
+
+	Is not the same as:
+
+		/rtt_history/b/a
+
+	Visualize the whole history as a table, scrolling right
+
+	Perhaps reduce history to 60 seconds, from 300.
+
+	Or, maybe visualize history as a 2d grid.
 
 	--------------
+
+	Provide some way to download the relay manager state as a binary, even a GOB, so I can write code to adjust how the relay manager works
+	and compare it with real data, to see how it improves route quality.
+
+	/relay_manager -> relay_manager.bin
+
+	Load as GOB.
+
+	Can play around locally...
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Track counters in total, as well as just per-relay.
 
 	Add an endpoint to view the total counters.
-
-	--------------
-
-	Active relays as HTML table via "/active_relays"
 
 	--------------
 
