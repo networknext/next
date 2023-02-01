@@ -14,17 +14,23 @@ DONE
 
 	Deploy updated relay code without turning on next/prev internal flags and verify everything is still OK
 
-TODO
-	
 	Looks like stuff is broken...
 
 	Pings seem to be broken between relays.
 
 	Did I screw up the internal write in the relay backend?
 
+	Just needed to deploy the relay gateway (it does the responses to the relay update...)
+
+TODO
+
 	--------------
 
 	Fill in the next/prev internal flags in the route token in the session update
+
+	Unit test the next/prev internal flags in the route token
+
+	Deploy server backend and verify that traffic goes across internal addresses via counters
 
 	--------------
 
