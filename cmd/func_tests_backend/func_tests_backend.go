@@ -1523,7 +1523,7 @@ func test_relay_manager() {
 				const MaxJitter = 100
 				const MaxPacketLoss = 1
 				currentTime := time.Now().Unix()
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 				_ = costs
 				counter++
 			}
@@ -1623,7 +1623,7 @@ func test_optimize() {
 
 				currentTime := time.Now().Unix()
 
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 
 				costMatrix := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

@@ -117,7 +117,7 @@ func OptimizeThread() {
 			relayDatacenterIds[i] = common.DatacenterId("local")
 		}
 
-		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 
 		numCPUs := runtime.NumCPU()
 		numSegments := numRelays

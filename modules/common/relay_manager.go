@@ -178,7 +178,7 @@ func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uin
 	return rtt, jitter, packetLoss
 }
 
-func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32, local bool) []int32 {
+func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64, maxRTT float32, maxJitter float32, maxPacketLoss float32) []int32 {
 
 	numRelays := len(relayIds)
 
@@ -190,28 +190,6 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 
 	activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
 
-	/*
-	// special permissive route matrix for local env
-	if local {
-		for i := 0; i < numRelays; i++ {
-			sourceRelayId := uint64(relayIds[i])
-			_, sourceActive := activeRelayHash[sourceRelayId]
-			if sourceActive {
-				for j := 0; j < i; j++ {
-					destRelayId := uint64(relayIds[j])
-					_, destActive := activeRelayHash[destRelayId]
-					if destActive {
-						index := TriMatrixIndex(i, j)
-						costs[index] = 0
-					}
-				}
-			}
-		}
-		return costs
-	}
-	*/
-
-	// production cost matrix
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
 		_, sourceActive := activeRelayHash[sourceRelayId]
