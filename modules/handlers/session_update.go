@@ -564,20 +564,14 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 		relayAddresses[i] = relay.PublicAddress
 		relayPublicKeys[i] = relay.PublicKey
 
-		// todo: disabled until we get the next/prev internal implemented in the token
-		/*
-		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
 			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
 			prev, _ := state.Database.RelayMap[prevId]
-			if prev.Seller.Id == relay.Seller.Id && relay.HasInternalAddress {
-				relayAddresses[i] = &relay.InternalAddress
+			if prev.Seller.Id == relay.Seller.Id && relay.HasInternalAddress && prev.HasInternalAddress {
+				relayAddresses[i] = relay.InternalAddress
 			}
 		}
-		// todo
-		fmt.Printf("relay %d: %s\n", i, relayAddresses[i].String())
-		*/
 	}
 
 	// server node

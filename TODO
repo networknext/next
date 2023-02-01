@@ -1,21 +1,22 @@
 DONE
 
+	Extend code in server backend session update to fill next/prev internal flags, but ONLY set internal if BOTH relays have internal addresses and are same supplier.
+
 TODO
-
-    --------------
-
-    Finish implementing internal address support
-
-	    1. Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
-
-	    2. Use this internal flag when sending pings to other relays to encode vs. public or internal address
-
-	    3. Check basic and advanced packet filter on receiving ping packets
-
-	    4. Extend code in backend to fill next/prev internal flags. Only set internal if BOTH relays have internal addresses and are same supplier.
 
 	--------------
 
+	Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
+
+    --------------
+
+    Update the reference relay to read these internal uint8 flags and use them to decide whether it uses public or internal address when sending ping packets to other relays.
+
+	--------------
+
+	Fill in the next/prev internal flags in the route token
+
+	--------------
 
 
 
