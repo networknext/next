@@ -25,6 +25,16 @@ func TriMatrixIndex(i, j int) int {
 	return i*(i+1)/2 - i + j
 }
 
+func historyMax(history []float32) float32 {
+	var max float32
+	for i := 0; i < len(history); i++ {
+		if history[i] > max {
+			max = history[i]
+		}
+	}
+	return max
+}
+
 func historyMean(history []float32) float32 {
 	var sum float64
 	for i := 0; i < len(history); i++ {
@@ -107,7 +117,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destEntry.historyJitter[destEntry.historyIndex] = sampleJitter[i]
 		destEntry.historyPacketLoss[destEntry.historyIndex] = samplePacketLoss[i]
 
-		destEntry.rtt = historyMean(destEntry.historyRTT[:])
+		destEntry.rtt = historyMax(destEntry.historyRTT[:])
 		destEntry.jitter = historyMean(destEntry.historyJitter[:])
 		destEntry.packetLoss = historyMean(destEntry.historyPacketLoss[:])
 
@@ -338,12 +348,11 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 		activeRelay.Sessions = sourceEntry.sessions
 		activeRelay.Version = sourceEntry.relayVersion
 
-		// todo
-		// expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
+		expired := currentTime-sourceEntry.lastUpdateTime > RelayTimeout
 
 		shuttingDown := sourceEntry.shuttingDown
 
-		if shuttingDown { // expired || shuttingDown {
+		if expired || shuttingDown {
 			continue
 		}
 
