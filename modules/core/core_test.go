@@ -148,28 +148,28 @@ func TestRouteManager(t *testing.T) {
 	routeManager.AddRoute(200, 4, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
-	// verify routes with multiple relays in same datacenter get filtered out
+	// add some more routes
 
 	routeManager.AddRoute(200, 4, 5, 254, 255)
-	assert.Equal(t, 2, routeManager.NumRoutes)
-
-	routeManager.AddRoute(190, 5, 6, 7, 8, 9)
 	assert.Equal(t, 3, routeManager.NumRoutes)
 
-	routeManager.AddRoute(180, 6, 7, 8)
+	routeManager.AddRoute(190, 5, 6, 7, 8, 9)
 	assert.Equal(t, 4, routeManager.NumRoutes)
 
-	routeManager.AddRoute(175, 8, 9)
+	routeManager.AddRoute(180, 6, 7, 8)
 	assert.Equal(t, 5, routeManager.NumRoutes)
 
-	routeManager.AddRoute(160, 9, 10, 11)
+	routeManager.AddRoute(175, 8, 9)
 	assert.Equal(t, 6, routeManager.NumRoutes)
 
-	routeManager.AddRoute(165, 10, 11, 12, 13, 14)
+	routeManager.AddRoute(160, 9, 10, 11)
 	assert.Equal(t, 7, routeManager.NumRoutes)
 
-	routeManager.AddRoute(150, 11, 12)
+	routeManager.AddRoute(165, 10, 11, 12, 13, 14)
 	assert.Equal(t, 8, routeManager.NumRoutes)
+
+	routeManager.AddRoute(150, 11, 12)
+	assert.Equal(t, 9, routeManager.NumRoutes)
 
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
@@ -181,7 +181,7 @@ func TestRouteManager(t *testing.T) {
 
 	for i := 0; i < numFillers; i++ {
 		routeManager.AddRoute(int32(1000+i), int32(100+i), int32(100+i+1), int32(100+i+2))
-		assert.Equal(t, 8+i+1, routeManager.NumRoutes)
+		assert.Equal(t, 9+i+1, routeManager.NumRoutes)
 	}
 
 	assert.Equal(t, MaxRoutesPerEntry, routeManager.NumRoutes)

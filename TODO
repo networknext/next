@@ -8,9 +8,11 @@ DONE
 
 	Bring back the subdivision in the optimizer
 
+	Fix up all the unit tests	
+
 TODO
 
-	Fix up all the unit tests	
+	Fix up happy path. Probably needs the permissive route matrix...
 
 	--------------
 

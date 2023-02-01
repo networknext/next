@@ -196,15 +196,6 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		loopCheck[relays[i]] = 1
 	}
 
-	// filter out any route with two relays in the same datacenter. These routes are redundant.
-	datacenterCheck := make(map[uint64]int, len(relays))
-	for i := range relays {
-		if _, exists := datacenterCheck[manager.RelayDatacenter[relays[i]]]; exists {
-			return
-		}
-		datacenterCheck[manager.RelayDatacenter[relays[i]]] = 1
-	}
-
 	if manager.NumRoutes == 0 {
 
 		// no routes yet. add the route
@@ -472,13 +463,13 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 				for j := 0; j < i; j++ {
 
-					index := TriMatrixIndex(i, j)
-
 					var routeManager RouteManager
 
 					routeManager.RelayDatacenter = relayDatacenter
 
 					// add the direct route if it exists
+
+					index := TriMatrixIndex(i, j)
 
 					if cost[index] >= 0 {
 						routeManager.AddRoute(cost[index], int32(i), int32(j))
