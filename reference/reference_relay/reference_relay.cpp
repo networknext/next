@@ -4360,6 +4360,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( relay->initialize_router_timestamp == 0 )
             continue;
 
+        relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
+
         // todo: wrap this with #if RELAY_DEVELOPMENT or similar
         if ( relay->fake_packet_loss_start_time >= 0.0f )
         {
