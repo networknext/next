@@ -105,61 +105,62 @@
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED                              			20
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_BAD_SIZE                              			21
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                         		22
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                              		23
-#define RELAY_COUNTER_SESSION_CONTINUED															24
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS           		25
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS         		26
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED											27
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE										    28
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER							29
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                     			30
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION							31
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED 									32
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                       		33
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		34
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		35
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 											36
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL 										37
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG 											38
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER 					 		39
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION 							40
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED 									41
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED 									42
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER 							43
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS 				44
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS 				45
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED 									        46
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL 										47
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG 											48
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER 							49
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                			50
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED									51
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED 									52
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER 							53
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS 	    	54
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      	55
-#define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              56
-#define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       57
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 58
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                59
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       60
-#define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      61
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               62
-#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    63
-#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  64
-#define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                              65
-#define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                              66
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                 67
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                                68
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                       69
-#define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                      70
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                               71
-#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS                72
-#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS              73
-#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 74
-#define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 75
-#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      76
-#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    77
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     23
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                                   24
+#define RELAY_COUNTER_SESSION_CONTINUED															25
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS           		26
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS         		27
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED											28
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE										    29
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER							30
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                     			31
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION							32
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED 									33
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                       		34
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS      		35
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS    		36
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 											37
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL 										38
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG 											39
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER 					 		40
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION 							41
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED 									42
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED 									43
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER 							44
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS 				45
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS 				46
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED 									        47
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL 										48
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG 											49
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER 							50
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                			51
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED									52
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED 									53
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER 							54
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS 	    	55
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS      	56
+#define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              57
+#define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       58
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 59
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                60
+#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       61
+#define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      62
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               63
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    64
+#define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  65
+#define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                              66
+#define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                              67
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                 68
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                                69
+#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                       70
+#define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                      71
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                               72
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS                73
+#define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS              74
+#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 75
+#define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 76
+#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      77
+#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    78
 
 #define NUM_RELAY_COUNTERS                                                                     100
 
@@ -4445,7 +4446,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay->sessions->insert( std::make_pair(hash, session) );
                     relay->envelope_bandwidth_kbps_up += session->kbps_up;
                     relay->envelope_bandwidth_kbps_down += session->kbps_down;
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 }
                 relay_platform_mutex_release( relay->mutex );
 
@@ -5092,7 +5095,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-		            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_SESSION_EXPIRED]++;
+		            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5203,7 +5206,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "ignored continue request. token expired [sdk5]\n" );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-		            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_TOKEN_EXPIRED]++;
+		            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                     continue;
                 }
 
@@ -5226,7 +5229,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue request. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-		            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_SESSION_EXPIRED]++;
+		            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5345,7 +5348,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-	            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_SESSION_EXPIRED]++;
+	            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
@@ -5624,7 +5627,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored server to client packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-				    relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_SESSION_EXPIRED]++;
+				    relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
                     relay_platform_mutex_release( relay->mutex );
