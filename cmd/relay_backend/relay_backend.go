@@ -146,7 +146,7 @@ func relayManagerHandler(service *common.Service, relayManager *common.RelayMana
 		err := gob.NewEncoder(&buffer).Encode(copy)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintf(w, "no relay manager\n")
+			fmt.Fprintf(w, "no relay manager: %v\n", err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")
