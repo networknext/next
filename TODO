@@ -26,13 +26,11 @@ DONE
 
 	Fix up the weirdness with the database maps being by value
 
-TODO
-
 	Unit test the next/prev internal flags in the route token
 
-	Deploy to server backend and verify that traffic goes across internal addresses via counters
+TODO
 
-	--------------
+	Deploy to server backend and verify that traffic goes across internal addresses via counters
 
 
 

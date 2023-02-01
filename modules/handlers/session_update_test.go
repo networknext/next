@@ -1004,7 +1004,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	}
 }
 
-func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalAddresses(t *testing.T) {
+func Test_SessionUpdate_BuildNextTokens_OnlyUseInternalAddressWithSameSupplier(t *testing.T) {
 
 	t.Parallel()
 
@@ -1137,9 +1137,7 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalA
 	}
 }
 
-// todo: test no internal across different sellers
-
-func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresses(t *testing.T) {
+func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	t.Parallel()
 
@@ -1256,6 +1254,26 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresse
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
 		assert.Equal(t, token.KbpsUp, uint32(256))
 		assert.Equal(t, token.KbpsDown, uint32(1024))
+
+		if i == 0 || i == NumTokens - 1 {
+			assert.Equal(t, token.PrevInternal, uint8(0))
+			assert.Equal(t, token.NextInternal, uint8(0))
+		}
+
+		if i == 1 {
+			assert.Equal(t, token.PrevInternal, uint8(0))
+			assert.Equal(t, token.NextInternal, uint8(1))
+		}
+
+		if i == 2 {
+			assert.Equal(t, token.PrevInternal, uint8(1))
+			assert.Equal(t, token.NextInternal, uint8(1))
+		}
+
+		if i == 3 {
+			assert.Equal(t, token.PrevInternal, uint8(1))
+			assert.Equal(t, token.NextInternal, uint8(0))
+		}
 
 		if i == 4 {
 			assert.Nil(t, nil)

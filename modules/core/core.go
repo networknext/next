@@ -665,11 +665,13 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		if i != numNodes-1 {
 			token.NextAddress = addresses[i+1]
 		}
-		if i > 0 && internal[i-1] {
-			token.PrevInternal = 1
-		}
-		if i < numNodes - 1 && internal[i+1] {
-			token.NextInternal = 1
+		if i > 0 && i < numNodes - 1 {
+			if internal[i] {
+				token.PrevInternal = 1
+			}
+			if internal[i+1] {
+				token.NextInternal = 1
+			}
 		}
 		copy(token.PrivateKey[:], privateKey[:])
 		WriteEncryptedRouteToken(&token, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])

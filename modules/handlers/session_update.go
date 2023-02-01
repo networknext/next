@@ -572,6 +572,9 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 		}
 	}
 
+	// todo
+	fmt.Printf("internal: %+v\n", relayInternal)
+
 	// server node
 
 	routeAddresses[numTokens-1] = *state.From
