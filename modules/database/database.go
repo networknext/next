@@ -77,11 +77,11 @@ type Database struct {
 	CreationTime   string
 	Creator        string
 	Relays         []Relay
-	RelayMap       map[uint64]Relay
-	BuyerMap       map[uint64]Buyer
-	SellerMap      map[uint64]Seller
-	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	RelayMap       map[uint64]*Relay
+	BuyerMap       map[uint64]*Buyer
+	SellerMap      map[uint64]*Seller
+	DatacenterMap  map[uint64]*Datacenter
+	DatacenterMaps map[uint64]map[uint64]*DatacenterMap
 	//                   ^ BuyerId  ^ DatacenterId
 }
 
@@ -91,11 +91,11 @@ func CreateDatabase() *Database {
 		CreationTime:   "",
 		Creator:        "",
 		Relays:         []Relay{},
-		RelayMap:       make(map[uint64]Relay),
-		BuyerMap:       make(map[uint64]Buyer),
-		SellerMap:      make(map[uint64]Seller),
-		DatacenterMap:  make(map[uint64]Datacenter),
-		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
+		RelayMap:       make(map[uint64]*Relay),
+		BuyerMap:       make(map[uint64]*Buyer),
+		SellerMap:      make(map[uint64]*Seller),
+		DatacenterMap:  make(map[uint64]*Datacenter),
+		DatacenterMaps: make(map[uint64]map[uint64]*DatacenterMap),
 	}
 
 	return database
@@ -1120,7 +1120,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		seller.Id = row.id
 		seller.Name = row.name
 
-		database.SellerMap[seller.Id] = seller
+		database.SellerMap[seller.Id] = &seller
 
 		fmt.Printf("seller %d: %s [%d]\n", i, seller.Name, seller.Id)
 	}
@@ -1179,7 +1179,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
 		buyer.RouteShader.RouteDiversity = int32(route_shader_row.route_diversity)
 
-		database.BuyerMap[buyer.Id] = buyer
+		database.BuyerMap[buyer.Id] = &buyer
 
 		fmt.Printf("buyer %d: %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Id, buyer.Live, buyer.Debug)
 	}
@@ -1202,7 +1202,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.name)
 		}
 
-		database.DatacenterMap[datacenter.Id] = datacenter
+		database.DatacenterMap[datacenter.Id] = &datacenter
 
 		fmt.Printf("datacenter %d: %s [%x] (%.1f,%.1f)\n", i, datacenter.Name, datacenter.Id, datacenter.Latitude, datacenter.Longitude)
 	}
@@ -1267,7 +1267,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
 		}
 
-		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
+		relay.Datacenter = *database.DatacenterMap[relay.DatacenterId]
 		if relay.Datacenter.Id != relay.DatacenterId {
 			return nil, fmt.Errorf("relay '%s' has a bad datacenter?!\n", relay.Name)
 		}
@@ -1277,11 +1277,11 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay %s doesn't have a seller?!\n", relay.Name)
 		}
 
-		relay.Seller = database.SellerMap[seller_row.id]
+		relay.Seller = *database.SellerMap[seller_row.id]
 
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
 
-		database.RelayMap[relay.Id] = *relay
+		database.RelayMap[relay.Id] = relay
 	}
 
 	for i, row := range datacenterMapRows {
@@ -1318,9 +1318,9 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenterMap.DatacenterId = datacenterId
 		datacenterMap.EnableAcceleration = row.enable_acceleration
 		if database.DatacenterMaps[buyerId] == nil {
-			database.DatacenterMaps[buyerId] = make(map[uint64]DatacenterMap)
+			database.DatacenterMaps[buyerId] = make(map[uint64]*DatacenterMap)
 		}
-		database.DatacenterMaps[buyerId][datacenterId] = datacenterMap
+		database.DatacenterMaps[buyerId][datacenterId] = &datacenterMap
 	}
 
 	return database, nil

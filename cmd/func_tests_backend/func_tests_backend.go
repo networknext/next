@@ -1781,12 +1781,12 @@ func test_relay_backend() {
 	seller := db.Seller{}
 	seller.Id = 1
 	seller.Name = "seller"
-	database.SellerMap[1] = seller
+	database.SellerMap[1] = &seller
 
 	datacenter := db.Datacenter{}
 	datacenter.Id = 1
 	datacenter.Name = "test"
-	database.DatacenterMap[1] = datacenter
+	database.DatacenterMap[1] = &datacenter
 
 	for i := 0; i < NumRelays; i++ {
 
@@ -1802,7 +1802,7 @@ func test_relay_backend() {
 
 		database.Relays = append(database.Relays, relay)
 
-		database.RelayMap[relay.Id] = relay
+		database.RelayMap[relay.Id] = &relay
 	}
 
 	// write the database out to a temporary file

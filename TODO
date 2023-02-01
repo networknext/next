@@ -22,15 +22,15 @@ DONE
 
 	Just needed to deploy the relay gateway (it does the responses to the relay update...)
 
-TODO
-
-	--------------
-
 	Fill in the next/prev internal flags in the route token in the session update
+
+	Fix up the weirdness with the database maps being by value
+
+TODO
 
 	Unit test the next/prev internal flags in the route token
 
-	Deploy server backend and verify that traffic goes across internal addresses via counters
+	Deploy to server backend and verify that traffic goes across internal addresses via counters
 
 	--------------
 

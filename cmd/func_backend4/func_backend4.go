@@ -472,21 +472,23 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		routerPrivateKey := [crypto_old.KeySize]byte{}
 		copy(routerPrivateKey[:], crypto_old.RouterPrivateKey)
 
-		tokenAddresses := make([]net.UDPAddr, nextRoute.NumRelays+2)
+		numTokens := nextRoute.NumRelays + 2
+
+		tokenAddresses := make([]net.UDPAddr, numTokens)
 		tokenAddresses[0] = sessionUpdate.ClientAddress
 		tokenAddresses[len(tokenAddresses)-1] = sessionUpdate.ServerAddress
 		for i := 0; i < nextRoute.NumRelays; i++ {
 			tokenAddresses[1+i] = nearRelayAddresses[i]
 		}
 
-		tokenPublicKeys := make([][]byte, nextRoute.NumRelays+2)
+		tokenPublicKeys := make([][]byte, numTokens)
 		tokenPublicKeys[0] = sessionUpdate.ClientRoutePublicKey
 		tokenPublicKeys[len(tokenPublicKeys)-1] = sessionUpdate.ServerRoutePublicKey
 		for i := 0; i < nextRoute.NumRelays; i++ {
 			tokenPublicKeys[1+i] = nearRelayPublicKeys[i]
 		}
 
-		numTokens := nextRoute.NumRelays + 2
+		tokenInternal := make([]bool, numTokens)
 
 		var tokenData []byte
 		if sameRoute {
@@ -498,7 +500,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey[:])
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, tokenInternal, routerPrivateKey[:])
 			routeType = routing.RouteTypeNew
 		}
 

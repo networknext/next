@@ -1073,6 +1073,8 @@ func TestRouteTokens(t *testing.T) {
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
+	internal := make([]bool, NEXT_MAX_NODES)
+
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
 	kbpsUp := uint32(256)
@@ -1081,7 +1083,7 @@ func TestRouteTokens(t *testing.T) {
 
 	tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-	WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, NEXT_MAX_NODES, addresses, publicKeys, masterPrivateKey)
+	WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, NEXT_MAX_NODES, addresses, publicKeys, internal, masterPrivateKey)
 
 	// read each token back individually and verify the token data matches what was written
 
@@ -1097,9 +1099,13 @@ func TestRouteTokens(t *testing.T) {
 		if i != NEXT_MAX_NODES-1 {
 			assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
 		}
+		assert.Equal(t, routeToken.NextInternal, uint8(0))
+		assert.Equal(t, routeToken.PrevInternal, uint8(0))
 		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
+
+// todo: test with internal addresses
 
 func TestContinueToken(t *testing.T) {
 

@@ -35,6 +35,8 @@ func CreateState() *handlers.SessionUpdateState {
 	state.Database = db.CreateDatabase()
 	state.Input.Latitude = 35.0
 	state.Input.Longitude = -75.0
+	state.Buyer = &db.Buyer{}
+	state.Datacenter = &db.Datacenter{}
 	return &state
 }
 
@@ -173,7 +175,7 @@ func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
 
 	state.Request.DatacenterId = 0x12345
 
-	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
+	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -215,7 +217,7 @@ func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 	state.Buyer.Id = 0x11111
 	state.Request.SliceNumber = 0
 	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
+	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -238,9 +240,9 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	state.Buyer.Id = 0x11111
 	state.Request.BuyerId = 0x11111
 	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
-	state.Database.DatacenterMaps[state.Buyer.Id] = make(map[uint64]db.DatacenterMap)
-	state.Database.DatacenterMaps[state.Buyer.Id][state.Request.DatacenterId] = db.DatacenterMap{}
+	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
+	state.Database.DatacenterMaps[state.Buyer.Id] = make(map[uint64]*db.DatacenterMap)
+	state.Database.DatacenterMaps[state.Buyer.Id][state.Request.DatacenterId] = &db.DatacenterMap{EnableAcceleration: true}
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -262,7 +264,7 @@ func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 
 	state.Buyer.Id = 0x11111
 	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
+	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -284,7 +286,7 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 
 	state.Buyer.Id = 0x11111
 	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = db.Datacenter{}
+	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
 
 	const NumRelays = 10
 
@@ -896,13 +898,13 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	// initialize database
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -912,9 +914,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -924,9 +928,9 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// initialize route matrix
 
@@ -1030,11 +1034,11 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalA
 
 	// initialize database
 
-	seller := db.Seller{Id: 1, Name: "seller"}
+	seller := &db.Seller{Id: 1, Name: "seller"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1046,9 +1050,10 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalA
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, HasInternalAddress: true, Seller: seller, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, HasInternalAddress: true, Seller: *seller, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller
 
@@ -1056,9 +1061,9 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalA
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// initialize route matrix
 
@@ -1132,6 +1137,8 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_OnlyIfBothHaveInternalA
 	}
 }
 
+// todo: test no internal across different sellers
+
 func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresses(t *testing.T) {
 
 	t.Parallel()
@@ -1162,11 +1169,11 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresse
 
 	// initialize database
 
-	seller := db.Seller{Id: 1, Name: "seller"}
+	seller := &db.Seller{Id: 1, Name: "seller"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1180,9 +1187,10 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresse
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, InternalAddress: relay_address_a_internal, HasInternalAddress: true, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, InternalAddress: relay_address_b_internal, HasInternalAddress: true, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, HasInternalAddress: true, Seller: seller, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, InternalAddress: relay_address_a_internal, HasInternalAddress: true, Seller: *seller, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, InternalAddress: relay_address_b_internal, HasInternalAddress: true, Seller: *seller, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, HasInternalAddress: true, Seller: *seller, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller
 
@@ -1190,9 +1198,9 @@ func Test_SessionUpdate_BuildNextTokens_PrivateAddresses_AllHaveInternalAddresse
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// initialize route matrix
 
@@ -1291,13 +1299,13 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	// initialize database
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1307,9 +1315,10 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1319,9 +1328,9 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// initialize route matrix
 
@@ -1405,21 +1414,22 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1429,9 +1439,9 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup route shader
 
@@ -1489,13 +1499,13 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 1, Name: "b"}
-	seller_c := db.Seller{Id: 1, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 1, Name: "b"}
+	seller_c := &db.Seller{Id: 1, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1505,9 +1515,10 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1517,9 +1528,9 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -1696,13 +1707,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1712,9 +1723,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1724,9 +1736,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -1918,13 +1930,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -1934,9 +1946,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -1946,9 +1959,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -2183,13 +2196,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -2199,9 +2212,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2211,9 +2225,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	state.DestRelays = []int32{0, 1, 2}
 
@@ -2402,13 +2416,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -2418,9 +2432,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2430,9 +2445,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -2616,13 +2631,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -2632,9 +2647,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
 	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2644,9 +2660,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -2838,13 +2854,13 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -2854,9 +2870,10 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -2866,9 +2883,9 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -2979,13 +2996,13 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -2995,9 +3012,10 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -3007,9 +3025,9 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -3143,13 +3161,13 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller_a := db.Seller{Id: 1, Name: "a"}
-	seller_b := db.Seller{Id: 2, Name: "b"}
-	seller_c := db.Seller{Id: 3, Name: "c"}
+	seller_a := &db.Seller{Id: 1, Name: "a"}
+	seller_b := &db.Seller{Id: 2, Name: "b"}
+	seller_c := &db.Seller{Id: 3, Name: "c"}
 
-	datacenter_a := db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := db.Datacenter{Id: 3, Name: "c"}
+	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
+	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
+	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -3159,9 +3177,10 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller_a, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller_b, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller_c, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller_a
 	state.Database.SellerMap[2] = seller_b
@@ -3171,9 +3190,9 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	state.Database.DatacenterMap[2] = datacenter_b
 	state.Database.DatacenterMap[3] = datacenter_c
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	// setup cost matrix with route through relays a -> b -> c
 
@@ -3289,9 +3308,9 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 
 	// initialize database with three relays
 
-	seller := db.Seller{Id: 1, Name: "seller"}
+	seller := &db.Seller{Id: 1, Name: "seller"}
 
-	datacenter := db.Datacenter{Id: 1, Name: "datacenter"}
+	datacenter := &db.Datacenter{Id: 1, Name: "datacenter"}
 
 	relay_address_a := core.ParseAddress("127.0.0.1:40000")
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
@@ -3301,17 +3320,18 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
 
-	relay_a := db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
-	relay_b := db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
-	relay_c := db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: *seller, PublicKey: relay_public_key_c}
 
 	state.Database.SellerMap[1] = seller
 
 	state.Database.DatacenterMap[1] = datacenter
 
-	state.Database.RelayMap[1] = relay_a
-	state.Database.RelayMap[2] = relay_b
-	state.Database.RelayMap[3] = relay_c
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
 
 	state.DestRelayIds = []uint64{1, 2, 3}
 

@@ -652,7 +652,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []net.UDPAddr, publicKeys [][]byte, masterPrivateKey []byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []net.UDPAddr, publicKeys [][]byte, internal []bool, masterPrivateKey []byte) {
 	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
@@ -664,6 +664,12 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		token.KbpsDown = kbpsDown
 		if i != numNodes-1 {
 			token.NextAddress = addresses[i+1]
+		}
+		if i > 0 && internal[i-1] {
+			token.PrevInternal = 1
+		}
+		if i < numNodes - 1 && internal[i+1] {
+			token.NextInternal = 1
 		}
 		copy(token.PrivateKey[:], privateKey[:])
 		WriteEncryptedRouteToken(&token, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
