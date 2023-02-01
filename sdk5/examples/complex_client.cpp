@@ -338,8 +338,6 @@ void print_client_stats( next_client_t * client )
 
     printf( "fallback to direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
-    printf( "high frequency pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
-
     printf( "direct rtt = %.2fms\n", stats->direct_rtt );
     printf( "direct jitter = %.2fms\n", stats->direct_jitter );
     printf( "direct packet loss = %.1f%%\n", stats->direct_packet_loss );

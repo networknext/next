@@ -5087,8 +5087,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5100,7 +5098,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5201,8 +5198,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5211,7 +5206,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 		            relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_TOKEN_EXPIRED]++;
                     continue;
                 }
-                */
 
                 uint64_t hash = token.session_id ^ token.session_version;
 
@@ -5227,7 +5221,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5239,7 +5232,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 if ( session->expire_timestamp != token.expire_timestamp )
                 {
@@ -5348,8 +5340,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5361,7 +5351,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5630,8 +5619,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5643,7 +5630,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5767,8 +5753,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5780,7 +5764,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 
@@ -5903,8 +5886,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5916,7 +5897,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
-                */
 
                 uint64_t clean_sequence = relay_clean_sequence( sequence );
 

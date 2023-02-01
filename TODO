@@ -10,72 +10,77 @@ DONE
 
 	Fix up all the unit tests	
 
-TODO
+	Fix happy path.
 
-	Fix up happy path. Probably needs the permissive route matrix...
-
-	--------------
-
-	Bring back the dest relays only in the optimize2
-
-	--------------
-
-	There is a bug where all relays are set as dest relays. In dev, only one relay is dest relay, and optimize for everything else, except to that dest relay should be disabled.
-
-	--------------
+	Fix sdk4/sdk5.
 
 	Get it all live and deployed
 
-	--------------
-
-	Relax.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
 
 	Track relay manager state for a specific relay, so I can debug stuff.
 
-	Then, turn back on the expiry and stuff like that and get it all working again...
+	Then, turn back on the expiry in the reference relay, and make sure it's working again in dev.
 
 	--------------
 
-	Relays as HTML like "next relays" but on endpoint "/relays_html"
 
-	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Track counters in total, as well as just per-relay.
 
