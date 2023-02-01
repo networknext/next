@@ -4,11 +4,13 @@ DONE
 
 	Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
 
+    Update the reference relay to read these internal uint8 flags
+
+    The reference relay currently doesn't encode relay pings with pittle and chonkle. 
+
+    This change can be made in the future by creating new relay ping and pong packet types.
+
 TODO
-
-    --------------
-
-    Update the reference relay to read these internal uint8 flags and use them to decide whether it uses public or internal address when sending ping packets to other relays.
 
     --------------
 
@@ -317,5 +319,9 @@ Nice to have:
  		3. Verify that it can read/write test tokens sent to it from the backend
 
 		4. Verify that it is configured with the correct public and internal address
+
+    --------------
+
+    New relay ping/pong that supports advanced packet filter.
 
     --------------
