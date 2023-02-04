@@ -1,66 +1,12 @@
 DONE
 
-	Extend code in server backend session update to fill next/prev internal flags, but ONLY set internal if BOTH relays have internal addresses and are same supplier.
-
-	Send down array of "internal" uint8 flags to relay with update. Only set internal if BOTH relays have internal addresses and are same supplier.
-
-    Update the reference relay to read these internal uint8 flags
-
-    The reference relay currently doesn't encode relay pings with pittle and chonkle. 
-
-    This change can be made in the future by creating new relay ping and pong packet types.
-
-    Extend the route token read and write in the backend to use the short version of address with the next/prev internal flags
-
-	Deploy updated relay code without turning on next/prev internal flags and verify everything is still OK
-
-	Looks like stuff is broken...
-
-	Pings seem to be broken between relays.
-
-	Did I screw up the internal write in the relay backend?
-
-	Just needed to deploy the relay gateway (it does the responses to the relay update...)
-
-	Fill in the next/prev internal flags in the route token in the session update
-
-	Fix up the weirdness with the database maps being by value
-
-	Unit test the next/prev internal flags in the route token
-
-	Deploy to server backend and verify that traffic goes across internal addresses via counters
-
-	I can see that google.oregon is sending route request packets via internal addresses.
-
-	However, google.iowa.1 is not receiving those route request packets... at least, not over what it thinks is an internal address.
-
-	Is google.iowa filtering out packets with the basic/advanced packet filters?
-
-	Or is it just not receiving the route request packets at all?
-
-	Confirm that the advanced packet filter is dropping the packets.
-
-	Is google.iowa.1 properly configured with its internal address?
-
-	It had the wrong internal address set via env var. This would have caused the packets to arrive, but get filtered out by the advanced packet filter.
-
-	Getting the relay validation on connect done is extremely important. Adding to essentials.
-
-	Internal addresses are working!
-
-TODO
-
-	---------------
-
 	Move all the essential counters up top of the relay counters, eg. packets sent/received, sessions created, sessions continued, sessions destroyed
 
 	Want to see a num packets sent counter in relay, at the top.
 
-	---------------
+TODO
 
-	Experiment with a different way for the main thread to get packets from the background thread in sdk5.
-
-	Remove the requirement to call next_client_update to pump packets (and commands) coming in.
+	Make sure all essential counters are instrumented
 
 	---------------
 
