@@ -69,6 +69,7 @@
 #define NEXT_LOG_LEVEL_INFO                                       2
 #define NEXT_LOG_LEVEL_WARN                                       3
 #define NEXT_LOG_LEVEL_DEBUG                                      4
+#define NEXT_LOG_LEVEL_SPAM                                       5
 
 #define NEXT_ADDRESS_NONE                                         0
 #define NEXT_ADDRESS_IPV4                                         1

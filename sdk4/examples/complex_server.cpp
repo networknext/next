@@ -133,7 +133,9 @@ void free_function( void * _context, void * p )
 
 extern const char * log_level_string( int level )
 {
-    if ( level == NEXT_LOG_LEVEL_DEBUG )
+    if ( level == NEXT_LOG_LEVEL_SPAM )
+        return "spam";
+    else if ( level == NEXT_LOG_LEVEL_DEBUG )
         return "debug";
     else if ( level == NEXT_LOG_LEVEL_INFO )
         return "info";
@@ -232,7 +234,10 @@ void server_packet_received( next_server_t * server, void * _context, const next
     next_assert( context->server_data == 0x12345678 );
 
     if ( !next_server_ready( server ) )
+    {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "dropping packet because server is not ready" );
         return;
+    }
     
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
@@ -502,9 +507,9 @@ int main()
 
         update_client_timeouts( &server_context );
 
-        if ( !printed_datacenter && next_server_ready( server ) )
+        if ( !printed_datacenter && next_server_ready( server ) && next_server_datacenter(server)[0] != '\0' )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is %s", next_server_datacenter( server ) );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s'", next_server_datacenter( server ) );
             printed_datacenter = true;
         }
 
