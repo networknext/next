@@ -122,7 +122,9 @@ void free_function( void * _context, void * p )
 
 extern const char * log_level_string( int level )
 {
-    if ( level == NEXT_LOG_LEVEL_DEBUG )
+    if ( level == NEXT_LOG_LEVEL_SPAM )
+        return "spam";
+    else if ( level == NEXT_LOG_LEVEL_DEBUG )
         return "debug";
     else if ( level == NEXT_LOG_LEVEL_INFO )
         return "info";
