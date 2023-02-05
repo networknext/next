@@ -46,24 +46,6 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - go test ./modules/...
 
-  - name: "SDK4"
-    dependencies: []
-    task:
-      agent:
-        machine:
-          type: e1-standard-8
-          os_image: ubuntu2004
-      jobs:
-        - name: "Unit Tests"
-          commands:
-            - sudo apt-get install -y libsodium-dev
-            - checkout
-            - cp envs/local.env .env
-            - export LD_LIBRARY_PATH=.
-            - mkdir dist
-            - make dist/test4
-            - cd dist && ./test4
-
   - name: "SDK5"
     dependencies: []
     task:
@@ -116,11 +98,6 @@ blocks:
             - make dist/analytics.dev.tar.gz
             - artifact push workflow dist/analytics.dev.tar.gz
 
-        - name: "Portal"
-          commands:
-            - make dist/portal.dev.tar.gz
-            - artifact push workflow dist/portal.dev.tar.gz
-
         - name: "Portal Cruncher"
           commands:
             - make dist/portal_cruncher.dev.tar.gz
@@ -136,35 +113,15 @@ blocks:
             - make dist/relay_backend.dev.tar.gz
             - artifact push workflow dist/relay_backend.dev.tar.gz
 
-        - name: "Server Backend 5"
+        - name: "Server Backend"
           commands:
-            - make dist/server_backend5.dev.tar.gz
-            - artifact push workflow dist/server_backend5.dev.tar.gz
-
-        - name: "Sync"
-          commands:
-            - make dist/sync.dev.tar.gz
-            - artifact push workflow dist/sync.dev.tar.gz
-
-        - name: "Pingdom"
-          commands:
-            - make dist/pingdom.dev.tar.gz
-            - artifact push workflow dist/pingdom.dev.tar.gz
+            - make dist/server_backend.dev.tar.gz
+            - artifact push workflow dist/server_backend.dev.tar.gz
 
         - name: "Magic Backend"
           commands:
             - make dist/magic_backend.dev.tar.gz
             - artifact push workflow dist/magic_backend.dev.tar.gz
-
-        - name: "Redis Monitor"
-          commands:
-            - make dist/redis_monitor.dev.tar.gz
-            - artifact push workflow dist/redis_monitor.dev.tar.gz
-
-        - name: "Website Cruncher"
-          commands:
-            - make dist/website_cruncher.dev.tar.gz
-            - artifact push workflow dist/website_cruncher.dev.tar.gz
 
         - name: "Raspberry Backend"
           commands:
