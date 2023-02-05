@@ -61,8 +61,8 @@ blocks:
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
             - mkdir dist
-            - make dist/test5
-            - cd dist && ./test5
+            - make dist/test
+            - cd dist && ./test
 
   - name: "Build Artifacts (Scripts)"
     dependencies: []
