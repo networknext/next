@@ -1,5 +1,5 @@
 /*
-    Network Next Reference Relay.
+    Network Next Relay.
     Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 

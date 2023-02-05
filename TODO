@@ -12,9 +12,41 @@ DONE
 
 	Clean up code and go all in on SDK5. To get this as a turnkey product work must be 100% focused. It's clear that turnkey will be with SDK5. So go all in.
 
+	Get everything building and working again with the new structure.
+
+	Make sure happy path works.
+
 TODO
 
-	Get everything building and working again with the new structure.
+	---------------
+
+	Backup all the code somewhere.
+
+	Back up the old production backend.
+
+	Back up the last SDK4 func test release code.
+
+	Back up the current SDK4 code.
+
+	Back up the current SDK5 code.
+
+	Back up the old relay.
+
+	Back up the current codebase.
+
+	Store these in multiple safe places so they are protected by redundancy.
+
+	---------------
+
+	Make sure functional tests work
+
+	---------------
+
+	Create a new google cloud account
+
+	---------------
+
+	Get semaphore builds working again
 
 	---------------
 
@@ -23,6 +55,8 @@ TODO
 	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
 
 	For example, for AWS relays in each region would have the same internal group string.
+
+	Default should be "" which turns into 0
 
 	---------------
 
@@ -92,10 +126,6 @@ Essentials:
 	--------------
 
 	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
-
-	--------------
-
-	Simplify the sync service so it just periodically downloads files and puts them in google cloud storage locations
 
 	--------------
 
