@@ -13483,6 +13483,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     next_assert( server );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     double current_time = next_time();
 
     // server init
