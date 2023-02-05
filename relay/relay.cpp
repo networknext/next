@@ -4291,8 +4291,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: disabled for now. for some reason this fucks
-                /*
                 uint64_t current_timestamp = relay_timestamp( relay );
                 if ( token.expire_timestamp < current_timestamp )
                 {
@@ -4302,7 +4300,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                     continue;
                 }
-                */
 
                 uint64_t hash = token.session_id ^ token.session_version;
 
