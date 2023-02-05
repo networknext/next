@@ -4,13 +4,19 @@ DONE
 
 	Want to see a num packets sent counter in relay, at the top.
 
+	Instrument sdk5 with spam messages
+
 TODO
 
-	Instrument sdk5 with spam messages
+	Make sure all essential counters are instrumented in the reference relay
 
 	---------------
 
-	Make sure all essential counters are instrumented
+	Implement new relay "internal group" concept.
+
+	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
+
+	For example, for AWS relays in each region would have the same internal group string.
 
 	---------------
 
