@@ -120,6 +120,8 @@ func main() {
 		happy_path()
 	} else if command == "happy-path-no-wait" {
 		happy_path_no_wait()
+	} else if command == "client" {
+		client()
 	} else if command == "server" {
 		server()
 	} else if command == "pubsub-emulator" {
