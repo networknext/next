@@ -119,7 +119,6 @@ blocks:
             - make dist/raspberry_backend.dev.tar.gz
             - artifact push workflow dist/raspberry_backend.dev.tar.gz
 
-
   - name: "Build Artifacts (Native)"
 
     dependencies: []
