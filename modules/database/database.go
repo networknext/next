@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"io"
 	"fmt"
 	"sort"
 	"database/sql"
@@ -76,11 +77,11 @@ type Database struct {
 	CreationTime   string
 	Creator        string
 	Relays         []Relay
-	RelayMap       map[uint64]Relay
-	BuyerMap       map[uint64]Buyer
-	SellerMap      map[uint64]Seller
-	DatacenterMap  map[uint64]Datacenter
-	DatacenterMaps map[uint64]map[uint64]DatacenterMap
+	RelayMap       map[uint64]*Relay
+	BuyerMap       map[uint64]*Buyer
+	SellerMap      map[uint64]*Seller
+	DatacenterMap  map[uint64]*Datacenter
+	DatacenterMaps map[uint64]map[uint64]*DatacenterMap
 	//                   ^ BuyerId  ^ DatacenterId
 }
 
@@ -90,11 +91,11 @@ func CreateDatabase() *Database {
 		CreationTime:   "",
 		Creator:        "",
 		Relays:         []Relay{},
-		RelayMap:       make(map[uint64]Relay),
-		BuyerMap:       make(map[uint64]Buyer),
-		SellerMap:      make(map[uint64]Seller),
-		DatacenterMap:  make(map[uint64]Datacenter),
-		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
+		RelayMap:       make(map[uint64]*Relay),
+		BuyerMap:       make(map[uint64]*Buyer),
+		SellerMap:      make(map[uint64]*Seller),
+		DatacenterMap:  make(map[uint64]*Datacenter),
+		DatacenterMaps: make(map[uint64]map[uint64]*DatacenterMap),
 	}
 
 	return database
@@ -274,7 +275,7 @@ func (database *Database) String() string {
 
 	// buyers
 
-	output += "\n\nBuyers:\n\n"
+	output += "\nBuyers:\n\n"
 
 	type BuyerRow struct {
 		Name            string
@@ -480,6 +481,263 @@ func (database *Database) String() string {
 	output += table.Table(destinationDatacenters)
 
 	return output
+}
+
+// ---------------------------------------------------------------------
+
+func (database *Database) WriteHTML(w io.Writer) {
+
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <meta http-equiv="refresh" content="1">
+	  <title>Database</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		*{
+		  font-family:Courier;
+		}	  
+	  </style>
+	</head>
+	<body>`
+
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+
+	// header
+
+	fmt.Fprintf(w, "Header:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Creator", "Creation Time")
+	fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td></tr>\n", database.Creator, database.CreationTime)
+	fmt.Fprintf(w, "</table>\n")
+
+	// buyers
+
+	type BuyerRow struct {
+		Name            string
+		Id              string
+		Live            string
+		Debug           string
+		PublicKeyBase64 string
+	}
+
+	buyers := []BuyerRow{}
+
+	for _, v := range database.BuyerMap {
+
+		data := make([]byte, 8+32)
+		binary.LittleEndian.PutUint64(data, v.Id)
+		copy(data[8:], v.PublicKey)
+
+		row := BuyerRow{
+			Id:    fmt.Sprintf("%0x", v.Id),
+			Name:  v.Name,
+			Live:  fmt.Sprintf("%v", v.Live),
+			Debug: fmt.Sprintf("%v", v.Debug),
+			PublicKeyBase64: base64.StdEncoding.EncodeToString(data),
+		}
+
+		buyers = append(buyers, row)
+	}
+
+	sort.SliceStable(buyers, func(i, j int) bool { return buyers[i].Name < buyers[j].Name })
+
+	fmt.Fprintf(w, "<br><br>Buyers:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Name", "Id", "Live", "Debug", "Public Key Base64")
+	for i := range buyers {
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", buyers[i].Name, buyers[i].Id, buyers[i].Live, buyers[i].Debug, buyers[i].PublicKeyBase64)
+	}
+	fmt.Fprintf(w, "</table>\n")
+	
+	// sellers
+
+	type SellerRow struct {
+		Name string
+		Id   string
+	}
+
+	sellers := []SellerRow{}
+
+	for _, v := range database.SellerMap {
+
+		row := SellerRow{
+			Id:   fmt.Sprintf("%0x", v.Id),
+			Name: v.Name,
+		}
+
+		sellers = append(sellers, row)
+	}
+
+	sort.SliceStable(sellers, func(i, j int) bool { return sellers[i].Id < sellers[j].Id })
+
+	fmt.Fprintf(w, "<br><br>Sellers:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Name", "Id")
+	for i := range sellers {
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td></tr>\n", sellers[i].Name, sellers[i].Id)
+	}
+	fmt.Fprintf(w, "</table>\n")
+
+	// datacenters
+
+	type DatacenterRow struct {
+		Name      string
+		Id        string
+		Latitude  string
+		Longitude string
+	}
+
+	datacenters := []DatacenterRow{}
+
+	for _, v := range database.DatacenterMap {
+
+		row := DatacenterRow{
+			Id:        fmt.Sprintf("%0x", v.Id),
+			Name:      v.Name,
+			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
+			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
+		}
+
+		datacenters = append(datacenters, row)
+	}
+
+	sort.SliceStable(datacenters, func(i, j int) bool { return datacenters[i].Name < datacenters[j].Name })
+
+	fmt.Fprintf(w, "<br><br>Datacenters:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Name", "Id", "Latitude", "Longitude")
+	for i := range datacenters {
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", datacenters[i].Name, datacenters[i].Id, datacenters[i].Latitude, datacenters[i].Longitude)
+	}
+	fmt.Fprintf(w, "</table>\n")
+
+	// relays
+
+	type RelayRow struct {
+		Name            string
+		Id              string
+		PublicAddress   string
+		InternalAddress string
+		PublicKey       string
+		PrivateKey      string
+	}
+
+	relays := []RelayRow{}
+
+	for _, v := range database.RelayMap {
+
+		row := RelayRow{
+			Id:            fmt.Sprintf("%0x", v.Id),
+			Name:          v.Name,
+			PublicAddress: v.PublicAddress.String(),
+			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
+			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
+		}
+
+		if v.HasInternalAddress {
+			row.InternalAddress = v.InternalAddress.String()
+		}
+
+		relays = append(relays, row)
+	}
+
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].Name < relays[j].Name })
+
+	fmt.Fprintf(w, "<br><br>Relays:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Id", "Name", "Public Address", "Internal Address", "Public Key", "Private Key")
+	for i := range relays {
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", relays[i].Id, relays[i].Name, relays[i].PublicAddress, relays[i].InternalAddress, relays[i].PublicKey, relays[i].PrivateKey)
+	}
+	fmt.Fprintf(w, "</table>\n")
+
+	// route shaders
+
+	for _, v := range database.BuyerMap {
+
+		routeShader := v.RouteShader
+
+		fmt.Fprintf(w, "<br><br>Route shader for '%s':<br><br>", v.Name)
+		fmt.Fprintf(w, "<table>\n")
+		fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%v</b></td>\n", "Property", "Value")
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Disable Network Next", routeShader.DisableNetworkNext)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Analysis Only", routeShader.AnalysisOnly)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "AB Test", routeShader.ABTest)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Reduce Latency", routeShader.ReduceLatency)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Reduce Packet Loss", routeShader.ReducePacketLoss)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Multipath", routeShader.Multipath)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Force Next", routeShader.ForceNext)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%d%%</td>\n", "Selection Percent", routeShader.SelectionPercent)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Acceptable Latency", routeShader.AcceptableLatency)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Latency Threshold", routeShader.LatencyThreshold)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%.1f%%</td>\n", "Acceptable Packet Loss", routeShader.AcceptablePacketLoss)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%.1f%%</td>\n", "Packet Loss Sustained", routeShader.PacketLossSustained)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dkbps</td>\n", "Bandwidth Envelope Up", routeShader.BandwidthEnvelopeUpKbps)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dkbps</td>\n", "Bandwidth Envelope Down", routeShader.BandwidthEnvelopeDownKbps)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Select Threshold", routeShader.RouteSelectThreshold)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Switch Threshold", routeShader.RouteSwitchThreshold)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Latency Trade Off", routeShader.MaxLatencyTradeOff)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto (Default)", routeShader.RTTVeto_Default)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto (Multipath)", routeShader.RTTVeto_Multipath)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto (PacketLoss)", routeShader.RTTVeto_PacketLoss)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Next RTT", routeShader.MaxNextRTT)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td>\n", "Route Diversity", routeShader.RouteDiversity)
+		fmt.Fprintf(w, "</table>\n")
+	}
+
+	// destination datacenters
+
+	type DestinationDatacenterRow struct {
+		Datacenter string
+		Buyers []string
+	}
+
+	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
+
+	for _, v1 := range database.DatacenterMaps {
+		for _, v2 := range v1 {
+			if !v2.EnableAcceleration {
+				continue
+			}
+			buyerId := v2.BuyerId
+			datacenterId := v2.DatacenterId
+			entry := destinationDatacenterMap[datacenterId]
+			if entry == nil {
+				entry = &DestinationDatacenterRow{}
+				entry.Datacenter = database.DatacenterMap[datacenterId].Name
+				destinationDatacenterMap[datacenterId] = entry
+			}
+			entry.Buyers = append(entry.Buyers, database.BuyerMap[buyerId].Name)
+		}
+	}
+
+	destinationDatacenters := make([]DestinationDatacenterRow, 0)
+
+	for _, v := range destinationDatacenterMap {
+		sort.SliceStable(v.Buyers, func(i, j int) bool { return v.Buyers[i] < v.Buyers[j] })
+		destinationDatacenters = append(destinationDatacenters, *v)
+	}
+
+	sort.SliceStable(destinationDatacenters, func(i, j int) bool { return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter })
+
+	fmt.Fprintf(w, "<br><br>Destination datacenters:<br><br>")
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Datacenter", "Buyers")
+	for i := range destinationDatacenters {
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td></tr>\n", destinationDatacenters[i].Datacenter, destinationDatacenters[i].Buyers)
+	}
+	fmt.Fprintf(w, "</table>\n")
+
+	const htmlFooter = `</body></html>`
+
+	fmt.Fprintf(w, "%s\n", htmlFooter)
 }
 
 // ---------------------------------------------------------------------
@@ -862,7 +1120,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		seller.Id = row.id
 		seller.Name = row.name
 
-		database.SellerMap[seller.Id] = seller
+		database.SellerMap[seller.Id] = &seller
 
 		fmt.Printf("seller %d: %s [%d]\n", i, seller.Name, seller.Id)
 	}
@@ -921,7 +1179,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
 		buyer.RouteShader.RouteDiversity = int32(route_shader_row.route_diversity)
 
-		database.BuyerMap[buyer.Id] = buyer
+		database.BuyerMap[buyer.Id] = &buyer
 
 		fmt.Printf("buyer %d: %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Id, buyer.Live, buyer.Debug)
 	}
@@ -944,7 +1202,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.name)
 		}
 
-		database.DatacenterMap[datacenter.Id] = datacenter
+		database.DatacenterMap[datacenter.Id] = &datacenter
 
 		fmt.Printf("datacenter %d: %s [%x] (%.1f,%.1f)\n", i, datacenter.Name, datacenter.Id, datacenter.Latitude, datacenter.Longitude)
 	}
@@ -1009,7 +1267,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
 		}
 
-		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
+		relay.Datacenter = *database.DatacenterMap[relay.DatacenterId]
 		if relay.Datacenter.Id != relay.DatacenterId {
 			return nil, fmt.Errorf("relay '%s' has a bad datacenter?!\n", relay.Name)
 		}
@@ -1019,11 +1277,11 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay %s doesn't have a seller?!\n", relay.Name)
 		}
 
-		relay.Seller = database.SellerMap[seller_row.id]
+		relay.Seller = *database.SellerMap[seller_row.id]
 
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
 
-		database.RelayMap[relay.Id] = *relay
+		database.RelayMap[relay.Id] = relay
 	}
 
 	for i, row := range datacenterMapRows {
@@ -1060,12 +1318,14 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenterMap.DatacenterId = datacenterId
 		datacenterMap.EnableAcceleration = row.enable_acceleration
 		if database.DatacenterMaps[buyerId] == nil {
-			database.DatacenterMaps[buyerId] = make(map[uint64]DatacenterMap)
+			database.DatacenterMaps[buyerId] = make(map[uint64]*DatacenterMap)
 		}
-		database.DatacenterMaps[buyerId][datacenterId] = datacenterMap
+		database.DatacenterMaps[buyerId][datacenterId] = &datacenterMap
 	}
 
 	return database, nil
 }
+
+// -----------------------------------------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------------------------------------

@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <alloca.h>
+#include <stdio.h>
 
 static double time_start;
 
@@ -110,7 +111,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     if ( socket->handle < 0 )
     {
-        relay_printf( "failed to create socket" );
+        printf( "error: failed to create socket\n" );
         return NULL;
     }
 
@@ -121,7 +122,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         int yes = 1;
         if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            relay_printf( "failed to set socket ipv6 only" );
+            printf( "failed to set socket ipv6 only\n" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -131,13 +132,14 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     if ( setsockopt( socket->handle, SOL_SOCKET, SO_SNDBUF, (char*)( &send_buffer_size ), sizeof( int ) ) != 0 )
     {
-        relay_printf( "failed to set socket send buffer size" );
+        printf( "failed to set socket send buffer size to %d\n", send_buffer_size );
+        relay_platform_socket_destroy( socket );
         return NULL;
     }
 
     if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVBUF, (char*)( &receive_buffer_size ), sizeof( int ) ) != 0 )
     {
-        relay_printf( "failed to set socket receive buffer size" );
+        printf( "failed to set socket receive buffer size to %d\n", receive_buffer_size );
         relay_platform_socket_destroy( socket );
         return NULL;
     }
@@ -157,7 +159,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
         if ( bind( socket->handle, (sockaddr*) &socket_address, sizeof( socket_address ) ) < 0 )
         {
-            relay_printf( "failed to bind socket (ipv6)" );
+            printf( "failed to bind socket (ipv6)\n" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -175,7 +177,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
         if ( bind( socket->handle, (sockaddr*) &socket_address, sizeof( socket_address ) ) < 0 )
         {
-            relay_printf( "failed to bind socket (ipv4)" );
+            printf( "failed to bind socket (ipv4)\n" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -191,7 +193,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
-                relay_printf( "failed to get socket port (ipv6)" );
+                printf( "failed to get socket port (ipv6)\n" );
                 relay_platform_socket_destroy( socket );
                 return NULL;
             }
@@ -203,7 +205,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
-                relay_printf( "failed to get socket port (ipv4)" );
+                printf( "failed to get socket port (ipv4)\n" );
                 relay_platform_socket_destroy( socket );
                 return NULL;
             }
@@ -217,7 +219,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
     {
         if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
         {
-            relay_printf( "failed to set socket to non-blocking" );
+            printf( "failed to set socket to non-blocking\n" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -230,7 +232,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         tv.tv_usec = (int) ( timeout_seconds * 1000000.0f );
         if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( tv ) ) < 0 )
         {
-            relay_printf( "failed to set socket receive timeout" );
+            printf( "failed to set socket receive timeout\n" );
             relay_platform_socket_destroy( socket );
             return NULL;
         }
@@ -271,13 +273,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
             ( (uint16_t*) &socket_address.sin6_addr ) [i] = relay_platform_htons( to->data.ipv6[i] );
         }
         socket_address.sin6_port = relay_platform_htons( to->port );
-        int result = int( sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in6) ) );
-        if ( result < 0 )
-        {
-            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s [ipv6]", address_string, strerror( errno ) );
-        }
+        sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in6) );
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
     {
@@ -289,17 +285,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
                                          ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = relay_platform_htons( to->port );
-        int result = int( sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) ) );
-        if ( result < 0 )
-        {
-            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            relay_address_to_string( to, address_string );
-            relay_printf( "sendto (%s) failed: %s [ipv4]", address_string, strerror( errno ) );
-        }
-    }
-    else
-    {
-        relay_printf( "invalid address type. could not send packet" );
+        sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) );
     }
 }
 
@@ -314,18 +300,8 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
     socklen_t from_length = sizeof( sockaddr_from );
 
     int result = int( recvfrom( socket->handle, (char*) packet_data, max_packet_size, socket->type == RELAY_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0, (sockaddr*) &sockaddr_from, &from_length ) );
-
     if ( result <= 0 )
-    {
-        if ( errno == EAGAIN || errno == EINTR )
-        {
-            return 0;
-        }
-
-        relay_printf( "recvfrom failed with error %d", errno );
-        
         return 0;
-    }
 
     if ( sockaddr_from.ss_family == AF_INET6 )
     {
@@ -392,8 +368,9 @@ void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread )
     struct sched_param param;
     param.sched_priority = sched_get_priority_max( SCHED_FIFO );
     int ret = pthread_setschedparam( thread->handle, SCHED_FIFO, &param );
-    if (ret) {
-        relay_printf( "unable to increase server thread priority: %s", strerror(ret) );
+    if (ret) 
+    {
+        printf( "unable to increase server thread priority: %s\n", strerror(ret) );
     }
 }
 

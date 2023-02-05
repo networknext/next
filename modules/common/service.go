@@ -536,7 +536,6 @@ func (service *Service) UpdateRouteMatrix() {
 
 func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 	service.routeMatrixMutex.RLock()
-	// todo: this is super lame. just have a pointer to the database IN the route matrix dude...
 	routeMatrix := service.routeMatrix
 	database := service.routeMatrixDatabase
 	service.routeMatrixMutex.RUnlock()
@@ -915,11 +914,14 @@ func (service *Service) databaseHandlerFunc() func(w http.ResponseWriter, r *htt
 		if database == nil {
 			service.routeMatrixMutex.RLock()
 			database = service.routeMatrixDatabase
-			service.routeMatrixMutex.RUnlock()			
+			service.routeMatrixMutex.RUnlock()
 		}
 		if database != nil {
-			fmt.Fprint(w, database.String())
-			w.Header().Set("Content-Type", "next/plain")
+			database.WriteHTML(w)
+			w.Header().Set("Content-Type", "text/html")
+		} else {
+			fmt.Fprintf(w, "no database\n")
+			w.Header().Set("Content-Type", "text/plain")
 		}
 	}
 }

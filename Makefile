@@ -27,7 +27,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/reference_backend4 dist/reference_backend5 dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/website_cruncher dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME4).so dist/$(SDKNAME5).so dist/reference_relay dist/reference_backend4 dist/reference_backend5 dist/client4 dist/server4 dist/test4 dist/client5 dist/server5 dist/test5 func-test-sdk5 func-test-sdk4 dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything

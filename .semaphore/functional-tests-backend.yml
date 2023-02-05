@@ -2,10 +2,6 @@ version: v1.0
 
 name: Functional Tests (Backend)
 
-fail_fast:
-  stop:
-    when: "true"
-
 agent:
   machine:
     type: e1-standard-2
@@ -53,7 +49,7 @@ blocks:
       prologue:
         commands:
 
-            - sudo apt-get install -y google-cloud-sdk-pubsub-emulator redis-server
+            - sudo apt-get install -y libsodium-dev google-cloud-sdk-pubsub-emulator redis-server
 
             - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
             - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
@@ -61,8 +57,6 @@ blocks:
 
             - mkdir -p dist
             - cd dist
-
-            - artifact pull workflow libsodium.so
 
             - artifact pull workflow func_tests_backend
             - artifact pull workflow libnext4.so
@@ -75,13 +69,11 @@ blocks:
             - chmod +x reference_relay
             - chmod +x libnext4.so
             - chmod +x libnext5.so
-            - chmod +x libsodium.so
             - chmod +x func_tests_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
             - chmod +x relay_backend
 
-            - sudo mv libsodium.so /usr/local/lib
             - sudo mv libnext4.so /usr/local/lib
             - sudo mv libnext5.so /usr/local/lib
 

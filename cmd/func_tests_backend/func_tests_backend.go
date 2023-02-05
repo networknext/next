@@ -1488,7 +1488,7 @@ func test_relay_manager() {
 
 	fmt.Printf("test_relay_manager\n")
 
-	relayManager := common.CreateRelayManager()
+	relayManager := common.CreateRelayManager(true)
 
 	ctx, contextCancelFunc := context.WithCancel(context.Background())
 
@@ -1518,13 +1518,13 @@ func test_relay_manager() {
 				}
 				return
 			case <-ticker.C:
+				fmt.Printf("costs %d\n", counter)
 				const MaxRTT = 255
 				const MaxJitter = 100
 				const MaxPacketLoss = 1
 				currentTime := time.Now().Unix()
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 				_ = costs
-				fmt.Printf("costs %d\n", counter)
 				counter++
 			}
 		}
@@ -1537,6 +1537,7 @@ func test_relay_manager() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
+	counters := make([]uint64, packets.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1556,8 +1557,8 @@ func test_relay_manager() {
 					return
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
-					// fmt.Printf("relay update %d\n", index)
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+					fmt.Printf("relay update\n")
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 
@@ -1565,7 +1566,7 @@ func test_relay_manager() {
 
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	contextCancelFunc()
 }
@@ -1574,7 +1575,7 @@ func test_optimize() {
 
 	fmt.Printf("test_optimize\n")
 
-	relayManager := common.CreateRelayManager()
+	relayManager := common.CreateRelayManager(true)
 
 	ctx, contextCancelFunc := context.WithCancel(context.Background())
 
@@ -1622,7 +1623,7 @@ func test_optimize() {
 
 				currentTime := time.Now().Unix()
 
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 
 				costMatrix := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
@@ -1691,6 +1692,7 @@ func test_optimize() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
+	counters := make([]uint64, packets.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1710,7 +1712,7 @@ func test_optimize() {
 					return
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 
@@ -1776,6 +1778,16 @@ func test_relay_backend() {
 	database.CreationTime = time.Now().String()
 	database.Creator = "test"
 
+	seller := db.Seller{}
+	seller.Id = 1
+	seller.Name = "seller"
+	database.SellerMap[1] = &seller
+
+	datacenter := db.Datacenter{}
+	datacenter.Id = 1
+	datacenter.Name = "test"
+	database.DatacenterMap[1] = &datacenter
+
 	for i := 0; i < NumRelays; i++ {
 
 		relay := db.Relay{}
@@ -1783,15 +1795,14 @@ func test_relay_backend() {
 		relay.Id = relayIds[i]
 		relay.Name = relayNames[i]
 		relay.PublicAddress = relayAddresses[i]
+		relay.SSHAddress = relayAddresses[i]
 		relay.Version = "test"
-		relay.Datacenter.Id = relayDatacenterIds[i]
-		relay.Datacenter.Name = datacenterNames[relay.Datacenter.Id]
-		relay.Datacenter.Latitude = datacenterLatitudes[relay.Datacenter.Id]
-		relay.Datacenter.Longitude = datacenterLongitudes[relay.Datacenter.Id]
+		relay.Seller = seller
+		relay.Datacenter = datacenter
 
 		database.Relays = append(database.Relays, relay)
 
-		database.RelayMap[relay.Id] = relay
+		database.RelayMap[relay.Id] = &relay
 	}
 
 	// write the database out to a temporary file
@@ -1807,9 +1818,17 @@ func test_relay_backend() {
 
 	fmt.Println(databaseFilename)
 
+	err = database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
 	database.Save(databaseFilename)
 
 	// start the magic backend
+
+	fmt.Printf("starting magic backend\n")
 
 	magic_backend_cmd := exec.Command(magicBackendBin)
 	if magic_backend_cmd == nil {
@@ -1825,6 +1844,8 @@ func test_relay_backend() {
 	magic_backend_cmd.Start()
 
 	// run the relay gateway, such that it loads the temporary database file
+
+	fmt.Printf("starting relay gateway\n")
 
 	relay_gateway_cmd := exec.Command(relayGatewayBin)
 	if relay_gateway_cmd == nil {
@@ -1842,6 +1863,8 @@ func test_relay_backend() {
 	relay_gateway_cmd.Start()
 
 	// run the relay backend, such that it loads the temporary database file
+
+	fmt.Printf("starting relay backend\n")
 
 	relay_backend_cmd := exec.Command(relayBackendBin)
 	if relay_backend_cmd == nil {
@@ -1910,6 +1933,7 @@ func test_relay_backend() {
 					requestPacket.Address = relayAddresses[index]
 					requestPacket.Token = make([]byte, packets.RelayTokenSize)
 					requestPacket.NumSamples = NumRelays
+					requestPacket.NumCounters = common.NumRelayCounters
 
 					for i := 0; i < NumRelays; i++ {
 						requestPacket.SampleRelayId[i] = relayIds[i]
@@ -1965,6 +1989,8 @@ func test_relay_backend() {
 
 		// wait until the relay backend health checks both pass
 
+		fmt.Printf("waiting until health checks pass...\n")
+
 		for {
 			readyCount := 0
 
@@ -1972,7 +1998,6 @@ func test_relay_backend() {
 			if err == nil && response.StatusCode == 200 {
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err == nil && strings.Contains(string(buffer), "OK") {
-					fmt.Printf("vm_health is ready\n")
 					readyCount++
 				}
 				response.Body.Close()
@@ -1982,7 +2007,6 @@ func test_relay_backend() {
 			if err == nil && response.StatusCode == 200 {
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err == nil && strings.Contains(string(buffer), "OK") {
-					fmt.Printf("lb_health is ready\n")
 					readyCount++
 				}
 				response.Body.Close()
@@ -1994,6 +2018,8 @@ func test_relay_backend() {
 		}
 
 		// request route matrix once per-second
+
+		fmt.Printf("requesting route matrix once per-second\n")
 
 		ticker := time.NewTicker(1 * time.Second)
 

@@ -437,7 +437,7 @@ func TestSignatureCheckFailed_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
 
@@ -516,7 +516,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
 
@@ -603,7 +603,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -697,7 +697,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -783,7 +783,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 
@@ -793,7 +793,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 
 	localDatacenterId := common.DatacenterId("local")
 
-	localDatacenter := database.Datacenter{
+	localDatacenter := &database.Datacenter{
 		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,
@@ -1014,7 +1014,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
 
@@ -1101,7 +1101,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -1195,7 +1195,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -1279,7 +1279,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 
@@ -1289,7 +1289,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 
 	localDatacenterId := common.DatacenterId("local")
 
-	localDatacenter := database.Datacenter{
+	localDatacenter := &database.Datacenter{
 		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,
@@ -1514,7 +1514,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
 
@@ -1601,7 +1601,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 	_ = buyerPrivateKey
@@ -1693,7 +1693,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	var buyerPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
-	buyer := database.Buyer{}
+	buyer := &database.Buyer{}
 	buyer.Live = true
 	buyer.PublicKey = buyerPublicKey[:]
 
@@ -1703,7 +1703,7 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 
 	localDatacenterId := common.DatacenterId("local")
 
-	localDatacenter := database.Datacenter{
+	localDatacenter := &database.Datacenter{
 		Id:        localDatacenterId,
 		Name:      "local",
 		Latitude:  10,

@@ -15,6 +15,7 @@ const (
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
 	MaxRelays                        = 1000
+	NumRelayCounters                 = 100
 )
 
 // --------------------------------------------------------------------------
@@ -44,6 +45,8 @@ type RelayUpdateRequestPacket struct {
 	EnvelopeDownKbps  uint64
 	BandwidthSentKbps uint64
 	BandwidthRecvKbps uint64
+	NumCounters       uint32
+	Counters          [NumRelayCounters]uint64
 }
 
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
@@ -58,7 +61,6 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumSamples); i++ {
 		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
-		// todo: these need to become uint8 values
 		encoding.WriteFloat32(buffer, &index, packet.SampleRTT[i])
 		encoding.WriteFloat32(buffer, &index, packet.SampleJitter[i])
 		encoding.WriteFloat32(buffer, &index, packet.SamplePacketLoss[i])
@@ -74,6 +76,11 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, packet.EnvelopeDownKbps)
 	encoding.WriteUint64(buffer, &index, packet.BandwidthSentKbps)
 	encoding.WriteUint64(buffer, &index, packet.BandwidthRecvKbps)
+
+	encoding.WriteUint32(buffer, &index, packet.NumCounters)
+	for i := 0; i < int(packet.NumCounters); i++ {
+		encoding.WriteUint64(buffer, &index, packet.Counters[i])
+	}
 
 	return buffer[:index]
 }
@@ -164,6 +171,20 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read bandwidth received kbps")
 	}
 
+	if !encoding.ReadUint32(buffer, &index, &packet.NumCounters) {
+		return errors.New("could not read num counters")
+	}
+
+	if packet.NumCounters != NumRelayCounters {
+		return errors.New("wrong number of counters")
+	}
+
+	for i := 0; i < int(packet.NumCounters); i++ {
+		if !encoding.ReadUint64(buffer, &index, &packet.Counters[i]) {
+			return errors.New("could not read counter")
+		}
+	}
+
 	return nil
 }
 
@@ -199,6 +220,7 @@ type RelayUpdateResponsePacket struct {
 	NumRelays     uint32
 	RelayId       [MaxRelays]uint64
 	RelayAddress  [MaxRelays]string
+	RelayInternal [MaxRelays]byte
 	TargetVersion string
 	UpcomingMagic []byte
 	CurrentMagic  []byte
@@ -216,6 +238,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	for i := 0; i < int(packet.NumRelays); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
 		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength) // todo: write the relay address in binary format instead
+		encoding.WriteUint8(buffer, &index, packet.RelayInternal[i])
 	}
 
 	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)
@@ -223,9 +246,6 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.PreviousMagic, 8)
-
-	// todo: remove this. we don't need internal addresses array anymore (as far as I can tell...)
-	encoding.WriteUint32(buffer, &index, 0)
 
 	return buffer[:index]
 }
@@ -263,6 +283,10 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		if !encoding.ReadString(buffer, &index, &packet.RelayAddress[i], MaxRelayAddressLength) {
 			return errors.New("could not read relay address")
 		}
+
+		if !encoding.ReadUint8(buffer, &index, &packet.RelayInternal[i]) {
+			return errors.New("could not read relay internal")
+		}
 	}
 
 	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, MaxRelayVersionStringLength) {
@@ -283,24 +307,6 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	if !encoding.ReadBytes(buffer, &index, &packet.PreviousMagic, 8) {
 		return errors.New("could not read previous magic")
-	}
-
-	// todo: remove internal addresses. as far as I can tell they're no longer needed
-
-	var numInternalAddresses uint32
-	if !encoding.ReadUint32(buffer, &index, &numInternalAddresses) {
-		return errors.New("could not read num internal addresses")
-	}
-
-	if numInternalAddresses > MaxRelays {
-		return errors.New("invalid num internal addresses")
-	}
-
-	for i := 0; i < int(numInternalAddresses); i++ {
-		var dummy string
-		if !encoding.ReadString(buffer, &index, &dummy, MaxRelayAddressLength) {
-			return errors.New("could not read relay internal address")
-		}
 	}
 
 	return nil

@@ -33,6 +33,8 @@ var TestRouterPrivateKey = []byte{}
 
 var TestBackendPrivateKey = []byte{}
 
+const NumCounters = packets.NumRelayCounters
+
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
 
@@ -115,7 +117,7 @@ func OptimizeThread() {
 			relayDatacenterIds[i] = common.DatacenterId("local")
 		}
 
-		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
 
 		numCPUs := runtime.NumCPU()
 		numSegments := numRelays
@@ -203,6 +205,8 @@ const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+
+	// todo: we should really read this as a packet instead of manually reading it here
 
 	// parse the relay update request
 
@@ -331,6 +335,25 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	var numCounters uint32
+	if !encoding.ReadUint32(body, &index, &numCounters) {
+		fmt.Printf("could not read num counters\n")
+		return
+	}
+
+	if numCounters != NumCounters {
+		fmt.Printf("wrong number of counters: expected %d, got %d\n", NumCounters, numCounters)
+		return
+	}
+
+	counters := [NumCounters]uint64{}
+	for i := 0; i < NumCounters; i++ {
+		if !encoding.ReadUint64(body, &index, &counters[i]) {
+			fmt.Printf("could not read counter\n")
+			return
+		}
+	}
+
 	// process the relay update
 
 	relayPort := udpAddr.Port
@@ -340,7 +363,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	currentTime := time.Now().Unix()
 
 	backend.mutex.Lock()
-	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss)
+	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
 	backend.mutex.Unlock()
 
 	// get relays to ping
@@ -780,21 +803,23 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		routerPrivateKey := [packets.SDK5_PrivateKeyBytes]byte{}
 		copy(routerPrivateKey[:], TestRouterPrivateKey)
 
-		tokenAddresses := make([]net.UDPAddr, numRouteRelays+2)
+		numTokens := numRouteRelays + 2
+
+		tokenAddresses := make([]net.UDPAddr, numTokens)
 		tokenAddresses[0] = requestPacket.ClientAddress
 		tokenAddresses[len(tokenAddresses)-1] = requestPacket.ServerAddress
 		for i := 0; i < numRouteRelays; i++ {
 			tokenAddresses[1+i] = relayAddresses[i]
 		}
 
-		tokenPublicKeys := make([][]byte, numRouteRelays+2)
+		tokenPublicKeys := make([][]byte, numTokens)
 		tokenPublicKeys[0] = requestPacket.ClientRoutePublicKey[:]
 		tokenPublicKeys[len(tokenPublicKeys)-1] = requestPacket.ServerRoutePublicKey[:]
 		for i := 0; i < numRouteRelays; i++ {
 			tokenPublicKeys[1+i] = relayPublicKey
 		}
 
-		numTokens := numRouteRelays + 2
+		tokenInternal := make([]bool, numTokens)
 
 		var tokenData []byte
 
@@ -807,7 +832,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			sessionData.SessionVersion++
 
 			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, routerPrivateKey[:])
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, tokenInternal, routerPrivateKey[:])
 			routeType = packets.SDK5_RouteTypeNew
 		}
 
@@ -883,7 +908,7 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	backend.relayManager = common.CreateRelayManager()
+	backend.relayManager = common.CreateRelayManager(true)
 
 	backend.routeMatrix = &common.RouteMatrix{}
 

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,14 +11,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 )
-
-const InvalidRouteValue = 10000.0
 
 var maxRTT float32
 var maxJitter float32
@@ -57,6 +58,8 @@ var readyMutex sync.RWMutex
 var ready bool
 
 var startTime time.Time
+
+var counterNames [common.NumRelayCounters]string
 
 func main() {
 
@@ -104,7 +107,9 @@ func main() {
 
 	service.LoadDatabase()
 
-	relayManager := common.CreateRelayManager()
+	initCounterNames()
+
+	relayManager := common.CreateRelayManager(service.Local)
 
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
@@ -112,6 +117,10 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
+    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+    service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
+    service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
+    service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -126,6 +135,318 @@ func main() {
 	UpdateReadyState(service)
 
 	service.WaitForShutdown()
+}
+
+func relayManagerHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		copy := relayManager.Copy()
+		var buffer bytes.Buffer
+		err := gob.NewEncoder(&buffer).Encode(copy)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no relay manager: %v\n", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func routesHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		src := vars["src"]
+		dest := vars["dest"]
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+		routeMatrix := common.RouteMatrix{}
+		err := routeMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no route matrix\n")
+			return
+		}
+		fmt.Printf("relay names: %+v\n", routeMatrix.RelayNames)
+		src_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == src {
+				src_index = i
+				break
+			}
+		}
+		dest_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == dest {
+				dest_index = i
+				break
+			}
+		}
+		fmt.Printf("%s %s %d %d\n", src, dest, src_index, dest_index)
+		if src_index == -1 || dest_index == -1 || src_index == dest_index {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <title>Routes</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
+		fmt.Fprintf(w, "<table>\n")
+		fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
+		index := core.TriMatrixIndex(src_index, dest_index)
+		entry := routeMatrix.RouteEntries[index]
+		for i := 0; i < int(entry.NumRoutes); i++ {
+			routeRelays := ""
+			numRouteRelays := int(entry.RouteNumRelays[i])
+			for j := 0; j < numRouteRelays; j++ {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != numRouteRelays-1 {
+					routeRelays += " - "
+				}
+			}
+			fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
+		}
+		fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
+}
+
+func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		costMatrix := common.CostMatrix{}
+		err := costMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no cost matrix\n")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <title>Cost Matrix</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			cost{
+         	  color: white;
+      		}
+			*{
+		    font-family:Courier;
+		    }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s\n", htmlHeader)
+		fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+		fmt.Fprintf(w, "<tr><td></td>")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+		}
+		fmt.Fprintf(w, "</tr>\n")
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+			for j := range costMatrix.RelayNames {
+				if i == j {
+					fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+					continue
+				}
+				nope := false
+				costString := ""
+				index := core.TriMatrixIndex(i,j)
+				cost := costMatrix.Costs[index]
+				if cost >= 0 {
+					costString = fmt.Sprintf("%d", cost)
+				} else {
+					nope = true
+				}
+				clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+
+				if nope {
+					fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
+				} else {
+					fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
+				}
+			}
+			fmt.Fprintf(w, "</tr>\n")
+		}
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
+}
+
+func initCounterNames() {
+	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./reference/reference_relay/reference_relay.cpp
+    counterNames[0] = "PACKETS_SENT"
+    counterNames[1] = "PACKETS_RECEIVED"
+    counterNames[2] = "BYTES_SENT"
+    counterNames[3] = "BYTES_RECEIVED"
+    counterNames[4] = "BASIC_PACKET_FILTER_DROPPED_PACKET"
+    counterNames[5] = "ADVANCED_PACKET_FILTER_DROPPED_PACKET"
+    counterNames[6] = "SESSION_CREATED"
+    counterNames[7] = "SESSION_CONTINUED"
+    counterNames[8] = "SESSION_DESTROYED"
+    counterNames[9] = "RELAY_PING_PACKET_SENT"
+    counterNames[10] = "RELAY_PING_PACKET_RECEIVED"
+    counterNames[11] = "RELAY_PONG_PACKET_SENT"
+    counterNames[12] = "RELAY_PONG_PACKET_RECEIVED"
+    counterNames[20] = "NEAR_PING_PACKET_RECEIVED"
+    counterNames[21] = "NEAR_PING_PACKET_BAD_SIZE"
+    counterNames[22] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
+    counterNames[30] = "ROUTE_REQUEST_PACKET_RECEIVED"
+    counterNames[31] = "ROUTE_REQUEST_PACKET_BAD_SIZE"
+    counterNames[32] = "ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+    counterNames[33] = "ROUTE_REQUEST_PACKET_TOKEN_EXPIRED"
+    counterNames[34] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+    counterNames[35] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+    counterNames[40] = "ROUTE_RESPONSE_PACKET_RECEIVED"
+    counterNames[41] = "ROUTE_RESPONSE_PACKET_BAD_SIZE"
+    counterNames[42] = "ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[43] = "ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+    counterNames[44] = "ROUTE_RESPONSE_PACKET_SESSION_EXPIRED"
+    counterNames[45] = "ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED"
+    counterNames[46] = "ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+    counterNames[47] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+    counterNames[48] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+    counterNames[50] = "CONTINUE_REQUEST_PACKET_RECEIVED"
+    counterNames[51] = "CONTINUE_REQUEST_PACKET_BAD_SIZE"
+    counterNames[52] = "CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+    counterNames[53] = "CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED"
+    counterNames[54] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
+    counterNames[55] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+    counterNames[56] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+    counterNames[60] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
+    counterNames[61] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
+    counterNames[62] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[63] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
+    counterNames[64] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+    counterNames[65] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
+    counterNames[66] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+    counterNames[67] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+    counterNames[68] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+    counterNames[70] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
+    counterNames[71] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
+    counterNames[72] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
+    counterNames[73] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[74] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
+    counterNames[75] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
+    counterNames[76] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
+    counterNames[77] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
+    counterNames[78] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+    counterNames[79] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+    counterNames[80] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
+    counterNames[81] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
+    counterNames[82] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
+    counterNames[83] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[84] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
+    counterNames[85] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
+    counterNames[86] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
+    counterNames[87] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
+    counterNames[88] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+    counterNames[89] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+    counterNames[90] = "SESSION_PING_PACKET_RECEIVED"
+    counterNames[91] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
+    counterNames[92] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[93] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
+    counterNames[94] = "SESSION_PING_PACKET_SESSION_EXPIRED"
+    counterNames[95] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
+    counterNames[96] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
+    counterNames[97] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+    counterNames[98] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+    counterNames[100] = "SESSION_PONG_PACKET_RECEIVED"
+    counterNames[101] = "SESSION_PONG_PACKET_BAD_SIZE"
+    counterNames[102] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
+    counterNames[103] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
+    counterNames[104] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
+    counterNames[105] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
+    counterNames[106] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
+    counterNames[107] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+    counterNames[108] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+}
+
+func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		relayName := vars["relay_name"]
+		relayData := service.RelayData()
+		relayIndex := -1
+		for i := range relayData.RelayNames {
+			if relayData.RelayNames[i] == relayName {
+				relayIndex = i
+				break
+			}
+		}
+		if relayIndex == -1 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		relayId := relayData.RelayIds[relayIndex]
+		counters := relayManager.GetRelayCounters(relayId)
+		w.Header().Set("Content-Type", "text/html")
+		const htmlHeader = `<!DOCTYPE html>
+		<html lang="en">
+		<head>
+		  <meta charset="utf-8">
+		  <meta http-equiv="refresh" content="1">
+		  <title>Relay Counters</title>
+		  <style>
+			table, th, td {
+		      border: 1px solid black;
+		      border-collapse: collapse;
+		      text-align: center;
+		      padding: 10px;
+		    }
+			*{
+		    font-family:Courier;
+		  }	  
+		  </style>
+		</head>
+		<body>`
+		fmt.Fprintf(w, "%s>\n", htmlHeader)
+		fmt.Fprintf(w, "%s<br><br><table>\n", relayName)
+		for i := range counterNames {
+			if counterNames[i] == "" {
+				continue
+			}
+			fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td></tr>\n", counterNames[i], counters[i])
+		}
+		fmt.Fprintf(w, "</table>\n")
+	  const htmlFooter = `</body></html>`
+		fmt.Fprintf(w, "%s\n", htmlFooter)
+	}
 }
 
 func sendTrafficToMe(service *common.Service) func() bool {
@@ -387,6 +708,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.SampleRTT[:numSamples],
 					relayUpdateRequest.SampleJitter[:numSamples],
 					relayUpdateRequest.SamplePacketLoss[:numSamples],
+					relayUpdateRequest.Counters[:],
 				)
 
 				if disableGooglePubsub {
@@ -417,23 +739,21 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					sampleJitter[i] = jitter
 					samplePacketLoss[i] = pl
 
-					if rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue {
-						if jitter <= maxJitter && pl <= maxPacketLoss {
-							numRoutable++
-							sampleRoutable[i] = true
-						}
-
-						pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
-							Version:    messages.PingStatsMessageVersion_Write,
-							Timestamp:  uint64(time.Now().Unix()),
-							RelayA:     relayId,
-							RelayB:     sampleRelayId,
-							RTT:        rtt,
-							Jitter:     jitter,
-							PacketLoss: pl,
-							Routable:   sampleRoutable[i],
-						})
+					if rtt <= maxRTT && jitter <= maxJitter && pl <= maxPacketLoss {
+						numRoutable++
+						sampleRoutable[i] = true
 					}
+
+					pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
+						Version:    messages.PingStatsMessageVersion_Write,
+						Timestamp:  uint64(time.Now().Unix()),
+						RelayA:     relayId,
+						RelayB:     sampleRelayId,
+						RTT:        rtt,
+						Jitter:     jitter,
+						PacketLoss: pl,
+						Routable:   sampleRoutable[i],
+					})
 				}
 
 				// build relay stats message
@@ -508,12 +828,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
-				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss, service.Local)
-
-				// todo
-				fmt.Printf("==============================================================\n")
-				fmt.Printf("%+v\n", costs)
-				fmt.Printf("==============================================================\n")
+				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

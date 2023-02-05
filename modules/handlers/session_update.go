@@ -44,9 +44,9 @@ type SessionUpdateState struct {
 	Response      packets.SDK5_SessionUpdateResponsePacket
 	Database      *db.Database
 	RouteMatrix   *common.RouteMatrix
-	Datacenter    db.Datacenter
+	Datacenter    *db.Datacenter
 	BuyerId       uint64
-	Buyer         db.Buyer
+	Buyer         *db.Buyer
 	Debug         *string
 	StaleDuration time.Duration
 
@@ -540,8 +540,9 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses [core.NEXT_MAX_NODES]net.UDPAddr
+	var routeAddresses  [core.NEXT_MAX_NODES]net.UDPAddr
 	var routePublicKeys [core.NEXT_MAX_NODES][]byte
+	var routeInternal   [core.NEXT_MAX_NODES]bool
 
 	// client node (no address specified...)
 
@@ -551,34 +552,28 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	relayAddresses := routeAddresses[1 : numTokens-1]
 	relayPublicKeys := routePublicKeys[1 : numTokens-1]
+	relayInternal := routeInternal[1 : numTokens-1]
 
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
 		relayIndex := routeRelays[i]
-		relayId := state.RouteMatrix.RelayIds[relayIndex]
-		relay, relay_exists := state.Database.RelayMap[relayId]
-		if !relay_exists {
-			panic("relay does not exist?!")
-		}
+		relay := &state.Database.Relays[relayIndex]
 		relayAddresses[i] = relay.PublicAddress
 		relayPublicKeys[i] = relay.PublicKey
 
-		// todo: disabled until we get the next/prev internal implemented in the token
-		/*
-		// use private address (when it exists) when sending between two relays belonging to the same seller
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
-			prevId := state.RouteMatrix.RelayIds[prevRelayIndex]
-			prev, _ := state.Database.RelayMap[prevId]
-			if prev.Seller.Id == relay.Seller.Id && relay.HasInternalAddress {
-				relayAddresses[i] = &relay.InternalAddress
+			prevRelay := &state.Database.Relays[prevRelayIndex]
+			if prevRelay.Seller.Id == relay.Seller.Id && relay.HasInternalAddress && prevRelay.HasInternalAddress {
+				relayAddresses[i] = relay.InternalAddress
+				relayInternal[i] = true
 			}
 		}
-		// todo
-		fmt.Printf("relay %d: %s\n", i, relayAddresses[i].String())
-		*/
 	}
+
+	// todo
+	fmt.Printf("internal: %+v\n", relayInternal)
 
 	// server node
 
@@ -603,7 +598,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], state.RoutingPrivateKey[:])
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RoutingPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -627,13 +622,8 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
-
 		relayIndex := routeRelays[i]
-
-		relayId := state.RouteMatrix.RelayIds[relayIndex]
-
-		relay, _ := state.Database.RelayMap[relayId]
-
+		relay := &state.Database.Relays[relayIndex]
 		relayPublicKeys[i] = relay.PublicKey
 	}
 
@@ -689,7 +679,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.Request.UserHash,
 			state.RouteMatrix.RouteEntries,
-			state.RouteMatrix.FullRelayIndexSet,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
 			int32(state.Request.DirectRTT),
@@ -768,7 +757,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.Request.UserHash,
 			state.RouteMatrix.RouteEntries,
-			state.RouteMatrix.FullRelayIndexSet,
 			state.RouteMatrix.RelayNames,
 			&state.Buyer.RouteShader,
 			&state.Output.RouteState,
@@ -1239,27 +1227,20 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 // -----------------------------------------
 
 func datacenterExists(database *db.Database, datacenterId uint64) bool {
-	_, exists := database.DatacenterMap[datacenterId]
-	return exists
+	return database.DatacenterMap[datacenterId] != nil
 }
 
 func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
-	datacenterAliases, ok := database.DatacenterMaps[buyerId]
+	buyerEntry, ok := database.DatacenterMaps[buyerId]
 	if !ok {
 		return false
 	}
-	_, ok = datacenterAliases[datacenterId]
-	return ok
+	datacenterEntry := buyerEntry[datacenterId]
+	return datacenterEntry.EnableAcceleration
 }
 
-func getDatacenter(database *db.Database, datacenterId uint64) db.Datacenter {
-	value, exists := database.DatacenterMap[datacenterId]
-	if !exists {
-		return db.Datacenter{
-			Name: "unknown",
-		}
-	}
-	return value
+func getDatacenter(database *db.Database, datacenterId uint64) *db.Datacenter {
+	return database.DatacenterMap[datacenterId]
 }
 
 // -----------------------------------------

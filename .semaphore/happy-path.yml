@@ -2,10 +2,6 @@ version: v1.0
 
 name: Happy Path
 
-fail_fast:
-  stop:
-    when: "true"
-
 agent:
   machine:
     type: e1-standard-8
