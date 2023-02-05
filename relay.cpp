@@ -1,5 +1,5 @@
 /*
- * Network Next Reference Relay.
+ * Network Next Relay.
  * Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
  */
 
@@ -18,6 +18,8 @@
 #include <atomic>
 
 #include "curl/curl.h"
+
+#define RELAY_DEVELOPMENT                                          1
 
 #define INTENSIVE_RELAY_DEBUGGING                                  0
 
@@ -4149,7 +4151,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
         relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
 
-        // todo: wrap this with #if RELAY_DEVELOPMENT or similar
+#if RELAY_DEVELOPMENT
         if ( relay->fake_packet_loss_start_time >= 0.0f )
         {
             const double current_time = relay_platform_time();
@@ -4158,6 +4160,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
         }
+#endif // #if RELAY_DEVELOPMENT
 
         int packet_id = packet_data[0];
 
@@ -4286,18 +4289,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo
-                /*
                 uint64_t current_timestamp = relay_timestamp( relay );
                 if ( token.expire_timestamp < current_timestamp )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. route token expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_TOKEN_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                     continue;
                 }
-                */
 
                 uint64_t hash = token.session_id ^ token.session_version;
 
@@ -5437,7 +5437,7 @@ int main( int argc, const char ** argv )
         exit(0);
     }
 
-    printf( "\nNetwork Next Reference Relay (%s)\n", RELAY_VERSION );
+    printf( "\nNetwork Next Relay (%s)\n", RELAY_VERSION );
 
     printf( "\nEnvironment:\n\n" );
 
