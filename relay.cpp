@@ -3782,9 +3782,11 @@ struct relay_t
     uint8_t previous_magic[8];
     std::atomic<uint64_t> envelope_bandwidth_kbps_up;               // todo: these should probably be in bytes up/down instead
     std::atomic<uint64_t> envelope_bandwidth_kbps_down;
+    std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
+#if RELAY_DEVELOPMENT
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
-    std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
+#endif // #if RELAY_DEVELOPMENT
 };
 
 struct curl_buffer_t
@@ -5563,6 +5565,8 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+#if RELAY_DEVELOPMENT
+
     float relay_fake_packet_loss_percent = 0.0f;
     const char * fake_packet_loss_percent_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_PERCENT" );
     if ( fake_packet_loss_percent_env )
@@ -5586,6 +5590,8 @@ int main( int argc, const char ** argv )
     {
         printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
+
+#endif // #if RELAY_DEVELOPMENT
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5656,8 +5662,10 @@ int main( int argc, const char ** argv )
     memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.envelope_bandwidth_kbps_up = 0;
     relay.envelope_bandwidth_kbps_down = 0;
+#if RELAY_DEVELOPMENT
     relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
     relay.fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
+#endif // #if RELAY_DEVELOPMENT
 
     relay.socket = socket;
     relay.mutex = relay_platform_mutex_create();
