@@ -13,7 +13,7 @@ agent:
 
 blocks:
 
-  - name: "Libraries"
+  - name: "Components"
     dependencies: []
     task:
       agent:
@@ -21,7 +21,7 @@ blocks:
           type: e1-standard-8
           os_image: ubuntu2004
       jobs:
-        - name: "Build Libraries"
+        - name: "Build Components"
           commands:
             - sudo apt-get install -y libsodium-dev
             - checkout
@@ -29,6 +29,7 @@ blocks:
             - make -j ./dist/relay ./dist/libnext5.so
             - artifact push workflow ./dist/relay
             - artifact push workflow ./dist/libnext5.so
+            - artifact push workflow deploy/bootstrap.sh
 
   - name: "Backend"
     dependencies: []
@@ -63,16 +64,6 @@ blocks:
             - mkdir dist
             - make dist/test
             - cd dist && ./test
-
-  - name: "Build Artifacts (Scripts)"
-    dependencies: []
-    task:
-      jobs:
-        - name: "Bootstrap"
-          commands:
-            - checkout
-            - artifact push workflow deploy/bootstrap.sh
-
 
   - name: "Build Artifacts (Golang)"
 
@@ -157,7 +148,6 @@ blocks:
           commands:
             - make -j dist/raspberry_client.dev.tar.gz
             - artifact push workflow dist/raspberry_client.dev.tar.gz
-
 
 promotions:
 
