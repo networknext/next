@@ -21,7 +21,7 @@
 
 #define RELAY_DEVELOPMENT                                          1
 
-#define INTENSIVE_RELAY_DEBUGGING                                  0
+#define INTENSIVE_RELAY_DEBUGGING                                  1 // todo
 
 #define RELAY_MTU                                               1300
 
@@ -4450,7 +4450,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
-                    printf( "[%s] ignored route response packet. packet already received (%d <= %d) [sdk5]\n", from_string, clean_sequence, session->server_to_client_sequence );
+                    printf( "[%s] ignored route response packet. packet already received (%" PRId64 " <= %" PRId64 ") [sdk5]\n", from_string, clean_sequence, session->server_to_client_sequence );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 		            relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                     continue;
@@ -4703,7 +4703,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
-                    printf( "[%s] ignored continue response packet. packet already received (%d <= %d) [sdk5]\n", from_string, clean_sequence, session->server_to_client_sequence );
+                    printf( "[%s] ignored continue response packet. packet already received (%" PRId64 " <= %" PRId64 ") [sdk5]\n", from_string, clean_sequence, session->server_to_client_sequence );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 	            	relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                     continue;
