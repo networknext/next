@@ -494,7 +494,9 @@ void next_assert_function( void (*function)( const char * condition, const char 
 
 const char * next_log_level_string( int level )
 {
-    if ( level == NEXT_LOG_LEVEL_DEBUG )
+    if ( level == NEXT_LOG_LEVEL_SPAM )
+        return "spam";
+    else if ( level == NEXT_LOG_LEVEL_DEBUG )
         return "debug";
     else if ( level == NEXT_LOG_LEVEL_INFO )
         return "info";
@@ -6569,6 +6571,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
+#if NEXT_ASSERT
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client processing packet type %d from %s (%d bytes)", packet_id, next_address_to_string( &client->server_address, address_buffer ), packet_bytes );
+#endif // #if NEXT_ASSERT
+
     // run packet filters
     {
         if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
@@ -6619,6 +6626,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !client->upgraded && from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade request packet" );
+
         if ( !next_address_equal( from, &client->server_address ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet does not come from server address" );
@@ -6755,6 +6764,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !client->upgraded && packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade confirm packet" );
+
         if ( !client->sending_upgrade_response )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade confirm packet from server. unexpected" );
@@ -6838,6 +6849,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET && client->upgraded && from_server_address )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -6898,6 +6911,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route response packet" );
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -7022,6 +7037,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing continue response packet" );
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -7109,6 +7126,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing server to client packet" );
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -7166,6 +7185,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_PONG_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing next pong packet" );
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -7203,6 +7224,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_RELAY_PONG_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing relay pong packet" );
+
         if ( !client->upgraded )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
@@ -7233,12 +7256,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     // -------------------
 
     if ( !next_address_equal( from, &client->server_address ) )
+    {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client ignoring packet because it's not from the server" );
         return;
+    }
 
     // direct pong packet
 
     if ( packet_id == NEXT_DIRECT_PONG_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
+
         NextDirectPongPacket packet;
 
         uint64_t packet_sequence = 0;
@@ -7265,6 +7293,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
+    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route update packet" );
+
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -7419,6 +7449,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 void next_client_internal_process_passthrough_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_client_internal_verify_sentinels( client );
+
+	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing passthrough packet" );
 
     next_assert( from );
     next_assert( packet_data );
@@ -12656,6 +12688,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     const int packet_id = packet_data[begin];
 
+#if NEXT_ASSERT
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	next_printf( NEXT_LOG_LEVEL_SPAM, "server received packet type %d from %s (%d bytes)", packet_id, next_address_to_string( from, address_buffer ), packet_bytes );
+#endif // #if NEXT_ASSERT
+
     // run packet filters
     {
         if ( !next_basic_packet_filter( packet_data + begin, end - begin ) )
@@ -12828,6 +12865,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing direct packet" );
+
         const int packet_bytes = end - begin;
 
         if ( packet_bytes <= 9 )
@@ -12897,6 +12936,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing server update response packet" );
+
         NextBackendServerUpdateResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -12962,6 +13003,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing session update response packet" );
+
         NextBackendSessionUpdateResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -13087,6 +13130,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing match data response packet" );
+
         if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
@@ -13136,6 +13181,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing upgrade response packet" );
+
         NextUpgradeResponsePacket packet;
 
         if ( next_read_packet( NEXT_UPGRADE_RESPONSE_PACKET, packet_data, begin, end, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
@@ -13318,6 +13365,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing route request packet" );
+
         const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
@@ -13401,6 +13450,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing continue request packet" );
+
         const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
@@ -13480,6 +13531,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing client to server packet" );
+
         const int packet_bytes = end - begin;
 
         if ( packet_bytes <= NEXT_HEADER_BYTES )
@@ -13516,6 +13569,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing next ping packet" );
+
         const int packet_bytes = end - begin;
 
         if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
@@ -13575,7 +13630,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
+        {
+	        next_printf( NEXT_LOG_LEVEL_SPAM, "server dropped encrypted packet because it couldn't find any session for it" );
             return;
+        }
 
         session->last_upgraded_packet_receive_time = next_time();
     }
@@ -13584,6 +13642,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing direct ping packet" );
+
         next_assert( session );
 
         if ( session == NULL )
@@ -13593,7 +13653,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         NextDirectPingPacket packet;
         if ( next_read_packet( NEXT_DIRECT_PING_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. could not read" );
             return;
+        }
 
         session->last_client_direct_ping = next_time();
 
@@ -13615,6 +13678,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing client stats packet" );
+
         next_assert( session );
 
         if ( session == NULL )
@@ -13625,7 +13690,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         uint64_t packet_sequence = 0;
 
         if ( next_read_packet( NEXT_CLIENT_STATS_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
             return;
+        }
 
         next_post_validate_packet( NEXT_CLIENT_STATS_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
 
@@ -13685,12 +13753,17 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET && session != NULL )
     {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing route update ack packet" );
+
         NextRouteUpdateAckPacket packet;
 
         uint64_t packet_sequence = 0;
 
         if ( next_read_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
             return;
+        }
 
         if ( packet.sequence != session->update_sequence )
         {
@@ -13716,6 +13789,8 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server processing passthrough packet" );
 
     next_server_internal_verify_sentinels( server );
 
