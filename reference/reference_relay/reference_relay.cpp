@@ -3984,10 +3984,8 @@ struct relay_t
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
-    std::atomic<uint64_t> envelope_bandwidth_kbps_up;
+    std::atomic<uint64_t> envelope_bandwidth_kbps_up;               // todo: these should probably be in bytes up/down instead
     std::atomic<uint64_t> envelope_bandwidth_kbps_down;
-    std::atomic<uint64_t> bytes_sent;
-    std::atomic<uint64_t> bytes_received;
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
     std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
@@ -4157,9 +4155,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_up);
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_down);
 
-    // todo: is this really accurate? assumes exactly one second has elapsed since last update?
-    uint64_t bandwidth_tx = uint64_t(relay->bytes_sent * 8.0 / 1000.0);
-    uint64_t bandwidth_rx = uint64_t(relay->bytes_received * 8.0 / 1000.0);
+    // todo: redo bandwidth
+    uint64_t bandwidth_tx = 0;
+    uint64_t bandwidth_rx = 0;
     relay_write_uint64(&p, bandwidth_tx);
     relay_write_uint64(&p, bandwidth_rx);
 
@@ -4168,12 +4166,6 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     {
         relay_write_uint64(&p, relay->counters[i]);
     }
-
-    // reset bandwidth bytes sent / recv to accurately track bandwidth kbps
-    // this is easier than subtracting previously sent / recv bytes
-
-    relay->bytes_sent = 0;
-    relay->bytes_received = 0;
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4361,6 +4353,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             continue;
 
         relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
+        relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
 
         // todo: wrap this with #if RELAY_DEVELOPMENT or similar
         if ( relay->fake_packet_loss_start_time >= 0.0f )
@@ -4371,8 +4364,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
         }
-
-        relay->bytes_received += packet_bytes;
 
         int packet_id = packet_data[0];
 
@@ -4385,9 +4376,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             packet_data[0] = RELAY_PONG_PACKET;
-            relay_platform_socket_send_packet( relay->socket, &from, packet_data, 1 + 8 );
+            int packet_bytes = 1 + 8;
+            relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes );
             relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-            relay->bytes_sent += 1 + 8;
+            relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
         }
         else if ( packet_id == RELAY_PONG_PACKET && packet_bytes == 1 + 8 )
         {
@@ -4459,8 +4451,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
- 
-                relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK4 )
             {
@@ -4513,8 +4504,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
- 
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK4 )
             {
@@ -4567,8 +4557,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
             {
@@ -4620,8 +4609,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK4 )
             {
@@ -4678,8 +4666,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK4 )
             {
@@ -4736,8 +4723,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK4 )
             {
@@ -4789,8 +4775,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK4 )
             {
@@ -4842,8 +4827,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &session->prev_address, packet_data, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK4 )
             {
@@ -4856,8 +4840,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                relay->bytes_sent += packet_bytes - 16;
+                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes - 16;
             }
         }
 
@@ -5029,8 +5012,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5053,8 +5035,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5163,8 +5144,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5186,8 +5166,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5289,8 +5268,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5311,9 +5289,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
-                    }
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
+                }
                 }
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
@@ -5419,8 +5396,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                  
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5441,8 +5417,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                  
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5564,8 +5539,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5586,8 +5560,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5708,8 +5681,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5731,8 +5703,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5842,8 +5813,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5865,8 +5835,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -5976,8 +5945,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
                 else
@@ -5998,8 +5966,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                         relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                        relay->bytes_sent += packet_bytes;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     }
                 }
             }
@@ -6038,8 +6005,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                     relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
                     relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-
-                    relay->bytes_sent += packet_bytes;
+                    relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                 }
             }
         }
@@ -6102,8 +6068,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 #endif // #if INTENSIVE_RELAY_DEBUGGING
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
 
-            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, 1 + 8 );
+            const int packet_bytes = 1 + 8;
+
+            relay_platform_socket_send_packet( relay->socket, &pings[i].address, packet_data, packet_bytes );
             relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+            relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
         }
 
         relay_platform_sleep( 1.0 / 100.0 );
@@ -6341,8 +6310,6 @@ int main( int argc, const char ** argv )
     memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
     relay.envelope_bandwidth_kbps_up = 0;
     relay.envelope_bandwidth_kbps_down = 0;
-    relay.bytes_sent = 0;
-    relay.bytes_received = 0;
     relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
     relay.fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 
