@@ -6,6 +6,10 @@ DONE
 
 TODO
 
+	Instrument sdk5 with spam messages
+
+	---------------
+
 	Make sure all essential counters are instrumented
 
 	---------------
