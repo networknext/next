@@ -91,10 +91,11 @@
 #define RELAY_COUNTER_SESSION_CREATED                                                            6
 #define RELAY_COUNTER_SESSION_CONTINUED                                                          7
 #define RELAY_COUNTER_SESSION_DESTROYED                                                          8
-#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                     9
-#define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                10
-#define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                            		 		        11
-#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                         			 		    12
+
+#define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    10
+#define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                11
+#define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                            		 		        12
+#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                         			 		    13
 
 #define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 20
 #define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 21
