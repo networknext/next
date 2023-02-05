@@ -31,9 +31,9 @@ blocks:
             - make clean
             - make func-test-sdk5
 
-            - artifact push workflow dist/func_client5
-            - artifact push workflow dist/func_server5
-            - artifact push workflow dist/func_backend5
+            - artifact push workflow dist/func_client
+            - artifact push workflow dist/func_server
+            - artifact push workflow dist/func_backend
             - artifact push workflow dist/func_tests_sdk5
 
 
@@ -56,18 +56,18 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_client5
-            - artifact pull workflow func_server5
-            - artifact pull workflow func_backend5
+            - artifact pull workflow func_client
+            - artifact pull workflow func_server
+            - artifact pull workflow func_backend
             - artifact pull workflow func_tests_sdk5
-            - artifact pull workflow reference_relay
+            - artifact pull workflow relay
             - artifact pull workflow libnext5.so
 
-            - chmod +x func_client5
-            - chmod +x func_server5
-            - chmod +x func_backend5
+            - chmod +x func_client
+            - chmod +x func_server
+            - chmod +x func_backend
             - chmod +x func_tests_sdk5
-            - chmod +x reference_relay
+            - chmod +x relay
 
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
@@ -296,18 +296,18 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_client5
-            - artifact pull workflow func_server5
-            - artifact pull workflow func_backend5
+            - artifact pull workflow func_client
+            - artifact pull workflow func_server
+            - artifact pull workflow func_backend
             - artifact pull workflow func_tests_sdk5
-            - artifact pull workflow reference_relay
+            - artifact pull workflow relay
             - artifact pull workflow libnext5.so
 
-            - chmod +x func_client5
-            - chmod +x func_server5
-            - chmod +x func_backend5
+            - chmod +x func_client
+            - chmod +x func_server
+            - chmod +x func_backend
             - chmod +x func_tests_sdk5
-            - chmod +x reference_relay
+            - chmod +x relay
 
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig

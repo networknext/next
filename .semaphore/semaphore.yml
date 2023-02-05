@@ -26,9 +26,8 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/reference_relay ./dist/libnext4.so ./dist/libnext5.so
-            - artifact push workflow ./dist/reference_relay
-            - artifact push workflow ./dist/libnext4.so
+            - make -j ./dist/relay ./dist/libnext5.so
+            - artifact push workflow ./dist/relay
             - artifact push workflow ./dist/libnext5.so
 
   - name: "Backend"
@@ -211,9 +210,6 @@ promotions:
   - name: "Functional Tests (Backend)"
     pipeline_file: functional-tests-backend.yml
 
-  - name: "Functional Tests (SDK4)"
-    pipeline_file: functional-tests-sdk4.yml
-
   - name: "Functional Tests (SDK5)"
     pipeline_file: functional-tests-sdk5.yml
 
@@ -222,4 +218,3 @@ promotions:
 
   - name: "Update Golang Cache"
     pipeline_file: update-golang-cache.yml
-    

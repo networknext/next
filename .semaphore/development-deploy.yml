@@ -33,11 +33,6 @@ blocks:
             - artifact pull workflow analytics.dev.tar.gz
             - gsutil cp analytics.dev.tar.gz gs://development_artifacts/
 
-        - name: "Portal"
-          commands:
-            - artifact pull workflow portal.dev.tar.gz
-            - gsutil cp portal.dev.tar.gz gs://development_artifacts/
-
         - name: "Portal Cruncher"
           commands:
             - artifact pull workflow portal_cruncher.dev.tar.gz
@@ -58,25 +53,10 @@ blocks:
             - artifact pull workflow server_backend5.dev.tar.gz
             - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
 
-        - name: "Sync"
-          commands:
-            - artifact pull workflow sync.dev.tar.gz
-            - gsutil cp sync.dev.tar.gz gs://development_artifacts/
-
-        - name: "Pingdom"
-          commands:
-            - artifact pull workflow pingdom.dev.tar.gz
-            - gsutil cp pingdom.dev.tar.gz gs://development_artifacts/
-
         - name: "Magic Backend"
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
-
-        - name: "Redis Monitor"
-          commands:
-            - artifact pull workflow redis_monitor.dev.tar.gz
-            - gsutil cp redis_monitor.dev.tar.gz gs://development_artifacts/
 
         - name: "Website Cruncher"
           commands:
@@ -98,11 +78,10 @@ blocks:
             - artifact pull workflow raspberry_client.dev.tar.gz
             - gsutil cp raspberry_client.dev.tar.gz gs://development_artifacts/
 
-        - name: "Reference Relay"
+        - name: "Relay"
           commands:
-            - artifact pull workflow reference_relay
-            - mv reference_relay relay
+            - artifact pull workflow relay
             - chmod +x relay
             - export VERSION=`./relay version`
             - mv relay relay-$VERSION
-            - gsutil cp relay-$VERSION gs://relay_artifacts/            
+            - gsutil cp relay-$VERSION gs://relay_artifacts/

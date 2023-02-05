@@ -15,7 +15,7 @@ const (
 	MaxRelayAddressLength            = 256
 	RelayTokenSize                   = 32
 	MaxRelays                        = 1000
-	NumRelayCounters                 = 100
+	NumRelayCounters                 = 128
 )
 
 // --------------------------------------------------------------------------

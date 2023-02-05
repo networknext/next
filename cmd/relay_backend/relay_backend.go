@@ -309,7 +309,7 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 }
 
 func initCounterNames() {
-	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./reference/reference_relay/reference_relay.cpp
+	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./relay/relay.cpp
     counterNames[0] = "PACKETS_SENT"
     counterNames[1] = "PACKETS_RECEIVED"
     counterNames[2] = "BYTES_SENT"

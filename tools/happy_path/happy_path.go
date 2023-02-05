@@ -336,27 +336,27 @@ func happy_path(wait bool) int {
 
 	fmt.Printf("\nstarting server backend:\n\n")
 
-	server_backend5_stdout := run("server-backend5", "logs/server_backend5")
+	server_backend_stdout := run("server-backend", "logs/server_backend")
 
 	fmt.Printf("\nverifying server backend ...")
 
-	server_backend5_initialized := false
+	server_backend_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(server_backend5_stdout.String(), "starting http server on port 45000") &&
-			strings.Contains(server_backend5_stdout.String(), "starting udp server on port 45000") &&
-			strings.Contains(server_backend5_stdout.String(), "updated route matrix: 10 relays") &&
-			strings.Contains(server_backend5_stdout.String(), "updated magic values: ") {
-			server_backend5_initialized = true
+		if strings.Contains(server_backend_stdout.String(), "starting http server on port 45000") &&
+			strings.Contains(server_backend_stdout.String(), "starting udp server on port 45000") &&
+			strings.Contains(server_backend_stdout.String(), "updated route matrix: 10 relays") &&
+			strings.Contains(server_backend_stdout.String(), "updated magic values: ") {
+			server_backend_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !server_backend5_initialized {
-		fmt.Printf("\n\nerror: server backend 5 failed to initialize\n\n")
+	if !server_backend_initialized {
+		fmt.Printf("\n\nerror: server backend failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", server_backend5_stdout)
+		fmt.Printf("%s", server_backend_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -418,28 +418,26 @@ func happy_path(wait bool) int {
 
 	fmt.Printf("\nstarting client and server:\n\n")
 
-	client5_stdout := run("client5", "logs/client5")
-	server5_stdout := run("server5", "logs/server5")
-
-	// initialize server5
+	client_stdout := run("client", "logs/client")
+	server_stdout := run("server", "logs/server")
 
 	fmt.Printf("\nverifying server ...")
 
-	server5_initialized := false
+	server_initialized := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(server5_stdout.String(), "welcome to network next :)") &&
-			strings.Contains(server5_stdout.String(), "server is ready to receive client connections") {
-			server5_initialized = true
+		if strings.Contains(server_stdout.String(), "welcome to network next :)") &&
+			strings.Contains(server_stdout.String(), "server is ready to receive client connections") {
+			server_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !server5_initialized {
-		fmt.Printf("\n\nerror: server 5 failed to initialize\n\n")
+	if !server_initialized {
+		fmt.Printf("\n\nerror: server failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", server5_stdout)
+		fmt.Printf("%s", server_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -448,21 +446,21 @@ func happy_path(wait bool) int {
 
 	fmt.Printf("verifying client ...")
 
-	client5_initialized := false
+	client_initialized := false
 
 	for i := 0; i < 600; i++ {
-		if strings.Contains(client5_stdout.String(), "client next route") &&
-			strings.Contains(client5_stdout.String(), "client continues route") {
-			client5_initialized = true
+		if strings.Contains(client_stdout.String(), "client next route") &&
+			strings.Contains(client_stdout.String(), "client continues route") {
+			client_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !client5_initialized {
-		fmt.Printf("\n\nerror: client 5 failed to initialize\n\n")
+	if !client_initialized {
+		fmt.Printf("\n\nerror: client failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", client5_stdout)
+		fmt.Printf("%s", client_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -566,7 +564,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"reference_relay", "client4", "server4", "client5", "server5", "magic_backend", "relay_gateway", "relay_backend", "server_backend4", "server_backend5", "analytics"}
+	killList := [...]string{"relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}

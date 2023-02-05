@@ -6,9 +6,15 @@ DONE
 
 	Instrument sdk5 with spam messages
 
+	Make sure all essential counters are instrumented in the reference relay
+
+	Make a release with the last SDK 4 support (eg. func tests, relay etc.)
+
+	Clean up code and go all in on SDK5. To get this as a turnkey product work must be 100% focused. It's clear that turnkey will be with SDK5. So go all in.
+
 TODO
 
-	Make sure all essential counters are instrumented in the reference relay
+	Get everything building and working again with the new structure.
 
 	---------------
 

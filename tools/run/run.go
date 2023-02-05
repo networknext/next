@@ -98,12 +98,8 @@ func main() {
 
 	if command == "test" {
 		test()
-	} else if command == "test-sdk4" || command == "test4" {
-		test_sdk4()
 	} else if command == "test-sdk5" || command == "test5" {
 		test_sdk5()
-	} else if command == "test-relay" {
-		test_relay()
 	} else if command == "magic-backend" {
 		magic_backend()
 	} else if command == "relay-gateway" {
@@ -116,42 +112,24 @@ func main() {
 		website_cruncher()
 	} else if command == "portal-cruncher" {
 		portal_cruncher()
-	} else if command == "portal" {
-		portal()
-	} else if command == "sync" {
-		sync()
-	} else if command == "pingdom" {
-		pingdom()
 	} else if command == "relay" {
 		relay()
-	} else if command == "server-backend5" {
-		server_backend5()
+	} else if command == "server-backend" {
+		server_backend()
 	} else if command == "happy-path" {
 		happy_path()
 	} else if command == "happy-path-no-wait" {
 		happy_path_no_wait()
-	} else if command == "server4" {
-		server4()
-	} else if command == "server5" {
-		server5()
-	} else if command == "client4" {
-		client4()
-	} else if command == "client5" {
-		client5()
+	} else if command == "server" {
+		server()
 	} else if command == "pubsub-emulator" {
 		pubsub_emulator()
 	} else if command == "bigquery-emulator" {
 		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-sdk4" {
-		func_sdk4()
 	} else if command == "func-sdk5" {
 		func_sdk5()
-	} else if command == "func-backend4" {
-		func_backend4()
-	} else if command == "func-backend5" {
-		func_backend5()
 	} else if command == "func-backend" {
 		func_backend(args[2:])
 	} else if command == "raspberry-backend" {
@@ -162,10 +140,6 @@ func main() {
 		raspberry_client()
 	} else if command == "relay-keygen" {
 		relay_keygen()
-	} else if command == "ref-backend4" {
-		ref_backend4()
-	} else if command == "ref-backend5" {
-		ref_backend5()
 	} else if command == "sql-create" {
 		sql_create()
 	} else if command == "sql-destroy" {
@@ -189,16 +163,12 @@ func test() {
 	bash("go test ./modules/...")
 }
 
-func test_sdk4() {
-	bash("cd ./dist && ./test4")
-}
-
 func test_sdk5() {
-	bash("cd ./dist && ./test5")
+	bash("cd ./dist && ./test")
 }
 
 func test_relay() {
-	bash("cd dist && ./reference_relay test")
+	bash("cd dist && ./relay test")
 }
 
 func magic_backend() {
@@ -238,11 +208,11 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("cd dist && RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./reference_relay", relayPort))
+	bash(fmt.Sprintf("cd dist && RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./relay", relayPort))
 }
 
-func server_backend5() {
-	bash("HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend5")
+func server_backend() {
+	bash("HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend")
 }
 
 func website_cruncher() {
@@ -267,20 +237,12 @@ func happy_path_no_wait() {
 	bash("go run ./tools/happy_path/happy_path.go 1")
 }
 
-func server4() {
-	bash("cd dist && ./server4")
+func server() {
+	bash("cd dist && ./server")
 }
 
-func server5() {
-	bash("cd dist && ./server5")
-}
-
-func client4() {
-	bash("cd dist && ./client4")
-}
-
-func client5() {
-	bash("cd dist && ./client5")
+func client() {
+	bash("cd dist && ./client")
 }
 
 func pubsub_emulator() {
@@ -297,21 +259,10 @@ func setup_emulators() {
 	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
-func func_sdk4() {
-	bash("cd dist && ./func_tests_sdk4")
-}
-
 func func_sdk5() {
 	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5 test_network_next_route", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
-func func_backend4() {
-	bash("cd dist && ./func_backend4")
-}
-
-func func_backend5() {
-	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
-}
 
 func func_backend(tests []string) {
 	command := "cd dist && ./func_tests_backend"
@@ -338,14 +289,6 @@ func raspberry_server() {
 
 func relay_keygen() {
 	bash("go run tools/relay_keygen/relay_keygen.go")
-}
-
-func ref_backend4() {
-	bash("./dist/reference_backend4")
-}
-
-func ref_backend5() {
-	bash(fmt.Sprintf("TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./dist/reference_backend5", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
 func sql_create() {
