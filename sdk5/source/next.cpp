@@ -8135,6 +8135,8 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
 static bool next_client_internal_update( next_client_internal_t * client )
 {
+    next_assert( !next_global_config.disable_network_next );
+
 	double start_time = next_time();
 
     next_client_internal_update_direct_pings( client );
@@ -8177,7 +8179,7 @@ static void next_client_internal_thread_function( void * context )
     {
         next_client_internal_block_and_receive_packet( client );
 
-        if ( next_time() > last_update_time + 0.01 )
+        if ( !next_global_config.disable_network_next && next_time() > last_update_time + 0.01 )
         {
         	quit = next_client_internal_update( client );
 
@@ -12454,8 +12456,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->flushing )
         return;
@@ -12522,8 +12523,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 
     next_server_internal_verify_sentinels( server );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->flushing )
         return;
@@ -12589,8 +12589,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
@@ -12662,6 +12661,8 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
 void next_server_internal_update_flush( next_server_internal_t * server )
 {
+    next_assert( !next_global_config.disable_network_next );
+
     if ( !server->flushing )
         return;
 
@@ -14299,8 +14300,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_server_internal_verify_sentinels( server );
 
-    if ( next_global_config.disable_network_next )
-        return true;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !server->resolving_hostname )
         return true;
@@ -14433,8 +14433,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     next_server_internal_verify_sentinels( server );
 
-    if ( next_global_config.disable_network_next )
-        return true;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->resolving_hostname )    // IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
         return true;
@@ -14495,8 +14494,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     next_assert( server );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
         return;
@@ -15081,6 +15079,38 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     }
 }
 
+static void next_server_update_internal( next_server_internal_t * server )
+{
+    next_assert( !next_global_config.disable_network_next );
+
+    double start_time = next_time();
+
+    next_server_internal_update_flush( server );
+
+    next_server_internal_update_resolve_hostname( server );
+
+    next_server_internal_update_autodetect( server );
+
+    next_server_internal_update_init( server );
+
+    next_server_internal_update_pending_upgrades( server );
+
+    next_server_internal_update_route( server );
+
+    next_server_internal_update_sessions( server );
+
+    next_server_internal_backend_update( server );
+
+    next_server_internal_pump_commands( server );
+
+    double finish_time = next_time();
+
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_server_update_internal spiked for %.2f milliseconds (!!!)", ( finish_time - start_time ) * 1000.0 );
+    }
+}
+
 static void next_server_internal_thread_function( void * context )
 {
     next_assert( context );
@@ -15093,30 +15123,11 @@ static void next_server_internal_thread_function( void * context )
     {
         next_server_internal_block_and_receive_packet( server );
 
-        double current_time = next_time();
-
-        // todo: detect if this takes longer than 0.1sec and log
-        if ( current_time >= last_update_time + 0.1 )
+        if ( !next_global_config.disable_network_next && next_time() >= last_update_time + 0.1 )
         {
-            next_server_internal_update_flush( server );
+            next_server_update_internal( server );
 
-            next_server_internal_update_resolve_hostname( server );
-
-            next_server_internal_update_autodetect( server );
-
-            next_server_internal_update_init( server );
-
-            next_server_internal_update_pending_upgrades( server );
-
-            next_server_internal_update_route( server );
-
-            next_server_internal_update_sessions( server );
-
-            next_server_internal_backend_update( server );
-
-            next_server_internal_pump_commands( server );
-
-            last_update_time = current_time;
+            last_update_time = next_time();
         }
     }
 }
