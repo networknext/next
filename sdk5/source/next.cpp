@@ -8155,6 +8155,7 @@ static void next_client_internal_thread_function( void * context )
 
         double current_time = next_time();
 
+        // todo: detect if this takes longer than 0.1sec
         if ( current_time > last_update_time + 0.01 )
         {
             next_client_internal_update_direct_pings( client );
@@ -15087,6 +15088,7 @@ static void next_server_internal_thread_function( void * context )
 
         double current_time = next_time();
 
+        // todo: detect if this takes longer than 0.1sec and log
         if ( current_time >= last_update_time + 0.1 )
         {
             next_server_internal_update_flush( server );
