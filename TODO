@@ -16,19 +16,27 @@ DONE
 
 	Convert all client mutexes so they use the mutex guard and track spikes.
 
-TODO
-
 	Convert all server mutexes so they use the mutex guard and track spikes.
+
+TODO
 
 	----------------
 
 	Why does the route request packet fail advanced packet filter suddenly?
 
-	I didn't (intentionally) change anything that should affect this. WTF?
-
 	And how can it work in happy path, but not work in the func test. What's the difference?
 
-	----------------
+	Differences:
+
+		1. Func backend instead of server backend / relay backend
+
+		2. Func client
+
+		3. Func server
+
+		4. Client bound to port 0
+
+		5. Relays bound to port 0
 
 
 
@@ -64,15 +72,6 @@ TODO
 
 
 
-
-
-	---------------
-
-	Create a new google cloud account
-
-	---------------
-
-	Get semaphore builds working again
 
 	---------------
 

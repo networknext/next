@@ -15,6 +15,7 @@ type UDPServerConfig struct {
 	SocketReadBuffer  int
 	SocketWriteBuffer int
 	MaxPacketSize     int
+	BindAddress       *net.UDPAddr
 }
 
 type UDPServer struct {
@@ -48,7 +49,12 @@ func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler 
 
 	for i := 0; i < config.NumThreads; i++ {
 
-		lp, err := lc.ListenPacket(ctx, "udp", fmt.Sprintf("0.0.0.0:%d", config.Port))
+		bindAddress := fmt.Sprintf("0.0.0.0:%d", config.Port)
+		if config.BindAddress != nil {
+			bindAddress = config.BindAddress.String()
+		}
+
+		lp, err := lc.ListenPacket(ctx, "udp", bindAddress)
 		if err != nil {
 			panic(fmt.Sprintf("could not bind socket: %v", err))
 		}

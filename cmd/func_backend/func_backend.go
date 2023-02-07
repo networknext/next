@@ -413,10 +413,12 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 func StartWebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
-	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
+	http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", NEXT_RELAY_BACKEND_PORT), router)
 }
 
 func StartUDPServer() {
+
+	bindAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 
 	serverBackendAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 
@@ -426,6 +428,7 @@ func StartUDPServer() {
 	config.SocketReadBuffer = 1024 * 1024
 	config.SocketWriteBuffer = 1024 * 1024
 	config.MaxPacketSize = 4096
+	config.BindAddress = &bindAddress
 
 	common.CreateUDPServer(context.Background(), config, packetHandler)
 }

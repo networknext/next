@@ -1805,7 +1805,14 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16)
 	if address == nil {
 		panic("can't get address data for nil address!")
 	}
-	addressData := address.IP[12:16]
+	var addressData []byte
+	if len(address.IP) == 16 {
+		addressData = address.IP[12:16]
+	} else if len(address.IP) == 4 {
+		addressData = address.IP[:]
+	} else {
+		panic("unexpected address ip length")
+	}
 	addressPort := uint16(address.Port)
 	return addressData, addressPort
 }
