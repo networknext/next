@@ -33,6 +33,7 @@
 #include <malloc.h>
 #endif // #if defined( _MSC_VER )
 #include <time.h>
+#include <atomic>
 
 #if defined( _MSC_VER )
 #pragma warning(push)
@@ -6167,8 +6168,8 @@ struct next_client_internal_t
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
     next_platform_socket_t * socket;
-    next_platform_mutex_t command_mutex;
-    next_platform_mutex_t notify_mutex;
+    next_platform_mutex_t command_mutex;            // todo: check this mutex
+    next_platform_mutex_t notify_mutex;             // todo: check this mutex
     next_address_t server_address;
     next_address_t client_external_address;     // IMPORTANT: only known post-upgrade
     uint16_t bound_port;
@@ -6197,14 +6198,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    next_platform_mutex_t packets_sent_mutex;
-    uint64_t packets_sent;
+    std::atomic<uint64_t> packets_sent;
 
     NEXT_DECLARE_SENTINEL(2)
 
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
-    next_platform_mutex_t route_manager_mutex;
+    next_platform_mutex_t route_manager_mutex;      // todo: check this mutex
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -6266,6 +6266,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(12)
 
+    // todo: these should become atomic
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
     NEXT_DECLARE_SENTINEL(13)
@@ -6399,15 +6400,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
     client->bound_port = bind_address.port;
 
-    int result = next_platform_mutex_create( &client->packets_sent_mutex );
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not packets sent mutex" );
-        next_client_internal_destroy( client );
-        return NULL;
-    }
-
-    result = next_platform_mutex_create( &client->command_mutex );
+    int result = next_platform_mutex_create( &client->command_mutex );
     if ( result != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create command mutex" );
@@ -6509,7 +6502,6 @@ void next_client_internal_destroy( next_client_internal_t * client )
 
     next_platform_mutex_destroy( &client->command_mutex );
     next_platform_mutex_destroy( &client->notify_mutex );
-    next_platform_mutex_destroy( &client->packets_sent_mutex );
     next_platform_mutex_destroy( &client->route_manager_mutex );
     next_platform_mutex_destroy( &client->direct_bandwidth_mutex );
     next_platform_mutex_destroy( &client->next_bandwidth_mutex );
@@ -7600,9 +7592,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
 
-                next_platform_mutex_acquire( &client->packets_sent_mutex );
                 client->packets_sent = 0;
-                next_platform_mutex_release( &client->packets_sent_mutex );
 
                 memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
                 memset( &client->near_relay_stats, 0, sizeof(next_relay_stats_t ) );
@@ -7776,9 +7766,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.jitter_server_to_client = float( client->jitter_tracker.jitter * 1000.0 );
         }
 
-        next_platform_mutex_acquire( &client->packets_sent_mutex );
         client->client_stats.packets_sent_client_to_server = client->packets_sent;
-        next_platform_mutex_release( &client->packets_sent_mutex );
 
         next_relay_manager_get_stats( client->near_relay_manager, &client->near_relay_stats );
 
@@ -7871,9 +7859,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             printf( "------------------------------\n" );
         }
 
-        next_platform_mutex_acquire( &client->packets_sent_mutex );
         packet.packets_sent_client_to_server = client->packets_sent;
-        next_platform_mutex_release( &client->packets_sent_mutex );
 
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
         packet.packets_out_of_order_server_to_client = client->client_stats.packets_out_of_order_server_to_client;
@@ -8208,6 +8194,7 @@ struct next_client_t
     next_client_internal_t * internal;
     next_platform_thread_t * thread;
     void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes );
+
     NEXT_DECLARE_SENTINEL(1)
 
     next_client_stats_t client_stats;
@@ -8221,6 +8208,7 @@ struct next_client_t
 
     NEXT_DECLARE_SENTINEL(3)
 
+    // todo: these should become atomic?
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
     NEXT_DECLARE_SENTINEL(4)
@@ -8665,9 +8653,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
 
-        next_platform_mutex_acquire( &client->internal->packets_sent_mutex );
         client->internal->packets_sent++;
-        next_platform_mutex_release( &client->internal->packets_sent_mutex );
     }
     else
     {
@@ -11074,9 +11060,9 @@ struct next_server_internal_t
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
-    next_platform_mutex_t session_mutex;
-    next_platform_mutex_t command_mutex;
-    next_platform_mutex_t notify_mutex;
+    next_platform_mutex_t session_mutex;        // todo: check this mutex
+    next_platform_mutex_t command_mutex;        // todo: check this mutex
+    next_platform_mutex_t notify_mutex;         // todo: check this mutex
     next_platform_socket_t * socket;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
@@ -11131,8 +11117,7 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(9)
 
-    next_platform_mutex_t quit_mutex;
-    bool quit;
+    std::atomic<uint64_t> quit;
 
     NEXT_DECLARE_SENTINEL(10)
 
@@ -12143,15 +12128,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    result = next_platform_mutex_create( &server->quit_mutex );
-
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create quit mutex" );
-        next_server_internal_destroy( server );
-        return NULL;
-    }
-
     server->pending_session_manager = next_pending_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
     {
@@ -12224,7 +12200,6 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_platform_mutex_destroy( &server->notify_mutex );
     next_platform_mutex_destroy( &server->resolve_hostname_mutex );
     next_platform_mutex_destroy( &server->autodetect_mutex );
-    next_platform_mutex_destroy( &server->quit_mutex );
 
     next_server_internal_verify_sentinels( server );
 
@@ -12234,8 +12209,7 @@ void next_server_internal_destroy( next_server_internal_t * server )
 void next_server_internal_quit( next_server_internal_t * server )
 {
     next_assert( server );
-    next_platform_mutex_guard( &server->quit_mutex );
-    server->quit = true;
+    server->quit = 1;
 }
 
 void next_server_internal_send_packet_to_address( next_server_internal_t * server, const next_address_t * address, const uint8_t * packet_data, int packet_bytes )

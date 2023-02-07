@@ -1,6 +1,12 @@
 DONE
 
+	Add spike detection to client and server internal updates.
+
+	Make sure client and server internal updates never run when network next is disabled.
+
 TODO
+
+	----------------
 
 	Why does the route request packet fail advanced packet filter suddenly?
 
@@ -8,7 +14,7 @@ TODO
 
 	And how can it work in happy path, but not work in the func test. What's the difference?
 
-
+	----------------
 
 
 
