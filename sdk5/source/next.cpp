@@ -12446,10 +12446,10 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->flushing )
+    if ( next_global_config.disable_network_next )
         return;
 
-    if ( next_global_config.disable_network_next )
+    if ( server->flushing )
         return;
 
     const double current_time = next_time();
@@ -12685,6 +12685,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     next_assert( end <= NEXT_MAX_PACKET_BYTES );
 
     next_server_internal_verify_sentinels( server );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     const int packet_id = packet_data[begin];
 
@@ -13875,10 +13878,10 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( next_global_config.disable_network_next )
         return;
 
-    if ( next_global_config.disable_network_next )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     next_assert( server->state == NEXT_SERVER_STATE_INITIALIZED || server->state == NEXT_SERVER_STATE_DIRECT_ONLY );
@@ -13929,10 +13932,10 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( next_global_config.disable_network_next )
         return;
 
-    if ( next_global_config.disable_network_next )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     next_assert( server->state == NEXT_SERVER_STATE_INITIALIZED || server->state == NEXT_SERVER_STATE_DIRECT_ONLY );
@@ -13969,10 +13972,10 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( next_global_config.disable_network_next )
         return;
 
-    if ( next_global_config.disable_network_next )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );
@@ -13995,10 +13998,10 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( next_global_config.disable_network_next )
         return;
 
-    if ( next_global_config.disable_network_next )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
@@ -14033,6 +14036,9 @@ void next_server_internal_flush_session_update( next_server_internal_t * server 
     next_assert( server );
     next_assert( server->session_manager );
 
+    if ( next_global_config.disable_network_next )
+        return;
+
     const int max_entry_index = server->session_manager->max_entry_index;
 
     for ( int i = 0; i <= max_entry_index; ++i )
@@ -14058,6 +14064,9 @@ void next_server_internal_flush_match_data( next_server_internal_t * server )
 {
     next_assert( server );
     next_assert( server->session_manager );
+
+    if ( next_global_config.disable_network_next )
+        return;
 
     const int max_entry_index = server->session_manager->max_entry_index;
 
