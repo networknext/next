@@ -6266,8 +6266,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(12)
 
-    // todo: these should become atomic
-    uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
+    std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
 
     NEXT_DECLARE_SENTINEL(13)
 };
@@ -8208,7 +8207,6 @@ struct next_client_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    // todo: these should become atomic?
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
     NEXT_DECLARE_SENTINEL(4)
@@ -8752,11 +8750,9 @@ const next_address_t * next_client_server_address( next_client_t * client )
 void next_client_counters( next_client_t * client, uint64_t * counters )
 {
     next_client_verify_sentinels( client );
-    uint64_t internal_counters[NEXT_CLIENT_COUNTER_MAX];
     memcpy( counters, client->counters, sizeof(uint64_t) * NEXT_CLIENT_COUNTER_MAX );
-    memcpy( internal_counters, client->internal->counters, sizeof(uint64_t) * NEXT_CLIENT_COUNTER_MAX );
     for ( int i = 0; i < NEXT_CLIENT_COUNTER_MAX; ++i )
-        counters[i] += internal_counters[i];
+        counters[i] += client->internal->counters[i];
 }
 
 // ---------------------------------------------------------------
