@@ -403,16 +403,33 @@ extern void next_platform_mutex_release( next_platform_mutex_t * mutex );
 
 extern void next_platform_mutex_destroy( next_platform_mutex_t * mutex );
 
+#define NEXT_MUTEX_SPIKE_TRACKING 1
+
 struct next_platform_mutex_helper_t
 {
     next_platform_mutex_t * mutex;
+#if NEXT_MUTEX_SPIKE_TRACKING
+    const char * file;
+    int line;
+    double start_time;
+    next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line );
+#else // #if NEXT_MUTEX_SPIKE_TRACKING
     next_platform_mutex_helper_t( next_platform_mutex_t * mutex );
+#endif // #if NEXT_MUTEX_SPIKE_TRACKING
     ~next_platform_mutex_helper_t();
 };
 
+#if NEXT_MUTEX_SPIKE_TRACKING
+#define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex, __FILE__, __LINE__ )
+#else // #if NEXT_MUTEX_SPIKE_TRACKING
 #define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
+#endif // #if NEXT_MUTEX_SPIKE_TRACKING
 
-next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex( mutex )
+#if NEXT_MUTEX_SPIKE_TRACKING
+next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_time())
+#else // #if NEXT_MUTEX_SPIKE_TRACKING
+next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex(mutex)
+#endif // #if NEXT_MUTEX_SPIKE_TRACKING
 {
     next_assert( mutex );
     next_platform_mutex_acquire( mutex );
@@ -422,6 +439,14 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 {
     next_assert( mutex );
     next_platform_mutex_release( mutex );
+#if NEXT_MUTEX_SPIKE_TRACKING
+    double finish_time = next_time();
+    double mutex_duration = finish_time - start_time;
+    if ( mutex_duration > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "mutex spike %.2f milliseconds at %s:%d", mutex_duration, file, line );
+    }
+#endif // #if NEXT_MUTEX_SPIKE_TRACKING
     mutex = NULL;
 }
 
@@ -6168,8 +6193,8 @@ struct next_client_internal_t
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
     next_platform_socket_t * socket;
-    next_platform_mutex_t command_mutex;            // todo: check this mutex
-    next_platform_mutex_t notify_mutex;             // todo: check this mutex
+    next_platform_mutex_t command_mutex;
+    next_platform_mutex_t notify_mutex;
     next_address_t server_address;
     next_address_t client_external_address;     // IMPORTANT: only known post-upgrade
     uint16_t bound_port;
@@ -6204,7 +6229,7 @@ struct next_client_internal_t
 
     next_relay_manager_t * near_relay_manager;
     next_route_manager_t * route_manager;
-    next_platform_mutex_t route_manager_mutex;      // todo: check this mutex
+    next_platform_mutex_t route_manager_mutex;
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -6243,13 +6268,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(9)
 
-    next_platform_mutex_t direct_bandwidth_mutex;
+    next_platform_mutex_t direct_bandwidth_mutex;       // todo: can this become atomic?
     float direct_bandwidth_usage_kbps_up;
     float direct_bandwidth_usage_kbps_down;
 
     NEXT_DECLARE_SENTINEL(10)
 
-    next_platform_mutex_t next_bandwidth_mutex;
+    next_platform_mutex_t next_bandwidth_mutex;         // todo: can this become atomic?
     bool next_bandwidth_over_limit;
     float next_bandwidth_usage_kbps_up;
     float next_bandwidth_usage_kbps_down;

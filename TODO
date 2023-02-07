@@ -4,7 +4,17 @@ DONE
 
 	Make sure client and server internal updates never run when network next is disabled.
 
+	Convert various counters and simple things to std::atomic
+
 TODO
+
+	Review usage of all client mutexes:
+
+		command_mutex
+		notify_mutex
+		route_manager_mutex
+		direct_bandwidth_mutex       ---> convert to atomic?
+		next_bandwidth_mutex         ---> convert to atomic?
 
 	----------------
 
