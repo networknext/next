@@ -10,8 +10,8 @@ TODO
 
 	Review usage of all client mutexes:
 
-		command_mutex
-		notify_mutex
+		command_mutex                ---> using helper. all look reasonable. added spike tracking.
+		notify_mutex                 ---> using helper. all look fine. added spike tracking.
 		route_manager_mutex
 		direct_bandwidth_mutex       ---> convert to atomic?
 		next_bandwidth_mutex         ---> convert to atomic?

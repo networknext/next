@@ -6938,14 +6938,19 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
+        bool fallback_to_direct;
+        bool pending_route;
+        uint64_t pending_route_session_id;
+        uint8_t pending_route_session_version;
         uint8_t route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-        memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-        const bool pending_route = client->route_manager->route_data.pending_route;
-        const uint64_t pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
-        const uint8_t pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+            fallback_to_direct = client->route_manager->fallback_to_direct;
+            pending_route = client->route_manager->route_data.pending_route;
+            pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
+            pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
+        }
 
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
@@ -7064,15 +7069,21 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
         uint8_t current_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-        memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-        const bool current_route = client->route_manager->route_data.current_route;
-        const bool pending_continue = client->route_manager->route_data.pending_continue;
-        const uint64_t current_route_session_id = client->route_manager->route_data.current_route_session_id;
-        const uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
-        next_platform_mutex_release( &client->route_manager_mutex );
+        bool fallback_to_direct = client->route_manager->fallback_to_direct;
+        bool current_route = client->route_manager->route_data.current_route;
+        bool pending_continue = client->route_manager->route_data.pending_continue;
+        uint64_t current_route_session_id = client->route_manager->route_data.current_route_session_id;
+        uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+            fallback_to_direct = client->route_manager->fallback_to_direct;
+            current_route = client->route_manager->route_data.current_route;
+            pending_continue = client->route_manager->route_data.pending_continue;
+            current_route_session_id = client->route_manager->route_data.current_route_session_id;
+            current_route_session_version = client->route_manager->route_data.current_route_session_version;
+        }
 
         if ( fallback_to_direct )
         {
@@ -7128,10 +7139,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
-        client->route_manager->route_data.pending_continue = false;
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
+            client->route_manager->route_data.pending_continue = false;
+        }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
 
@@ -7149,9 +7161,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t payload_sequence = 0;
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        bool result = false;
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
+        }
 
         if ( !result )
         {
@@ -7208,9 +7222,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t payload_sequence = 0;
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        bool result = false;
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
+        }
 
         if ( !result )
         {
@@ -7365,10 +7381,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 }
             }
 
-            next_platform_mutex_acquire( &client->route_manager_mutex );
-            next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
-            fallback_to_direct = client->route_manager->fallback_to_direct;
-            next_platform_mutex_release( &client->route_manager_mutex );
+            {
+                next_platform_mutex_guard( &client->route_manager_mutex );
+                next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
+                fallback_to_direct = client->route_manager->fallback_to_direct;
+            }
 
             if ( !client->fallback_to_direct && fallback_to_direct )
             {
@@ -7563,10 +7580,11 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client opened session to %s", next_address_to_string( &open_session_command->server_address, buffer ) );
                 client->counters[NEXT_CLIENT_COUNTER_OPEN_SESSION]++;
-                next_platform_mutex_acquire( &client->route_manager_mutex );
-                next_route_manager_reset( client->route_manager );
-                next_route_manager_direct_route( client->route_manager, true );
-                next_platform_mutex_release( &client->route_manager_mutex );
+                {
+                    next_platform_mutex_guard( &client->route_manager_mutex );
+                    next_route_manager_reset( client->route_manager );
+                    next_route_manager_direct_route( client->route_manager, true );
+                }
 
                 // IMPORTANT: Fire back ready when the client is ready to start sending packets and we're all dialed in for this session
                 next_client_notify_ready_t * notify = (next_client_notify_ready_t*) next_malloc( client->context, sizeof(next_client_notify_ready_t) );
@@ -7651,9 +7669,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->next_bandwidth_envelope_kbps_down = 0;
                 next_platform_mutex_release( &client->next_bandwidth_mutex );
 
-                next_platform_mutex_acquire( &client->route_manager_mutex );
-                next_route_manager_reset( client->route_manager );
-                next_platform_mutex_release( &client->route_manager_mutex );
+                {
+                    next_platform_mutex_guard( &client->route_manager_mutex );
+                    next_route_manager_reset( client->route_manager );
+                }
 
                 next_packet_loss_tracker_reset( &client->packet_loss_tracker );
                 next_out_of_order_tracker_reset( &client->out_of_order_tracker );
@@ -7706,11 +7725,14 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
     {
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool network_next = client->route_manager->route_data.current_route;
-        const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-        next_platform_mutex_release( &client->route_manager_mutex );
-
+        bool network_next = false;
+        bool fallback_to_direct = false;
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            network_next = client->route_manager->route_data.current_route;
+            fallback_to_direct = client->route_manager->fallback_to_direct;
+        }
+        
         client->client_stats.next = network_next;
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
@@ -7768,9 +7790,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         if ( !fallback_to_direct && next_fake_fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client fakes fallback to direct" );
-            next_platform_mutex_acquire( &client->route_manager_mutex );
-            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
-            next_platform_mutex_release( &client->route_manager_mutex );
+            {
+                next_platform_mutex_guard( &client->route_manager_mutex );
+                next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
+            }
         }
         client->client_stats.direct_rtt += next_fake_direct_rtt;
         client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
@@ -7916,9 +7939,10 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
     if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client direct pong timed out. falling back to direct" );
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_DIRECT_PONG_TIMED_OUT );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_DIRECT_PONG_TIMED_OUT );
+        }
         return;
     }
 
@@ -7951,9 +7975,11 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
     double current_time = next_time();
 
-    next_platform_mutex_acquire( &client->route_manager_mutex );
-    const bool has_next_route = client->route_manager->route_data.current_route;
-    next_platform_mutex_release( &client->route_manager_mutex );
+    bool has_next_route = false;
+    {
+        next_platform_mutex_guard( &client->route_manager_mutex );
+        has_next_route = client->route_manager->route_data.current_route;
+    }
 
     if ( !has_next_route )
     {
@@ -7963,28 +7989,35 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     if ( client->last_next_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client next pong timed out. falling back to direct" );
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_NEXT_PONG_TIMED_OUT );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_NEXT_PONG_TIMED_OUT );
+        }
         return;
     }
 
     if ( client->last_next_ping_time + ( 1.0 / NEXT_PINGS_PER_SECOND ) <= current_time )
     {
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool send_over_network_next = client->route_manager->route_data.current_route;
-        next_platform_mutex_release( &client->route_manager_mutex );
+        bool send_over_network_next = false;
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            send_over_network_next = client->route_manager->route_data.current_route;
+        }
 
         if ( !send_over_network_next )
             return;
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const uint64_t session_id = client->route_manager->route_data.current_route_session_id;
-        const uint8_t session_version = client->route_manager->route_data.current_route_session_version;
-        const next_address_t to = client->route_manager->route_data.current_route_next_address;
+        uint64_t session_id;
+        uint8_t session_version;
+        next_address_t to;
         uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-        memcpy( private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            session_id = client->route_manager->route_data.current_route_session_id;
+            session_version = client->route_manager->route_data.current_route_session_version;
+            to = client->route_manager->route_data.current_route_next_address;
+            memcpy( private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+        }
 
         uint64_t sequence = client->special_send_sequence++;
         sequence |= (1ULL<<62);
@@ -8038,13 +8071,15 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
     next_assert( !next_global_config.disable_network_next );
 
-    next_platform_mutex_acquire( &client->route_manager_mutex );
-    if ( client->upgraded )
+    bool fallback_to_direct = false;
     {
-        next_route_manager_check_for_timeouts( client->route_manager );
+        next_platform_mutex_guard( &client->route_manager_mutex );
+        if ( client->upgraded )
+        {
+            next_route_manager_check_for_timeouts( client->route_manager );
+        }
+        fallback_to_direct = client->route_manager->fallback_to_direct;
     }
-    const bool fallback_to_direct = client->route_manager->fallback_to_direct;
-    next_platform_mutex_release( &client->route_manager_mutex );
 
     if ( !client->fallback_to_direct && fallback_to_direct )
     {
@@ -8058,9 +8093,10 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
         if ( next_time() > client->route_update_timeout_time )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client route update timeout. falling back to direct" );
-            next_platform_mutex_acquire( &client->route_manager_mutex );
-            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
-            next_platform_mutex_release( &client->route_manager_mutex );
+            {
+                next_platform_mutex_guard( &client->route_manager_mutex );
+                next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
+            }
             client->counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT]++;
             client->fallback_to_direct = true;
         }
@@ -8088,10 +8124,13 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     uint8_t route_request_packet_data[NEXT_MAX_PACKET_BYTES];
     uint8_t continue_request_packet_data[NEXT_MAX_PACKET_BYTES];
 
-    next_platform_mutex_acquire( &client->route_manager_mutex );
-    const bool send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
-    const bool send_continue_request = next_route_manager_send_continue_request( client->route_manager, &continue_request_to, continue_request_packet_data, &continue_request_packet_bytes );
-    next_platform_mutex_release( &client->route_manager_mutex );
+    bool send_route_request = false;
+    bool send_continue_request = false;
+    {
+        next_platform_mutex_guard( &client->route_manager_mutex );
+        send_route_request = next_route_manager_send_route_request( client->route_manager, &route_request_to, route_request_packet_data, &route_request_packet_bytes );
+        send_continue_request = next_route_manager_send_continue_request( client->route_manager, &continue_request_to, continue_request_packet_data, &continue_request_packet_bytes );
+    }
 
     if ( send_route_request )
     {
@@ -8136,9 +8175,10 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     if ( client->upgrade_response_start_time + 5.0 <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "upgrade response timed out" );
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
-        next_platform_mutex_release( &client->route_manager_mutex );
+        {
+            next_platform_mutex_guard( &client->route_manager_mutex );
+            next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
+        }
         client->fallback_to_direct = true;
     }
 }
@@ -8570,14 +8610,16 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
     if ( client->upgraded && packet_bytes <= NEXT_MTU )
     {
-        next_platform_mutex_acquire( &client->internal->route_manager_mutex );
-        const uint64_t send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
-        bool send_over_network_next = next_route_manager_has_network_next_route( client->internal->route_manager );
+        uint64_t send_sequence = 0;
+        bool send_over_network_next = false;
+        {
+            next_platform_mutex_guard( &client->internal->route_manager_mutex );
+            send_sequence = next_route_manager_next_send_sequence( client->internal->route_manager );
+            send_over_network_next = next_route_manager_has_network_next_route( client->internal->route_manager );
+        }
+
         bool send_direct = !send_over_network_next;
-        next_platform_mutex_release( &client->internal->route_manager_mutex );
-
         bool multipath = client->client_stats.multipath;
-
         if ( send_over_network_next && multipath )
         {
             send_direct = true;
@@ -8629,9 +8671,11 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             next_address_t next_to;
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            next_platform_mutex_acquire( &client->internal->route_manager_mutex );
-            bool result = next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes, client->current_magic, &client->client_external_address );
-            next_platform_mutex_release( &client->internal->route_manager_mutex );
+            bool result = false;
+            {
+                next_platform_mutex_guard( &client->internal->route_manager_mutex );
+                result = next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes, client->current_magic, &client->client_external_address );
+            }
 
             if ( result )
             {
