@@ -21,7 +21,7 @@
 
 #define RELAY_DEVELOPMENT                                          1
 
-#define INTENSIVE_RELAY_DEBUGGING                                  1 // todo
+#define INTENSIVE_RELAY_DEBUGGING                                  0
 
 #define RELAY_MTU                                               1300
 
@@ -4255,6 +4255,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 printf( "[%s] advanced packet filter dropped packet %d [sdk5]\n", from_string, packet_id );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
+                // todo
+                printf( "advanced packet filter dropped packet %d [sdk5]\n", packet_id );
+
 	            relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
                 continue;
@@ -5733,8 +5736,6 @@ int main( int argc, const char ** argv )
                 printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay.counters[RELAY_COUNTER_SESSION_DESTROYED]++;
-                relay.envelope_bandwidth_kbps_up -= iter->second->kbps_up;          // todo: why?!
-                relay.envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                 iter = relay.sessions->erase( iter );
             }
             else

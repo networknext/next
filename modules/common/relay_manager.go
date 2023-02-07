@@ -99,6 +99,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 	for k,v := range sourceEntry.DestEntries {
 		if v.LastUpdateTime < currentTime - RelayTimeout {
+			// todo
 			fmt.Printf("timed out dest relay entry: %x|%x\n", relayId, k)
 			delete(sourceEntry.DestEntries, k)
 		}

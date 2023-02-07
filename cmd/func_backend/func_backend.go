@@ -819,6 +819,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			tokenPublicKeys[1+i] = relayPublicKey
 		}
 
+		// todo
+		for i := range tokenAddresses {
+			fmt.Printf("%d: %s\n", i, tokenAddresses[i].String())
+		}
+
 		tokenInternal := make([]bool, numTokens)
 
 		var tokenData []byte

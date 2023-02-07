@@ -7686,8 +7686,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     double current_time = next_time();
 
@@ -7894,8 +7893,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -7933,8 +7931,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -8029,8 +8026,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     next_platform_mutex_acquire( &client->route_manager_mutex );
     if ( client->upgraded )
@@ -8065,8 +8061,7 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -8107,8 +8102,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 {
     next_client_internal_verify_sentinels( client );
 
-    if ( next_global_config.disable_network_next )
-        return;
+    next_assert( !next_global_config.disable_network_next );
 
     if ( client->fallback_to_direct )
         return;
@@ -8139,6 +8133,36 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
+static bool next_client_internal_update( next_client_internal_t * client )
+{
+	double start_time = next_time();
+
+    next_client_internal_update_direct_pings( client );
+
+    next_client_internal_update_next_pings( client );
+
+    next_client_internal_send_pings_to_near_relays( client );
+
+    next_client_internal_update_stats( client );
+
+    next_client_internal_update_fallback_to_direct( client );
+
+    next_client_internal_update_route_manager( client );
+
+    next_client_internal_update_upgrade_response( client );
+
+    bool quit = next_client_internal_pump_commands( client );
+
+    double finish_time = next_time();
+
+    if ( finish_time - start_time > 0.001 )
+    {
+    	next_printf( NEXT_LOG_LEVEL_WARN, "next_client_internal_update spiked %.2f milliseconds (!!!)", ( finish_time - start_time ) * 1000.0 );
+    }
+
+    return quit;
+}
+
 static void next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -8153,28 +8177,11 @@ static void next_client_internal_thread_function( void * context )
     {
         next_client_internal_block_and_receive_packet( client );
 
-        double current_time = next_time();
-
-        // todo: detect if this takes longer than 0.1sec
-        if ( current_time > last_update_time + 0.01 )
+        if ( next_time() > last_update_time + 0.01 )
         {
-            next_client_internal_update_direct_pings( client );
+        	quit = next_client_internal_update( client );
 
-            next_client_internal_update_next_pings( client );
-
-            next_client_internal_send_pings_to_near_relays( client );
-
-            next_client_internal_update_stats( client );
-
-            next_client_internal_update_fallback_to_direct( client );
-
-            next_client_internal_update_route_manager( client );
-
-            next_client_internal_update_upgrade_response( client );
-
-            quit = next_client_internal_pump_commands( client );
-
-            last_update_time = current_time;
+		    last_update_time = next_time();
         }
     }
 }

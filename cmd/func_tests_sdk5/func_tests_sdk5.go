@@ -541,7 +541,6 @@ func test_network_next_route() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
-
 }
 
 /*
@@ -3435,6 +3434,7 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
+		/*
 		test_passthrough,
 		test_direct_upgraded,
 		test_network_next_route,
@@ -3488,6 +3488,8 @@ func main() {
 		test_flush_game_events_and_match_data,
 		test_flush_game_events_and_match_data_retry,
 		test_big_packets,
+		*/
+		test_network_next_route,
 	}
 
 	var tests []test_function

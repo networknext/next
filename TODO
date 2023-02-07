@@ -1,44 +1,50 @@
 DONE
 
-	Move all the essential counters up top of the relay counters, eg. packets sent/received, sessions created, sessions continued, sessions destroyed
-
-	Want to see a num packets sent counter in relay, at the top.
-
-	Instrument sdk5 with spam messages
-
-	Make sure all essential counters are instrumented in the reference relay
-
-	Make a release with the last SDK 4 support (eg. func tests, relay etc.)
-
-	Clean up code and go all in on SDK5. To get this as a turnkey product work must be 100% focused. It's clear that turnkey will be with SDK5. So go all in.
-
-	Get everything building and working again with the new structure.
-
-	Make sure happy path works.
-
 TODO
 
-	---------------
+	Why does the route request packet fail advanced packet filter suddenly?
 
-	Backup all the code somewhere.
+	I didn't (intentionally) change anything that should affect this. WTF?
 
-	Back up the old production backend.
+	And how can it work in happy path, but not work in the func test. What's the difference?
 
-	Back up the last SDK4 func test release code.
 
-	Back up the current SDK4 code.
 
-	Back up the current SDK5 code.
 
-	Back up the old relay.
 
-	Back up the current codebase.
 
-	Store these in multiple safe places so they are protected by redundancy.
 
-	---------------
 
-	Make sure functional tests work
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 
