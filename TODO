@@ -6,15 +6,19 @@ DONE
 
 	Convert various counters and simple things to std::atomic
 
-TODO
-
 	Review usage of all client mutexes:
 
 		command_mutex                ---> using helper. all look reasonable. added spike tracking.
 		notify_mutex                 ---> using helper. all look fine. added spike tracking.
-		route_manager_mutex
-		direct_bandwidth_mutex       ---> convert to atomic?
-		next_bandwidth_mutex         ---> convert to atomic?
+		route_manager_mutex          ---> messy. if there is anything going on, this is a candidate.
+		direct_bandwidth_mutex       ---> messy. should be possible to remove with better design.
+		next_bandwidth_mutex         ---> messy. should be possible to remove with better design.
+
+	Convert all client mutexes so they use the mutex guard and track spikes.
+
+TODO
+
+	Convert all server mutexes so they use the mutex guard and track spikes.
 
 	----------------
 

@@ -6268,13 +6268,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(9)
 
-    next_platform_mutex_t direct_bandwidth_mutex;       // todo: can this become atomic?
+    next_platform_mutex_t direct_bandwidth_mutex;
     float direct_bandwidth_usage_kbps_up;
     float direct_bandwidth_usage_kbps_down;
 
     NEXT_DECLARE_SENTINEL(10)
 
-    next_platform_mutex_t next_bandwidth_mutex;         // todo: can this become atomic?
+    next_platform_mutex_t next_bandwidth_mutex;
     bool next_bandwidth_over_limit;
     float next_bandwidth_usage_kbps_up;
     float next_bandwidth_usage_kbps_down;
@@ -7656,18 +7656,20 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_replay_protection_reset( &client->special_replay_protection );
                 next_replay_protection_reset( &client->internal_replay_protection );
 
-                next_platform_mutex_acquire( &client->direct_bandwidth_mutex );
-                client->direct_bandwidth_usage_kbps_up = 0;
-                client->direct_bandwidth_usage_kbps_down = 0;
-                next_platform_mutex_release( &client->direct_bandwidth_mutex );
+                {
+                    next_platform_mutex_guard( &client->direct_bandwidth_mutex );
+                    client->direct_bandwidth_usage_kbps_up = 0;
+                    client->direct_bandwidth_usage_kbps_down = 0;
+                }
 
-                next_platform_mutex_acquire( &client->next_bandwidth_mutex );
-                client->next_bandwidth_over_limit = false;
-                client->next_bandwidth_usage_kbps_up = 0;
-                client->next_bandwidth_usage_kbps_down = 0;
-                client->next_bandwidth_envelope_kbps_up = 0;
-                client->next_bandwidth_envelope_kbps_down = 0;
-                next_platform_mutex_release( &client->next_bandwidth_mutex );
+                {
+                    next_platform_mutex_guard( &client->next_bandwidth_mutex );
+                    client->next_bandwidth_over_limit = false;
+                    client->next_bandwidth_usage_kbps_up = 0;
+                    client->next_bandwidth_usage_kbps_down = 0;
+                    client->next_bandwidth_envelope_kbps_up = 0;
+                    client->next_bandwidth_envelope_kbps_down = 0;
+                }
 
                 {
                     next_platform_mutex_guard( &client->route_manager_mutex );
@@ -7753,20 +7755,22 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_route_stats_t direct_route_stats;
         next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &direct_route_stats );
 
-        next_platform_mutex_acquire( &client->direct_bandwidth_mutex );
-        client->client_stats.direct_kbps_up = client->direct_bandwidth_usage_kbps_up;
-        client->client_stats.direct_kbps_down = client->direct_bandwidth_usage_kbps_down;
-        next_platform_mutex_release( &client->direct_bandwidth_mutex );
+        {
+            next_platform_mutex_guard( &client->direct_bandwidth_mutex );
+            client->client_stats.direct_kbps_up = client->direct_bandwidth_usage_kbps_up;
+            client->client_stats.direct_kbps_down = client->direct_bandwidth_usage_kbps_down;
+        }
 
         if ( network_next )
         {
             client->client_stats.next_rtt = next_route_stats.rtt;
             client->client_stats.next_jitter = next_route_stats.jitter;
             client->client_stats.next_packet_loss = next_route_stats.packet_loss;
-            next_platform_mutex_acquire( &client->next_bandwidth_mutex );
-            client->client_stats.next_kbps_up = client->next_bandwidth_usage_kbps_up;
-            client->client_stats.next_kbps_down = client->next_bandwidth_usage_kbps_down;
-            next_platform_mutex_release( &client->next_bandwidth_mutex );
+            {
+                next_platform_mutex_guard( &client->next_bandwidth_mutex );
+                client->client_stats.next_kbps_up = client->next_bandwidth_usage_kbps_up;
+                client->client_stats.next_kbps_down = client->next_bandwidth_usage_kbps_down;
+            }
         }
         else
         {
@@ -7839,17 +7843,19 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
-        next_platform_mutex_acquire( &client->direct_bandwidth_mutex );
-        packet.direct_kbps_up = (int) ceil( client->direct_bandwidth_usage_kbps_up );
-        packet.direct_kbps_down = (int) ceil( client->direct_bandwidth_usage_kbps_down );
-        next_platform_mutex_release( &client->direct_bandwidth_mutex );
+        {
+            next_platform_mutex_guard( &client->direct_bandwidth_mutex );
+            packet.direct_kbps_up = (int) ceil( client->direct_bandwidth_usage_kbps_up );
+            packet.direct_kbps_down = (int) ceil( client->direct_bandwidth_usage_kbps_down );
+        }
 
-        next_platform_mutex_acquire( &client->next_bandwidth_mutex );
-        packet.next_bandwidth_over_limit = client->next_bandwidth_over_limit;
-        packet.next_kbps_up = (int) ceil( client->next_bandwidth_usage_kbps_up );
-        packet.next_kbps_down = (int) ceil( client->next_bandwidth_usage_kbps_down );
-        client->next_bandwidth_over_limit = false;
-        next_platform_mutex_release( &client->next_bandwidth_mutex );
+        {
+            next_platform_mutex_guard( &client->next_bandwidth_mutex );
+            packet.next_bandwidth_over_limit = client->next_bandwidth_over_limit;
+            packet.next_kbps_up = (int) ceil( client->next_bandwidth_usage_kbps_up );
+            packet.next_kbps_down = (int) ceil( client->next_bandwidth_usage_kbps_down );
+            client->next_bandwidth_over_limit = false;
+        }
 
         if ( !client->client_stats.next )
         {
@@ -8511,23 +8517,27 @@ void next_client_update( next_client_t * client )
 
                 double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_time() );
 
-                next_platform_mutex_acquire( &client->internal->direct_bandwidth_mutex );
-                client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
-                next_platform_mutex_release( &client->internal->direct_bandwidth_mutex );
+                {
+                    next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
+                    client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
+                }
 
                 if ( !packet_received->direct )
                 {
-                    next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-                    const int envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
-                    next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+                    int envelope_kbps_down;
+                    {
+                        next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
+                        envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
+                    }
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
 
                     double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_time() );
 
-                    next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-                    client->internal->next_bandwidth_usage_kbps_down = next_kbps_down;
-                    next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+                    {
+                        next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
+                        client->internal->next_bandwidth_usage_kbps_down = next_kbps_down;
+                    }
                 }
             }
             break;
@@ -8639,27 +8649,31 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth, next_time() );
 
-        next_platform_mutex_acquire( &client->internal->direct_bandwidth_mutex );
-        client->internal->direct_bandwidth_usage_kbps_up = direct_usage_kbps_up;
-        next_platform_mutex_release( &client->internal->direct_bandwidth_mutex );
+        {
+            next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
+            client->internal->direct_bandwidth_usage_kbps_up = direct_usage_kbps_up;
+        }
 
         // track next send backend and don't send over network next if we're over the bandwidth budget
 
         if ( send_over_network_next )
         {
-            next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-            const int next_envelope_kbps_up = client->internal->next_bandwidth_envelope_kbps_up;
-            next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+            int next_envelope_kbps_up;
+            {
+                next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
+                next_envelope_kbps_up = client->internal->next_bandwidth_envelope_kbps_up;
+            }
 
             bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_time(), next_envelope_kbps_up, wire_packet_bits );
 
             double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_time() );
 
-            next_platform_mutex_acquire( &client->internal->next_bandwidth_mutex );
-            client->internal->next_bandwidth_usage_kbps_up = next_usage_kbps_up;
-            if ( over_budget )
-                client->internal->next_bandwidth_over_limit = true;
-            next_platform_mutex_release( &client->internal->next_bandwidth_mutex );
+            {
+                next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
+                client->internal->next_bandwidth_usage_kbps_up = next_usage_kbps_up;
+                if ( over_budget )
+                    client->internal->next_bandwidth_over_limit = true;
+            }
 
             if ( over_budget )
             {
@@ -12455,15 +12469,16 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
         entry->current_route_send_address = entry->pending_route_send_address;
         memcpy( entry->current_route_private_key, entry->pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
-        next_platform_mutex_acquire( &server->session_mutex );
-        entry->mutex_envelope_kbps_up = entry->current_route_kbps_up;
-        entry->mutex_envelope_kbps_down = entry->current_route_kbps_down;
-        entry->mutex_send_over_network_next = true;
-        entry->mutex_session_id = entry->session_id;
-        entry->mutex_session_version = entry->current_route_session_version;
-        entry->mutex_send_address = entry->current_route_send_address;
-        memcpy( entry->mutex_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        next_platform_mutex_release( &server->session_mutex );
+        {
+            next_platform_mutex_guard( &server->session_mutex );
+            entry->mutex_envelope_kbps_up = entry->current_route_kbps_up;
+            entry->mutex_envelope_kbps_down = entry->current_route_kbps_down;
+            entry->mutex_send_over_network_next = true;
+            entry->mutex_session_id = entry->session_id;
+            entry->mutex_session_version = entry->current_route_session_version;
+            entry->mutex_send_address = entry->current_route_send_address;
+            memcpy( entry->mutex_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+        }
     }
     else
     {
@@ -12546,9 +12561,10 @@ void next_server_internal_update_route( next_server_internal_t * server )
             packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
             packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server );
 
-            next_platform_mutex_acquire( &server->session_mutex );
-            packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
-            next_platform_mutex_release( &server->session_mutex );
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+            }
 
             packet.has_debug = entry->has_debug;
             memcpy( packet.debug, entry->debug, NEXT_MAX_SESSION_DEBUG );
@@ -12673,10 +12689,11 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
                 next_queue_push( server->notify_queue, notify );
             }
 
-            next_platform_mutex_acquire( &server->session_mutex );
-            next_session_manager_remove_at_index( server->session_manager, index );
-            next_platform_mutex_release( &server->session_mutex );
-
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                next_session_manager_remove_at_index( server->session_manager, index );
+            }
+    
             continue;
         }
 
@@ -12695,9 +12712,10 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             entry->update_dirty = false;
             entry->waiting_for_update_response = false;
 
-            next_platform_mutex_acquire( &server->session_mutex );
-            entry->mutex_send_over_network_next = false;
-            next_platform_mutex_release( &server->session_mutex );
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                entry->mutex_send_over_network_next = false;
+            }
         }
 
         index++;
@@ -13106,9 +13124,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %" PRIx64, entry->session_id );
             entry->multipath = true;
-            next_platform_mutex_acquire( &server->session_mutex );
-            entry->mutex_multipath = true;
-            next_platform_mutex_release( &server->session_mutex );
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                entry->mutex_multipath = true;
+            }
         }
 
         entry->update_dirty = true;
@@ -13145,14 +13164,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )
         {
             bool session_transitions_to_direct = false;
-
-            next_platform_mutex_acquire( &server->session_mutex );
-            if ( entry->mutex_send_over_network_next )
             {
-                entry->mutex_send_over_network_next = false;
-                session_transitions_to_direct = true;
+                next_platform_mutex_guard( &server->session_mutex );
+                if ( entry->mutex_send_over_network_next )
+                {
+                    entry->mutex_send_over_network_next = false;
+                    session_transitions_to_direct = true;
+                }
             }
-            next_platform_mutex_release( &server->session_mutex );
 
             if ( session_transitions_to_direct )
             {
@@ -13326,9 +13345,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             // add to established sessions
 
-            next_platform_mutex_acquire( &server->session_mutex );
-            next_session_entry_t * entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token, pending_entry->tags, pending_entry->num_tags );
-            next_platform_mutex_release( &server->session_mutex );
+            next_session_entry_t * entry = NULL;
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token, pending_entry->tags, pending_entry->num_tags );
+            }
             if ( entry == NULL )
             {
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -14862,9 +14883,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_kbps_up = session->stats_next_kbps_up;
             packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
-            next_platform_mutex_acquire( &server->session_mutex );
-            packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
-            next_platform_mutex_release( &server->session_mutex );
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
+            }
 
             // IMPORTANT: hold near relay stats for the rest of the session
             if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
@@ -15009,9 +15031,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->session_update_timed_out = true;
 
             // IMPORTANT: Send packets direct from now on for this session
-            next_platform_mutex_acquire( &server->session_mutex );
-            session->mutex_send_over_network_next = false;
-            next_platform_mutex_release( &server->session_mutex );
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                session->mutex_send_over_network_next = false;
+            }
         }
     }
 
@@ -15651,13 +15674,15 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         double last_upgraded_packet_receive_time = 0.0;
         uint8_t session_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
-        next_platform_mutex_acquire( &server->internal->session_mutex );
-        next_session_entry_t * internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
-        if ( internal_entry )
+        next_session_entry_t * internal_entry = NULL;
         {
-            last_upgraded_packet_receive_time = internal_entry->last_upgraded_packet_receive_time;
+            next_platform_mutex_guard( &server->internal->session_mutex );
+            internal_entry = next_session_manager_find_by_address( server->internal->session_manager, to_address );
+            if ( internal_entry )
+            {
+                last_upgraded_packet_receive_time = internal_entry->last_upgraded_packet_receive_time;
+            }
         }
-        next_platform_mutex_release( &server->internal->session_mutex );
 
         // IMPORTANT: If we haven't received any upgraded packets in the last second send passthrough packets.
         // This makes reconnect robust when a client reconnects using the same port number.
@@ -15667,20 +15692,21 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             return;
         }
 
-        next_platform_mutex_acquire( &server->internal->session_mutex );
-        multipath = internal_entry->mutex_multipath;
-        envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
-        send_over_network_next = internal_entry->mutex_send_over_network_next;
-        send_upgraded_direct = !send_over_network_next;
-        send_sequence = internal_entry->mutex_payload_send_sequence++;
-        send_sequence |= uint64_t(1) << 63;
-        open_session_sequence = internal_entry->client_open_session_sequence;
-        session_id = internal_entry->mutex_session_id;
-        session_version = internal_entry->mutex_session_version;
-        session_address = internal_entry->mutex_send_address;
-        memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        internal_entry->stats_packets_sent_server_to_client++;
-        next_platform_mutex_release( &server->internal->session_mutex );
+        {
+            next_platform_mutex_guard( &server->internal->session_mutex );
+            multipath = internal_entry->mutex_multipath;
+            envelope_kbps_down = internal_entry->mutex_envelope_kbps_down;
+            send_over_network_next = internal_entry->mutex_send_over_network_next;
+            send_upgraded_direct = !send_over_network_next;
+            send_sequence = internal_entry->mutex_payload_send_sequence++;
+            send_sequence |= uint64_t(1) << 63;
+            open_session_sequence = internal_entry->client_open_session_sequence;
+            session_id = internal_entry->mutex_session_id;
+            session_version = internal_entry->mutex_session_version;
+            session_address = internal_entry->mutex_send_address;
+            memcpy( session_private_key, internal_entry->mutex_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+            internal_entry->stats_packets_sent_server_to_client++;
+        }
 
         if ( multipath )
         {
@@ -15696,9 +15722,10 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             if ( over_budget )
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "server exceeded bandwidth budget for session %" PRIx64 " (%d kbps)", session_id, envelope_kbps_down );
-                next_platform_mutex_acquire( &server->internal->session_mutex );
-                internal_entry->stats_server_bandwidth_over_limit = true;
-                next_platform_mutex_release( &server->internal->session_mutex );
+                {
+                    next_platform_mutex_guard( &server->internal->session_mutex );
+                    internal_entry->stats_server_bandwidth_over_limit = true;
+                }
                 send_over_network_next = false;
                 if ( !multipath )
                 {
