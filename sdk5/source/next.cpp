@@ -403,33 +403,33 @@ extern void next_platform_mutex_release( next_platform_mutex_t * mutex );
 
 extern void next_platform_mutex_destroy( next_platform_mutex_t * mutex );
 
-#define NEXT_MUTEX_SPIKE_TRACKING 1
+#define NEXT_SPIKE_TRACKING 1
 
 struct next_platform_mutex_helper_t
 {
     next_platform_mutex_t * mutex;
-#if NEXT_MUTEX_SPIKE_TRACKING
+#if NEXT_SPIKE_TRACKING
     const char * file;
     int line;
     double start_time;
     next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line );
-#else // #if NEXT_MUTEX_SPIKE_TRACKING
+#else // #if NEXT_SPIKE_TRACKING
     next_platform_mutex_helper_t( next_platform_mutex_t * mutex );
-#endif // #if NEXT_MUTEX_SPIKE_TRACKING
+#endif // #if NEXT_SPIKE_TRACKING
     ~next_platform_mutex_helper_t();
 };
 
-#if NEXT_MUTEX_SPIKE_TRACKING
+#if NEXT_SPIKE_TRACKING
 #define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex, __FILE__, __LINE__ )
-#else // #if NEXT_MUTEX_SPIKE_TRACKING
+#else // #if NEXT_SPIKE_TRACKING
 #define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
-#endif // #if NEXT_MUTEX_SPIKE_TRACKING
+#endif // #if NEXT_SPIKE_TRACKING
 
-#if NEXT_MUTEX_SPIKE_TRACKING
+#if NEXT_SPIKE_TRACKING
 next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_time())
-#else // #if NEXT_MUTEX_SPIKE_TRACKING
+#else // #if NEXT_SPIKE_TRACKING
 next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex(mutex)
-#endif // #if NEXT_MUTEX_SPIKE_TRACKING
+#endif // #if NEXT_SPIKE_TRACKING
 {
     next_assert( mutex );
     next_platform_mutex_acquire( mutex );
@@ -439,14 +439,14 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 {
     next_assert( mutex );
     next_platform_mutex_release( mutex );
-#if NEXT_MUTEX_SPIKE_TRACKING
+#if NEXT_SPIKE_TRACKING
     double finish_time = next_time();
     double mutex_duration = finish_time - start_time;
     if ( mutex_duration > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "mutex spike %.2f milliseconds at %s:%d", mutex_duration, file, line );
     }
-#endif // #if NEXT_MUTEX_SPIKE_TRACKING
+#endif // #if NEXT_SPIKE_TRACKING
     mutex = NULL;
 }
 
@@ -8187,7 +8187,9 @@ static bool next_client_internal_update( next_client_internal_t * client )
 {
     next_assert( !next_global_config.disable_network_next );
 
+#if NEXT_SPIKE_TRACKING
 	double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
 
     next_client_internal_update_direct_pings( client );
 
@@ -8205,12 +8207,16 @@ static bool next_client_internal_update( next_client_internal_t * client )
 
     bool quit = next_client_internal_pump_commands( client );
 
+#if NEXT_SPIKE_TRACKING
+
     double finish_time = next_time();
 
     if ( finish_time - start_time > 0.001 )
     {
-    	next_printf( NEXT_LOG_LEVEL_WARN, "next_client_internal_update spiked %.2f milliseconds (!!!)", ( finish_time - start_time ) * 1000.0 );
+    	next_printf( NEXT_LOG_LEVEL_WARN, "next_client_internal_update spike %.2f milliseconds", ( finish_time - start_time ) * 1000.0 );
     }
+
+#endif // #if NEXT_SPIKE_TRACKING
 
     return quit;
 }
@@ -15122,7 +15128,9 @@ static void next_server_update_internal( next_server_internal_t * server )
 {
     next_assert( !next_global_config.disable_network_next );
 
+#if NEXT_SPIKE_TRACKING
     double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
 
     next_server_internal_update_flush( server );
 
@@ -15142,12 +15150,16 @@ static void next_server_update_internal( next_server_internal_t * server )
 
     next_server_internal_pump_commands( server );
 
+#if NEXT_SPIKE_TRACKING
+
     double finish_time = next_time();
 
     if ( finish_time - start_time > 0.001 )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "next_server_update_internal spiked for %.2f milliseconds (!!!)", ( finish_time - start_time ) * 1000.0 );
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_server_update_internal spike %.2f milliseconds", ( finish_time - start_time ) * 1000.0 );
     }
+
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 static void next_server_internal_thread_function( void * context )

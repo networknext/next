@@ -363,6 +363,8 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// todo: need to fix up analytics to be able to run without google pubsub
+	/*
 	// initialize analytics
 
 	fmt.Printf("\nstarting analytics:\n\n")
@@ -413,6 +415,7 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+	*/
 
 	// ==================================================================================
 
@@ -496,6 +499,8 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// todo: analytics disabled for the moment
+	/*
 	fmt.Printf("verifying leader election in analytics ...")
 
 	analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
@@ -540,6 +545,7 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+	*/
 
 	// ==================================================================================
 
