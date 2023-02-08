@@ -1,13 +1,16 @@
 package packets
 
 import (
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/crypto"
 )
 
 // -------------------------------------------------
 
 const (
+
+	// move things out of here that aren't specific to SDK5 packets
+
 	SDK5_SessionDataVersion_Min   = 1
 	SDK5_SessionDataVersion_Max   = 1
 	SDK5_SessionDataVersion_Write = 1
@@ -28,9 +31,9 @@ const (
 	SDK5_MaxDatacenterNameLength = 256
 	SDK5_MaxSessionDataSize      = 1024
 	SDK5_MaxTags                 = 8
-	SDK5_MaxTokens               = core.NEXT_MAX_NODES
-	SDK5_MaxRelaysPerRoute       = core.NEXT_MAX_NODES - 2
-	SDK5_MaxNearRelays           = int(core.MaxNearRelays)
+	SDK5_MaxTokens               = constants.NEXT_MAX_NODES
+	SDK5_MaxRelaysPerRoute       = constants.NEXT_MAX_NODES - 2
+	SDK5_MaxNearRelays           = int(constants.MaxNearRelays)
 	SDK5_MaxSessionUpdateRetries = 10
 	SDK5_MaxSessionDebug         = 1024
 

@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
@@ -441,7 +442,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 	const distanceThreshold = 2500
 	const latencyThreshold = 30.0
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(core.MaxNearRelays,
+	nearRelayIds, nearRelayAddresses := common.GetNearRelays(constants.MaxNearRelays,
 		distanceThreshold,
 		latencyThreshold,
 		state.RouteMatrix.RelayIds,
@@ -511,7 +512,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
 	sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
 
-	filteredSourceRelayLatency := [core.MaxNearRelays]int32{}
+	filteredSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
 	core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
 		directLatency,
@@ -540,9 +541,9 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses [core.NEXT_MAX_NODES]net.UDPAddr
-	var routePublicKeys [core.NEXT_MAX_NODES][]byte
-	var routeInternal [core.NEXT_MAX_NODES]bool
+	var routeAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
+	var routeInternal [constants.NEXT_MAX_NODES]bool
 
 	// client node (no address specified...)
 
@@ -609,7 +610,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	numTokens := routeNumRelays + 2
 
-	var routePublicKeys [core.NEXT_MAX_NODES][]byte
+	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
 
 	// client node
 
@@ -669,7 +670,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	var routeCost int32
 	var routeNumRelays int32
 
-	routeRelays := [core.MaxRelaysPerRoute]int32{}
+	routeRelays := [constants.MaxRouteRelays]int32{}
 
 	sliceNumber := int32(state.Request.SliceNumber)
 
@@ -741,7 +742,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		// reframe the current route in terms of relay indices in the current route matrix
 
 		if !core.ReframeRoute(state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
-			routeRelays = [core.MaxRelaysPerRoute]int32{}
+			routeRelays = [constants.MaxRouteRelays]int32{}
 			core.Debug("one or more relays in the route no longer exist")
 			state.SessionFlags |= messages.SessionFlags_RouteRelayNoLongerExists
 			if state.Debug != nil {

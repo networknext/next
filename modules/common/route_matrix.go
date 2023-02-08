@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -90,7 +91,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
 			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
-			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
+			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, constants.MaxRouteRelays)
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
@@ -383,10 +384,10 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 
 	for i := range routeMatrix.RouteEntries {
 		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1, 1000))
-		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0, core.MaxRoutesPerEntry))
+		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0, constants.MaxRoutesPerEntry))
 		for j := 0; j < int(routeMatrix.RouteEntries[i].NumRoutes); j++ {
 			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1, 1000))
-			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1, core.MaxRelaysPerRoute))
+			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1, constants.MaxRouteRelays))
 			for k := 0; k < int(routeMatrix.RouteEntries[i].RouteNumRelays[j]); k++ {
 				routeMatrix.RouteEntries[i].RouteRelays[j][k] = int32(k)
 			}

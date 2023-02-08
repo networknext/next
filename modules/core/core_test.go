@@ -1,4 +1,4 @@
-package core
+package core_test
 
 import (
 	"crypto/ed25519"
@@ -14,6 +14,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 )
 
@@ -29,19 +31,19 @@ func RelayHash64(name string) uint64 {
 
 func TestProtocolVersionAtLeast(t *testing.T) {
 	t.Parallel()
-	assert.True(t, ProtocolVersionAtLeast(3, 0, 0, 3, 0, 0))
-	assert.True(t, ProtocolVersionAtLeast(4, 0, 0, 3, 0, 0))
-	assert.True(t, ProtocolVersionAtLeast(3, 1, 0, 3, 0, 0))
-	assert.True(t, ProtocolVersionAtLeast(3, 0, 1, 3, 0, 0))
-	assert.True(t, ProtocolVersionAtLeast(3, 4, 5, 3, 4, 5))
-	assert.True(t, ProtocolVersionAtLeast(4, 0, 0, 3, 4, 5))
-	assert.True(t, ProtocolVersionAtLeast(3, 5, 0, 3, 4, 5))
-	assert.True(t, ProtocolVersionAtLeast(3, 4, 6, 3, 4, 5))
-	assert.True(t, ProtocolVersionAtLeast(3, 1, 0, 3, 1, 0))
-	assert.False(t, ProtocolVersionAtLeast(3, 0, 99, 3, 1, 1))
-	assert.False(t, ProtocolVersionAtLeast(3, 1, 0, 3, 1, 1))
-	assert.False(t, ProtocolVersionAtLeast(2, 0, 0, 3, 1, 1))
-	assert.False(t, ProtocolVersionAtLeast(3, 0, 5, 3, 1, 0))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 0, 0, 3, 0, 0))
+	assert.True(t, core.ProtocolVersionAtLeast(4, 0, 0, 3, 0, 0))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 1, 0, 3, 0, 0))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 0, 1, 3, 0, 0))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 4, 5, 3, 4, 5))
+	assert.True(t, core.ProtocolVersionAtLeast(4, 0, 0, 3, 4, 5))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 5, 0, 3, 4, 5))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 4, 6, 3, 4, 5))
+	assert.True(t, core.ProtocolVersionAtLeast(3, 1, 0, 3, 1, 0))
+	assert.False(t, core.ProtocolVersionAtLeast(3, 0, 99, 3, 1, 1))
+	assert.False(t, core.ProtocolVersionAtLeast(3, 1, 0, 3, 1, 1))
+	assert.False(t, core.ProtocolVersionAtLeast(2, 0, 0, 3, 1, 1))
+	assert.False(t, core.ProtocolVersionAtLeast(3, 0, 5, 3, 1, 0))
 }
 
 func TestHaversineDistance(t *testing.T) {
@@ -50,59 +52,60 @@ func TestHaversineDistance(t *testing.T) {
 	losangelesLongitude := -118.2437
 	bostonLatitude := 42.3601
 	bostonLongitude := -71.0589
-	distance := HaversineDistance(losangelesLatitude, losangelesLongitude, bostonLatitude, bostonLongitude)
+	distance := core.HaversineDistance(losangelesLatitude, losangelesLongitude, bostonLatitude, bostonLongitude)
 	assert.Equal(t, 4169.607203810275, distance)
 }
 
 func TestTriMatrixLength(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, 0, TriMatrixLength(0))
-	assert.Equal(t, 0, TriMatrixLength(1))
-	assert.Equal(t, 1, TriMatrixLength(2))
-	assert.Equal(t, 3, TriMatrixLength(3))
-	assert.Equal(t, 6, TriMatrixLength(4))
-	assert.Equal(t, 10, TriMatrixLength(5))
-	assert.Equal(t, 15, TriMatrixLength(6))
+	assert.Equal(t, 0, core.TriMatrixLength(0))
+	assert.Equal(t, 0, core.TriMatrixLength(1))
+	assert.Equal(t, 1, core.TriMatrixLength(2))
+	assert.Equal(t, 3, core.TriMatrixLength(3))
+	assert.Equal(t, 6, core.TriMatrixLength(4))
+	assert.Equal(t, 10, core.TriMatrixLength(5))
+	assert.Equal(t, 15, core.TriMatrixLength(6))
 }
 
 func TestTriMatrixIndex(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, 0, TriMatrixIndex(0, 1))
-	assert.Equal(t, 1, TriMatrixIndex(0, 2))
-	assert.Equal(t, 2, TriMatrixIndex(1, 2))
-	assert.Equal(t, 3, TriMatrixIndex(0, 3))
-	assert.Equal(t, 4, TriMatrixIndex(1, 3))
-	assert.Equal(t, 5, TriMatrixIndex(2, 3))
-	assert.Equal(t, 0, TriMatrixIndex(1, 0))
-	assert.Equal(t, 1, TriMatrixIndex(2, 0))
-	assert.Equal(t, 2, TriMatrixIndex(2, 1))
-	assert.Equal(t, 3, TriMatrixIndex(3, 0))
-	assert.Equal(t, 4, TriMatrixIndex(3, 1))
-	assert.Equal(t, 5, TriMatrixIndex(3, 2))
+	assert.Equal(t, 0, core.TriMatrixIndex(0, 1))
+	assert.Equal(t, 1, core.TriMatrixIndex(0, 2))
+	assert.Equal(t, 2, core.TriMatrixIndex(1, 2))
+	assert.Equal(t, 3, core.TriMatrixIndex(0, 3))
+	assert.Equal(t, 4, core.TriMatrixIndex(1, 3))
+	assert.Equal(t, 5, core.TriMatrixIndex(2, 3))
+	assert.Equal(t, 0, core.TriMatrixIndex(1, 0))
+	assert.Equal(t, 1, core.TriMatrixIndex(2, 0))
+	assert.Equal(t, 2, core.TriMatrixIndex(2, 1))
+	assert.Equal(t, 3, core.TriMatrixIndex(3, 0))
+	assert.Equal(t, 4, core.TriMatrixIndex(3, 1))
+	assert.Equal(t, 5, core.TriMatrixIndex(3, 2))
 }
 
 func CheckNilAddress(t *testing.T) {
 	var address *net.UDPAddr
-	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
-	WriteAddress(buffer, address)
-	readAddress := ReadAddress(buffer)
+	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	// todo: needs to be renamed to something like "WriteAddressFixed" or whatever... encoding has a variable length version
+	core.WriteAddress(buffer, address)
+	readAddress := core.ReadAddress(buffer)
 	assert.Equal(t, readAddress, net.UDPAddr{})
 }
 
 func CheckIPv4Address(t *testing.T, addressString string, expected string) {
-	address := ParseAddress(addressString)
-	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
-	WriteAddress(buffer, &address)
-	readAddress := ReadAddress(buffer)
+	address := core.ParseAddress(addressString)
+	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	core.WriteAddress(buffer, &address)
+	readAddress := core.ReadAddress(buffer)
 	readAddressString := readAddress.String()
 	assert.Equal(t, expected, readAddressString)
 }
 
 func CheckIPv6Address(t *testing.T, addressString string, expected string) {
-	address := ParseAddress(addressString)
-	buffer := make([]uint8, NEXT_ADDRESS_BYTES)
-	WriteAddress(buffer, &address)
-	readAddress := ReadAddress(buffer)
+	address := core.ParseAddress(addressString)
+	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	core.WriteAddress(buffer, &address)
+	readAddress := core.ReadAddress(buffer)
 	assert.Equal(t, readAddress.IP, address.IP)
 	assert.Equal(t, readAddress.Port, address.Port)
 }
@@ -120,7 +123,8 @@ func TestRouteManager(t *testing.T) {
 
 	t.Parallel()
 
-	routeManager := RouteManager{}
+	// todo: merge entry and route manager. same thing
+	routeManager := core.RouteManager{}
 	routeManager.RelayDatacenter = make([]uint64, 256)
 	for i := range routeManager.RelayDatacenter {
 		routeManager.RelayDatacenter[i] = uint64(i)
@@ -177,19 +181,19 @@ func TestRouteManager(t *testing.T) {
 
 	// fill up lots of extra routes to get to max routes
 
-	numFillers := MaxRoutesPerEntry - routeManager.NumRoutes
+	numFillers := constants.MaxRoutesPerEntry - routeManager.NumRoutes
 
 	for i := 0; i < numFillers; i++ {
 		routeManager.AddRoute(int32(1000+i), int32(100+i), int32(100+i+1), int32(100+i+2))
 		assert.Equal(t, 9+i+1, routeManager.NumRoutes)
 	}
 
-	assert.Equal(t, MaxRoutesPerEntry, routeManager.NumRoutes)
+	assert.Equal(t, constants.MaxRoutesPerEntry, routeManager.NumRoutes)
 
 	// make sure we can't add worse routes once we are at max routes
 
 	routeManager.AddRoute(10000, 12, 13, 14)
-	assert.Equal(t, routeManager.NumRoutes, MaxRoutesPerEntry)
+	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes; i++ {
 		assert.True(t, routeManager.RouteCost[i] != 10000)
 	}
@@ -197,7 +201,7 @@ func TestRouteManager(t *testing.T) {
 	// make sure we can add better routes while at max routes
 
 	routeManager.AddRoute(177, 13, 14, 15, 16, 17)
-	assert.Equal(t, routeManager.NumRoutes, MaxRoutesPerEntry)
+	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
 	}
@@ -216,20 +220,20 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(1), routeManager.RouteRelays[0][0])
 	assert.Equal(t, int32(2), routeManager.RouteRelays[0][1])
 	assert.Equal(t, int32(3), routeManager.RouteRelays[0][2])
-	assert.Equal(t, RouteHash(1, 2, 3), routeManager.RouteHash[0])
+	assert.Equal(t, core.RouteHash(1, 2, 3), routeManager.RouteHash[0])
 
 	assert.Equal(t, int32(150), routeManager.RouteCost[1])
 	assert.Equal(t, int32(2), routeManager.RouteNumRelays[1])
 	assert.Equal(t, int32(11), routeManager.RouteRelays[1][0])
 	assert.Equal(t, int32(12), routeManager.RouteRelays[1][1])
-	assert.Equal(t, RouteHash(11, 12), routeManager.RouteHash[1])
+	assert.Equal(t, core.RouteHash(11, 12), routeManager.RouteHash[1])
 
 	assert.Equal(t, int32(160), routeManager.RouteCost[2])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[2])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[2][0])
 	assert.Equal(t, int32(10), routeManager.RouteRelays[2][1])
 	assert.Equal(t, int32(11), routeManager.RouteRelays[2][2])
-	assert.Equal(t, RouteHash(9, 10, 11), routeManager.RouteHash[2])
+	assert.Equal(t, core.RouteHash(9, 10, 11), routeManager.RouteHash[2])
 
 	assert.Equal(t, int32(165), routeManager.RouteCost[3])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[3])
@@ -238,13 +242,13 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(12), routeManager.RouteRelays[3][2])
 	assert.Equal(t, int32(13), routeManager.RouteRelays[3][3])
 	assert.Equal(t, int32(14), routeManager.RouteRelays[3][4])
-	assert.Equal(t, RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[3])
+	assert.Equal(t, core.RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[3])
 
 	assert.Equal(t, int32(175), routeManager.RouteCost[4])
 	assert.Equal(t, int32(2), routeManager.RouteNumRelays[4])
 	assert.Equal(t, int32(8), routeManager.RouteRelays[4][0])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[4][1])
-	assert.Equal(t, RouteHash(8, 9), routeManager.RouteHash[4])
+	assert.Equal(t, core.RouteHash(8, 9), routeManager.RouteHash[4])
 
 	assert.Equal(t, int32(177), routeManager.RouteCost[5])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[5])
@@ -253,14 +257,14 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(15), routeManager.RouteRelays[5][2])
 	assert.Equal(t, int32(16), routeManager.RouteRelays[5][3])
 	assert.Equal(t, int32(17), routeManager.RouteRelays[5][4])
-	assert.Equal(t, RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[5])
+	assert.Equal(t, core.RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[5])
 
 	assert.Equal(t, int32(180), routeManager.RouteCost[6])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[6])
 	assert.Equal(t, int32(6), routeManager.RouteRelays[6][0])
 	assert.Equal(t, int32(7), routeManager.RouteRelays[6][1])
 	assert.Equal(t, int32(8), routeManager.RouteRelays[6][2])
-	assert.Equal(t, RouteHash(6, 7, 8), routeManager.RouteHash[6])
+	assert.Equal(t, core.RouteHash(6, 7, 8), routeManager.RouteHash[6])
 
 	assert.Equal(t, int32(190), routeManager.RouteCost[7])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[7])
@@ -269,17 +273,17 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(7), routeManager.RouteRelays[7][2])
 	assert.Equal(t, int32(8), routeManager.RouteRelays[7][3])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[7][4])
-	assert.Equal(t, RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[7])
+	assert.Equal(t, core.RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[7])
 }
 
-func Analyze(numRelays int, routes []RouteEntry) []int {
+func Analyze(numRelays int, routes []core.RouteEntry) []int {
 
 	buckets := make([]int, 8)
 
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < numRelays; j++ {
 			if j < i {
-				abFlatIndex := TriMatrixIndex(i, j)
+				abFlatIndex := core.TriMatrixIndex(i, j)
 				if routes[abFlatIndex].DirectCost > 0 {
 					improvement := routes[abFlatIndex].DirectCost - routes[abFlatIndex].RouteCost[0]
 					if improvement == 0 {
@@ -351,7 +355,7 @@ func GenerateRelayKeyPair() ([]byte, []byte, error) {
 func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 	relay := &TestRelayData{}
 	relay.name = relayName
-	relay.address = ParseAddress(relayAddress)
+	relay.address = core.ParseAddress(relayAddress)
 	var err error
 	relay.publicKey, relay.privateKey, err = GenerateRelayKeyPair()
 	if err != nil {
@@ -419,11 +423,11 @@ func (env *TestEnvironment) GetRelayData(relayName string) *TestRelayData {
 
 func (env *TestEnvironment) GetCostMatrix() ([]int32, int) {
 	numRelays := len(env.relays)
-	entryCount := TriMatrixLength(numRelays)
+	entryCount := core.TriMatrixLength(numRelays)
 	costMatrix := make([]int32, entryCount)
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
-			index := TriMatrixIndex(i, j)
+			index := core.TriMatrixIndex(i, j)
 			costMatrix[index] = env.cost[i][j]
 		}
 	}
@@ -435,7 +439,7 @@ type TestRouteData struct {
 	relays []string
 }
 
-func (env *TestEnvironment) GetRoutes(routeMatrix []RouteEntry, sourceRelayName string, destRelayName string) []TestRouteData {
+func (env *TestEnvironment) GetRoutes(routeMatrix []core.RouteEntry, sourceRelayName string, destRelayName string) []TestRouteData {
 	sourceRelay := env.relays[sourceRelayName]
 	destRelay := env.relays[destRelayName]
 	i := sourceRelay.index
@@ -443,7 +447,7 @@ func (env *TestEnvironment) GetRoutes(routeMatrix []RouteEntry, sourceRelayName 
 	if i == j {
 		return nil
 	}
-	index := TriMatrixIndex(i, j)
+	index := core.TriMatrixIndex(i, j)
 	entry := routeMatrix[index]
 	testRouteData := make([]TestRouteData, entry.NumRoutes)
 	for k := 0; k < int(entry.NumRoutes); k++ {
@@ -464,7 +468,7 @@ func (env *TestEnvironment) GetRoutes(routeMatrix []RouteEntry, sourceRelayName 
 	return testRouteData
 }
 
-func (env *TestEnvironment) GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string) int32 {
+func (env *TestEnvironment) GetBestRouteCost(routeMatrix []core.RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string) int32 {
 	sourceRelayIndex := make([]int32, len(sourceRelays))
 	for i := range sourceRelays {
 		sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
@@ -479,11 +483,11 @@ func (env *TestEnvironment) GetBestRouteCost(routeMatrix []RouteEntry, sourceRel
 			panic("bad dest relay name")
 		}
 	}
-	return GetBestRouteCost(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex)
+	return core.GetBestRouteCost(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex)
 }
 
-func (env *TestEnvironment) RouteExists(routeMatrix []RouteEntry, routeRelays []string) bool {
-	routeRelayIndex := [MaxRelaysPerRoute]int32{}
+func (env *TestEnvironment) RouteExists(routeMatrix []core.RouteEntry, routeRelays []string) bool {
+	routeRelayIndex := [constants.MaxRouteRelays]int32{}
 	for i := range routeRelays {
 		routeRelayIndex[i] = int32(env.GetRelayIndex(routeRelays[i]))
 		if routeRelayIndex[i] == -1 {
@@ -491,11 +495,11 @@ func (env *TestEnvironment) RouteExists(routeMatrix []RouteEntry, routeRelays []
 		}
 	}
 	debug := ""
-	return RouteExists(routeMatrix, int32(len(routeRelays)), routeRelayIndex, &debug)
+	return core.RouteExists(routeMatrix, int32(len(routeRelays)), routeRelayIndex, &debug)
 }
 
-func (env *TestEnvironment) GetCurrentRouteCost(routeMatrix []RouteEntry, routeRelays []string, sourceRelays []string, sourceRelayCost []int32, destRelays []string) int32 {
-	routeRelayIndex := [MaxRelaysPerRoute]int32{}
+func (env *TestEnvironment) GetCurrentRouteCost(routeMatrix []core.RouteEntry, routeRelays []string, sourceRelays []string, sourceRelayCost []int32, destRelays []string) int32 {
+	routeRelayIndex := [constants.MaxRouteRelays]int32{}
 	for i := range routeRelays {
 		routeRelayIndex[i] = int32(env.GetRelayIndex(routeRelays[i]))
 		if routeRelayIndex[i] == -1 {
@@ -517,10 +521,10 @@ func (env *TestEnvironment) GetCurrentRouteCost(routeMatrix []RouteEntry, routeR
 		}
 	}
 	debug := ""
-	return GetCurrentRouteCost(routeMatrix, int32(len(routeRelays)), routeRelayIndex, sourceRelayIndex, sourceRelayCost, destRelayIndex, &debug)
+	return core.GetCurrentRouteCost(routeMatrix, int32(len(routeRelays)), routeRelayIndex, sourceRelayIndex, sourceRelayCost, destRelayIndex, &debug)
 }
 
-func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) []TestRouteData {
+func (env *TestEnvironment) GetBestRoutes(routeMatrix []core.RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) []TestRouteData {
 	sourceRelayIndex := make([]int32, len(sourceRelays))
 	for i := range sourceRelays {
 		sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
@@ -537,8 +541,8 @@ func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays
 	}
 	numBestRoutes := 0
 	routeDiversity := int32(0)
-	bestRoutes := make([]BestRoute, 1024)
-	GetBestRoutes(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, bestRoutes, &numBestRoutes, &routeDiversity)
+	bestRoutes := make([]core.BestRoute, 1024)
+	core.GetBestRoutes(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, bestRoutes, &numBestRoutes, &routeDiversity)
 	routes := make([]TestRouteData, numBestRoutes)
 	for i := 0; i < numBestRoutes; i++ {
 		routes[i].cost = bestRoutes[i].Cost
@@ -558,7 +562,7 @@ func (env *TestEnvironment) GetBestRoutes(routeMatrix []RouteEntry, sourceRelays
 	return routes
 }
 
-func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) *TestRouteData {
+func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []core.RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) *TestRouteData {
 	sourceRelayIndex := make([]int32, len(sourceRelays))
 	for i := range sourceRelays {
 		sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
@@ -575,10 +579,10 @@ func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []RouteEntry, sourceR
 	}
 	var bestRouteCost int32
 	var bestRouteNumRelays int32
-	var bestRouteRelays [MaxRelaysPerRoute]int32
+	var bestRouteRelays [constants.MaxRouteRelays]int32
 	debug := ""
 	selectThreshold := int32(2)
-	GetRandomBestRoute(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	core.GetRandomBestRoute(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 	if bestRouteNumRelays == 0 {
 		return nil
 	}
@@ -592,20 +596,20 @@ func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []RouteEntry, sourceR
 	return &route
 }
 
-func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [MaxRelaysPerRoute]int32) {
+func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [constants.MaxRouteRelays]int32) {
 	relayIdToIndex := make(map[uint64]int32)
 	for _, v := range env.relays {
 		id := RelayHash64(v.name)
 		relayIdToIndex[id] = int32(v.index)
 	}
-	reframedRoute := [MaxRelaysPerRoute]int32{}
-	if ReframeRoute(relayIdToIndex, route, &reframedRoute) {
+	reframedRoute := [constants.MaxRouteRelays]int32{}
+	if core.ReframeRoute(relayIdToIndex, route, &reframedRoute) {
 		return int32(len(route)), reframedRoute
 	}
 	return 0, reframedRoute
 }
 
-func (env *TestEnvironment) ReframeRoute(routeRelayNames []string) (int32, [MaxRelaysPerRoute]int32) {
+func (env *TestEnvironment) ReframeRoute(routeRelayNames []string) (int32, [constants.MaxRouteRelays]int32) {
 	route := make([]uint64, len(routeRelayNames))
 	for i := range routeRelayNames {
 		route[i] = RelayHash64(routeRelayNames[i])
@@ -633,7 +637,7 @@ func (env *TestEnvironment) ReframeRelays(sourceRelayNames []string, destRelayNa
 	return sourceRelays, destRelays
 }
 
-func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32) (int32, int32, []string) {
+func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []core.RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32) (int32, int32, []string) {
 
 	sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
 
@@ -643,7 +647,7 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []RouteEntry, sourc
 
 	debug := ""
 	selectThreshold := int32(2)
-	hasRoute, routeDiversity := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	hasRoute, routeDiversity := core.GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 	if !hasRoute {
 		return 0, 0, []string{}
 	}
@@ -717,7 +721,7 @@ func TestTheTestEnvironment(t *testing.T) {
 	assert.True(t, sourceIndex != -1)
 	assert.True(t, destIndex != -1)
 
-	routeIndex := TriMatrixIndex(sourceIndex, destIndex)
+	routeIndex := core.TriMatrixIndex(sourceIndex, destIndex)
 
 	assert.Equal(t, int32(1), routeMatrix[routeIndex].NumRoutes)
 }
@@ -1007,7 +1011,7 @@ func TestRouteToken(t *testing.T) {
 	routeToken.SessionVersion = 100
 	routeToken.KbpsUp = 256
 	routeToken.KbpsDown = 512
-	routeToken.NextAddress = ParseAddress("127.0.0.1:40000")
+	routeToken.NextAddress = core.ParseAddress("127.0.0.1:40000")
 	RandomBytes(routeToken.PrivateKey[:])
 
 	// write the token to a buffer and read it back in
@@ -1017,14 +1021,14 @@ func TestRouteToken(t *testing.T) {
 	WriteRouteToken(&routeToken, buffer[:])
 
 	var readRouteToken RouteToken
-	err := ReadRouteToken(&readRouteToken, buffer)
+	err := core.ReadRouteToken(&readRouteToken, buffer)
 
 	assert.NoError(t, err)
 	assert.Equal(t, routeToken, readRouteToken)
 
 	// can't read a token if the buffer is too small
 
-	err = ReadRouteToken(&readRouteToken, buffer[:10])
+	err = core.ReadRouteToken(&readRouteToken, buffer[:10])
 
 	assert.Error(t, err)
 
@@ -1032,14 +1036,14 @@ func TestRouteToken(t *testing.T) {
 
 	WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
-	err = ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
 	assert.NoError(t, err)
 	assert.Equal(t, routeToken, readRouteToken)
 
 	// can't read an encrypted route token if the buffer is too small
 
-	err = ReadEncryptedRouteToken(&readRouteToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
 
 	assert.Error(t, err)
 
@@ -1047,7 +1051,7 @@ func TestRouteToken(t *testing.T) {
 
 	buffer = make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-	err = ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
 	assert.Error(t, err)
 }
@@ -1064,7 +1068,7 @@ func TestRouteTokens(t *testing.T) {
 
 	addresses := make([]net.UDPAddr, NEXT_MAX_NODES)
 	for i := range addresses {
-		addresses[i] = ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
+		addresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
 	publicKeys := make([][]byte, NEXT_MAX_NODES)
@@ -1089,7 +1093,7 @@ func TestRouteTokens(t *testing.T) {
 
 	for i := 0; i < NEXT_MAX_NODES; i++ {
 		var routeToken RouteToken
-		err := ReadEncryptedRouteToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1128,14 +1132,14 @@ func TestContinueToken(t *testing.T) {
 
 	var readContinueToken ContinueToken
 
-	err := ReadContinueToken(&readContinueToken, buffer)
+	err := core.ReadContinueToken(&readContinueToken, buffer)
 
 	assert.NoError(t, err)
 	assert.Equal(t, continueToken, readContinueToken)
 
 	// read continue token should fail when the buffer is too small
 
-	err = ReadContinueToken(&readContinueToken, buffer[:10])
+	err = core.ReadContinueToken(&readContinueToken, buffer[:10])
 
 	assert.Error(t, err)
 
@@ -1143,14 +1147,14 @@ func TestContinueToken(t *testing.T) {
 
 	WriteEncryptedContinueToken(&continueToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
-	err = ReadEncryptedContinueToken(&continueToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedContinueToken(&continueToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
 	assert.NoError(t, err)
 	assert.Equal(t, continueToken, readContinueToken)
 
 	// read encrypted continue token should fail when buffer is too small
 
-	err = ReadEncryptedContinueToken(&continueToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedContinueToken(&continueToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
 
 	assert.Error(t, err)
 
@@ -1159,7 +1163,7 @@ func TestContinueToken(t *testing.T) {
 	garbageData := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 	RandomBytes(garbageData)
 
-	err = ReadEncryptedContinueToken(&continueToken, garbageData, masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedContinueToken(&continueToken, garbageData, masterPublicKey[:], relayPrivateKey[:])
 
 	assert.Error(t, err)
 }
@@ -1192,7 +1196,7 @@ func TestContinueTokens(t *testing.T) {
 
 	for i := 0; i < NEXT_MAX_NODES; i++ {
 		var routeToken ContinueToken
-		err := ReadEncryptedContinueToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)

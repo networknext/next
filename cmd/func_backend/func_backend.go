@@ -22,7 +22,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	// "github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -183,8 +183,8 @@ func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []net.UDP
 	currentTime := time.Now().Unix()
 	activeRelays := backend.relayManager.GetActiveRelays(currentTime)
 	backend.mutex.Unlock()
-	if len(activeRelays) > core.MaxNearRelays {
-		activeRelays = activeRelays[:core.MaxNearRelays]
+	if len(activeRelays) > constants.MaxNearRelays {
+		activeRelays = activeRelays[:constants.MaxNearRelays]
 	}
 	numRelays := len(activeRelays)
 	relayIds = make([]uint64, numRelays)

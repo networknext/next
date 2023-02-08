@@ -19,22 +19,9 @@ import (
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/crypto"
 )
-
-const CostBias = 3
-const MaxNearRelays = 32
-const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 64
-const JitterThreshold = 15
-
-const NEXT_MAX_NODES = 7
-const NEXT_ADDRESS_BYTES = 19
-const NEXT_ADDRESS_BYTES_SHORT = 7
-const NEXT_ROUTE_TOKEN_BYTES = 76
-const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
-const NEXT_CONTINUE_TOKEN_BYTES = 17
-const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
 var debugLogs bool
 
@@ -205,10 +192,10 @@ func ReadAddressShort(buffer []byte) net.UDPAddr {
 
 type RouteManager struct {
 	NumRoutes       int
-	RouteCost       [MaxRoutesPerEntry]int32
-	RouteHash       [MaxRoutesPerEntry]uint32
-	RouteNumRelays  [MaxRoutesPerEntry]int32
-	RouteRelays     [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
+	RouteCost       [constants.MaxRoutesPerEntry]int32
+	RouteHash       [constants.MaxRoutesPerEntry]uint32
+	RouteNumRelays  [constants.MaxRoutesPerEntry]int32
+	RouteRelays     [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
 	RelayDatacenter []uint64
 }
 
@@ -235,7 +222,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 			manager.RouteRelays[0][i] = relays[i]
 		}
 
-	} else if manager.NumRoutes < MaxRoutesPerEntry {
+	} else if manager.NumRoutes < constants.MaxRoutesPerEntry {
 
 		// not at max routes yet. insert according cost sort order
 
@@ -346,13 +333,14 @@ func RouteHash(relays ...int32) uint32 {
 	return hash
 }
 
+// todo: this is basically the route manager. why not combine them and avoid the copy?
 type RouteEntry struct {
 	DirectCost     int32
 	NumRoutes      int32
-	RouteCost      [MaxRoutesPerEntry]int32
-	RouteHash      [MaxRoutesPerEntry]uint32
-	RouteNumRelays [MaxRoutesPerEntry]int32
-	RouteRelays    [MaxRoutesPerEntry][MaxRelaysPerRoute]int32
+	RouteCost      [constants.MaxRoutesPerEntry]int32
+	RouteHash      [constants.MaxRoutesPerEntry]uint32
+	RouteNumRelays [constants.MaxRoutesPerEntry]int32
+	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
 }
 
 func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {
@@ -613,13 +601,13 @@ func WriteRouteToken(token *RouteToken, buffer []byte) {
 	binary.LittleEndian.PutUint32(buffer[8+8+1:], token.KbpsUp)
 	binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.KbpsDown)
 	WriteAddressShort(buffer[8+8+1+4+4:], &token.NextAddress)
-	buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES_SHORT] = token.NextInternal
-	buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES_SHORT+1] = token.PrevInternal
-	copy(buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:], token.PrivateKey[:])
+	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT] = token.NextInternal
+	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT+1] = token.PrevInternal
+	copy(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES:], token.PrivateKey[:])
 }
 
 func ReadRouteToken(token *RouteToken, buffer []byte) error {
-	if len(buffer) < NEXT_ROUTE_TOKEN_BYTES {
+	if len(buffer) < constants.NEXT_ROUTE_TOKEN_BYTES {
 		return fmt.Errorf("buffer too small to read route token")
 	}
 	token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
@@ -628,25 +616,25 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 	token.KbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
 	token.KbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
 	token.NextAddress = ReadAddressShort(buffer[8+8+1+4+4:])
-	token.NextInternal = buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES_SHORT]
-	token.PrevInternal = buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES_SHORT+1]
-	copy(token.PrivateKey[:], buffer[8+8+1+4+4+NEXT_ADDRESS_BYTES:])
+	token.NextInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT]
+	token.PrevInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT+1]
+	copy(token.PrivateKey[:], buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES:])
 	return nil
 }
 
 func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
 	RandomBytes(tokenData[:crypto.Box_NonceSize])
 	WriteRouteToken(token, tokenData[crypto.Box_NonceSize:])
-	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], NEXT_ROUTE_TOKEN_BYTES)
+	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], constants.NEXT_ROUTE_TOKEN_BYTES)
 }
 
 func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
-	if len(tokenData) < NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
+	if len(tokenData) < constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted route token")
 	}
 	nonce := tokenData[0 : crypto.Box_NonceSize-1]
 	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
+	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadRouteToken(token, tokenData)
@@ -674,7 +662,7 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 			}
 		}
 		copy(token.PrivateKey[:], privateKey[:])
-		WriteEncryptedRouteToken(&token, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
+		WriteEncryptedRouteToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
 	}
 }
 
@@ -687,7 +675,7 @@ func WriteContinueToken(token *ContinueToken, buffer []byte) {
 }
 
 func ReadContinueToken(token *ContinueToken, buffer []byte) error {
-	if len(buffer) < NEXT_CONTINUE_TOKEN_BYTES {
+	if len(buffer) < constants.NEXT_CONTINUE_TOKEN_BYTES {
 		return fmt.Errorf("buffer too small to read continue token")
 	}
 	token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
@@ -699,16 +687,16 @@ func ReadContinueToken(token *ContinueToken, buffer []byte) error {
 func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
 	RandomBytes(buffer[:crypto.Box_NonceSize])
 	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
-	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], NEXT_CONTINUE_TOKEN_BYTES)
+	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], constants.NEXT_CONTINUE_TOKEN_BYTES)
 }
 
 func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
-	if len(tokenData) < NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
+	if len(tokenData) < constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
 		return fmt.Errorf("not enough bytes for encrypted continue token")
 	}
 	nonce := tokenData[0 : crypto.Box_NonceSize-1]
 	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
+	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
 		return err
 	}
 	return ReadContinueToken(token, tokenData)
@@ -720,7 +708,7 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 		token.ExpireTimestamp = expireTimestamp
 		token.SessionId = sessionId
 		token.SessionVersion = sessionVersion
-		WriteEncryptedContinueToken(&token, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
+		WriteEncryptedContinueToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
 	}
 }
 
@@ -763,7 +751,7 @@ func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRela
 		return bestRouteCost
 	}
 
-	return bestRouteCost + CostBias
+	return bestRouteCost + constants.CostBias
 }
 
 func ReverseRoute(route []int32) {
@@ -772,7 +760,7 @@ func ReverseRoute(route []int32) {
 	}
 }
 
-func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, debug *string) bool {
+func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [constants.MaxRouteRelays]int32, debug *string) bool {
 	if len(routeMatrix) == 0 {
 		return false
 	}
@@ -800,7 +788,7 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 	return false
 }
 
-func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
+func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [constants.MaxRouteRelays]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 
 	// IMPORTANT: This shouldn't happen. Triaging...
 	if len(routeRelays) == 0 {
@@ -862,7 +850,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 		if entry.RouteNumRelays[i] != routeNumRelays {
 			continue
 		}
-		return sourceCost + entry.RouteCost[i] + CostBias
+		return sourceCost + entry.RouteCost[i] + constants.CostBias
 	}
 
 	// We didn't find the route :(
@@ -875,7 +863,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 type BestRoute struct {
 	Cost          int32
 	NumRelays     int32
-	Relays        [MaxRelaysPerRoute]int32
+	Relays        [constants.MaxRouteRelays]int32
 	NeedToReverse bool
 }
 
@@ -928,7 +916,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 // -------------------------------------------
 
-func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[MaxRelaysPerRoute]int32) bool {
+func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_routeRelays *[constants.MaxRouteRelays]int32) bool {
 	for i := range routeRelayIds {
 		relayIndex, ok := relayIdToIndex[routeRelayIds[i]]
 		if !ok {
@@ -1002,7 +990,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 		}
 
 		// exclude relays with jitter significantly higher than direct
-		if sourceRelayJitter[i] > directJitter+JitterThreshold {
+		if sourceRelayJitter[i] > directJitter+constants.JitterThreshold {
 			out_sourceRelayLatency[i] = 255
 			continue
 		}
@@ -1032,7 +1020,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 
 // ----------------------------------------------
 
-func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32, debug *string) (foundRoute bool, routeDiversity int32) {
+func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (foundRoute bool, routeDiversity int32) {
 
 	foundRoute = false
 	routeDiversity = 0
@@ -1076,7 +1064,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 
 	randomIndex := math_rand.Intn(numBestRoutes)
 
-	*out_bestRouteCost = bestRoutes[randomIndex].Cost + CostBias
+	*out_bestRouteCost = bestRoutes[randomIndex].Cost + constants.CostBias
 	*out_bestRouteNumRelays = bestRoutes[randomIndex].NumRelays
 
 	if !bestRoutes[randomIndex].NeedToReverse {
@@ -1093,12 +1081,12 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	return
 }
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[MaxRelaysPerRoute]int32, debug *string) (hasRoute bool, routeDiversity int32) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (hasRoute bool, routeDiversity int32) {
 
 	return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
 }
 
-func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[MaxRelaysPerRoute]int32, debug *string) (routeChanged bool, routeLost bool) {
+func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [constants.MaxRouteRelays]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (routeChanged bool, routeLost bool) {
 
 	// if the current route no longer exists, pick a new route
 
@@ -1393,7 +1381,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	bestRouteCost := int32(0)
 	bestRouteNumRelays := int32(0)
-	bestRouteRelays := [MaxRelaysPerRoute]int32{}
+	bestRouteRelays := [constants.MaxRouteRelays]int32{}
 
 	selectThreshold := routeShader.RouteSelectThreshold
 
@@ -1446,7 +1434,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	return true
 }
 
-func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [constants.MaxRouteRelays]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	Debug("direct latency = %d", directLatency)
 	Debug("next latency = %d", nextLatency)
@@ -1557,7 +1545,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	bestRouteCost := int32(0)
 	bestRouteNumRelays := int32(0)
-	bestRouteRelays := [MaxRelaysPerRoute]int32{}
+	bestRouteRelays := [constants.MaxRouteRelays]int32{}
 
 	routeSwitched, routeLost := GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, routeShader.RouteSelectThreshold, routeShader.RouteSwitchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
@@ -1604,7 +1592,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 	return true, routeSwitched
 }
 
-func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
+func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry, relayNames []string, routeShader *RouteShader, routeState *RouteState, directLatency int32, nextLatency int32, predictedLatency int32, directPacketLoss float32, nextPacketLoss float32, currentRouteNumRelays int32, currentRouteRelays [constants.MaxRouteRelays]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays []int32, debug *string) (bool, bool) {
 
 	stayOnNetworkNext, nextRouteSwitched := MakeRouteDecision_StayOnNetworkNext_Internal(userId, routeMatrix, relayNames, routeShader, routeState, directLatency, nextLatency, predictedLatency, directPacketLoss, nextPacketLoss, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, out_updatedRouteCost, out_updatedRouteNumRelays, out_updatedRouteRelays, debug)
 
