@@ -105,9 +105,9 @@ func RandomBytes(buffer []byte) {
 // -----------------------------------------------------
 
 const (
-	IPAddressNone = 0
-	IPAddressIPv4 = 1
-	IPAddressIPv6 = 2
+	ADDRESS_NONE = 0
+	ADDRESS_IPV4 = 1
+	ADDRESS_IPV6 = 2
 )
 
 func ParseAddress(input string) net.UDPAddr {
@@ -122,12 +122,6 @@ func ParseAddress(input string) net.UDPAddr {
 	address.Port, _ = strconv.Atoi(port_string)
 	return address
 }
-
-const (
-	ADDRESS_NONE = 0
-	ADDRESS_IPV4 = 1
-	ADDRESS_IPV6 = 2
-)
 
 func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	if address == nil {
@@ -437,11 +431,9 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 					}
 
-					const MaxIndirects = 8
-
-					if numRoutes > MaxIndirects {
+					if numRoutes > constants.MaxIndirects {
 						sort.SliceStable(working, func(i, j int) bool { return working[i].cost < working[j].cost })
-						copy(indirect[i][j], working[:MaxIndirects])
+						copy(indirect[i][j], working[:constants.MaxIndirects])
 					} else if numRoutes > 0 {
 						indirect[i][j] = make([]Indirect, numRoutes)
 						copy(indirect[i][j], working)
