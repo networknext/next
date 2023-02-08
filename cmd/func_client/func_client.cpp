@@ -178,8 +178,7 @@ int main()
     if ( next_init( NULL, &config ) != NEXT_OK )
         return 1;
 
-    // todo: bind to 0 port OK here?
-    next_client_t * client = next_client_create( NULL, "127.0.0.1:30000", client_packet_received );
+    next_client_t * client = next_client_create( NULL, "127.0.0.1:0", client_packet_received );
     if ( client == NULL )
         return 1;
 

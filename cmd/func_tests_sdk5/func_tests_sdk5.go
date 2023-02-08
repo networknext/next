@@ -822,6 +822,7 @@ func test_disable_on_client() {
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
+	fmt.Printf("waiting for client\n")
 	client_cmd.Wait()
 
 	server_cmd.Process.Signal(os.Interrupt)
@@ -830,10 +831,13 @@ func test_disable_on_client() {
 	relay_2_cmd.Process.Signal(os.Interrupt)
 	relay_3_cmd.Process.Signal(os.Interrupt)
 
+	fmt.Printf("waiting for server\n")
 	server_cmd.Wait()
 
+	fmt.Printf("waiting for backend\n")
 	backend_cmd.Wait()
 
+	fmt.Printf("waiting for relays\n")
 	relay_1_cmd.Wait()
 	relay_2_cmd.Wait()
 	relay_3_cmd.Wait()
