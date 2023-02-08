@@ -8193,9 +8193,10 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
-static bool next_client_internal_update( next_client_internal_t * client )
+static void next_client_internal_update( next_client_internal_t * client )
 {
-    next_assert( !next_global_config.disable_network_next );
+	if ( next_global_config.disable_network_next )
+		return;
 
 #if NEXT_SPIKE_TRACKING
 	double start_time = next_time();
@@ -8215,8 +8216,6 @@ static bool next_client_internal_update( next_client_internal_t * client )
 
     next_client_internal_update_upgrade_response( client );
 
-    bool quit = next_client_internal_pump_commands( client );
-
 #if NEXT_SPIKE_TRACKING
 
     double finish_time = next_time();
@@ -8227,8 +8226,6 @@ static bool next_client_internal_update( next_client_internal_t * client )
     }
 
 #endif // #if NEXT_SPIKE_TRACKING
-
-    return quit;
 }
 
 static void next_client_internal_thread_function( void * context )
@@ -8245,9 +8242,11 @@ static void next_client_internal_thread_function( void * context )
     {
         next_client_internal_block_and_receive_packet( client );
 
-        if ( !next_global_config.disable_network_next && next_time() > last_update_time + 0.01 )
+        if ( next_time() > last_update_time + 0.01 )
         {
-        	quit = next_client_internal_update( client );
+        	next_client_internal_update( client );
+
+		    quit = next_client_internal_pump_commands( client );
 
 		    last_update_time = next_time();
         }
