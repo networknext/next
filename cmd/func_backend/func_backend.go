@@ -389,6 +389,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	for i := range relayIds {
 		encoding.WriteUint64(responseData, &index, relayIds[i])
 		encoding.WriteString(responseData, &index, relayAddresses[i].String(), MaxRelayAddressLength)
+		encoding.WriteUint8(responseData, &index, 0)
 	}
 
 	encoding.WriteString(responseData, &index, relayVersion, uint32(32))

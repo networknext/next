@@ -44,11 +44,14 @@ DONE
 
 	Implement "run func-backend"
 
-TODO
-
 	The issue is trivial to reproduce now with the func backend.
 
 	Now. What could be wrong in the func backend, vs. how it is done in the real server backend?
+
+	The problem is going to be the relay update response not giving the correct magic values to the relay.
+
+TODO
+
 
 
 

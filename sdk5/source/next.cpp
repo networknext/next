@@ -5779,6 +5779,14 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &route_token.next_address, to_address_data, &to_address_bytes, &to_address_port );
 
+    // todo
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    printf("-----------------------------------------------------\n");
+    printf("magic: %02x %02x %02x %02x %02x %02x %02x %02x\n", magic[0], magic[1], magic[2], magic[3], magic[4], magic[5], magic[6], magic[7] );
+    printf("from: %s\n", next_address_to_string( client_external_address, address_buffer ) );
+    printf("to: %s\n", next_address_to_string( &route_token.next_address, address_buffer ) );
+    printf("-----------------------------------------------------\n");
+
     route_manager->route_data.pending_route_request_packet_bytes = next_write_route_request_packet( route_manager->route_data.pending_route_request_packet_data, token_data, token_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
     next_assert( route_manager->route_data.pending_route_request_packet_bytes > 0 );
@@ -6057,15 +6065,24 @@ bool next_route_manager_send_route_request( next_route_manager_t * route_manager
     next_assert( packet_bytes );
 
     if ( route_manager->fallback_to_direct )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. fallback to direct" );
         return false;
+    }
 
     if ( !route_manager->route_data.pending_route )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. pending route" );
         return false;
+    }
 
     double current_time = next_time();
 
     if ( route_manager->route_data.pending_route_last_send_time + NEXT_ROUTE_REQUEST_SEND_TIME > current_time )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. not yet" );
         return false;
+    }
 
     *to = route_manager->route_data.pending_route_next_address;
     route_manager->route_data.pending_route_last_send_time = current_time;
