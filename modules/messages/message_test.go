@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/messages"
 
@@ -104,19 +105,6 @@ func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
 	return message
 }
 
-func GenerateRandomUptimeStatMessage() messages.UptimeStatsMessage {
-
-	message := messages.UptimeStatsMessage{
-		Version:      uint8(common.RandomInt(messages.UptimeStatsMessageVersion_Min, messages.UptimeStatsMessageVersion_Max)),
-		Timestamp:    uint64(time.Now().Unix()),
-		ServiceName:  common.RandomString(messages.MaxServiceNameLength),
-		Up:           common.RandomBool(),
-		ResponseTime: common.RandomInt(0, 10000),
-	}
-
-	return message
-}
-
 func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
 	numMatchValues := rand.Intn(65)
@@ -202,7 +190,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		message.NextKbpsUp = rand.Uint32()
 		message.NextKbpsDown = rand.Uint32()
 		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
 			message.NextRouteRelayId[i] = rand.Uint64()
 		}
@@ -211,7 +199,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 	// first slice only
 
 	if message.SliceNumber == 0 {
-		message.NumTags = byte(common.RandomInt(0, messages.MaxTags))
+		message.NumTags = byte(common.RandomInt(0, constants.MaxTags))
 		for i := 0; i < int(message.NumTags); i++ {
 			message.Tags[i] = rand.Uint64()
 		}
@@ -278,7 +266,7 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		RealJitter:     float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder: float32(common.RandomInt(0, 100)),
 
-		NumNearRelays: uint32(common.RandomInt(0, messages.MaxNearRelays)),
+		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
 	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
@@ -288,7 +276,7 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		message.NextKbpsUp = rand.Uint32()
 		message.NextKbpsDown = rand.Uint32()
 		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-		message.NextNumRouteRelays = uint32(common.RandomInt(0, messages.MaxRouteRelays))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
 			message.NextRouteRelayId[i] = rand.Uint64()
 		}
@@ -321,7 +309,7 @@ func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
 		ConnectionType: byte(common.RandomInt(0, 255)),
 		PlatformType:   byte(common.RandomInt(0, 255)),
 
-		NumNearRelays: uint32(common.RandomInt(0, messages.MaxNearRelays)),
+		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
 	for i := 0; i < int(message.NumNearRelays); i++ {
@@ -371,15 +359,6 @@ func TestRelayStatsMessage(t *testing.T) {
 		writeMessage := GenerateRandomRelayStatMessage()
 		readMessage := messages.RelayStatsMessage{}
 		MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestUptimeStatsMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomUptimeStatMessage()
-		readMessage := messages.UptimeStatsMessage{}
-		MessageReadWriteTest[*messages.UptimeStatsMessage](&writeMessage, &readMessage, t)
 	}
 }
 

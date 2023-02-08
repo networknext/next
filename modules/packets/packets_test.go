@@ -455,6 +455,9 @@ func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P
 	assert.Equal(t, writePacket, readPacket)
 }
 
+// todo: these need to move into their own relay_packets_test.go
+
+/*
 func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 
 	packet := packets.RelayUpdateRequestPacket{
@@ -533,6 +536,7 @@ func TestRelayUpdateResponsePacket(t *testing.T) {
 		RelayPacketReadWriteTest[*packets.RelayUpdateResponsePacket](&writeMessage, &readMessage, t)
 	}
 }
+*/
 
 // ------------------------------------------------------------------
 

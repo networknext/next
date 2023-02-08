@@ -59,7 +59,6 @@ func main() {
 		Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
 		Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
 		Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
-		Process[*messages.UptimeStatsMessage](service, "uptime_stats", &messages.UptimeStatsMessage{}, false)
 	}
 
 	service.StartWebServer()

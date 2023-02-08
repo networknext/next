@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -11,9 +12,6 @@ const (
 	SessionUpdateMessageVersion_Min   = 1
 	SessionUpdateMessageVersion_Max   = 1
 	SessionUpdateMessageVersion_Write = 1
-
-	// todo: constants module
-	MaxTags = 8
 
 	SessionFlags_Next                            = (1 << 0)
 	SessionFlags_Reported                        = (1 << 1)
@@ -83,12 +81,12 @@ type SessionUpdateMessage struct {
 	NextKbpsDown       uint32
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
-	NextRouteRelayId   [MaxRouteRelays]uint64
+	NextRouteRelayId   [constants.MaxRouteRelays]uint64
 
 	// first slice only
 
 	NumTags byte
-	Tags    [MaxTags]uint64
+	Tags    [constants.MaxTags]uint64
 
 	// first slice and summary slice only
 

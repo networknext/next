@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -28,10 +29,10 @@ type NearRelayPingsMessage struct {
 	PlatformType   byte
 
 	NumNearRelays       uint32
-	NearRelayId         [MaxNearRelays]uint64
-	NearRelayRTT        [MaxNearRelays]byte
-	NearRelayJitter     [MaxNearRelays]byte
-	NearRelayPacketLoss [MaxNearRelays]float32
+	NearRelayId         [constants.MaxNearRelays]uint64
+	NearRelayRTT        [constants.MaxNearRelays]byte
+	NearRelayJitter     [constants.MaxNearRelays]byte
+	NearRelayPacketLoss [constants.MaxNearRelays]float32
 }
 
 func (message *NearRelayPingsMessage) Write(buffer []byte) []byte {

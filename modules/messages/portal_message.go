@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -11,10 +12,6 @@ const (
 	PortalMessageVersion_Min   = 1
 	PortalMessageVersion_Max   = 1
 	PortalMessageVersion_Write = 1
-
-	// todo: constants module
-	MaxNearRelays  = 32
-	MaxRouteRelays = 5
 )
 
 type PortalMessage struct {
@@ -48,18 +45,18 @@ type PortalMessage struct {
 	NextKbpsDown       uint32
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
-	NextRouteRelayId   [MaxRouteRelays]uint64
+	NextRouteRelayId   [constants.MaxRouteRelays]uint64
 
 	RealJitter     float32
 	RealPacketLoss float32
 	RealOutOfOrder float32
 
 	NumNearRelays       uint32
-	NearRelayId         [MaxNearRelays]uint64
-	NearRelayRTT        [MaxNearRelays]byte
-	NearRelayJitter     [MaxNearRelays]byte
-	NearRelayPacketLoss [MaxNearRelays]float32
-	NearRelayRoutable   [MaxNearRelays]bool
+	NearRelayId         [constants.MaxNearRelays]uint64
+	NearRelayRTT        [constants.MaxNearRelays]byte
+	NearRelayJitter     [constants.MaxNearRelays]byte
+	NearRelayPacketLoss [constants.MaxNearRelays]float32
+	NearRelayRoutable   [constants.MaxNearRelays]bool
 }
 
 func (message *PortalMessage) Write(buffer []byte) []byte {
