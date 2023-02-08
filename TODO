@@ -2,13 +2,11 @@ DONE
 
 	Get all func tests passing.
 
-TODO
-
-	---------------
-
 	Clean up and optimize protocol between relay and relay backend.
 
-	We now have the opportunity to do this now without disruption.
+TODO
+
+	Clean up all constants and move into modules/constants/constants.go
 
 	---------------
 
@@ -16,6 +14,42 @@ TODO
 
 	---------------
 
+	Merge route matrix entry and route manager. They are the same data structure.
+
+	---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------
 	Implement relay validation on join
 
 		1. Verify the relay has the correct public and internal addresses
@@ -289,5 +323,11 @@ Nice to have:
 	Or is there some sort of bias causing this. It seems important to explore this and work it out.
 
 	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
+
+	---------------
+
+	We need a way to track no packets on client for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
+
+	We need a way to track no packets on server from session for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
 
 	---------------

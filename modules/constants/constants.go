@@ -14,7 +14,7 @@ const (
 
 	CostBias = 3
 	MaxRoutesPerEntry = 64
-	JitterThreshold = 15
+	JitterThreshold = 15      // todo: poorly named
 
 	// todo: convert these to golang style
 	NEXT_MAX_NODES = 7

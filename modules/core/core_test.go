@@ -643,7 +643,7 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []core.RouteEntry, 
 
 	bestRouteCost := int32(0)
 	bestRouteNumRelays := int32(0)
-	bestRouteRelays := [MaxRelaysPerRoute]int32{}
+	bestRouteRelays := [constants.MaxRouteRelays]int32{}
 
 	debug := ""
 	selectThreshold := int32(2)
@@ -662,7 +662,7 @@ func (env *TestEnvironment) GetBestRoute_Initial(routeMatrix []core.RouteEntry, 
 	return bestRouteCost, routeDiversity, bestRouteRelayNames
 }
 
-func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteRelayNames []string) (int32, []string) {
+func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []core.RouteEntry, sourceRelayNames []string, sourceRelayCost []int32, destRelayNames []string, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteRelayNames []string) (int32, []string) {
 
 	sourceRelays, destRelays := env.ReframeRelays(sourceRelayNames, destRelayNames)
 
@@ -673,10 +673,10 @@ func (env *TestEnvironment) GetBestRoute_Update(routeMatrix []RouteEntry, source
 
 	bestRouteCost := int32(0)
 	bestRouteNumRelays := int32(0)
-	bestRouteRelays := [MaxRelaysPerRoute]int32{}
+	bestRouteRelays := [constants.MaxRouteRelays]int32{}
 
 	debug := ""
-	GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, switchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	core.GetBestRoute_Update(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, switchThreshold, currentRouteNumRelays, currentRouteRelays, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
 
 	if bestRouteNumRelays == 0 {
 		return 0, []string{}
@@ -713,7 +713,7 @@ func TestTheTestEnvironment(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceIndex := env.GetRelayIndex("losangeles")
 	destIndex := env.GetRelayIndex("chicago")
@@ -749,7 +749,7 @@ func TestIndirectRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -790,7 +790,7 @@ func TestIndirectRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -831,7 +831,7 @@ func TestIndirectRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -864,7 +864,7 @@ func TestFasterRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -902,7 +902,7 @@ func TestFasterRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -944,7 +944,7 @@ func TestFasterRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -984,7 +984,7 @@ func TestSlowerRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -1005,22 +1005,22 @@ func TestRouteToken(t *testing.T) {
 
 	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
 
-	routeToken := RouteToken{}
+	routeToken := core.RouteToken{}
 	routeToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
 	routeToken.SessionId = 0x123131231313131
 	routeToken.SessionVersion = 100
 	routeToken.KbpsUp = 256
 	routeToken.KbpsDown = 512
 	routeToken.NextAddress = core.ParseAddress("127.0.0.1:40000")
-	RandomBytes(routeToken.PrivateKey[:])
+	core.RandomBytes(routeToken.PrivateKey[:])
 
 	// write the token to a buffer and read it back in
 
-	buffer := make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	buffer := make([]byte, constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-	WriteRouteToken(&routeToken, buffer[:])
+	core.WriteRouteToken(&routeToken, buffer[:])
 
-	var readRouteToken RouteToken
+	var readRouteToken core.RouteToken
 	err := core.ReadRouteToken(&readRouteToken, buffer)
 
 	assert.NoError(t, err)
@@ -1034,7 +1034,7 @@ func TestRouteToken(t *testing.T) {
 
 	// write an encrypted route token and read it back
 
-	WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
+	core.WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
 	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
@@ -1049,7 +1049,7 @@ func TestRouteToken(t *testing.T) {
 
 	// can't read an encrypted route token if the buffer is garbage
 
-	buffer = make([]byte, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	buffer = make([]byte, constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
 	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
@@ -1066,18 +1066,18 @@ func TestRouteTokens(t *testing.T) {
 
 	// write a bunch of tokens to a buffer
 
-	addresses := make([]net.UDPAddr, NEXT_MAX_NODES)
+	addresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
 	for i := range addresses {
 		addresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
-	publicKeys := make([][]byte, NEXT_MAX_NODES)
+	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
 	for i := range publicKeys {
 		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
 
-	internal := make([]bool, NEXT_MAX_NODES)
+	internal := make([]bool, constants.NEXT_MAX_NODES)
 
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
@@ -1085,22 +1085,22 @@ func TestRouteTokens(t *testing.T) {
 	kbpsDown := uint32(256)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-	WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, NEXT_MAX_NODES, addresses, publicKeys, internal, masterPrivateKey)
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, addresses, publicKeys, internal, masterPrivateKey)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < NEXT_MAX_NODES; i++ {
-		var routeToken RouteToken
-		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+		var routeToken core.RouteToken
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
 		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
 		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
-		if i != NEXT_MAX_NODES-1 {
+		if i != constants.NEXT_MAX_NODES-1 {
 			assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
 		}
 		assert.Equal(t, routeToken.NextInternal, uint8(0))
@@ -1121,16 +1121,16 @@ func TestContinueToken(t *testing.T) {
 
 	// write a continue token and verify we can read it back
 
-	continueToken := ContinueToken{}
+	continueToken := core.ContinueToken{}
 	continueToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
 	continueToken.SessionId = 0x123131231313131
 	continueToken.SessionVersion = 100
 
-	buffer := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+	buffer := make([]byte, constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 
-	WriteContinueToken(&continueToken, buffer[:])
+	core.WriteContinueToken(&continueToken, buffer[:])
 
-	var readContinueToken ContinueToken
+	var readContinueToken core.ContinueToken
 
 	err := core.ReadContinueToken(&readContinueToken, buffer)
 
@@ -1145,7 +1145,7 @@ func TestContinueToken(t *testing.T) {
 
 	// write an encrypted continue token and verify we can decrypt and read it back
 
-	WriteEncryptedContinueToken(&continueToken, buffer, masterPrivateKey[:], relayPublicKey[:])
+	core.WriteEncryptedContinueToken(&continueToken, buffer, masterPrivateKey[:], relayPublicKey[:])
 
 	err = core.ReadEncryptedContinueToken(&continueToken, buffer, masterPublicKey[:], relayPrivateKey[:])
 
@@ -1160,8 +1160,8 @@ func TestContinueToken(t *testing.T) {
 
 	// read encrypted continue token should fail on garbage data
 
-	garbageData := make([]byte, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
-	RandomBytes(garbageData)
+	garbageData := make([]byte, constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+	core.RandomBytes(garbageData)
 
 	err = core.ReadEncryptedContinueToken(&continueToken, garbageData, masterPublicKey[:], relayPrivateKey[:])
 
@@ -1178,7 +1178,7 @@ func TestContinueTokens(t *testing.T) {
 
 	// write a bunch of tokens to a buffer
 
-	publicKeys := make([][]byte, NEXT_MAX_NODES)
+	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
 	for i := range publicKeys {
 		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
@@ -1188,15 +1188,15 @@ func TestContinueTokens(t *testing.T) {
 	sessionVersion := byte(100)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, NEXT_MAX_NODES*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 
-	WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, NEXT_MAX_NODES, publicKeys, masterPrivateKey)
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NEXT_MAX_NODES, publicKeys, masterPrivateKey)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < NEXT_MAX_NODES; i++ {
-		var routeToken ContinueToken
-		err := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+		var routeToken core.ContinueToken
+		err := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1225,7 +1225,7 @@ func TestBestRouteCostReallySimple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1234,7 +1234,7 @@ func TestBestRouteCostReallySimple(t *testing.T) {
 
 	bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(30+CostBias), bestRouteCost)
+	assert.Equal(t, int32(30+constants.CostBias), bestRouteCost)
 }
 
 func TestBestRouteCostSimple(t *testing.T) {
@@ -1260,7 +1260,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
 	numSegments := 64
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1269,7 +1269,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
 	bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40+CostBias), bestRouteCost)
+	assert.Equal(t, int32(40+constants.CostBias), bestRouteCost)
 }
 
 func TestBestRouteCostComplex(t *testing.T) {
@@ -1307,7 +1307,7 @@ func TestBestRouteCostComplex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b", "chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{10, 5, 100, 100}
@@ -1316,7 +1316,7 @@ func TestBestRouteCostComplex(t *testing.T) {
 
 	bestRouteCost := env.GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(15+CostBias), bestRouteCost)
+	assert.Equal(t, int32(15+constants.CostBias), bestRouteCost)
 }
 
 func TestBestRouteCostNoRoute(t *testing.T) {
@@ -1338,7 +1338,7 @@ func TestBestRouteCostNoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{10, 5}
@@ -1373,7 +1373,7 @@ func TestCurrentRouteCost_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routeRelays := []string{"losangeles", "a", "b", "chicago"}
 
@@ -1388,7 +1388,7 @@ func TestCurrentRouteCost_Simple(t *testing.T) {
 
 	currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40+CostBias), currentRouteCost)
+	assert.Equal(t, int32(40+constants.CostBias), currentRouteCost)
 }
 
 func TestCurrentRouteCost_Reverse(t *testing.T) {
@@ -1414,7 +1414,7 @@ func TestCurrentRouteCost_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	routeRelays := []string{"chicago", "b", "a", "losangeles"}
 
@@ -1429,7 +1429,7 @@ func TestCurrentRouteCost_Reverse(t *testing.T) {
 
 	currentRouteCost := env.GetCurrentRouteCost(routeMatrix, routeRelays, sourceRelays, sourceRelayCosts, destRelays)
 
-	assert.Equal(t, int32(40+CostBias), currentRouteCost)
+	assert.Equal(t, int32(40+constants.CostBias), currentRouteCost)
 }
 
 func TestGetBestRoutes_Simple(t *testing.T) {
@@ -1455,7 +1455,7 @@ func TestGetBestRoutes_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1505,7 +1505,7 @@ func TestGetBestRoutes_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"chicago"}
 	sourceRelayCosts := []int32{10}
@@ -1567,7 +1567,7 @@ func TestGetBestRoutes_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 3}
@@ -1620,7 +1620,7 @@ func TestGetBestRoutes_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1669,7 +1669,7 @@ func TestGetRandomBestRoute_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1683,7 +1683,7 @@ func TestGetRandomBestRoute_Simple(t *testing.T) {
 	assert.True(t, bestRoute != nil)
 	assert.True(t, bestRoute.cost > 0)
 	assert.True(t, bestRoute.cost <= maxCost)
-	assert.True(t, bestRoute.cost == 12+CostBias || bestRoute.cost == 17+CostBias)
+	assert.True(t, bestRoute.cost == 12+constants.CostBias || bestRoute.cost == 17+constants.CostBias)
 
 	if bestRoute.cost == 12 {
 		assert.Equal(t, []string{"losangeles.b", "b", "chicago.b"}, bestRoute.relays)
@@ -1729,7 +1729,7 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1743,7 +1743,7 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 	assert.True(t, bestRoute != nil)
 	assert.True(t, bestRoute.cost > 0)
 	assert.True(t, bestRoute.cost <= maxCost)
-	assert.True(t, bestRoute.cost == 12+CostBias || bestRoute.cost == 17+CostBias)
+	assert.True(t, bestRoute.cost == 12+constants.CostBias || bestRoute.cost == 17+constants.CostBias)
 
 	if bestRoute.cost == 12 {
 		assert.Equal(t, []string{"chicago.b", "b", "losangeles.b"}, bestRoute.relays)
@@ -1773,7 +1773,7 @@ func TestGetRandomBestRoute_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1852,7 +1852,7 @@ func TestReframeDestRelays(t *testing.T) {
 	outputNumDestRelays := 0
 	outputDestRelays := make([]int32, len(inputDestRelayIds))
 
-	ReframeDestRelays(relayIdToIndex, inputDestRelayIds[:], &outputNumDestRelays, outputDestRelays[:])
+	core.ReframeDestRelays(relayIdToIndex, inputDestRelayIds[:], &outputNumDestRelays, outputDestRelays[:])
 
 	assert.Equal(t, outputNumDestRelays, 3)
 	assert.Equal(t, outputDestRelays[0], int32(3))
@@ -1881,7 +1881,7 @@ func TestReframeSourceRelays(t *testing.T) {
 	outputSourceRelays := make([]int32, len(inputSourceRelayIds))
 	outputSourceRelayLatency := make([]int32, len(inputSourceRelayIds))
 
-	ReframeSourceRelays(relayIdToIndex, inputSourceRelayIds[:], inputSourceRelayLatency[:], outputSourceRelays[:], outputSourceRelayLatency[:])
+	core.ReframeSourceRelays(relayIdToIndex, inputSourceRelayIds[:], inputSourceRelayLatency[:], outputSourceRelays[:], outputSourceRelayLatency[:])
 
 	assert.Equal(t, outputSourceRelays[0], int32(3))
 	assert.Equal(t, outputSourceRelays[1], int32(4))
@@ -1902,66 +1902,66 @@ func TestEarlyOutDirect(t *testing.T) {
 
 	userId := uint64(100)
 
-	routeShader := NewRouteShader()
+	routeShader := core.NewRouteShader()
 	routeShader.AnalysisOnly = false
-	routeState := RouteState{}
-	assert.False(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState := core.RouteState{}
+	assert.False(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = RouteState{Veto: true}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{Veto: true}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = RouteState{LocationVeto: true}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{LocationVeto: true}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = RouteState{Disabled: true}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{Disabled: true}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = RouteState{NotSelected: true}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{NotSelected: true}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = RouteState{B: true}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{B: true}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeShader = NewRouteShader()
+	routeShader = core.NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.DisableNetworkNext = true
-	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
-	routeShader = NewRouteShader()
-	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeShader = core.NewRouteShader()
+	routeState = core.RouteState{}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
-	routeShader = NewRouteShader()
+	routeShader = core.NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
-	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
-	routeShader = NewRouteShader()
+	routeShader = core.NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
-	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(userId, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{}
+	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
-	routeShader = NewRouteShader()
+	routeShader = core.NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
-	routeState = RouteState{}
-	assert.False(t, EarlyOutDirect(0, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{}
+	assert.False(t, core.EarlyOutDirect(0, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.ABTest)
 	assert.True(t, routeState.A)
 	assert.False(t, routeState.B)
 
-	routeShader = NewRouteShader()
+	routeShader = core.NewRouteShader()
 	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
-	routeState = RouteState{}
-	assert.True(t, EarlyOutDirect(1, &routeShader, &routeState, &debug))
+	routeState = core.RouteState{}
+	assert.True(t, core.EarlyOutDirect(1, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.ABTest)
 	assert.False(t, routeState.A)
 	assert.True(t, routeState.B)
@@ -1990,7 +1990,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{5}
@@ -2001,7 +2001,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	bestRouteCost, routeDiversity, bestRouteRelays := env.GetBestRoute_Initial(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
-	assert.Equal(t, int32(35+CostBias), bestRouteCost)
+	assert.Equal(t, int32(35+constants.CostBias), bestRouteCost)
 	assert.Equal(t, int32(1), routeDiversity)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
@@ -2041,7 +2041,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2054,7 +2054,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	assert.True(t, bestRouteCost > 0)
 	assert.True(t, bestRouteCost <= maxCost)
-	assert.True(t, bestRouteCost == 12+CostBias || bestRouteCost == 17+CostBias)
+	assert.True(t, bestRouteCost == 12+constants.CostBias || bestRouteCost == 17+constants.CostBias)
 
 	if bestRouteCost == 12 {
 		assert.Equal(t, []string{"losangeles.b", "b", "chicago.b"}, bestRouteRelays)
@@ -2102,7 +2102,7 @@ func TestGetBestRoute_Initial_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2153,7 +2153,7 @@ func TestGetBestRoute_Initial_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2192,7 +2192,7 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -2208,7 +2208,7 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
-	assert.Equal(t, int32(40+CostBias), bestRouteCost)
+	assert.Equal(t, int32(40+constants.CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "a", "b", "chicago"}, bestRouteRelays)
 }
 
@@ -2235,7 +2235,7 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2251,7 +2251,7 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	bestRouteCost, bestRouteRelays := env.GetBestRoute_Update(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost, selectThreshold, switchThreshold, currentRoute)
 
-	assert.Equal(t, int32(2+CostBias), bestRouteCost)
+	assert.Equal(t, int32(2+constants.CostBias), bestRouteCost)
 	assert.Equal(t, []string{"losangeles", "chicago"}, bestRouteRelays)
 }
 
@@ -2272,7 +2272,7 @@ func TestGetBestRoute_Update_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2309,7 +2309,7 @@ func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2336,7 +2336,7 @@ type TestData struct {
 	relayNames       []string
 	relayDatacenters []uint64
 	costMatrix       []int32
-	routeMatrix      []RouteEntry
+	routeMatrix      []core.RouteEntry
 
 	directLatency    int32
 	directPacketLoss float32
@@ -2348,10 +2348,10 @@ type TestData struct {
 
 	routeCost      int32
 	routeNumRelays int32
-	routeRelays    [MaxRelaysPerRoute]int32
+	routeRelays    [constants.MaxRouteRelays]int32
 
-	routeShader        RouteShader
-	routeState         RouteState
+	routeShader        core.RouteShader
+	routeState         core.RouteState
 	multipathVetoUsers map[uint64]bool
 
 	debug string
@@ -2362,7 +2362,7 @@ type TestData struct {
 	nextPacketLoss        float32
 	predictedLatency      int32
 	currentRouteNumRelays int32
-	currentRouteRelays    [MaxRelaysPerRoute]int32
+	currentRouteRelays    [constants.MaxRouteRelays]int32
 
 	sliceNumber int32
 
@@ -2383,9 +2383,9 @@ func NewTestData(env *TestEnvironment) *TestData {
 
 	numSegments := test.numRelays
 	costThreshold := int32(5)
-	test.routeMatrix = Optimize(test.numRelays, numSegments, test.costMatrix, costThreshold, test.relayDatacenters)
+	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, costThreshold, test.relayDatacenters)
 
-	test.routeShader = NewRouteShader()
+	test.routeShader = core.NewRouteShader()
 	test.routeShader.AnalysisOnly = false
 
 	test.multipathVetoUsers = map[uint64]bool{}
@@ -2396,7 +2396,7 @@ func NewTestData(env *TestEnvironment) *TestData {
 }
 
 func (test *TestData) TakeNetworkNext() bool {
-	return MakeRouteDecision_TakeNetworkNext(test.userId,
+	return core.MakeRouteDecision_TakeNetworkNext(test.userId,
 		test.routeMatrix,
 		&test.routeShader,
 		&test.routeState,
@@ -2415,7 +2415,7 @@ func (test *TestData) TakeNetworkNext() bool {
 }
 
 func (test *TestData) StayOnNetworkNext() (bool, bool) {
-	return MakeRouteDecision_StayOnNetworkNext(test.userId,
+	return core.MakeRouteDecision_StayOnNetworkNext(test.userId,
 		test.routeMatrix,
 		test.relayNames,
 		&test.routeShader,
@@ -2471,7 +2471,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Veto(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Veto = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
@@ -2510,7 +2510,7 @@ func TestTakeNetworkNext_EarlyOutDirect_Disabled(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Disabled = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
@@ -2549,7 +2549,7 @@ func TestTakeNetworkNext_EarlyOutDirect_NotSelected(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.NotSelected = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
@@ -2588,7 +2588,7 @@ func TestTakeNetworkNext_EarlyOutDirect_B(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.B = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
@@ -2624,7 +2624,7 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
@@ -2664,7 +2664,7 @@ func TestTakeNetworkNext_ReduceLatency_RouteDiversity(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.Multipath = true
@@ -2699,7 +2699,7 @@ func TestTakeNetworkNext_ReduceLatency_LackOfDiversity(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.LackOfDiversity = true
 
@@ -2739,7 +2739,7 @@ func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
@@ -2777,7 +2777,7 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
@@ -2807,7 +2807,7 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)
@@ -2844,7 +2844,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReducePacketLoss = true
 
@@ -2881,7 +2881,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReducePacketLoss = true
 
@@ -2917,7 +2917,7 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
@@ -2951,7 +2951,7 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.ReducePacketLoss = true
@@ -2989,7 +2989,7 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)
@@ -3283,7 +3283,7 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReduceLatency = true
@@ -3323,7 +3323,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -3360,7 +3360,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReduceLatency = true
@@ -3399,14 +3399,14 @@ func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 	test.routeState.Veto = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.Veto = true
 
@@ -3447,14 +3447,14 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
@@ -3493,14 +3493,14 @@ func TestStayOnNetworkNext_ReduceLatency_SlightlyWorse(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
@@ -3537,20 +3537,20 @@ func TestStayOnNetworkNext_ReduceLatency_RTTVeto(t *testing.T) {
 
 	test.routeCost = int32(0)
 	test.routeNumRelays = int32(0)
-	test.routeRelays = [MaxRelaysPerRoute]int32{}
+	test.routeRelays = [constants.MaxRouteRelays]int32{}
 
 	test.routeState.Next = true
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.LatencyWorse = true
@@ -3589,14 +3589,14 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.NoRoute = true
@@ -3638,7 +3638,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	// first slice mispredicting is fine
 
@@ -3647,7 +3647,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.MispredictCounter = 1
@@ -3661,7 +3661,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.MispredictCounter = 2
@@ -3675,7 +3675,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.Mispredict = true
@@ -3717,7 +3717,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictRecover(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	// first slice mispredicting is fine
 
@@ -3726,7 +3726,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictRecover(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.MispredictCounter = 1
@@ -3742,7 +3742,7 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictRecover(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.MispredictCounter = 0
@@ -3785,19 +3785,19 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.True(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(12+CostBias), test.routeCost)
+	assert.Equal(t, int32(12+constants.CostBias), test.routeCost)
 	assert.Equal(t, int32(3), test.routeNumRelays)
 }
 
@@ -3836,19 +3836,19 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToBetterRoute(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.True(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(12+CostBias), test.routeCost)
+	assert.Equal(t, int32(12+constants.CostBias), test.routeCost)
 	assert.Equal(t, int32(3), test.routeNumRelays)
 }
 
@@ -3884,14 +3884,14 @@ func TestStayOnNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	test.routeState.ReduceLatency = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.Veto = true
 	expectedRouteState.ReduceLatency = true
@@ -3934,14 +3934,14 @@ func TestStayOnNetworkNext_ReducePacketLoss_LatencyTradeOff(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReducePacketLoss = true
 
@@ -3980,14 +3980,14 @@ func TestStayOnNetworkNext_ReducePacketLoss_RTTVeto(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.ReducePacketLoss = true
 	expectedRouteState.LatencyWorse = true
@@ -4028,14 +4028,14 @@ func TestStayOnNetworkNext_ReducePacketLoss_NoRoute(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ReducePacketLoss = true
 
@@ -4074,14 +4074,14 @@ func TestStayOnNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.ReducePacketLoss = true
 	expectedRouteState.NextLatencyTooHigh = true
@@ -4125,14 +4125,14 @@ func TestStayOnNetworkNext_Multipath_LatencyTradeOff(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4173,7 +4173,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	// first latency worse is fine
 
@@ -4182,7 +4182,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4197,7 +4197,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4212,7 +4212,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 	assert.False(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = false
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4256,7 +4256,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 	test.routeState.ReducePacketLoss = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	// first latency worse is fine
 
@@ -4265,7 +4265,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4282,7 +4282,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, nextRouteSwitched)
 
-	expectedRouteState = RouteState{}
+	expectedRouteState = core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.Multipath = true
 	expectedRouteState.ReducePacketLoss = true
@@ -4324,13 +4324,13 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	assert.True(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ForcedNext = true
 	expectedRouteState.Multipath = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(50+CostBias), test.routeCost)
+	assert.Equal(t, int32(50+constants.CostBias), test.routeCost)
 	assert.Equal(t, int32(2), test.routeNumRelays)
 	assert.Equal(t, int32(1), test.routeDiversity)
 }
@@ -4354,7 +4354,7 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 
 	assert.False(t, result)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.ForcedNext = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
@@ -4396,19 +4396,19 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	result, routeSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
 	assert.False(t, routeSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ForcedNext = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(50+CostBias), test.routeCost)
+	assert.Equal(t, int32(50+constants.CostBias), test.routeCost)
 	assert.Equal(t, int32(2), test.routeNumRelays)
 }
 
@@ -4435,7 +4435,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
@@ -4445,7 +4445,7 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	assert.False(t, result)
 	assert.False(t, routeSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.ForcedNext = true
 	expectedRouteState.Veto = true
 	expectedRouteState.NoRoute = true
@@ -4483,7 +4483,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
-	test.currentRouteRelays = [MaxRelaysPerRoute]int32{0, 1}
+	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
@@ -4493,12 +4493,12 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	assert.True(t, result)
 	assert.True(t, routeSwitched)
 
-	expectedRouteState := RouteState{}
+	expectedRouteState := core.RouteState{}
 	expectedRouteState.Next = true
 	expectedRouteState.ForcedNext = true
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(3+CostBias), test.routeCost)
+	assert.Equal(t, int32(3+constants.CostBias), test.routeCost)
 	assert.Equal(t, int32(3), test.routeNumRelays)
 }
 
@@ -4529,9 +4529,9 @@ func TestFilterSourceRelays_NoFilter(t *testing.T) {
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4571,9 +4571,9 @@ func TestFilterSourceRelays_ZeroLatency(t *testing.T) {
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4617,9 +4617,9 @@ func TestFilterSourceRelays_ClampLatencyAbove255(t *testing.T) {
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4663,9 +4663,9 @@ func TestFilterSourceRelays_HigherThanDirectJitter(t *testing.T) {
 	sourceRelayJitter := []int32{100, 100, 100, 100, 100}
 	sourceRelayPacketLoss := []float32{0, 0, 0, 0, 0}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4705,9 +4705,9 @@ func TestFilterSourceRelays_HighPacketLoss(t *testing.T) {
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []float32{0, 0, 50, 0, 0}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4751,9 +4751,9 @@ func TestFilterSourceRelays_PacketLossAboveDirect(t *testing.T) {
 	sourceRelayJitter := []int32{0, 0, 0, 0, 0}
 	sourceRelayPacketLoss := []float32{10, 10, 10, 10, 10}
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4795,9 +4795,9 @@ func TestFilterSourceRelays_RelayDoesNotExist(t *testing.T) {
 
 	sourceRelayIds[2] = 423189384
 
-	outputSourceRelayLatency := [MaxNearRelays]int32{}
+	outputSourceRelayLatency := [constants.MaxNearRelays]int32{}
 
-	FilterSourceRelays(relayIdToIndex,
+	core.FilterSourceRelays(relayIdToIndex,
 		directLatency,
 		directJitter,
 		directPacketLoss,
@@ -4835,7 +4835,7 @@ func TestPittle(t *testing.T) {
 		fromPort := uint16(i + 1000000)
 		toPort := uint16(i + 5000)
 		packetLength := 1 + (i % 1500)
-		GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 		assert.NotEqual(t, output[0], 0)
 		assert.NotEqual(t, output[1], 0)
 	}
@@ -4855,8 +4855,8 @@ func TestChonkle(t *testing.T) {
 		fromPort := uint16(i + 1000000)
 		toPort := uint16(i + 5000)
 		packetLength := 18 + (i % (len(output) - 18))
-		GenerateChonkle(output[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		assert.Equal(t, true, BasicPacketFilter(output[:], packetLength))
+		core.GenerateChonkle(output[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		assert.Equal(t, true, core.BasicPacketFilter(output[:], packetLength))
 	}
 }
 
@@ -4871,12 +4871,12 @@ func TestABI(t *testing.T) {
 	toPort := uint16(5000)
 	packetLength := 1000
 
-	GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
 	assert.Equal(t, output[0], uint8(71))
 	assert.Equal(t, output[1], uint8(201))
 
-	GenerateChonkle(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
 	assert.Equal(t, output[0], uint8(45))
 	assert.Equal(t, output[1], uint8(203))
@@ -4902,10 +4902,10 @@ func TestPittleAndChonkle(t *testing.T) {
 		fromPort := uint16(i + 1000000)
 		toPort := uint16(i + 5000)
 		packetLength := 18 + (i % (len(output) - 18))
-		GenerateChonkle(output[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		GeneratePittle(output[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		assert.Equal(t, true, BasicPacketFilter(output[:], packetLength))
-		assert.Equal(t, true, AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
+		core.GenerateChonkle(output[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(output[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		assert.Equal(t, true, core.BasicPacketFilter(output[:], packetLength))
+		assert.Equal(t, true, core.AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
 	}
 }
 
@@ -4917,7 +4917,7 @@ func TestBasicPacketFilter(t *testing.T) {
 	for i := 0; i < iterations; i++ {
 		randomBytes(output[:])
 		packetLength := i % len(output)
-		assert.Equal(t, false, BasicPacketFilter(output[:], packetLength))
+		assert.Equal(t, false, core.BasicPacketFilter(output[:], packetLength))
 	}
 	assert.Equal(t, 0, pass)
 }
@@ -4937,7 +4937,7 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 		toPort := uint16(i + 5000)
 		randomBytes(output[:])
 		packetLength := i % len(output)
-		assert.Equal(t, false, BasicPacketFilter(output[:], packetLength))
-		assert.Equal(t, false, AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
+		assert.Equal(t, false, core.BasicPacketFilter(output[:], packetLength))
+		assert.Equal(t, false, core.AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
 	}
 }
