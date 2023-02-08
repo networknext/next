@@ -51,8 +51,6 @@ type RelayConfig struct {
 	fake_packet_loss_start_time float32
 }
 
-var relayPort = 2000
-
 func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	var config RelayConfig
@@ -68,7 +66,7 @@ func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_ADDRESS=127.0.0.1:%d", relayPort))
+	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1:0")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 	cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
@@ -499,10 +497,8 @@ func test_network_next_route() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	/*
 	relay_2_cmd, relay_2_stdout := relay("relay.2")
 	relay_3_cmd, relay_3_stdout := relay("relay.3")
-	*/
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -511,18 +507,14 @@ func test_network_next_route() {
 	server_cmd.Process.Signal(os.Interrupt)
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_1_cmd.Process.Signal(os.Interrupt)
-	/*
 	relay_2_cmd.Process.Signal(os.Interrupt)
 	relay_3_cmd.Process.Signal(os.Interrupt)
-	*/
 
 	server_cmd.Wait()
 	backend_cmd.Wait()
 	relay_1_cmd.Wait()
-	/*
 	relay_2_cmd.Wait()
 	relay_3_cmd.Wait()
-	*/
 
 	client_counters := read_client_counters(client_stderr.String())
 
@@ -539,16 +531,16 @@ func test_network_next_route() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0, relay_1_stdout)//, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0, relay_1_stdout)//, relay_2_stdout, relay_3_stdout)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0, relay_1_stdout)//, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0, relay_1_stdout)//, relay_2_stdout, relay_3_stdout)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0, relay_1_stdout)//, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0, relay_1_stdout, relay_2_stdout, relay_3_stdout)
 }
 
 /*
@@ -839,7 +831,9 @@ func test_disable_on_client() {
 	relay_3_cmd.Process.Signal(os.Interrupt)
 
 	server_cmd.Wait()
+
 	backend_cmd.Wait()
+
 	relay_1_cmd.Wait()
 	relay_2_cmd.Wait()
 	relay_3_cmd.Wait()
