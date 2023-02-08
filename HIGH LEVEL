@@ -1,0 +1,28 @@
+HIGH LEVEL
+
+	1. Setup terraform scripts to get the dev environment up
+
+	2. Get dev back up with internal addresses working across google and AWS relays (internal groups).
+
+	3. Get all analytics stuff pushed to analytics service via pubsub and inserted into bigquery
+
+	4. Get the portal cruncher rebuilt to drive redis efficiently
+
+	5. Get the portal online
+
+	6. Multithreaded relay.
+
+	7. Clean up SDK mutexes in SDK5.
+
+	------------------
+
+		^----- Would be a lot easier with Andrew
+
+	5. Get the admin tool online
+
+		^----- Would be a lot easier with Andrew
+
+
+	10. Recover analytics in portal or rebuild where possible
+
+		^----- Would be a lot easier with Andrew and Alex back

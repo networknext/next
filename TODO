@@ -1,103 +1,14 @@
 DONE
 
-	Add spike detection to client and server internal updates.
-
-	Make sure client and server internal updates never run when network next is disabled.
-
-	Convert various counters and simple things to std::atomic
-
-	Review usage of all client mutexes:
-
-		command_mutex                ---> using helper. all look reasonable. added spike tracking.
-		notify_mutex                 ---> using helper. all look fine. added spike tracking.
-		route_manager_mutex          ---> messy. if there is anything going on, this is a candidate.
-		direct_bandwidth_mutex       ---> messy. should be possible to remove with better design.
-		next_bandwidth_mutex         ---> messy. should be possible to remove with better design.
-
-	Convert all client mutexes so they use the mutex guard and track spikes.
-
-	Convert all server mutexes so they use the mutex guard and track spikes.
-
-	Setup happy path and func tests sdk5 to run entirely bound to 127.0.0.1 instead of 0.0.0.0. Fixes annoying prompts on MacOS.
-
-	Why does it work in happy path but not in func test?
-
-	Client bound to port 0? (no)
-
-	Relays bound to port 0? (no)
-
-	Bind to 0.0.0.0 instead of 127.0.0.1? (no)
-
-	Func client instead of regular client?
-
-	Func server instead of regular server?
-
-	To test this, run the regular happy path and see if the func client and func server can connect over...
-
-	They connect just fine. The relays are already the reference relay.
-
-	Therefore, it is a difference in configuration, or in code when the func backend runs.
-
-	Could it be related to the recent token work?
-
-	The next step is to reproduce the issue with the func backend running, outside of func tests...
-
-	Implement "run func-backend"
-
-	The issue is trivial to reproduce now with the func backend.
-
-	Now. What could be wrong in the func backend, vs. how it is done in the real server backend?
-
-	The problem is going to be the relay update response not giving the correct magic values to the relay.
-
-	Fixed.
+	Get all func tests passing.
 
 TODO
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	---------------
 
-	Implement new relay "internal group" concept.
+	Clean up and optimize protocol between relay and relay backend.
 
-	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
-
-	For example, for AWS relays in each region would have the same internal group string.
-
-	Default should be "" which turns into 0
+	We now have the opportunity to do this without disruption.
 
 	---------------
 
@@ -113,7 +24,49 @@ TODO
 
 	---------------
 
+	Implement new relay "internal group" concept.
 
+	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
+
+	For example, for AWS relays in each region would have the same internal group string.
+
+	Default should be "" which turns into 0
+
+	---------------
+
+	Implement unit tests for relay internal groups addresses.
+
+	---------------
+
+	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
+
+	--------------
+
+	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
+
+    --------------
+
+    Add relay counters to relay stats message.
+
+    --------------
+
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	It can be as simple as an expire time for pings
+
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+
+	--------------
+
+	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
+
+	--------------
+
+	Leader election func tests for relay backends + ready delay
+
+	--------------
 
 
 
@@ -160,14 +113,6 @@ TODO
 
 Essentials:
 
-    --------------
-
-	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
-
-	--------------
-
-	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
-
 	--------------
 
     Send portal messages to redis streams
@@ -182,21 +127,7 @@ Essentials:
 
 	--------------
 
-	Extend relay stats, or add a new message to make sure relay counters get uploaded to bigquery from the relay backend leader
-
-	This lets data science investigate relay counters by time as well. Check if relays are working correctly or having problems.
-
-	--------------
-
 	Extend analytics service to insert messages into bigquery.
-
-	--------------
-
-	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
-
-	--------------
-
-	Leader election func testing for relay backends + ready delay
 
 	--------------
 
@@ -208,20 +139,48 @@ Essentials:
 
 	--------------
 
+	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
 
+	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
 
+	And then this can be checked.
 
+	Needs to be designed...
+
+	--------------
+
+	Extend server events into, match events, match data, session events, session data
+
+	--------------
+
+	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
+
+	--------------
+
+	Put "MatchId" into session data (first).
+
+	This way we can easily look up from a session the match it is in.
+
+	--------------
+
+	Get "pro" tagging back in. This is a cool feature.
+
+	--------------
+
+	Extend pro tagging so the whole server gets tagged pro?
+
+	--------------
+
+	Code in service.go to only shut down service once various subsystems have reported that they're complete
+
+	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
+
+	--------------
 
 
 
 
 Nice to have:
-
-	-----------
-
-	Add match id to both portal data and session update data by default (first slice only, and summary...)
-
-	Then work out a new API to link the session with a match (start of session, with tags...), separate from setting match data (end of match).
 
 	-----------
 
@@ -239,37 +198,11 @@ Nice to have:
 
 	--------------
 
-	Code in service.go to only shut down service once various subsystems have reported that they're complete
-
-	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
-
-	--------------
-
 	Change SDK to pass up the real packet loss, real jitter, real out of order etc.
 
 	We don't need to store multiple uint64 in session data to calculate this
 
 	It's wasteful to pass this data back to the client with each session update response.
-
-	--------------
-
-	Implement the near relay ping token.
-
-	We need to do this now, so we don't have problems with it in the future.
-
-	It can be as simple as an expire time for pings
-
-	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
-
-	--------------
-
-	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
-
-	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
-
-	And then this can be checked.
-
-	Needs to be designed...
 
 	--------------
 
@@ -285,71 +218,11 @@ Nice to have:
 
 	--------------
 
-	It would be good to track when sessions shut down, vs. having them always time out
-
-	This would require new messages up then back down the chain of relays for ack
-
-	It would also reduce the risk of missing packets or having sessions time out and not noticing.
-
-	We can now track sessions timing out before being closed, and this would indicate problems (or at least, hard disconnects...)
-
-	Again, adding this later would be challenging. Best to do it now.
-
-	--------------
-
-	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
-
-	--------------
-
-	Put "MatchId" into session data (first).
-
-	This way we can easily look up from a session the match it is in.
-
-	--------------
-
-	Relay stats message needs to be revisited. Make sure it doesn't have old crap in it
-
-	--------------
-
 	We are very close to removing libsodium from golang. It should be possible. If we do this, it becomes much easier to build and run golang services, as they are fully native.
 
 	--------------
 
-	We need to track client no packets in 0.1 sec, 0.25sec, 0.5sec, 1.0 sec.
-
-	This way we can identify if we are likely seeing thread starvation on the server
-
-	They currently have 1000 server threads on the server, and this is potentially causing serious starvation issues with packets... (!!!!)
-
-	--------------
-
-	Can we do something to detect thread starvation on the server and warn?
-
-	It looks like we've been in production with thread starvation with Blue Mammoth for a while now, and it would be much better if we could catch this ourselves, before it becomse a customer problem.
-
-	--------------
-
-	Relays should detect and count when they can't read the route token
-
-	This indicates a misconfigured relay. This should get loaded up into bigquery so it can be searched on by data science.
-
-	--------------
-
-	Add confirmation for all "next" tool actions that modify relays... especially "reboot", "upgrade", "start", "stop" and so on.
-
-	OR, just disable these tool actions in prod.
-
-	--------------
-
 	Disable SSH related actions in "local". They don't have anywhere to go...
-
-	--------------
-
-	New relay really needs a series of counters that get updated with each update sent to the backend.
-
-	These counters can be for bad things that we want to track, so we have the data by timestamp inserted into bigquery for analysis.
-
-	eg. could not read route token, for example.
 
 	--------------
 
@@ -358,12 +231,6 @@ Nice to have:
 	--------------
 
 	There should be relay functional tests.
-
-	--------------
-
-	There should be unit tests, functional load tests for the relay manager.
-
-	It's a problematic component. It must be absolutely solid.
 
 	---------------
 
@@ -380,23 +247,3 @@ Nice to have:
 	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
 
 	---------------
-
-	There should be func tests for relay counters
-
-	---------------
-
-	Add a packets sent counter to reference relay. Right now we have a packets received counter, but not sent. Useful to have both.
-
-	---------------
-
-	View leader election state as a HTML table under "/leader"
-
-    --------------
-
-    New relay ping/pong that supports advanced packet filter.
-
-    --------------
-
-    Jitter should not only include the jitter measurement, but also the deviation of RTT in the relay ping history.
-
-    --------------

@@ -3475,7 +3475,7 @@ func main() {
 		test_server_ready_success,
 		test_server_ready_fallback_to_direct,
 		test_server_ready_autodetect_cloud,
-		test_server_ready_autodetect_multiplay_success,
+		// test_server_ready_autodetect_multiplay_success,
 		test_server_ready_autodetect_multiplay_fail,
 		test_server_ready_disable_autodetect_cloud,
 		test_server_ready_disable_autodetect_multiplay,

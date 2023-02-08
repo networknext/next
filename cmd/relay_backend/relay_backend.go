@@ -170,7 +170,6 @@ func routesHandler(service *common.Service, relayManager *common.RelayManager) f
 			fmt.Fprintf(w, "no route matrix\n")
 			return
 		}
-		fmt.Printf("relay names: %+v\n", routeMatrix.RelayNames)
 		src_index := -1
 		for i := range routeMatrix.RelayNames {
 			if routeMatrix.RelayNames[i] == src {
@@ -185,7 +184,6 @@ func routesHandler(service *common.Service, relayManager *common.RelayManager) f
 				break
 			}
 		}
-		fmt.Printf("%s %s %d %d\n", src, dest, src_index, dest_index)
 		if src_index == -1 || dest_index == -1 || src_index == dest_index {
 			w.WriteHeader(http.StatusNotFound)
 			return
