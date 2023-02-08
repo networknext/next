@@ -18,26 +18,34 @@ DONE
 
 	Convert all server mutexes so they use the mutex guard and track spikes.
 
+	Setup happy path and func tests sdk5 to run entirely bound to 127.0.0.1 instead of 0.0.0.0. Fixes annoying prompts on MacOS.
+
+	Why does it work in happy path but not in func test?
+
+	Client bound to port 0? (no)
+
+	Relays bound to port 0? (no)
+
+	Bind to 0.0.0.0 instead of 127.0.0.1? (no)
+
+	Func client instead of regular client?
+
+	Func server instead of regular server?
+
+	To test this, run the regular happy path and see if the func client and func server can connect over...
+
+	They connect just fine. The relays are already the reference relay.
+
+	Therefore, it is a difference in configuration, or in code when the func backend runs.
+
+	Could it be related to the recent token work?
+
 TODO
 
-	----------------
+	The next step is to reproduce the issue with the func backend running, outside of func tests...
 
-	Why does the route request packet fail advanced packet filter suddenly?
-
-	And how can it work in happy path, but not work in the func test. What's the difference?
-
-	Differences:
-
-		1. Func backend instead of server backend / relay backend
-
-		2. Func client
-
-		3. Func server
-
-		4. Client bound to port 0
-
-		5. Relays bound to port 0
-
+	Implement "run func-backend"
+	
 
 
 

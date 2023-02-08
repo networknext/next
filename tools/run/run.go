@@ -152,6 +152,10 @@ func main() {
 		sql_local()
 	} else if command == "extract-database" {
 		extract_database()
+	} else if command == "func-server" {
+		func_server()
+	} else if command == "func-client" {
+		func_client()
 	}
 
 	cleanup()
@@ -311,4 +315,12 @@ func sql_local() {
 
 func extract_database() {
 	bash("go run tools/extract_database/extract_database.go")
+}
+
+func func_server() {
+	bash("cd dist && ./func_server")
+}
+
+func func_client() {
+	bash("cd dist && ./func_client")
 }
