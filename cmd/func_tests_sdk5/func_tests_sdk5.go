@@ -2592,12 +2592,12 @@ func test_server_ready_autodetect_cloud() {
 
 }
 
-// todo: disabling beacuse the multiplay.txt file in gcloud is not accessible currently
-/*
 func test_server_ready_autodetect_multiplay_success() {
 
 	fmt.Printf("test_server_ready_autodetect_multiplay_success\n")
 
+// todo: disabling beacuse the multiplay.txt file in gcloud is not accessible currently
+/*
 	f, err := os.Create("whois.txt")
 	if err != nil {
 		panic(err)
@@ -2642,8 +2642,8 @@ func test_server_ready_autodetect_multiplay_success() {
 	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
 	server_check(server_stdout, backend_stdout, serverFoundInap)
 	server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
-}
 */
+}
 
 func test_server_ready_autodetect_multiplay_fail() {
 
@@ -3475,7 +3475,7 @@ func main() {
 		test_server_ready_success,
 		test_server_ready_fallback_to_direct,
 		test_server_ready_autodetect_cloud,
-		// test_server_ready_autodetect_multiplay_success,
+		test_server_ready_autodetect_multiplay_success,
 		test_server_ready_autodetect_multiplay_fail,
 		test_server_ready_disable_autodetect_cloud,
 		test_server_ready_disable_autodetect_multiplay,
