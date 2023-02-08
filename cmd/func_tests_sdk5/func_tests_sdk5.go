@@ -3442,7 +3442,6 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		/*
 		test_passthrough,
 		test_direct_upgraded,
 		test_network_next_route,
@@ -3496,8 +3495,6 @@ func main() {
 		test_flush_game_events_and_match_data,
 		test_flush_game_events_and_match_data_retry,
 		test_big_packets,
-		*/
-		test_network_next_route,
 	}
 
 	var tests []test_function

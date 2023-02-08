@@ -50,6 +50,8 @@ DONE
 
 	The problem is going to be the relay update response not giving the correct magic values to the relay.
 
+	Fixed.
+
 TODO
 
 

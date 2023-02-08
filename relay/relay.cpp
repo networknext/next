@@ -4239,19 +4239,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             memcpy( &previous_magic, relay->previous_magic, 8 );
             relay_platform_mutex_release( relay->mutex );
 
-            if ( !relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ) 
-            {
-                // todo
-                char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-                printf("-------------------------------------------------------\n");
-                printf("magic: %02x %02x %02x %02x %02x %02x %02x %02x\n", current_magic[0], current_magic[1], current_magic[2], current_magic[3], current_magic[4], current_magic[5], current_magic[6], current_magic[7]);
-                printf("from: %s\n", relay_address_to_string( &from, address_buffer ) );
-                printf("to: %s\n", relay_address_to_string( &relay->relay_public_address, address_buffer ) );
-                printf("-------------------------------------------------------\n");
-                continue;
-            }
-
-            /*
             if ( ! ( relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                      relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                      relay_advanced_packet_filter_sdk5( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
@@ -4268,14 +4255,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 printf( "[%s] advanced packet filter dropped packet %d [sdk5]\n", from_string, packet_id );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-                // todo
-                printf( "advanced packet filter dropped packet %d [sdk5]\n", packet_id );
-
 	            relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
                 continue;
             }
-            */
 
             uint8_t * p = packet_data;
             p += 16;

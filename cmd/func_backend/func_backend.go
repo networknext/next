@@ -206,8 +206,6 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
-	// todo: we should really read this as a packet instead of manually reading it here
-
 	// parse the relay update request
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -821,11 +819,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		tokenPublicKeys[len(tokenPublicKeys)-1] = requestPacket.ServerRoutePublicKey[:]
 		for i := 0; i < numRouteRelays; i++ {
 			tokenPublicKeys[1+i] = relayPublicKey
-		}
-
-		// todo
-		for i := range tokenAddresses {
-			fmt.Printf("%d: %s\n", i, tokenAddresses[i].String())
 		}
 
 		tokenInternal := make([]bool, numTokens)
