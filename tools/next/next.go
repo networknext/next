@@ -8,30 +8,30 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
-	"runtime"
+	"path"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
-	"path"
-	"errors"
-	"crypto/rand"
-	"golang.org/x/crypto/nacl/box"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
 
 	"github.com/modood/table"
@@ -372,7 +372,7 @@ func main() {
 		env.Read()
 	}
 
-   relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
+	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "Number of relays to display (default: all)")
 
@@ -942,7 +942,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	var args = RelayFleetArgs{}
 	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
 		fmt.Printf("error: could not get relays\n")
-	   return
+		return
 	}
 
 	type RelayRow struct {
@@ -1002,7 +1002,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if outputRelays[i].Sessions < 0 {
 			outputRelays[i].Sessions = 0
 		}
-	} 
+	}
 
 	if relayCount != 0 {
 		table.Output(outputRelays[0:relayCount])
@@ -1071,21 +1071,21 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
-	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
-	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
-	LoadRelayScript = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
+	StopRelayScript    = `sudo systemctl stop relay && sudo systemctl disable relay`
+	LoadRelayScript    = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
-	RebootRelayScript = `sudo reboot`
-	ConfigRelayScript = `sudo vi /app/relay.env && exit`
+	RebootRelayScript  = `sudo reboot`
+	ConfigRelayScript  = `sudo vi /app/relay.env && exit`
 )
 
 type RelayInfo struct {
-	Id                            uint64                `json:"id"`
-	Name                          string                `json:"name"`
-	SSHAddress                    string                `json:"management_addr"`
-	SSHUser                       string                `json:"ssh_user"`
-	SSHPort                       int64                 `json:"ssh_port"`
-	State                         string                `json:"state"`
+	Id         uint64 `json:"id"`
+	Name       string `json:"name"`
+	SSHAddress string `json:"management_addr"`
+	SSHUser    string `json:"ssh_user"`
+	SSHPort    int64  `json:"ssh_port"`
+	State      string `json:"state"`
 }
 
 type RelaysArgs struct {
@@ -1207,7 +1207,7 @@ func upgradeRelays(env Environment, regexes []string) {
 		for _, relay := range relays {
 			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
 				continue
-			}			
+			}
 			fmt.Printf("upgrading relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd(script)
@@ -1227,7 +1227,7 @@ func rebootRelays(env Environment, regexes []string) {
 		for _, relay := range relays {
 			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
 				continue
-			}			
+			}
 			fmt.Printf("rebooting relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
 			con.ConnectAndIssueCmd(script)
@@ -1294,7 +1294,6 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 const (
-
 	PortalHostnameLocal   = "localhost:20000"
 	PortalHostnameDev     = "portal-dev.networknext.com"
 	PortalHostnameStaging = "portal-staging.networknext.com"

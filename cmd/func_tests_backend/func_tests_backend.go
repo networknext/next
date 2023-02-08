@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
@@ -1537,7 +1538,7 @@ func test_relay_manager() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
-	counters := make([]uint64, packets.NumRelayCounters)
+	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1558,7 +1559,7 @@ func test_relay_manager() {
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
 					fmt.Printf("relay update\n")
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", 0, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 
@@ -1692,7 +1693,7 @@ func test_optimize() {
 	sampleRTT := make([]float32, numSamples)
 	sampleJitter := make([]float32, numSamples)
 	samplePacketLoss := make([]float32, numSamples)
-	counters := make([]uint64, packets.NumRelayCounters)
+	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
@@ -1712,7 +1713,7 @@ func test_optimize() {
 					return
 				case <-ticker.C:
 					currentTime := time.Now().Unix()
-					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", false, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
+					relayManager.ProcessRelayUpdate(currentTime, relayIds[index], relayNames[index], relayAddresses[index], 0, "test", 0, numSamples, sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters)
 				}
 			}
 
@@ -1930,16 +1931,16 @@ func test_relay_backend() {
 					requestPacket := packets.RelayUpdateRequestPacket{}
 
 					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
+					// todo: requestPacket.Timestamp
 					requestPacket.Address = relayAddresses[index]
-					requestPacket.Token = make([]byte, packets.RelayTokenSize)
 					requestPacket.NumSamples = NumRelays
-					requestPacket.NumCounters = common.NumRelayCounters
+					requestPacket.NumRelayCounters = constants.NumRelayCounters
 
 					for i := 0; i < NumRelays; i++ {
 						requestPacket.SampleRelayId[i] = relayIds[i]
-						requestPacket.SampleRTT[i] = float32(common.RandomInt(1, 100))
-						requestPacket.SampleJitter[i] = float32(common.RandomInt(1, 50))
-						requestPacket.SamplePacketLoss[i] = float32(common.RandomInt(0, 2))
+						requestPacket.SampleRTT[i] = uint8(common.RandomInt(0, 255))
+						requestPacket.SampleJitter[i] = uint8(common.RandomInt(0, 255))
+						requestPacket.SamplePacketLoss[i] = uint8(common.RandomInt(0, 255))
 					}
 
 					body := requestPacket.Write(make([]byte, 100*1024))
@@ -1964,6 +1965,8 @@ func test_relay_backend() {
 						fmt.Printf("bad http response %d\n", response.StatusCode)
 						atomic.AddUint64(&errorCount, 1)
 					}
+
+					// todo: we actually have to read response here and get timestamp, feed that timestamp back into the next request
 
 					response.Body.Close()
 				}

@@ -125,11 +125,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				continue
 			}
 
-			address := relayData.RelayArray[i].PublicAddress.String()
+			address := relayData.RelayArray[i].PublicAddress
 
 			internal := uint8(0)
 			if relay.Seller.Id == relayData.RelaySellerIds[i] && relayData.RelayArray[i].HasInternalAddress && relay.HasInternalAddress {
-				address = relayData.RelayArray[i].InternalAddress.String()
+				address = relayData.RelayArray[i].InternalAddress
 				internal = 1
 			}
 

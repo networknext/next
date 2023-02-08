@@ -540,9 +540,9 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses  [core.NEXT_MAX_NODES]net.UDPAddr
+	var routeAddresses [core.NEXT_MAX_NODES]net.UDPAddr
 	var routePublicKeys [core.NEXT_MAX_NODES][]byte
-	var routeInternal   [core.NEXT_MAX_NODES]bool
+	var routeInternal [core.NEXT_MAX_NODES]bool
 
 	// client node (no address specified...)
 

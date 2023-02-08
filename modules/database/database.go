@@ -2,24 +2,24 @@ package database
 
 import (
 	"bytes"
-	"encoding/gob"
+	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/gob"
+	"fmt"
+	"hash/fnv"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
-	"io"
-	"fmt"
 	"sort"
-	"database/sql"
 	"strings"
 	"time"
-	"hash/fnv"
 
 	"github.com/networknext/backend/modules/core"
 
-	"github.com/modood/table"
 	_ "github.com/lib/pq"
+	"github.com/modood/table"
 )
 
 func HashString(s string) uint64 {
@@ -294,10 +294,10 @@ func (database *Database) String() string {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:    fmt.Sprintf("%0x", v.Id),
-			Name:  v.Name,
-			Live:  fmt.Sprintf("%v", v.Live),
-			Debug: fmt.Sprintf("%v", v.Debug),
+			Id:              fmt.Sprintf("%0x", v.Id),
+			Name:            v.Name,
+			Live:            fmt.Sprintf("%v", v.Live),
+			Debug:           fmt.Sprintf("%v", v.Debug),
 			PublicKeyBase64: base64.StdEncoding.EncodeToString(data),
 		}
 
@@ -447,7 +447,7 @@ func (database *Database) String() string {
 
 	type DestinationDatacenterRow struct {
 		Datacenter string
-		Buyers []string
+		Buyers     []string
 	}
 
 	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
@@ -476,7 +476,9 @@ func (database *Database) String() string {
 		destinationDatacenters = append(destinationDatacenters, *v)
 	}
 
-	sort.SliceStable(destinationDatacenters, func(i, j int) bool { return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter })
+	sort.SliceStable(destinationDatacenters, func(i, j int) bool {
+		return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter
+	})
 
 	output += table.Table(destinationDatacenters)
 
@@ -536,10 +538,10 @@ func (database *Database) WriteHTML(w io.Writer) {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:    fmt.Sprintf("%0x", v.Id),
-			Name:  v.Name,
-			Live:  fmt.Sprintf("%v", v.Live),
-			Debug: fmt.Sprintf("%v", v.Debug),
+			Id:              fmt.Sprintf("%0x", v.Id),
+			Name:            v.Name,
+			Live:            fmt.Sprintf("%v", v.Live),
+			Debug:           fmt.Sprintf("%v", v.Debug),
 			PublicKeyBase64: base64.StdEncoding.EncodeToString(data),
 		}
 
@@ -555,7 +557,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", buyers[i].Name, buyers[i].Id, buyers[i].Live, buyers[i].Debug, buyers[i].PublicKeyBase64)
 	}
 	fmt.Fprintf(w, "</table>\n")
-	
+
 	// sellers
 
 	type SellerRow struct {
@@ -696,7 +698,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 
 	type DestinationDatacenterRow struct {
 		Datacenter string
-		Buyers []string
+		Buyers     []string
 	}
 
 	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
@@ -725,7 +727,9 @@ func (database *Database) WriteHTML(w io.Writer) {
 		destinationDatacenters = append(destinationDatacenters, *v)
 	}
 
-	sort.SliceStable(destinationDatacenters, func(i, j int) bool { return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter })
+	sort.SliceStable(destinationDatacenters, func(i, j int) bool {
+		return destinationDatacenters[i].Datacenter < destinationDatacenters[j].Datacenter
+	})
 
 	fmt.Fprintf(w, "<br><br>Destination datacenters:<br><br>")
 	fmt.Fprintf(w, "<table>\n")

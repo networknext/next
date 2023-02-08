@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,9 +14,10 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/messages"
+	// "github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 )
 
@@ -59,7 +60,7 @@ var ready bool
 
 var startTime time.Time
 
-var counterNames [common.NumRelayCounters]string
+var counterNames [constants.NumRelayCounters]string
 
 func main() {
 
@@ -117,10 +118,10 @@ func main() {
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
 	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
-    service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
-    service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
-    service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
-    service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
+	service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
+	service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
+	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
+	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
 
@@ -228,7 +229,7 @@ func routesHandler(service *common.Service, relayManager *common.RelayManager) f
 		}
 		fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
 		fmt.Fprintf(w, "</table>\n")
-	  const htmlFooter = `</body></html>`
+		const htmlFooter = `</body></html>`
 		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
@@ -283,7 +284,7 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 				}
 				nope := false
 				costString := ""
-				index := core.TriMatrixIndex(i,j)
+				index := core.TriMatrixIndex(i, j)
 				cost := costMatrix.Costs[index]
 				if cost >= 0 {
 					costString = fmt.Sprintf("%d", cost)
@@ -301,98 +302,98 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 			fmt.Fprintf(w, "</tr>\n")
 		}
 		fmt.Fprintf(w, "</table>\n")
-	  const htmlFooter = `</body></html>`
+		const htmlFooter = `</body></html>`
 		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
 
 func initCounterNames() {
 	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./relay/relay.cpp
-    counterNames[0] = "PACKETS_SENT"
-    counterNames[1] = "PACKETS_RECEIVED"
-    counterNames[2] = "BYTES_SENT"
-    counterNames[3] = "BYTES_RECEIVED"
-    counterNames[4] = "BASIC_PACKET_FILTER_DROPPED_PACKET"
-    counterNames[5] = "ADVANCED_PACKET_FILTER_DROPPED_PACKET"
-    counterNames[6] = "SESSION_CREATED"
-    counterNames[7] = "SESSION_CONTINUED"
-    counterNames[8] = "SESSION_DESTROYED"
-    counterNames[9] = "RELAY_PING_PACKET_SENT"
-    counterNames[10] = "RELAY_PING_PACKET_RECEIVED"
-    counterNames[11] = "RELAY_PONG_PACKET_SENT"
-    counterNames[12] = "RELAY_PONG_PACKET_RECEIVED"
-    counterNames[20] = "NEAR_PING_PACKET_RECEIVED"
-    counterNames[21] = "NEAR_PING_PACKET_BAD_SIZE"
-    counterNames[22] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
-    counterNames[30] = "ROUTE_REQUEST_PACKET_RECEIVED"
-    counterNames[31] = "ROUTE_REQUEST_PACKET_BAD_SIZE"
-    counterNames[32] = "ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
-    counterNames[33] = "ROUTE_REQUEST_PACKET_TOKEN_EXPIRED"
-    counterNames[34] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-    counterNames[35] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-    counterNames[40] = "ROUTE_RESPONSE_PACKET_RECEIVED"
-    counterNames[41] = "ROUTE_RESPONSE_PACKET_BAD_SIZE"
-    counterNames[42] = "ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[43] = "ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
-    counterNames[44] = "ROUTE_RESPONSE_PACKET_SESSION_EXPIRED"
-    counterNames[45] = "ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED"
-    counterNames[46] = "ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
-    counterNames[47] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-    counterNames[48] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-    counterNames[50] = "CONTINUE_REQUEST_PACKET_RECEIVED"
-    counterNames[51] = "CONTINUE_REQUEST_PACKET_BAD_SIZE"
-    counterNames[52] = "CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
-    counterNames[53] = "CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED"
-    counterNames[54] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
-    counterNames[55] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-    counterNames[56] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-    counterNames[60] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
-    counterNames[61] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
-    counterNames[62] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[63] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
-    counterNames[64] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
-    counterNames[65] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
-    counterNames[66] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
-    counterNames[67] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-    counterNames[68] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-    counterNames[70] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
-    counterNames[71] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
-    counterNames[72] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
-    counterNames[73] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[74] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
-    counterNames[75] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
-    counterNames[76] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
-    counterNames[77] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
-    counterNames[78] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-    counterNames[79] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-    counterNames[80] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
-    counterNames[81] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
-    counterNames[82] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
-    counterNames[83] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[84] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
-    counterNames[85] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
-    counterNames[86] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
-    counterNames[87] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
-    counterNames[88] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-    counterNames[89] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
-    counterNames[90] = "SESSION_PING_PACKET_RECEIVED"
-    counterNames[91] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
-    counterNames[92] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[93] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
-    counterNames[94] = "SESSION_PING_PACKET_SESSION_EXPIRED"
-    counterNames[95] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
-    counterNames[96] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
-    counterNames[97] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
-    counterNames[98] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
-    counterNames[100] = "SESSION_PONG_PACKET_RECEIVED"
-    counterNames[101] = "SESSION_PONG_PACKET_BAD_SIZE"
-    counterNames[102] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
-    counterNames[103] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
-    counterNames[104] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
-    counterNames[105] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
-    counterNames[106] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
-    counterNames[107] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
-    counterNames[108] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[0] = "PACKETS_SENT"
+	counterNames[1] = "PACKETS_RECEIVED"
+	counterNames[2] = "BYTES_SENT"
+	counterNames[3] = "BYTES_RECEIVED"
+	counterNames[4] = "BASIC_PACKET_FILTER_DROPPED_PACKET"
+	counterNames[5] = "ADVANCED_PACKET_FILTER_DROPPED_PACKET"
+	counterNames[6] = "SESSION_CREATED"
+	counterNames[7] = "SESSION_CONTINUED"
+	counterNames[8] = "SESSION_DESTROYED"
+	counterNames[9] = "RELAY_PING_PACKET_SENT"
+	counterNames[10] = "RELAY_PING_PACKET_RECEIVED"
+	counterNames[11] = "RELAY_PONG_PACKET_SENT"
+	counterNames[12] = "RELAY_PONG_PACKET_RECEIVED"
+	counterNames[20] = "NEAR_PING_PACKET_RECEIVED"
+	counterNames[21] = "NEAR_PING_PACKET_BAD_SIZE"
+	counterNames[22] = "NEAR_PING_PACKET_RESPONDED_WITH_PONG"
+	counterNames[30] = "ROUTE_REQUEST_PACKET_RECEIVED"
+	counterNames[31] = "ROUTE_REQUEST_PACKET_BAD_SIZE"
+	counterNames[32] = "ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+	counterNames[33] = "ROUTE_REQUEST_PACKET_TOKEN_EXPIRED"
+	counterNames[34] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[35] = "ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[40] = "ROUTE_RESPONSE_PACKET_RECEIVED"
+	counterNames[41] = "ROUTE_RESPONSE_PACKET_BAD_SIZE"
+	counterNames[42] = "ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[43] = "ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[44] = "ROUTE_RESPONSE_PACKET_SESSION_EXPIRED"
+	counterNames[45] = "ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED"
+	counterNames[46] = "ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+	counterNames[47] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[48] = "ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[50] = "CONTINUE_REQUEST_PACKET_RECEIVED"
+	counterNames[51] = "CONTINUE_REQUEST_PACKET_BAD_SIZE"
+	counterNames[52] = "CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
+	counterNames[53] = "CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED"
+	counterNames[54] = "CONTINUE_REQUEST_PACKET_SESSION_EXPIRED"
+	counterNames[55] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[56] = "CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[60] = "CONTINUE_RESPONSE_PACKET_RECEIVED"
+	counterNames[61] = "CONTINUE_RESPONSE_PACKET_BAD_SIZE"
+	counterNames[62] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[63] = "CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
+	counterNames[64] = "CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[65] = "CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED"
+	counterNames[66] = "CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
+	counterNames[67] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[68] = "CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[70] = "CLIENT_TO_SERVER_PACKET_RECEIVED"
+	counterNames[71] = "CLIENT_TO_SERVER_PACKET_TOO_SMALL"
+	counterNames[72] = "CLIENT_TO_SERVER_PACKET_TOO_BIG"
+	counterNames[73] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[74] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[75] = "CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED"
+	counterNames[76] = "CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
+	counterNames[77] = "CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[78] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[79] = "CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[80] = "SERVER_TO_CLIENT_PACKET_RECEIVED"
+	counterNames[81] = "SERVER_TO_CLIENT_PACKET_TOO_SMALL"
+	counterNames[82] = "SERVER_TO_CLIENT_PACKET_TOO_BIG"
+	counterNames[83] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[84] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
+	counterNames[85] = "SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED"
+	counterNames[86] = "SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
+	counterNames[87] = "SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[88] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[89] = "SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
+	counterNames[90] = "SESSION_PING_PACKET_RECEIVED"
+	counterNames[91] = "SESSION_PING_PACKET_BAD_PACKET_SIZE"
+	counterNames[92] = "SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[93] = "SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[94] = "SESSION_PING_PACKET_SESSION_EXPIRED"
+	counterNames[95] = "SESSION_PING_PACKET_ALREADY_RECEIVED"
+	counterNames[96] = "SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[97] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
+	counterNames[98] = "SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
+	counterNames[100] = "SESSION_PONG_PACKET_RECEIVED"
+	counterNames[101] = "SESSION_PONG_PACKET_BAD_SIZE"
+	counterNames[102] = "SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
+	counterNames[103] = "SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[104] = "SESSION_PONG_PACKET_SESSION_EXPIRED"
+	counterNames[105] = "SESSION_PONG_PACKET_ALREADY_RECEIVED"
+	counterNames[106] = "SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
+	counterNames[107] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"
+	counterNames[108] = "SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
 }
 
 func relayCountersHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
@@ -442,7 +443,7 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 			fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td></tr>\n", counterNames[i], counters[i])
 		}
 		fmt.Fprintf(w, "</table>\n")
-	  const htmlFooter = `</body></html>`
+		const htmlFooter = `</body></html>`
 		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
@@ -604,6 +605,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
+	// todo
+	/*
 	var pingStatsProducer *common.GooglePubsubProducer
 	var relayStatsProducer *common.GooglePubsubProducer
 
@@ -629,6 +632,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 			os.Exit(1)
 		}
 	}
+	*/
 
 	go func() {
 
@@ -678,20 +682,22 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				for i := 0; i < numSamples; i++ {
 					rtt := relayUpdateRequest.SampleRTT[i]
 					jitter := relayUpdateRequest.SampleJitter[i]
-					pl := relayUpdateRequest.SamplePacketLoss[i]
+					pl := relayUpdateRequest.SamplePacketLoss[i] / 255.0
 					id := relayUpdateRequest.SampleRelayId[i]
 					index, ok := relayData.RelayIdToIndex[id]
 					if !ok {
 						continue
 					}
 					name := relayData.RelayNames[index]
-					if rtt < 1000.0 && pl < 100.0 {
+					if rtt < 255.0 && pl < 1.0 {
 						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
 					}
 				}
 
 				// process samples in the relay update
 
+				// todo: disabled for now. need to rework around the uint8 values
+				/*
 				currentTime := time.Now().Unix()
 
 				relayManager.ProcessRelayUpdate(currentTime,
@@ -700,13 +706,13 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.Address,
 					int(relayUpdateRequest.SessionCount),
 					relayUpdateRequest.RelayVersion,
-					relayUpdateRequest.ShuttingDown,
+					relayUpdateRequest.RelayFlags,
 					numSamples,
 					relayUpdateRequest.SampleRelayId[:numSamples],
 					relayUpdateRequest.SampleRTT[:numSamples],
 					relayUpdateRequest.SampleJitter[:numSamples],
 					relayUpdateRequest.SamplePacketLoss[:numSamples],
-					relayUpdateRequest.Counters[:],
+					relayUpdateRequest.RelayCounters[:],
 				)
 
 				if disableGooglePubsub {
@@ -753,7 +759,10 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						Routable:   sampleRoutable[i],
 					})
 				}
-
+				*/
+		
+				// todo: disable for the moment
+				/*
 				// build relay stats message
 
 				numUnroutable := numSamples - numRoutable
@@ -793,6 +802,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						pingStatsProducer.MessageChannel <- message
 					}
 				}
+				*/
 			}
 		}
 	}()

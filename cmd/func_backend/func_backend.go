@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -22,6 +22,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	// "github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -32,8 +33,6 @@ import (
 var TestRouterPrivateKey = []byte{}
 
 var TestBackendPrivateKey = []byte{}
-
-const NumCounters = packets.NumRelayCounters
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -206,6 +205,9 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
+	// todo: would be great to process via the real packets here instead of manually
+
+/*
 	// parse the relay update request
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -339,13 +341,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if numCounters != NumCounters {
-		fmt.Printf("wrong number of counters: expected %d, got %d\n", NumCounters, numCounters)
+	if numCounters != constants.NumRelayCounters {
+		fmt.Printf("wrong number of counters: expected %d, got %d\n", constants.NumRelayCounters, numCounters)
 		return
 	}
 
-	counters := [NumCounters]uint64{}
-	for i := 0; i < NumCounters; i++ {
+	counters := [constants.NumRelayCounters]uint64{}
+	for i := 0; i < constants.NumRelayCounters; i++ {
 		if !encoding.ReadUint64(body, &index, &counters[i]) {
 			fmt.Printf("could not read counter\n")
 			return
@@ -361,7 +363,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	currentTime := time.Now().Unix()
 
 	backend.mutex.Lock()
-	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, shutdown, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
+	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, relayFlags, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
 	backend.mutex.Unlock()
 
 	// get relays to ping
@@ -407,6 +409,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/octet-stream")
 
 	writer.Write(responseData)
+*/
 }
 
 func StartWebServer() {

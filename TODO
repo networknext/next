@@ -8,7 +8,11 @@ TODO
 
 	Clean up and optimize protocol between relay and relay backend.
 
-	We now have the opportunity to do this without disruption.
+	We now have the opportunity to do this now without disruption.
+
+	---------------
+
+	Cost can be optimized now to use [0,255] uint8 values
 
 	---------------
 
@@ -35,6 +39,46 @@ TODO
 	---------------
 
 	Implement unit tests for relay internal groups addresses.
+
+	---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 

@@ -12,9 +12,9 @@ import (
 	"math"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
-	"sort"
 
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
@@ -508,8 +508,8 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 						k := int(indirect[i][j][k_index].relay)
 
-						ik_cost := cost[TriMatrixIndex(i,k)]
-						kj_cost := cost[TriMatrixIndex(k,j)]
+						ik_cost := cost[TriMatrixIndex(i, k)]
+						kj_cost := cost[TriMatrixIndex(k, j)]
 
 						// i -> (k) -> j
 
@@ -522,7 +522,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 							x := indirect[i][k][x_index].relay
 							ixk_cost := indirect[i][k][x_index].cost
-							routeManager.AddRoute(ixk_cost + kj_cost, int32(i), int32(x), int32(k), int32(j))
+							routeManager.AddRoute(ixk_cost+kj_cost, int32(i), int32(x), int32(k), int32(j))
 						}
 
 						// i        -> k -> (y) -> j
@@ -530,7 +530,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						for y_index := range indirect[k][j] {
 							kyj_cost := indirect[k][j][y_index].cost
 							y := indirect[k][j][y_index].relay
-							routeManager.AddRoute(ik_cost + kyj_cost, int32(i), int32(k), int32(y), int32(j))
+							routeManager.AddRoute(ik_cost+kyj_cost, int32(i), int32(k), int32(y), int32(j))
 						}
 
 						// i -> (x) -> k -> (y) -> j
@@ -541,7 +541,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 							for y_index := range indirect[k][j] {
 								kyj_cost := indirect[k][j][y_index].cost
 								y := int(indirect[k][j][y_index].relay)
-								routeManager.AddRoute(ixk_cost + kyj_cost, int32(i), int32(x), int32(k), int32(y), int32(j))
+								routeManager.AddRoute(ixk_cost+kyj_cost, int32(i), int32(x), int32(k), int32(y), int32(j))
 							}
 						}
 					}
@@ -665,7 +665,7 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		if i != numNodes-1 {
 			token.NextAddress = addresses[i+1]
 		}
-		if i > 0 && i < numNodes - 1 {
+		if i > 0 && i < numNodes-1 {
 			if internal[i] {
 				token.PrevInternal = 1
 			}

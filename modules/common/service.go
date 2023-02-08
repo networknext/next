@@ -173,7 +173,7 @@ func (service *Service) LoadDatabase() {
 		os.Exit(1)
 	}
 
-	err = service.database.Validate() 
+	err = service.database.Validate()
 	if err != nil {
 		core.Error("database does not validate: %v", err)
 		os.Exit(1)
@@ -792,7 +792,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 						break
 					}
 
-					err = service.database.Validate() 
+					err = service.database.Validate()
 					if err != nil {
 						core.Warn("new database does not validate: %v", err)
 						break
@@ -828,7 +828,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 						break
 					}
 
-					err = service.database.Validate() 
+					err = service.database.Validate()
 					if err != nil {
 						core.Warn("new database does not validate: %v", err)
 						break

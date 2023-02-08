@@ -2,51 +2,44 @@ package packets
 
 import (
 	"errors"
-	"fmt"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	VersionNumberRelayUpdateRequest  = 5
-	VersionNumberRelayUpdateResponse = 1
-	MaxRelayVersionStringLength      = 32
-	MaxRelayAddressLength            = 256
-	RelayTokenSize                   = 32
-	MaxRelays                        = 1000
-	NumRelayCounters                 = 128
+	VersionNumberRelayUpdateRequest  = 6
+	VersionNumberRelayUpdateResponse = 2
 )
 
 // --------------------------------------------------------------------------
 
 type RelayPacket interface {
 	Write(buffer []byte) []byte
-
 	Read(buffer []byte) error
 }
 
 // --------------------------------------------------------------------------
 
 type RelayUpdateRequestPacket struct {
-	Version           uint32
-	Address           net.UDPAddr
-	Token             []byte
-	NumSamples        uint32
-	SampleRelayId     [MaxRelays]uint64
-	SampleRTT         [MaxRelays]float32
-	SampleJitter      [MaxRelays]float32
-	SamplePacketLoss  [MaxRelays]float32
-	SessionCount      uint64
-	ShuttingDown      bool
-	RelayVersion      string
-	CPU               uint8
-	EnvelopeUpKbps    uint64
-	EnvelopeDownKbps  uint64
-	BandwidthSentKbps uint64
-	BandwidthRecvKbps uint64
-	NumCounters       uint32
-	Counters          [NumRelayCounters]uint64
+	Version                   uint32
+	Timestamp                 uint64
+	Address                   net.UDPAddr
+	NumSamples                uint32
+	SampleRelayId             [constants.MaxRelays]uint64
+	SampleRTT                 [constants.MaxRelays]uint8 // milliseconds
+	SampleJitter              [constants.MaxRelays]uint8 // milliseconds
+	SamplePacketLoss          [constants.MaxRelays]uint8 // [0,255] -> [0%,1%] PL
+	SessionCount              uint32
+	EnvelopeBandwidthUpKbps   uint32
+	EnvelopeBandwidthDownKbps uint32
+	ActualBandwidthUpKbps     uint32
+	ActualBandwidthDownKbps   uint32
+	RelayFlags                uint64
+	RelayVersion              string
+	NumRelayCounters          uint32
+	RelayCounters             [constants.NumRelayCounters]uint64
 }
 
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
@@ -54,33 +47,31 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	index := 0
 
 	encoding.WriteUint32(buffer, &index, packet.Version)
-	encoding.WriteString(buffer, &index, packet.Address.String(), MaxRelayAddressLength)
-	encoding.WriteBytes(buffer, &index, packet.Token, RelayTokenSize)
+	encoding.WriteUint64(buffer, &index, packet.Timestamp)
+	encoding.WriteAddress(buffer, &index, &packet.Address)
 
 	encoding.WriteUint32(buffer, &index, packet.NumSamples)
-
 	for i := 0; i < int(packet.NumSamples); i++ {
 		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
-		encoding.WriteFloat32(buffer, &index, packet.SampleRTT[i])
-		encoding.WriteFloat32(buffer, &index, packet.SampleJitter[i])
-		encoding.WriteFloat32(buffer, &index, packet.SamplePacketLoss[i])
+		encoding.WriteUint8(buffer, &index, packet.SampleRTT[i])
+		encoding.WriteUint8(buffer, &index, packet.SampleJitter[i])
+		encoding.WriteUint8(buffer, &index, packet.SamplePacketLoss[i])
 	}
 
-	encoding.WriteUint64(buffer, &index, packet.SessionCount)
-	encoding.WriteBool(buffer, &index, packet.ShuttingDown)
-	encoding.WriteString(buffer, &index, packet.RelayVersion, MaxRelayVersionStringLength)
+	encoding.WriteUint32(buffer, &index, packet.SessionCount)
+	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthUpKbps)
+	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthDownKbps)
+	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthUpKbps)
+	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthDownKbps)
+	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
+	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionStringLength)
 
-	encoding.WriteUint8(buffer, &index, packet.CPU)
-
-	encoding.WriteUint64(buffer, &index, packet.EnvelopeUpKbps)
-	encoding.WriteUint64(buffer, &index, packet.EnvelopeDownKbps)
-	encoding.WriteUint64(buffer, &index, packet.BandwidthSentKbps)
-	encoding.WriteUint64(buffer, &index, packet.BandwidthRecvKbps)
-
-	encoding.WriteUint32(buffer, &index, packet.NumCounters)
-	for i := 0; i < int(packet.NumCounters); i++ {
-		encoding.WriteUint64(buffer, &index, packet.Counters[i])
+	encoding.WriteUint32(buffer, &index, packet.NumRelayCounters)
+	for i := 0; i < int(packet.NumRelayCounters); i++ {
+		encoding.WriteUint64(buffer, &index, packet.RelayCounters[i])
 	}
+
+	// todo: sign packet
 
 	return buffer[:index]
 }
@@ -95,26 +86,19 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("invalid relay update request packet version")
 	}
 
-	var address string
-	if !encoding.ReadString(buffer, &index, &address, MaxRelayAddressLength) {
+	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
+		return errors.New("could not read timestamp")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &packet.Address) {
 		return errors.New("could not read relay address")
-	}
-
-	if udp, err := net.ResolveUDPAddr("udp", address); udp != nil && err == nil {
-		packet.Address = *udp
-	} else {
-		return fmt.Errorf("could not resolve udp address '%s': %v", address, err)
-	}
-
-	if !encoding.ReadBytes(buffer, &index, &packet.Token, RelayTokenSize) {
-		return errors.New("could not read relay token")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &packet.NumSamples) {
 		return errors.New("could not read num samples")
 	}
 
-	if packet.NumSamples < 0 || packet.NumSamples > MaxRelays {
+	if packet.NumSamples < 0 || packet.NumSamples > constants.MaxRelays {
 		return errors.New("invalid num samples")
 	}
 
@@ -124,66 +108,62 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 			return errors.New("could not read sample relay id")
 		}
 
-		// todo: rtt and jitter should become int values [0,255]. packet loss stays as float
-
-		if !encoding.ReadFloat32(buffer, &index, &packet.SampleRTT[i]) {
+		if !encoding.ReadUint8(buffer, &index, &packet.SampleRTT[i]) {
 			return errors.New("could not read sample rtt")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &packet.SampleJitter[i]) {
+		if !encoding.ReadUint8(buffer, &index, &packet.SampleJitter[i]) {
 			return errors.New("could not read sample jitter")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &packet.SamplePacketLoss[i]) {
+		if !encoding.ReadUint8(buffer, &index, &packet.SamplePacketLoss[i]) {
 			return errors.New("could not read sample packet loss")
 		}
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &packet.SessionCount) {
+	if !encoding.ReadUint32(buffer, &index, &packet.SessionCount) {
 		return errors.New("could not read session count")
 	}
 
-	if !encoding.ReadBool(buffer, &index, &packet.ShuttingDown) {
-		return errors.New("could not read shutdown flag")
+	if !encoding.ReadUint32(buffer, &index, &packet.EnvelopeBandwidthUpKbps) {
+		return errors.New("could not read envelope bandwidth up kbps")
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, MaxRelayVersionStringLength) {
+	if !encoding.ReadUint32(buffer, &index, &packet.EnvelopeBandwidthDownKbps) {
+		return errors.New("could not read envelope bandwidth down kbps")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &packet.ActualBandwidthUpKbps) {
+		return errors.New("could not read actual bandwidth up kbps")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &packet.ActualBandwidthDownKbps) {
+		return errors.New("could not read actual bandwidth down kbps")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &packet.RelayFlags) {
+		return errors.New("could not read relay flags")
+	}
+
+	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, constants.MaxRelayVersionStringLength) {
 		return errors.New("could not read relay version string")
 	}
 
-	if !encoding.ReadUint8(buffer, &index, &packet.CPU) {
-		return errors.New("could not read cpu")
+	if !encoding.ReadUint32(buffer, &index, &packet.NumRelayCounters) {
+		return errors.New("could not read num relay counters")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &packet.EnvelopeUpKbps) {
-		return errors.New("could not read envelope up kpbs")
+	if packet.NumRelayCounters != constants.NumRelayCounters {
+		return errors.New("wrong number of relay counters")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &packet.EnvelopeDownKbps) {
-		return errors.New("could not read envelope down kpbs")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &packet.BandwidthSentKbps) {
-		return errors.New("could not read bandwidth sent kbps")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &packet.BandwidthRecvKbps) {
-		return errors.New("could not read bandwidth received kbps")
-	}
-
-	if !encoding.ReadUint32(buffer, &index, &packet.NumCounters) {
-		return errors.New("could not read num counters")
-	}
-
-	if packet.NumCounters != NumRelayCounters {
-		return errors.New("wrong number of counters")
-	}
-
-	for i := 0; i < int(packet.NumCounters); i++ {
-		if !encoding.ReadUint64(buffer, &index, &packet.Counters[i]) {
-			return errors.New("could not read counter")
+	for i := 0; i < int(packet.NumRelayCounters); i++ {
+		if !encoding.ReadUint64(buffer, &index, &packet.RelayCounters[i]) {
+			return errors.New("could not read relay counter")
 		}
 	}
+
+	// todo: possibly write signature here
 
 	return nil
 }
@@ -198,16 +178,15 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 		return errors.New("invalid relay update request packet version")
 	}
 
-	var address string
-	if !encoding.ReadString(buffer, &index, &address, MaxRelayAddressLength) {
+	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
+		return errors.New("could not read timestamp")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &packet.Address) {
 		return errors.New("could not read relay address")
 	}
 
-	if udp, err := net.ResolveUDPAddr("udp", address); udp != nil && err == nil {
-		packet.Address = *udp
-	} else {
-		return fmt.Errorf("could not resolve udp address '%s': %v", address, err)
-	}
+	// todo: should probably check signature here
 
 	return nil
 }
@@ -218,9 +197,9 @@ type RelayUpdateResponsePacket struct {
 	Version       uint32
 	Timestamp     uint64
 	NumRelays     uint32
-	RelayId       [MaxRelays]uint64
-	RelayAddress  [MaxRelays]string
-	RelayInternal [MaxRelays]byte
+	RelayId       [constants.MaxRelays]uint64
+	RelayAddress  [constants.MaxRelays]net.UDPAddr
+	RelayInternal [constants.MaxRelays]byte
 	TargetVersion string
 	UpcomingMagic []byte
 	CurrentMagic  []byte
@@ -237,11 +216,11 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	for i := 0; i < int(packet.NumRelays); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayId[i])
-		encoding.WriteString(buffer, &index, packet.RelayAddress[i], MaxRelayAddressLength) // todo: write the relay address in binary format instead
+		encoding.WriteAddress(buffer, &index, &packet.RelayAddress[i])
 		encoding.WriteUint8(buffer, &index, packet.RelayInternal[i])
 	}
 
-	encoding.WriteString(buffer, &index, packet.TargetVersion, MaxRelayVersionStringLength)
+	encoding.WriteString(buffer, &index, packet.TargetVersion, constants.MaxRelayVersionStringLength)
 
 	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
@@ -270,7 +249,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read num relays")
 	}
 
-	if packet.NumRelays < 0 || packet.NumRelays > MaxRelays {
+	if packet.NumRelays < 0 || packet.NumRelays > constants.MaxRelays {
 		return errors.New("invalid num relays")
 	}
 
@@ -280,7 +259,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 			return errors.New("could not read relay id")
 		}
 
-		if !encoding.ReadString(buffer, &index, &packet.RelayAddress[i], MaxRelayAddressLength) {
+		if !encoding.ReadAddress(buffer, &index, &packet.RelayAddress[i]) {
 			return errors.New("could not read relay address")
 		}
 
@@ -289,7 +268,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		}
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, MaxRelayVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, constants.MaxRelayVersionStringLength) {
 		return errors.New("could not read target version")
 	}
 

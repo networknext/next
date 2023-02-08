@@ -2,19 +2,15 @@ package common
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"sync"
-	"math"
 
 	"github.com/huandu/go-clone"
+
+	"github.com/networknext/backend/modules/constants"
 )
-
-const RelayTimeout = 10
-
-const HistorySize = 60 // 60 seconds for faster iteration in dev
-
-const NumRelayCounters = 128
 
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
@@ -42,7 +38,7 @@ func historyMean(history []float32) float32 {
 	for i := 0; i < len(history); i++ {
 		sum += float64(history[i])
 	}
-	return float32(sum / float64(HistorySize))
+	return float32(sum / float64(constants.RelayHistorySize))
 }
 
 type RelayManagerDestEntry struct {
@@ -51,9 +47,9 @@ type RelayManagerDestEntry struct {
 	Jitter            float32
 	PacketLoss        float32
 	HistoryIndex      int32
-	HistoryRTT        [HistorySize]float32
-	HistoryJitter     [HistorySize]float32
-	HistoryPacketLoss [HistorySize]float32
+	HistoryRTT        [constants.RelayHistorySize]float32
+	HistoryJitter     [constants.RelayHistorySize]float32
+	HistoryPacketLoss [constants.RelayHistorySize]float32
 }
 
 type RelayManagerSourceEntry struct {
@@ -65,14 +61,14 @@ type RelayManagerSourceEntry struct {
 	RelayVersion   string
 	ShuttingDown   bool
 	DestEntries    map[uint64]*RelayManagerDestEntry
-	Counters       [NumRelayCounters]uint64
+	Counters       [constants.NumRelayCounters]uint64
 }
 
 type RelayManager struct {
 	mutex         sync.RWMutex
 	Local         bool
 	SourceEntries map[uint64]*RelayManagerSourceEntry
-	TotalCounters [NumRelayCounters]uint64
+	TotalCounters [constants.NumRelayCounters]uint64
 }
 
 func CreateRelayManager(local bool) *RelayManager {
@@ -82,7 +78,7 @@ func CreateRelayManager(local bool) *RelayManager {
 	return relayManager
 }
 
-func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, shuttingDown bool, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32, counters []uint64) {
+func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, relayFlags uint64, numSamples int, sampleRelayId []uint64, sampleRTT []float32, sampleJitter []float32, samplePacketLoss []float32, counters []uint64) {
 
 	// look up the entry corresponding to the source relay, or create it if it doesn't exist
 
@@ -97,8 +93,8 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 	// time out any stale dest relay entries
 
-	for k,v := range sourceEntry.DestEntries {
-		if v.LastUpdateTime < currentTime - RelayTimeout {
+	for k, v := range sourceEntry.DestEntries {
+		if v.LastUpdateTime < currentTime-constants.RelayTimeout {
 			// todo
 			fmt.Printf("timed out dest relay entry: %x|%x\n", relayId, k)
 			delete(sourceEntry.DestEntries, k)
@@ -107,6 +103,8 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 	// iterate across all samples and insert them into the history buffer
 	// in the dest entry corresponding to their relay pair (source,dest)
+
+	shuttingDown := (relayFlags & constants.RelayFlags_ShuttingDown) != 0
 
 	sourceEntry.LastUpdateTime = currentTime
 	sourceEntry.RelayId = relayId
@@ -124,9 +122,9 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		if !exists {
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.DestEntries[destRelayId] = destEntry
-			for j := 0; j < HistorySize; j++ {
+			for j := 0; j < constants.RelayHistorySize; j++ {
 				destEntry.HistoryRTT[j] = 10000.0
-				destEntry.HistoryJitter[j] = 10000.0
+				destEntry.HistoryJitter[j] = 10000.0       // todo: gross magic number of 10000.0
 				destEntry.HistoryPacketLoss[j] = 10000.0
 			}
 		}
@@ -145,14 +143,14 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 			destEntry.RTT = samplePacketLoss[i]
 		}
 
-		destEntry.HistoryIndex = (destEntry.HistoryIndex + 1) % HistorySize
+		destEntry.HistoryIndex = (destEntry.HistoryIndex + 1) % constants.RelayHistorySize
 
 		destEntry.LastUpdateTime = currentTime
 	}
 
 	// update relay counters
 
-	for i := 0; i < NumRelayCounters; i++ {
+	for i := 0; i < constants.NumRelayCounters; i++ {
 		sourceEntry.Counters[i] = counters[i]
 	}
 
@@ -296,7 +294,7 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 			relay.Status = RELAY_STATUS_SHUTTING_DOWN
 		}
 
-		expired := currentTime-sourceEntry.LastUpdateTime > RelayTimeout
+		expired := currentTime-sourceEntry.LastUpdateTime > constants.RelayTimeout
 
 		if expired {
 			relay.Status = RELAY_STATUS_OFFLINE
@@ -372,7 +370,7 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 		activeRelay.Sessions = sourceEntry.Sessions
 		activeRelay.Version = sourceEntry.RelayVersion
 
-		expired := currentTime-sourceEntry.LastUpdateTime > RelayTimeout
+		expired := currentTime-sourceEntry.LastUpdateTime > constants.RelayTimeout
 
 		shuttingDown := sourceEntry.ShuttingDown
 

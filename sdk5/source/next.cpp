@@ -6659,7 +6659,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !client->upgraded && from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade request packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade request packet" );
 
         if ( !next_address_equal( from, &client->server_address ) )
         {
@@ -6797,7 +6797,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !client->upgraded && packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade confirm packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing upgrade confirm packet" );
 
         if ( !client->sending_upgrade_response )
         {
@@ -6882,7 +6882,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET && client->upgraded && from_server_address )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
 
         packet_data += 16;
         packet_bytes -= 18;
@@ -6944,7 +6944,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route response packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route response packet" );
 
         packet_data += 16;
         packet_bytes -= 18;
@@ -7075,7 +7075,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing continue response packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing continue response packet" );
 
         packet_data += 16;
         packet_bytes -= 18;
@@ -7171,7 +7171,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing server to client packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing server to client packet" );
 
         packet_data += 16;
         packet_bytes -= 18;
@@ -7232,7 +7232,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_PONG_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing next pong packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing next pong packet" );
 
         packet_data += 16;
         packet_bytes -= 18;
@@ -7273,7 +7273,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_RELAY_PONG_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing relay pong packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing relay pong packet" );
 
         if ( !client->upgraded )
         {
@@ -7306,7 +7306,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !next_address_equal( from, &client->server_address ) )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client ignoring packet because it's not from the server" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client ignoring packet because it's not from the server" );
         return;
     }
 
@@ -7314,7 +7314,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PONG_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing direct packet" );
 
         NextDirectPongPacket packet;
 
@@ -7342,7 +7342,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
-    	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route update packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing route update packet" );
 
         if ( client->fallback_to_direct )
         {
@@ -7500,7 +7500,7 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
 {
     next_client_internal_verify_sentinels( client );
 
-	next_printf( NEXT_LOG_LEVEL_SPAM, "client processing passthrough packet" );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client processing passthrough packet" );
 
     next_assert( from );
     next_assert( packet_data );
@@ -8195,11 +8195,11 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
 static void next_client_internal_update( next_client_internal_t * client )
 {
-	if ( next_global_config.disable_network_next )
-		return;
+    if ( next_global_config.disable_network_next )
+        return;
 
 #if NEXT_SPIKE_TRACKING
-	double start_time = next_time();
+    double start_time = next_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_client_internal_update_direct_pings( client );
@@ -8222,7 +8222,7 @@ static void next_client_internal_update( next_client_internal_t * client )
 
     if ( finish_time - start_time > 0.001 )
     {
-    	next_printf( NEXT_LOG_LEVEL_WARN, "next_client_internal_update spike %.2f milliseconds", ( finish_time - start_time ) * 1000.0 );
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_client_internal_update spike %.2f milliseconds", ( finish_time - start_time ) * 1000.0 );
     }
 
 #endif // #if NEXT_SPIKE_TRACKING
@@ -8244,11 +8244,11 @@ static void next_client_internal_thread_function( void * context )
 
         if ( next_time() > last_update_time + 0.01 )
         {
-        	next_client_internal_update( client );
+            next_client_internal_update( client );
 
-		    quit = next_client_internal_pump_commands( client );
+            quit = next_client_internal_pump_commands( client );
 
-		    last_update_time = next_time();
+            last_update_time = next_time();
         }
     }
 }
@@ -12768,7 +12768,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
 #if NEXT_ASSERT
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-	next_printf( NEXT_LOG_LEVEL_SPAM, "server received packet type %d from %s (%d bytes)", packet_id, next_address_to_string( from, address_buffer ), packet_bytes );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server received packet type %d from %s (%d bytes)", packet_id, next_address_to_string( from, address_buffer ), packet_bytes );
 #endif // #if NEXT_ASSERT
 
     // run packet filters
@@ -13712,7 +13712,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
         {
-	        next_printf( NEXT_LOG_LEVEL_SPAM, "server dropped encrypted packet because it couldn't find any session for it" );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server dropped encrypted packet because it couldn't find any session for it" );
             return;
         }
 

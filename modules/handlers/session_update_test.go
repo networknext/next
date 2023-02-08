@@ -1255,7 +1255,7 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 		assert.Equal(t, token.KbpsUp, uint32(256))
 		assert.Equal(t, token.KbpsDown, uint32(1024))
 
-		if i == 0 || i == NumTokens - 1 {
+		if i == 0 || i == NumTokens-1 {
 			assert.Equal(t, token.PrevInternal, uint8(0))
 			assert.Equal(t, token.NextInternal, uint8(0))
 		}
@@ -3448,8 +3448,10 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 0
 
@@ -3474,8 +3476,10 @@ func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 1
 
@@ -3500,8 +3504,10 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Input.RouteState.Next = true
 	state.Request.SliceNumber = 1
@@ -3528,8 +3534,10 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
 
@@ -3561,8 +3569,10 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
 
@@ -3592,8 +3602,10 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
@@ -3620,8 +3632,10 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	state.RoutingPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
@@ -3650,8 +3664,10 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
-	from := core.ParseAddress("127.0.0.1:40000"); state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000"); state.ServerBackendAddress = &serverBackendAddress
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Input = packets.GenerateRandomSessionData()
 	state.Output = state.Input
