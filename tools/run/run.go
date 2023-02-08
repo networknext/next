@@ -130,10 +130,10 @@ func main() {
 		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-sdk5" {
-		func_sdk5()
-	} else if command == "func-backend" {
-		func_backend(args[2:])
+	} else if command == "func-tests-sdk5" {
+		func_tests_sdk5()
+	} else if command == "func-tests-backend" {
+		func_tests_backend(args[2:])
 	} else if command == "raspberry-backend" {
 		raspberry_backend()
 	} else if command == "raspberry-server" {
@@ -156,6 +156,8 @@ func main() {
 		func_server()
 	} else if command == "func-client" {
 		func_client()
+	} else if command == "func-backend" {
+		func_backend()
 	}
 
 	cleanup()
@@ -265,12 +267,11 @@ func setup_emulators() {
 	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
-func func_sdk5() {
+func func_tests_sdk5() {
 	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5 test_network_next_route", TestRouterPrivateKey, TestBackendPrivateKey))
 }
 
-
-func func_backend(tests []string) {
+func func_tests_backend(tests []string) {
 	command := "cd dist && ./func_tests_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {
@@ -323,4 +324,8 @@ func func_server() {
 
 func func_client() {
 	bash("cd dist && ./func_client")
+}
+
+func func_backend() {
+	bash(fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend", TestRouterPrivateKey, TestBackendPrivateKey))
 }
