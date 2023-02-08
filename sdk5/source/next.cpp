@@ -8588,7 +8588,7 @@ void next_client_update( next_client_t * client )
 NEXT_BOOL next_client_ready( next_client_t * client )
 {
     next_assert( client );
-    return client->ready ? NEXT_TRUE : NEXT_FALSE;
+    return ( next_global_config.disable_network_next || client->ready ) ? NEXT_TRUE : NEXT_FALSE;
 }
 
 NEXT_BOOL next_client_fallback_to_direct( struct next_client_t * client )
@@ -15881,13 +15881,7 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
 NEXT_BOOL next_server_ready( next_server_t * server ) 
 {
     next_server_verify_sentinels( server );
-
-    if ( server->ready ) 
-    {
-        return NEXT_TRUE;
-    }
-
-    return NEXT_FALSE;
+    return ( next_global_config.disable_network_next || server->ready ) ? NEXT_TRUE : NEXT_FALSE;
 }
 
 const char * next_server_datacenter( next_server_t * server )
