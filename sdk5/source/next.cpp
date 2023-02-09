@@ -452,7 +452,7 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// #define NEXT_ENABLE_MEMORY_CHECKS 1
+#define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
@@ -12862,6 +12862,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             notify->address = entry->address;
             notify->session_id = entry->session_id;
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
@@ -12932,6 +12935,9 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             notify->address = entry->address;
             notify->session_id = entry->session_id;
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
@@ -12989,6 +12995,9 @@ void next_server_internal_update_flush( next_server_internal_t * server )
         next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_FLUSH_FINISHED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
@@ -13167,6 +13176,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_MAGIC_UPDATED;
             memcpy( notify->current_magic, server->current_magic, 8 );
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_MAGIC_UPDATED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
@@ -13247,6 +13259,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + begin + 9, size_t(notify->packet_bytes) );
         {
+#if NEXT_SPIKE_TRACKING
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __FILE__, __LINE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
+#endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
@@ -13315,6 +13331,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_MAGIC_UPDATED;
             memcpy( notify->current_magic, server->current_magic, 8 );
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_MAGIC_UPDATED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
@@ -13621,6 +13640,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->address = entry->address;
             notify->session_id = entry->session_id;
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_SESSION_UPGRADED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );
             }
@@ -13883,6 +13905,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + begin + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
         {
+#if NEXT_SPIKE_TRACKING
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __LINE__, __FILE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
+#endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
@@ -14136,6 +14162,10 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
         next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->packet_data, packet_data, size_t(packet_bytes) );
         {
+#if NEXT_SPIKE_TRACKING
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __LINE__, __FILE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
+#endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
@@ -14867,9 +14897,14 @@ void next_server_internal_update_init( next_server_internal_t * server )
         next_assert( notify_direct_only );
         notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
 
-        next_platform_mutex_guard( &server->notify_mutex );
-        next_queue_push( server->notify_queue, notify_direct_only );
-        next_queue_push( server->notify_queue, notify_ready );
+        {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY and NEXT_SERVER_NOTIFY_READY at %s:%d", __LINE__, __FILE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify_direct_only );
+            next_queue_push( server->notify_queue, notify_ready );
+        }
 
         return;
     }
@@ -14883,6 +14918,9 @@ void next_server_internal_update_init( next_server_internal_t * server )
         notify->type = NEXT_SERVER_NOTIFY_READY;
         next_copy_string( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __LINE__, __FILE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
@@ -14908,8 +14946,13 @@ void next_server_internal_update_init( next_server_internal_t * server )
         next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
         next_assert( notify_direct_only );
         notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
-        next_platform_mutex_guard( &server->notify_mutex );
-        next_queue_push( server->notify_queue, notify_direct_only );
+        {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify_direct_only );
+        }
         return;
     }
 
@@ -15021,8 +15064,13 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
             next_assert( notify_direct_only );
             notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
-            next_platform_mutex_guard( &server->notify_mutex );
-            next_queue_push( server->notify_queue, notify_direct_only );
+            {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+                next_platform_mutex_guard( &server->notify_mutex );
+                next_queue_push( server->notify_queue, notify_direct_only );
+            }
             return;
         }
 
@@ -15658,6 +15706,10 @@ void next_server_destroy( next_server_t * server )
 void next_server_update( next_server_t * server )
 {
     next_server_verify_sentinels( server );
+
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+#endif // #if NEXT_SPIKE_TRACKING
 
     while ( true )
     {
