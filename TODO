@@ -2,15 +2,29 @@ DONE
 
 	Get all func tests passing.
 
+	Clean up all constants and move into modules/constants/constants.go
+
 	Clean up and optimize protocol between relay and relay backend.
+
+	Cost can be optimized now to use [0,255] uint8 values
+
+	Fix optimize to work natively with uint8
 
 TODO
 
-	Clean up all constants and move into modules/constants/constants.go
+	Not feeling comfortable about uint8 packet loss. Especially, with clamping to 1.0 max ([0,255] / 255.0)
+
+	This is wrong.
+
+	What's the best way to send it?
+
+	Float32? Probably...
+
+	Maybe uint16?
 
 	---------------
 
-	Cost can be optimized now to use [0,255] uint8 values
+	func backend needs to use the relay packets
 
 	---------------
 

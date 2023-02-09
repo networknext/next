@@ -854,8 +854,8 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		current network next route, when we plan the next 10 second slice.
 	*/
 
-	if routeCost > common.InvalidRouteValue {
-		routeCost = common.InvalidRouteValue
+	if routeCost > constants.MaxRouteCost {
+		routeCost = constants.MaxRouteCost
 	}
 
 	if state.Debug != nil {
