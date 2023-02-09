@@ -3,6 +3,8 @@ DONE
 	Get all func tests passing.
 
 TODO
+	
+	Help Velan debug packet spikes and delayed packet receives.
 
 	---------------
 

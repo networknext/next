@@ -7562,14 +7562,26 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
     next_address_t from;
 
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client calls next_platform_socket_receive_packet on internal thread" );
+#endif // #if NEXT_SPIKE_TRACKING
+
     int packet_bytes = next_platform_socket_receive_packet( client->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
+
+#if NEXT_SPIKE_TRACKING
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_SPAM, "next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+#endif // #if NEXT_SPIKE_TRACKING
 
     double packet_receive_time = next_time();
 
     next_assert( packet_bytes >= 0 );
 
     if ( packet_bytes <= 1 )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client dropped packet because packet bytes <= 1" );
         return;
+    }
 
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
@@ -14057,7 +14069,16 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     next_address_t from;
 
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server calls next_platform_socket_receive_packet on internal thread" );
+#endif // #if NEXT_SPIKE_TRACKING
+
     const int packet_bytes = next_platform_socket_receive_packet( server->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
+
+#if NEXT_SPIKE_TRACKING
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+#endif // #if NEXT_SPIKE_TRACKING
 
     if ( packet_bytes == 0 )
         return;
