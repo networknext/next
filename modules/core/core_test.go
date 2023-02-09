@@ -133,46 +133,56 @@ func TestRouteManager(t *testing.T) {
 
 	assert.Equal(t, 0, routeManager.NumRoutes)
 
-	routeManager.AddRoute(100, 1, 2, 3)
+	routeManager.AddRoute(10, 1, 2, 3)
 	assert.Equal(t, 1, routeManager.NumRoutes)
-	assert.Equal(t, int32(100), routeManager.RouteCost[0])
+	assert.Equal(t, int32(10), routeManager.RouteCost[0])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
 	assert.Equal(t, int32(1), routeManager.RouteRelays[0][0])
 	assert.Equal(t, int32(2), routeManager.RouteRelays[0][1])
 	assert.Equal(t, int32(3), routeManager.RouteRelays[0][2])
 
-	routeManager.AddRoute(200, 4, 5, 6)
+	routeManager.AddRoute(20, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
-	routeManager.AddRoute(100, 4, 5, 6)
+	// verify adding the same route twice gets filtered out
+
+	routeManager.AddRoute(20, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// verify loops get filtered out
 
-	routeManager.AddRoute(200, 4, 4, 5, 6)
+	routeManager.AddRoute(20, 4, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	// verify routes with cost >= 255 get filtered out
+
+	routeManager.AddRoute(255, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	routeManager.AddRoute(1000, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// add some more routes
 
-	routeManager.AddRoute(200, 4, 5, 254, 255)
+	routeManager.AddRoute(21, 4, 5, 254, 255)
 	assert.Equal(t, 3, routeManager.NumRoutes)
 
-	routeManager.AddRoute(190, 5, 6, 7, 8, 9)
+	routeManager.AddRoute(14, 5, 6, 7, 8, 9)
 	assert.Equal(t, 4, routeManager.NumRoutes)
 
-	routeManager.AddRoute(180, 6, 7, 8)
+	routeManager.AddRoute(18, 6, 7, 8)
 	assert.Equal(t, 5, routeManager.NumRoutes)
 
-	routeManager.AddRoute(175, 8, 9)
+	routeManager.AddRoute(17, 8, 9)
 	assert.Equal(t, 6, routeManager.NumRoutes)
 
-	routeManager.AddRoute(160, 9, 10, 11)
+	routeManager.AddRoute(16, 9, 10, 11)
 	assert.Equal(t, 7, routeManager.NumRoutes)
 
-	routeManager.AddRoute(165, 10, 11, 12, 13, 14)
+	routeManager.AddRoute(19, 10, 11, 12, 13, 14)
 	assert.Equal(t, 8, routeManager.NumRoutes)
 
-	routeManager.AddRoute(150, 11, 12)
+	routeManager.AddRoute(15, 11, 12)
 	assert.Equal(t, 9, routeManager.NumRoutes)
 
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
@@ -184,7 +194,7 @@ func TestRouteManager(t *testing.T) {
 	numFillers := constants.MaxRoutesPerEntry - routeManager.NumRoutes
 
 	for i := 0; i < numFillers; i++ {
-		routeManager.AddRoute(int32(1000+i), int32(100+i), int32(100+i+1), int32(100+i+2))
+		routeManager.AddRoute(int32(50+i), int32(100+i), int32(100+i+1), int32(100+i+2))
 		assert.Equal(t, 9+i+1, routeManager.NumRoutes)
 	}
 
@@ -192,22 +202,22 @@ func TestRouteManager(t *testing.T) {
 
 	// make sure we can't add worse routes once we are at max routes
 
-	routeManager.AddRoute(10000, 12, 13, 14)
+	routeManager.AddRoute(250, 12, 13, 14)
 	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes; i++ {
-		assert.True(t, routeManager.RouteCost[i] != 10000)
+		assert.True(t, routeManager.RouteCost[i] != 250)
 	}
 
 	// make sure we can add better routes while at max routes
 
-	routeManager.AddRoute(177, 13, 14, 15, 16, 17)
+	routeManager.AddRoute(5, 13, 14, 15, 16, 17)
 	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
 	}
 	found := false
 	for i := 0; i < routeManager.NumRoutes; i++ {
-		if routeManager.RouteCost[i] == 177 {
+		if routeManager.RouteCost[i] == 5 {
 			found = true
 		}
 	}
@@ -215,65 +225,72 @@ func TestRouteManager(t *testing.T) {
 
 	// check all the best routes are sorted and they have correct data
 
-	assert.Equal(t, int32(100), routeManager.RouteCost[0])
-	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
-	assert.Equal(t, int32(1), routeManager.RouteRelays[0][0])
-	assert.Equal(t, int32(2), routeManager.RouteRelays[0][1])
-	assert.Equal(t, int32(3), routeManager.RouteRelays[0][2])
-	assert.Equal(t, core.RouteHash(1, 2, 3), routeManager.RouteHash[0])
+	assert.Equal(t, int32(5), routeManager.RouteCost[0])
+	assert.Equal(t, int32(5), routeManager.RouteNumRelays[0])
+	assert.Equal(t, int32(13), routeManager.RouteRelays[0][0])
+	assert.Equal(t, int32(14), routeManager.RouteRelays[0][1])
+	assert.Equal(t, int32(15), routeManager.RouteRelays[0][2])
+	assert.Equal(t, int32(16), routeManager.RouteRelays[0][3])
+	assert.Equal(t, int32(17), routeManager.RouteRelays[0][4])
+	assert.Equal(t, core.RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[0])
 
-	assert.Equal(t, int32(150), routeManager.RouteCost[1])
-	assert.Equal(t, int32(2), routeManager.RouteNumRelays[1])
-	assert.Equal(t, int32(11), routeManager.RouteRelays[1][0])
-	assert.Equal(t, int32(12), routeManager.RouteRelays[1][1])
-	assert.Equal(t, core.RouteHash(11, 12), routeManager.RouteHash[1])
+	assert.Equal(t, int32(10), routeManager.RouteCost[1])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[1])
+	assert.Equal(t, int32(1), routeManager.RouteRelays[1][0])
+	assert.Equal(t, int32(2), routeManager.RouteRelays[1][1])
+	assert.Equal(t, int32(3), routeManager.RouteRelays[1][2])
+	assert.Equal(t, core.RouteHash(1, 2, 3), routeManager.RouteHash[1])
 
-	assert.Equal(t, int32(160), routeManager.RouteCost[2])
-	assert.Equal(t, int32(3), routeManager.RouteNumRelays[2])
-	assert.Equal(t, int32(9), routeManager.RouteRelays[2][0])
-	assert.Equal(t, int32(10), routeManager.RouteRelays[2][1])
-	assert.Equal(t, int32(11), routeManager.RouteRelays[2][2])
-	assert.Equal(t, core.RouteHash(9, 10, 11), routeManager.RouteHash[2])
+	assert.Equal(t, int32(14), routeManager.RouteCost[2])
+	assert.Equal(t, int32(5), routeManager.RouteNumRelays[2])
+	assert.Equal(t, int32(5), routeManager.RouteRelays[2][0])
+	assert.Equal(t, int32(6), routeManager.RouteRelays[2][1])
+	assert.Equal(t, int32(7), routeManager.RouteRelays[2][2])
+	assert.Equal(t, int32(8), routeManager.RouteRelays[2][3])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[2][4])
+	assert.Equal(t, core.RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[2])
 
-	assert.Equal(t, int32(165), routeManager.RouteCost[3])
-	assert.Equal(t, int32(5), routeManager.RouteNumRelays[3])
-	assert.Equal(t, int32(10), routeManager.RouteRelays[3][0])
-	assert.Equal(t, int32(11), routeManager.RouteRelays[3][1])
-	assert.Equal(t, int32(12), routeManager.RouteRelays[3][2])
-	assert.Equal(t, int32(13), routeManager.RouteRelays[3][3])
-	assert.Equal(t, int32(14), routeManager.RouteRelays[3][4])
-	assert.Equal(t, core.RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[3])
+	assert.Equal(t, int32(15), routeManager.RouteCost[3])
+	assert.Equal(t, int32(2), routeManager.RouteNumRelays[3])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[3][0])
+	assert.Equal(t, int32(12), routeManager.RouteRelays[3][1])
+	assert.Equal(t, core.RouteHash(11, 12), routeManager.RouteHash[3])
 
-	assert.Equal(t, int32(175), routeManager.RouteCost[4])
-	assert.Equal(t, int32(2), routeManager.RouteNumRelays[4])
-	assert.Equal(t, int32(8), routeManager.RouteRelays[4][0])
-	assert.Equal(t, int32(9), routeManager.RouteRelays[4][1])
-	assert.Equal(t, core.RouteHash(8, 9), routeManager.RouteHash[4])
+	assert.Equal(t, int32(16), routeManager.RouteCost[4])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[4])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[4][0])
+	assert.Equal(t, int32(10), routeManager.RouteRelays[4][1])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[4][2])
+	assert.Equal(t, core.RouteHash(9, 10, 11), routeManager.RouteHash[4])
 
-	assert.Equal(t, int32(177), routeManager.RouteCost[5])
-	assert.Equal(t, int32(5), routeManager.RouteNumRelays[5])
-	assert.Equal(t, int32(13), routeManager.RouteRelays[5][0])
-	assert.Equal(t, int32(14), routeManager.RouteRelays[5][1])
-	assert.Equal(t, int32(15), routeManager.RouteRelays[5][2])
-	assert.Equal(t, int32(16), routeManager.RouteRelays[5][3])
-	assert.Equal(t, int32(17), routeManager.RouteRelays[5][4])
-	assert.Equal(t, core.RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[5])
+	assert.Equal(t, int32(17), routeManager.RouteCost[5])
+	assert.Equal(t, int32(2), routeManager.RouteNumRelays[5])
+	assert.Equal(t, int32(8), routeManager.RouteRelays[5][0])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[5][1])
+	assert.Equal(t, core.RouteHash(8, 9), routeManager.RouteHash[5])
 
-	assert.Equal(t, int32(180), routeManager.RouteCost[6])
+	assert.Equal(t, int32(18), routeManager.RouteCost[6])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[6])
 	assert.Equal(t, int32(6), routeManager.RouteRelays[6][0])
 	assert.Equal(t, int32(7), routeManager.RouteRelays[6][1])
 	assert.Equal(t, int32(8), routeManager.RouteRelays[6][2])
 	assert.Equal(t, core.RouteHash(6, 7, 8), routeManager.RouteHash[6])
 
-	assert.Equal(t, int32(190), routeManager.RouteCost[7])
+	assert.Equal(t, int32(19), routeManager.RouteCost[7])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[7])
-	assert.Equal(t, int32(5), routeManager.RouteRelays[7][0])
-	assert.Equal(t, int32(6), routeManager.RouteRelays[7][1])
-	assert.Equal(t, int32(7), routeManager.RouteRelays[7][2])
-	assert.Equal(t, int32(8), routeManager.RouteRelays[7][3])
-	assert.Equal(t, int32(9), routeManager.RouteRelays[7][4])
-	assert.Equal(t, core.RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[7])
+	assert.Equal(t, int32(10), routeManager.RouteRelays[7][0])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[7][1])
+	assert.Equal(t, int32(12), routeManager.RouteRelays[7][2])
+	assert.Equal(t, int32(13), routeManager.RouteRelays[7][3])
+	assert.Equal(t, int32(14), routeManager.RouteRelays[7][4])
+	assert.Equal(t, core.RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[7])
+
+	assert.Equal(t, int32(20), routeManager.RouteCost[8])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[8])
+	assert.Equal(t, int32(4), routeManager.RouteRelays[8][0])
+	assert.Equal(t, int32(5), routeManager.RouteRelays[8][1])
+	assert.Equal(t, int32(6), routeManager.RouteRelays[8][2])
+	assert.Equal(t, core.RouteHash(4, 5, 6), routeManager.RouteHash[8])
 }
 
 func Analyze(numRelays int, routes []core.RouteEntry) []int {
