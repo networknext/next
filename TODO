@@ -1,9 +1,9 @@
 DONE
 
-TODO
-	
 	Help Velan debug packet spikes and delayed packet receives.
 
+TODO
+	
 	---------------
 
 	Not feeling comfortable about uint8 packet loss. Especially, with clamping to 1.0 max ([0,255] / 255.0)
