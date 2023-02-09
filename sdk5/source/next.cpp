@@ -7622,6 +7622,10 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
 bool next_client_internal_pump_commands( next_client_internal_t * client )
 {
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "next_client_internal_pump_commands" );
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_client_internal_verify_sentinels( client );
 
     bool quit = false;
@@ -7643,6 +7647,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
         {
             case NEXT_CLIENT_COMMAND_OPEN_SESSION:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_OPEN_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
+
                 next_client_command_open_session_t * open_session_command = (next_client_command_open_session_t*) entry;
                 client->server_address = open_session_command->server_address;
                 client->session_open = true;
@@ -7677,6 +7685,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
             case NEXT_CLIENT_COMMAND_CLOSE_SESSION:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_CLOSE_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
+
                 if ( !client->session_open )
                     break;
 
@@ -7764,12 +7776,18 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
             case NEXT_CLIENT_COMMAND_DESTROY:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_DESTROY" );
+#endif // #if NEXT_SPIKE_TRACKING
                 quit = true;
             }
             break;
 
             case NEXT_CLIENT_COMMAND_REPORT_SESSION:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_REPORT_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
                 if ( client->session_id != 0 && !client->reported )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %" PRIx64, client->session_id );
@@ -8501,6 +8519,9 @@ void next_client_destroy( next_client_t * client )
         }
         command->type = NEXT_CLIENT_COMMAND_DESTROY;
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_DESTROY" );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->internal->command_mutex );
             next_queue_push( client->internal->command_queue, command );
         }
@@ -8545,6 +8566,9 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     command->server_address = server_address;
 
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_OPEN_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
@@ -8584,6 +8608,9 @@ void next_client_close_session( next_client_t * client )
 
     command->type = NEXT_CLIENT_COMMAND_CLOSE_SESSION;
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_CLOSE_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
@@ -9004,6 +9031,9 @@ void next_client_report_session( next_client_t * client )
 
     command->type = NEXT_CLIENT_COMMAND_REPORT_SESSION;
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_REPORT_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &client->internal->command_mutex );
         next_queue_push( client->internal->command_queue, command );
     }
@@ -11338,9 +11368,9 @@ struct next_server_internal_t
     next_address_t bind_address;
     next_queue_t * command_queue;
     next_queue_t * notify_queue;
-    next_platform_mutex_t session_mutex;        // todo: check this mutex
-    next_platform_mutex_t command_mutex;        // todo: check this mutex
-    next_platform_mutex_t notify_mutex;         // todo: check this mutex
+    next_platform_mutex_t session_mutex;
+    next_platform_mutex_t command_mutex;
+    next_platform_mutex_t notify_mutex;
     next_platform_socket_t * socket;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
@@ -14417,6 +14447,10 @@ void next_server_internal_flush( next_server_internal_t * server )
 
 void next_server_internal_pump_commands( next_server_internal_t * server )
 {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "next_server_internal_pump_commands" );
+#endif // #if NEXT_SPIKE_TRACKING
+
     while ( true )
     {
         next_server_internal_verify_sentinels( server );
@@ -14436,6 +14470,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
         {
             case NEXT_SERVER_COMMAND_UPGRADE_SESSION:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_UPGRADE_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_upgrade_session_t * upgrade_session = (next_server_command_upgrade_session_t*) command;
                 next_server_internal_upgrade_session( server, &upgrade_session->address, upgrade_session->session_id, upgrade_session->user_hash );
             }
@@ -14443,6 +14480,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_TAG_SESSION:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_TAG_SESSION" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_tag_session_t * tag_session = (next_server_command_tag_session_t*) command;
                 next_server_internal_tag_session( server, &tag_session->address, tag_session->tags, tag_session->num_tags );
             }
@@ -14450,6 +14490,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_SERVER_EVENT:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_SERVER_EVENT" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_server_event_t * event = (next_server_command_server_event_t*) command;
                 next_server_internal_server_events( server, &event->address, event->server_events );
             }
@@ -14457,6 +14500,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_MATCH_DATA:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_MATCH_DATA" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_match_data_t * match_data = (next_server_command_match_data_t*) command;
                 next_server_internal_match_data( server, &match_data->address, match_data->match_id, match_data->match_values, match_data->num_match_values );
             }
@@ -14464,12 +14510,18 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_FLUSH:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_FLUSH" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_internal_flush( server );
             }
             break;
 
             case NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_set_packet_receive_callback_t * cmd = (next_server_command_set_packet_receive_callback_t*) command;
                 server->packet_receive_callback = cmd->callback;
                 server->packet_receive_callback_data = cmd->callback_data;
@@ -14478,6 +14530,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_set_send_packet_to_address_callback_t * cmd = (next_server_command_set_send_packet_to_address_callback_t*) command;
                 server->send_packet_to_address_callback = cmd->callback;
                 server->send_packet_to_address_callback_data = cmd->callback_data;
@@ -14486,6 +14541,9 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 
             case NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_set_payload_receive_callback_t * cmd = (next_server_command_set_payload_receive_callback_t*) command;
                 server->payload_receive_callback = cmd->callback;
                 server->payload_receive_callback_data = cmd->callback_data;
@@ -15750,6 +15808,9 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     command->session_id = session_id;
 
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_UPGRADE_SESSION from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -15822,6 +15883,9 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
     }
 
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_TAG_SESSION from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16163,6 +16227,9 @@ void next_server_event( struct next_server_t * server, const struct next_address
     command->server_events = server_events;
 
     {    
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_SERVER_EVENT from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16204,6 +16271,9 @@ void next_server_match( struct next_server_t * server, const struct next_address
     command->num_match_values = num_match_values;
 
     {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_MATCH_DATA from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16237,6 +16307,9 @@ void next_server_flush( struct next_server_t * server )
     command->type = NEXT_SERVER_COMMAND_FLUSH;
 
     {    
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_FLUSH from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16280,6 +16353,9 @@ void next_server_set_packet_receive_callback( struct next_server_t * server, voi
     command->callback_data = callback_data;
 
     {    
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16304,6 +16380,9 @@ void next_server_set_send_packet_to_address_callback( struct next_server_t * ser
     command->callback_data = callback_data;
 
     {    
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_SEND_PACKET_TO_ADDRESS_CALLBACK from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
@@ -16325,6 +16404,9 @@ void next_server_set_payload_receive_callback( struct next_server_t * server, in
     command->callback_data = callback_data;
 
     {    
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_SEND_PACKET_TO_ADDRESS_CALLBACK from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );
     }
