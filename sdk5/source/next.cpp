@@ -6889,6 +6889,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->client_external_address = client->client_external_address;
         memcpy( notify->current_magic, client->current_magic, 8 );
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_UPGRADED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
@@ -6937,7 +6940,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t clean_sequence = next_clean_sequence( packet_sequence );
         if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. already received" );
             return;
+        }
 
         next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
 
@@ -6954,6 +6960,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_assert( notify->payload_bytes > 0 );
         memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_PACKET_RECEIVED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
@@ -7243,6 +7252,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_PACKET_RECEIVED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
@@ -7492,6 +7504,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                     notify->type = NEXT_CLIENT_NOTIFY_MAGIC_UPDATED;
                     memcpy( notify->current_magic, client->current_magic, 8 );
                     {
+#if NEXT_SPIKE_TRACKING
+                        next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_MAGIC_UPDATED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
                         next_platform_mutex_guard( &client->notify_mutex );
                         next_queue_push( client->notify_queue, notify );
                     }
@@ -7531,6 +7546,10 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
 
     const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client drops passthrough packet at %s:%d because it does not think it comes from the server", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+
     if ( packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 && from_server_address )
     {
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
@@ -7541,6 +7560,9 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
         next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_PACKET_RECEIVED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
@@ -7570,7 +7592,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
 #if NEXT_SPIKE_TRACKING
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_SPAM, "next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
 #endif // #if NEXT_SPIKE_TRACKING
 
     double packet_receive_time = next_time();
@@ -7644,6 +7666,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_assert( notify );
                 notify->type = NEXT_CLIENT_NOTIFY_READY;
                 {
+#if NEXT_SPIKE_TRACKING
+                    next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
                     next_platform_mutex_guard( &client->notify_mutex );
                     next_queue_push( client->notify_queue, notify );
                 }
@@ -7879,6 +7904,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         notify->stats = client->client_stats;
         notify->fallback_to_direct = fallback_to_direct;
         {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread queues up NEXT_CLIENT_NOTIFY_STATS_UPDATED at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
@@ -8579,6 +8607,10 @@ void next_client_update( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
+#if NEXT_SPIKE_TRACKING
+    next_printf( NEXT_LOG_LEVEL_SPAM, "next_client_update" );
+#endif // #if NEXT_SPIKE_TRACKING
+
     while ( true )
     {
         void * entry = NULL;
@@ -8596,7 +8628,16 @@ void next_client_update( next_client_t * client )
         {
             case NEXT_CLIENT_NOTIFY_PACKET_RECEIVED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "NEXT_CLIENT_NOTIFY_STATS_UPGRADED" );
+#endif // #if NEXT_SPIKE_TRACKING
+
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
+
+#if NEXT_SPIKE_TRACKING
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client calling packet received callback: from = %s, payload = %d bytes", next_address_to_string( &client->server_address, address_buffer ), packet_received->payload_bytes );
+#endif // #if NEXT_SPIKE_TRACKING
 
                 client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
@@ -8633,6 +8674,9 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_UPGRADED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "NEXT_CLIENT_NOTIFY_STATS_UPGRADED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_client_notify_upgraded_t * upgraded = (next_client_notify_upgraded_t*) notify;
                 client->upgraded = true;
                 client->session_id = upgraded->session_id;
@@ -8644,6 +8688,9 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_STATS_UPDATED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "NEXT_CLIENT_NOTIFY_STATS_UPDATED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_client_notify_stats_updated_t * stats_updated = (next_client_notify_stats_updated_t*) notify;
                 client->client_stats = stats_updated->stats;
                 client->fallback_to_direct = stats_updated->fallback_to_direct;
@@ -8652,6 +8699,9 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_MAGIC_UPDATED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "NEXT_CLIENT_NOTIFY_MAGIC_UPDATED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_client_notify_magic_updated_t * magic_updated = (next_client_notify_magic_updated_t*) notify;
                 memcpy( client->current_magic, magic_updated->current_magic, 8 );
             }
@@ -8659,6 +8709,9 @@ void next_client_update( next_client_t * client )
 
             case NEXT_CLIENT_NOTIFY_READY:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "NEXT_CLIENT_NOTIFY_READY" );
+#endif // #if NEXT_SPIKE_TRACKING
                 client->ready = true;
             }
             break;
