@@ -13,8 +13,12 @@ const (
 	MaxTags = 8
 
 	CostBias = 3
+	MaxIndirects = 8
 	MaxRoutesPerEntry = 64
 	JitterThreshold = 15
+	CostThreshold = 1
+
+	MaxRouteCost = 255
 
 	// todo: convert these to golang style
 	NEXT_MAX_NODES = 7

@@ -1,23 +1,63 @@
 DONE
 
-	Get all func tests passing.
-
 TODO
 	
 	Help Velan debug packet spikes and delayed packet receives.
 
 	---------------
 
-	Clean up and optimize protocol between relay and relay backend.
+	Not feeling comfortable about uint8 packet loss. Especially, with clamping to 1.0 max ([0,255] / 255.0)
 
-	We now have the opportunity to do this now without disruption.
+	This is wrong.
+
+	What's the best way to send it?
+
+	Float32? Probably...
+
+	Maybe uint16?
 
 	---------------
 
-	Cost can be optimized now to use [0,255] uint8 values
+	func backend needs to use the relay packets
 
 	---------------
 
+	Merge route matrix entry and route manager. They are the same data structure.
+
+	---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------
 	Implement relay validation on join
 
 		1. Verify the relay has the correct public and internal addresses
@@ -291,5 +331,11 @@ Nice to have:
 	Or is there some sort of bias causing this. It seems important to explore this and work it out.
 
 	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
+
+	---------------
+
+	We need a way to track no packets on client for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
+
+	We need a way to track no packets on server from session for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
 
 	---------------

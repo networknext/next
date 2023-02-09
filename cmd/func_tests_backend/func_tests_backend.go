@@ -1520,11 +1520,10 @@ func test_relay_manager() {
 				return
 			case <-ticker.C:
 				fmt.Printf("costs %d\n", counter)
-				const MaxRTT = 255
 				const MaxJitter = 100
 				const MaxPacketLoss = 1
 				currentTime := time.Now().Unix()
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 				_ = costs
 				counter++
 			}
@@ -1535,9 +1534,9 @@ func test_relay_manager() {
 
 	numSamples := NumRelays
 	sampleRelayId := make([]uint64, numSamples)
-	sampleRTT := make([]float32, numSamples)
-	sampleJitter := make([]float32, numSamples)
-	samplePacketLoss := make([]float32, numSamples)
+	sampleRTT := make([]uint8, numSamples)
+	sampleJitter := make([]uint8, numSamples)
+	samplePacketLoss := make([]uint8, numSamples)
 	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
@@ -1618,13 +1617,12 @@ func test_optimize() {
 
 			case <-ticker.C:
 
-				const MaxRTT = 255
 				const MaxJitter = 100
 				const MaxPacketLoss = 1
 
 				currentTime := time.Now().Unix()
 
-				costs := relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
+				costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 				costMatrix := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
@@ -1653,8 +1651,6 @@ func test_optimize() {
 					}
 				}
 
-				costThreshold := int32(1)
-
 				binFileData := make([]byte, 100*1024)
 
 				routeMatrix := &common.RouteMatrix{
@@ -1667,7 +1663,7 @@ func test_optimize() {
 					RelayLongitudes:    relayLongitudes,
 					RelayDatacenterIds: relayDatacenterIds,
 					DestRelays:         destRelays,
-					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, costThreshold, relayDatacenterIds, destRelays),
+					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, relayDatacenterIds, destRelays),
 					BinFileBytes:       int32(len(binFileData)),
 					BinFileData:        binFileData,
 				}
@@ -1690,16 +1686,16 @@ func test_optimize() {
 
 	numSamples := NumRelays
 	sampleRelayId := make([]uint64, numSamples)
-	sampleRTT := make([]float32, numSamples)
-	sampleJitter := make([]float32, numSamples)
-	samplePacketLoss := make([]float32, numSamples)
+	sampleRTT := make([]uint8, numSamples)
+	sampleJitter := make([]uint8, numSamples)
+	samplePacketLoss := make([]uint8, numSamples)
 	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
-		sampleRTT[i] = float32(common.RandomInt(1, 100))
-		sampleJitter[i] = float32(common.RandomInt(0, 50))
-		samplePacketLoss[i] = float32(common.RandomInt(0, 2))
+		sampleRTT[i] = uint8(common.RandomInt(0, 255))
+		sampleJitter[i] = uint8(common.RandomInt(0, 255))
+		samplePacketLoss[i] = uint8(common.RandomInt(0, 255))
 	}
 
 	for i := 0; i < NumRelays; i++ {

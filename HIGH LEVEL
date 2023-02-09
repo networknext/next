@@ -1,5 +1,7 @@
 HIGH LEVEL
 
+	0. Sort out relay <-> relay backend stuff and lock it down.
+
 	1. Get all analytics stuff pushed to analytics service via pubsub
 
 	2. Insert all analytics stuff into bigquery (emulator)

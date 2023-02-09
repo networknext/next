@@ -696,8 +696,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				// process samples in the relay update
 
-				// todo: disabled for now. need to rework around the uint8 values
-				/*
 				currentTime := time.Now().Unix()
 
 				relayManager.ProcessRelayUpdate(currentTime,
@@ -719,6 +717,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					break
 				}
 
+				/*
 				// build ping stats message
 
 				numRoutable := 0
@@ -759,7 +758,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						Routable:   sampleRoutable[i],
 					})
 				}
-				*/
 		
 				// todo: disable for the moment
 				/*
@@ -836,7 +834,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
-				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxRTT, maxJitter, maxPacketLoss)
+				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxJitter, maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
@@ -874,8 +872,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					}
 				}
 
-				costThreshold := int32(1)
-
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
 					Version:            common.RouteMatrixVersion_Write,
@@ -886,7 +882,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayLongitudes:    costMatrixNew.RelayLongitudes,
 					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
 					DestRelays:         costMatrixNew.DestRelays,
-					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
+					// todo: bring back optimize
+					RouteEntries:       nil, // core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 				}

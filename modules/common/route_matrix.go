@@ -16,13 +16,13 @@ const (
 	RouteMatrixVersion_Max   = 7
 	RouteMatrixVersion_Write = 7
 
-	MaxDatabaseBinWrapperSize = 100000000
+	MaxDatabaseBinWrapperSize = 100000000      // todo: too large
 )
 
 type RouteMatrix struct {
 	RelayIds           []uint64
 	RelayIdToIndex     map[uint64]int32
-	RelayAddresses     []net.UDPAddr // external IPs only
+	RelayAddresses     []net.UDPAddr
 	RelayNames         []string
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
@@ -86,11 +86,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numEntries; i++ {
 		entry := &m.RouteEntries[i]
 
-		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
-		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
+		stream.SerializeInteger(&entry.DirectCost, 0, constants.MaxRouteCost)
+		stream.SerializeInteger(&entry.NumRoutes, 0, constants.MaxRoutesPerEntry)
 
 		for i := 0; i < int(entry.NumRoutes); i++ {
-			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
+			stream.SerializeInteger(&entry.RouteCost[i], -1, constants.MaxRouteCost)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, constants.MaxRouteRelays)
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
@@ -383,10 +383,10 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 	routeMatrix.RouteEntries = make([]core.RouteEntry, numEntries)
 
 	for i := range routeMatrix.RouteEntries {
-		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(1, 1000))
+		routeMatrix.RouteEntries[i].DirectCost = int32(RandomInt(0, constants.MaxRouteCost))
 		routeMatrix.RouteEntries[i].NumRoutes = int32(RandomInt(0, constants.MaxRoutesPerEntry))
 		for j := 0; j < int(routeMatrix.RouteEntries[i].NumRoutes); j++ {
-			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(1, 1000))
+			routeMatrix.RouteEntries[i].RouteCost[j] = int32(RandomInt(0, constants.MaxRouteCost))
 			routeMatrix.RouteEntries[i].RouteNumRelays[j] = int32(RandomInt(1, constants.MaxRouteRelays))
 			for k := 0; k < int(routeMatrix.RouteEntries[i].RouteNumRelays[j]); k++ {
 				routeMatrix.RouteEntries[i].RouteRelays[j][k] = int32(k)

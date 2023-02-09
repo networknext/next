@@ -40,13 +40,13 @@ func CreateState() *handlers.SessionUpdateState {
 	return &state
 }
 
-func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
+func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
 
 	numRelays := len(relayIds)
 
 	numSegments := numRelays
 
-	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters[:])
+	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters[:])
 
 	destRelays := make([]bool, numRelays)
 
@@ -1556,10 +1556,10 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -1764,10 +1764,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -1987,10 +1987,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -2111,7 +2111,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Input.RouteRelayIds[2] = 3
 	state.Request.Next = true
 
-	costMatrix = make([]int32, entryCount)
+	costMatrix = make([]uint8, entryCount)
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 100
 	costMatrix[core.TriMatrixIndex(1, 2)] = 10
@@ -2255,10 +2255,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -2473,10 +2473,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -2688,10 +2688,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -2819,13 +2819,13 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	state.Request.Next = true
 
-	costMatrix = make([]int32, entryCount)
+	costMatrix = make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
-	costMatrix[core.TriMatrixIndex(0, 2)] = 1000
+	costMatrix[core.TriMatrixIndex(0, 2)] = 254
 
 	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
 
@@ -2911,10 +2911,10 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -3053,10 +3053,10 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -3218,10 +3218,10 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
@@ -3359,10 +3359,10 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10

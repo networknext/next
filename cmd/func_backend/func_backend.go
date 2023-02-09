@@ -94,7 +94,6 @@ type SessionCacheEntry struct {
 }
 
 const ThresholdRTT = 1.0
-const MaxRTT = float32(100)
 const MaxJitter = float32(10.0)
 const MaxPacketLoss = float32(0.1)
 
@@ -116,7 +115,7 @@ func OptimizeThread() {
 			relayDatacenterIds[i] = common.DatacenterId("local")
 		}
 
-		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss)
+		costMatrix := backend.relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 		numCPUs := runtime.NumCPU()
 		numSegments := numRelays
@@ -132,7 +131,7 @@ func OptimizeThread() {
 			destRelays[i] = true
 		}
 
-		core.Optimize2(numRelays, numSegments, costMatrix, 1, relayDatacenterIds, destRelays)
+		core.Optimize2(numRelays, numSegments, costMatrix, relayDatacenterIds, destRelays)
 
 		backend.mutex.Unlock()
 
