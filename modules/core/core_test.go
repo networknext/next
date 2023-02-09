@@ -327,7 +327,7 @@ type TestRelayData struct {
 type TestEnvironment struct {
 	relayArray []*TestRelayData
 	relays     map[string]*TestRelayData
-	cost       [][]int32
+	cost       [][]uint8
 }
 
 func NewTestEnvironment() *TestEnvironment {
@@ -338,11 +338,11 @@ func NewTestEnvironment() *TestEnvironment {
 
 func (env *TestEnvironment) Clear() {
 	numRelays := len(env.relays)
-	env.cost = make([][]int32, numRelays)
+	env.cost = make([][]uint8, numRelays)
 	for i := 0; i < numRelays; i++ {
-		env.cost[i] = make([]int32, numRelays)
+		env.cost[i] = make([]uint8, numRelays)
 		for j := 0; j < numRelays; j++ {
-			env.cost[i][j] = -1
+			env.cost[i][j] = 255
 		}
 	}
 }
@@ -400,7 +400,7 @@ func (env *TestEnvironment) GetRelayIdToIndex() map[uint64]int32 {
 	return relayIdToIndex
 }
 
-func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string, cost int32) {
+func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string, cost uint8) {
 	i := env.relays[sourceRelayName].index
 	j := env.relays[destRelayName].index
 	if j > i {
@@ -421,10 +421,10 @@ func (env *TestEnvironment) GetRelayData(relayName string) *TestRelayData {
 	return env.relays[relayName]
 }
 
-func (env *TestEnvironment) GetCostMatrix() ([]int32, int) {
+func (env *TestEnvironment) GetCostMatrix() ([]uint8, int) {
 	numRelays := len(env.relays)
 	entryCount := core.TriMatrixLength(numRelays)
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 	for i := 0; i < numRelays; i++ {
 		for j := 0; j < i; j++ {
 			index := core.TriMatrixIndex(i, j)
@@ -713,7 +713,7 @@ func TestTheTestEnvironment(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceIndex := env.GetRelayIndex("losangeles")
 	destIndex := env.GetRelayIndex("chicago")
@@ -749,7 +749,7 @@ func TestIndirectRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -790,7 +790,7 @@ func TestIndirectRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -831,7 +831,7 @@ func TestIndirectRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -864,7 +864,7 @@ func TestFasterRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -902,7 +902,7 @@ func TestFasterRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -927,7 +927,7 @@ func TestFasterRoute5(t *testing.T) {
 	env.AddRelay("b", "10.0.0.4")
 	env.AddRelay("c", "10.0.0.5")
 
-	env.SetCost("losangeles", "chicago", 1000)
+	env.SetCost("losangeles", "chicago", 250)
 	env.SetCost("losangeles", "a", 10)
 	env.SetCost("losangeles", "b", 100)
 	env.SetCost("losangeles", "c", 100)
@@ -944,7 +944,7 @@ func TestFasterRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -984,7 +984,7 @@ func TestSlowerRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -1225,7 +1225,7 @@ func TestBestRouteCostReallySimple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1260,7 +1260,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
 	numSegments := 64
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1307,7 +1307,7 @@ func TestBestRouteCostComplex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b", "chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{10, 5, 100, 100}
@@ -1338,7 +1338,7 @@ func TestBestRouteCostNoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{10, 5}
@@ -1373,7 +1373,7 @@ func TestCurrentRouteCost_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routeRelays := []string{"losangeles", "a", "b", "chicago"}
 
@@ -1414,7 +1414,7 @@ func TestCurrentRouteCost_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	routeRelays := []string{"chicago", "b", "a", "losangeles"}
 
@@ -1455,7 +1455,7 @@ func TestGetBestRoutes_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1505,7 +1505,7 @@ func TestGetBestRoutes_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"chicago"}
 	sourceRelayCosts := []int32{10}
@@ -1567,7 +1567,7 @@ func TestGetBestRoutes_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 3}
@@ -1620,7 +1620,7 @@ func TestGetBestRoutes_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1669,7 +1669,7 @@ func TestGetRandomBestRoute_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1729,7 +1729,7 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1773,7 +1773,7 @@ func TestGetRandomBestRoute_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1990,7 +1990,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{5}
@@ -2041,7 +2041,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2102,7 +2102,7 @@ func TestGetBestRoute_Initial_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2153,7 +2153,7 @@ func TestGetBestRoute_Initial_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2192,7 +2192,7 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -2235,7 +2235,7 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2272,7 +2272,7 @@ func TestGetBestRoute_Update_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2309,7 +2309,7 @@ func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, 5, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2335,7 +2335,7 @@ type TestData struct {
 	numRelays        int
 	relayNames       []string
 	relayDatacenters []uint64
-	costMatrix       []int32
+	costMatrix       []uint8
 	routeMatrix      []core.RouteEntry
 
 	directLatency    int32
@@ -2382,9 +2382,7 @@ func NewTestData(env *TestEnvironment) *TestData {
 	test.relayDatacenters = env.GetRelayDatacenters()
 
 	numSegments := test.numRelays
-	costThreshold := int32(5)
-	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, costThreshold, test.relayDatacenters)
-
+	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, test.relayDatacenters)
 	test.routeShader = core.NewRouteShader()
 	test.routeShader.AnalysisOnly = false
 
@@ -2792,14 +2790,14 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
 
-	env.SetCost("losangeles", "chicago", 500)
+	env.SetCost("losangeles", "chicago", 251)
 
 	test := NewTestData(env)
 
-	test.directLatency = int32(1000)
+	test.directLatency = int32(252)
 
 	test.sourceRelays = []int32{0}
-	test.sourceRelayCosts = []int32{10}
+	test.sourceRelayCosts = []int32{1}
 
 	test.destRelays = []int32{1}
 
@@ -2810,7 +2808,6 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
-	assert.Equal(t, int32(1), test.routeDiversity)
 }
 
 // -----------------------------------------------------------------------------
@@ -2969,11 +2966,11 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
 
-	env.SetCost("losangeles", "chicago", 500)
+	env.SetCost("losangeles", "chicago", 250)
 
 	test := NewTestData(env)
 
-	test.directLatency = int32(1000)
+	test.directLatency = int32(251)
 	test.directPacketLoss = float32(5.0)
 
 	test.sourceRelays = []int32{0}
@@ -3762,7 +3759,7 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 
 	env.SetCost("losangeles", "a", 1)
 	env.SetCost("a", "chicago", 1)
-	env.SetCost("losangeles", "chicago", 300)
+	env.SetCost("losangeles", "chicago", 250)
 
 	test := NewTestData(env)
 
@@ -3861,7 +3858,7 @@ func TestStayOnNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
 
-	env.SetCost("losangeles", "chicago", 500)
+	env.SetCost("losangeles", "chicago", 250)
 
 	test := NewTestData(env)
 
@@ -4051,7 +4048,7 @@ func TestStayOnNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 	env.AddRelay("losangeles", "10.0.0.1")
 	env.AddRelay("chicago", "10.0.0.2")
 
-	env.SetCost("losangeles", "chicago", 500)
+	env.SetCost("losangeles", "chicago", 250)
 
 	test := NewTestData(env)
 
@@ -4464,7 +4461,7 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 	env.AddRelay("chicago", "10.0.0.2")
 	env.AddRelay("a", "10.0.0.3")
 
-	env.SetCost("losangeles", "chicago", 400)
+	env.SetCost("losangeles", "chicago", 250)
 	env.SetCost("losangeles", "a", 1)
 	env.SetCost("a", "chicago", 1)
 

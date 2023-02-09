@@ -16,7 +16,7 @@ const (
 	MaxIndirects = 8
 	MaxRoutesPerEntry = 64
 	JitterThreshold = 15      // todo: poorly named
-
+	CostThreshold = 1
 
 	// todo: convert these to golang style
 	NEXT_MAX_NODES = 7

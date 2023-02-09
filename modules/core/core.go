@@ -337,13 +337,13 @@ type RouteEntry struct {
 	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
 }
 
-func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64) []RouteEntry {
+func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []uint64) []RouteEntry {
 
 	// build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
 	type Indirect struct {
 		relay int32
-		cost  int32
+		cost  uint32
 	}
 
 	indirect := make([][][]Indirect, numRelays)
@@ -380,9 +380,9 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 					ijIndex := TriMatrixIndex(i, j)
 
 					numRoutes := 0
-					costDirect := cost[ijIndex]
+					costDirect := uint32(cost[ijIndex])
 
-					if costDirect < 0 {
+					if costDirect == 255 {
 
 						// no direct route exists between i,j. subdivide valid routes so we don't miss indirect paths.
 
@@ -394,11 +394,11 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 							kjIndex := TriMatrixIndex(k, j)
 							ikCost := cost[ikIndex]
 							kjCost := cost[kjIndex]
-							if ikCost < 0 || kjCost < 0 {
+							if ikCost == 255 || kjCost == 255 {
 								continue
 							}
 							working[numRoutes].relay = int32(k)
-							working[numRoutes].cost = int32(ikCost + kjCost)
+							working[numRoutes].cost = uint32(ikCost + kjCost)
 							numRoutes++
 						}
 
@@ -411,17 +411,17 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 								continue
 							}
 							ixIndex := TriMatrixIndex(i, x)
-							ixCost := cost[ixIndex]
-							if ixCost < 0 {
+							ixCost := uint32(cost[ixIndex])
+							if ixCost == 255 {
 								continue
 							}
 							xjIndex := TriMatrixIndex(x, j)
-							xjCost := cost[xjIndex]
-							if xjCost < 0 {
+							xjCost := uint32(cost[xjIndex])
+							if xjCost == 255 {
 								continue
 							}
 							indirectCost := ixCost + xjCost
-							if indirectCost > costDirect-costThreshold {
+							if indirectCost + constants.CostThreshold > costDirect {
 								continue
 							}
 							working[numRoutes].relay = int32(x)
@@ -478,8 +478,8 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 					index := TriMatrixIndex(i, j)
 
-					if cost[index] >= 0 {
-						routeManager.AddRoute(cost[index], int32(i), int32(j))
+					if cost[index] != 255 {
+						routeManager.AddRoute(int32(cost[index]), int32(i), int32(j))
 					}
 
 					// add subdivided routes
@@ -494,7 +494,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						// i -> (k) -> j
 
 						ikj_cost := indirect[i][j][k_index].cost
-						routeManager.AddRoute(ikj_cost, int32(i), int32(k), int32(j))
+						routeManager.AddRoute(int32(ikj_cost), int32(i), int32(k), int32(j))
 
 						// i -> (x) -> k    ->     j
 
@@ -502,7 +502,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 							x := indirect[i][k][x_index].relay
 							ixk_cost := indirect[i][k][x_index].cost
-							routeManager.AddRoute(ixk_cost+kj_cost, int32(i), int32(x), int32(k), int32(j))
+							routeManager.AddRoute(int32(ixk_cost)+int32(kj_cost), int32(i), int32(x), int32(k), int32(j))
 						}
 
 						// i        -> k -> (y) -> j
@@ -510,7 +510,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 						for y_index := range indirect[k][j] {
 							kyj_cost := indirect[k][j][y_index].cost
 							y := indirect[k][j][y_index].relay
-							routeManager.AddRoute(ik_cost+kyj_cost, int32(i), int32(k), int32(y), int32(j))
+							routeManager.AddRoute(int32(ik_cost)+int32(kyj_cost), int32(i), int32(k), int32(y), int32(j))
 						}
 
 						// i -> (x) -> k -> (y) -> j
@@ -521,7 +521,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 							for y_index := range indirect[k][j] {
 								kyj_cost := indirect[k][j][y_index].cost
 								y := int(indirect[k][j][y_index].relay)
-								routeManager.AddRoute(ixk_cost+kyj_cost, int32(i), int32(x), int32(k), int32(y), int32(j))
+								routeManager.AddRoute(int32(ixk_cost)+int32(kyj_cost), int32(i), int32(x), int32(k), int32(y), int32(j))
 							}
 						}
 					}
@@ -530,7 +530,7 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 
 					numRoutes := int(routeManager.NumRoutes)
 
-					routes[index].DirectCost = cost[index]
+					routes[index].DirectCost = int32(cost[index])
 					routes[index].NumRoutes = int32(numRoutes)
 
 					for u := 0; u < numRoutes; u++ {
@@ -553,8 +553,8 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 	return routes
 }
 
-func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
-	return Optimize(numRelays, numSegments, cost, costThreshold, relayDatacenter)
+func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
+	return Optimize(numRelays, numSegments, cost, relayDatacenter)
 }
 
 // todo: only optimize when dest relay
@@ -1161,7 +1161,7 @@ func NewRouteShader() RouteShader {
 		RTTVeto_Default:           -10,
 		RTTVeto_Multipath:         -20,
 		RTTVeto_PacketLoss:        -30,
-		MaxNextRTT:                300,
+		MaxNextRTT:                250,
 		ForceNext:                 false,
 		RouteDiversity:            0,
 	}

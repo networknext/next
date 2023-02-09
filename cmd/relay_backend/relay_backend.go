@@ -874,8 +874,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					}
 				}
 
-				costThreshold := int32(1)
-
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
 					Version:            common.RouteMatrixVersion_Write,
@@ -886,7 +884,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayLongitudes:    costMatrixNew.RelayLongitudes,
 					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
 					DestRelays:         costMatrixNew.DestRelays,
-					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, costThreshold, relayData.RelayDatacenterIds, relayData.DestRelays),
+					// todo: bring back optimize
+					RouteEntries:       nil, // core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 				}

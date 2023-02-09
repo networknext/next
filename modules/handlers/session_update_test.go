@@ -40,13 +40,13 @@ func CreateState() *handlers.SessionUpdateState {
 	return &state
 }
 
-func generateRouteMatrix(relayIds []uint64, costMatrix []int32, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
+func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters []uint64, database *db.Database) *common.RouteMatrix {
 
 	numRelays := len(relayIds)
 
 	numSegments := numRelays
 
-	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, 1, relayDatacenters[:])
+	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters[:])
 
 	destRelays := make([]bool, numRelays)
 
@@ -1556,10 +1556,10 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	entryCount := core.TriMatrixLength(NumRelays)
 
-	costMatrix := make([]int32, entryCount)
+	costMatrix := make([]uint8, entryCount)
 
 	for i := range costMatrix {
-		costMatrix[i] = -1
+		costMatrix[i] = 255
 	}
 
 	costMatrix[core.TriMatrixIndex(0, 1)] = 10
