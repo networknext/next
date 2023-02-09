@@ -587,7 +587,15 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
                                          ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  |
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = next_platform_htons( to->port );
-        sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
+        int result = sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
+        // VELAN
+        if ( result == SOCKET_ERROR )
+        {
+            int error = WSAGetLastError();
+            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_address_to_string( to, address_string );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %d", address_string, error );
+        }
     }
 }
 
@@ -609,7 +617,8 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     {
         int error = WSAGetLastError();
 
-        if ( error == WSAEWOULDBLOCK || error == WSAETIMEDOUT || error == WSAECONNRESET )
+        // VELAN
+        if ( error == WSAEWOULDBLOCK || error == WSAETIMEDOUT )
             return 0;
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "recvfrom failed with error %d", error );

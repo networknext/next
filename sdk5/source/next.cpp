@@ -4956,7 +4956,19 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
             next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
+#if NEXT_SPIKE_TRACKING
+            double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+            double finish_time = next_time();
+            if ( finish_time - start_time > 0.001 )
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+            }
+#endif // #if NEXT_SPIKE_TRACKING
 
             manager->relay_last_ping_time[i] = current_time;
         }
@@ -6586,7 +6598,19 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
     next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 
     return NEXT_OK;
 }
@@ -8053,7 +8077,19 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
+#if NEXT_SPIKE_TRACKING
+        double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+        double finish_time = next_time();
+        if ( finish_time - start_time > 0.001 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+        }
+#endif // #if NEXT_SPIKE_TRACKING
 
         client->last_next_ping_time = current_time;
     }
@@ -8146,14 +8182,40 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
+
+#if NEXT_SPIKE_TRACKING
+        double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+        double finish_time = next_time();
+        if ( finish_time - start_time > 0.001 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+        }
+#endif // #if NEXT_SPIKE_TRACKING
     }
 
     if ( send_continue_request )
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
+
+#if NEXT_SPIKE_TRACKING
+        double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+        double finish_time = next_time();
+        if ( finish_time - start_time > 0.001 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+        }
+#endif // #if NEXT_SPIKE_TRACKING
     }
 }
 
@@ -8176,7 +8238,19 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
     next_assert( client->upgrade_response_packet_bytes > 0 );
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( client->socket, &client->server_address, client->upgrade_response_packet_data, client->upgrade_response_packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent cached upgrade response packet to server" );
 
@@ -8702,7 +8776,20 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             if ( result )
             {
+#if NEXT_SPIKE_TRACKING
+                double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
                 next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+                double finish_time = next_time();
+                if ( finish_time - start_time > 0.001 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+                }
+#endif // #if NEXT_SPIKE_TRACKING
+
                 client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]++;
             }
             else
@@ -8738,7 +8825,19 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             (void) direct_packet_data;
             (void) direct_packet_bytes;
 
+#if NEXT_SPIKE_TRACKING 
+            double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, direct_packet_data, direct_packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+            double finish_time = next_time();
+            if ( finish_time - start_time > 0.001 )
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+            }
+#endif // #if NEXT_SPIKE_TRACKING
 
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
@@ -8782,7 +8881,21 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
     buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
+
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH]++;
 
     client->internal->packets_sent++;
@@ -8797,7 +8910,19 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
     next_assert( to_address );
     next_assert( packet_bytes > 0 );
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 void next_client_report_session( next_client_t * client )
@@ -12316,7 +12441,19 @@ void next_server_internal_send_packet_to_address( next_server_internal_t * serve
             return;
     }
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( server->socket, address, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 void next_server_internal_send_packet_to_backend( next_server_internal_t * server, const uint8_t * packet_data, int packet_bytes )
@@ -12327,7 +12464,19 @@ void next_server_internal_send_packet_to_backend( next_server_internal_t * serve
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 int next_server_internal_send_packet( next_server_internal_t * server, const next_address_t * to_address, uint8_t packet_id, void * packet_object )
@@ -15637,7 +15786,19 @@ void next_server_send_packet_to_address( next_server_t * server, const next_addr
             return;
     }
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( server->internal->socket, address, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
@@ -15828,7 +15989,19 @@ void next_server_send_packet_raw( struct next_server_t * server, const struct ne
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
 
+#if NEXT_SPIKE_TRACKING
+    double start_time = next_time();
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
+
+#if NEXT_SPIKE_TRACKING
+    double finish_time = next_time();
+    if ( finish_time - start_time > 0.001 )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
 }
 
 NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
