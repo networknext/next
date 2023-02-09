@@ -15708,7 +15708,7 @@ void next_server_update( next_server_t * server )
     next_server_verify_sentinels( server );
 
 #if NEXT_SPIKE_TRACKING
-    next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "next_server_update" );
 #endif // #if NEXT_SPIKE_TRACKING
 
     while ( true )
@@ -15728,6 +15728,9 @@ void next_server_update( next_server_t * server )
         {
             case NEXT_SERVER_NOTIFY_PACKET_RECEIVED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_PACKET_RECEIVED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_notify_packet_received_t * packet_received = (next_server_notify_packet_received_t*) notify;
                 next_assert( packet_received->packet_data );
                 next_assert( packet_received->packet_bytes > 0 );
@@ -15738,6 +15741,9 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_SESSION_UPGRADED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_SESSION_UPDATED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_notify_session_upgraded_t * session_upgraded = (next_server_notify_session_upgraded_t*) notify;
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "server upgraded client %s to session %" PRIx64, next_address_to_string( &session_upgraded->address, address_buffer ), session_upgraded->session_id );
@@ -15753,6 +15759,9 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_notify_pending_session_timed_out_t * pending_session_timed_out = (next_server_notify_pending_session_timed_out_t*) notify;
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server timed out pending upgrade of client %s to session %" PRIx64, next_address_to_string( &pending_session_timed_out->address, address_buffer ), pending_session_timed_out->session_id );
@@ -15767,6 +15776,9 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_notify_session_timed_out_t * session_timed_out = (next_server_notify_session_timed_out_t*) notify;
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "server timed out client %s from session %" PRIx64, next_address_to_string( &session_timed_out->address, address_buffer ), session_timed_out->session_id );
@@ -15780,6 +15792,9 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_READY:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_READY" );
+#endif // #if NEXT_SPIKE_TRACKING
                 next_server_notify_ready_t * ready = (next_server_notify_ready_t*) notify;
                 next_copy_string( server->datacenter_name, ready->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
                 server->ready = true;
@@ -15790,12 +15805,19 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_FLUSH_FINISHED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_FLUSH_FINISHED" );
+#endif // #if NEXT_SPIKE_TRACKING
                 server->flushed = true;
             }
             break;
 
             case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_MAGIC_UPDATED" );
+#endif // #if NEXT_SPIKE_TRACKING
+
                 next_server_notify_magic_updated_t * magic_updated = (next_server_notify_magic_updated_t*) notify;
 
                 memcpy( server->current_magic, magic_updated->current_magic, 8 );
@@ -15814,6 +15836,9 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_DIRECT_ONLY:
             {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server received NEXT_SERVER_NOTIFY_DIRECT_ONLY" );
+#endif // #if NEXT_SPIKE_TRACKING
                 server->direct_only = true;
             }
             break;
