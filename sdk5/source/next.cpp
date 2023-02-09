@@ -15735,6 +15735,10 @@ void next_server_update( next_server_t * server )
                 next_assert( packet_received->packet_data );
                 next_assert( packet_received->packet_bytes > 0 );
                 next_assert( packet_received->packet_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
+#if NEXT_SPIKE_TRACKING
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server calling packet received callback: from = %s, packet_bytes = %d", next_address_to_string( &packet_received->from, address_buffer ), packet_received->packet_bytes );
+#endif // #if NEXT_SPIKE_TRACKING
                 server->packet_received_callback( server, server->context, &packet_received->from, packet_received->packet_data, packet_received->packet_bytes );
             }
             break;
