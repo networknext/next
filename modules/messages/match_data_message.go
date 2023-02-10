@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -15,8 +16,6 @@ const (
 	MatchDataMessageVersion_Write = 1
 
 	MaxMatchDataMessageBytes = 2048
-
-	MatchDataMaxMatchValues = 64
 )
 
 type MatchDataMessage struct {
@@ -29,7 +28,7 @@ type MatchDataMessage struct {
 	SessionId      uint64
 	MatchId        uint64
 	NumMatchValues uint32
-	MatchValues    [MatchDataMaxMatchValues]float64
+	MatchValues    [constants.MaxMatchValues]float64
 }
 
 func (message *MatchDataMessage) Read(buffer []byte) error {

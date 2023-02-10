@@ -22,8 +22,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
@@ -206,209 +206,226 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// todo: would be great to process via the real packets here instead of manually
 
-/*
-	// parse the relay update request
+	/*
+	   // parse the relay update request
 
-	body, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		fmt.Printf("could not read body\n")
-		return
-	}
-	defer request.Body.Close()
+	   body, err := ioutil.ReadAll(request.Body)
 
-	index := 0
+	   	if err != nil {
+	   		fmt.Printf("could not read body\n")
+	   		return
+	   	}
 
-	var version uint32
-	if !encoding.ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
-		fmt.Printf("bad version\n")
-		return
-	}
+	   defer request.Body.Close()
 
-	var relay_address string
-	if !encoding.ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
-		fmt.Printf("address\n")
-		return
-	}
+	   index := 0
 
-	relayId := common.RelayId(relay_address)
+	   var version uint32
 
-	var token []byte
-	if !encoding.ReadBytes(body, &index, &token, RelayTokenBytes) {
-		fmt.Printf("bad token\n")
-		return
-	}
+	   	if !encoding.ReadUint32(body, &index, &version) || version != UpdateRequestVersion {
+	   		fmt.Printf("bad version\n")
+	   		return
+	   	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
-	if err != nil {
-		fmt.Printf("bad resolve addr '%s'\n", relay_address)
-		return
-	}
+	   var relay_address string
 
-	var numSamples uint32
-	if !encoding.ReadUint32(body, &index, &numSamples) {
-		fmt.Printf("could not read num samples\n")
-		return
-	}
+	   	if !encoding.ReadString(body, &index, &relay_address, MaxRelayAddressLength) {
+	   		fmt.Printf("address\n")
+	   		return
+	   	}
 
-	sampleRelayId := make([]uint64, numSamples)
-	sampleRTT := make([]float32, numSamples)
-	sampleJitter := make([]float32, numSamples)
-	samplePacketLoss := make([]float32, numSamples)
+	   relayId := common.RelayId(relay_address)
 
-	for i := 0; i < int(numSamples); i++ {
+	   var token []byte
 
-		var id uint64
-		var rtt, jitter, packetLoss float32
+	   	if !encoding.ReadBytes(body, &index, &token, RelayTokenBytes) {
+	   		fmt.Printf("bad token\n")
+	   		return
+	   	}
 
-		if !encoding.ReadUint64(body, &index, &id) {
-			fmt.Printf("bad relay id\n")
-			return
-		}
+	   udpAddr, err := net.ResolveUDPAddr("udp", relay_address)
 
-		if !encoding.ReadFloat32(body, &index, &rtt) {
-			fmt.Printf("bad relay rtt\n")
-			return
-		}
+	   	if err != nil {
+	   		fmt.Printf("bad resolve addr '%s'\n", relay_address)
+	   		return
+	   	}
 
-		if !encoding.ReadFloat32(body, &index, &jitter) {
-			fmt.Printf("bad relay jitter\n")
-			return
-		}
+	   var numSamples uint32
 
-		if !encoding.ReadFloat32(body, &index, &packetLoss) {
-			fmt.Printf("bad relay packet loss\n")
-			return
-		}
+	   	if !encoding.ReadUint32(body, &index, &numSamples) {
+	   		fmt.Printf("could not read num samples\n")
+	   		return
+	   	}
 
-		sampleRelayId[i] = id
-		sampleRTT[i] = rtt
-		sampleJitter[i] = jitter
-		samplePacketLoss[i] = packetLoss
-	}
+	   sampleRelayId := make([]uint64, numSamples)
+	   sampleRTT := make([]float32, numSamples)
+	   sampleJitter := make([]float32, numSamples)
+	   samplePacketLoss := make([]float32, numSamples)
 
-	var sessionCount uint64
-	if !encoding.ReadUint64(body, &index, &sessionCount) {
-		fmt.Printf("could not read session count\n")
-		return
-	}
+	   for i := 0; i < int(numSamples); i++ {
 
-	var shutdown bool
-	if !encoding.ReadBool(body, &index, &shutdown) {
-		fmt.Printf("could not read shutdown\n")
-		return
-	}
+	   		var id uint64
+	   		var rtt, jitter, packetLoss float32
 
-	var relayVersion string
-	if !encoding.ReadString(body, &index, &relayVersion, uint32(32)) {
-		fmt.Printf("could not read relay version\n")
-		return
-	}
+	   		if !encoding.ReadUint64(body, &index, &id) {
+	   			fmt.Printf("bad relay id\n")
+	   			return
+	   		}
 
-	var cpu uint8
-	if !encoding.ReadUint8(body, &index, &cpu) {
-		fmt.Printf("could not read cpu\n")
-		return
-	}
+	   		if !encoding.ReadFloat32(body, &index, &rtt) {
+	   			fmt.Printf("bad relay rtt\n")
+	   			return
+	   		}
 
-	var envelopeUpKbps uint64
-	if !encoding.ReadUint64(body, &index, &envelopeUpKbps) {
-		fmt.Printf("could not read envelope up kbps\n")
-		return
-	}
+	   		if !encoding.ReadFloat32(body, &index, &jitter) {
+	   			fmt.Printf("bad relay jitter\n")
+	   			return
+	   		}
 
-	var envelopeDownKbps uint64
-	if !encoding.ReadUint64(body, &index, &envelopeDownKbps) {
-		fmt.Printf("could not read envelope down kbps\n")
-		return
-	}
+	   		if !encoding.ReadFloat32(body, &index, &packetLoss) {
+	   			fmt.Printf("bad relay packet loss\n")
+	   			return
+	   		}
 
-	var bandwidthSentKbps uint64
-	if !encoding.ReadUint64(body, &index, &bandwidthSentKbps) {
-		fmt.Printf("could not read bandwidth sent kbps\n")
-		return
-	}
+	   		sampleRelayId[i] = id
+	   		sampleRTT[i] = rtt
+	   		sampleJitter[i] = jitter
+	   		samplePacketLoss[i] = packetLoss
+	   	}
 
-	var bandwidthRecvKbps uint64
-	if !encoding.ReadUint64(body, &index, &bandwidthRecvKbps) {
-		fmt.Printf("could not read bandwidth recv kbps\n")
-		return
-	}
+	   var sessionCount uint64
 
-	var numCounters uint32
-	if !encoding.ReadUint32(body, &index, &numCounters) {
-		fmt.Printf("could not read num counters\n")
-		return
-	}
+	   	if !encoding.ReadUint64(body, &index, &sessionCount) {
+	   		fmt.Printf("could not read session count\n")
+	   		return
+	   	}
 
-	if numCounters != constants.NumRelayCounters {
-		fmt.Printf("wrong number of counters: expected %d, got %d\n", constants.NumRelayCounters, numCounters)
-		return
-	}
+	   var shutdown bool
 
-	counters := [constants.NumRelayCounters]uint64{}
-	for i := 0; i < constants.NumRelayCounters; i++ {
-		if !encoding.ReadUint64(body, &index, &counters[i]) {
-			fmt.Printf("could not read counter\n")
-			return
-		}
-	}
+	   	if !encoding.ReadBool(body, &index, &shutdown) {
+	   		fmt.Printf("could not read shutdown\n")
+	   		return
+	   	}
 
-	// process the relay update
+	   var relayVersion string
 
-	relayPort := udpAddr.Port
+	   	if !encoding.ReadString(body, &index, &relayVersion, uint32(32)) {
+	   		fmt.Printf("could not read relay version\n")
+	   		return
+	   	}
 
-	relayName := fmt.Sprintf("local.%d", relayPort)
+	   var cpu uint8
 
-	currentTime := time.Now().Unix()
+	   	if !encoding.ReadUint8(body, &index, &cpu) {
+	   		fmt.Printf("could not read cpu\n")
+	   		return
+	   	}
 
-	backend.mutex.Lock()
-	backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, relayFlags, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
-	backend.mutex.Unlock()
+	   var envelopeUpKbps uint64
 
-	// get relays to ping
+	   	if !encoding.ReadUint64(body, &index, &envelopeUpKbps) {
+	   		fmt.Printf("could not read envelope up kbps\n")
+	   		return
+	   	}
 
-	relayIds, relayAddresses := backend.GetRelays()
+	   var envelopeDownKbps uint64
 
-	numRelays := uint32(len(relayIds))
+	   	if !encoding.ReadUint64(body, &index, &envelopeDownKbps) {
+	   		fmt.Printf("could not read envelope down kbps\n")
+	   		return
+	   	}
 
-	// write response packet
+	   var bandwidthSentKbps uint64
 
-	magicUpcoming, magicCurrent, magicPrevious := GetMagic()
+	   	if !encoding.ReadUint64(body, &index, &bandwidthSentKbps) {
+	   		fmt.Printf("could not read bandwidth sent kbps\n")
+	   		return
+	   	}
 
-	responseData := make([]byte, 10*1024)
+	   var bandwidthRecvKbps uint64
 
-	index = 0
+	   	if !encoding.ReadUint64(body, &index, &bandwidthRecvKbps) {
+	   		fmt.Printf("could not read bandwidth recv kbps\n")
+	   		return
+	   	}
 
-	encoding.WriteUint32(responseData, &index, UpdateResponseVersion)
+	   var numCounters uint32
 
-	encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+	   	if !encoding.ReadUint32(body, &index, &numCounters) {
+	   		fmt.Printf("could not read num counters\n")
+	   		return
+	   	}
 
-	encoding.WriteUint32(responseData, &index, uint32(numRelays))
+	   	if numCounters != constants.NumRelayCounters {
+	   		fmt.Printf("wrong number of counters: expected %d, got %d\n", constants.NumRelayCounters, numCounters)
+	   		return
+	   	}
 
-	for i := range relayIds {
-		encoding.WriteUint64(responseData, &index, relayIds[i])
-		encoding.WriteString(responseData, &index, relayAddresses[i].String(), MaxRelayAddressLength)
-		encoding.WriteUint8(responseData, &index, 0)
-	}
+	   counters := [constants.NumRelayCounters]uint64{}
 
-	encoding.WriteString(responseData, &index, relayVersion, uint32(32))
+	   	for i := 0; i < constants.NumRelayCounters; i++ {
+	   		if !encoding.ReadUint64(body, &index, &counters[i]) {
+	   			fmt.Printf("could not read counter\n")
+	   			return
+	   		}
+	   	}
 
-	encoding.WriteBytes(responseData, &index, magicUpcoming[:], 8)
+	   // process the relay update
 
-	encoding.WriteBytes(responseData, &index, magicCurrent[:], 8)
+	   relayPort := udpAddr.Port
 
-	encoding.WriteBytes(responseData, &index, magicPrevious[:], 8)
+	   relayName := fmt.Sprintf("local.%d", relayPort)
 
-	encoding.WriteUint32(responseData, &index, 0)
+	   currentTime := time.Now().Unix()
 
-	responseLength := index
+	   backend.mutex.Lock()
+	   backend.relayManager.ProcessRelayUpdate(currentTime, relayId, relayName, *udpAddr, int(sessionCount), relayVersion, relayFlags, int(numSamples), sampleRelayId, sampleRTT, sampleJitter, samplePacketLoss, counters[:])
+	   backend.mutex.Unlock()
 
-	responseData = responseData[:responseLength]
+	   // get relays to ping
 
-	writer.Header().Set("Content-Type", "application/octet-stream")
+	   relayIds, relayAddresses := backend.GetRelays()
 
-	writer.Write(responseData)
-*/
+	   numRelays := uint32(len(relayIds))
+
+	   // write response packet
+
+	   magicUpcoming, magicCurrent, magicPrevious := GetMagic()
+
+	   responseData := make([]byte, 10*1024)
+
+	   index = 0
+
+	   encoding.WriteUint32(responseData, &index, UpdateResponseVersion)
+
+	   encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
+
+	   encoding.WriteUint32(responseData, &index, uint32(numRelays))
+
+	   	for i := range relayIds {
+	   		encoding.WriteUint64(responseData, &index, relayIds[i])
+	   		encoding.WriteString(responseData, &index, relayAddresses[i].String(), MaxRelayAddressLength)
+	   		encoding.WriteUint8(responseData, &index, 0)
+	   	}
+
+	   encoding.WriteString(responseData, &index, relayVersion, uint32(32))
+
+	   encoding.WriteBytes(responseData, &index, magicUpcoming[:], 8)
+
+	   encoding.WriteBytes(responseData, &index, magicCurrent[:], 8)
+
+	   encoding.WriteBytes(responseData, &index, magicPrevious[:], 8)
+
+	   encoding.WriteUint32(responseData, &index, 0)
+
+	   responseLength := index
+
+	   responseData = responseData[:responseLength]
+
+	   writer.Header().Set("Content-Type", "application/octet-stream")
+
+	   writer.Write(responseData)
+	*/
 }
 
 func StartWebServer() {

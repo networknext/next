@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -12,9 +13,6 @@ const (
 	CostMatrixVersion_Min   = 2 // the minimum version we can read
 	CostMatrixVersion_Max   = 2 // the maximum version we can read
 	CostMatrixVersion_Write = 2 // the version we write
-
-	// todo: constants
-	MaxRelayNameLength = 63
 )
 
 type CostMatrix struct {
@@ -56,7 +54,7 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], constants.MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -117,7 +115,7 @@ func GenerateRandomCostMatrix() CostMatrix {
 	for i := 0; i < numRelays; i++ {
 		costMatrix.RelayIds[i] = rand.Uint64()
 		costMatrix.RelayAddresses[i] = RandomAddress()
-		costMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		costMatrix.RelayNames[i] = RandomString(constants.MaxRelayNameLength)
 		costMatrix.RelayLatitudes[i] = rand.Float32()
 		costMatrix.RelayLongitudes[i] = rand.Float32()
 		costMatrix.RelayDatacenterIds[i] = rand.Uint64()

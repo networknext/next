@@ -5,6 +5,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -14,8 +15,6 @@ const (
 	ServerUpdateMessageVersion_Write = 1
 
 	MaxServerUpdateMessageSize = 128
-
-	ServerUpdateMaxDatacenterNameLength = 256
 )
 
 type ServerUpdateMessage struct {
@@ -60,7 +59,7 @@ func (message *ServerUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read datacenter id")
 	}
 
-	if !encoding.ReadString(buffer, &index, &message.DatacenterName, ServerUpdateMaxDatacenterNameLength) {
+	if !encoding.ReadString(buffer, &index, &message.DatacenterName, constants.MaxDatacenterNameLength) {
 		return fmt.Errorf("failed to read datacenter name")
 	}
 
@@ -81,7 +80,7 @@ func (message *ServerUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
-	encoding.WriteString(buffer, &index, message.DatacenterName, ServerUpdateMaxDatacenterNameLength)
+	encoding.WriteString(buffer, &index, message.DatacenterName, constants.MaxDatacenterNameLength)
 
 	return buffer[:index]
 }

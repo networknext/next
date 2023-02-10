@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
@@ -466,7 +467,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	defer func() {
 		milliseconds := float64(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
-			state.SessionFlags |= messages.SessionFlags_LongDuration
+			state.SessionFlags |= constants.SessionFlags_LongDuration
 		}
 		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 	}()

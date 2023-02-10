@@ -607,31 +607,31 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 	// todo
 	/*
-	var pingStatsProducer *common.GooglePubsubProducer
-	var relayStatsProducer *common.GooglePubsubProducer
+		var pingStatsProducer *common.GooglePubsubProducer
+		var relayStatsProducer *common.GooglePubsubProducer
 
-	if !disableGooglePubsub {
+		if !disableGooglePubsub {
 
-		pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          service.GoogleProjectId,
-			Topic:              pingStatsPubsubTopic,
-			MessageChannelSize: maxPingStatsChannelSize,
-		})
-		if err != nil {
-			core.Error("could not create ping stats producer")
-			os.Exit(1)
+			pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+				ProjectId:          service.GoogleProjectId,
+				Topic:              pingStatsPubsubTopic,
+				MessageChannelSize: maxPingStatsChannelSize,
+			})
+			if err != nil {
+				core.Error("could not create ping stats producer")
+				os.Exit(1)
+			}
+
+			relayStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+				ProjectId:          service.GoogleProjectId,
+				Topic:              relayStatsPubsubTopic,
+				MessageChannelSize: maxRelayStatsChannelSize,
+			})
+			if err != nil {
+				core.Error("could not create relay stats producer")
+				os.Exit(1)
+			}
 		}
-
-		relayStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          service.GoogleProjectId,
-			Topic:              relayStatsPubsubTopic,
-			MessageChannelSize: maxRelayStatsChannelSize,
-		})
-		if err != nil {
-			core.Error("could not create relay stats producer")
-			os.Exit(1)
-		}
-	}
 	*/
 
 	go func() {
@@ -718,88 +718,88 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				}
 
 				/*
-				// build ping stats message
+					// build ping stats message
 
-				numRoutable := 0
+					numRoutable := 0
 
-				pingStatsMessages := make([]messages.PingStatsMessage, 0)
-				sampleRelayIds := make([]uint64, numSamples)
-				sampleRTT := make([]float32, numSamples)
-				sampleJitter := make([]float32, numSamples)
-				samplePacketLoss := make([]float32, numSamples)
-				sampleRoutable := make([]bool, numSamples)
+					pingStatsMessages := make([]messages.PingStatsMessage, 0)
+					sampleRelayIds := make([]uint64, numSamples)
+					sampleRTT := make([]float32, numSamples)
+					sampleJitter := make([]float32, numSamples)
+					samplePacketLoss := make([]float32, numSamples)
+					sampleRoutable := make([]bool, numSamples)
 
-				for i := 0; i < numSamples; i++ {
+					for i := 0; i < numSamples; i++ {
 
-					rtt := relayUpdateRequest.SampleRTT[i]
-					jitter := relayUpdateRequest.SampleJitter[i]
-					pl := relayUpdateRequest.SamplePacketLoss[i]
+						rtt := relayUpdateRequest.SampleRTT[i]
+						jitter := relayUpdateRequest.SampleJitter[i]
+						pl := relayUpdateRequest.SamplePacketLoss[i]
 
-					sampleRelayId := relayUpdateRequest.SampleRelayId[i]
+						sampleRelayId := relayUpdateRequest.SampleRelayId[i]
 
-					sampleRelayIds[i] = sampleRelayId
-					sampleRTT[i] = rtt
-					sampleJitter[i] = jitter
-					samplePacketLoss[i] = pl
+						sampleRelayIds[i] = sampleRelayId
+						sampleRTT[i] = rtt
+						sampleJitter[i] = jitter
+						samplePacketLoss[i] = pl
 
-					if rtt <= maxRTT && jitter <= maxJitter && pl <= maxPacketLoss {
-						numRoutable++
-						sampleRoutable[i] = true
+						if rtt <= maxRTT && jitter <= maxJitter && pl <= maxPacketLoss {
+							numRoutable++
+							sampleRoutable[i] = true
+						}
+
+						pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
+							Version:    messages.PingStatsMessageVersion_Write,
+							Timestamp:  uint64(time.Now().Unix()),
+							RelayA:     relayId,
+							RelayB:     sampleRelayId,
+							RTT:        rtt,
+							Jitter:     jitter,
+							PacketLoss: pl,
+							Routable:   sampleRoutable[i],
+						})
 					}
 
-					pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
-						Version:    messages.PingStatsMessageVersion_Write,
-						Timestamp:  uint64(time.Now().Unix()),
-						RelayA:     relayId,
-						RelayB:     sampleRelayId,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
-						Routable:   sampleRoutable[i],
-					})
-				}
-		
-				// todo: disable for the moment
-				/*
-				// build relay stats message
+					// todo: disable for the moment
+					/*
+					// build relay stats message
 
-				numUnroutable := numSamples - numRoutable
-				maxSessions := relayData.RelayArray[relayIndex].MaxSessions
-				numSessions := relayUpdateRequest.SessionCount
-				full := maxSessions != 0 && numSessions >= uint64(maxSessions)
+					numUnroutable := numSamples - numRoutable
+					maxSessions := relayData.RelayArray[relayIndex].MaxSessions
+					numSessions := relayUpdateRequest.SessionCount
+					full := maxSessions != 0 && numSessions >= uint64(maxSessions)
 
-				relayStatsMessage := messages.RelayStatsMessage{
-					Version:       messages.RelayStatsMessageVersion_Write,
-					Timestamp:     uint64(time.Now().Unix()),
-					NumSessions:   uint32(numSessions),
-					MaxSessions:   uint32(maxSessions),
-					NumRoutable:   uint32(numRoutable),
-					NumUnroutable: uint32(numUnroutable),
-					Full:          full,
-				}
-
-				// update relay stats
-
-				if service.IsLeader() {
-
-					messageBuffer := make([]byte, maxRelayStatsMessageBytes)
-
-					message := relayStatsMessage.Write(messageBuffer[:])
-
-					relayStatsProducer.MessageChannel <- message
-				}
-
-				// update ping stats
-
-				if service.IsLeader() {
-
-					messageBuffer := make([]byte, maxPingStatsMessageBytes)
-
-					for i := 0; i < len(pingStatsMessages); i++ {
-						message := pingStatsMessages[i].Write(messageBuffer[:])
-						pingStatsProducer.MessageChannel <- message
+					relayStatsMessage := messages.RelayStatsMessage{
+						Version:       messages.RelayStatsMessageVersion_Write,
+						Timestamp:     uint64(time.Now().Unix()),
+						NumSessions:   uint32(numSessions),
+						MaxSessions:   uint32(maxSessions),
+						NumRoutable:   uint32(numRoutable),
+						NumUnroutable: uint32(numUnroutable),
+						Full:          full,
 					}
-				}
+
+					// update relay stats
+
+					if service.IsLeader() {
+
+						messageBuffer := make([]byte, maxRelayStatsMessageBytes)
+
+						message := relayStatsMessage.Write(messageBuffer[:])
+
+						relayStatsProducer.MessageChannel <- message
+					}
+
+					// update ping stats
+
+					if service.IsLeader() {
+
+						messageBuffer := make([]byte, maxPingStatsMessageBytes)
+
+						for i := 0; i < len(pingStatsMessages); i++ {
+							message := pingStatsMessages[i].Write(messageBuffer[:])
+							pingStatsProducer.MessageChannel <- message
+						}
+					}
 				*/
 			}
 		}
@@ -883,9 +883,9 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
 					DestRelays:         costMatrixNew.DestRelays,
 					// todo: bring back optimize
-					RouteEntries:       nil, // core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
-					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
-					BinFileData:        relayData.DatabaseBinFile,
+					RouteEntries: nil, // core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
+					BinFileBytes: int32(len(relayData.DatabaseBinFile)),
+					BinFileData:  relayData.DatabaseBinFile,
 				}
 
 				// serve up as internal route matrix

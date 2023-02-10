@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/messages"
 
 	"github.com/stretchr/testify/assert"
@@ -183,7 +183,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 	// next only
 
-	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
 		message.NextJitter = float32(common.RandomInt(0, 1000))
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))
@@ -207,7 +207,7 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 
 	// summary only
 
-	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 		message.DatacenterId = rand.Uint64()
 		message.BuyerId = rand.Uint64()
 		message.UserHash = rand.Uint64()
@@ -269,7 +269,7 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
-	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
 		message.NextJitter = float32(common.RandomInt(0, 1000))
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))

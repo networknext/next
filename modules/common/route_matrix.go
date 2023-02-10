@@ -16,7 +16,7 @@ const (
 	RouteMatrixVersion_Max   = 7
 	RouteMatrixVersion_Write = 7
 
-	MaxDatabaseBinWrapperSize = 100000000      // todo: too large
+	MaxDatabaseBinWrapperSize = 100000000 // todo: too large
 )
 
 type RouteMatrix struct {
@@ -66,7 +66,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeUint64(&m.RelayIds[i])
 		stream.SerializeAddress(&m.RelayAddresses[i])
-		stream.SerializeString(&m.RelayNames[i], MaxRelayNameLength)
+		stream.SerializeString(&m.RelayNames[i], constants.MaxRelayNameLength)
 		stream.SerializeFloat32(&m.RelayLatitudes[i])
 		stream.SerializeFloat32(&m.RelayLongitudes[i])
 		stream.SerializeUint64(&m.RelayDatacenterIds[i])
@@ -350,7 +350,7 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 	for i := 0; i < numRelays; i++ {
 		routeMatrix.RelayIds[i] = rand.Uint64()
 		routeMatrix.RelayAddresses[i] = RandomAddress()
-		routeMatrix.RelayNames[i] = RandomString(MaxRelayNameLength)
+		routeMatrix.RelayNames[i] = RandomString(constants.MaxRelayNameLength)
 		routeMatrix.RelayLatitudes[i] = rand.Float32()
 		routeMatrix.RelayLongitudes[i] = rand.Float32()
 		routeMatrix.RelayDatacenterIds[i] = rand.Uint64()

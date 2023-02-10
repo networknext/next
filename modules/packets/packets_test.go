@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
@@ -455,37 +456,33 @@ func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P
 	assert.Equal(t, writePacket, readPacket)
 }
 
-// todo: these need to move into their own relay_packets_test.go
-
-/*
 func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 
 	packet := packets.RelayUpdateRequestPacket{
 		Version:    packets.VersionNumberRelayUpdateRequest,
+		Timestamp:  rand.Uint64(),
 		Address:    common.RandomAddress(),
-		Token:      make([]byte, packets.RelayTokenSize),
-		NumSamples: uint32(common.RandomInt(0, packets.MaxRelays-1)),
+		NumSamples: uint32(common.RandomInt(0, constants.MaxRelays-1)),
 	}
 
 	for i := 0; i < int(packet.NumSamples); i++ {
 		packet.SampleRelayId[i] = rand.Uint64()
-		packet.SampleRTT[i] = rand.Float32()
-		packet.SampleJitter[i] = rand.Float32()
-		packet.SamplePacketLoss[i] = rand.Float32()
+		packet.SampleRTT[i] = uint8(common.RandomInt(0, 255))
+		packet.SampleJitter[i] = uint8(common.RandomInt(0, 255))
+		packet.SamplePacketLoss[i] = uint16(common.RandomInt(0, 65535))
 	}
 
-	packet.SessionCount = rand.Uint64()
-	packet.ShuttingDown = common.RandomBool()
-	packet.RelayVersion = common.RandomString(packets.MaxRelayVersionStringLength)
-	packet.CPU = uint8(common.RandomInt(0, 100))
-	packet.EnvelopeUpKbps = rand.Uint64()
-	packet.EnvelopeDownKbps = rand.Uint64()
-	packet.BandwidthSentKbps = rand.Uint64()
-	packet.BandwidthRecvKbps = rand.Uint64()
+	packet.SessionCount = rand.Uint32()
+	packet.EnvelopeBandwidthUpKbps = rand.Uint32()
+	packet.EnvelopeBandwidthDownKbps = rand.Uint32()
+	packet.ActualBandwidthUpKbps = rand.Uint32()
+	packet.ActualBandwidthDownKbps = rand.Uint32()
+	packet.RelayFlags = rand.Uint64()
+	packet.RelayVersion = common.RandomString(constants.MaxRelayVersionStringLength)
 
-	packet.NumCounters = packets.NumRelayCounters
-	for i := 0; i < packets.NumRelayCounters; i++ {
-		packet.Counters[i] = rand.Uint64()
+	packet.NumRelayCounters = constants.NumRelayCounters
+	for i := 0; i < constants.NumRelayCounters; i++ {
+		packet.RelayCounters[i] = rand.Uint64()
 	}
 
 	return packet
@@ -496,7 +493,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	packet := packets.RelayUpdateResponsePacket{
 		Version:       packets.VersionNumberRelayUpdateResponse,
 		Timestamp:     rand.Uint64(),
-		NumRelays:     uint32(common.RandomInt(0, packets.MaxRelays)),
+		NumRelays:     uint32(common.RandomInt(0, constants.MaxRelays)),
 		UpcomingMagic: make([]byte, 8),
 		CurrentMagic:  make([]byte, 8),
 		PreviousMagic: make([]byte, 8),
@@ -504,13 +501,13 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 
 	for i := 0; i < int(packet.NumRelays); i++ {
 		packet.RelayId[i] = rand.Uint64()
-		packet.RelayAddress[i] = common.RandomString(packets.MaxRelayAddressLength)
+		packet.RelayAddress[i] = common.RandomAddress()
 		if common.RandomBool() {
 			packet.RelayInternal[i] = 1
 		}
 	}
 
-	packet.TargetVersion = common.RandomString(packets.MaxRelayVersionStringLength)
+	packet.TargetVersion = common.RandomString(constants.MaxRelayVersionStringLength)
 
 	common.RandomBytes(packet.UpcomingMagic)
 	common.RandomBytes(packet.CurrentMagic)
@@ -536,7 +533,6 @@ func TestRelayUpdateResponsePacket(t *testing.T) {
 		RelayPacketReadWriteTest[*packets.RelayUpdateResponsePacket](&writeMessage, &readMessage, t)
 	}
 }
-*/
 
 // ------------------------------------------------------------------
 
@@ -550,3 +546,5 @@ func TestSessionUpdate(t *testing.T) {
 		PacketSerializationTest[*packets.SDK5_SessionData](&writeMessage, &readMessage, t)
 	}
 }
+
+// ------------------------------------------------------------------

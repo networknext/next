@@ -10543,6 +10543,12 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 28 )
     NEXT_INITIALIZE_SENTINEL( entry, 29 )
     NEXT_INITIALIZE_SENTINEL( entry, 30 )
+    next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
+    next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
+    next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );
+    next_packet_loss_tracker_initialize_sentinels( &entry->packet_loss_tracker );
+    next_out_of_order_tracker_initialize_sentinels( &entry->out_of_order_tracker );
+    next_jitter_tracker_initialize_sentinels( &entry->jitter_tracker );
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -10579,7 +10585,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 27 )
     NEXT_VERIFY_SENTINEL( entry, 28 )
     NEXT_VERIFY_SENTINEL( entry, 29 )
-    NEXT_INITIALIZE_SENTINEL( entry, 30 )
+    NEXT_VERIFY_SENTINEL( entry, 30 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -21318,7 +21324,7 @@ void test_passthrough_packets()
 
 void next_test()
 {
-    // while ( true )
+    //while ( true )
     {
         RUN_TEST( test_time );
         RUN_TEST( test_endian );

@@ -396,7 +396,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []ui
 						xjIndex := TriMatrixIndex(x, j)
 						xjCost := uint32(cost[xjIndex])
 						indirectCost := uint32(ixCost) + uint32(xjCost)
-						if indirectCost + constants.CostThreshold > costDirect {
+						if indirectCost+constants.CostThreshold > costDirect {
 							continue
 						}
 						working[numRoutes].relay = int32(x)

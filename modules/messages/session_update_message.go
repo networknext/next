@@ -12,45 +12,6 @@ const (
 	SessionUpdateMessageVersion_Min   = 1
 	SessionUpdateMessageVersion_Max   = 1
 	SessionUpdateMessageVersion_Write = 1
-
-	SessionFlags_Next                            = (1 << 0)
-	SessionFlags_Reported                        = (1 << 1)
-	SessionFlags_Summary                         = (1 << 2)
-	SessionFlags_FallbackToDirect                = (1 << 3)
-	SessionFlags_Mispredict                      = (1 << 4)
-	SessionFlags_LatencyWorse                    = (1 << 5)
-	SessionFlags_NoRoute                         = (1 << 6)
-	SessionFlags_NextLatencyTooHigh              = (1 << 7)
-	SessionFlags_UnknownDatacenter               = (1 << 8)
-	SessionFlags_DatacenterNotEnabled            = (1 << 9)
-	SessionFlags_StaleRouteMatrix                = (1 << 10)
-	SessionFlags_ABTest                          = (1 << 11)
-	SessionFlags_Aborted                         = (1 << 12)
-	SessionFlags_LatencyReduction                = (1 << 13)
-	SessionFlags_PacketLossReduction             = (1 << 14)
-	SessionFlags_EverOnNext                      = (1 << 15)
-	SessionFlags_SessionDataSignatureCheckFailed = (1 << 16)
-	SessionFlags_FailedToReadSessionData         = (1 << 17)
-	SessionFlags_LongDuration                    = (1 << 18)
-	SessionFlags_ClientPingTimedOut              = (1 << 19)
-	SessionFlags_BadSessionId                    = (1 << 20)
-	SessionFlags_BadSliceNumber                  = (1 << 21)
-	SessionFlags_AnalysisOnly                    = (1 << 22)
-	SessionFlags_NoRelaysInDatacenter            = (1 << 23)
-	SessionFlags_NoNearRelays                    = (1 << 24)
-	SessionFlags_NoRouteRelays                   = (1 << 25)
-	SessionFlags_RouteRelayNoLongerExists        = (1 << 26)
-	SessionFlags_RouteChanged                    = (1 << 27)
-	SessionFlags_RouteContinued                  = (1 << 28)
-	SessionFlags_RouteNoLongerExists             = (1 << 29)
-	SessionFlags_TakeNetworkNext                 = (1 << 30)
-	SessionFlags_StayDirect                      = (1 << 31)
-	SessionFlags_LeftNetworkNext                 = (1 << 32)
-	SessionFlags_FailedToWriteResponsePacket     = (1 << 33)
-	SessionFlags_FailedToWriteSessionData        = (1 << 34)
-	SessionFlags_LocationVeto                    = (1 << 35)
-	SessionFlags_ClientNextBandwidthOverLimit    = (1 << 36)
-	SessionFlags_ServerNextBandwidthOverLimit    = (1 << 37)
 )
 
 type SessionUpdateMessage struct {
@@ -146,7 +107,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// next only
 
-	if (message.SessionFlags & SessionFlags_Next) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
@@ -170,7 +131,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// first slice or summary slice
 
-	if message.SliceNumber == 0 || (message.SessionFlags&SessionFlags_Summary) != 0 {
+	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
 		encoding.WriteUint64(buffer, &index, message.DatacenterId)
 		encoding.WriteUint64(buffer, &index, message.BuyerId)
 		encoding.WriteUint64(buffer, &index, message.UserHash)
@@ -187,7 +148,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// summary slice only
 
-	if (message.SessionFlags & SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsSent)
 		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsSent)
 		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsLost)
@@ -272,7 +233,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 
 	// next only
 
-	if (message.SessionFlags & SessionFlags_Next) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 
 		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
 			return fmt.Errorf("failed to read next rtt")
@@ -326,7 +287,7 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 
 	// summary only
 
-	if (message.SessionFlags & SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 
 		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
 			return fmt.Errorf("failed to read datacenter id")

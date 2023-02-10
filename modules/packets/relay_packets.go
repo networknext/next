@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	VersionNumberRelayUpdateRequest  = 6
-	VersionNumberRelayUpdateResponse = 2
+	VersionNumberRelayUpdateRequest  = 1
+	VersionNumberRelayUpdateResponse = 1
 )
 
 // --------------------------------------------------------------------------
@@ -28,9 +28,9 @@ type RelayUpdateRequestPacket struct {
 	Address                   net.UDPAddr
 	NumSamples                uint32
 	SampleRelayId             [constants.MaxRelays]uint64
-	SampleRTT                 [constants.MaxRelays]uint8 // milliseconds
-	SampleJitter              [constants.MaxRelays]uint8 // milliseconds
-	SamplePacketLoss          [constants.MaxRelays]uint8 // [0,255] -> [0%,1%] PL
+	SampleRTT                 [constants.MaxRelays]uint8  // [0,255] milliseconds
+	SampleJitter              [constants.MaxRelays]uint8  // [0,255] milliseconds
+	SamplePacketLoss          [constants.MaxRelays]uint16 // [0,65535] -> [0%,100%] PL
 	SessionCount              uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
@@ -55,7 +55,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 		encoding.WriteUint64(buffer, &index, packet.SampleRelayId[i])
 		encoding.WriteUint8(buffer, &index, packet.SampleRTT[i])
 		encoding.WriteUint8(buffer, &index, packet.SampleJitter[i])
-		encoding.WriteUint8(buffer, &index, packet.SamplePacketLoss[i])
+		encoding.WriteUint16(buffer, &index, packet.SamplePacketLoss[i])
 	}
 
 	encoding.WriteUint32(buffer, &index, packet.SessionCount)
@@ -70,8 +70,6 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	for i := 0; i < int(packet.NumRelayCounters); i++ {
 		encoding.WriteUint64(buffer, &index, packet.RelayCounters[i])
 	}
-
-	// todo: sign packet
 
 	return buffer[:index]
 }
@@ -116,7 +114,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 			return errors.New("could not read sample jitter")
 		}
 
-		if !encoding.ReadUint8(buffer, &index, &packet.SamplePacketLoss[i]) {
+		if !encoding.ReadUint16(buffer, &index, &packet.SamplePacketLoss[i]) {
 			return errors.New("could not read sample packet loss")
 		}
 	}
@@ -163,8 +161,6 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		}
 	}
 
-	// todo: possibly write signature here
-
 	return nil
 }
 
@@ -185,8 +181,6 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 	if !encoding.ReadAddress(buffer, &index, &packet.Address) {
 		return errors.New("could not read relay address")
 	}
-
-	// todo: should probably check signature here
 
 	return nil
 }

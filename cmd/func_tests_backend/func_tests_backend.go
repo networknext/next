@@ -24,8 +24,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
@@ -1536,7 +1536,7 @@ func test_relay_manager() {
 	sampleRelayId := make([]uint64, numSamples)
 	sampleRTT := make([]uint8, numSamples)
 	sampleJitter := make([]uint8, numSamples)
-	samplePacketLoss := make([]uint8, numSamples)
+	samplePacketLoss := make([]uint16, numSamples)
 	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
@@ -1688,14 +1688,14 @@ func test_optimize() {
 	sampleRelayId := make([]uint64, numSamples)
 	sampleRTT := make([]uint8, numSamples)
 	sampleJitter := make([]uint8, numSamples)
-	samplePacketLoss := make([]uint8, numSamples)
+	samplePacketLoss := make([]uint16, numSamples)
 	counters := make([]uint64, constants.NumRelayCounters)
 
 	for i := 0; i < numSamples; i++ {
 		sampleRelayId[i] = uint64(i)
 		sampleRTT[i] = uint8(common.RandomInt(0, 255))
 		sampleJitter[i] = uint8(common.RandomInt(0, 255))
-		samplePacketLoss[i] = uint8(common.RandomInt(0, 255))
+		samplePacketLoss[i] = uint16(common.RandomInt(0, 255))
 	}
 
 	for i := 0; i < NumRelays; i++ {
@@ -1936,7 +1936,7 @@ func test_relay_backend() {
 						requestPacket.SampleRelayId[i] = relayIds[i]
 						requestPacket.SampleRTT[i] = uint8(common.RandomInt(0, 255))
 						requestPacket.SampleJitter[i] = uint8(common.RandomInt(0, 255))
-						requestPacket.SamplePacketLoss[i] = uint8(common.RandomInt(0, 255))
+						requestPacket.SamplePacketLoss[i] = uint16(common.RandomInt(0, 65535))
 					}
 
 					body := requestPacket.Write(make([]byte, 100*1024))

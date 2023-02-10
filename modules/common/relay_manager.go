@@ -78,7 +78,7 @@ func CreateRelayManager(local bool) *RelayManager {
 	return relayManager
 }
 
-func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, relayFlags uint64, numSamples int, sampleRelayId []uint64, sampleRTT []uint8, sampleJitter []uint8, samplePacketLoss []uint8, counters []uint64) {
+func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId uint64, relayName string, relayAddress net.UDPAddr, sessions int, relayVersion string, relayFlags uint64, numSamples int, sampleRelayId []uint64, sampleRTT []uint8, sampleJitter []uint8, samplePacketLoss []uint16, counters []uint64) {
 
 	// look up the entry corresponding to the source relay, or create it if it doesn't exist
 
@@ -129,7 +129,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 
 		rtt := float32(sampleRTT[i])
 		jitter := float32(sampleJitter[i])
-		packetLoss := float32(samplePacketLoss[i]) / 255.0
+		packetLoss := float32(samplePacketLoss[i]) / 65535.0 * 100.0
 
 		destEntry.HistoryRTT[destEntry.HistoryIndex] = rtt
 		destEntry.HistoryJitter[destEntry.HistoryIndex] = jitter

@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
@@ -93,7 +93,7 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 
 	if !crypto.Verify(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPublicKey[:], state.Request.SessionDataSignature[:]) {
 		core.Error("session data signature check failed")
-		state.SessionFlags |= messages.SessionFlags_SessionDataSignatureCheckFailed
+		state.SessionFlags |= constants.SessionFlags_SessionDataSignatureCheckFailed
 		return false
 	}
 
@@ -102,7 +102,7 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 	err := state.Input.Serialize(readStream)
 	if err != nil {
 		core.Debug("failed to read session data: %v", err)
-		state.SessionFlags |= messages.SessionFlags_FailedToReadSessionData
+		state.SessionFlags |= constants.SessionFlags_FailedToReadSessionData
 		return false
 	}
 
@@ -121,7 +121,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only")
-		state.SessionFlags |= messages.SessionFlags_AnalysisOnly
+		state.SessionFlags |= constants.SessionFlags_AnalysisOnly
 	}
 
 	/*
@@ -131,7 +131,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.ClientPingTimedOut {
 		core.Debug("client ping timed out")
-		state.SessionFlags |= messages.SessionFlags_ClientPingTimedOut
+		state.SessionFlags |= constants.SessionFlags_ClientPingTimedOut
 		return true
 	}
 
@@ -140,11 +140,11 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.ClientNextBandwidthOverLimit {
-		state.SessionFlags |= messages.SessionFlags_ClientNextBandwidthOverLimit
+		state.SessionFlags |= constants.SessionFlags_ClientNextBandwidthOverLimit
 	}
 
 	if state.Request.ServerNextBandwidthOverLimit {
-		state.SessionFlags |= messages.SessionFlags_ServerNextBandwidthOverLimit
+		state.SessionFlags |= constants.SessionFlags_ServerNextBandwidthOverLimit
 	}
 
 	/*
@@ -164,7 +164,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
 			core.Error("location veto: %s", err)
 			state.Output.RouteState.LocationVeto = true
-			state.SessionFlags |= messages.SessionFlags_LocationVeto
+			state.SessionFlags |= constants.SessionFlags_LocationVeto
 			return true
 		}
 	}
@@ -176,7 +176,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.RouteMatrix.CreatedAt+uint64(state.StaleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
-		state.SessionFlags |= messages.SessionFlags_StaleRouteMatrix
+		state.SessionFlags |= constants.SessionFlags_StaleRouteMatrix
 		return true
 	}
 
@@ -188,7 +188,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !datacenterExists(state.Database, state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
-		state.SessionFlags |= messages.SessionFlags_UnknownDatacenter
+		state.SessionFlags |= constants.SessionFlags_UnknownDatacenter
 	}
 
 	/*
@@ -199,7 +199,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
 		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
-		state.SessionFlags |= messages.SessionFlags_DatacenterNotEnabled
+		state.SessionFlags |= constants.SessionFlags_DatacenterNotEnabled
 	}
 
 	/*
@@ -219,7 +219,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Request.DatacenterId)
 	if len(destRelayIds) == 0 {
 		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
-		state.SessionFlags |= messages.SessionFlags_NoRelaysInDatacenter
+		state.SessionFlags |= constants.SessionFlags_NoRelaysInDatacenter
 	}
 
 	state.DestRelayIds = destRelayIds
@@ -276,13 +276,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	if state.Input.SessionId != state.Request.SessionId {
 		core.Debug("bad session id")
-		state.SessionFlags |= messages.SessionFlags_BadSessionId
+		state.SessionFlags |= constants.SessionFlags_BadSessionId
 		return
 	}
 
 	if state.Input.SliceNumber != state.Request.SliceNumber {
 		core.Debug("bad slice number")
-		state.SessionFlags |= messages.SessionFlags_BadSliceNumber
+		state.SessionFlags |= constants.SessionFlags_BadSliceNumber
 		return
 	}
 
@@ -394,7 +394,7 @@ func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
 	if state.Request.FallbackToDirect && !state.Output.FallbackToDirect {
 		core.Debug("fallback to direct")
 		state.Output.FallbackToDirect = true
-		state.SessionFlags |= messages.SessionFlags_FallbackToDirect
+		state.SessionFlags |= constants.SessionFlags_FallbackToDirect
 		return true
 	}
 
@@ -421,13 +421,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	state.GetNearRelays = true
 
-	if (state.SessionFlags & messages.SessionFlags_AnalysisOnly) != 0 {
+	if (state.SessionFlags & constants.SessionFlags_AnalysisOnly) != 0 {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
 		return false
 	}
 
-	if (state.SessionFlags & messages.SessionFlags_DatacenterNotEnabled) != 0 {
+	if (state.SessionFlags & constants.SessionFlags_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not getting near relays")
 		state.NotGettingNearRelaysDatacenterNotEnabled = true
 		return false
@@ -459,7 +459,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	if numNearRelays == 0 {
 		core.Debug("no near relays :(")
-		state.SessionFlags |= messages.SessionFlags_NoNearRelays
+		state.SessionFlags |= constants.SessionFlags_NoNearRelays
 		return false
 	}
 
@@ -476,13 +476,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
-	if (state.SessionFlags & messages.SessionFlags_AnalysisOnly) != 0 {
+	if (state.SessionFlags & constants.SessionFlags_AnalysisOnly) != 0 {
 		core.Debug("analysis only, not updating near relay stats")
 		state.NotUpdatingNearRelaysAnalysisOnly = true
 		return false
 	}
 
-	if (state.SessionFlags & messages.SessionFlags_DatacenterNotEnabled) != 0 {
+	if (state.SessionFlags & constants.SessionFlags_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating near relay stats")
 		state.NotUpdatingNearRelaysDatacenterNotEnabled = true
 		return false
@@ -658,7 +658,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		core.Debug("on network next, but no route relays?")
 		state.Output.RouteState.Next = false
 		state.Output.RouteState.Veto = true
-		state.SessionFlags |= messages.SessionFlags_NoRouteRelays
+		state.SessionFlags |= constants.SessionFlags_NoRouteRelays
 		if state.Debug != nil {
 			*state.Debug += "no route relays?!\n"
 		}
@@ -694,7 +694,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.Debug,
 			sliceNumber) {
 
-			state.SessionFlags |= messages.SessionFlags_TakeNetworkNext
+			state.SessionFlags |= constants.SessionFlags_TakeNetworkNext
 
 			SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
@@ -713,7 +713,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		} else {
 
-			state.SessionFlags |= messages.SessionFlags_StayDirect
+			state.SessionFlags |= constants.SessionFlags_StayDirect
 
 			if state.Debug != nil {
 				*state.Debug += "staying direct\n"
@@ -732,7 +732,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			core.Debug("aborted")
 			state.Output.RouteState.Next = false
 			state.Output.RouteState.Veto = true
-			state.SessionFlags |= messages.SessionFlags_Aborted
+			state.SessionFlags |= constants.SessionFlags_Aborted
 			if state.Debug != nil {
 				*state.Debug += "aborted\n"
 			}
@@ -744,7 +744,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		if !core.ReframeRoute(state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
 			routeRelays = [constants.MaxRouteRelays]int32{}
 			core.Debug("one or more relays in the route no longer exist")
-			state.SessionFlags |= messages.SessionFlags_RouteRelayNoLongerExists
+			state.SessionFlags |= constants.SessionFlags_RouteRelayNoLongerExists
 			if state.Debug != nil {
 				*state.Debug += "route relay no longer exists\n"
 			}
@@ -783,7 +783,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			if routeChanged {
 
 				core.Debug("route changed")
-				state.SessionFlags |= messages.SessionFlags_RouteChanged
+				state.SessionFlags |= constants.SessionFlags_RouteChanged
 				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 				if state.Debug != nil {
@@ -802,7 +802,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			} else {
 
 				core.Debug("route continued")
-				state.SessionFlags |= messages.SessionFlags_RouteContinued
+				state.SessionFlags |= constants.SessionFlags_RouteContinued
 				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 				if state.Debug != nil {
 					*state.Debug += "route continued\n"
@@ -816,7 +816,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.NoRoute {
 				core.Debug("route no longer exists")
-				state.SessionFlags |= messages.SessionFlags_RouteNoLongerExists
+				state.SessionFlags |= constants.SessionFlags_RouteNoLongerExists
 				if state.Debug != nil {
 					*state.Debug += "route no longer exists\n"
 				}
@@ -824,7 +824,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.Mispredict {
 				core.Debug("mispredict")
-				state.SessionFlags |= messages.SessionFlags_Mispredict
+				state.SessionFlags |= constants.SessionFlags_Mispredict
 				if state.Debug != nil {
 					*state.Debug += "mispredict\n"
 				}
@@ -832,7 +832,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.LatencyWorse {
 				core.Debug("latency worse")
-				state.SessionFlags |= messages.SessionFlags_LatencyWorse
+				state.SessionFlags |= constants.SessionFlags_LatencyWorse
 				if state.Debug != nil {
 					*state.Debug += "latency worse\n"
 				}
@@ -914,7 +914,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	if state.Input.RouteState.Next {
-		state.SessionFlags |= messages.SessionFlags_EverOnNext
+		state.SessionFlags |= constants.SessionFlags_EverOnNext
 		state.Output.DurationOnNext += packets.SDK5_BillingSliceSeconds
 		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
@@ -983,7 +983,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)
-		state.SessionFlags |= messages.SessionFlags_FailedToWriteSessionData
+		state.SessionFlags |= constants.SessionFlags_FailedToWriteSessionData
 		return
 	}
 
@@ -1006,7 +1006,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.ResponsePacket, err = packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
-		state.SessionFlags |= messages.SessionFlags_FailedToWriteResponsePacket
+		state.SessionFlags |= constants.SessionFlags_FailedToWriteResponsePacket
 		return
 	}
 
@@ -1067,7 +1067,7 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.DirectKbpsUp = state.Request.DirectKbpsUp
 	message.DirectKbpsDown = state.Request.DirectKbpsDown
 
-	if (message.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1162,7 +1162,7 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 
 	// next only
 
-	if (state.SessionFlags & messages.SessionFlags_Next) != 0 {
+	if (state.SessionFlags & constants.SessionFlags_Next) != 0 {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1186,7 +1186,7 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 
 	// first slice or summary
 
-	if message.SliceNumber == 0 || (message.SessionFlags&messages.SessionFlags_Summary) != 0 {
+	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
 		message.DatacenterId = state.Request.DatacenterId
 		message.BuyerId = state.Request.BuyerId
 		message.UserHash = state.Request.UserHash
@@ -1203,7 +1203,7 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 
 	// summary only
 
-	if (message.SessionFlags & messages.SessionFlags_Summary) != 0 {
+	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 		message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
 		message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
 		message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer

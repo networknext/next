@@ -2,19 +2,15 @@ DONE
 
 	Help Velan debug packet spikes and delayed packet receives.
 
-TODO
+	Update packet loss to uint16_t for relay ping samples.
+
+	Update relay packet tests.
+
+	Pass over packets and do more constants.
 	
-	---------------
+	Pass over messages.
 
-	Not feeling comfortable about uint8 packet loss. Especially, with clamping to 1.0 max ([0,255] / 255.0)
-
-	This is wrong.
-
-	What's the best way to send it?
-
-	Float32? Probably...
-
-	Maybe uint16?
+TODO
 
 	---------------
 
@@ -22,7 +18,7 @@ TODO
 
 	---------------
 
-	Merge route matrix entry and route manager. They are the same data structure.
+	Merge route matrix entry and route manager. They are the exact same data structure...
 
 	---------------
 

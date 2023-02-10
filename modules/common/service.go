@@ -94,8 +94,6 @@ type Service struct {
 
 	google *GoogleCloudHandler
 
-	lookerHandler *LookerHandler
-
 	ip2location_isp_mutex   sync.RWMutex
 	ip2location_isp_reader  *geoip2.Reader
 	ip2location_city_mutex  sync.RWMutex
@@ -1055,39 +1053,3 @@ func (service *Service) updateMagicLoop() {
 }
 
 // ---------------------------------------------------------------------------------------------------
-
-func (service *Service) UseLooker() {
-
-	config := LookerHandlerConfig{}
-
-	config.HostURL = envvar.GetString("LOOKER_HOST_URL", "")
-	config.ClientID = envvar.GetString("LOOKER_CLIENT_ID", "")
-	config.Secret = envvar.GetString("LOOKER_CLIENT_SECRET", "")
-	config.APISecret = envvar.GetString("LOOKER_API_SECRET", "")
-
-	core.Log("looker host url: %s", config.HostURL)
-	core.Log("looker client id: %s", config.ClientID)
-	core.Log("looker client secret: %s", config.Secret)
-	core.Log("looker api secret: %s", config.APISecret)
-
-	lookerHandler, err := NewLookerHandler(config)
-	if err != nil {
-		core.Error("failed to create looker handler: %v", err)
-		os.Exit(1)
-	}
-
-	service.lookerHandler = lookerHandler
-}
-
-// todo: this is so incredibly specific to the website service. it belongs there, not here
-// service.go is only for things that are proven out and are useful across multiple services
-// for example, the ability to easily talk to looker with standard env vars is good in here
-// but specific queries like below to support only the website cruncher are not. -- glenn
-
-/*
-func (service *Service) FetchWebsiteStats() (LookerStats, error) {
-	return service.lookerHandler.RunWebsiteStatsQuery()
-}
-*/
-
-// ----------------------------------------------------------
