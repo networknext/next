@@ -6344,6 +6344,10 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 12 )
     NEXT_INITIALIZE_SENTINEL( client, 13 )
 
+    next_replay_protection_initialize_sentinels( &client->payload_replay_protection );
+    next_replay_protection_initialize_sentinels( &client->special_replay_protection );
+    next_replay_protection_initialize_sentinels( &client->internal_replay_protection );
+
     next_relay_stats_initialize_sentinels( &client->near_relay_stats );
 
     next_ping_history_initialize_sentinels( &client->next_ping_history );
@@ -6421,9 +6425,13 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_initialize_sentinels( client );
 
+    next_client_internal_verify_sentinels( client );
+
     client->context = context;
 
     memcpy( client->customer_public_key, next_global_config.customer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
+
+    next_client_internal_verify_sentinels( client );
 
     client->command_queue = next_queue_create( context, NEXT_COMMAND_QUEUE_LENGTH );
     if ( !client->command_queue )
@@ -6433,6 +6441,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
+    next_client_internal_verify_sentinels( client );
+
     client->notify_queue = next_queue_create( context, NEXT_NOTIFY_QUEUE_LENGTH );
     if ( !client->notify_queue )
     {
@@ -6440,6 +6450,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         next_client_internal_destroy( client );
         return NULL;
     }
+
+    next_client_internal_verify_sentinels( client );
 
     client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( client->socket == NULL )
@@ -7592,7 +7604,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
 
 #if NEXT_SPIKE_TRACKING
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_SPAM, "client next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "client next_platform_socket_receive_packet returns with a %d byte packet from %s", packet_bytes, next_address_to_string( &from, address_buffer ) );
 #endif // #if NEXT_SPIKE_TRACKING
 
     double packet_receive_time = next_time();
@@ -13907,7 +13919,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
 #if NEXT_SPIKE_TRACKING
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __LINE__, __FILE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __FILE__, __LINE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
 #endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
@@ -14164,7 +14176,7 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
         {
 #if NEXT_SPIKE_TRACKING
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __LINE__, __FILE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_PACKET_RECEIVED at %s:%d - from = %s, packet_bytes = %d", __FILE__, __LINE__, next_address_to_string( &notify->from, address_buffer ), notify->packet_bytes );
 #endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
@@ -14899,7 +14911,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
         {
 #if NEXT_SPIKE_TRACKING
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY and NEXT_SERVER_NOTIFY_READY at %s:%d", __LINE__, __FILE__ );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY and NEXT_SERVER_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
 #endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify_direct_only );
@@ -14919,7 +14931,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
         next_copy_string( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         {
 #if NEXT_SPIKE_TRACKING
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __LINE__, __FILE__ );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
 #endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
@@ -14948,7 +14960,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
         notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
         {
 #if NEXT_SPIKE_TRACKING
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __FILE__, __FILE__ );
 #endif // #if NEXT_SPIKE_TRACKING
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify_direct_only );
@@ -15066,7 +15078,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
             {
 #if NEXT_SPIKE_TRACKING
-                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __LINE__, __FILE__ );
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __FILE__, __LINE__ );
 #endif // #if NEXT_SPIKE_TRACKING
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify_direct_only );

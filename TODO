@@ -339,3 +339,9 @@ Nice to have:
 	We need a way to track no packets on server from session for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
 
 	---------------
+
+	We absolutely need to track client and server frame hitches
+
+	This would have helped Velan and PFG.
+
+	---------------
