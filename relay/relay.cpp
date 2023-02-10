@@ -4063,7 +4063,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     char update_url[1024];
     snprintf( update_url, sizeof(update_url), "%s/relay_update", hostname );
 
-    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 1024000L );
     curl_easy_setopt( curl, CURLOPT_URL, update_url );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
@@ -4143,14 +4143,8 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     for ( uint32_t i = 0; i < num_relays; ++i )
     {
-        char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_ping_data[i].id = relay_read_uint64( &q );
-        relay_read_string( &q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH );
-        if ( relay_address_parse( &relay_ping_data[i].address, address_string ) != RELAY_OK )
-        {
-            error = true;
-            break;
-        }
+        relay_read_address_variable( &q, &relay_ping_data[i].address );
         relay_ping_data[i].internal = relay_read_uint8( &q );
     }
 
@@ -5724,9 +5718,6 @@ int main( int argc, const char ** argv )
         relay_term();
         return 1;
     }
-
-    uint8_t relay_token[RELAY_TOKEN_BYTES];
-    relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
     relay_t relay;
 

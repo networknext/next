@@ -3,6 +3,7 @@ package packets
 import (
 	"errors"
 	"net"
+	"fmt"
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
@@ -152,7 +153,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 	}
 
 	if packet.NumRelayCounters != constants.NumRelayCounters {
-		return errors.New("wrong number of relay counters")
+		return fmt.Errorf("wrong number of relay counters. expected %d, got %d", constants.NumRelayCounters, packet.NumRelayCounters)
 	}
 
 	for i := 0; i < int(packet.NumRelayCounters); i++ {

@@ -644,6 +644,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 			case message := <-consumer.MessageChannel:
 
+				// todo
+				fmt.Printf( "processing relay update message\n" )
+
 				// read the relay update request packet
 
 				var relayUpdateRequest packets.RelayUpdateRequestPacket
@@ -651,12 +654,12 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				err = relayUpdateRequest.Read(message)
 				if err != nil {
 					core.Error("could not read relay update: %v", err)
-					return
+					break
 				}
 
 				if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
 					core.Error("relay update version mismatch")
-					return
+					break
 				}
 
 				// look up the relay in the database
@@ -667,7 +670,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				relayIndex, ok := relayData.RelayIdToIndex[relayId]
 				if !ok {
 					core.Error("unknown relay id %016x", relayId)
-					return
+					break
 				}
 
 				relayName := relayData.RelayNames[relayIndex]
@@ -685,7 +688,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					pl := relayUpdateRequest.SamplePacketLoss[i] / 255.0
 					id := relayUpdateRequest.SampleRelayId[i]
 					index, ok := relayData.RelayIdToIndex[id]
-					if !ok {
+					if ok {
 						continue
 					}
 					name := relayData.RelayNames[index]

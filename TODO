@@ -12,11 +12,9 @@ DONE
 
 	Update the relay to send the new relay update request packet format.
 
-TODO
-
 	Update the relay to receive the new relay update response packet format.
 
-	---------------
+TODO
 
 	Make sure happy path passes.
 
