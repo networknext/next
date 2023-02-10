@@ -12,9 +12,19 @@ DONE
 
 TODO
 
+	Update the relay to use the new packet formats and version numbers
+
+	Make sure happy path passes.
+
 	---------------
 
-	func backend needs to use the relay packets
+	Update func backend to use the relay packets.
+
+	Make sure func tests pass.
+
+	---------------
+
+	Look across todos to make sure nothing is going on.
 
 	---------------
 

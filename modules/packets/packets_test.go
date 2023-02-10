@@ -478,7 +478,7 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 	packet.ActualBandwidthUpKbps = rand.Uint32()
 	packet.ActualBandwidthDownKbps = rand.Uint32()
 	packet.RelayFlags = rand.Uint64()
-	packet.RelayVersion = common.RandomString(constants.MaxRelayVersionStringLength)
+	packet.RelayVersion = common.RandomString(constants.MaxRelayVersionLength)
 
 	packet.NumRelayCounters = constants.NumRelayCounters
 	for i := 0; i < constants.NumRelayCounters; i++ {
@@ -507,7 +507,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 		}
 	}
 
-	packet.TargetVersion = common.RandomString(constants.MaxRelayVersionStringLength)
+	packet.TargetVersion = common.RandomString(constants.MaxRelayVersionLength)
 
 	common.RandomBytes(packet.UpcomingMagic)
 	common.RandomBytes(packet.CurrentMagic)

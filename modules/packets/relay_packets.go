@@ -30,7 +30,7 @@ type RelayUpdateRequestPacket struct {
 	SampleRelayId             [constants.MaxRelays]uint64
 	SampleRTT                 [constants.MaxRelays]uint8  // [0,255] milliseconds
 	SampleJitter              [constants.MaxRelays]uint8  // [0,255] milliseconds
-	SamplePacketLoss          [constants.MaxRelays]uint16 // [0,65535] -> [0%,100%] PL
+	SamplePacketLoss          [constants.MaxRelays]uint16 // [0,65535] -> [0%,100%]
 	SessionCount              uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
@@ -64,7 +64,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthDownKbps)
 	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
-	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionStringLength)
+	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionLength)
 
 	encoding.WriteUint32(buffer, &index, packet.NumRelayCounters)
 	for i := 0; i < int(packet.NumRelayCounters); i++ {
@@ -143,7 +143,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read relay flags")
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, constants.MaxRelayVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, constants.MaxRelayVersionLength) {
 		return errors.New("could not read relay version string")
 	}
 
@@ -214,7 +214,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 		encoding.WriteUint8(buffer, &index, packet.RelayInternal[i])
 	}
 
-	encoding.WriteString(buffer, &index, packet.TargetVersion, constants.MaxRelayVersionStringLength)
+	encoding.WriteString(buffer, &index, packet.TargetVersion, constants.MaxRelayVersionLength)
 
 	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
@@ -262,7 +262,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		}
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, constants.MaxRelayVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, constants.MaxRelayVersionLength) {
 		return errors.New("could not read target version")
 	}
 
