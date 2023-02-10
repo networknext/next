@@ -713,7 +713,7 @@ void relay_write_address_variable( uint8_t ** p, const relay_address_t * address
 
     if ( address->type == RELAY_ADDRESS_IPV4 )
     {
-	    relay_write_uint8( p, RELAY_ADDRESS_IPV4 );
+        relay_write_uint8( p, RELAY_ADDRESS_IPV4 );
         for ( int i = 0; i < 4; ++i )
         {
             relay_write_uint8( p, address->data.ipv4[i] );
@@ -731,7 +731,7 @@ void relay_write_address_variable( uint8_t ** p, const relay_address_t * address
     }
     else
     {
-    	relay_write_uint8( p, RELAY_ADDRESS_NONE );
+        relay_write_uint8( p, RELAY_ADDRESS_NONE );
     }
 }
 
@@ -3968,14 +3968,14 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
 void clamp( int & value, int min, int max )
 {
-	if ( value > max )
-	{
-		value = max;
-	} 
-	else if ( value < min )
-	{
-		value = min;
-	}
+    if ( value > max )
+    {
+        value = max;
+    } 
+    else if ( value < min )
+    {
+        value = min;
+    }
 }
 
 int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_t * relay )
@@ -3999,6 +3999,10 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_manager_get_stats( relay->relay_manager, &stats );
     relay_platform_mutex_release( relay->mutex );
 
+    // todo:
+    printf( "-------------------------------------------------------------\n" );
+    printf( "%d relay samples for relay backend\n", stats.num_relays );
+
     relay_write_uint32( &p, stats.num_relays );
     for ( int i = 0; i < stats.num_relays; ++i )
     {
@@ -4015,7 +4019,12 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_write_uint8( &p, uint8_t( integer_rtt ) );
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
+
+        printf( "id = %" PRIx64 ", rtt = %.2f, jitter = %.2f, packet loss = %.2f, integer rtt = %d, integer jitter = %d, integer packet loss = %d\n", stats.relay_ids[i], rtt, jitter, packet_loss, integer_rtt, integer_jitter, integer_packet_loss );
     }
+
+    // todo
+    printf( "-------------------------------------------------------------\n" );
 
     relay_platform_mutex_acquire( relay->mutex );
     uint64_t sessions = relay->sessions->size();
@@ -4037,7 +4046,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint64_t relay_flags = 0;
     relay_write_uint64( &p, relay_flags );
 
- 	relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
+     relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
 
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
@@ -4096,11 +4105,11 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     const uint8_t * q = update_response_buffer.data;
 
-    uint32_t version = relay_read_uint32( &q );
+    uint8_t version = relay_read_uint8( &q );
 
     const uint32_t update_response_version = 1;
 
-    if ( version > update_response_version )
+    if ( version != update_response_version )
     {
         printf( "error: bad relay update response version. expected %d, got %d\n", update_response_version, version );
         return RELAY_ERROR;
@@ -4137,12 +4146,23 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
     memset( relay_ping_data, 0, sizeof(relay_ping_data) );
 
+    // todo
+    printf( "-------------------------------------------------------------\n" );
+    printf( "%d relays to ping\n", num_relays );
+
     for ( uint32_t i = 0; i < num_relays; ++i )
     {
         relay_ping_data[i].id = relay_read_uint64( &q );
         relay_read_address_variable( &q, &relay_ping_data[i].address );
         relay_ping_data[i].internal = relay_read_uint8( &q );
+
+        // todo
+        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        printf("id = %" PRIx64 ", address = %s, internal = %d\n", relay_ping_data[i].id, relay_address_to_string( &relay_ping_data[i].address, address_buffer ), relay_ping_data[i].internal );
     }
+
+    // todo
+    printf( "-------------------------------------------------------------\n" );
 
     if ( error )
     {

@@ -4,11 +4,19 @@ DONE
 
 	Server backend is crashing out. Fixed.
 
-TODO
-
 	What is really going on here is that the relay backend is not providing a cost matrix, and therefore no network next routes are being taken, and the happy path fails.
 
 	The solution is to fix whatever is causing the relay backend to not have a cost matrix.
+
+	My theory is that relays aren't really getting the set of relays to ping, so have no samples to give to relay backend.
+
+	Problem with cost matrix serialize read. Fixed.
+
+TODO
+	
+	Make sure happy path works.
+
+	Remove debug logs.
 
 
 

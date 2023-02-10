@@ -1,16 +1,16 @@
 package constants
 
 const (
-	MaxRelays                   = 1000
-	NumRelayCounters            = 128
-	RelayTimeout                = 10
-	RelayHistorySize            = 60
+	MaxRelays        = 1000
+	NumRelayCounters = 128
+	RelayTimeout     = 10
+	RelayHistorySize = 60
 
 	MaxNearRelays  = 32
 	MaxRouteRelays = 5
 
-	MaxRelayNameLength = 63
-	MaxRelayVersionLength = 32
+	MaxRelayNameLength      = 63
+	MaxRelayVersionLength   = 32
 	MaxDatacenterNameLength = 256
 
 	MaxTags = 8

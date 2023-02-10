@@ -2,8 +2,8 @@ package packets
 
 import (
 	"errors"
-	"net"
 	"fmt"
+	"net"
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
@@ -190,7 +190,7 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 // --------------------------------------------------------------------------
 
 type RelayUpdateResponsePacket struct {
-	Version       uint32
+	Version       uint8
 	Timestamp     uint64
 	NumRelays     uint32
 	RelayId       [constants.MaxRelays]uint64
@@ -206,7 +206,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, uint64(packet.Timestamp))
 	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays))
 
@@ -229,7 +229,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	index := 0
 
-	if !encoding.ReadUint32(buffer, &index, &packet.Version) {
+	if !encoding.ReadUint8(buffer, &index, &packet.Version) {
 		return errors.New("could not read version")
 	}
 

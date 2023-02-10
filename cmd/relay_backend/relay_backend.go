@@ -243,7 +243,7 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 		err := costMatrix.Read(data)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintf(w, "no cost matrix\n")
+			fmt.Fprintf(w, "no cost matrix: %v\n", err)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html")
@@ -645,7 +645,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 			case message := <-consumer.MessageChannel:
 
 				// todo
-				fmt.Printf( "processing relay update message\n" )
+				fmt.Printf("processing relay update message\n")
 
 				// read the relay update request packet
 
@@ -682,19 +682,22 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numSamples := int(relayUpdateRequest.NumSamples)
 
+				// TODO
+				fmt.Printf("%d samples\n", numSamples)
+
 				for i := 0; i < numSamples; i++ {
-					rtt := relayUpdateRequest.SampleRTT[i]
-					jitter := relayUpdateRequest.SampleJitter[i]
-					pl := relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0
+					rtt := float32(relayUpdateRequest.SampleRTT[i])
+					jitter := float32(relayUpdateRequest.SampleJitter[i])
+					pl := float32(relayUpdateRequest.SamplePacketLoss[i]) / 65535.0 * 100.0
 					id := relayUpdateRequest.SampleRelayId[i]
 					index, ok := relayData.RelayIdToIndex[id]
-					if ok {
+					if !ok {
 						continue
 					}
 					name := relayData.RelayNames[index]
-					if rtt < 255.0 && pl < 100.0 {
-						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
-					}
+					// if rtt < 255.0 && pl < 100.0 {
+					core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
+					// }
 				}
 
 				// process samples in the relay update
@@ -813,7 +816,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 	ticker := time.NewTicker(routeMatrixInterval)
 
-	hasSeenDataStores := false
+	// hasSeenDataStores := false
 
 	go func() {
 
@@ -837,6 +840,9 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
+				// todo
+				fmt.Printf("get costs\n")
+
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxJitter, maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
@@ -852,6 +858,9 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				}
 
 				// serve up as internal cost matrix
+
+				// todo
+				fmt.Printf("write cost matrix data new\n")
 
 				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize)
 				if err != nil {
@@ -885,10 +894,9 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayLongitudes:    costMatrixNew.RelayLongitudes,
 					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
 					DestRelays:         costMatrixNew.DestRelays,
-					// todo: bring back optimize
-					RouteEntries: nil, // core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
-					BinFileBytes: int32(len(relayData.DatabaseBinFile)),
-					BinFileData:  relayData.DatabaseBinFile,
+					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
+					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
+					BinFileData:        relayData.DatabaseBinFile,
 				}
 
 				// serve up as internal route matrix
@@ -927,41 +935,41 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				dataStores = service.LoadLeaderStore()
 
 				if len(dataStores) == 0 {
-					// IMPORTANT: don't error unless we've already seen data stores succeed once, and it is failing now
-					// otherwise, we get error spam on startup while we are waiting for the first leader to be elected
-					if hasSeenDataStores {
-						core.Error("could not get data stores from redis selector")
-					}
+					core.Error("could not get data stores from redis")
 					continue
 				}
 
-				hasSeenDataStores = true
+				// todo
+				// hasSeenDataStores = true
 
 				relaysCSVDataNew = dataStores[0].Data
 				if relaysCSVDataNew == nil {
-					core.Error("failed to get relays from redis selector")
+					core.Error("failed to get relays from redis")
 					continue
 				}
 
 				costMatrixDataNew = dataStores[1].Data
 				if costMatrixDataNew == nil {
-					core.Error("failed to get cost matrix from redis selector")
+					core.Error("failed to get cost matrix from redis")
 					continue
 				}
 
 				routeMatrixDataNew = dataStores[2].Data
 				if routeMatrixDataNew == nil {
-					core.Error("failed to get route matrix from redis selector")
+					core.Error("failed to get route matrix from redis")
 					continue
 				}
 
 				// serve up as official data
+
+				fmt.Printf("got official data from redis\n")
 
 				relaysMutex.Lock()
 				relaysCSVData = relaysCSVDataNew
 				relaysMutex.Unlock()
 
 				costMatrixMutex.Lock()
+				fmt.Printf("*** loaded cost matrix data ***\n")
 				costMatrixData = costMatrixDataNew
 				costMatrixMutex.Unlock()
 
