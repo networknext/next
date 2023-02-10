@@ -1,24 +1,51 @@
 DONE
 
-	Help Velan debug packet spikes and delayed packet receives.
+	Debug why happy path is not working.
 
-	Update packet loss to uint16_t for relay ping samples.
-
-	Update relay packet tests.
-
-	Pass over packets and do more constants.
-	
-	Pass over messages.
-
-	Update the relay to send the new relay update request packet format.
-
-	Update the relay to receive the new relay update response packet format.
-
-	Fix relay comms with backend.
+	Server backend is crashing out. Fixed.
 
 TODO
 
-	Debug why happy path is not working.
+	What is really going on here is that the relay backend is not providing a cost matrix, and therefore no network next routes are being taken, and the happy path fails.
+
+	The solution is to fix whatever is causing the relay backend to not have a cost matrix.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 
