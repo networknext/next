@@ -12,10 +12,10 @@ DONE
 
 	Problem with cost matrix serialize read. Fixed.
 
-TODO
-	
 	Make sure happy path works.
 
+TODO
+	
 	Remove debug logs.
 
 
