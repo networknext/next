@@ -10,9 +10,13 @@ DONE
 	
 	Pass over messages.
 
+	Update the relay to send the new relay update request packet format.
+
 TODO
 
-	Update the relay to use the new packet formats and version numbers
+	Update the relay to receive the new relay update response packet format.
+
+	---------------
 
 	Make sure happy path passes.
 
