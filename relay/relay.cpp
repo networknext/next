@@ -719,10 +719,6 @@ void relay_write_address_variable( uint8_t ** p, const relay_address_t * address
             relay_write_uint8( p, address->data.ipv4[i] );
         }
         relay_write_uint16( p, address->port );
-        for ( int i = 0; i < 12; ++i )
-        {
-            relay_write_uint8( p, 0 );
-        }
     }
     else if ( address->type == RELAY_ADDRESS_IPV6 )
     {
@@ -3986,7 +3982,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 {
     // build update data
 
-    uint32_t update_version = 1;
+    uint8_t update_version = 1;
 
     uint8_t update_data[100*1024];
 
@@ -3994,7 +3990,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint64_t timestamp = 0;
 
     uint8_t * p = update_data;
-    relay_write_uint32( &p, update_version );
+    relay_write_uint8( &p, update_version );
     relay_write_uint64( &p, timestamp );
     relay_write_address_variable( &p, &relay->relay_public_address );
 

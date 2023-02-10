@@ -24,7 +24,7 @@ type RelayPacket interface {
 // --------------------------------------------------------------------------
 
 type RelayUpdateRequestPacket struct {
-	Version                   uint32
+	Version                   uint8
 	Timestamp                 uint64
 	Address                   net.UDPAddr
 	NumSamples                uint32
@@ -47,7 +47,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, packet.Timestamp)
 	encoding.WriteAddress(buffer, &index, &packet.Address)
 
@@ -64,6 +64,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthDownKbps)
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthDownKbps)
+
 	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
 	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionLength)
 
@@ -79,7 +80,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 	index := 0
 
-	encoding.ReadUint32(buffer, &index, &packet.Version)
+	encoding.ReadUint8(buffer, &index, &packet.Version)
 
 	if packet.Version != VersionNumberRelayUpdateRequest {
 		return errors.New("invalid relay update request packet version")
@@ -169,7 +170,7 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 
 	index := 0
 
-	encoding.ReadUint32(buffer, &index, &packet.Version)
+	encoding.ReadUint8(buffer, &index, &packet.Version)
 
 	if packet.Version != VersionNumberRelayUpdateRequest {
 		return errors.New("invalid relay update request packet version")

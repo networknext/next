@@ -14,9 +14,17 @@ DONE
 
 	Update the relay to receive the new relay update response packet format.
 
+	Fix relay comms with backend.
+
 TODO
 
-	Make sure happy path passes.
+	Debug why happy path is not working.
+
+	---------------
+
+	Relay backend must ignore old (zero timestamp) relay updates, reply with init data only.
+
+	Relay backend must only accept more recent (newer) timestamp updates.
 
 	---------------
 

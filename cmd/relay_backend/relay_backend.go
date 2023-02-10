@@ -685,14 +685,14 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				for i := 0; i < numSamples; i++ {
 					rtt := relayUpdateRequest.SampleRTT[i]
 					jitter := relayUpdateRequest.SampleJitter[i]
-					pl := relayUpdateRequest.SamplePacketLoss[i] / 255.0
+					pl := relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0
 					id := relayUpdateRequest.SampleRelayId[i]
 					index, ok := relayData.RelayIdToIndex[id]
 					if ok {
 						continue
 					}
 					name := relayData.RelayNames[index]
-					if rtt < 255.0 && pl < 1.0 {
+					if rtt < 255.0 && pl < 100.0 {
 						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
 					}
 				}
