@@ -1960,11 +1960,31 @@ func test_relay_backend() {
 					if response.StatusCode != 200 {
 						fmt.Printf("bad http response %d\n", response.StatusCode)
 						atomic.AddUint64(&errorCount, 1)
+						break
 					}
 
-					// todo: we should actually read the response here
+					body, err = ioutil.ReadAll(response.Body)
 
-					response.Body.Close()
+					if err != nil {
+						fmt.Printf("error reading http response: %v\n", err)
+						atomic.AddUint64(&errorCount, 1)
+						break
+					}
+
+					defer response.Body.Close()
+
+					// read the relay response packet
+
+					var responsePacket packets.RelayUpdateResponsePacket
+
+					err = responsePacket.Read(body)
+					if err != nil {
+						fmt.Printf("could not read relay response: %v", err)
+						atomic.AddUint64(&errorCount, 1)
+						break
+					}
+
+					_ = responsePacket
 				}
 			}
 
