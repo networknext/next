@@ -20,15 +20,15 @@ DONE
 
 	Verify func tests pass. Not yet.
 
-TODO
-
 	Relay gateway should only respond to packets with timestamp within +/- 10 seconds of current unix timestamp.
 
 	Func backend should do the same.
 
 	Update relay backend tests to pass in the timestamp, make sure they pass.
 
-	Add time limits to all func test, so they can't run forever and cost us $$$
+	All func tests pass. Too much log spam in test relay backend was delaying it from finishing.
+
+TODO
 
 	Extend relay to sign relay update request packets
 
@@ -36,51 +36,19 @@ TODO
 
 	Extend func backend to check relay update request packet signature
 
-	Verify that all func tests pass
+	---------------
+
+	Verify that func tests and happy path works.
 
 	---------------
 
 	Implement relay validation on join
 
-		1. Verify the relay has the correct public and internal addresses
+		1. Verify its public/private keypairs are valid (can encrypt/decrypt data)
 
-		2. Verify its public/private keypairs are valid (can encrypt/decrypt data)
+		2. Verify the relay has the correct public and internal addresses (check vs. values returned to it in the relay update response)
 
  		3. Verify that it can read/write test tokens sent to it from the backend
-
-		4. On the relay backend side, verify that it can sign data with the expected private key.
-
-	---------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	---------------
 
@@ -98,8 +66,19 @@ TODO
 
 	---------------
 
+	The relay should talk to the relay backend over SSH in dev and production.
 
+	---------------
 
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	It can be as simple as an expire time for pings
+
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+
+    --------------
 
 
 
@@ -147,24 +126,6 @@ TODO
     --------------
 
     Add relay counters to relay stats message.
-
-    --------------
-
-	Implement the near relay ping token.
-
-	We need to do this now, so we don't have problems with it in the future.
-
-	It can be as simple as an expire time for pings
-
-	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
-
-	--------------
-
-	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
-
-	--------------
-
-	Leader election func tests for relay backends + ready delay
 
 	--------------
 
@@ -249,25 +210,25 @@ Essentials:
 
 	--------------
 
-	Extend server events into, match events, match data, session events, session data
-
-	--------------
-
 	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
 
 	--------------
 
-	Put "MatchId" into session data (first).
+	link session to match id
 
-	This way we can easily look up from a session the match it is in.
+	--------------
+
+	match events
+
+	match data (with type uint64 at top -- call at any time, multiple times...)
+
+	session events
+
+	session data (with type uint64 at top) -- call at any time, multiple times...)
 
 	--------------
 
 	Get "pro" tagging back in. This is a cool feature.
-
-	--------------
-
-	Extend pro tagging so the whole server gets tagged pro?
 
 	--------------
 
@@ -359,3 +320,11 @@ Nice to have:
 	This would have helped Velan and PFG.
 
 	---------------
+
+	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
+
+	--------------
+
+	Leader election func tests for relay backends + ready delay
+
+	--------------

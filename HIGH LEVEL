@@ -1,6 +1,6 @@
 HIGH LEVEL
 
-	0. Sort out relay <-> relay backend stuff and lock it down.
+	0. Sort out relay and relay backend stuff and *really* lock it down. No changes to relay and relay <-> relay backend protocols past this point.
 
 	1. Get all analytics stuff pushed to analytics service via pubsub
 
@@ -8,11 +8,11 @@ HIGH LEVEL
 
 	3. Get the portal cruncher rebuilt (local)
 
-	4. Setup terraform scripts to get the dev environment up
+	4. Get the portal back online in a basic format running locally
 
-	5. Get dev back up with internal addresses working across google and AWS relays (internal groups).
+	5. Setup terraform scripts to get the dev environment up
 
-	6. Get the portal back online
+	6. Get dev back up with internal addresses working across google and AWS relays (internal groups), plus some bare metal.
 
 	7. Fix IP2Location
 
@@ -20,6 +20,6 @@ HIGH LEVEL
 
 	9. Load test, optimize and profile: SDK, relay and backend components.
 
-	10. Document everything.
+	10. Document *everything*.
 
-	11. Bring back analytics.
+	11. Bring back portal, admin tool, analytics etc... (stretch)
