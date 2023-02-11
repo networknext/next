@@ -674,9 +674,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numSamples := int(relayUpdateRequest.NumSamples)
 
-				// TODO
-				fmt.Printf("%d samples\n", numSamples)
-
 				for i := 0; i < numSamples; i++ {
 					rtt := float32(relayUpdateRequest.SampleRTT[i])
 					jitter := float32(relayUpdateRequest.SampleJitter[i])
@@ -687,9 +684,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						continue
 					}
 					name := relayData.RelayNames[index]
-					// if rtt < 255.0 && pl < 100.0 {
-					core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
-					// }
+					if rtt < 255.0 && pl < 100.0 {
+						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
+					}
 				}
 
 				// process samples in the relay update
@@ -943,14 +940,11 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// serve up as official data
 
-				fmt.Printf("got official data from redis\n")
-
 				relaysMutex.Lock()
 				relaysCSVData = relaysCSVDataNew
 				relaysMutex.Unlock()
 
 				costMatrixMutex.Lock()
-				fmt.Printf("*** loaded cost matrix data ***\n")
 				costMatrixData = costMatrixDataNew
 				costMatrixMutex.Unlock()
 

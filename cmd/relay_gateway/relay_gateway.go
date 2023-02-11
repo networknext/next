@@ -95,6 +95,22 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
+		currentTimestamp := uint64(startTime.Unix())
+
+		if relayUpdateRequest.Timestamp < currentTimestamp - 10 {
+			core.Debug("[%s] relay update request is too old", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
+
+		if relayUpdateRequest.Timestamp > currentTimestamp + 10 {
+			core.Debug("[%s] relay update request is in the future", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
+
+		// todo: track per-address in a hash w. expiry 60 seconds, if the timestamp has already been received. if it has, then drop the packet here so people DDoSing us with replayed packets can't fill the redis queue
+
 		relayData := getRelayData()
 
 		relayId := common.RelayId(relayUpdateRequest.Address.String())

@@ -1927,7 +1927,7 @@ func test_relay_backend() {
 					requestPacket := packets.RelayUpdateRequestPacket{}
 
 					requestPacket.Version = packets.VersionNumberRelayUpdateRequest
-					// todo: requestPacket.Timestamp
+					requestPacket.Timestamp = uint64(time.Now().Unix())
 					requestPacket.Address = relayAddresses[index]
 					requestPacket.NumSamples = NumRelays
 					requestPacket.NumRelayCounters = constants.NumRelayCounters
@@ -1962,7 +1962,7 @@ func test_relay_backend() {
 						atomic.AddUint64(&errorCount, 1)
 					}
 
-					// todo: we actually have to read response here and get timestamp, feed that timestamp back into the next request
+					// todo: we should actually read the response here
 
 					response.Body.Close()
 				}

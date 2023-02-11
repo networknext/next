@@ -3986,8 +3986,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     uint8_t update_data[100*1024];
 
-    // todo
-    uint64_t timestamp = 0;
+    uint64_t timestamp = time( NULL );
 
     uint8_t * p = update_data;
     relay_write_uint8( &p, update_version );

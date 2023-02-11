@@ -222,8 +222,25 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	err = requestPacket.Read(body)
 	if err != nil {
 		core.Error("could not read relay update: %v", err)
+		writer.WriteHeader(http.StatusBadRequest) // 400
 		return
 	}
+
+	currentTimestamp := uint64(time.Now().Unix())
+
+	if requestPacket.Timestamp < currentTimestamp - 10 {
+		core.Error("relay update is too old")
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
+
+	if requestPacket.Timestamp > currentTimestamp + 10 {
+		core.Error("relay update is in the future")
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
+
+	// todo: check packet signature
 
    // process the relay update
 
