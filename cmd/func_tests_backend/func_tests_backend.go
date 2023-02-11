@@ -2091,34 +2091,43 @@ func test_relay_backend() {
 
 	// wait for 60 seconds
 
+	fmt.Printf("waiting 60 seconds...\n")
+
 	time.Sleep(60 * time.Second)
 
 	// wait for all goroutines to finish
 
 	cancelFunc()
 
+	fmt.Printf("waiting for goroutines\n")
+
 	waitGroup.Wait()
 
 	// print output from services
 
-	fmt.Printf("-----------------------------------------------\n")
-	fmt.Printf("%s", magic_backend_output.String())
-	fmt.Printf("-----------------------------------------------\n")
-	fmt.Printf("%s", relay_gateway_output.String())
-	fmt.Printf("-----------------------------------------------\n")
-	fmt.Printf("%s", relay_backend_output.String())
-	fmt.Printf("-----------------------------------------------\n")
+	fmt.Printf("waiting for magic backend\n")
 
 	magic_backend_cmd.Process.Signal(os.Interrupt)
 	magic_backend_cmd.Wait()
 
+	fmt.Printf("waiting for relay gateway\n")
+
 	relay_gateway_cmd.Process.Signal(os.Interrupt)
 	relay_gateway_cmd.Wait()
+
+	fmt.Printf("waiting for relay backend\n")
 
 	relay_backend_cmd.Process.Signal(os.Interrupt)
 	relay_backend_cmd.Wait()
 
 	if errorCount != 0 {
+		fmt.Printf("-----------------------------------------------\n")
+		fmt.Printf("%s", magic_backend_output.String())
+		fmt.Printf("-----------------------------------------------\n")
+		fmt.Printf("%s", relay_gateway_output.String())
+		fmt.Printf("-----------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_output.String())
+		fmt.Printf("-----------------------------------------------\n")
 		panic("error count is not zero")
 	}
 
