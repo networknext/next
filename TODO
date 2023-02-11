@@ -18,23 +18,25 @@ DONE
 
 	Update func backend to use relay packets.
 
+	Verify func tests pass. Not yet.
+
 TODO
-	
-	Verify func tests pass.
 
-	---------------
+	Relay gateway should only respond to packets with timestamp within +/- 10 seconds of current unix timestamp.
 
-	Only respond to packets with timestamp within +/- 10 seconds of current unix timestamp.
+	Func backend should do the same.
 
-	Update backend func tests to grab the response timestamp and pass back in next update
+	Update relay backend tests to pass in the timestamp, make sure they pass.
 
-	---------------
+	Add time limits to all func test, so they can't run forever and cost us $$$
 
 	Extend relay to sign relay update request packets
 
-	---------------
+	Extend relay gateway to check relay update request packet signature
 
-	Extend relay gateway to verify signature before it passes the packet on
+	Extend func backend to check relay update request packet signature
+
+	Verify that all func tests pass
 
 	---------------
 

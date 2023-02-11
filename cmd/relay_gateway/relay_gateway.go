@@ -84,13 +84,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = relayUpdateRequest.Peek(body)
 		if err != nil {
-			core.Error("[%s] could not peek relay update request", request.RemoteAddr)
+			core.Debug("[%s] could not peek relay update request", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
-			core.Error("[%s] version mismatch", request.RemoteAddr)
+			core.Debug("[%s] version mismatch", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -101,10 +101,14 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Error("[%s] unknown relay %x", request.RemoteAddr, relayId)
-			writer.WriteHeader(http.StatusNotFound) // 404
+			core.Debug("[%s] unknown relay %x", request.RemoteAddr, relayId)
+			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
+
+		// todo: verify packet signature
+
+		// ...
 
 		// relay update accepted
 
@@ -145,9 +149,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = getMagicValues()
 
-		// send the response packet
+		// send the response packet back to the relay
 
-		responseData := make([]byte, 1024*1024)
+		responseData := make([]byte, 1024*1024) // todo: would be better to tightly bound this response
 
 		responseData = responsePacket.Write(responseData)
 
@@ -155,7 +159,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		writer.Write(responseData)
 
-		// forward to the relay backend
+		// forward the relay update to the relay backend
 
 		producer.MessageChannel <- body
 	}
