@@ -3999,10 +3999,6 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_manager_get_stats( relay->relay_manager, &stats );
     relay_platform_mutex_release( relay->mutex );
 
-    // todo:
-    printf( "-------------------------------------------------------------\n" );
-    printf( "%d relay samples for relay backend\n", stats.num_relays );
-
     relay_write_uint32( &p, stats.num_relays );
     for ( int i = 0; i < stats.num_relays; ++i )
     {
@@ -4019,12 +4015,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_write_uint8( &p, uint8_t( integer_rtt ) );
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
-
-        printf( "id = %" PRIx64 ", rtt = %.2f, jitter = %.2f, packet loss = %.2f, integer rtt = %d, integer jitter = %d, integer packet loss = %d\n", stats.relay_ids[i], rtt, jitter, packet_loss, integer_rtt, integer_jitter, integer_packet_loss );
     }
-
-    // todo
-    printf( "-------------------------------------------------------------\n" );
 
     relay_platform_mutex_acquire( relay->mutex );
     uint64_t sessions = relay->sessions->size();
@@ -4146,23 +4137,12 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
     memset( relay_ping_data, 0, sizeof(relay_ping_data) );
 
-    // todo
-    printf( "-------------------------------------------------------------\n" );
-    printf( "%d relays to ping\n", num_relays );
-
     for ( uint32_t i = 0; i < num_relays; ++i )
     {
         relay_ping_data[i].id = relay_read_uint64( &q );
         relay_read_address_variable( &q, &relay_ping_data[i].address );
         relay_ping_data[i].internal = relay_read_uint8( &q );
-
-        // todo
-        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf("id = %" PRIx64 ", address = %s, internal = %d\n", relay_ping_data[i].id, relay_address_to_string( &relay_ping_data[i].address, address_buffer ), relay_ping_data[i].internal );
     }
-
-    // todo
-    printf( "-------------------------------------------------------------\n" );
 
     if ( error )
     {
