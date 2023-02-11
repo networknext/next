@@ -109,7 +109,7 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 
 	numMatchValues := rand.Intn(65)
 
-	matchValues := [messages.MatchDataMaxMatchValues]float64{}
+	matchValues := [constants.MaxMatchValues]float64{}
 
 	for i := 0; i < numMatchValues; i++ {
 		matchValues[i] = rand.Float64()
@@ -138,7 +138,7 @@ func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 		SDKVersion_Patch: 0,
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
-		DatacenterName:   common.RandomString(messages.ServerInitMaxDatacenterNameLength),
+		DatacenterName:   common.RandomString(constants.MaxDatacenterNameLength),
 	}
 
 	return message

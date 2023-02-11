@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
@@ -323,12 +324,18 @@ func (service *Service) UpdateMagic() {
 	service.updateMagicLoop()
 }
 
-func (service *Service) GetMagicValues() ([]byte, []byte, []byte) {
+func (service *Service) GetMagicValues() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 	service.magicMutex.Lock()
-	upcomingMagic := service.upcomingMagic
-	currentMagic := service.currentMagic
-	previousMagic := service.previousMagic
+	a := service.upcomingMagic
+	b := service.currentMagic
+	c := service.previousMagic
 	service.magicMutex.Unlock()
+	upcomingMagic := [constants.MagicBytes]byte{}
+	currentMagic := [constants.MagicBytes]byte{}
+	previousMagic := [constants.MagicBytes]byte{}
+	copy(upcomingMagic[:], a)
+	copy(currentMagic[:], b)
+	copy(previousMagic[:], c)
 	return upcomingMagic, currentMagic, previousMagic
 }
 

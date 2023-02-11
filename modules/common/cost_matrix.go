@@ -6,13 +6,14 @@ import (
 	"net"
 
 	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
-	CostMatrixVersion_Min   = 2 // the minimum version we can read
-	CostMatrixVersion_Max   = 2 // the maximum version we can read
-	CostMatrixVersion_Write = 2 // the version we write
+	CostMatrixVersion_Min   = 1 // the minimum version we can read
+	CostMatrixVersion_Max   = 1 // the maximum version we can read
+	CostMatrixVersion_Write = 1 // the version we write
 )
 
 type CostMatrix struct {
@@ -61,20 +62,19 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	if stream.IsReading() {
-		m.Costs = make([]uint8, numRelays*numRelays)
+		costSize := core.TriMatrixLength(int(numRelays))
+		m.Costs = make([]uint8, costSize)
 	}
 
-	if numRelays > 0 {
+	if len(m.Costs) > 0 {
 		stream.SerializeBytes(m.Costs)
 	}
 
-	if m.Version >= 2 {
-		if stream.IsReading() {
-			m.DestRelays = make([]bool, numRelays)
-		}
-		for i := range m.DestRelays {
-			stream.SerializeBool(&m.DestRelays[i])
-		}
+	if stream.IsReading() {
+		m.DestRelays = make([]bool, numRelays)
+	}
+	for i := range m.DestRelays {
+		stream.SerializeBool(&m.DestRelays[i])
 	}
 
 	return stream.Error()
@@ -110,7 +110,6 @@ func GenerateRandomCostMatrix() CostMatrix {
 	costMatrix.RelayLongitudes = make([]float32, numRelays)
 	costMatrix.RelayDatacenterIds = make([]uint64, numRelays)
 	costMatrix.DestRelays = make([]bool, numRelays)
-	costMatrix.Costs = make([]uint8, numRelays*numRelays)
 
 	for i := 0; i < numRelays; i++ {
 		costMatrix.RelayIds[i] = rand.Uint64()
@@ -122,7 +121,9 @@ func GenerateRandomCostMatrix() CostMatrix {
 		costMatrix.DestRelays[i] = RandomBool()
 	}
 
-	for i := 0; i < numRelays*numRelays; i++ {
+	costSize := core.TriMatrixLength(numRelays)
+	costMatrix.Costs = make([]uint8, costSize)
+	for i := 0; i < costSize; i++ {
 		costMatrix.Costs[i] = uint8(RandomInt(0, 255))
 	}
 

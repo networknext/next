@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -52,7 +53,7 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([]byte, []byte, []byte)) func(writer http.ResponseWriter, request *http.Request) {
+func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 
@@ -166,8 +167,8 @@ func GetRelayData(service *common.Service) func() *common.RelayData {
 	}
 }
 
-func GetMagicValues(service *common.Service) func() ([]byte, []byte, []byte) {
-	return func() ([]byte, []byte, []byte) {
+func GetMagicValues(service *common.Service) func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
+	return func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 		return service.GetMagicValues()
 	}
 }

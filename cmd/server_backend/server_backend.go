@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
@@ -110,7 +111,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.RoutingPrivateKey = routingPrivateKey
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
-	handler.GetMagicValues = func() ([]byte, []byte, []byte) { return service.GetMagicValues() }
+	handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) { return service.GetMagicValues() }
 
 	handler.ServerInitMessageChannel = serverInitMessageChannel
 	handler.ServerUpdateMessageChannel = serverUpdateMessageChannel

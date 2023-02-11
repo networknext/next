@@ -203,13 +203,12 @@ func ReadString(data []byte, index *int, value *string, maxStringLength uint32) 
 	return true
 }
 
-func ReadBytes(data []byte, index *int, value *[]byte, bytes uint32) bool {
+func ReadBytes(data []byte, index *int, value []byte, bytes uint32) bool {
 	if *index+int(bytes) > len(data) {
 		return false
 	}
-	*value = make([]byte, bytes)
 	for i := uint32(0); i < bytes; i++ {
-		(*value)[i] = data[*index]
+		value[i] = data[*index]
 		*index++
 	}
 	return true

@@ -2,6 +2,7 @@ package packets
 
 import (
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/networknext/backend/modules/constants"
@@ -23,14 +24,14 @@ type RelayPacket interface {
 // --------------------------------------------------------------------------
 
 type RelayUpdateRequestPacket struct {
-	Version                   uint32
+	Version                   uint8
 	Timestamp                 uint64
 	Address                   net.UDPAddr
 	NumSamples                uint32
 	SampleRelayId             [constants.MaxRelays]uint64
 	SampleRTT                 [constants.MaxRelays]uint8  // [0,255] milliseconds
 	SampleJitter              [constants.MaxRelays]uint8  // [0,255] milliseconds
-	SamplePacketLoss          [constants.MaxRelays]uint16 // [0,65535] -> [0%,100%] PL
+	SamplePacketLoss          [constants.MaxRelays]uint16 // [0,65535] -> [0%,100%]
 	SessionCount              uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
@@ -46,7 +47,7 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, packet.Timestamp)
 	encoding.WriteAddress(buffer, &index, &packet.Address)
 
@@ -63,8 +64,9 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthDownKbps)
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthDownKbps)
+
 	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
-	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionStringLength)
+	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionLength)
 
 	encoding.WriteUint32(buffer, &index, packet.NumRelayCounters)
 	for i := 0; i < int(packet.NumRelayCounters); i++ {
@@ -78,7 +80,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 	index := 0
 
-	encoding.ReadUint32(buffer, &index, &packet.Version)
+	encoding.ReadUint8(buffer, &index, &packet.Version)
 
 	if packet.Version != VersionNumberRelayUpdateRequest {
 		return errors.New("invalid relay update request packet version")
@@ -143,7 +145,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read relay flags")
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, constants.MaxRelayVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.RelayVersion, constants.MaxRelayVersionLength) {
 		return errors.New("could not read relay version string")
 	}
 
@@ -152,7 +154,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 	}
 
 	if packet.NumRelayCounters != constants.NumRelayCounters {
-		return errors.New("wrong number of relay counters")
+		return fmt.Errorf("wrong number of relay counters. expected %d, got %d", constants.NumRelayCounters, packet.NumRelayCounters)
 	}
 
 	for i := 0; i < int(packet.NumRelayCounters); i++ {
@@ -168,7 +170,7 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 
 	index := 0
 
-	encoding.ReadUint32(buffer, &index, &packet.Version)
+	encoding.ReadUint8(buffer, &index, &packet.Version)
 
 	if packet.Version != VersionNumberRelayUpdateRequest {
 		return errors.New("invalid relay update request packet version")
@@ -188,7 +190,7 @@ func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
 // --------------------------------------------------------------------------
 
 type RelayUpdateResponsePacket struct {
-	Version       uint32
+	Version       uint8
 	Timestamp     uint64
 	NumRelays     uint32
 	RelayId       [constants.MaxRelays]uint64
@@ -204,7 +206,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	index := 0
 
-	encoding.WriteUint32(buffer, &index, packet.Version)
+	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, uint64(packet.Timestamp))
 	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays))
 
@@ -214,11 +216,11 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 		encoding.WriteUint8(buffer, &index, packet.RelayInternal[i])
 	}
 
-	encoding.WriteString(buffer, &index, packet.TargetVersion, constants.MaxRelayVersionStringLength)
+	encoding.WriteString(buffer, &index, packet.TargetVersion, constants.MaxRelayVersionLength)
 
-	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic, 8)
-	encoding.WriteBytes(buffer, &index, packet.CurrentMagic, 8)
-	encoding.WriteBytes(buffer, &index, packet.PreviousMagic, 8)
+	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic[:], constants.MagicBytes)
+	encoding.WriteBytes(buffer, &index, packet.CurrentMagic[:], constants.MagicBytes)
+	encoding.WriteBytes(buffer, &index, packet.PreviousMagic[:], constants.MagicBytes)
 
 	return buffer[:index]
 }
@@ -227,7 +229,7 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	index := 0
 
-	if !encoding.ReadUint32(buffer, &index, &packet.Version) {
+	if !encoding.ReadUint8(buffer, &index, &packet.Version) {
 		return errors.New("could not read version")
 	}
 
@@ -262,23 +264,19 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		}
 	}
 
-	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, constants.MaxRelayVersionStringLength) {
+	if !encoding.ReadString(buffer, &index, &packet.TargetVersion, constants.MaxRelayVersionLength) {
 		return errors.New("could not read target version")
 	}
 
-	packet.UpcomingMagic = make([]byte, 8)
-	packet.CurrentMagic = make([]byte, 8)
-	packet.PreviousMagic = make([]byte, 8)
-
-	if !encoding.ReadBytes(buffer, &index, &packet.UpcomingMagic, 8) {
+	if !encoding.ReadBytes(buffer, &index, packet.UpcomingMagic[:], constants.MagicBytes) {
 		return errors.New("could not read upcoming magic")
 	}
 
-	if !encoding.ReadBytes(buffer, &index, &packet.CurrentMagic, 8) {
+	if !encoding.ReadBytes(buffer, &index, packet.CurrentMagic[:], constants.MagicBytes) {
 		return errors.New("could not read current magic")
 	}
 
-	if !encoding.ReadBytes(buffer, &index, &packet.PreviousMagic, 8) {
+	if !encoding.ReadBytes(buffer, &index, packet.PreviousMagic[:], constants.MagicBytes) {
 		return errors.New("could not read previous magic")
 	}
 

@@ -1,20 +1,75 @@
 DONE
 
-	Help Velan debug packet spikes and delayed packet receives.
+	Debug why happy path is not working.
 
-	Update packet loss to uint16_t for relay ping samples.
+	Server backend is crashing out. Fixed.
 
-	Update relay packet tests.
+	What is really going on here is that the relay backend is not providing a cost matrix, and therefore no network next routes are being taken, and the happy path fails.
 
-	Pass over packets and do more constants.
-	
-	Pass over messages.
+	The solution is to fix whatever is causing the relay backend to not have a cost matrix.
+
+	My theory is that relays aren't really getting the set of relays to ping, so have no samples to give to relay backend.
+
+	Problem with cost matrix serialize read. Fixed.
+
+	Make sure happy path works.
 
 TODO
+	
+	Remove debug logs.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 
-	func backend needs to use the relay packets
+	Relay backend must ignore old (zero timestamp) relay updates, reply with init data only.
+
+	Relay backend must only accept more recent (newer) timestamp updates.
+
+	---------------
+
+	Update func backend to use the relay packets.
+
+	Make sure func tests pass.
+
+	---------------
+
+	Look across todos to make sure nothing is going on.
 
 	---------------
 

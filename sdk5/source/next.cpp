@@ -7612,11 +7612,8 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     next_assert( packet_bytes >= 0 );
 
     if ( packet_bytes <= 1 )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client dropped packet because packet bytes <= 1" );
         return;
-    }
-
+    
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
         return;

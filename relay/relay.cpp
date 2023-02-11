@@ -23,6 +23,8 @@
 
 #define INTENSIVE_RELAY_DEBUGGING                                  0
 
+#define RELAY_VERSION_LENGTH                                      32
+
 #define RELAY_MTU                                               1300
 
 #define RELAY_HEADER_BYTES_SDK5                                   33
@@ -604,6 +606,28 @@ void relay_read_address_short( const uint8_t ** buffer, relay_address_t * addres
     assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
 }
 
+void relay_read_address_variable( const uint8_t ** p, relay_address_t * address )
+{
+    address->type = relay_read_uint8( p );
+
+    if ( address->type == RELAY_ADDRESS_IPV4 )
+    {
+        for ( int j = 0; j < 4; ++j )
+        {
+            address->data.ipv4[j] = relay_read_uint8( p );
+        }
+        address->port = relay_read_uint16( p );
+    }
+    else if ( address->type == RELAY_ADDRESS_IPV6 )
+    {
+        for ( int j = 0; j < 8; ++j )
+        {
+            address->data.ipv6[j] = relay_read_uint16( p );
+        }
+        address->port = relay_read_uint16( p );
+    }
+}
+
 void relay_write_address( uint8_t ** buffer, const relay_address_t * address )
 {
     assert( buffer );
@@ -679,6 +703,36 @@ void relay_write_address_short( uint8_t ** buffer, const relay_address_t * addre
     (void) start;
 
     assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
+}
+
+void relay_write_address_variable( uint8_t ** p, const relay_address_t * address )
+{
+    assert( p );
+    assert( *p );
+    assert( address );
+
+    if ( address->type == RELAY_ADDRESS_IPV4 )
+    {
+        relay_write_uint8( p, RELAY_ADDRESS_IPV4 );
+        for ( int i = 0; i < 4; ++i )
+        {
+            relay_write_uint8( p, address->data.ipv4[i] );
+        }
+        relay_write_uint16( p, address->port );
+    }
+    else if ( address->type == RELAY_ADDRESS_IPV6 )
+    {
+        relay_write_uint8( p, RELAY_ADDRESS_IPV6 );
+        for ( int i = 0; i < 8; ++i )
+        {
+            relay_write_uint16( p, address->data.ipv6[i] );
+        }
+        relay_write_uint16( p, address->port );
+    }
+    else
+    {
+        relay_write_uint8( p, RELAY_ADDRESS_NONE );
+    }
 }
 
 const char * relay_address_to_string( const relay_address_t * address, char * buffer )
@@ -3912,52 +3966,87 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
     return RELAY_OK;
 }
 
-int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_token, const char * relay_address, uint8_t * update_response_memory, relay_t * relay, bool shutdown )
+void clamp( int & value, int min, int max )
+{
+    if ( value > max )
+    {
+        value = max;
+    } 
+    else if ( value < min )
+    {
+        value = min;
+    }
+}
+
+int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_t * relay )
 {
     // build update data
 
-    uint32_t update_version = 5;
+    uint8_t update_version = 1;
 
-    uint8_t update_data[10*1024];
+    uint8_t update_data[100*1024];
+
+    // todo
+    uint64_t timestamp = 0;
 
     uint8_t * p = update_data;
-    relay_write_uint32( &p, update_version );
-    relay_write_string( &p, relay_address, 256 );
-    relay_write_bytes( &p, relay_token, RELAY_TOKEN_BYTES );
+    relay_write_uint8( &p, update_version );
+    relay_write_uint64( &p, timestamp );
+    relay_write_address_variable( &p, &relay->relay_public_address );
 
     relay_platform_mutex_acquire( relay->mutex );
     relay_stats_t stats;
     relay_manager_get_stats( relay->relay_manager, &stats );
     relay_platform_mutex_release( relay->mutex );
 
+    // todo:
+    printf( "-------------------------------------------------------------\n" );
+    printf( "%d relay samples for relay backend\n", stats.num_relays );
+
     relay_write_uint32( &p, stats.num_relays );
     for ( int i = 0; i < stats.num_relays; ++i )
     {
         relay_write_uint64( &p, stats.relay_ids[i] );
-        relay_write_float32( &p, stats.relay_rtt[i] );
-        relay_write_float32( &p, stats.relay_jitter[i] );
-        relay_write_float32( &p, stats.relay_packet_loss[i] );
+        float rtt = stats.relay_rtt[i];
+        float jitter = stats.relay_jitter[i];
+        float packet_loss = stats.relay_packet_loss[i] / 100.0f * 65535.0f;
+        int integer_rtt = int( rtt + 0.5f );
+        int integer_jitter = int( jitter + 0.5f );
+        int integer_packet_loss = int( packet_loss + 0.5f );
+        clamp( integer_rtt, 0, 255 );
+        clamp( integer_jitter, 0, 255 );
+        clamp( integer_packet_loss, 0, 65535 );
+        relay_write_uint8( &p, uint8_t( integer_rtt ) );
+        relay_write_uint8( &p, uint8_t( integer_jitter ) );
+        relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
+
+        printf( "id = %" PRIx64 ", rtt = %.2f, jitter = %.2f, packet loss = %.2f, integer rtt = %d, integer jitter = %d, integer packet loss = %d\n", stats.relay_ids[i], rtt, jitter, packet_loss, integer_rtt, integer_jitter, integer_packet_loss );
     }
+
+    // todo
+    printf( "-------------------------------------------------------------\n" );
 
     relay_platform_mutex_acquire( relay->mutex );
     uint64_t sessions = relay->sessions->size();
     relay_platform_mutex_release( relay->mutex );
-    relay_write_uint64(&p, sessions);
+    
+    // todo
+    uint32_t envelope_bandwidth_up_kbps = 0;
+    uint32_t envelope_bandwidth_down_kbps = 0;
+    uint32_t actual_bandwidth_up_kbps = 0;
+    uint32_t actual_bandwidth_down_kbps = 0;
 
-    relay_write_uint8(&p, uint8_t(shutdown));
-    relay_write_string(&p, RELAY_VERSION, 32);
+    relay_write_uint32( &p, sessions );
+    relay_write_uint32( &p, envelope_bandwidth_up_kbps );
+    relay_write_uint32( &p, envelope_bandwidth_down_kbps );
+    relay_write_uint32( &p, actual_bandwidth_up_kbps );
+    relay_write_uint32( &p, actual_bandwidth_down_kbps );
 
-    uint8_t cpu = 0;
-    relay_write_uint8(&p, cpu);
+    // todo
+    uint64_t relay_flags = 0;
+    relay_write_uint64( &p, relay_flags );
 
-    relay_write_uint64(&p, relay->envelope_bandwidth_kbps_up);
-    relay_write_uint64(&p, relay->envelope_bandwidth_kbps_down);
-
-    // todo: redo bandwidth
-    uint64_t bandwidth_tx = 0;
-    uint64_t bandwidth_rx = 0;
-    relay_write_uint64(&p, bandwidth_tx);
-    relay_write_uint64(&p, bandwidth_rx);
+     relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
 
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
@@ -3979,7 +4068,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     char update_url[1024];
     snprintf( update_url, sizeof(update_url), "%s/relay_update", hostname );
 
-    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 102400L );
+    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 1024000L );
     curl_easy_setopt( curl, CURLOPT_URL, update_url );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
@@ -4016,22 +4105,25 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     const uint8_t * q = update_response_buffer.data;
 
-    uint32_t version = relay_read_uint32( &q );
+    uint8_t version = relay_read_uint8( &q );
 
     const uint32_t update_response_version = 1;
 
-    if ( version > update_response_version )
+    if ( version != update_response_version )
     {
         printf( "error: bad relay update response version. expected %d, got %d\n", update_response_version, version );
         return RELAY_ERROR;
     }
 
-    uint64_t timestamp = relay_read_uint64( &q );
+    uint64_t response_timestamp = relay_read_uint64( &q );
+
+    // todo: stash timestamp in relay, use it for next relay update
+
     if ( relay->initialize_router_timestamp == 0 )
     {
         printf( "Relay initialized\n" );
         fflush( stdout );
-        relay->initialize_router_timestamp = timestamp;
+        relay->initialize_router_timestamp = response_timestamp;
     }
 
     uint32_t num_relays = relay_read_uint32( &q );
@@ -4054,18 +4146,23 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
     memset( relay_ping_data, 0, sizeof(relay_ping_data) );
 
+    // todo
+    printf( "-------------------------------------------------------------\n" );
+    printf( "%d relays to ping\n", num_relays );
+
     for ( uint32_t i = 0; i < num_relays; ++i )
     {
-        char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_ping_data[i].id = relay_read_uint64( &q );
-        relay_read_string( &q, address_string, RELAY_MAX_ADDRESS_STRING_LENGTH );
-        if ( relay_address_parse( &relay_ping_data[i].address, address_string ) != RELAY_OK )
-        {
-            error = true;
-            break;
-        }
+        relay_read_address_variable( &q, &relay_ping_data[i].address );
         relay_ping_data[i].internal = relay_read_uint8( &q );
+
+        // todo
+        char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+        printf("id = %" PRIx64 ", address = %s, internal = %d\n", relay_ping_data[i].id, relay_address_to_string( &relay_ping_data[i].address, address_buffer ), relay_ping_data[i].internal );
     }
+
+    // todo
+    printf( "-------------------------------------------------------------\n" );
 
     if ( error )
     {
@@ -5624,7 +5721,7 @@ int main( int argc, const char ** argv )
 
     char relay_public_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_public_address, relay_public_address_buffer );
-    printf( "Relay public address is '%s'\n", relay_public_address_buffer );
+    printf( "Relay public address is '%s'\n", relay_address_string );
 
     fflush( stdout );
 
@@ -5637,9 +5734,6 @@ int main( int argc, const char ** argv )
         relay_term();
         return 1;
     }
-
-    uint8_t relay_token[RELAY_TOKEN_BYTES];
-    relay_random_bytes( relay_token, RELAY_TOKEN_BYTES );
 
     relay_t relay;
 
@@ -5708,7 +5802,7 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-        if ( relay_update( curl, relay_backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) == RELAY_OK )
+        if ( relay_update( curl, relay_backend_hostname, update_response_memory, &relay ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -5748,7 +5842,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, relay_token, relay_address_string, update_response_memory, &relay, false ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory, &relay ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }

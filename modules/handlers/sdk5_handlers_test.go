@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/database"
@@ -22,11 +23,11 @@ import (
 
 // tests that apply to the SDK5 handler for all packet types
 
-func getMagicValues() ([]byte, []byte, []byte) {
-	upcoming := make([]byte, 8)
-	current := make([]byte, 8)
-	previous := make([]byte, 8)
-	for i := 0; i < 8; i++ {
+func getMagicValues() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
+	upcoming := [constants.MagicBytes]byte{}
+	current := [constants.MagicBytes]byte{}
+	previous := [constants.MagicBytes]byte{}
+	for i := 0; i < constants.MagicBytes; i++ {
 		upcoming[i] = 1
 		current[i] = 2
 		previous[i] = 3

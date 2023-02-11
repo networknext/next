@@ -681,6 +681,10 @@ func GetBestRouteCost(routeMatrix []RouteEntry, sourceRelays []int32, sourceRela
 
 	bestRouteCost := int32(math.MaxInt32)
 
+	if len(routeMatrix) == 0 {
+		return bestRouteCost
+	}
+
 	for i := range sourceRelays {
 
 		// IMPORTANT: RTT=255 is used to signal an unroutable source relay
@@ -831,6 +835,10 @@ type BestRoute struct {
 }
 
 func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, bestRoutes []BestRoute, numBestRoutes *int, routeDiversity *int32) {
+	if len(routeMatrix) == 0 {
+		*numBestRoutes = 0
+		return
+	}
 	numRoutes := 0
 	maxRoutes := len(bestRoutes)
 	for i := range sourceRelays {

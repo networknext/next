@@ -57,7 +57,7 @@ type SDK5_Handler struct {
 	ServerBackendPublicKey  []byte
 	ServerBackendPrivateKey []byte
 	RoutingPrivateKey       []byte
-	GetMagicValues          func() ([]byte, []byte, []byte)
+	GetMagicValues          func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 

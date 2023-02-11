@@ -227,7 +227,8 @@ func parseMessages(messages []byte) [][]byte {
 			core.Error("redis pubsub consumer: could not read length of the message")
 			return [][]byte{}
 		}
-		if !encoding.ReadBytes(messages, &index, &messagesData[i], uint32(messageLength)) {
+		messagesData[i] = make([]byte, messageLength)
+		if !encoding.ReadBytes(messages, &index, messagesData[i], uint32(messageLength)) {
 			core.Error("redis pubsub consumer: could not read message data")
 			return [][]byte{}
 		}

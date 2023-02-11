@@ -141,12 +141,12 @@ func OptimizeThread() {
 
 var (
 	magicMutex    sync.RWMutex
-	magicUpcoming [8]byte
-	magicCurrent  [8]byte
-	magicPrevious [8]byte
+	magicUpcoming [constants.MagicBytes]byte
+	magicCurrent  [constants.MagicBytes]byte
+	magicPrevious [constants.MagicBytes]byte
 )
 
-func GetMagic() ([8]byte, [8]byte, [8]byte) {
+func GetMagic() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 	magicMutex.RLock()
 	upcoming := magicUpcoming
 	current := magicCurrent
@@ -156,7 +156,7 @@ func GetMagic() ([8]byte, [8]byte, [8]byte) {
 }
 
 func GenerateMagic(magic []byte) {
-	newMagic := make([]byte, 8)
+	newMagic := make([]byte, constants.MagicBytes)
 	core.RandomBytes(newMagic)
 	for i := range newMagic {
 		magic[i] = newMagic[i]
@@ -394,7 +394,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// check advanced packet filter
 
-	var emptyMagic [8]byte
+	var emptyMagic [constants.MagicBytes]byte
 
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
