@@ -53,7 +53,8 @@ TODO
 
 
 
---------------------------
+	--------------------------
+
 	Implement relay validation on join
 
 		1. Verify the relay has the correct public and internal addresses

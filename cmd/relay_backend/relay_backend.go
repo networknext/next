@@ -654,11 +654,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					return
 				}
 
-				if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
-					core.Error("relay update version mismatch")
-					return
-				}
-
 				// look up the relay in the database
 
 				relayData := service.RelayData()

@@ -195,9 +195,9 @@ type RelayUpdateResponsePacket struct {
 	RelayAddress  [constants.MaxRelays]net.UDPAddr
 	RelayInternal [constants.MaxRelays]byte
 	TargetVersion string
-	UpcomingMagic []byte
-	CurrentMagic  []byte
-	PreviousMagic []byte
+	UpcomingMagic [constants.MagicBytes]byte
+	CurrentMagic  [constants.MagicBytes]byte
+	PreviousMagic [constants.MagicBytes]byte
 }
 
 func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
