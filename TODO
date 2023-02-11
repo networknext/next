@@ -14,101 +14,29 @@ DONE
 
 	Make sure happy path works.
 
-TODO
-	
 	Remove debug logs.
 
+	Update func backend to use relay packets.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
+	
+	Verify func tests pass.
 
 	---------------
 
-	Relay backend must ignore old (zero timestamp) relay updates, reply with init data only.
+	Only respond to packets with timestamp within +/- 10 seconds of current unix timestamp.
 
-	Relay backend must only accept more recent (newer) timestamp updates.
-
-	---------------
-
-	Update func backend to use the relay packets.
-
-	Make sure func tests pass.
+	Update backend func tests to grab the response timestamp and pass back in next update
 
 	---------------
 
-	Look across todos to make sure nothing is going on.
+	Extend relay to sign relay update request packets
 
 	---------------
 
-	Merge route matrix entry and route manager. They are the exact same data structure...
+	Extend relay gateway to verify signature before it passes the packet on
 
 	---------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------------------
 
 	Implement relay validation on join
 
@@ -119,6 +47,38 @@ TODO
  		3. Verify that it can read/write test tokens sent to it from the backend
 
 		4. On the relay backend side, verify that it can sign data with the expected private key.
+
+	---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 
