@@ -1531,7 +1531,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 		DestRelays:         costMatrix.DestRelays,
-		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 	}
 
 	routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
