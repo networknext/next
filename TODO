@@ -1,34 +1,10 @@
 DONE
 
-	Debug why happy path is not working.
-
-	Server backend is crashing out. Fixed.
-
-	What is really going on here is that the relay backend is not providing a cost matrix, and therefore no network next routes are being taken, and the happy path fails.
-
-	The solution is to fix whatever is causing the relay backend to not have a cost matrix.
-
-	My theory is that relays aren't really getting the set of relays to ping, so have no samples to give to relay backend.
-
-	Problem with cost matrix serialize read. Fixed.
-
-	Make sure happy path works.
-
-	Remove debug logs.
-
-	Update func backend to use relay packets.
-
-	Verify func tests pass. Not yet.
-
-	Relay gateway should only respond to packets with timestamp within +/- 10 seconds of current unix timestamp.
-
-	Func backend should do the same.
-
-	Update relay backend tests to pass in the timestamp, make sure they pass.
-
-	All func tests pass. Too much log spam in test relay backend was delaying it from finishing.
-
 TODO
+
+	Tidy up relay time sync to extrapolate from last update from server.
+
+	---------------
 
 	Extend relay to sign relay update request packets
 

@@ -3820,8 +3820,8 @@ struct relay_t
     bool has_internal_address;
     relay_platform_socket_t * socket;
     relay_platform_mutex_t * mutex;
-    double initialize_time;
-    uint64_t initialize_router_timestamp;
+    uint64_t last_update_response_timestamp;
+    double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
@@ -4109,12 +4109,14 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     // todo: stash timestamp in relay, use it for next relay update
 
-    if ( relay->initialize_router_timestamp == 0 )
+    if ( relay->last_update_response_time == 0 )
     {
         printf( "Relay initialized\n" );
         fflush( stdout );
-        relay->initialize_router_timestamp = response_timestamp;
     }
+
+    relay->last_update_response_timestamp = response_timestamp;
+    relay->last_update_response_time = relay_platform_time();
 
     uint32_t num_relays = relay_read_uint32( &q );
 
@@ -4200,8 +4202,8 @@ uint64_t relay_timestamp( relay_t * relay )
 {
     assert( relay );
     double current_time = relay_platform_time();
-    uint64_t seconds_since_initialize = uint64_t( current_time - relay->initialize_time );
-    return relay->initialize_router_timestamp + seconds_since_initialize;
+    uint64_t seconds_since_last_response = uint64_t( floor( current_time - relay->last_update_response_time ) );
+    return relay->last_update_response_timestamp + seconds_since_last_response;
 }
 
 uint64_t relay_clean_sequence( uint64_t sequence )
@@ -4223,7 +4225,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         if ( packet_bytes == 0 )
             continue;
 
-        if ( relay->initialize_router_timestamp == 0 )
+        if ( relay->last_update_response_time == 0 )
             continue;
 
         relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
@@ -5724,7 +5726,6 @@ int main( int argc, const char ** argv )
     relay.has_internal_address = has_internal_address;
     relay.socket = nullptr;
     relay.mutex = nullptr;
-    relay.initialize_time = relay_platform_time();
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
