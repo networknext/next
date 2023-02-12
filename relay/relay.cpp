@@ -3990,8 +3990,11 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     uint8_t * p = update_data;
     relay_write_uint8( &p, update_version );
-    relay_write_uint64( &p, timestamp );
     relay_write_address_variable( &p, &relay->relay_public_address );
+
+    uint8_t * encrypt_buffer = p;
+
+    relay_write_uint64( &p, timestamp );
 
     relay_platform_mutex_acquire( relay->mutex );
     relay_stats_t stats;
@@ -4020,7 +4023,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint64_t sessions = relay->sessions->size();
     relay_platform_mutex_release( relay->mutex );
     
-    // todo
+    // todo: fill bandwidth
     uint32_t envelope_bandwidth_up_kbps = 0;
     uint32_t envelope_bandwidth_down_kbps = 0;
     uint32_t actual_bandwidth_up_kbps = 0;
@@ -4032,11 +4035,11 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_write_uint32( &p, actual_bandwidth_up_kbps );
     relay_write_uint32( &p, actual_bandwidth_down_kbps );
 
-    // todo
+    // todo: stash shutting down flag
     uint64_t relay_flags = 0;
     relay_write_uint64( &p, relay_flags );
 
-     relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
+    relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
 
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
@@ -4044,7 +4047,26 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_write_uint64(&p, relay->counters[i]);
     }
 
-    int update_data_length = (int) ( p - update_data );
+    // encrypt data after relay address
+
+    const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
+
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+
+    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay->router_public_key, relay->relay_private_key ) != 0 )
+    {
+    	printf( "error: failed to encrypt relay update\n" );
+        return RELAY_ERROR;
+    }
+    
+    p += crypto_box_MACBYTES;
+
+    memcpy( p, nonce, crypto_box_NONCEBYTES );
+
+    p += crypto_box_NONCEBYTES;
+
+    const int update_data_length = p - update_data;
 
     // post it to backend
 

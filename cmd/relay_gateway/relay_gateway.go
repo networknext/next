@@ -4,13 +4,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"net"
 	"time"
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 var redisHostname string
@@ -19,6 +22,7 @@ var redisPubsubChannelName string
 var relayUpdateBatchSize int
 var relayUpdateBatchDuration time.Duration
 var relayUpdateChannelSize int
+var relayBackendPrivateKey []byte
 
 var producer *common.RedisPubsubProducer
 
@@ -32,6 +36,7 @@ func main() {
 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis password: %s", redisPassword)
@@ -39,6 +44,11 @@ func main() {
 	core.Log("relay update batch size: %d", relayUpdateBatchSize)
 	core.Log("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
+
+	if len(relayBackendPrivateKey) == 0 {
+		core.Error("You must supply RELAY_BACKEND_PRIVATE_KEY")
+		os.Exit(1)
+	}
 
 	producer = CreatePubsubProducer(service)
 
@@ -67,7 +77,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Error("[%s] unsupported content type", request.RemoteAddr)
+			core.Debug("[%s] unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -80,40 +90,44 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 		defer request.Body.Close()
 
-		var relayUpdateRequest packets.RelayUpdateRequestPacket
+		// ignore the relay update if it's too small to be valid
 
-		err = relayUpdateRequest.Peek(body)
-		if err != nil {
-			core.Debug("[%s] could not peek relay update request", request.RemoteAddr)
+		packetBytes := len(body)
+
+		if packetBytes < 1 + 1 + 4 + 2 + crypto.Box_MacSize + crypto.Box_NonceSize {
+			core.Debug("relay update packet is too small to be valid")
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
-		if relayUpdateRequest.Version != packets.VersionNumberRelayUpdateRequest {
-			core.Debug("[%s] version mismatch", request.RemoteAddr)
+		// read the version and decide if we can handle it
+
+		index := 0
+		packetData := body
+		var packetVersion uint8
+		encoding.ReadUint8(packetData, &index, &packetVersion)
+
+		// todo: min/max versions here
+		if packetVersion != packets.VersionNumberRelayUpdateRequest {
+			core.Debug("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
-		currentTimestamp := uint64(startTime.Unix())
+		// read the relay address
 
-		if relayUpdateRequest.Timestamp < currentTimestamp - 10 {
-			core.Debug("[%s] relay update request is too old", request.RemoteAddr)
+		var relayAddress net.UDPAddr
+		if !encoding.ReadAddress(packetData, &index, &relayAddress) {
+			core.Debug("[%s] could not read relay address", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
-		if relayUpdateRequest.Timestamp > currentTimestamp + 10 {
-			core.Debug("[%s] relay update request is in the future", request.RemoteAddr)
-			writer.WriteHeader(http.StatusBadRequest) // 400
-			return
-		}
-
-		// todo: track per-address in a hash w. expiry 60 seconds, if the timestamp has already been received. if it has, then drop the packet here so people DDoSing us with replayed packets can't fill the redis queue
+		// check if the relay exists via relay id derived from relay address
 
 		relayData := getRelayData()
 
-		relayId := common.RelayId(relayUpdateRequest.Address.String())
+		relayId := common.RelayId(relayAddress.String())
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
@@ -122,9 +136,41 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
-		// todo: verify packet signature
+		// decrypt the relay update
 
-		// ...
+		nonce := packetData[packetBytes-crypto.Box_NonceSize:]
+		
+		encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
+		encryptedBytes := len(encryptedData)
+
+		relayPublicKey := relay.PublicKey[:]
+
+		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
+		if err != nil {
+			core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
+
+		// read the timestamp in the packet
+
+		var packetTimestamp uint64
+
+		encoding.ReadUint64(packetData, &index, &packetTimestamp)
+
+		currentTimestamp := uint64(startTime.Unix())
+
+		if packetTimestamp < currentTimestamp - 10 {
+			core.Debug("[%s] relay update request is too old", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
+
+		if packetTimestamp > currentTimestamp + 10 {
+			core.Debug("[%s] relay update request is in the future", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
 
 		// relay update accepted
 
@@ -138,7 +184,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		responsePacket.Timestamp = uint64(time.Now().Unix())
 		responsePacket.TargetVersion = relay.Version
 
-		index := 0
+		relayIndex := 0
 
 		for i := range relayData.RelayIds {
 
@@ -154,14 +200,14 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				internal = 1
 			}
 
-			responsePacket.RelayId[index] = relayData.RelayIds[i]
-			responsePacket.RelayAddress[index] = address
-			responsePacket.RelayInternal[index] = internal
+			responsePacket.RelayId[relayIndex] = relayData.RelayIds[i]
+			responsePacket.RelayAddress[relayIndex] = address
+			responsePacket.RelayInternal[relayIndex] = internal
 
-			index++
+			relayIndex++
 		}
 
-		responsePacket.NumRelays = uint32(index)
+		responsePacket.NumRelays = uint32(relayIndex)
 
 		responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = getMagicValues()
 

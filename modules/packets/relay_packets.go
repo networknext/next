@@ -25,8 +25,8 @@ type RelayPacket interface {
 
 type RelayUpdateRequestPacket struct {
 	Version                   uint8
-	Timestamp                 uint64
 	Address                   net.UDPAddr
+	Timestamp                 uint64
 	NumSamples                uint32
 	SampleRelayId             [constants.MaxRelays]uint64
 	SampleRTT                 [constants.MaxRelays]uint8  // [0,255] milliseconds
@@ -48,8 +48,8 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	index := 0
 
 	encoding.WriteUint8(buffer, &index, packet.Version)
-	encoding.WriteUint64(buffer, &index, packet.Timestamp)
 	encoding.WriteAddress(buffer, &index, &packet.Address)
+	encoding.WriteUint64(buffer, &index, packet.Timestamp)
 
 	encoding.WriteUint32(buffer, &index, packet.NumSamples)
 	for i := 0; i < int(packet.NumSamples); i++ {
@@ -86,12 +86,12 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("invalid relay update request packet version")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
-		return errors.New("could not read timestamp")
-	}
-
 	if !encoding.ReadAddress(buffer, &index, &packet.Address) {
 		return errors.New("could not read relay address")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
+		return errors.New("could not read timestamp")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &packet.NumSamples) {
@@ -161,27 +161,6 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		if !encoding.ReadUint64(buffer, &index, &packet.RelayCounters[i]) {
 			return errors.New("could not read relay counter")
 		}
-	}
-
-	return nil
-}
-
-func (packet *RelayUpdateRequestPacket) Peek(buffer []byte) error {
-
-	index := 0
-
-	encoding.ReadUint8(buffer, &index, &packet.Version)
-
-	if packet.Version != VersionNumberRelayUpdateRequest {
-		return errors.New("invalid relay update request packet version")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
-		return errors.New("could not read timestamp")
-	}
-
-	if !encoding.ReadAddress(buffer, &index, &packet.Address) {
-		return errors.New("could not read relay address")
 	}
 
 	return nil

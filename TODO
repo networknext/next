@@ -1,20 +1,39 @@
 DONE
 
-TODO
-
 	Tidy up relay time sync to extrapolate from last update from server.
-
-	---------------
 
 	Extend relay to sign relay update request packets
 
-	Extend relay gateway to check relay update request packet signature
+	How to sign? I think it needs to be AEAD, because the start of the packet needs to be readable (signed only)
+	and I don't want to have a separate set of sign keys.
 
-	Extend func backend to check relay update request packet signature
+	Problem. The sodium AEAD as I use it is private key only, while the crypto box is encrypted only and doesn't provide the ability to have a signed only portion.
+
+	I need a signed only portion so I can look up what keys to decrypt with.
+
+	Alternatively, stick the relay address at the front so I can quickly get to relay id and keys.
+
+	Then encrypt the rest of the message.
+
+	Falsifying the relay address at the start of the message doesn't help anything, because I'll check the crypto box decrypt works for the rest of the data before forwarding, and the keypair for this is a function of the 
+
+	Extend relay to encrypt and add nonce at end of relay update packet
+
+	Extend relay gateway to decrypt relay update packet
+
+TODO
+
+	Read the timestamp in the packet, discard old or future timestamps
+
+	Make sure only the decrypted data is passed on to the relay backend
+
+	Make sure the happy path works
 
 	---------------
 
-	Verify that func tests and happy path works.
+	Extend func backend to check relay update request packet signature
+
+	Make sure that func tests work
 
 	---------------
 
