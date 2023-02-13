@@ -3862,7 +3862,7 @@ size_t curl_buffer_write_function( char * ptr, size_t size, size_t nmemb, void *
     return size * nmemb;
 }
 
-int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * relay_backend_public_key, const uint8_t * relay_private_key, uint64_t * router_timestamp )
+int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * relay_backend_public_key, const uint8_t * relay_private_key, uint64_t * relay_backend_timestamp )
 {
     const uint32_t init_request_magic = 0x9083708f;
 
@@ -3959,7 +3959,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
         return RELAY_ERROR;
     }
 
-    *router_timestamp = relay_read_uint64( &r );
+    *relay_backend_timestamp = relay_read_uint64( &r );
 
     memcpy( relay_token, init_response_buffer.data + 4 + 8, RELAY_TOKEN_BYTES );
 
@@ -4382,7 +4382,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
 
                 relay_route_token_t token;
-                if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
+                if ( relay_read_encrypted_route_token( &p, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. could not read route token [sdk5]\n", from_string );
@@ -4636,7 +4636,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
 
                 relay_continue_token_t token;
-                if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
+                if ( relay_read_encrypted_continue_token( &p, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring continue request. could not read continue token [sdk5]\n", from_string );
@@ -5617,8 +5617,6 @@ int main( int argc, const char ** argv )
 
     printf( "    relay public key is '%s'\n", relay_public_key_env );
 
-    // -----------------------------------------------------------------------------------------------------------------------------
-
     const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
     if ( !relay_private_key_env )
     {
@@ -5635,23 +5633,61 @@ int main( int argc, const char ** argv )
 
     printf( "    relay private key is '%s'\n", relay_private_key_env );
 
+    // verify that we can encrypt and decrypt with the relay keypair
+    {
+	    #define CRYPTO_BOX_MESSAGE (const unsigned char *) "test"
+	    #define CRYPTO_BOX_MESSAGE_LEN 4
+	    #define CRYPTO_BOX_CIPHERTEXT_LEN ( crypto_box_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
+
+	    unsigned char sender_publickey[crypto_box_PUBLICKEYBYTES];
+	    unsigned char sender_secretkey[crypto_box_SECRETKEYBYTES];
+	    memcpy( sender_publickey, relay_public_key, crypto_box_PUBLICKEYBYTES );
+	    memcpy( sender_secretkey, relay_private_key, crypto_box_SECRETKEYBYTES );
+
+	    unsigned char receiver_publickey[crypto_box_PUBLICKEYBYTES];
+	    unsigned char receiver_secretkey[crypto_box_SECRETKEYBYTES];
+	    crypto_box_keypair( receiver_publickey, receiver_secretkey );
+
+	    unsigned char nonce[crypto_box_NONCEBYTES];
+	    unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
+	    relay_random_bytes( nonce, sizeof nonce );
+	    if ( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) != 0 )
+	    {
+	    	printf( "\nerror: could not encrypt test data. relay keypair is invalid\n\n" );
+	    	return 1;
+	    }
+
+	    unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
+	    if ( crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) != 0 )
+	    {
+	    	printf( "\nerror: could not decrypt test data. relay keypair is invalid\n\n" );
+	    	return 1;
+	    }
+
+	    if ( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) != 0 )
+	    {
+	    	printf( "\nerror: decrypted data mismatch. relay keypair is invalid\n\n" );
+	    	return 1;
+	    }
+	}
+
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    const char * router_public_key_env = relay_platform_getenv( "RELAY_BACKEND_PUBLIC_KEY" );
-    if ( !router_public_key_env )
+    const char * relay_backend_public_key_env = relay_platform_getenv( "RELAY_BACKEND_PUBLIC_KEY" );
+    if ( !relay_backend_public_key_env )
     {
         printf( "\nerror: RELAY_BACKEND_PUBLIC_KEY not set\n\n" );
         return 1;
     }
 
-    uint8_t router_public_key[crypto_sign_PUBLICKEYBYTES];
-    if ( relay_base64_decode_data( router_public_key_env, router_public_key, crypto_sign_PUBLICKEYBYTES ) != crypto_sign_PUBLICKEYBYTES )
+    uint8_t relay_backend_public_key[crypto_sign_PUBLICKEYBYTES];
+    if ( relay_base64_decode_data( relay_backend_public_key_env, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES ) != crypto_sign_PUBLICKEYBYTES )
     {
         printf( "\nerror: invalid router public key\n\n" );
         return 1;
     }
 
-    printf( "    router public key is '%s'\n", router_public_key_env );
+    printf( "    router public key is '%s'\n", relay_backend_public_key_env );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5758,7 +5794,7 @@ int main( int argc, const char ** argv )
     relay.sessions = new std::map<uint64_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
-    memcpy( relay.router_public_key, router_public_key, crypto_sign_PUBLICKEYBYTES );
+    memcpy( relay.relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
     relay.relays_dirty = false;
     relay.num_relays = 0;
     memset( relay.relay_ids, 0, sizeof(relay.relay_ids) );
