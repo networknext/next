@@ -1813,6 +1813,7 @@ func test_relay_backend() {
 		relay.Version = "test"
 		relay.Seller = seller
 		relay.Datacenter = datacenter
+		relay.PublicKey = Base64String(TestRelayPublicKey)
 
 		database.Relays = append(database.Relays, relay)
 
@@ -1899,6 +1900,8 @@ func test_relay_backend() {
 	relay_backend_cmd.Start()
 
 	// wait until the relay gateway and relay backend are ready to serve http
+
+	fmt.Printf("waiting until we are ready to serve http\n")
 
 	for {
 

@@ -145,6 +145,12 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayPublicKey := relay.PublicKey[:]
 
+		if len(relayPublicKey) == 0 {
+			core.Debug("[%s] relay public key of length 0", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
+
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
 			core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
