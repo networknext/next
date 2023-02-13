@@ -4187,6 +4187,28 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_read_bytes( &q, previous_magic, 8 );
     }
 
+    relay_address_t expected_public_address;
+    relay_address_t expected_internal_address;
+    memset( &expected_public_address, 0, sizeof(relay_address_t) );
+    memset( &expected_internal_address, 0, sizeof(relay_address_t) );
+    relay_read_address_variable( &q, &expected_public_address );
+    uint8_t expected_has_internal_address = relay_read_uint8( &q );
+    if ( expected_has_internal_address )
+    {
+	    relay_read_address_variable( &q, &expected_internal_address );
+    }
+
+    if ( !relay_address_equal( &expected_public_address, &relay->relay_public_address ) )
+    {
+    	char relay_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    	char expected_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    	relay_address_to_string( &relay->relay_public_address, relay_public_address_string );
+    	relay_address_to_string( &expected_public_address, expected_public_address_string );
+    	printf( "\nerror: relay is misconfigured. public address is set to '%s', but it should be '%s'\n\n", relay_public_address_string, expected_public_address_string );
+    	fflush( stdout );
+    	exit(1);
+    }
+
     relay_platform_mutex_acquire( relay->mutex );
     relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )

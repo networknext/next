@@ -217,6 +217,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = getMagicValues()
 
+		responsePacket.ExpectedPublicAddress = relay.PublicAddress
+
+		if relay.HasInternalAddress {
+			responsePacket.ExpectedHasInternalAddress = 1
+			responsePacket.ExpectedInternalAddress = relay.InternalAddress
+		}
+
 		// send the response packet back to the relay
 
 		responseData := make([]byte, 1024*1024) // todo: would be better to tightly bound this response

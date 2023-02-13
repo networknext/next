@@ -2,17 +2,35 @@ DONE
 
 	Verify relay public/private keypairs are valid (can encrypt/decrypt data)
 
-TODO
-
-	---------------
-
 	Extend relay update response packet to include public and internal address and bool internal.
 
-	Verify the relay has the correct public and internal addresses
+	Read the expected public address, internal address in the relay on each relay update response.
+
+	Verify the relay has the correct public address on each relay update.
+
+	Extend the relay gateway to pass down the expected public address and internal address in response.
+
+TODO
+
+	Extend the func backend to return expected public address and internal address (none) in response.
 
 	---------------
 
- 	Verify the relay can read a test token sent to it from the backend
+	Verify the relay has internal address matches expected value
+
+	Verify the relay has the correct internal address (when applicable) on each relay update.
+
+	---------------
+
+	Make sure happy path and func tests pass.
+
+	---------------
+
+	Extend the relay gateway to send a test token back down, encoded for the specific relay.
+
+	---------------
+
+ 	Verify the relay can decrypt the test token sent to it from the backend
 
  	---------------
 

@@ -354,6 +354,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
 
+	responsePacket.ExpectedPublicAddress = relayAddress
+
 	// send the response packet
 
 	responseData := make([]byte, 1024*1024)
