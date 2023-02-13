@@ -4056,7 +4056,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay->relay_backend_public_key, relay->relay_private_key ) != 0 )
     {
-    	printf( "error: failed to encrypt relay update\n" );
+        printf( "error: failed to encrypt relay update\n" );
         return RELAY_ERROR;
     }
     
@@ -5635,41 +5635,41 @@ int main( int argc, const char ** argv )
 
     // verify that we can encrypt and decrypt with the relay keypair
     {
-	    #define CRYPTO_BOX_MESSAGE (const unsigned char *) "test"
-	    #define CRYPTO_BOX_MESSAGE_LEN 4
-	    #define CRYPTO_BOX_CIPHERTEXT_LEN ( crypto_box_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
+        #define CRYPTO_BOX_MESSAGE (const unsigned char *) "test"
+        #define CRYPTO_BOX_MESSAGE_LEN 4
+        #define CRYPTO_BOX_CIPHERTEXT_LEN ( crypto_box_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
 
-	    unsigned char sender_publickey[crypto_box_PUBLICKEYBYTES];
-	    unsigned char sender_secretkey[crypto_box_SECRETKEYBYTES];
-	    memcpy( sender_publickey, relay_public_key, crypto_box_PUBLICKEYBYTES );
-	    memcpy( sender_secretkey, relay_private_key, crypto_box_SECRETKEYBYTES );
+        unsigned char sender_publickey[crypto_box_PUBLICKEYBYTES];
+        unsigned char sender_secretkey[crypto_box_SECRETKEYBYTES];
+        memcpy( sender_publickey, relay_public_key, crypto_box_PUBLICKEYBYTES );
+        memcpy( sender_secretkey, relay_private_key, crypto_box_SECRETKEYBYTES );
 
-	    unsigned char receiver_publickey[crypto_box_PUBLICKEYBYTES];
-	    unsigned char receiver_secretkey[crypto_box_SECRETKEYBYTES];
-	    crypto_box_keypair( receiver_publickey, receiver_secretkey );
+        unsigned char receiver_publickey[crypto_box_PUBLICKEYBYTES];
+        unsigned char receiver_secretkey[crypto_box_SECRETKEYBYTES];
+        crypto_box_keypair( receiver_publickey, receiver_secretkey );
 
-	    unsigned char nonce[crypto_box_NONCEBYTES];
-	    unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
-	    relay_random_bytes( nonce, sizeof nonce );
-	    if ( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) != 0 )
-	    {
-	    	printf( "\nerror: could not encrypt test data. relay keypair is invalid\n\n" );
-	    	return 1;
-	    }
+        unsigned char nonce[crypto_box_NONCEBYTES];
+        unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
+        relay_random_bytes( nonce, sizeof nonce );
+        if ( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) != 0 )
+        {
+            printf( "\nerror: could not encrypt test data. relay keypair is invalid\n\n" );
+            return 1;
+        }
 
-	    unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
-	    if ( crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) != 0 )
-	    {
-	    	printf( "\nerror: could not decrypt test data. relay keypair is invalid\n\n" );
-	    	return 1;
-	    }
+        unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
+        if ( crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) != 0 )
+        {
+            printf( "\nerror: could not decrypt test data. relay keypair is invalid\n\n" );
+            return 1;
+        }
 
-	    if ( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) != 0 )
-	    {
-	    	printf( "\nerror: decrypted data mismatch. relay keypair is invalid\n\n" );
-	    	return 1;
-	    }
-	}
+        if ( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) != 0 )
+        {
+            printf( "\nerror: decrypted data mismatch. relay keypair is invalid\n\n" );
+            return 1;
+        }
+    }
 
     // -----------------------------------------------------------------------------------------------------------------------------
 

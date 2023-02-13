@@ -27,8 +27,8 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/packets"
@@ -1893,7 +1893,7 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "READY_DELAY=5s")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DISABLE_GOOGLE_PUBSUB=1")
-	
+
 	var relay_backend_output bytes.Buffer
 	relay_backend_cmd.Stdout = &relay_backend_output
 	relay_backend_cmd.Stderr = &relay_backend_output
@@ -1971,7 +1971,7 @@ func test_relay_backend() {
 
 					crypto.Box_Encrypt(Base64String(TestRelayPrivateKey), Base64String(TestRelayBackendPublicKey), nonce, encryptData, len(encryptData))
 
-					body := packetData[:packetBytes + crypto.Box_MacSize + crypto.Box_NonceSize]
+					body := packetData[:packetBytes+crypto.Box_MacSize+crypto.Box_NonceSize]
 
 					bodyLength := len(body)
 

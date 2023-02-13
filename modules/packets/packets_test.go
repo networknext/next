@@ -491,9 +491,9 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket {
 
 	packet := packets.RelayUpdateResponsePacket{
-		Version:       packets.VersionNumberRelayUpdateResponse,
-		Timestamp:     rand.Uint64(),
-		NumRelays:     uint32(common.RandomInt(0, constants.MaxRelays)),
+		Version:   packets.VersionNumberRelayUpdateResponse,
+		Timestamp: rand.Uint64(),
+		NumRelays: uint32(common.RandomInt(0, constants.MaxRelays)),
 	}
 
 	for i := 0; i < int(packet.NumRelays); i++ {
@@ -509,6 +509,12 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	common.RandomBytes(packet.UpcomingMagic[:])
 	common.RandomBytes(packet.CurrentMagic[:])
 	common.RandomBytes(packet.PreviousMagic[:])
+
+	packet.ExpectedPublicAddress = common.RandomAddress()
+	if common.RandomBool() {
+		packet.ExpectedHasInternalAddress = 1
+		packet.ExpectedInternalAddress = common.RandomAddress()
+	}
 
 	return packet
 }

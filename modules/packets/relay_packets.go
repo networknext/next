@@ -10,6 +10,9 @@ import (
 )
 
 const (
+
+	// todo: update to min/max/write
+
 	VersionNumberRelayUpdateRequest  = 1
 	VersionNumberRelayUpdateResponse = 1
 )
@@ -169,16 +172,19 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 // --------------------------------------------------------------------------
 
 type RelayUpdateResponsePacket struct {
-	Version       uint8
-	Timestamp     uint64
-	NumRelays     uint32
-	RelayId       [constants.MaxRelays]uint64
-	RelayAddress  [constants.MaxRelays]net.UDPAddr
-	RelayInternal [constants.MaxRelays]byte
-	TargetVersion string
-	UpcomingMagic [constants.MagicBytes]byte
-	CurrentMagic  [constants.MagicBytes]byte
-	PreviousMagic [constants.MagicBytes]byte
+	Version                    uint8
+	Timestamp                  uint64
+	NumRelays                  uint32
+	RelayId                    [constants.MaxRelays]uint64
+	RelayAddress               [constants.MaxRelays]net.UDPAddr
+	RelayInternal              [constants.MaxRelays]byte
+	TargetVersion              string
+	UpcomingMagic              [constants.MagicBytes]byte
+	CurrentMagic               [constants.MagicBytes]byte
+	PreviousMagic              [constants.MagicBytes]byte
+	ExpectedPublicAddress      net.UDPAddr
+	ExpectedInternalAddress    net.UDPAddr
+	ExpectedHasInternalAddress uint8
 }
 
 func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
@@ -200,6 +206,12 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.UpcomingMagic[:], constants.MagicBytes)
 	encoding.WriteBytes(buffer, &index, packet.CurrentMagic[:], constants.MagicBytes)
 	encoding.WriteBytes(buffer, &index, packet.PreviousMagic[:], constants.MagicBytes)
+
+	encoding.WriteAddress(buffer, &index, &packet.ExpectedPublicAddress)
+	encoding.WriteUint8(buffer, &index, packet.ExpectedHasInternalAddress)
+	if packet.ExpectedHasInternalAddress != 0 {
+		encoding.WriteAddress(buffer, &index, &packet.ExpectedInternalAddress)
+	}
 
 	return buffer[:index]
 }
@@ -257,6 +269,20 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	if !encoding.ReadBytes(buffer, &index, packet.PreviousMagic[:], constants.MagicBytes) {
 		return errors.New("could not read previous magic")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &packet.ExpectedPublicAddress) {
+		return errors.New("could not read expected public address")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &packet.ExpectedHasInternalAddress) {
+		return errors.New("could not read expected has internal address")
+	}
+
+	if packet.ExpectedHasInternalAddress != 0 {
+		if !encoding.ReadAddress(buffer, &index, &packet.ExpectedInternalAddress) {
+			return errors.New("could not read expected internal address")
+		}
 	}
 
 	return nil

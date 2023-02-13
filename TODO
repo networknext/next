@@ -1,14 +1,14 @@
 DONE
 
-TODO
-
 	Verify relay public/private keypairs are valid (can encrypt/decrypt data)
+
+TODO
 
 	---------------
 
-	Verify the relay has the correct public and internal addresses.
-
 	Extend relay update response packet to include public and internal address and bool internal.
+
+	Verify the relay has the correct public and internal addresses
 
 	---------------
 
@@ -46,7 +46,7 @@ TODO
 
 
 
- 	
+
 
 	---------------
 

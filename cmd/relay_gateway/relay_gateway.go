@@ -2,18 +2,18 @@ package main
 
 import (
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
-	"net"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/encoding"
 )
 
 var redisHostname string
@@ -94,7 +94,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		packetBytes := len(body)
 
-		if packetBytes < 1 + 1 + 4 + 2 + crypto.Box_MacSize + crypto.Box_NonceSize {
+		if packetBytes < 1+1+4+2+crypto.Box_MacSize+crypto.Box_NonceSize {
 			core.Debug("[%s] relay update packet is too small to be valid", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
@@ -139,8 +139,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		// decrypt the relay update
 
 		nonce := packetData[packetBytes-crypto.Box_NonceSize:]
-		
-		encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
+
+		encryptedData := packetData[index : packetBytes-crypto.Box_NonceSize]
 		encryptedBytes := len(encryptedData)
 
 		relayPublicKey := relay.PublicKey[:]
@@ -166,13 +166,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		currentTimestamp := uint64(startTime.Unix())
 
-		if packetTimestamp < currentTimestamp - 10 {
+		if packetTimestamp < currentTimestamp-10 {
 			core.Debug("[%s] relay update request is too old", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
-		if packetTimestamp > currentTimestamp + 10 {
+		if packetTimestamp > currentTimestamp+10 {
 			core.Debug("[%s] relay update request is in the future", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
@@ -229,7 +229,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// forward the relay update to the relay backend, sans crypto stuff (it's now decrypted...)
 
-		messageData := body[:packetBytes - (crypto.Box_MacSize + crypto.Box_NonceSize)]
+		messageData := body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)]
 
 		producer.MessageChannel <- messageData
 	}

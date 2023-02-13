@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -18,12 +19,11 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"encoding/base64"
 
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
@@ -226,7 +226,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	packetBytes := len(body)
 
-	if packetBytes < 1 + 1 + 4 + 2 + crypto.Box_MacSize + crypto.Box_NonceSize {
+	if packetBytes < 1+1+4+2+crypto.Box_MacSize+crypto.Box_NonceSize {
 		core.Error("relay update packet is too small to be valid")
 		writer.WriteHeader(http.StatusBadRequest) // 400
 		return
@@ -257,8 +257,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	// decrypt the relay update
 
 	nonce := packetData[packetBytes-crypto.Box_NonceSize:]
-	
-	encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
+
+	encryptedData := packetData[index : packetBytes-crypto.Box_NonceSize]
 	encryptedBytes := len(encryptedData)
 
 	err = crypto.Box_Decrypt(TestRelayPublicKey, TestRelayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
@@ -281,13 +281,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	currentTimestamp := uint64(time.Now().Unix())
 
-	if requestPacket.Timestamp < currentTimestamp - 10 {
+	if requestPacket.Timestamp < currentTimestamp-10 {
 		core.Error("relay update is too old")
 		writer.WriteHeader(http.StatusBadRequest) // 400
 		return
 	}
 
-	if requestPacket.Timestamp > currentTimestamp + 10 {
+	if requestPacket.Timestamp > currentTimestamp+10 {
 		core.Error("relay update is in the future")
 		writer.WriteHeader(http.StatusBadRequest) // 400
 		return
@@ -322,9 +322,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		requestPacket.RelayCounters[:],
 	)
 
-    backend.mutex.Unlock()
+	backend.mutex.Unlock()
 
-    // build response packet
+	// build response packet
 
 	var responsePacket packets.RelayUpdateResponsePacket
 
@@ -332,7 +332,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	responsePacket.Timestamp = uint64(time.Now().Unix())
 	responsePacket.TargetVersion = "func test"
 
-    relayIds, relayAddresses := backend.GetRelays()
+	relayIds, relayAddresses := backend.GetRelays()
 
 	relayIndex := 0
 
