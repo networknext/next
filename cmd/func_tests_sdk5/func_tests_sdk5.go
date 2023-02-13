@@ -16,7 +16,23 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/base64"
 )
+
+func Base64String(value string) []byte {
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+var TestRelayPublicKey = Base64String("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+var TestRelayPrivateKey = Base64String("lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
+var TestRelayBackendPublicKey = Base64String("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+var TestRelayBackendPrivateKey = Base64String("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
+var TestServerBackendPublicKey = Base64String("TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=")
+var TestServerBackendPrivateKey = Base64String("FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==")
 
 const (
 	relayBin   = "./relay"
@@ -68,9 +84,9 @@ func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
 	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1:0")
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
-	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
-	cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
-	cmd.Env = append(cmd.Env, "RELAY_ROUTER_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPrivateKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
 

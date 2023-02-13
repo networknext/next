@@ -5630,10 +5630,10 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    const char * router_public_key_env = relay_platform_getenv( "RELAY_ROUTER_PUBLIC_KEY" );
+    const char * router_public_key_env = relay_platform_getenv( "RELAY_BACKEND_PUBLIC_KEY" );
     if ( !router_public_key_env )
     {
-        printf( "\nerror: RELAY_ROUTER_PUBLIC_KEY not set\n\n" );
+        printf( "\nerror: RELAY_BACKEND_PUBLIC_KEY not set\n\n" );
         return 1;
     }
 

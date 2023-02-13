@@ -18,6 +18,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"encoding/base64"
 
 	"github.com/gorilla/mux"
 
@@ -26,15 +27,23 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
 )
 
-var TestRelayPublicKey = []byte{}
+func Base64String(value string) []byte {
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
 
-var TestRouterPrivateKey = []byte{}
-
-var TestBackendPrivateKey = []byte{}
+var TestRelayPublicKey = Base64String("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+var TestRelayPrivateKey = Base64String("lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
+var TestRelayBackendPublicKey = Base64String("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+var TestRelayBackendPrivateKey = Base64String("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
+var TestServerBackendPublicKey = Base64String("TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=")
+var TestServerBackendPrivateKey = Base64String("FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==")
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -252,7 +261,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
 	encryptedBytes := len(encryptedData)
 
-	err = crypto.Box_Decrypt(TestRelayPublicKey, TestRouterPrivateKey, nonce, encryptedData, encryptedBytes)
+	err = crypto.Box_Decrypt(TestRelayPublicKey, TestRelayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 	if err != nil {
 		core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
 		writer.WriteHeader(http.StatusBadRequest) // 400
@@ -472,11 +481,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	if len(TestBackendPrivateKey) == 0 {
-		panic("missing backend private key")
-	}
-
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestBackendPrivateKey)
+	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestServerBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -750,7 +755,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// build token data
 
 		routerPrivateKey := [packets.SDK5_PrivateKeyBytes]byte{}
-		copy(routerPrivateKey[:], TestRouterPrivateKey)
+		copy(routerPrivateKey[:], TestRelayBackendPrivateKey)
 
 		numTokens := numRouteRelays + 2
 
@@ -927,27 +932,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
 		backend.mode = BACKEND_MODE_MATCH_VALUES
-	}
-
-	TestRouterPrivateKey = envvar.GetBase64("TEST_ROUTER_PRIVATE_KEY", []byte{})
-
-	TestBackendPrivateKey = envvar.GetBase64("TEST_BACKEND_PRIVATE_KEY", []byte{})
-
-	TestRelayPublicKey = envvar.GetBase64("TEST_RELAY_PUBLIC_KEY", []byte{})
-
-	if len(TestRouterPrivateKey) == 0 {
-		fmt.Printf("error: You must specify TEST_ROUTER_PRIVATE_KEY")
-		os.Exit(1)
-	}
-
-	if len(TestBackendPrivateKey) == 0 {
-		fmt.Printf("error: You must specify TEST_BACKEND_PRIVATE_KEY")
-		os.Exit(1)
-	}
-
-	if len(TestRelayPublicKey) == 0 {
-		fmt.Printf("error: You must specify TEST_RELAY_PUBLIC_KEY")
-		os.Exit(1)
 	}
 
 	GenerateMagic(magicUpcoming[:])

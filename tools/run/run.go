@@ -10,10 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const TestRelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14="
-const TestRouterPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
-const TestBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
-
 var cmd *exec.Cmd
 
 func cleanup() {
@@ -269,7 +265,7 @@ func setup_emulators() {
 }
 
 func func_tests_sdk5(tests []string) {
-	command := fmt.Sprintf("cd dist && TEST_RELAY_PUBLIC_KEY=%s TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRelayPublicKey, TestRouterPrivateKey, TestBackendPrivateKey)
+	command := "cd dist && ./func_tests_sdk5"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
@@ -335,5 +331,5 @@ func func_client() {
 }
 
 func func_backend() {
-	bash(fmt.Sprintf("cd dist && TEST_RELAY_PUBLIC_KEY=%s TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_backend", TestRelayPublicKey, TestRouterPrivateKey, TestBackendPrivateKey))
+	bash("cd dist && ./func_backend")
 }

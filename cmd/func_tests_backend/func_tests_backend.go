@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/encoding"
@@ -35,6 +37,21 @@ import (
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
 )
+
+func Base64String(value string) []byte {
+	data, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+var TestRelayPublicKey = Base64String("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+var TestRelayPrivateKey = Base64String("lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
+var TestRelayBackendPublicKey = Base64String("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+var TestRelayBackendPrivateKey = Base64String("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
+var TestServerBackendPublicKey = Base64String("TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=")
+var TestServerBackendPrivateKey = Base64String("FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==")
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
 	if !strings.Contains(stdout.String(), substring) {
@@ -1939,7 +1956,22 @@ func test_relay_backend() {
 						requestPacket.SamplePacketLoss[i] = uint16(common.RandomInt(0, 65535))
 					}
 
-					body := requestPacket.Write(make([]byte, 100*1024))
+					buffer := make([]byte, 100*1024)
+
+					packetData := requestPacket.Write(buffer)
+					packetBytes := len(packetData)
+
+					encryptData := packetData[1+1+4+2:]
+
+					nonce := make([]byte, crypto.Box_NonceSize)
+
+					crypto.Box_Encrypt(TestRelayPrivateKey, TestRelayBackendPublicKey, nonce, encryptData, len(encryptData))
+
+					body := packetData[:packetBytes + crypto.Box_MacSize + crypto.Box_NonceSize]
+
+					bodyLength := len(body)
+
+					copy(body[bodyLength-crypto.Box_NonceSize:], nonce)
 
 					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
 					if err != nil {
