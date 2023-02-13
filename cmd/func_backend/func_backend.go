@@ -359,6 +359,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	copy(responsePacket.ExpectedRelayPublicKey[:], TestRelayPublicKey)
 	copy(responsePacket.ExpectedRelayBackendPublicKey[:], TestRelayBackendPublicKey)
 
+	token := core.RouteToken{}
+	core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], TestRelayBackendPublicKey, TestRelayPublicKey)
+
 	// send the response packet
 
 	responseData := make([]byte, 1024*1024)

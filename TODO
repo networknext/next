@@ -22,52 +22,17 @@ DONE
 
 	Extend the relay gateway to send down the expected public key of the relay. Check it.
 
+	Happy path works
+
+	Functional test works
+
+	Extend the relay gateway to send a test token back down. 
+
+	Extend the func backend to send a test token down.
+
+ 	Make the relay verify it can decrypt the test token with each relay update response
+
 TODO
-
-
-	---------------
-
-	Extend the relay gateway to send a test token back down. Check that the relay can decode it.
-
-	---------------
-
- 	Verify the relay can decrypt the test token sent to it from the backend
-
- 	---------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------------
 
 	Implement new relay "internal group" concept.
 
@@ -91,56 +56,19 @@ TODO
 
 	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
 
-    --------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	---------------
 
 	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
 
-	--------------
+	---------------
 
 	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
 
-    --------------
+    ---------------
 
     Add relay counters to relay stats message.
 
-	--------------
+	---------------
 
 
 

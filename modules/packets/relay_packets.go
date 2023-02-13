@@ -188,6 +188,7 @@ type RelayUpdateResponsePacket struct {
 	ExpectedHasInternalAddress    uint8
 	ExpectedRelayPublicKey        [crypto.Box_PublicKeySize]byte
 	ExpectedRelayBackendPublicKey [crypto.Box_PublicKeySize]byte
+	TestToken                     [constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES]byte
 }
 
 func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
@@ -218,6 +219,8 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayPublicKey[:], crypto.Box_PublicKeySize)
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayBackendPublicKey[:], crypto.Box_PublicKeySize)
 
+	encoding.WriteBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	
 	return buffer[:index]
 }
 
@@ -296,6 +299,10 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	if !encoding.ReadBytes(buffer, &index, packet.ExpectedRelayBackendPublicKey[:], crypto.Box_PublicKeySize) {
 		return errors.New("could not read expected relay backend public key")
+	}
+
+	if !encoding.ReadBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES) {
+		return errors.New("could not read test token")
 	}
 
 	return nil

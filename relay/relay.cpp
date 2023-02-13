@@ -4180,12 +4180,9 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
 
-    if ( version >= 1 )
-    {
-        relay_read_bytes( &q, upcoming_magic, 8 );
-        relay_read_bytes( &q, current_magic, 8 );
-        relay_read_bytes( &q, previous_magic, 8 );
-    }
+    relay_read_bytes( &q, upcoming_magic, 8 );
+    relay_read_bytes( &q, current_magic, 8 );
+    relay_read_bytes( &q, previous_magic, 8 );
 
     relay_address_t expected_public_address;
     relay_address_t expected_internal_address;
@@ -4204,16 +4201,14 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         char expected_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string( &relay->relay_public_address, relay_public_address_string );
         relay_address_to_string( &expected_public_address, expected_public_address_string );
-        printf( "\nerror: relay is misconfigured. public address is set to '%s', but it should be '%s'\n\n", relay_public_address_string, expected_public_address_string );
-        fflush( stdout );
-        exit(1);
+        printf( "error: relay is misconfigured. public address is set to '%s', but it should be '%s'\n", relay_public_address_string, expected_public_address_string );
+        return RELAY_ERROR;
     }
 
     if ( ( expected_has_internal_address != 0 ) != relay->has_internal_address )
     {
-        printf( "\nerror: relay is misconfigured. it doesn't have an internal address, but it should\n\n" );
-        fflush( stdout );
-        exit(1);
+        printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
+        return RELAY_ERROR;
     }
 
     if ( ( expected_has_internal_address != 0 ) && relay->has_internal_address && !relay_address_equal( &relay->relay_internal_address, &expected_internal_address ) )
@@ -4222,9 +4217,8 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         char expected_internal_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string( &relay->relay_internal_address, relay_internal_address_string );
         relay_address_to_string( &expected_internal_address, expected_internal_address_string );
-        printf( "\nerror: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n\n", relay_internal_address_string, expected_internal_address_string );
-        fflush( stdout );
-        exit(1);
+        printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
+        return RELAY_ERROR;
     }
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
@@ -4234,16 +4228,21 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     if ( memcmp( relay->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
-        printf( "\nerror: relay is misconfigured. relay public key does not match expected value" );
-        fflush( stdout );
-        exit(1);
+        printf( "error: relay is misconfigured. relay public key does not match expected value\n" );
+        return RELAY_ERROR;
     }
 
     if ( memcmp( relay->relay_backend_public_key, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
-        printf( "\nerror: relay is misconfigured. relay backend public key does not match expected value" );
-        fflush( stdout );
-        exit(1);
+        printf( "error: relay is misconfigured. relay backend public key does not match expected value\n" );
+        return RELAY_ERROR;
+    }
+
+    relay_route_token_t token;
+    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
+    {
+        printf( "error: relay is misconfigured. could not decrypt test token\n" );
+        return RELAY_ERROR;
     }
 
     relay_platform_mutex_acquire( relay->mutex );

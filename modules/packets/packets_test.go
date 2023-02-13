@@ -517,6 +517,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	}
 	common.RandomBytes(packet.ExpectedRelayPublicKey[:])
 	common.RandomBytes(packet.ExpectedRelayBackendPublicKey[:])
+	common.RandomBytes(packet.TestToken[:])
 
 	return packet
 }

@@ -234,6 +234,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		copy(responsePacket.ExpectedRelayPublicKey[:], relay.PublicKey)
 		copy(responsePacket.ExpectedRelayBackendPublicKey[:], relayBackendPublicKey)
 
+		token := core.RouteToken{}
+		core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], relayBackendPrivateKey, relay.PublicKey)
+
 		// send the response packet back to the relay
 
 		responseData := make([]byte, 1024*1024) // todo: would be better to tightly bound this response
