@@ -22,6 +22,7 @@ var redisPubsubChannelName string
 var relayUpdateBatchSize int
 var relayUpdateBatchDuration time.Duration
 var relayUpdateChannelSize int
+var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
 
 var producer *common.RedisPubsubProducer
@@ -36,6 +37,7 @@ func main() {
 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("redis hostname: %s", redisHostname)
@@ -44,6 +46,11 @@ func main() {
 	core.Log("relay update batch size: %d", relayUpdateBatchSize)
 	core.Log("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Log("relay update channel size: %d", relayUpdateChannelSize)
+
+	if len(relayBackendPublicKey) == 0 {
+		core.Error("You must supply RELAY_BACKEND_PUBLIC_KEY")
+		os.Exit(1)
+	}
 
 	if len(relayBackendPrivateKey) == 0 {
 		core.Error("You must supply RELAY_BACKEND_PRIVATE_KEY")
@@ -223,6 +230,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			responsePacket.ExpectedHasInternalAddress = 1
 			responsePacket.ExpectedInternalAddress = relay.InternalAddress
 		}
+
+		copy(responsePacket.ExpectedRelayPublicKey[:], relay.PublicKey)
+		copy(responsePacket.ExpectedRelayBackendPublicKey[:], relayBackendPublicKey)
 
 		// send the response packet back to the relay
 

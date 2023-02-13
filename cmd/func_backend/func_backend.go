@@ -356,6 +356,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	responsePacket.ExpectedPublicAddress = relayAddress
 
+	copy(responsePacket.ExpectedRelayPublicKey[:], TestRelayPublicKey)
+	copy(responsePacket.ExpectedRelayBackendPublicKey[:], TestRelayBackendPublicKey)
+
 	// send the response packet
 
 	responseData := make([]byte, 1024*1024)

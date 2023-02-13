@@ -16,15 +16,16 @@ DONE
 
 	Verify the relay has the correct internal address (when applicable) on each relay update.
 
-TODO
-
 	Make sure happy path and func tests pass.
-
-	---------------
 
 	Extend the relay gateway to send down the public key of the relay backend. Check it.
 
 	Extend the relay gateway to send down the expected public key of the relay. Check it.
+
+TODO
+
+
+	---------------
 
 	Extend the relay gateway to send a test token back down. Check that the relay can decode it.
 

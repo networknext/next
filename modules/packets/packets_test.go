@@ -515,6 +515,8 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 		packet.ExpectedHasInternalAddress = 1
 		packet.ExpectedInternalAddress = common.RandomAddress()
 	}
+	common.RandomBytes(packet.ExpectedRelayPublicKey[:])
+	common.RandomBytes(packet.ExpectedRelayBackendPublicKey[:])
 
 	return packet
 }
