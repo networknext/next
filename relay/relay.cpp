@@ -3824,7 +3824,7 @@ struct relay_t
     double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
-    uint8_t router_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     std::map<uint64_t, relay_session_t*> * sessions;
     bool relays_dirty;
     int num_relays;
@@ -3862,7 +3862,7 @@ size_t curl_buffer_write_function( char * ptr, size_t size, size_t nmemb, void *
     return size * nmemb;
 }
 
-int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * router_public_key, const uint8_t * relay_private_key, uint64_t * router_timestamp )
+int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const char * relay_address, const uint8_t * relay_backend_public_key, const uint8_t * relay_private_key, uint64_t * router_timestamp )
 {
     const uint32_t init_request_magic = 0x9083708f;
 
@@ -3887,7 +3887,7 @@ int relay_init( CURL * curl, const char * hostname, uint8_t * relay_token, const
 
     int encrypt_length = int( p - q );
 
-    if ( crypto_box_easy( q, q, encrypt_length, nonce, router_public_key, relay_private_key ) != 0 )
+    if ( crypto_box_easy( q, q, encrypt_length, nonce, relay_backend_public_key, relay_private_key ) != 0 )
     {
         return RELAY_ERROR;
     }
@@ -4054,7 +4054,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint8_t nonce[crypto_box_NONCEBYTES];
     relay_random_bytes( nonce, crypto_box_NONCEBYTES );
 
-    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay->router_public_key, relay->relay_private_key ) != 0 )
+    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay->relay_backend_public_key, relay->relay_private_key ) != 0 )
     {
     	printf( "error: failed to encrypt relay update\n" );
         return RELAY_ERROR;
@@ -4401,6 +4401,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: this needs to be fixed
                 uint64_t hash = token.session_id ^ token.session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -4653,6 +4654,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: this needs to go
                 uint64_t hash = token.session_id ^ token.session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -4771,6 +4773,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: nope
                 uint64_t hash = session_id ^ session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -4908,6 +4911,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: nope
                 uint64_t hash = session_id ^ session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -5051,6 +5055,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: nope
                 uint64_t hash = session_id ^ session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -5185,6 +5190,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: nope
                 uint64_t hash = session_id ^ session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
@@ -5318,6 +5324,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
+                // todo: nope
                 uint64_t hash = session_id ^ session_version;
 
                 relay_platform_mutex_acquire( relay->mutex );
