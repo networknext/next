@@ -95,7 +95,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		packetBytes := len(body)
 
 		if packetBytes < 1 + 1 + 4 + 2 + crypto.Box_MacSize + crypto.Box_NonceSize {
-			core.Debug("relay update packet is too small to be valid")
+			core.Debug("[%s] relay update packet is too small to be valid", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -221,9 +221,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		writer.Write(responseData)
 
-		// forward the relay update to the relay backend
+		// forward the relay update to the relay backend, sans crypto stuff (it's now decrypted...)
 
-		producer.MessageChannel <- body
+		messageData := body[:packetBytes - (crypto.Box_MacSize + crypto.Box_NonceSize)]
+
+		producer.MessageChannel <- messageData
 	}
 }
 

@@ -22,13 +22,16 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
 )
+
+var TestRelayPublicKey = []byte{}
 
 var TestRouterPrivateKey = []byte{}
 
@@ -204,16 +207,62 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
-	// parse the relay update request
-
 	body, err := ioutil.ReadAll(request.Body)
 
-		if err != nil {
-			fmt.Printf("could not read body\n")
-			return
-		}
+	if err != nil {
+		fmt.Printf("could not read body\n")
+		return
+	}
 
 	defer request.Body.Close()
+
+	// ignore the relay update if it's too small to be valid
+
+	packetBytes := len(body)
+
+	if packetBytes < 1 + 1 + 4 + 2 + crypto.Box_MacSize + crypto.Box_NonceSize {
+		core.Error("relay update packet is too small to be valid")
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
+
+	// read the version and decide if we can handle it
+
+	index := 0
+	packetData := body
+	var packetVersion uint8
+	encoding.ReadUint8(packetData, &index, &packetVersion)
+
+	if packetVersion != packets.VersionNumberRelayUpdateRequest {
+		core.Error("invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
+
+	// read the relay address
+
+	var relayAddress net.UDPAddr
+	if !encoding.ReadAddress(packetData, &index, &relayAddress) {
+		core.Debug("could not read relay address")
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
+
+	// decrypt the relay update
+
+	nonce := packetData[packetBytes-crypto.Box_NonceSize:]
+	
+	encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
+	encryptedBytes := len(encryptedData)
+
+	relayPublicKey := TestRelayPublicKey
+
+	err = crypto.Box_Decrypt(relayPublicKey, TestRouterPrivateKey, nonce, encryptedData, encryptedBytes)
+	if err != nil {
+		core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
+		writer.WriteHeader(http.StatusBadRequest) // 400
+		return
+	}
 
 	// read the relay update request packet
 
@@ -240,23 +289,19 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// todo: check packet signature
+	// process the relay update
 
-   // process the relay update
+	relayId := common.RelayId(relayAddress.String())
 
-   relayAddress := requestPacket.Address
+	relayPort := relayAddress.Port
 
-   relayPort := relayAddress.Port
+	relayName := fmt.Sprintf("local.%d", relayPort)
 
-   relayName := fmt.Sprintf("local.%d", relayPort)
+	numSamples := requestPacket.NumSamples
 
-   relayId := common.RelayId(relayAddress.String())
+	currentTime := time.Now().Unix()
 
-   numSamples := requestPacket.NumSamples
-
-   currentTime := time.Now().Unix()
-
-   backend.mutex.Lock()
+	backend.mutex.Lock()
 
 	backend.relayManager.ProcessRelayUpdate(currentTime,
 		relayId,
@@ -273,9 +318,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		requestPacket.RelayCounters[:],
 	)
 
-   backend.mutex.Unlock()
+    backend.mutex.Unlock()
 
-   // build response packet
+    // build response packet
 
 	var responsePacket packets.RelayUpdateResponsePacket
 
@@ -283,9 +328,9 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	responsePacket.Timestamp = uint64(time.Now().Unix())
 	responsePacket.TargetVersion = "func test"
 
-   relayIds, relayAddresses := backend.GetRelays()
+    relayIds, relayAddresses := backend.GetRelays()
 
-	index := 0
+	relayIndex := 0
 
 	for i := range relayIds {
 
@@ -295,13 +340,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 		address := relayAddresses[i]
 
-		responsePacket.RelayId[index] = relayIds[i]
-		responsePacket.RelayAddress[index] = address
+		responsePacket.RelayId[relayIndex] = relayIds[i]
+		responsePacket.RelayAddress[relayIndex] = address
 
-		index++
+		relayIndex++
 	}
 
-	responsePacket.NumRelays = uint32(index)
+	responsePacket.NumRelays = uint32(relayIndex)
 
 	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
 
@@ -314,47 +359,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", request.Header.Get("Content-Type"))
 
 	writer.Write(responseData)
-
-/*
-	   // write response packet
-
-	   magicUpcoming, magicCurrent, magicPrevious := GetMagic()
-
-	   responseData := make([]byte, 10*1024)
-
-	   index = 0
-
-	   encoding.WriteUint32(responseData, &index, UpdateResponseVersion)
-
-	   encoding.WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-
-	   encoding.WriteUint32(responseData, &index, uint32(numRelays))
-
-	   	for i := range relayIds {
-	   		encoding.WriteUint64(responseData, &index, relayIds[i])
-	   		encoding.WriteString(responseData, &index, relayAddresses[i].String(), MaxRelayAddressLength)
-	   		encoding.WriteUint8(responseData, &index, 0)
-	   	}
-
-	   encoding.WriteString(responseData, &index, relayVersion, uint32(32))
-
-	   encoding.WriteBytes(responseData, &index, magicUpcoming[:], 8)
-
-	   encoding.WriteBytes(responseData, &index, magicCurrent[:], 8)
-
-	   encoding.WriteBytes(responseData, &index, magicPrevious[:], 8)
-
-	   encoding.WriteUint32(responseData, &index, 0)
-
-	   responseLength := index
-
-	   responseData = responseData[:responseLength]
-
-	   writer.Header().Set("Content-Type", "application/octet-stream")
-
-	   writer.Write(responseData)
-	*/
-
 }
 
 func StartWebServer() {

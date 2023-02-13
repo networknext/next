@@ -21,17 +21,15 @@ DONE
 
 	Extend relay gateway to decrypt relay update packet
 
-TODO
-
 	Read the timestamp in the packet, discard old or future timestamps
 
 	Make sure only the decrypted data is passed on to the relay backend
 
 	Make sure the happy path works
 
-	---------------
-
 	Extend func backend to check relay update request packet signature
+
+TODO
 
 	Make sure that func tests work
 
@@ -58,10 +56,6 @@ TODO
 	---------------
 
 	Implement unit tests for relay internal groups addresses.
-
-	---------------
-
-	The relay should talk to the relay backend over SSH in dev and production.
 
 	---------------
 
@@ -168,6 +162,14 @@ TODO
 
 
 Essentials:
+
+	--------------
+
+	Setup google cloud environment with terraform scripts
+
+	--------------
+
+	The relay should talk to the relay backend over SSH in dev and production.
 
 	--------------
 
