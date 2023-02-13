@@ -269,7 +269,7 @@ func setup_emulators() {
 }
 
 func func_tests_sdk5(tests []string) {
-	command := fmt.Sprintf("cd dist && TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRouterPrivateKey, TestBackendPrivateKey)
+	command := fmt.Sprintf("cd dist && TEST_RELAY_PUBLIC_KEY=%s TEST_ROUTER_PRIVATE_KEY=%s TEST_BACKEND_PRIVATE_KEY=%s ./func_tests_sdk5", TestRelayPublicKey, TestRouterPrivateKey, TestBackendPrivateKey)
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
