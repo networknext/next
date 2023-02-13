@@ -29,9 +29,9 @@ DONE
 
 	Extend func backend to check relay update request packet signature
 
-TODO
-
 	Make sure that func tests work
+
+TODO
 
 	---------------
 

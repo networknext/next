@@ -26,7 +26,7 @@ type SessionUpdateState struct {
 		Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	RoutingPrivateKey       []byte
+	RelayBackendPrivateKey  []byte
 	ServerBackendAddress    *net.UDPAddr
 	ServerBackendPrivateKey []byte
 	ServerBackendPublicKey  []byte
@@ -599,7 +599,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RoutingPrivateKey[:])
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RelayBackendPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -640,7 +640,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	sessionVersion := uint8(state.Output.SessionVersion)
 	expireTimestamp := state.Output.ExpireTimestamp
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RoutingPrivateKey[:])
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RelayBackendPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK5_RouteTypeContinue
 	state.Response.NumTokens = numTokens

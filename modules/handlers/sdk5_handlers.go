@@ -56,7 +56,7 @@ type SDK5_Handler struct {
 	ServerBackendAddress    net.UDPAddr
 	ServerBackendPublicKey  []byte
 	ServerBackendPrivateKey []byte
-	RoutingPrivateKey       []byte
+	RelayBackendPrivateKey  []byte
 	GetMagicValues          func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
@@ -439,7 +439,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	var state SessionUpdateState
 
-	state.RoutingPrivateKey = handler.RoutingPrivateKey
+	state.RelayBackendPrivateKey = handler.RelayBackendPrivateKey
 	state.ServerBackendPublicKey = handler.ServerBackendPublicKey
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress

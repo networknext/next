@@ -882,7 +882,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1018,7 +1018,7 @@ func Test_SessionUpdate_BuildNextTokens_OnlyUseInternalAddressWithSameSupplier(t
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1151,7 +1151,7 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1308,7 +1308,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1504,7 +1504,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1712,7 +1712,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -1935,7 +1935,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2201,7 +2201,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2421,7 +2421,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2636,7 +2636,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -2859,7 +2859,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -3001,7 +3001,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
 
@@ -3445,7 +3445,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3473,7 +3473,7 @@ func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3501,7 +3501,7 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3531,7 +3531,7 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3566,7 +3566,7 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3599,7 +3599,7 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3629,7 +3629,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3660,7 +3660,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
-	state.RoutingPrivateKey = routingPrivateKey
+	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 

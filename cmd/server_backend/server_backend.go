@@ -18,7 +18,7 @@ var maxPacketSize int
 var serverBackendAddress net.UDPAddr
 var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
-var routingPrivateKey []byte
+var relayBackendPrivateKey []byte
 
 var serverInitMessageChannel chan *messages.ServerInitMessage
 var serverUpdateMessageChannel chan *messages.ServerUpdateMessage
@@ -36,7 +36,7 @@ func main() {
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:45000")) // IMPORTANT: This must be the LB public address in dev/prod
 	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
-	routingPrivateKey = envvar.GetBase64("ROUTING_PRIVATE_KEY", []byte{})
+	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("channel size: %d", channelSize)
 	core.Log("max packet size: %d bytes", maxPacketSize)
@@ -50,8 +50,8 @@ func main() {
 		panic("SERVER_BACKEND_PRIVATE_KEY must be specified")
 	}
 
-	if len(routingPrivateKey) == 0 {
-		panic("ROUTING_PRIVATE_KEY must be specified")
+	if len(relayBackendPrivateKey) == 0 {
+		panic("RELAY_BACKEND_PRIVATE_KEY must be specified")
 	}
 
 	// initialize message channels
@@ -108,7 +108,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.ServerBackendAddress = serverBackendAddress
 	handler.ServerBackendPublicKey = serverBackendPublicKey
 	handler.ServerBackendPrivateKey = serverBackendPrivateKey
-	handler.RoutingPrivateKey = routingPrivateKey
+	handler.RelayBackendPrivateKey = relayBackendPrivateKey
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize
 	handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) { return service.GetMagicValues() }
