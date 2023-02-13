@@ -10,23 +10,23 @@ DONE
 
 	Extend the relay gateway to pass down the expected public address and internal address in response.
 
-TODO
-
 	Extend the func backend to return expected public address and internal address (none) in response.
-
-	---------------
 
 	Verify the relay has internal address matches expected value
 
 	Verify the relay has the correct internal address (when applicable) on each relay update.
 
-	---------------
+TODO
 
 	Make sure happy path and func tests pass.
 
 	---------------
 
-	Extend the relay gateway to send a test token back down, encoded for the specific relay.
+	Extend the relay gateway to send down the public key of the relay backend. Check it.
+
+	Extend the relay gateway to send down the expected public key of the relay. Check it.
+
+	Extend the relay gateway to send a test token back down. Check that the relay can decode it.
 
 	---------------
 

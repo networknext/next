@@ -4209,6 +4209,24 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     	exit(1);
     }
 
+    if ( ( expected_has_internal_address != 0 ) != relay->has_internal_address )
+	{
+    	printf( "\nerror: relay is misconfigured. it doesn't have an internal address, but it should\n\n" );
+    	fflush( stdout );
+    	exit(1);
+	}
+
+    if ( ( expected_has_internal_address != 0 ) && relay->has_internal_address && !relay_address_equal( &relay->relay_internal_address, &expected_internal_address ) )
+	{
+    	char relay_internal_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    	char expected_internal_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+    	relay_address_to_string( &relay->relay_internal_address, relay_internal_address_string );
+    	relay_address_to_string( &expected_internal_address, expected_internal_address_string );
+    	printf( "\nerror: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n\n", relay_internal_address_string, expected_internal_address_string );
+    	fflush( stdout );
+    	exit(1);
+	}
+
     relay_platform_mutex_acquire( relay->mutex );
     relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )
