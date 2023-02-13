@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -68,8 +67,6 @@ type Backend struct {
 }
 
 var backend Backend
-
-var relayPublicKey []byte
 
 type ServerEntry struct {
 	address    *net.UDPAddr
@@ -255,9 +252,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	encryptedData := packetData[index:packetBytes-crypto.Box_NonceSize]
 	encryptedBytes := len(encryptedData)
 
-	relayPublicKey := TestRelayPublicKey
-
-	err = crypto.Box_Decrypt(relayPublicKey, TestRouterPrivateKey, nonce, encryptedData, encryptedBytes)
+	err = crypto.Box_Decrypt(TestRelayPublicKey, TestRouterPrivateKey, nonce, encryptedData, encryptedBytes)
 	if err != nil {
 		core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
 		writer.WriteHeader(http.StatusBadRequest) // 400
@@ -743,7 +738,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		for i := 0; i < numRouteRelays; i++ {
 			routeRelayIds[i] = relayIds[i]
 			routeRelayAddresses[i] = relayAddresses[i]
-			routeRelayPublicKeys[i] = relayPublicKey
+			routeRelayPublicKeys[i] = TestRelayPublicKey
 		}
 
 		// is this a continue route, or a new route?
@@ -770,7 +765,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		tokenPublicKeys[0] = requestPacket.ClientRoutePublicKey[:]
 		tokenPublicKeys[len(tokenPublicKeys)-1] = requestPacket.ServerRoutePublicKey[:]
 		for i := 0; i < numRouteRelays; i++ {
-			tokenPublicKeys[1+i] = relayPublicKey
+			tokenPublicKeys[1+i] = TestRelayPublicKey
 		}
 
 		tokenInternal := make([]bool, numTokens)
@@ -938,7 +933,22 @@ func main() {
 
 	TestBackendPrivateKey = envvar.GetBase64("TEST_BACKEND_PRIVATE_KEY", []byte{})
 
-	relayPublicKey, _ = base64.StdEncoding.DecodeString("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+	TestRelayPublicKey = envvar.GetBase64("TEST_RELAY_PUBLIC_KEY", []byte{})
+
+	if len(TestRouterPrivateKey) == 0 {
+		fmt.Printf("error: You must specify TEST_ROUTER_PRIVATE_KEY")
+		os.Exit(1)
+	}
+
+	if len(TestBackendPrivateKey) == 0 {
+		fmt.Printf("error: You must specify TEST_BACKEND_PRIVATE_KEY")
+		os.Exit(1)
+	}
+
+	if len(TestRelayPublicKey) == 0 {
+		fmt.Printf("error: You must specify TEST_RELAY_PUBLIC_KEY")
+		os.Exit(1)
+	}
 
 	GenerateMagic(magicUpcoming[:])
 	GenerateMagic(magicCurrent[:])
