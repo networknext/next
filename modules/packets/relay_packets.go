@@ -220,7 +220,7 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayBackendPublicKey[:], crypto.Box_PublicKeySize)
 
 	encoding.WriteBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
-	
+
 	return buffer[:index]
 }
 

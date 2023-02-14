@@ -1237,7 +1237,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		if row.internal_group == "" {
 			relay.InternalGroup = 0
 		} else {
-			relay.InternalGroup = HashString( row.internal_group )
+			relay.InternalGroup = HashString(row.internal_group)
 		}
 
 		relay.SSHAddress = core.ParseAddress(row.ssh_ip)

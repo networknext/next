@@ -4,13 +4,38 @@ DONE
 
 	Adjust raspberry backend to url so it can switch to https is dev or whatever.
 
+	Rename relay stats message to relay update message.
+
+	Relay update message needs to be updated to the data we actually have
+
 TODO
 	
-	Relay stats message needs to be updated to the stats we actually have
+	--------
+
 
 	--------
 
 	Add relay counters message
+
+	--------
+
+	Add database stats message
+
+	--------
+
+	Rename portal message to portal session update message
+
+	--------
+
+	Add portal match update message
+
+	--------
+
+	Add portal server update message
+
+	--------
+
+	Add server update message
 
 	--------
 

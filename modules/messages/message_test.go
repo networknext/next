@@ -89,10 +89,10 @@ func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 	return message
 }
 
-func GenerateRandomRelayStatMessage() messages.RelayStatsMessage {
+func GenerateRandomRelayUpdateMessage() messages.RelayUpdateMessage {
 
-	message := messages.RelayStatsMessage{
-		Version:       byte(common.RandomInt(messages.RelayStatsMessageVersion_Min, messages.RelayStatsMessageVersion_Max)),
+	message := messages.RelayUpdateMessage{
+		Version:       byte(common.RandomInt(messages.RelayUpdateMessageVersion_Min, messages.RelayUpdateMessageVersion_Max)),
 		Timestamp:     uint64(time.Now().Unix()),
 		ID:            rand.Uint64(),
 		NumSessions:   rand.Uint32(),

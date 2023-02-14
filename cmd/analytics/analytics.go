@@ -57,7 +57,7 @@ func main() {
 		Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
 		Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
 		Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
-		Process[*messages.RelayStatsMessage](service, "relay_stats", &messages.RelayStatsMessage{}, false)
+		Process[*messages.RelayUpdateMessage](service, "relay_update", &messages.RelayUpdateMessage{}, false)
 		Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
 	}
 
