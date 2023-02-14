@@ -1292,6 +1292,8 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 	}
 }
 
+// todo: unit test internal groups
+
 // --------------------------------------------------------------
 
 func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {

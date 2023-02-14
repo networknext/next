@@ -566,15 +566,14 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
 			prevRelay := &state.Database.Relays[prevRelayIndex]
-			if prevRelay.Seller.Id == relay.Seller.Id && relay.HasInternalAddress && prevRelay.HasInternalAddress {
+			if ( prevRelay.Seller.Id == relay.Seller.Id && 
+				 relay.HasInternalAddress && prevRelay.HasInternalAddress &&
+				 relay.InternalGroup == prevRelay.InternalGroup ) {
 				relayAddresses[i] = relay.InternalAddress
 				relayInternal[i] = true
 			}
 		}
 	}
-
-	// todo
-	fmt.Printf("internal: %+v\n", relayInternal)
 
 	// server node
 

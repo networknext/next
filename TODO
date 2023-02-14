@@ -1,7 +1,5 @@
 DONE
 
-TODO
-
 	Implement new relay "internal group" concept.
 
 	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
@@ -10,10 +8,14 @@ TODO
 
 	Default should be "" which turns into 0
 
-	---------------
+	Hook up internal groups in relay gateway
 
-	Implement unit tests for relay internal groups addresses.
+	Hook up internal groups in session update
 
+	Make sure happy path works
+
+TODO
+	
 	---------------
 
 	Implement the near relay ping token.
