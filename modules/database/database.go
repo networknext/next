@@ -35,6 +35,7 @@ type Relay struct {
 	PublicAddress      net.UDPAddr
 	HasInternalAddress bool
 	InternalAddress    net.UDPAddr
+	InternalGroup      uint64
 	SSHAddress         net.UDPAddr
 	SSHUser            string
 	PublicKey          []byte
@@ -823,6 +824,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		public_port        int
 		internal_ip        string
 		internal_port      int
+		internal_group     string
 		ssh_ip             string
 		ssh_port           int
 		ssh_user           string
@@ -836,7 +838,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	relayRows := make([]RelayRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
+		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, internal_group, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract relays: %v\n", err)
 		}
@@ -845,7 +847,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RelayRow{}
-			if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
+			if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.internal_group, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
 				return nil, fmt.Errorf("failed to scan relay row: %v\n", err)
 			}
 			relayRows = append(relayRows, row)
@@ -1230,6 +1232,12 @@ func ExtractDatabase(config string) (*Database, error) {
 			if relay.InternalAddress.Port == 0 {
 				relay.InternalAddress.Port = relay.PublicAddress.Port
 			}
+		}
+
+		if row.internal_group == "" {
+			relay.InternalGroup = 0
+		} else {
+			relay.InternalGroup = HashString( row.internal_group )
 		}
 
 		relay.SSHAddress = core.ParseAddress(row.ssh_ip)

@@ -99,6 +99,7 @@ CREATE TABLE relays (
   public_port integer not null default 40000,
   internal_ip inet not null default '0.0.0.0',
   internal_port integer not null default 0,
+  internal_group varchar default '',
   ssh_ip inet not null default '0.0.0.0',
   ssh_port integer not null default 22,
   ssh_user varchar not null default 'root',

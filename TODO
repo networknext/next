@@ -1,37 +1,5 @@
 DONE
 
-	Verify relay public/private keypairs are valid (can encrypt/decrypt data)
-
-	Extend relay update response packet to include public and internal address and bool internal.
-
-	Read the expected public address, internal address in the relay on each relay update response.
-
-	Verify the relay has the correct public address on each relay update.
-
-	Extend the relay gateway to pass down the expected public address and internal address in response.
-
-	Extend the func backend to return expected public address and internal address (none) in response.
-
-	Verify the relay has internal address matches expected value
-
-	Verify the relay has the correct internal address (when applicable) on each relay update.
-
-	Make sure happy path and func tests pass.
-
-	Extend the relay gateway to send down the public key of the relay backend. Check it.
-
-	Extend the relay gateway to send down the expected public key of the relay. Check it.
-
-	Happy path works
-
-	Functional test works
-
-	Extend the relay gateway to send a test token back down. 
-
-	Extend the func backend to send a test token down.
-
- 	Make the relay verify it can decrypt the test token with each relay update response
-
 TODO
 
 	Implement new relay "internal group" concept.
