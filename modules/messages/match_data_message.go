@@ -21,6 +21,7 @@ const (
 type MatchDataMessage struct {
 	Version        uint8
 	Timestamp      uint64
+	Type           uint64
 	BuyerId        uint64
 	ServerAddress  net.UDPAddr
 	DatacenterId   uint64
@@ -45,6 +46,10 @@ func (message *MatchDataMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
 		return fmt.Errorf("failed to read timestamp")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Type) {
+		return fmt.Errorf("failed to read type")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
@@ -94,6 +99,7 @@ func (message *MatchDataMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	encoding.WriteUint64(buffer, &index, message.Type)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
@@ -114,19 +120,20 @@ func (message *MatchDataMessage) Save() (map[string]bigquery.Value, string, erro
 	bigquery_message := make(map[string]bigquery.Value)
 
 	bigquery_message["timestamp"] = int(message.Timestamp)
-	bigquery_message["buyerID"] = int(message.BuyerId)
-	bigquery_message["serverAddress"] = message.ServerAddress
-	bigquery_message["datacenterID"] = int(message.DatacenterId)
-	bigquery_message["userHash"] = int(message.UserHash)
-	bigquery_message["sessionID"] = int(message.SessionId)
-	bigquery_message["matchID"] = int(message.MatchId)
+	bigquery_message["type"] = int(message.Type)
+	bigquery_message["buyer_id"] = int(message.BuyerId)
+	bigquery_message["server_address"] = message.ServerAddress.String()
+	bigquery_message["datacenter_id"] = int(message.DatacenterId)
+	bigquery_message["user_hash"] = int(message.UserHash)
+	bigquery_message["session_id"] = int(message.SessionId)
+	bigquery_message["match_id"] = int(message.MatchId)
 
 	if message.NumMatchValues > 0 {
 		matchValues := make([]bigquery.Value, message.NumMatchValues)
 		for i := 0; i < int(message.NumMatchValues); i++ {
 			matchValues[i] = float64(message.MatchValues[i])
 		}
-		bigquery_message["matchValues"] = matchValues
+		bigquery_message["match_values"] = matchValues
 	}
 
 	return bigquery_message, "", nil
