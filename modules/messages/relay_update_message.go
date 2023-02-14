@@ -128,8 +128,17 @@ func (message *RelayUpdateMessage) Save() (map[string]bigquery.Value, string, er
 	bigquery_message["relay_id"] = int(message.RelayId)
 	bigquery_message["session_count"] = int(message.SessionCount)
 	bigquery_message["max_sessions"] = int(message.MaxSessions)
+	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
+	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
+	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
+	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
+	bigquery_message["relay_flags"] = int(message.RelayFlags)
 
-	// todo: finish this...
+	relay_counters := make([]bigquery.Value, message.NumRelayCounters)
+	for i := 0; i < int(message.NumRelayCounters); i++ {
+		relay_counters[i] = int(message.RelayCounters[i])
+	}
+	bigquery_message["relay_counters"] = relay_counters
 
 	return bigquery_message, "", nil
 }

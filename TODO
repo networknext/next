@@ -8,18 +8,15 @@ DONE
 
 	Relay update message needs to be updated to the data we actually have
 
+	Clean up match data message and add type
+
 TODO
 	
-	--------
-
-
-	--------
-
-	Add relay counters message
+	Add database update message
 
 	--------
 
-	Add database stats message
+	Track relay update size and relay response size in relay update messages
 
 	--------
 
@@ -35,11 +32,11 @@ TODO
 
 	--------
 
-	Add server update message
+	If tags are held in the server session, and passed up with every session update, we can write the tags in the summary, and completely remove the silly special case "first slice".
 
 	--------
 
-	Database stats message? eg. num buyers, num sellers, num relays, num datacenters -- send from master analytics.
+	Add server update message
 
 	--------
 

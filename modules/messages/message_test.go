@@ -92,14 +92,36 @@ func GenerateRandomPingStatMessage() messages.PingStatsMessage {
 func GenerateRandomRelayUpdateMessage() messages.RelayUpdateMessage {
 
 	message := messages.RelayUpdateMessage{
-		Version:       byte(common.RandomInt(messages.RelayUpdateMessageVersion_Min, messages.RelayUpdateMessageVersion_Max)),
-		Timestamp:     uint64(time.Now().Unix()),
-		ID:            rand.Uint64(),
-		NumSessions:   rand.Uint32(),
-		MaxSessions:   rand.Uint32(),
-		NumRoutable:   rand.Uint32(),
-		NumUnroutable: rand.Uint32(),
-		Full:          common.RandomBool(),
+		Version:                   byte(common.RandomInt(messages.RelayUpdateMessageVersion_Min, messages.RelayUpdateMessageVersion_Max)),
+		Timestamp:                 uint64(time.Now().Unix()),
+		RelayId:                   rand.Uint64(),
+		SessionCount:              rand.Uint32(),
+		MaxSessions:               rand.Uint32(),
+		EnvelopeBandwidthUpKbps:   rand.Uint32(),
+		EnvelopeBandwidthDownKbps: rand.Uint32(),
+		ActualBandwidthUpKbps:     rand.Uint32(),
+		ActualBandwidthDownKbps:   rand.Uint32(),
+		RelayFlags:                rand.Uint64(),
+		NumRelayCounters:          constants.NumRelayCounters,
+	}
+
+	for i := 0; i < constants.NumRelayCounters; i++ {
+		message.RelayCounters[i] = rand.Uint64()
+	}
+
+	return message
+}
+
+func GenerateRandomDatabaseUpdateMessage() messages.DatabaseUpdateMessage {
+
+	message := messages.DatabaseUpdateMessage{
+		Version:        byte(common.RandomInt(messages.DatabaseUpdateMessageVersion_Min, messages.DatabaseUpdateMessageVersion_Max)),
+		Timestamp:      uint64(time.Now().Unix()),
+		DatabaseSize:   rand.Uint32(),
+		NumRelays:      rand.Uint32(),
+		NumDatacenters: rand.Uint32(),
+		NumSellers:     rand.Uint32(),
+		NumBuyers:      rand.Uint32(),
 	}
 
 	return message
@@ -118,6 +140,7 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 	return messages.MatchDataMessage{
 		Version:        byte(common.RandomInt(messages.MatchDataMessageVersion_Min, messages.MatchDataMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
+		Type:           rand.Uint64(),
 		BuyerId:        rand.Uint64(),
 		ServerAddress:  common.RandomAddress(),
 		DatacenterId:   rand.Uint64(),
@@ -355,12 +378,21 @@ func TestPingStatsMessage(t *testing.T) {
 	}
 }
 
-func TestRelayStatsMessage(t *testing.T) {
+func TestRelayUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomRelayStatMessage()
-		readMessage := messages.RelayStatsMessage{}
-		MessageReadWriteTest[*messages.RelayStatsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomRelayUpdateMessage()
+		readMessage := messages.RelayUpdateMessage{}
+		MessageReadWriteTest[*messages.RelayUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestDatabaseUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomDatabaseUpdateMessage()
+		readMessage := messages.DatabaseUpdateMessage{}
+		MessageReadWriteTest[*messages.DatabaseUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
