@@ -84,8 +84,8 @@ func test_magic_backend() {
 
 	cmd.Env = make([]string, 0)
 	cmd.Env = append(cmd.Env, "ENV=local")
+	cmd.Env = append(cmd.Env, "DEBUG_LOGS=1")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40000")
-	cmd.Env = append(cmd.Env, "NEXT_DEBUG_LOGS=1")
 	cmd.Env = append(cmd.Env, "MAGIC_UPDATE_SECONDS=5")
 
 	err := cmd.Start()
@@ -243,8 +243,8 @@ func test_magic_backend() {
 
 	cmd2.Env = make([]string, 0)
 	cmd2.Env = append(cmd2.Env, "ENV=local")
+	cmd2.Env = append(cmd2.Env, "DEBUG_LOGS=1")
 	cmd2.Env = append(cmd2.Env, "HTTP_PORT=40001")
-	cmd2.Env = append(cmd2.Env, "NEXT_DEBUG_LOGS=1")
 	cmd2.Env = append(cmd2.Env, "MAGIC_UPDATE_SECONDS=5")
 
 	err = cmd2.Start()

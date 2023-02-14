@@ -37,7 +37,7 @@
 
 static volatile int quit = 0;
 
-char raspberry_backend_address[1024];
+char raspberry_backend_url[1024];
 
 void interrupt_handler( int signal )
 {
@@ -93,7 +93,7 @@ void client_thread_function( void * data )
         num_servers = 0;
 
         char cmd[1024];
-        snprintf( cmd, sizeof(cmd), "curl http://%s/servers --max-time 10 2>/dev/null", raspberry_backend_address );
+        snprintf( cmd, sizeof(cmd), "curl %s/servers --max-time 10 2>/dev/null", raspberry_backend_url );
         FILE * file = popen( cmd, "r" );
         if ( !file )
         {
@@ -213,11 +213,11 @@ int main()
 
     next_init( NULL, &config );
 
-    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof(raspberry_backend_address) );
-    const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
-    if ( raspberry_backend_address_override )
+    next_copy_string( raspberry_backend_url, "http://127.0.0.1:40100", sizeof(raspberry_backend_url) );
+    const char * raspberry_backend_url_override = next_platform_getenv( "RASPBERRY_BACKEND_URL" );
+    if ( raspberry_backend_url_override )
     {
-        next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+        next_copy_string( raspberry_backend_url, raspberry_backend_url_override, sizeof(raspberry_backend_url) );
     }
 
     int num_clients = 25;
@@ -227,7 +227,7 @@ int main()
         num_clients = atoi( num_clients_override );
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend url: %s", raspberry_backend_url );
     next_printf( NEXT_LOG_LEVEL_INFO, "num clients: %d", num_clients );
 
     run_clients( num_clients );

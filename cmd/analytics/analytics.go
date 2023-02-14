@@ -14,8 +14,8 @@ import (
 	"github.com/networknext/backend/modules/messages"
 )
 
-var costMatrixURI string
-var routeMatrixURI string
+var costMatrixURL string
+var routeMatrixURL string
 var costMatrixInterval time.Duration
 var routeMatrixInterval time.Duration
 var googleProjectId string
@@ -29,8 +29,8 @@ func main() {
 
 	service := common.CreateService("analytics")
 
-	costMatrixURI = envvar.GetString("COST_MATRIX_URI", "http://127.0.0.1:30001/cost_matrix")
-	routeMatrixURI = envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	costMatrixURL = envvar.GetString("COST_MATRIX_URL", "http://127.0.0.1:30001/cost_matrix")
+	routeMatrixURL = envvar.GetString("ROUTE_MATRIX_URL", "http://127.0.0.1:30001/route_matrix")
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
@@ -40,8 +40,8 @@ func main() {
 
 	// todo: google project id should probably be mandatory for this service
 
-	core.Log("cost matrix uri: %s", costMatrixURI)
-	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("cost matrix url: %s", costMatrixURL)
+	core.Log("route matrix url: %s", routeMatrixURL)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("google project id: %s", googleProjectId)
@@ -185,7 +185,7 @@ func ProcessCostMatrix(service *common.Service) {
 					break
 				}
 
-				response, err := httpClient.Get(costMatrixURI)
+				response, err := httpClient.Get(costMatrixURL)
 				if err != nil {
 					core.Error("failed to http get cost matrix: %v", err)
 					continue
@@ -296,7 +296,7 @@ func ProcessRouteMatrix(service *common.Service) {
 					break
 				}
 
-				response, err := httpClient.Get(routeMatrixURI)
+				response, err := httpClient.Get(routeMatrixURL)
 				if err != nil {
 					core.Error("failed to http get route matrix: %v", err)
 					continue

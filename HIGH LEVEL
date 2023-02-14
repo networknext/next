@@ -1,7 +1,5 @@
 HIGH LEVEL
 
-	0. Sort out relay and relay backend stuff and *really* lock it down. No changes to relay and relay <-> relay backend protocols past this point.
-
 	1. Get all analytics stuff pushed to analytics service via pubsub
 
 	2. Insert all analytics stuff into bigquery (emulator)

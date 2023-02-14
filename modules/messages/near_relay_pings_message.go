@@ -21,6 +21,7 @@ type NearRelayPingsMessage struct {
 
 	BuyerId        uint64
 	SessionId      uint64
+	MatchId        uint64
 	UserHash       uint64
 	Latitude       float32
 	Longitude      float32
@@ -49,6 +50,7 @@ func (message *NearRelayPingsMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.SessionId)
+	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.UserHash)
 	encoding.WriteFloat32(buffer, &index, message.Latitude)
 	encoding.WriteFloat32(buffer, &index, message.Longitude)
@@ -89,6 +91,10 @@ func (message *NearRelayPingsMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
 		return fmt.Errorf("failed to read session id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
+		return fmt.Errorf("failed to read match id")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.UserHash) {

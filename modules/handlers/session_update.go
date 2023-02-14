@@ -1116,6 +1116,8 @@ func sendNearRelayPingsMessage(state *SessionUpdateState) {
 
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
+	// todo
+	// message.MatchId = state.Request.MatchId
 	message.UserHash = state.Request.UserHash
 	message.Latitude = state.Output.Latitude
 	message.Longitude = state.Output.Longitude
@@ -1188,6 +1190,7 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
 		message.DatacenterId = state.Request.DatacenterId
 		message.BuyerId = state.Request.BuyerId
+		// todo: match id
 		message.UserHash = state.Request.UserHash
 		message.Latitude = state.Output.Latitude
 		message.Longitude = state.Output.Longitude

@@ -472,10 +472,10 @@ func (service *Service) LoadLeaderStore() []DataStoreConfig {
 
 func (service *Service) UpdateRouteMatrix() {
 
-	routeMatrixURI := envvar.GetString("ROUTE_MATRIX_URI", "http://127.0.0.1:30001/route_matrix")
+	routeMatrixURL := envvar.GetString("ROUTE_MATRIX_URL", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
-	core.Log("route matrix uri: %s", routeMatrixURI)
+	core.Log("route matrix url: %s", routeMatrixURL)
 	core.Log("route matrix interval: %s", routeMatrixInterval.String())
 
 	httpClient := &http.Client{
@@ -504,7 +504,7 @@ func (service *Service) UpdateRouteMatrix() {
 					service.routeMatrixMutex.Unlock()
 				}
 
-				response, err := httpClient.Get(routeMatrixURI)
+				response, err := httpClient.Get(routeMatrixURL)
 				if err != nil {
 					core.Error("failed to http get route matrix: %v", err)
 					continue
@@ -1014,9 +1014,9 @@ func (service *Service) updateMagicValues(magicData []byte) {
 
 func (service *Service) updateMagicLoop() {
 
-	magicURI := envvar.GetString("MAGIC_URI", "http://127.0.0.1:41007/magic")
+	magicURL := envvar.GetString("MAGIC_URL", "http://127.0.0.1:41007/magic")
 
-	core.Log("magic uri: %s", magicURI)
+	core.Log("magic url: %s", magicURL)
 
 	httpClient := &http.Client{
 		Timeout: time.Second,
@@ -1025,7 +1025,7 @@ func (service *Service) updateMagicLoop() {
 	var magicData []byte
 	for i := 0; i < 10; i++ {
 		var err error
-		magicData, err = getMagic(httpClient, magicURI)
+		magicData, err = getMagic(httpClient, magicURL)
 		if err == nil {
 			break
 		}
@@ -1050,7 +1050,7 @@ func (service *Service) updateMagicLoop() {
 			case <-service.Context.Done():
 				return
 			case <-ticker.C:
-				magicData, err := getMagic(httpClient, magicURI)
+				magicData, err := getMagic(httpClient, magicURL)
 				if err == nil {
 					service.updateMagicValues(magicData)
 				}

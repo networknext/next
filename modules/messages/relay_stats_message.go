@@ -19,6 +19,9 @@ const (
 type RelayStatsMessage struct {
 	Version       uint8
 	Timestamp     uint64
+
+	// todo: update all this to the latest stats we really have from each relay
+	
 	ID            uint64
 	NumSessions   uint32
 	MaxSessions   uint32

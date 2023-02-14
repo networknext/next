@@ -53,6 +53,7 @@ type SessionUpdateMessage struct {
 
 	DatacenterId     uint64
 	BuyerId          uint64
+	MatchId          uint64
 	UserHash         uint64
 	Latitude         float32
 	Longitude        float32
@@ -134,6 +135,7 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
 		encoding.WriteUint64(buffer, &index, message.DatacenterId)
 		encoding.WriteUint64(buffer, &index, message.BuyerId)
+		encoding.WriteUint64(buffer, &index, message.MatchId)
 		encoding.WriteUint64(buffer, &index, message.UserHash)
 		encoding.WriteFloat32(buffer, &index, message.Latitude)
 		encoding.WriteFloat32(buffer, &index, message.Longitude)
@@ -295,6 +297,10 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 
 		if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
 			return fmt.Errorf("failed to read buyer id")
+		}
+
+		if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
+			return fmt.Errorf("failed to read match id")
 		}
 
 		if !encoding.ReadUint64(buffer, &index, &message.UserHash) {

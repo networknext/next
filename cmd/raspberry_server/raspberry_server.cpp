@@ -74,7 +74,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 struct thread_data_t
 {
     const char * server_address;
-    const char * raspberry_backend_address;
+    const char * raspberry_backend_url;
 };
 
 void server_update_thread( void * data )
@@ -84,10 +84,10 @@ void server_update_thread( void * data )
     thread_data_t * thread_data = (thread_data_t*) data;
 
     const char * server_address = thread_data->server_address;
-    const char * raspberry_backend_address = thread_data->raspberry_backend_address;
+    const char * raspberry_backend_url = thread_data->raspberry_backend_url;
     
     char command_line[1024];
-    snprintf( command_line, sizeof(command_line), "curl -d \"%s\" -X POST http://%s/server_update --max-time 10 2>/dev/null", server_address, raspberry_backend_address );
+    snprintf( command_line, sizeof(command_line), "curl -d \"%s\" -X POST %s/server_update --max-time 10 2>/dev/null", server_address, raspberry_backend_url );
 
     while ( !quit )
     {
@@ -118,15 +118,15 @@ int main()
 
     next_init( NULL, NULL );
 
-    char raspberry_backend_address[1024];
-    next_copy_string( raspberry_backend_address, "127.0.0.1:40100", sizeof( raspberry_backend_address ) );
-    const char * raspberry_backend_address_override = next_platform_getenv( "RASPBERRY_BACKEND_ADDRESS" );
-    if ( raspberry_backend_address_override )
+    char raspberry_backend_url[1024];
+    next_copy_string( raspberry_backend_url, "http://127.0.0.1:40100", sizeof( raspberry_backend_url ) );
+    const char * raspberry_backend_url_override = next_platform_getenv( "RASPBERRY_BACKEND_URL" );
+    if ( raspberry_backend_url_override )
     {
-        next_copy_string( raspberry_backend_address, raspberry_backend_address_override, sizeof(raspberry_backend_address) );
+        next_copy_string( raspberry_backend_url, raspberry_backend_url_override, sizeof(raspberry_backend_url) );
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend address: %s", raspberry_backend_address );
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend url: %s", raspberry_backend_url );
 
     char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
@@ -174,7 +174,7 @@ int main()
     thread_data_t thread_data;
 
     thread_data.server_address = public_address;
-    thread_data.raspberry_backend_address = raspberry_backend_address;
+    thread_data.raspberry_backend_url = raspberry_backend_url;
 
     send_server_updates_to_raspberry_backend( &thread_data );
 

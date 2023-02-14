@@ -1,45 +1,92 @@
 DONE
 
-	Implement new relay "internal group" concept.
+	Clean up env vars that aren't used anywhere
 
-	A string that is hashed. Only relays with the same internal group hash use internal addresses between each other.
-
-	For example, for AWS relays in each region would have the same internal group string.
-
-	Default should be "" which turns into 0
-
-	Hook up internal groups in relay gateway
-
-	Hook up internal groups in session update
-
-	Make sure happy path works
+	Adjust raspberry backend to url so it can switch to https is dev or whatever.
 
 TODO
 	
-	---------------
+	Relay stats message needs to be updated to the stats we actually have
 
-	Implement the near relay ping token.
+	--------
 
-	We need to do this now, so we don't have problems with it in the future.
+	Add relay counters message
 
-	It can be as simple as an expire time for pings
+	--------
 
-	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+	Database stats message? eg. num buyers, num sellers, num relays, num datacenters -- send from master analytics.
 
-	---------------
+	--------
 
-	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
+	Add server sdk to link to match
 
-	---------------
+	next_server_match ( match_id )
 
-	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
+	--------
 
-    ---------------
+	Add uint64 type to match data message
 
-    Add relay counters to relay stats message.
+	Extend SDK to support multiple calls to match data
 
-	---------------
+	Extend SDK to store an array of match data, and flush that array
 
+	Extend match data packets to server backend to include type
+
+	--------
+
+	Match events ()
+
+	next_server_match_event
+
+	--------
+
+	Session events (address)
+
+	next_server_session_event
+
+	--------
+
+	Session data (address, type, array of doubles)
+
+	next_server_session_data
+
+	--------
+
+	Get the pubsub emulator back up locally
+
+	Get the process for setting up pubsub queues etc going via "run"
+
+	eg. "run pubsub-create", "run pubsub-destroy" or whatever works
+
+	--------
+
+	Get the bigquery emulator up locally
+
+	Decide on schemas for each of the table types, and put them under "bigquery"
+
+	eg. "run bigquery-create", "run bigquery-destroy" or whatever.
+
+	--------
+
+	Extend analytics service to insert messages into bigquery.
+
+	--------------
+
+    Send portal messages to redis streams
+
+	--------------
+
+	Get portal cruncher back up and make sure it processes portal messages
+
+	--------------
+
+	Recover portal cruncher code and update it to use the standard redis library we use elsewhere
+
+	--------------
+
+	Implement simple "api" service and get OAuth and 
+
+	--------------
 
 
 
@@ -95,27 +142,11 @@ Essentials:
 
 	--------------
 
-    Send portal messages to redis streams
-
-	--------------
-
-	Portal cruncher
-
-	--------------
-
-	Send rest of server backend messages to google pubsub
-
-	--------------
-
-	Extend analytics service to insert messages into bigquery.
-
-	--------------
-
 	Implement func test for server backend to make sure when it is in connection drain state, it indicates to the LB health test that traffic should not be sent to it.
 
 	--------------
 
-	Extend and clean up the current reference relay implementation so it is multithreaded.
+	Multithreaded relay
 
 	--------------
 
@@ -133,20 +164,6 @@ Essentials:
 
 	--------------
 
-	link session to match id
-
-	--------------
-
-	match events
-
-	match data (with type uint64 at top -- call at any time, multiple times...)
-
-	session events
-
-	session data (with type uint64 at top) -- call at any time, multiple times...)
-
-	--------------
-
 	Get "pro" tagging back in. This is a cool feature.
 
 	--------------
@@ -156,6 +173,11 @@ Essentials:
 	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
 
 	--------------
+
+	Multipath across two network next routes.
+
+	--------------
+
 
 
 
@@ -194,10 +216,6 @@ Nice to have:
 
 	--------------
 
-	Multipath across two network next routes.
-
-	--------------
-
 	We are very close to removing libsodium from golang. It should be possible. If we do this, it becomes much easier to build and run golang services, as they are fully native.
 
 	--------------
@@ -206,7 +224,7 @@ Nice to have:
 
 	--------------
 
-	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in database.bin files being injected.
+	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in bad database.bin files
 
 	--------------
 
@@ -242,8 +260,32 @@ Nice to have:
 
 	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
 
-	--------------
+	---------------
 
 	Leader election func tests for relay backends + ready delay
 
-	--------------
+	---------------
+
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	It can be as simple as an expire time for pings
+
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+
+	---------------
+
+	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
+
+	---------------
+
+	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
+
+	---------------
+
+	Relay gateway verify keypair on startup
+
+	Server backend verify keypairs on startup
+
+	---------------

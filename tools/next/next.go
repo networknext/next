@@ -300,6 +300,7 @@ func refreshAuth(env Environment) error {
 	clientSecret := ""
 	domain := ""
 
+	// todo: seems like we can do better than this
 	switch env.Name {
 	case "prod":
 		audience = PROD_AUTH0_AUDIENCE

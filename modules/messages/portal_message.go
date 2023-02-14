@@ -22,6 +22,7 @@ type PortalMessage struct {
 	SDKVersion_Patch byte
 
 	SessionId     uint64
+	MatchId       uint64
 	BuyerId       uint64
 	DatacenterId  uint64
 	Latitude      float32
@@ -74,6 +75,7 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 
 	encoding.WriteUint64(buffer, &index, message.SessionId)
+	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteFloat32(buffer, &index, message.Latitude)
@@ -144,6 +146,10 @@ func (message *PortalMessage) Read(buffer []byte) error {
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
+		return fmt.Errorf("failed to read session id")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
 		return fmt.Errorf("failed to read session id")
 	}
 

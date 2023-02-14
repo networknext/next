@@ -245,6 +245,7 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),
 		SessionId:        rand.Uint64(),
+		MatchId:          rand.Uint64(),
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
 		Latitude:         float32(common.RandomInt(-90, +90)),
@@ -302,6 +303,7 @@ func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
 
 		BuyerId:        rand.Uint64(),
 		SessionId:      rand.Uint64(),
+		MatchId:        rand.Uint64(),
 		UserHash:       rand.Uint64(),
 		Latitude:       float32(common.RandomInt(-90, +90)),
 		Longitude:      float32(common.RandomInt(-180, +180)),
