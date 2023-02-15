@@ -12,6 +12,14 @@ DONE
 
 	Make sure all analytics messages have their bigquery save methods coded
 
+	Portal session update message is emitted
+
+	Analytics session update message is emitted
+
+	Analytics session summary message is emitted
+
+	Analytics near relay pings message is emitted
+
 TODO
 
 	Systematically go through all analytics message types and make sure they are getting emitted

@@ -257,6 +257,23 @@ func (database *Database) IsEmpty() bool {
 	return true
 }
 
+func (database *Database) DatacenterExists(datacenterId uint64) bool {
+	return database.DatacenterMap[datacenterId] != nil
+}
+
+func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64) bool {
+	buyerEntry, ok := database.DatacenterMaps[buyerId]
+	if !ok {
+		return false
+	}
+	datacenterEntry := buyerEntry[datacenterId]
+	return datacenterEntry.EnableAcceleration
+}
+
+func (database *Database) GetDatacenter(datacenterId uint64) *Datacenter {
+	return database.DatacenterMap[datacenterId]
+}
+
 func (database *Database) String() string {
 
 	output := "Headers:\n\n"

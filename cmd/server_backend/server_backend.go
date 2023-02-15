@@ -25,6 +25,7 @@ var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
 var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
+var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummaryMessage
 var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
 var analyticsNearRelayPingsMessageChannel chan *messages.AnalyticsNearRelayPingsMessage
 
@@ -64,6 +65,7 @@ func main() {
 	analyticsServerInitMessageChannel = make(chan *messages.AnalyticsServerInitMessage, channelSize)
 	analyticsServerUpdateMessageChannel = make(chan *messages.AnalyticsServerUpdateMessage, channelSize)
 	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
+	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
 	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
 	analyticsNearRelayPingsMessageChannel = make(chan *messages.AnalyticsNearRelayPingsMessage, channelSize)
 
@@ -75,6 +77,7 @@ func main() {
 	processAnalyticsServerUpdateMessages()
 	processAnalyticsNearRelayPingsMessages()
 	processAnalyticsSessionUpdateMessages()
+	processAnalyticsSessionSummaryMessages()
 	processAnalyticsMatchDataMessages()
 
 	// start service
@@ -127,6 +130,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
 	handler.AnalyticsSessionUpdateMessageChannel = analyticsSessionUpdateMessageChannel
+	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
 	handler.AnalyticsNearRelayPingsMessageChannel = analyticsNearRelayPingsMessageChannel
 
 	// todo: not ready yet
@@ -196,6 +200,16 @@ func processAnalyticsSessionUpdateMessages() {
 			message := <-analyticsSessionUpdateMessageChannel
 			_ = message
 			core.Debug("processed analytics session update message")
+		}
+	}()
+}
+
+func processAnalyticsSessionSummaryMessages() {
+	go func() {
+		for {
+			message := <-analyticsSessionSummaryMessageChannel
+			_ = message
+			core.Debug("processed analytics session summary message")
 		}
 	}()
 }

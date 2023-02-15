@@ -67,6 +67,7 @@ type SDK5_Handler struct {
 	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
 	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
 	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
 	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
 }
 
@@ -462,6 +463,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
 	state.AnalyticsNearRelayPingsMessageChannel = handler.AnalyticsNearRelayPingsMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
+	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
 
 	// track the length of session update handlers
 

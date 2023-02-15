@@ -82,6 +82,7 @@ type SessionUpdateState struct {
 
 	PortalSessionUpdateMessageChannel     chan<- *messages.PortalSessionUpdateMessage
 	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
 	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
 }
 
@@ -186,7 +187,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		This is important so that we can quickly check if we need to add new datacenters for customers.
 	*/
 
-	if !datacenterExists(state.Database, state.Request.DatacenterId) {
+	if !state.Database.DatacenterExists(state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
 		state.SessionFlags |= constants.SessionFlags_UnknownDatacenter
 	}
@@ -197,18 +198,16 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		If the datacenter is not enabled, we just wont accelerate the player.
 	*/
 
-	if !datacenterEnabled(state.Database, state.Request.BuyerId, state.Request.DatacenterId) {
+	if !state.Database.DatacenterEnabled(state.Request.BuyerId, state.Request.DatacenterId) {
 		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
 		state.SessionFlags |= constants.SessionFlags_DatacenterNotEnabled
 	}
 
 	/*
 		Get the datacenter information and store it in the handler state.
-
-		If the datacenter is unknown, this datacenter will have a zero id and be named "unknown".
 	*/
 
-	state.Datacenter = getDatacenter(state.Database, state.Request.DatacenterId)
+	state.Datacenter = state.Database.GetDatacenter(state.Request.DatacenterId)
 
 	/*
 		Get the set of relay ids that are in the destination datacenter (if applicable).
@@ -1012,24 +1011,14 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.WroteResponsePacket = true
 
 	/*
-		Send the portal session update message.
-
-		This drives the view of sessions in the portal.
+		Send various messages to drive the portal and analytics systems.
 	*/
 
 	sendPortalSessionUpdateMessage(state)
 
-	/*
-		Send the the session update message to drive analytics.
-	*/
-
 	sendAnalyticsSessionUpdateMessage(state)
 
-	/*
-		Send the near relay pings message
-
-		This gives us access to near relay pings data for analytics.
-	*/
+	sendAnalyticsSessionSummaryMessage(state)
 
 	sendAnalyticsNearRelayPingsMessage(state)
 }
@@ -1180,22 +1169,28 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 		}
 	}
 
-	// send message to channel
-
 	if state.AnalyticsSessionUpdateMessageChannel != nil {
 		state.AnalyticsSessionUpdateMessageChannel <- &message
 		state.SentSessionUpdateMessage = true
 	}
 }
 
-// todo: get session summary message in its own function
-/*
-// first slice or summary
+func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
-if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
+	if !state.Output.WriteSummary {
+		return
+	}
+
+	message := messages.AnalyticsSessionSummaryMessage{}
+
+	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
+
+	message.Timestamp = uint64(time.Now().Unix())
+	message.SessionId = state.Input.SessionId
 	message.DatacenterId = state.Request.DatacenterId
 	message.BuyerId = state.Request.BuyerId
 	// todo: match id
+	// message.MatchId = state.Request.MatchId
 	message.UserHash = state.Request.UserHash
 	message.Latitude = state.Output.Latitude
 	message.Longitude = state.Output.Longitude
@@ -1206,11 +1201,6 @@ if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summ
 	message.SDKVersion_Major = byte(state.Request.Version.Major)
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
-}
-
-// summary only
-
-if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 	message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
 	message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
 	message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer
@@ -1222,28 +1212,11 @@ if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Output.DurationOnNext
 	message.StartTimestamp = state.Output.StartTimestamp
-}
-*/
 
-// -----------------------------------------
-
-// todo: these really should just be methods in the database?
-
-func datacenterExists(database *db.Database, datacenterId uint64) bool {
-	return database.DatacenterMap[datacenterId] != nil
-}
-
-func datacenterEnabled(database *db.Database, buyerId uint64, datacenterId uint64) bool {
-	buyerEntry, ok := database.DatacenterMaps[buyerId]
-	if !ok {
-		return false
+	if state.AnalyticsSessionSummaryMessageChannel != nil {
+		state.AnalyticsSessionSummaryMessageChannel <- &message
+		state.SentSessionUpdateMessage = true
 	}
-	datacenterEntry := buyerEntry[datacenterId]
-	return datacenterEntry.EnableAcceleration
-}
-
-func getDatacenter(database *db.Database, datacenterId uint64) *db.Datacenter {
-	return database.DatacenterMap[datacenterId]
 }
 
 // -----------------------------------------
