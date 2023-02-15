@@ -195,9 +195,8 @@ type SDK5_SessionUpdateRequestPacket struct {
 	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
 	HasNearRelayPings               bool
-	NumTags                         int32
-	Tags                            [SDK5_MaxTags]uint64
-	GameEvents                      uint64
+	SessionEvents                   uint64
+	InternalEvents                  uint64
 	DirectRTT                       float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
@@ -264,25 +263,22 @@ func (packet *SDK5_SessionUpdateRequestPacket) Serialize(stream encoding.Stream)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasNearRelayPings)
 
-	hasTags := stream.IsWriting() && packet.SliceNumber == 0 && packet.NumTags > 0
-	hasGameEvents := stream.IsWriting() && packet.GameEvents != 0
+	hasSessionEvents := stream.IsWriting() && packet.SessionEvents != 0
+	hasInternalEvents := stream.IsWriting() && packet.InternalEvents != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
-	stream.SerializeBool(&hasTags)
-	stream.SerializeBool(&hasGameEvents)
+	stream.SerializeBool(&hasSessionEvents)
+	stream.SerializeBool(&hasInternalEvents)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
-	if hasTags {
-		stream.SerializeInteger(&packet.NumTags, 0, SDK5_MaxTags)
-		for i := 0; i < int(packet.NumTags); i++ {
-			stream.SerializeUint64(&packet.Tags[i])
-		}
+	if hasSessionEvents {
+		stream.SerializeUint64(&packet.SessionEvents)
 	}
 
-	if hasGameEvents {
-		stream.SerializeUint64(&packet.GameEvents)
+	if hasInternalEvents {
+		stream.SerializeUint64(&packet.InternalEvents)
 	}
 
 	stream.SerializeFloat32(&packet.DirectRTT)

@@ -185,14 +185,6 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_sdk5 test_jitter
 
-        - name: "test_tags"
-          commands:
-            - cd ./dist && ./func_tests_sdk5 test_tags
-
-        - name: "test_tags_multi"
-          commands:
-            - cd ./dist && ./func_tests_sdk5 test_tags_multi
-
         - name: "test_direct_stats"
           commands:
             - cd ./dist && ./func_tests_sdk5 test_direct_stats
@@ -249,9 +241,9 @@ blocks:
           commands:
             - cd ./dist && ./func_tests_sdk5 test_client_connect_before_ready
 
-        - name: "test_game_events"
+        - name: "test_session_events"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_game_events
+            - cd ./dist && ./func_tests_sdk5 test_session_events
 
         - name: "test_match_id"
           commands:
@@ -310,13 +302,13 @@ blocks:
 
       jobs:
 
-        - name: "test_flush_game_events_and_match_data"
+        - name: "test_flush_session_events_and_match_data"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_flush_game_events_and_match_data
+            - cd ./dist && ./func_tests_sdk5 test_flush_session_events_and_match_data
 
-        - name: "test_flush_game_events_and_match_data_retry"
+        - name: "test_flush_session_events_and_match_data_retry"
           commands:
-            - cd ./dist && ./func_tests_sdk5 test_flush_game_events_and_match_data_retry
+            - cd ./dist && ./func_tests_sdk5 test_flush_session_events_and_match_data_retry
 
         - name: "test_big_packets"
           commands:

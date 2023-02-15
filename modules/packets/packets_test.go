@@ -207,7 +207,8 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		ClientPingTimedOut:              common.RandomBool(),
 		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
-		GameEvents:                      rand.Uint64(),
+		SessionEvents:                   rand.Uint64(),
+		InternalEvents:                  rand.Uint64(),
 		DirectRTT:                       rand.Float32(),
 		DirectJitter:                    rand.Float32(),
 		DirectPacketLoss:                rand.Float32(),
@@ -220,13 +221,6 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		PacketsOutOfOrderServerToClient: rand.Uint64(),
 		JitterClientToServer:            rand.Float32(),
 		JitterServerToClient:            rand.Float32(),
-	}
-
-	if packet.SliceNumber == 0 {
-		packet.NumTags = int32(common.RandomInt(1, packets.SDK5_MaxTags))
-		for i := 0; i < int(packet.NumTags); i++ {
-			packet.Tags[i] = rand.Uint64()
-		}
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {

@@ -58,15 +58,15 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( rand() % 2500 == 0 && next_server_session_upgraded( server, from ) && session_exists )
         {
-            int num_server_events = rand() % 64;
-            uint64_t server_events = 0;
+            int num_session_events = rand() % 64;
+            uint64_t session_events = 0;
 
-            for ( int i = 0; i < num_server_events; ++i )
+            for ( int i = 0; i < num_session_events; ++i )
             {
-                server_events |= 1 << (rand() % 64);
+                session_events |= 1 << (rand() % 64);
             }
 
-            next_server_event( server, from, server_events );
+            next_server_session_event( server, from, session_events );
         }
     }
 }

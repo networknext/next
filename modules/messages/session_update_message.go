@@ -2,7 +2,8 @@ package messages
 
 import (
 	"fmt"
-	"net"
+
+	"cloud.google.com/go/bigquery"
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
@@ -26,7 +27,8 @@ type SessionUpdateMessage struct {
 	RealJitter       float32
 	RealOutOfOrder   float32
 	SessionFlags     uint64
-	GameEvents       uint64
+	SessionEvents    uint64
+	InternalEvents   uint64
 	DirectRTT        float32
 	DirectJitter     float32
 	DirectPacketLoss float32
@@ -43,41 +45,6 @@ type SessionUpdateMessage struct {
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64
-
-	// first slice only
-
-	NumTags byte
-	Tags    [constants.MaxTags]uint64
-
-	// first slice and summary slice only
-
-	DatacenterId     uint64
-	BuyerId          uint64
-	MatchId          uint64
-	UserHash         uint64
-	Latitude         float32
-	Longitude        float32
-	ClientAddress    net.UDPAddr
-	ServerAddress    net.UDPAddr
-	ConnectionType   byte
-	PlatformType     byte
-	SDKVersion_Major byte
-	SDKVersion_Minor byte
-	SDKVersion_Patch byte
-
-	// summary slice only
-
-	ClientToServerPacketsSent       uint64
-	ServerToClientPacketsSent       uint64
-	ClientToServerPacketsLost       uint64
-	ServerToClientPacketsLost       uint64
-	ClientToServerPacketsOutOfOrder uint64
-	ServerToClientPacketsOutOfOrder uint64
-	TotalEnvelopeBytesUp            uint64
-	TotalEnvelopeBytesDown          uint64
-	DurationOnNext                  uint32
-	SessionDuration                 uint32
-	StartTimestamp                  uint64
 }
 
 func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
@@ -99,7 +66,8 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RealJitter)
 	encoding.WriteFloat32(buffer, &index, message.RealOutOfOrder)
 	encoding.WriteUint64(buffer, &index, message.SessionFlags)
-	encoding.WriteUint64(buffer, &index, message.GameEvents)
+	encoding.WriteUint64(buffer, &index, message.SessionEvents)
+	encoding.WriteUint64(buffer, &index, message.InternalEvents)
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
 	encoding.WriteFloat32(buffer, &index, message.DirectPacketLoss)
@@ -119,49 +87,6 @@ func (message *SessionUpdateMessage) Write(buffer []byte) []byte {
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
 			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 		}
-	}
-
-	// first slice only
-
-	if message.SliceNumber == 0 {
-		encoding.WriteUint8(buffer, &index, message.NumTags)
-		for i := 0; i < int(message.NumTags); i++ {
-			encoding.WriteUint64(buffer, &index, message.Tags[i])
-		}
-	}
-
-	// first slice or summary slice
-
-	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
-		encoding.WriteUint64(buffer, &index, message.DatacenterId)
-		encoding.WriteUint64(buffer, &index, message.BuyerId)
-		encoding.WriteUint64(buffer, &index, message.MatchId)
-		encoding.WriteUint64(buffer, &index, message.UserHash)
-		encoding.WriteFloat32(buffer, &index, message.Latitude)
-		encoding.WriteFloat32(buffer, &index, message.Longitude)
-		encoding.WriteAddress(buffer, &index, &message.ClientAddress)
-		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
-		encoding.WriteUint8(buffer, &index, message.ConnectionType)
-		encoding.WriteUint8(buffer, &index, message.PlatformType)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
-		encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
-	}
-
-	// summary slice only
-
-	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
-		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsSent)
-		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsSent)
-		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsLost)
-		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsLost)
-		encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsOutOfOrder)
-		encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsOutOfOrder)
-		encoding.WriteUint32(buffer, &index, message.SessionDuration)
-		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesUp)
-		encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesDown)
-		encoding.WriteUint32(buffer, &index, message.DurationOnNext)
-		encoding.WriteUint64(buffer, &index, message.StartTimestamp)
 	}
 
 	return buffer[:index]
@@ -209,8 +134,12 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read session flags")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.GameEvents) {
-		return fmt.Errorf("failed to read game events")
+	if !encoding.ReadUint64(buffer, &index, &message.SessionEvents) {
+		return fmt.Errorf("failed to read session events")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.InternalEvents) {
+		return fmt.Errorf("failed to read internal events")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {
@@ -272,121 +201,63 @@ func (message *SessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
-	// first slice only
-
-	if message.SliceNumber == 0 {
-
-		if !encoding.ReadUint8(buffer, &index, &message.NumTags) {
-			return fmt.Errorf("failed to read num tags")
-		}
-
-		for i := 0; i < int(message.NumTags); i++ {
-			if !encoding.ReadUint64(buffer, &index, &message.Tags[i]) {
-				return fmt.Errorf("failed to read tags")
-			}
-		}
-	}
-
-	// summary only
-
-	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
-
-		if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
-			return fmt.Errorf("failed to read datacenter id")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {
-			return fmt.Errorf("failed to read buyer id")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-			return fmt.Errorf("failed to read match id")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
-			return fmt.Errorf("failed to read user hash")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.Latitude) {
-			return fmt.Errorf("failed to read latitude")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.Longitude) {
-			return fmt.Errorf("failed to read longitude")
-		}
-
-		if !encoding.ReadAddress(buffer, &index, &message.ClientAddress) {
-			return fmt.Errorf("failed to read client address")
-		}
-
-		if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
-			return fmt.Errorf("failed to read server address")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.ConnectionType) {
-			return fmt.Errorf("failed to read connection type")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.PlatformType) {
-			return fmt.Errorf("failed to read platform type")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
-			return fmt.Errorf("failed to read sdk version major")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Minor) {
-			return fmt.Errorf("failed to read sdk version minor")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
-			return fmt.Errorf("failed to read sdk version patch")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsSent) {
-			return fmt.Errorf("failed to read client to server packets sent")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsSent) {
-			return fmt.Errorf("failed to read server to client packets sent")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsLost) {
-			return fmt.Errorf("failed to read client to server packets lost")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsLost) {
-			return fmt.Errorf("failed to read server to client packets lost")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ClientToServerPacketsOutOfOrder) {
-			return fmt.Errorf("failed to read client to server packets out of order")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.ServerToClientPacketsOutOfOrder) {
-			return fmt.Errorf("failed to read server to client packets out of order")
-		}
-
-		if !encoding.ReadUint32(buffer, &index, &message.SessionDuration) {
-			return fmt.Errorf("failed to read session duration")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesUp) {
-			return fmt.Errorf("failed to read total envelope bytes up sum")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesDown) {
-			return fmt.Errorf("failed to read total envelope bytes down sum")
-		}
-
-		if !encoding.ReadUint32(buffer, &index, &message.DurationOnNext) {
-			return fmt.Errorf("failed to read duration on next")
-		}
-
-		if !encoding.ReadUint64(buffer, &index, &message.StartTimestamp) {
-			return fmt.Errorf("failed to read start timestamp")
-		}
-	}
-
 	return nil
+}
+
+func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
+
+	bigquery_message := make(map[string]bigquery.Value)
+
+	bigquery_message["timestamp"] = int(message.Timestamp)
+	bigquery_message["session_id"] = int(message.SessionId)
+	bigquery_message["slice_number"] = int(message.SliceNumber)
+	bigquery_message["real_packet_loss"] = int(message.RealPacketLoss)
+	bigquery_message["real_jitter"] = int(message.RealJitter)
+	bigquery_message["real_out_of_order"] = int(message.RealOutOfOrder)
+	bigquery_message["session_flags"] = int(message.SessionFlags)
+	bigquery_message["session_events"] = int(message.SessionEvents)
+	bigquery_message["internal_events"] = int(message.InternalEvents)
+
+	/*
+	bigquery_message["relay_id"] = int(message.RelayId)
+	bigquery_message["session_count"] = int(message.SessionCount)
+	bigquery_message["max_sessions"] = int(message.MaxSessions)
+	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
+	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
+	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
+	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
+	bigquery_message["relay_flags"] = int(message.RelayFlags)
+
+	relay_counters := make([]bigquery.Value, message.NumRelayCounters)
+	for i := 0; i < int(message.NumRelayCounters); i++ {
+		relay_counters[i] = int(message.RelayCounters[i])
+	}
+	bigquery_message["relay_counters"] = relay_counters
+	*/
+
+/*
+	// always
+
+	SessionFlags     uint64
+	SessionEvents       uint64
+	InternalEvents       uint64
+	DirectRTT        float32
+	DirectJitter     float32
+	DirectPacketLoss float32
+	DirectKbpsUp     uint32
+	DirectKbpsDown   uint32
+
+	// next only
+
+	NextRTT            float32
+	NextJitter         float32
+	NextPacketLoss     float32
+	NextKbpsUp         uint32
+	NextKbpsDown       uint32
+	NextPredictedRTT   uint32
+	NextNumRouteRelays uint32
+	NextRouteRelayId   [constants.MaxRouteRelays]uint64
+*/
+
+	return bigquery_message, "", nil
 }

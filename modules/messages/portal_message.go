@@ -31,7 +31,8 @@ type PortalMessage struct {
 	ServerAddress net.UDPAddr
 	SliceNumber   uint32
 	SessionFlags  uint64
-	GameEvents    uint64
+	SessionEvents uint64
+	InternalEvents uint64
 
 	DirectRTT        float32
 	DirectJitter     float32
@@ -84,7 +85,8 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 	encoding.WriteUint32(buffer, &index, message.SliceNumber)
 	encoding.WriteUint64(buffer, &index, message.SessionFlags)
-	encoding.WriteUint64(buffer, &index, message.GameEvents)
+	encoding.WriteUint64(buffer, &index, message.SessionEvents)
+	encoding.WriteUint64(buffer, &index, message.InternalEvents)
 
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
@@ -185,8 +187,12 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read session flags")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.GameEvents) {
-		return fmt.Errorf("failed to read game events")
+	if !encoding.ReadUint64(buffer, &index, &message.SessionEvents) {
+		return fmt.Errorf("failed to read session events")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.InternalEvents) {
+		return fmt.Errorf("failed to read internal events")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {

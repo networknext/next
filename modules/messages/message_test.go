@@ -196,7 +196,8 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		RealJitter:       float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
 		SessionFlags:     rand.Uint64(),
-		GameEvents:       rand.Uint64(),
+		SessionEvents:    rand.Uint64(),
+		InternalEvents:   rand.Uint64(),
 		DirectRTT:        float32(common.RandomInt(0, 1000)),
 		DirectJitter:     float32(common.RandomInt(0, 1000)),
 		DirectPacketLoss: float32(common.RandomInt(0, 100)),
@@ -219,41 +220,40 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 		}
 	}
 
-	// first slice only
+	return message
+}
 
-	if message.SliceNumber == 0 {
-		message.NumTags = byte(common.RandomInt(0, constants.MaxTags))
-		for i := 0; i < int(message.NumTags); i++ {
-			message.Tags[i] = rand.Uint64()
-		}
-	}
+func GenerateRandomSessionSummaryMessage() messages.SessionSummaryMessage {
 
-	// summary only
+	message := messages.SessionSummaryMessage{
 
-	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
-		message.DatacenterId = rand.Uint64()
-		message.BuyerId = rand.Uint64()
-		message.UserHash = rand.Uint64()
-		message.Latitude = float32(common.RandomInt(-90, +90))
-		message.Longitude = float32(common.RandomInt(-180, +180))
-		message.ClientAddress = common.RandomAddress()
-		message.ServerAddress = common.RandomAddress()
-		message.ConnectionType = uint8(common.RandomInt(0, 255))
-		message.PlatformType = uint8(common.RandomInt(0, 255))
-		message.SDKVersion_Major = uint8(common.RandomInt(0, 255))
-		message.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
-		message.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
-		message.ClientToServerPacketsSent = rand.Uint64()
-		message.ServerToClientPacketsSent = rand.Uint64()
-		message.ClientToServerPacketsLost = rand.Uint64()
-		message.ServerToClientPacketsLost = rand.Uint64()
-		message.ClientToServerPacketsOutOfOrder = rand.Uint64()
-		message.ServerToClientPacketsOutOfOrder = rand.Uint64()
-		message.SessionDuration = rand.Uint32()
-		message.TotalEnvelopeBytesUp = rand.Uint64()
-		message.TotalEnvelopeBytesDown = rand.Uint64()
-		message.DurationOnNext = rand.Uint32()
-		message.StartTimestamp = rand.Uint64()
+		Version:                         byte(common.RandomInt(messages.SessionSummaryMessageVersion_Min, messages.SessionSummaryMessageVersion_Max)),
+		Timestamp:                       rand.Uint64(),
+		SessionId:                       rand.Uint64(),
+		DatacenterId:                    rand.Uint64(),
+		BuyerId:                         rand.Uint64(),
+		MatchId:                         rand.Uint64(),
+		UserHash:                        rand.Uint64(),
+		Latitude:                        float32(common.RandomInt(-90, +90)),
+		Longitude:                       float32(common.RandomInt(-180, +180)),
+		ClientAddress:                   common.RandomAddress(),
+		ServerAddress:                   common.RandomAddress(),
+		ConnectionType:                  uint8(common.RandomInt(0, 255)),
+		PlatformType:                    uint8(common.RandomInt(0, 255)),
+		SDKVersion_Major:                uint8(common.RandomInt(0, 255)),
+		SDKVersion_Minor:                uint8(common.RandomInt(0, 255)),
+		SDKVersion_Patch:                uint8(common.RandomInt(0, 255)),
+		ClientToServerPacketsSent:       rand.Uint64(),
+		ServerToClientPacketsSent:       rand.Uint64(),
+		ClientToServerPacketsLost:       rand.Uint64(),
+		ServerToClientPacketsLost:       rand.Uint64(),
+		ClientToServerPacketsOutOfOrder: rand.Uint64(),
+		ServerToClientPacketsOutOfOrder: rand.Uint64(),
+		SessionDuration:                 rand.Uint32(),
+		TotalEnvelopeBytesUp:            rand.Uint64(),
+		TotalEnvelopeBytesDown:          rand.Uint64(),
+		DurationOnNext:                  rand.Uint32(),
+		StartTimestamp:                  rand.Uint64(),
 	}
 
 	return message
@@ -283,8 +283,9 @@ func GenerateRandomPortalMessage() messages.PortalMessage {
 		DirectKbpsUp:     rand.Uint32(),
 		DirectKbpsDown:   rand.Uint32(),
 
-		SessionFlags: rand.Uint64(),
-		GameEvents:   rand.Uint64(),
+		SessionFlags:   rand.Uint64(),
+		SessionEvents:  rand.Uint64(),
+		InternalEvents: rand.Uint64(),
 
 		RealPacketLoss: float32(common.RandomInt(0, 100)),
 		RealJitter:     float32(common.RandomInt(0, 1000)),

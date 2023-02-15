@@ -1058,7 +1058,8 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.Longitude = state.Output.Longitude
 	message.SliceNumber = state.Input.SliceNumber
 	message.SessionFlags = state.SessionFlags
-	message.GameEvents = state.Request.GameEvents
+	message.SessionEvents = state.Request.SessionEvents
+	message.InternalEvents = state.Request.InternalEvents
 
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
@@ -1154,7 +1155,8 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
 	message.SessionFlags = state.SessionFlags
-	message.GameEvents = state.Request.GameEvents
+	message.SessionEvents = state.Request.SessionEvents
+	message.InternalEvents = state.Request.InternalEvents
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
@@ -1176,49 +1178,6 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 		}
 	}
 
-	// first slice only
-
-	if message.SliceNumber == 0 {
-		message.NumTags = byte(state.Request.NumTags)
-		for i := 0; i < int(state.Request.NumTags); i++ {
-			message.Tags[i] = state.Request.Tags[i]
-		}
-	}
-
-	// first slice or summary
-
-	if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
-		message.DatacenterId = state.Request.DatacenterId
-		message.BuyerId = state.Request.BuyerId
-		// todo: match id
-		message.UserHash = state.Request.UserHash
-		message.Latitude = state.Output.Latitude
-		message.Longitude = state.Output.Longitude
-		message.ClientAddress = state.Request.ClientAddress
-		message.ServerAddress = state.Request.ServerAddress
-		message.ConnectionType = byte(state.Request.ConnectionType)
-		message.PlatformType = byte(state.Request.PlatformType)
-		message.SDKVersion_Major = byte(state.Request.Version.Major)
-		message.SDKVersion_Minor = byte(state.Request.Version.Minor)
-		message.SDKVersion_Patch = byte(state.Request.Version.Patch)
-	}
-
-	// summary only
-
-	if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
-		message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
-		message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
-		message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer
-		message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
-		message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
-		message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-		message.SessionDuration = state.Output.SessionDuration
-		message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
-		message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
-		message.DurationOnNext = state.Output.DurationOnNext
-		message.StartTimestamp = state.Output.StartTimestamp
-	}
-
 	// send message to channel
 
 	if state.SessionUpdateMessageChannel != nil {
@@ -1227,7 +1186,46 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
+// todo: get session summary message in its own function
+/*
+// first slice or summary
+
+if message.SliceNumber == 0 || (message.SessionFlags&constants.SessionFlags_Summary) != 0 {
+	message.DatacenterId = state.Request.DatacenterId
+	message.BuyerId = state.Request.BuyerId
+	// todo: match id
+	message.UserHash = state.Request.UserHash
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
+	message.ClientAddress = state.Request.ClientAddress
+	message.ServerAddress = state.Request.ServerAddress
+	message.ConnectionType = byte(state.Request.ConnectionType)
+	message.PlatformType = byte(state.Request.PlatformType)
+	message.SDKVersion_Major = byte(state.Request.Version.Major)
+	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
+	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
+}
+
+// summary only
+
+if (message.SessionFlags & constants.SessionFlags_Summary) != 0 {
+	message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
+	message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
+	message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer
+	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
+	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
+	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
+	message.SessionDuration = state.Output.SessionDuration
+	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
+	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
+	message.DurationOnNext = state.Output.DurationOnNext
+	message.StartTimestamp = state.Output.StartTimestamp
+}
+*/
+
 // -----------------------------------------
+
+// todo: these really should just be methods in the database?
 
 func datacenterExists(database *db.Database, datacenterId uint64) bool {
 	return database.DatacenterMap[datacenterId] != nil

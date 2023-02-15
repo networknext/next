@@ -287,57 +287,6 @@ Once you have the address, upgrading a session is easy:
 
 	next_server_upgrade_session( server, client_address, user_id );
 
-next_server_tag_session
------------------------
-
-Tags a session for potentially different network optimization parameters.
-
-.. code-block:: c++
-
-	void next_server_tag_session( next_server_t * server, const next_address_t * address, const char * tag );
-
-**Parameters:**
-
-	- **server** -- The server instance.
-
-	- **address** -- The address of the client to tag.
-
-	- **tag** -- The tag to be applied to the client. Some ideas: "pro", "streamer" or "dev".
-
-**Example:**
-
-.. code-block:: c++
-
-	next_server_tag_session( server, client_address, "pro" );
-
-next_server_tag_session_multiple
---------------------------------
-
-Tags a session with multiple tags for potentially different network optimization parameters.
-
-.. code-block:: c++
-
-	void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
-
-**Parameters:**
-
-	- **server** -- The server instance.
-
-	- **address** -- The address of the client to tag.
-
-	- **tags** -- The tags to be applied to the client. Some ideas: "pro", "streamer" or "dev".
-
-	- **num_tags** -- The number of tags to be applied to the client.
-
-**Example:**
-
-.. code-block:: c++
-
-	const char * tags[] = { "pro", "streamer" };
-	const int num_tags = 2;
-
-	next_server_tag_session_multiple( server, client_address, tags, num_tags );
-
 next_server_session_upgraded
 ----------------------------
 
@@ -685,8 +634,8 @@ Call this once next_server_ready returns true to get the autodetected datacenter
 		printf( "server datacenter is %s\n", datacenter );
 	}
 
-next_server_event
------------------
+next_server_session_event
+-------------------------
 
 Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
 
@@ -696,7 +645,7 @@ Use this function to input in-game events that may be relevant to analytics.
 
 .. code-block:: c++
 
-	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+	void next_server_session_event( struct next_server_t * server, const struct next_address_t * address, uint64_t session_events );
 
 **Parameters:**
 
@@ -704,7 +653,7 @@ Use this function to input in-game events that may be relevant to analytics.
 
 	- **address** -- The address of the client that triggered the event.
 
-	- **server_events** -- Bitfield of events that just triggered for the session.
+	- **session_events** -- Bitfield of events that just triggered for the session.
 
 **Example:**
 

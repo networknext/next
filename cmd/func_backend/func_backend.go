@@ -60,12 +60,11 @@ const BACKEND_MODE_SERVER_EVENTS = 9
 const BACKEND_MODE_FORCE_RETRY = 10
 const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
-const BACKEND_MODE_TAGS = 13
-const BACKEND_MODE_DIRECT_STATS = 14
-const BACKEND_MODE_NEXT_STATS = 15
-const BACKEND_MODE_NEAR_RELAY_STATS = 16
-const BACKEND_MODE_MATCH_ID = 17
-const BACKEND_MODE_MATCH_VALUES = 18
+const BACKEND_MODE_DIRECT_STATS = 13
+const BACKEND_MODE_NEXT_STATS = 14
+const BACKEND_MODE_NEAR_RELAY_STATS = 15
+const BACKEND_MODE_MATCH_ID = 16
+const BACKEND_MODE_MATCH_VALUES = 17
 
 type Backend struct {
 	mutex        sync.RWMutex
@@ -603,16 +602,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		}
 	}
 
-	if backend.mode == BACKEND_MODE_TAGS {
-		if requestPacket.NumTags > 0 {
-			for i := 0; i < int(requestPacket.NumTags); i++ {
-				fmt.Printf("tag %x\n", requestPacket.Tags[i])
-			}
-		} else {
-			fmt.Printf("tag cleared\n")
-		}
-	}
-
 	if backend.mode == BACKEND_MODE_DIRECT_STATS {
 		if requestPacket.DirectRTT > 0 && requestPacket.DirectJitter > 0 && requestPacket.DirectPacketLoss > 0 {
 			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", requestPacket.DirectRTT, requestPacket.DirectJitter, requestPacket.DirectPacketLoss)
@@ -702,13 +691,13 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
 
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-		if requestPacket.SliceNumber >= 2 && requestPacket.GameEvents != 0x123 {
-			panic("game events not set on session update")
+		if requestPacket.SliceNumber >= 2 && requestPacket.SessionEvents != 0x123 {
+			panic("session events not set on session update")
 		}
 	}
 
-	if requestPacket.GameEvents > 0 {
-		fmt.Printf("game events %x\n", requestPacket.GameEvents)
+	if requestPacket.SessionEvents > 0 {
+		fmt.Printf("session events %x\n", requestPacket.SessionEvents)
 	}
 
 	// build response packet
@@ -920,10 +909,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "JITTER" {
 		backend.mode = BACKEND_MODE_JITTER
-	}
-
-	if os.Getenv("BACKEND_MODE") == "TAGS" {
-		backend.mode = BACKEND_MODE_TAGS
 	}
 
 	if os.Getenv("BACKEND_MODE") == "DIRECT_STATS" {

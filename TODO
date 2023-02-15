@@ -10,13 +10,25 @@ DONE
 
 	Clean up match data message and add type
 
-TODO
-	
 	Add database update message
+
+	Remove any idea of "first slice" only, by writing tags on the summary slice only.
+
+	Remove tags. They are inefficient.
+
+TODO
 
 	--------
 
-	Track relay update size and relay response size in relay update messages
+	Add bigquery save for session update message
+
+	Add bigquery save for session summary message
+	
+	--------
+
+	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
+
+	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
 
 	--------
 

@@ -42,8 +42,7 @@ void interrupt_handler( int signal )
 bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
-bool tags_multi = false;
-bool game_events = false;
+bool session_events = false;
 bool match_data = false;
 bool flush = false;
 
@@ -88,12 +87,12 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( next_server_session_upgraded( server, from ) && session_exists )
         {
-            if ( game_events && !flush )
+            if ( session_events && !flush )
             {
                 uint64_t event1 = (1<<10);
                 uint64_t event2 = (1<<20);
                 uint64_t event3 = (1<<30); 
-                next_server_event( server, from, event1 | event2 | event3 );
+                next_server_session_event( server, from, event1 | event2 | event3 );
             }
 
             if ( match_data && !flush && match_data_set.find( address_string ) == match_data_set.end() )
@@ -111,17 +110,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
         if ( itor == client_map.end() || memcmp( packet_data, itor->second, 32 ) != 0 )
         {
             next_server_upgrade_session( server, from, 0 );
-
-            if ( tags_multi )
-            {
-                const char * tags[] = {"pro", "streamer"};
-                const int num_tags = 2;
-                next_server_tag_session_multiple( server, from, tags, num_tags );
-            }
-            else
-            {
-                next_server_tag_session( server, from, "test" );
-            }
 
             num_upgrades++;
 
@@ -195,16 +183,10 @@ int main()
         restart_time = atof( restart_time_env );
     }
 
-    const char * server_tags_multi_env = getenv( "SERVER_TAGS_MULTI" );
-    if ( server_tags_multi_env )
+    const char * session_events_env = getenv( "SESSION_EVENTS" );
+    if ( session_events_env )
     {
-        tags_multi = true;
-    }
-
-    const char * game_events_env = getenv( "GAME_EVENTS" );
-    if ( game_events_env )
-    {
-        game_events = true;
+        session_events = true;
     }
 
     const char * match_data_env = getenv( "SERVER_MATCH_DATA" );
@@ -256,9 +238,9 @@ int main()
             if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
                 continue;
 
-            if ( game_events )
+            if ( session_events )
             {
-                next_server_event( server, &client_address, event1 | event2 | event3 );
+                next_server_session_event( server, &client_address, event1 | event2 | event3 );
             }
 
             if ( match_data )

@@ -359,8 +359,6 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    int num_tags;
-    uint64_t tags[NEXT_MAX_TAGS];
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
@@ -383,10 +381,6 @@ NEXT_EXPORT_FUNC void next_server_update( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( struct next_server_t * server, const struct next_address_t * address, const char * user_id );
 
-NEXT_EXPORT_FUNC void next_server_tag_session( struct next_server_t * server, const struct next_address_t * address, const char * tag );
-
-NEXT_EXPORT_FUNC void next_server_tag_session_multiple( struct next_server_t * server, const struct next_address_t * address, const char ** tags, int num_tags );
-
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_session_upgraded( struct next_server_t * server, const struct next_address_t * address );
 
 NEXT_EXPORT_FUNC void next_server_send_packet( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
@@ -401,7 +395,11 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_ready( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
 
-NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+// todo: next_server_set_match_id
+
+// todo: next_server_match_event
+
+NEXT_EXPORT_FUNC void next_server_session_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
 NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
 

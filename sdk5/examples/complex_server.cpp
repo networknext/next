@@ -249,13 +249,6 @@ void server_packet_received( next_server_t * server, void * _context, const next
         client_data.last_packet_receive_time = next_time();
 
         context->client_map[*from] = client_data;
-
-        if ( session_id != 0 )
-        {
-            const char * tags[] = { "pro", "streamer" };
-            const int num_tags = 2;
-            next_server_tag_session_multiple( server, from, tags, num_tags );
-        }
     }
     else
     {
@@ -414,27 +407,6 @@ void print_server_stats( next_server_t * server, ServerContext * context )
             printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
         }
 
-        if ( stats.num_tags > 0 )
-        {
-            printf( "tags = [" );
-            for ( int i = 0; i < stats.num_tags; ++i )
-            {
-                if ( i != stats.num_tags - 1 )
-                {
-                    printf( "%" PRIx64 ",", stats.tags[i] );
-                }
-                else
-                {
-                    printf( "%" PRIx64, stats.tags[i] );
-                }
-            }
-            printf( "]\n" );
-        }
-        else
-        {
-            printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
-        }
-        
         printf( "================================================================\n" );
     }
 }
