@@ -31,6 +31,10 @@ type AnalyticsMatchDataMessage struct {
 	MatchValues    [constants.MaxMatchValues]float64
 }
 
+func (message *AnalyticsMatchDataMessage) GetMaxSize() int {
+	return 64 + 8 * constants.MaxMatchValues
+}
+
 func (message *AnalyticsMatchDataMessage) Read(buffer []byte) error {
 
 	index := 0

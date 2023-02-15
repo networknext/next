@@ -47,6 +47,10 @@ type AnalyticsSessionUpdateMessage struct {
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64
 }
 
+func (message *AnalyticsSessionUpdateMessage) GetMaxSize() int {
+	return 256 + 8 * constants.MaxRouteRelays
+}
+
 func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0

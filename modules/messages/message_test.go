@@ -14,13 +14,11 @@ import (
 
 func MessageReadWriteTest[M messages.Message](writeMessage M, readMessage M, t *testing.T) {
 
-	const BufferSize = 10 * 1024
+	buffer := make([]byte, writeMessage.GetMaxSize())
 
-	buffer := make([]byte, BufferSize)
+	messageData := writeMessage.Write(buffer[:])
 
-	buffer = writeMessage.Write(buffer[:])
-
-	err := readMessage.Read(buffer)
+	err := readMessage.Read(messageData)
 	assert.Nil(t, err)
 
 	assert.Equal(t, writeMessage, readMessage)

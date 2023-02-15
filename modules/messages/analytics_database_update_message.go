@@ -12,8 +12,6 @@ const (
 	AnalyticsDatabaseUpdateMessageVersion_Min   = 3
 	AnalyticsDatabaseUpdateMessageVersion_Max   = 3
 	AnalyticsDatabaseUpdateMessageVersion_Write = 3
-
-	AnalyticsDatabaseUpdateMessageSize = 256
 )
 
 type AnalyticsDatabaseUpdateMessage struct {
@@ -24,6 +22,10 @@ type AnalyticsDatabaseUpdateMessage struct {
 	NumDatacenters uint32
 	NumSellers     uint32
 	NumBuyers      uint32
+}
+
+func (message *AnalyticsDatabaseUpdateMessage) GetMaxSize() int {
+	return 32
 }
 
 func (message *AnalyticsDatabaseUpdateMessage) Read(buffer []byte) error {

@@ -150,10 +150,8 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 
 func ProcessCostMatrix(service *common.Service) {
 
-	maxBytes := envvar.GetInt("COST_MATRIX_STATS_MESSAGE_MAX_BYTES", 1024)
 	pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
 
-	core.Log("cost matrix stats message max bytes: %d", maxBytes)
 	core.Log("cost matrix stats message pubsub topic: %s", pubsubTopic)
 
 	httpClient := &http.Client{
@@ -240,18 +238,18 @@ func ProcessCostMatrix(service *common.Service) {
 
 				if enableGooglePubsub {
 
-					costMatrixStatsMessage := messages.AnalyticsCostMatrixUpdateMessage{}
+					message := messages.AnalyticsCostMatrixUpdateMessage{}
 
-					costMatrixStatsMessage.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
-					costMatrixStatsMessage.Timestamp = uint64(time.Now().Unix())
-					costMatrixStatsMessage.CostMatrixSize = costMatrixSize
-					costMatrixStatsMessage.NumRelays = costMatrixNumRelays
-					costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
-					costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
+					message.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
+					message.Timestamp = uint64(time.Now().Unix())
+					message.CostMatrixSize = costMatrixSize
+					message.NumRelays = costMatrixNumRelays
+					message.NumDestRelays = costMatrixNumDestRelays
+					message.NumDatacenters = costMatrixNumDatacenters
 
-					message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
+					messageData := message.Write(make([]byte, message.GetMaxSize()))
 
-					costMatrixUpdatePubsubProducer.MessageChannel <- message
+					costMatrixUpdatePubsubProducer.MessageChannel <- messageData
 				}
 			}
 		}
@@ -275,10 +273,6 @@ func ProcessRouteMatrix(service *common.Service) {
 		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
 		os.Exit(1)
 	}
-
-	maxBytes := envvar.GetInt("ROUTE_MATRIX_UPDATE_MESSAGE_MAX_BYTES", 1024)
-
-	core.Log("route matrix stats message max bytes: %d", maxBytes)
 
 	httpClient := &http.Client{
 		Timeout: routeMatrixInterval,
@@ -422,7 +416,7 @@ func ProcessRouteMatrix(service *common.Service) {
 					message.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
 					message.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
 
-					messageData := message.Write(make([]byte, maxBytes))
+					messageData := message.Write(make([]byte, message.GetMaxSize()))
 
 					pubsubProducer.MessageChannel <- messageData
 				}

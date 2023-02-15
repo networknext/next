@@ -23,6 +23,10 @@ type AnalyticsCostMatrixUpdateMessage struct {
 	NumDatacenters int
 }
 
+func (message *AnalyticsCostMatrixUpdateMessage) GetMaxSize() int {
+	return 64
+}
+
 func (message *AnalyticsCostMatrixUpdateMessage) Write(buffer []byte) []byte {
 	index := 0
 	if message.Version < AnalyticsCostMatrixUpdateMessageVersion_Min || message.Version > AnalyticsCostMatrixUpdateMessageVersion_Max {

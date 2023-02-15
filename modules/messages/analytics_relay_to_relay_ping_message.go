@@ -26,6 +26,10 @@ type AnalyticsRelayToRelayPingMessage struct {
 	PacketLoss float32
 }
 
+func (message *AnalyticsRelayToRelayPingMessage) GetMaxSize() int {
+	return 64
+}
+
 func (message *AnalyticsRelayToRelayPingMessage) Read(buffer []byte) error {
 
 	index := 0

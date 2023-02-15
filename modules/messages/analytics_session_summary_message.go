@@ -45,6 +45,10 @@ type AnalyticsSessionSummaryMessage struct {
 	StartTimestamp                  uint64
 }
 
+func (message *AnalyticsSessionSummaryMessage) GetMaxSize() int {
+	return 512
+}
+
 func (message *AnalyticsSessionSummaryMessage) Write(buffer []byte) []byte {
 
 	index := 0

@@ -13,8 +13,6 @@ const (
 	AnalyticsRelayUpdateMessageVersion_Min   = 3
 	AnalyticsRelayUpdateMessageVersion_Max   = 3
 	AnalyticsRelayUpdateMessageVersion_Write = 3
-
-	MaxAnalyticsRelayUpdateMessageSize = 2048
 )
 
 type AnalyticsRelayUpdateMessage struct {
@@ -32,6 +30,10 @@ type AnalyticsRelayUpdateMessage struct {
 	NumUnroutable             uint32
 	NumRelayCounters          uint32
 	RelayCounters             [constants.NumRelayCounters]uint64
+}
+
+func (message *AnalyticsRelayUpdateMessage) GetMaxSize() int {
+	return 256 + 8 * constants.NumRelayCounters
 }
 
 func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {

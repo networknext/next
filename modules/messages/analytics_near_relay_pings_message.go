@@ -35,6 +35,10 @@ type AnalyticsNearRelayPingsMessage struct {
 	NearRelayPacketLoss [constants.MaxNearRelays]float32
 }
 
+func (message *AnalyticsNearRelayPingsMessage) GetMaxSize() int {
+	return 128 + ( 8 + 1 + 1 + 4 ) * constants.MaxNearRelays
+}
+
 func (message *AnalyticsNearRelayPingsMessage) Write(buffer []byte) []byte {
 
 	index := 0

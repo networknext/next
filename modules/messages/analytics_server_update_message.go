@@ -27,6 +27,10 @@ type AnalyticsServerUpdateMessage struct {
 	MatchId          uint64
 }
 
+func (message *AnalyticsServerUpdateMessage) GetMaxSize() int {
+	return 64
+}
+
 func (message *AnalyticsServerUpdateMessage) Read(buffer []byte) error {
 
 	index := 0

@@ -61,6 +61,10 @@ type PortalSessionUpdateMessage struct {
 	NearRelayRoutable   [constants.MaxNearRelays]bool
 }
 
+func (message *PortalSessionUpdateMessage) GetMaxSize() int {
+	return 512 + 8 * constants.MaxRouteRelays + ( 8 + 1 + 1 + 4 + 1 ) * constants.MaxNearRelays
+}
+
 func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0

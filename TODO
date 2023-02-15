@@ -2,10 +2,25 @@ DONE
 
 	Make sure happy path and func tests pass
 
+	The configuration of the max bytes per-message when serializing it is a bad practice.
+
+	This should not be something the user has to configure, *especially* for dynamically sized structures.
+
+	It should be something that is either a known, conservative constant value, OR, is a function that returns the size, given the variable inputs (eg. num relays, num counters etc...)
+
+	Happy path and all func tests pass.
+
+	Go through and REMOVE all env vars that configure max message size
+
+	Make message tests use max size from message instance.
+
+	Make sure that all messages are setup with min/max/write versions.
+
 TODO
 
-
 	Go through server backend and write code to serialize all analytics messages (and throw them away...)
+
+	--------------
 
 	Get pubsub emulator setup.
 

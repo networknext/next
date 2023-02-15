@@ -42,6 +42,10 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 	RTTBucket_50ms_Plus     float32
 }
 
+func (message *AnalyticsRouteMatrixUpdateMessage) GetMaxSize() int {
+	return 256
+}
+
 func (message *AnalyticsRouteMatrixUpdateMessage) Write(buffer []byte) []byte {
 	index := 0
 	if message.Version < AnalyticsRouteMatrixUpdateMessageVersion_Min || message.Version > AnalyticsRouteMatrixUpdateMessageVersion_Max {

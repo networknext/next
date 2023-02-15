@@ -13,8 +13,6 @@ const (
 	AnalyticsServerInitMessageVersion_Min   = 1
 	AnalyticsServerInitMessageVersion_Max   = 1
 	AnalyticsServerInitMessageVersion_Write = 1
-
-	MaxAnalyticsServerInitMessageSize = 128
 )
 
 type AnalyticsServerInitMessage struct {
@@ -27,6 +25,10 @@ type AnalyticsServerInitMessage struct {
 	MatchId          uint64
 	DatacenterId     uint64
 	DatacenterName   string
+}
+
+func (message *AnalyticsServerInitMessage) GetMaxSize() int {
+	return 64 + constants.MaxDatacenterNameLength
 }
 
 func (message *AnalyticsServerInitMessage) Read(buffer []byte) error {
