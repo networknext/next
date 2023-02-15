@@ -211,53 +211,33 @@ func (message *SessionUpdateMessage) Save() (map[string]bigquery.Value, string, 
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["session_id"] = int(message.SessionId)
 	bigquery_message["slice_number"] = int(message.SliceNumber)
-	bigquery_message["real_packet_loss"] = int(message.RealPacketLoss)
-	bigquery_message["real_jitter"] = int(message.RealJitter)
-	bigquery_message["real_out_of_order"] = int(message.RealOutOfOrder)
+	bigquery_message["real_packet_loss"] = float64(message.RealPacketLoss)
+	bigquery_message["real_jitter"] = float64(message.RealJitter)
+	bigquery_message["real_out_of_order"] = float64(message.RealOutOfOrder)
 	bigquery_message["session_flags"] = int(message.SessionFlags)
 	bigquery_message["session_events"] = int(message.SessionEvents)
 	bigquery_message["internal_events"] = int(message.InternalEvents)
+	bigquery_message["direct_rtt"] = float64(message.DirectRTT)
+	bigquery_message["direct_jitter"] = float64(message.DirectJitter)
+	bigquery_message["direct_packet_loss"] = float64(message.DirectPacketLoss)
+	bigquery_message["direct_kbps_up"] = int(message.DirectKbpsUp)
+	bigquery_message["direct_kbps_down"] = int(message.DirectKbpsDown)
 
-	/*
-	bigquery_message["relay_id"] = int(message.RelayId)
-	bigquery_message["session_count"] = int(message.SessionCount)
-	bigquery_message["max_sessions"] = int(message.MaxSessions)
-	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
-	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
-	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
-	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
-	bigquery_message["relay_flags"] = int(message.RelayFlags)
+	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
 
-	relay_counters := make([]bigquery.Value, message.NumRelayCounters)
-	for i := 0; i < int(message.NumRelayCounters); i++ {
-		relay_counters[i] = int(message.RelayCounters[i])
+		bigquery_message["next_rtt"] = float64(message.NextRTT)
+		bigquery_message["next_jitter"] = float64(message.NextJitter)
+		bigquery_message["next_packet_loss"] = float64(message.NextPacketLoss)
+		bigquery_message["next_kbps_up"] = int(message.NextKbpsUp)
+		bigquery_message["next_kbps_down"] = int(message.NextKbpsDown)
+		bigquery_message["next_predicted_rtt"] = int(message.NextPredictedRTT)
+
+		next_route_relays := make([]bigquery.Value, message.NextNumRouteRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			next_route_relays[i] = int(message.NextRouteRelayId[i])
+		}
+		bigquery_message["next_route_relays"] = next_route_relays
 	}
-	bigquery_message["relay_counters"] = relay_counters
-	*/
-
-/*
-	// always
-
-	SessionFlags     uint64
-	SessionEvents       uint64
-	InternalEvents       uint64
-	DirectRTT        float32
-	DirectJitter     float32
-	DirectPacketLoss float32
-	DirectKbpsUp     uint32
-	DirectKbpsDown   uint32
-
-	// next only
-
-	NextRTT            float32
-	NextJitter         float32
-	NextPacketLoss     float32
-	NextKbpsUp         uint32
-	NextKbpsDown       uint32
-	NextPredictedRTT   uint32
-	NextNumRouteRelays uint32
-	NextRouteRelayId   [constants.MaxRouteRelays]uint64
-*/
 
 	return bigquery_message, "", nil
 }

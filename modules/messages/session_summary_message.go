@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -201,5 +203,36 @@ func (message *SessionSummaryMessage) Read(buffer []byte) error {
 	return nil
 }
 
-// todo: bigquery write
+func (message *SessionSummaryMessage) Save() (map[string]bigquery.Value, string, error) {
 
+	bigquery_message := make(map[string]bigquery.Value)
+
+	bigquery_message["timestamp"] = int(message.Timestamp)
+	bigquery_message["session_id"] = int(message.SessionId)
+	bigquery_message["match_id"] = int(message.MatchId)
+	bigquery_message["datacenter_id"] = int(message.DatacenterId)
+	bigquery_message["buyer_id"] = int(message.BuyerId)
+	bigquery_message["user_hash"] = int(message.UserHash)
+	bigquery_message["latitude"] = float64(message.Latitude)
+	bigquery_message["longitude"] = float64(message.Longitude)
+	bigquery_message["client_address"] = message.ClientAddress.String()
+	bigquery_message["server_address"] = message.ServerAddress.String()
+	bigquery_message["connection_type"] = int(message.ConnectionType)
+	bigquery_message["platform_type"] = int(message.PlatformType)
+	bigquery_message["sdk_version_major"] = int(message.SDKVersion_Major)
+	bigquery_message["sdk_version_minor"] = int(message.SDKVersion_Minor)
+	bigquery_message["sdk_version_patch"] = int(message.SDKVersion_Patch)
+	bigquery_message["client_to_server_packets_sent"] = int(message.ClientToServerPacketsSent)
+	bigquery_message["server_to_client_packets_sent"] = int(message.ServerToClientPacketsLost)
+	bigquery_message["client_to_server_packets_lost"] = int(message.ClientToServerPacketsLost)
+	bigquery_message["server_to_client_packets_lost"] = int(message.ServerToClientPacketsLost)
+	bigquery_message["client_to_server_packets_out_of_order"] = int(message.ClientToServerPacketsOutOfOrder)
+	bigquery_message["server_to_client_packets_out_of_order"] = int(message.ServerToClientPacketsOutOfOrder)
+	bigquery_message["total_envelope_bytes_up"] = int(message.TotalEnvelopeBytesUp)
+	bigquery_message["total_envelope_bytes_down"] = int(message.TotalEnvelopeBytesDown)
+	bigquery_message["duration_on_next"] = int(message.DurationOnNext)
+	bigquery_message["session_duration"] = int(message.SessionDuration)
+	bigquery_message["start_timestamp"] = int(message.StartTimestamp)
+
+	return bigquery_message, "", nil
+}

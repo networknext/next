@@ -1,34 +1,10 @@
 DONE
 
-	Clean up env vars that aren't used anywhere
-
-	Adjust raspberry backend to url so it can switch to https is dev or whatever.
-
-	Rename relay stats message to relay update message.
-
-	Relay update message needs to be updated to the data we actually have
-
-	Clean up match data message and add type
-
-	Add database update message
-
-	Remove any idea of "first slice" only, by writing tags on the summary slice only.
-
-	Remove tags. They are inefficient.
-
-TODO
-
-	--------
-
 	Add bigquery save for session update message
 
 	Add bigquery save for session summary message
-	
-	--------
 
-	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
-
-	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
+TODO
 
 	--------
 
@@ -44,10 +20,6 @@ TODO
 
 	--------
 
-	If tags are held in the server session, and passed up with every session update, we can write the tags in the summary, and completely remove the silly special case "first slice".
-
-	--------
-
 	Add server update message
 
 	--------
@@ -56,9 +28,11 @@ TODO
 
 	next_server_match ( match_id )
 
+	Make sure the match id gets passed up in both the server init, server update and the session updates from SDK -> backend.
+
 	--------
 
-	Add uint64 type to match data message
+	Add uint64 type to match data function
 
 	Extend SDK to support multiple calls to match data
 
@@ -110,7 +84,7 @@ TODO
 
 	--------------
 
-	Get portal cruncher back up and make sure it processes portal messages
+	Get portal cruncher back up and verify it sees messages
 
 	--------------
 
@@ -126,8 +100,25 @@ TODO
 
 
 
+	--------
 
+	Plumb internal events all the way up from client SDK to backend.
 
+	Client SDK must be able to trigger certain events (eg. client hitches, no packets received etc...)
+
+	Server can trigger others, then they get OR'd before sending up to backend.
+
+	--------
+
+	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
+
+	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
+
+	--------
+
+	Redo pro, but do it via internal session events.
+
+	--------
 
 
 
