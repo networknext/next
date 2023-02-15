@@ -26,12 +26,12 @@ func MessageReadWriteTest[M messages.Message](writeMessage M, readMessage M, t *
 	assert.Equal(t, writeMessage, readMessage)
 }
 
-func GenerateRandomCostMatrixStatMessage() messages.CostMatrixStatsMessage {
+func GenerateRandomAnalyticsCostMatrixUpdateMessage() messages.AnalyticsCostMatrixUpdateMessage {
 
-	message := messages.CostMatrixStatsMessage{
-		Version:        byte(common.RandomInt(messages.CostMatrixStatsMessageVersion_Min, messages.CostMatrixStatsMessageVersion_Max)),
+	message := messages.AnalyticsCostMatrixUpdateMessage{
+		Version:        byte(common.RandomInt(messages.AnalyticsCostMatrixUpdateMessageVersion_Min, messages.AnalyticsCostMatrixUpdateMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
-		Bytes:          rand.Int(),
+		CostMatrixSize: rand.Int(),
 		NumRelays:      rand.Int(),
 		NumDestRelays:  rand.Int(),
 		NumDatacenters: rand.Int(),
@@ -73,10 +73,10 @@ func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
 	return message
 }
 
-func GenerateRandomPingStatMessage() messages.PingStatsMessage {
+func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToRelayPingMessage {
 
-	message := messages.PingStatsMessage{
-		Version:    byte(common.RandomInt(messages.PingStatsMessageVersion_Min, messages.PingStatsMessageVersion_Max)),
+	message := messages.AnalyticsRelayToRelayPingMessage{
+		Version:    byte(common.RandomInt(messages.AnalyticsRelayToRelayPingMessageVersion_Min, messages.AnalyticsRelayToRelayPingMessageVersion_Max)),
 		Timestamp:  uint64(time.Now().Unix()),
 		RelayA:     rand.Uint64(),
 		RelayB:     rand.Uint64(),
@@ -112,10 +112,10 @@ func GenerateRandomRelayUpdateMessage() messages.RelayUpdateMessage {
 	return message
 }
 
-func GenerateRandomDatabaseUpdateMessage() messages.DatabaseUpdateMessage {
+func GenerateRandomAnalyticsDatabaseUpdateMessage() messages.AnalyticsDatabaseUpdateMessage {
 
-	message := messages.DatabaseUpdateMessage{
-		Version:        byte(common.RandomInt(messages.DatabaseUpdateMessageVersion_Min, messages.DatabaseUpdateMessageVersion_Max)),
+	message := messages.AnalyticsDatabaseUpdateMessage{
+		Version:        byte(common.RandomInt(messages.AnalyticsDatabaseUpdateMessageVersion_Min, messages.AnalyticsDatabaseUpdateMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
 		DatabaseSize:   rand.Uint32(),
 		NumRelays:      rand.Uint32(),
@@ -127,7 +127,7 @@ func GenerateRandomDatabaseUpdateMessage() messages.DatabaseUpdateMessage {
 	return message
 }
 
-func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
+func GenerateRandomAnalyticsMatchDataMessage() messages.AnalyticsMatchDataMessage {
 
 	numMatchValues := rand.Intn(65)
 
@@ -137,14 +137,13 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 		matchValues[i] = rand.Float64()
 	}
 
-	return messages.MatchDataMessage{
-		Version:        byte(common.RandomInt(messages.MatchDataMessageVersion_Min, messages.MatchDataMessageVersion_Max)),
+	return messages.AnalyticsMatchDataMessage{
+		Version:        byte(common.RandomInt(messages.AnalyticsMatchDataMessageVersion_Min, messages.AnalyticsMatchDataMessageVersion_Max)),
 		Timestamp:      uint64(time.Now().Unix()),
 		Type:           rand.Uint64(),
 		BuyerId:        rand.Uint64(),
 		ServerAddress:  common.RandomAddress(),
 		DatacenterId:   rand.Uint64(),
-		UserHash:       rand.Uint64(),
 		SessionId:      rand.Uint64(),
 		MatchId:        rand.Uint64(),
 		NumMatchValues: uint32(numMatchValues),
@@ -152,10 +151,11 @@ func GenerateRandomMatchDataMessage() messages.MatchDataMessage {
 	}
 }
 
-func GenerateRandomServerInitMessage() messages.ServerInitMessage {
+func GenerateRandomAnalyticsServerInitMessage() messages.AnalyticsServerInitMessage {
 
-	message := messages.ServerInitMessage{
-		Version:          byte(common.RandomInt(messages.ServerInitMessageVersion_Min, messages.ServerInitMessageVersion_Max)),
+	message := messages.AnalyticsServerInitMessage{
+		Version:          byte(common.RandomInt(messages.AnalyticsServerInitMessageVersion_Min, messages.AnalyticsServerInitMessageVersion_Max)),
+		Timestamp:        uint64(time.Now().Unix()),
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
@@ -167,10 +167,10 @@ func GenerateRandomServerInitMessage() messages.ServerInitMessage {
 	return message
 }
 
-func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
+func GenerateRandomAnalyticsServerUpdateMessage() messages.AnalyticsServerUpdateMessage {
 
-	message := messages.ServerUpdateMessage{
-		Version:          byte(common.RandomInt(messages.ServerUpdateMessageVersion_Min, messages.ServerUpdateMessageVersion_Max)),
+	message := messages.AnalyticsServerUpdateMessage{
+		Version:          byte(common.RandomInt(messages.AnalyticsServerUpdateMessageVersion_Min, messages.AnalyticsServerUpdateMessageVersion_Max)),
 		SDKVersion_Major: 5,
 		SDKVersion_Minor: 0,
 		SDKVersion_Patch: 0,
@@ -181,11 +181,11 @@ func GenerateRandomServerUpdateMessage() messages.ServerUpdateMessage {
 	return message
 }
 
-func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
+func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpdateMessage {
 
-	message := messages.SessionUpdateMessage{
+	message := messages.AnalyticsSessionUpdateMessage{
 
-		Version: byte(common.RandomInt(messages.SessionUpdateMessageVersion_Min, messages.SessionUpdateMessageVersion_Max)),
+		Version: byte(common.RandomInt(messages.AnalyticsSessionUpdateMessageVersion_Min, messages.AnalyticsSessionUpdateMessageVersion_Max)),
 
 		// always
 
@@ -223,11 +223,11 @@ func GenerateRandomSessionUpdateMessage() messages.SessionUpdateMessage {
 	return message
 }
 
-func GenerateRandomSessionSummaryMessage() messages.SessionSummaryMessage {
+func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSummaryMessage {
 
-	message := messages.SessionSummaryMessage{
+	message := messages.AnalyticsSessionSummaryMessage{
 
-		Version:                         byte(common.RandomInt(messages.SessionSummaryMessageVersion_Min, messages.SessionSummaryMessageVersion_Max)),
+		Version:                         byte(common.RandomInt(messages.AnalyticsSessionSummaryMessageVersion_Min, messages.AnalyticsSessionSummaryMessageVersion_Max)),
 		Timestamp:                       rand.Uint64(),
 		SessionId:                       rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
@@ -318,10 +318,10 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 	return message
 }
 
-func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
+func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayPingsMessage {
 
-	message := messages.NearRelayPingsMessage{
-		Version: byte(common.RandomInt(messages.NearRelayPingsMessageVersion_Min, messages.NearRelayPingsMessageVersion_Max)),
+	message := messages.AnalyticsNearRelayPingsMessage{
+		Version: byte(common.RandomInt(messages.AnalyticsNearRelayPingsMessageVersion_Min, messages.AnalyticsNearRelayPingsMessageVersion_Max)),
 
 		Timestamp: rand.Uint64(),
 
@@ -352,12 +352,12 @@ func GenerateRandomNearRelayPingsMessage() messages.NearRelayPingsMessage {
 
 const NumIterations = 1000
 
-func TestCostMatrixStatsMessage(t *testing.T) {
+func TestAnalyticsCostMatrixUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomCostMatrixStatMessage()
-		readMessage := messages.CostMatrixStatsMessage{}
-		MessageReadWriteTest[*messages.CostMatrixStatsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsCostMatrixUpdateMessage()
+		readMessage := messages.AnalyticsCostMatrixUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsCostMatrixUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
@@ -370,12 +370,12 @@ func TestRouteMatrixStatsMessage(t *testing.T) {
 	}
 }
 
-func TestPingStatsMessage(t *testing.T) {
+func TestAnalyticsRelayToRelayPingMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomPingStatMessage()
-		readMessage := messages.PingStatsMessage{}
-		MessageReadWriteTest[*messages.PingStatsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsRelayToRelayPingMessage()
+		readMessage := messages.AnalyticsRelayToRelayPingMessage{}
+		MessageReadWriteTest[*messages.AnalyticsRelayToRelayPingMessage](&writeMessage, &readMessage, t)
 	}
 }
 
@@ -388,48 +388,48 @@ func TestRelayUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestDatabaseUpdateMessage(t *testing.T) {
+func TestAnalyticsDatabaseUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomDatabaseUpdateMessage()
-		readMessage := messages.DatabaseUpdateMessage{}
-		MessageReadWriteTest[*messages.DatabaseUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsDatabaseUpdateMessage()
+		readMessage := messages.AnalyticsDatabaseUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsDatabaseUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
-func TestServerInitMessage(t *testing.T) {
+func TestAnalyticsServerInitMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomServerInitMessage()
-		readMessage := messages.ServerInitMessage{}
-		MessageReadWriteTest[*messages.ServerInitMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsServerInitMessage()
+		readMessage := messages.AnalyticsServerInitMessage{}
+		MessageReadWriteTest[*messages.AnalyticsServerInitMessage](&writeMessage, &readMessage, t)
 	}
 }
 
-func TestServerUpdateMessage(t *testing.T) {
+func TestAnalyticsServerUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomServerUpdateMessage()
-		readMessage := messages.ServerUpdateMessage{}
-		MessageReadWriteTest[*messages.ServerUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsServerUpdateMessage()
+		readMessage := messages.AnalyticsServerUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsServerUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
-func TestMatchDataMessage(t *testing.T) {
+func TestAnalyticsMatchDataMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomMatchDataMessage()
-		readMessage := messages.MatchDataMessage{}
-		MessageReadWriteTest[*messages.MatchDataMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsMatchDataMessage()
+		readMessage := messages.AnalyticsMatchDataMessage{}
+		MessageReadWriteTest[*messages.AnalyticsMatchDataMessage](&writeMessage, &readMessage, t)
 	}
 }
 
-func TestSessionUpdateMessage(t *testing.T) {
+func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomSessionUpdateMessage()
-		readMessage := messages.SessionUpdateMessage{}
-		MessageReadWriteTest[*messages.SessionUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsSessionUpdateMessage()
+		readMessage := messages.AnalyticsSessionUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsSessionUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
@@ -442,11 +442,11 @@ func TestPortalSessionUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestNearRelayPingsMessage(t *testing.T) {
+func TestAnalyticsNearRelayPingsMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomNearRelayPingsMessage()
-		readMessage := messages.NearRelayPingsMessage{}
-		MessageReadWriteTest[*messages.NearRelayPingsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsNearRelayPingsMessage()
+		readMessage := messages.AnalyticsNearRelayPingsMessage{}
+		MessageReadWriteTest[*messages.AnalyticsNearRelayPingsMessage](&writeMessage, &readMessage, t)
 	}
 }

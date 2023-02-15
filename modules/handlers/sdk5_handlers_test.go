@@ -36,14 +36,14 @@ func getMagicValues() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [
 }
 
 type TestHarness struct {
-	handler                    SDK5_Handler
-	conn                       *net.UDPConn
-	from                       net.UDPAddr
-	signPublicKey              [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	signPrivateKey             [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	serverInitMessageChannel   chan *messages.ServerInitMessage
-	serverUpdateMessageChannel chan *messages.ServerUpdateMessage
-	matchDataMessageChannel    chan *messages.MatchDataMessage
+	handler                             SDK5_Handler
+	conn                                *net.UDPConn
+	from                                net.UDPAddr
+	signPublicKey                       [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	signPrivateKey                      [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	analyticsServerInitMessageChannel   chan *messages.AnalyticsServerInitMessage
+	analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
+	analyticsMatchDataMessageChannel    chan *messages.AnalyticsMatchDataMessage
 }
 
 func CreateTestHarness() *TestHarness {
@@ -76,13 +76,13 @@ func CreateTestHarness() *TestHarness {
 
 	harness.handler.ServerBackendPrivateKey = harness.signPrivateKey[:]
 
-	harness.serverInitMessageChannel = make(chan *messages.ServerInitMessage, 1024)
-	harness.serverUpdateMessageChannel = make(chan *messages.ServerUpdateMessage, 1024)
-	harness.matchDataMessageChannel = make(chan *messages.MatchDataMessage, 1024)
+	harness.analyticsServerInitMessageChannel = make(chan *messages.AnalyticsServerInitMessage, 1024)
+	harness.analyticsServerUpdateMessageChannel = make(chan *messages.AnalyticsServerUpdateMessage, 1024)
+	harness.analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, 1024)
 
-	harness.handler.ServerInitMessageChannel = harness.serverInitMessageChannel
-	harness.handler.ServerUpdateMessageChannel = harness.serverUpdateMessageChannel
-	harness.handler.MatchDataMessageChannel = harness.matchDataMessageChannel
+	harness.handler.AnalyticsServerInitMessageChannel = harness.analyticsServerInitMessageChannel
+	harness.handler.AnalyticsServerUpdateMessageChannel = harness.analyticsServerUpdateMessageChannel
+	harness.handler.AnalyticsMatchDataMessageChannel = harness.analyticsMatchDataMessageChannel
 
 	return &harness
 }
@@ -560,7 +560,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-	case _ = <-harness.serverInitMessageChannel:
+	case _ = <-harness.analyticsServerInitMessageChannel:
 	default:
 		panic("no server init message found on channel")
 	}
@@ -654,7 +654,7 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-	case _ = <-harness.serverInitMessageChannel:
+	case _ = <-harness.analyticsServerInitMessageChannel:
 	default:
 		panic("no server init message found on channel")
 	}
@@ -742,7 +742,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// verify that we get a server init message sent over the channel
 
 	select {
-	case _ = <-harness.serverInitMessageChannel:
+	case _ = <-harness.analyticsServerInitMessageChannel:
 	default:
 		panic("no server init message found on channel")
 	}
@@ -961,7 +961,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK5(t *testing.T) {
 	// verify that we get at least one server init message sent over the channel
 
 	select {
-	case message := <-harness.serverInitMessageChannel:
+	case message := <-harness.analyticsServerInitMessageChannel:
 		assert.Equal(t, message.SDKVersion_Major, byte(5))
 		assert.Equal(t, message.SDKVersion_Minor, byte(0))
 		assert.Equal(t, message.SDKVersion_Patch, byte(0))
@@ -1058,7 +1058,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-	case _ = <-harness.serverUpdateMessageChannel:
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
 	default:
 		panic("no server update message found on channel")
 	}
@@ -1152,7 +1152,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-	case _ = <-harness.serverUpdateMessageChannel:
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
 	default:
 		panic("no server update message found on channel")
 	}
@@ -1238,7 +1238,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK5(t *testing.T) {
 	// verify that we get a server update message sent over the channel
 
 	select {
-	case _ = <-harness.serverUpdateMessageChannel:
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
 	default:
 		panic("no server update message found on channel")
 	}
@@ -1462,7 +1462,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK5(t *testing.T) {
 	// verify that we get at least one server update message sent over the channel
 
 	select {
-	case message := <-harness.serverUpdateMessageChannel:
+	case message := <-harness.analyticsServerUpdateMessageChannel:
 		assert.Equal(t, message.SDKVersion_Major, byte(5))
 		assert.Equal(t, message.SDKVersion_Minor, byte(0))
 		assert.Equal(t, message.SDKVersion_Patch, byte(0))
@@ -1558,7 +1558,7 @@ func Test_MatchUpdateHandler_BuyerNotLive_SDK5(t *testing.T) {
 	// verify that we *do not* get a match data message sent over the channel
 
 	select {
-	case _ = <-harness.matchDataMessageChannel:
+	case _ = <-harness.analyticsMatchDataMessageChannel:
 		panic("should not be match data message on channel")
 	default:
 	}
@@ -1652,7 +1652,7 @@ func Test_MatchDataHandler_BuyerSDKTooOld_SDK5(t *testing.T) {
 	// verify that we *do not* get a match data message sent over the channel
 
 	select {
-	case _ = <-harness.matchDataMessageChannel:
+	case _ = <-harness.analyticsMatchDataMessageChannel:
 		panic("should not be match data message on channel")
 	default:
 	}
@@ -1880,12 +1880,11 @@ func Test_MatchDataHandler_MatchDataResponse_SDK5(t *testing.T) {
 	// verify that we get at least one match data message sent over the channel
 
 	select {
-	case message := <-harness.matchDataMessageChannel:
+	case message := <-harness.analyticsMatchDataMessageChannel:
 		assert.NotEqual(t, message.Timestamp, uint64(0))
 		assert.Equal(t, message.BuyerId, packet.BuyerId)
 		assert.Equal(t, message.ServerAddress.String(), packet.ServerAddress.String())
 		assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-		assert.Equal(t, message.UserHash, packet.UserHash)
 		assert.Equal(t, message.SessionId, packet.SessionId)
 		assert.Equal(t, message.NumMatchValues, uint32(packet.NumMatchValues))
 		for i := 0; i < int(packet.NumMatchValues); i++ {
