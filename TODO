@@ -4,23 +4,15 @@ DONE
 
 	Add bigquery save for session summary message
 
-TODO
-
-	--------
-
 	Rename portal message to portal session update message
 
-	--------
+	Rename all analytics messages to have analytics in front
 
-	Add portal match update message
+TODO
 
-	--------
+	Convert route matrix stats matrix -> analytics route matrix update message
 
-	Add portal server update message
-
-	--------
-
-	Add server update message
+	Make sure all analytics messages have their bigquery save methods coded
 
 	--------
 

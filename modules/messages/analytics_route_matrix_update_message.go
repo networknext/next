@@ -9,15 +9,15 @@ import (
 )
 
 const (
-	RouteMatrixStatsMessageVersion_Min   = 1
-	RouteMatrixStatsMessageVersion_Max   = 1
-	RouteMatrixStatsMessageVersion_Write = 1
+	AnalyticsRouteMatrixUpdateMessageVersion_Min   = 1
+	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 1
+	AnalyticsRouteMatrixUpdateMessageVersion_Write = 1
 )
 
-type RouteMatrixStatsMessage struct {
+type AnalyticsRouteMatrixUpdateMessage struct {
 	Version                 uint8
 	Timestamp               uint64
-	Bytes                   int
+	RouteMatrixSize         int
 	NumRelays               int
 	NumDestRelays           int
 	NumFullRelays           int
@@ -42,14 +42,14 @@ type RouteMatrixStatsMessage struct {
 	RTTBucket_50ms_Plus     float32
 }
 
-func (message *RouteMatrixStatsMessage) Write(buffer []byte) []byte {
+func (message *AnalyticsRouteMatrixUpdateMessage) Write(buffer []byte) []byte {
 	index := 0
-	if message.Version < RouteMatrixStatsMessageVersion_Min || message.Version > RouteMatrixStatsMessageVersion_Max {
-		panic(fmt.Sprintf("invalid route matrix stats version %d", message.Version))
+	if message.Version < AnalyticsRouteMatrixUpdateMessageVersion_Min || message.Version > AnalyticsRouteMatrixUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid analytics route matrix update message version %d", message.Version))
 	}
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
-	encoding.WriteInt(buffer, &index, message.Bytes)
+	encoding.WriteInt(buffer, &index, message.RouteMatrixSize)
 	encoding.WriteInt(buffer, &index, message.NumRelays)
 	encoding.WriteInt(buffer, &index, message.NumDestRelays)
 	encoding.WriteInt(buffer, &index, message.NumFullRelays)
@@ -75,143 +75,143 @@ func (message *RouteMatrixStatsMessage) Write(buffer []byte) []byte {
 	return buffer[:index]
 }
 
-func (message *RouteMatrixStatsMessage) Read(buffer []byte) error {
+func (message *AnalyticsRouteMatrixUpdateMessage) Read(buffer []byte) error {
 
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read route matrix stats version")
+		return fmt.Errorf("failed to read analytics route matrix update version")
 	}
 
-	if message.Version < RouteMatrixStatsMessageVersion_Min || message.Version > RouteMatrixStatsMessageVersion_Max {
-		return fmt.Errorf("invalid route matrix stats version %d", message.Version)
+	if message.Version < AnalyticsRouteMatrixUpdateMessageVersion_Min || message.Version > AnalyticsRouteMatrixUpdateMessageVersion_Max {
+		return fmt.Errorf("invalid analytics route matrix update message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read route matrix stats timestamp")
+		return fmt.Errorf("failed to read timestamp")
 	}
 
-	if !encoding.ReadInt(buffer, &index, &message.Bytes) {
-		return fmt.Errorf("failed to read route matrix stats bytes")
+	if !encoding.ReadInt(buffer, &index, &message.RouteMatrixSize) {
+		return fmt.Errorf("failed to read route matrix size")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumRelays) {
-		return fmt.Errorf("failed to read route matrix stats num relays")
+		return fmt.Errorf("failed to read num relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDestRelays) {
-		return fmt.Errorf("failed to read route matrix stats num dest relays")
+		return fmt.Errorf("failed to read num dest relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumFullRelays) {
-		return fmt.Errorf("failed to read route matrix stats num full relays")
+		return fmt.Errorf("failed to read num full relays")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.NumDatacenters) {
-		return fmt.Errorf("failed to read route matrix stats num datacenters")
+		return fmt.Errorf("failed to read num datacenters")
 	}
 
 	if !encoding.ReadInt(buffer, &index, &message.TotalRoutes) {
-		return fmt.Errorf("failed to read route matrix stats total routes")
+		return fmt.Errorf("failed to read total routes")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.AverageNumRoutes) {
-		return fmt.Errorf("failed to read route matrix stats average num routes")
+		return fmt.Errorf("failed to read average num routes")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.AverageRouteLength) {
-		return fmt.Errorf("failed to read route matrix stats average route length")
+		return fmt.Errorf("failed to read average route length")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.NoRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats no route percent")
+		return fmt.Errorf("failed to read no route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.OneRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats one route percent")
+		return fmt.Errorf("failed to read one route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.NoDirectRoutePercent) {
-		return fmt.Errorf("failed to read route matrix stats no direct route percent")
+		return fmt.Errorf("failed to read no direct route percent")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_NoImprovement) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_NoImprovement")
+		return fmt.Errorf("failed to read rtt bucket no improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_0_5ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_0_5ms")
+		return fmt.Errorf("failed to read rtt bucket 0-5ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_5_10ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_5_10ms")
+		return fmt.Errorf("failed to read rtt bucket 5-10ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_10_15ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_10_15ms")
+		return fmt.Errorf("failed to read rtt bucket 10-15ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_15_20ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_15_20ms")
+		return fmt.Errorf("failed to read rtt bucket 15-20ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_20_25ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_20_25ms")
+		return fmt.Errorf("failed to read rtt bucket 20-25ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_25_30ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_25_30ms")
+		return fmt.Errorf("failed to read rtt bucket 25-30ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_30_35ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_30_35ms")
+		return fmt.Errorf("failed to read rtt bucket 30-35ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_35_40ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_35_40ms")
+		return fmt.Errorf("failed to read rtt bucket 35-40ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_40_45ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_40_45ms")
+		return fmt.Errorf("failed to read rtt bucket 40-45ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_45_50ms) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_45_50ms")
+		return fmt.Errorf("failed to read rtt bucket 45-50ms improvement")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RTTBucket_50ms_Plus) {
-		return fmt.Errorf("failed to read route matrix stats RTTBucket_50ms_Plus")
+		return fmt.Errorf("failed to read rtt bucket 50ms+ improvement")
 	}
 
 	return nil
 }
 
-func (message *RouteMatrixStatsMessage) Save() (map[string]bigquery.Value, string, error) {
+func (message *AnalyticsRouteMatrixUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
 
 	bigquery_message := make(map[string]bigquery.Value)
 	bigquery_message["timestamp"] = int(message.Timestamp)
-	bigquery_message["bytes"] = int(message.Bytes)
-	bigquery_message["numRelays"] = int(message.NumRelays)
-	bigquery_message["numDestRelays"] = int(message.NumDestRelays)
-	bigquery_message["numFullRelays"] = int(message.NumFullRelays)
-	bigquery_message["numDatacenters"] = int(message.NumDatacenters)
-	bigquery_message["totalRoutes"] = int(message.TotalRoutes)
-	bigquery_message["averageNumRoutes"] = int(message.AverageNumRoutes)
-	bigquery_message["averageRouteLength"] = int(message.AverageRouteLength)
-	bigquery_message["noRoutePercent"] = int(message.NoRoutePercent)
-	bigquery_message["oneRoutePercent"] = int(message.OneRoutePercent)
-	bigquery_message["noDirectRoutePercent"] = int(message.NoDirectRoutePercent)
-	bigquery_message["rttBucket_NoImprovement"] = int(message.RTTBucket_NoImprovement)
-	bigquery_message["rttBucket_0_5ms"] = int(message.RTTBucket_0_5ms)
-	bigquery_message["rttBucket_5_10ms"] = int(message.RTTBucket_5_10ms)
-	bigquery_message["rttBucket_10_15ms"] = int(message.RTTBucket_10_15ms)
-	bigquery_message["rttBucket_15_20ms"] = int(message.RTTBucket_15_20ms)
-	bigquery_message["rttBucket_20_25ms"] = int(message.RTTBucket_20_25ms)
-	bigquery_message["rttBucket_25_30ms"] = int(message.RTTBucket_25_30ms)
-	bigquery_message["rttBucket_30_35ms"] = int(message.RTTBucket_30_35ms)
-	bigquery_message["rttBucket_35_40ms"] = int(message.RTTBucket_35_40ms)
-	bigquery_message["rttBucket_40_45ms"] = int(message.RTTBucket_40_45ms)
-	bigquery_message["rttBucket_45_50ms"] = int(message.RTTBucket_45_50ms)
-	bigquery_message["rttBucket_50ms_Plus"] = int(message.RTTBucket_50ms_Plus)
+	bigquery_message["route_matrix_size"] = int(message.RouteMatrixSize)
+	bigquery_message["num_relays"] = int(message.NumRelays)
+	bigquery_message["num_dest_relays"] = int(message.NumDestRelays)
+	bigquery_message["num_full_relays"] = int(message.NumFullRelays)
+	bigquery_message["num_datacenters"] = int(message.NumDatacenters)
+	bigquery_message["total_routes"] = int(message.TotalRoutes)
+	bigquery_message["average_num_routes"] = int(message.AverageNumRoutes)
+	bigquery_message["average_route_length"] = int(message.AverageRouteLength)
+	bigquery_message["no_route_percent"] = int(message.NoRoutePercent)
+	bigquery_message["one_route_percent"] = int(message.OneRoutePercent)
+	bigquery_message["no_direct_route_percent"] = int(message.NoDirectRoutePercent)
+	bigquery_message["rtt_bucket_no_improvement"] = int(message.RTTBucket_NoImprovement)
+	bigquery_message["rtt_bucket_0_5ms"] = int(message.RTTBucket_0_5ms)
+	bigquery_message["rtt_bucket_5_10ms"] = int(message.RTTBucket_5_10ms)
+	bigquery_message["rtt_bucket_10_15ms"] = int(message.RTTBucket_10_15ms)
+	bigquery_message["rtt_bucket_15_20ms"] = int(message.RTTBucket_15_20ms)
+	bigquery_message["rtt_bucket_20_25ms"] = int(message.RTTBucket_20_25ms)
+	bigquery_message["rtt_bucket_25_30ms"] = int(message.RTTBucket_25_30ms)
+	bigquery_message["rtt_bucket_30_35ms"] = int(message.RTTBucket_30_35ms)
+	bigquery_message["rtt_bucket_35_40ms"] = int(message.RTTBucket_35_40ms)
+	bigquery_message["rtt_bucket_40_45ms"] = int(message.RTTBucket_40_45ms)
+	bigquery_message["rtt_bucket_45_50ms"] = int(message.RTTBucket_45_50ms)
+	bigquery_message["rtt_bucket_50ms_plus"] = int(message.RTTBucket_50ms_Plus)
 	return bigquery_message, "", nil
 }

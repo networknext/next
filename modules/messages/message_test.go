@@ -40,12 +40,12 @@ func GenerateRandomAnalyticsCostMatrixUpdateMessage() messages.AnalyticsCostMatr
 	return message
 }
 
-func GenerateRandomRouteMatrixStatMessage() messages.RouteMatrixStatsMessage {
+func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMatrixUpdateMessage {
 
-	message := messages.RouteMatrixStatsMessage{
-		Version:                 byte(common.RandomInt(messages.RouteMatrixStatsMessageVersion_Min, messages.RouteMatrixStatsMessageVersion_Max)),
+	message := messages.AnalyticsRouteMatrixUpdateMessage{
+		Version:                 byte(common.RandomInt(messages.AnalyticsRouteMatrixUpdateMessageVersion_Min, messages.AnalyticsRouteMatrixUpdateMessageVersion_Max)),
 		Timestamp:               uint64(time.Now().Unix()),
-		Bytes:                   rand.Int(),
+		RouteMatrixSize:         rand.Int(),
 		NumRelays:               rand.Int(),
 		NumDestRelays:           rand.Int(),
 		NumFullRelays:           rand.Int(),
@@ -89,10 +89,10 @@ func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToR
 	return message
 }
 
-func GenerateRandomRelayUpdateMessage() messages.RelayUpdateMessage {
+func GenerateRandomAnalyticsRelayUpdateMessage() messages.AnalyticsRelayUpdateMessage {
 
-	message := messages.RelayUpdateMessage{
-		Version:                   byte(common.RandomInt(messages.RelayUpdateMessageVersion_Min, messages.RelayUpdateMessageVersion_Max)),
+	message := messages.AnalyticsRelayUpdateMessage{
+		Version:                   byte(common.RandomInt(messages.AnalyticsRelayUpdateMessageVersion_Min, messages.AnalyticsRelayUpdateMessageVersion_Max)),
 		Timestamp:                 uint64(time.Now().Unix()),
 		RelayId:                   rand.Uint64(),
 		SessionCount:              rand.Uint32(),
@@ -352,6 +352,15 @@ func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayP
 
 const NumIterations = 1000
 
+func TestPortalSessionUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalSessionUpdateMessage()
+		readMessage := messages.PortalSessionUpdateMessage{}
+		MessageReadWriteTest[*messages.PortalSessionUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
 func TestAnalyticsCostMatrixUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
@@ -364,9 +373,9 @@ func TestAnalyticsCostMatrixUpdateMessage(t *testing.T) {
 func TestRouteMatrixStatsMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomRouteMatrixStatMessage()
-		readMessage := messages.RouteMatrixStatsMessage{}
-		MessageReadWriteTest[*messages.RouteMatrixStatsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsRouteMatrixUpdateMessage()
+		readMessage := messages.AnalyticsRouteMatrixUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsRouteMatrixUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
@@ -379,12 +388,12 @@ func TestAnalyticsRelayToRelayPingMessage(t *testing.T) {
 	}
 }
 
-func TestRelayUpdateMessage(t *testing.T) {
+func TestAnalyticsRelayUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomRelayUpdateMessage()
-		readMessage := messages.RelayUpdateMessage{}
-		MessageReadWriteTest[*messages.RelayUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsRelayUpdateMessage()
+		readMessage := messages.AnalyticsRelayUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsRelayUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
@@ -430,15 +439,6 @@ func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomAnalyticsSessionUpdateMessage()
 		readMessage := messages.AnalyticsSessionUpdateMessage{}
 		MessageReadWriteTest[*messages.AnalyticsSessionUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestPortalSessionUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomPortalSessionUpdateMessage()
-		readMessage := messages.PortalSessionUpdateMessage{}
-		MessageReadWriteTest[*messages.PortalSessionUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 

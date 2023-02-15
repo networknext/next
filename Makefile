@@ -19,7 +19,7 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%d|%H:%M:%S')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD) 
 
-# Run tests by default
+# Build and run tests by default
 
 .PHONY: test
 test: build

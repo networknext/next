@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	RelayUpdateMessageVersion_Min   = 3
-	RelayUpdateMessageVersion_Max   = 3
-	RelayUpdateMessageVersion_Write = 3
+	AnalyticsRelayUpdateMessageVersion_Min   = 3
+	AnalyticsRelayUpdateMessageVersion_Max   = 3
+	AnalyticsRelayUpdateMessageVersion_Write = 3
 
-	MaxRelayUpdateMessageSize = 2048
+	MaxAnalyticsRelayUpdateMessageSize = 2048
 )
 
-type RelayUpdateMessage struct {
+type AnalyticsRelayUpdateMessage struct {
 	Version                   uint8
 	Timestamp                 uint64
 	RelayId                   uint64
@@ -32,73 +32,73 @@ type RelayUpdateMessage struct {
 	RelayCounters             [constants.NumRelayCounters]uint64
 }
 
-func (message *RelayUpdateMessage) Read(buffer []byte) error {
+func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {
 
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read relay update version")
+		return fmt.Errorf("failed to analytics read relay update version")
 	}
 
-	if message.Version < RelayUpdateMessageVersion_Min || message.Version > RelayUpdateMessageVersion_Max {
-		return fmt.Errorf("invalid relay update message version %d", message.Version)
+	if message.Version < AnalyticsRelayUpdateMessageVersion_Min || message.Version > AnalyticsRelayUpdateMessageVersion_Max {
+		return fmt.Errorf("invalid analytics relay update message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
-		return fmt.Errorf("failed to read relay update timestamp")
+		return fmt.Errorf("failed to read timestamp")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayId) {
-		return fmt.Errorf("failed to read relay update relay id")
+		return fmt.Errorf("failed to read relay id")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.SessionCount) {
-		return fmt.Errorf("failed to read relay update session count")
+		return fmt.Errorf("failed to read session count")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.MaxSessions) {
-		return fmt.Errorf("failed to read relay update max sessions")
+		return fmt.Errorf("failed to read max sessions")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.EnvelopeBandwidthUpKbps) {
-		return fmt.Errorf("failed to read relay update envelope bandwidth up kbps")
+		return fmt.Errorf("failed to read envelope bandwidth up kbps")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.EnvelopeBandwidthDownKbps) {
-		return fmt.Errorf("failed to read relay update envelope bandwidth down kbps")
+		return fmt.Errorf("failed to read envelope bandwidth down kbps")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.ActualBandwidthUpKbps) {
-		return fmt.Errorf("failed to read relay update actual bandwidth up kbps")
+		return fmt.Errorf("failed to read actual bandwidth up kbps")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.ActualBandwidthDownKbps) {
-		return fmt.Errorf("failed to read relay update actual bandwidth down kbps")
+		return fmt.Errorf("failed to read actual bandwidth down kbps")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayFlags) {
-		return fmt.Errorf("failed to read relay update relay flags")
+		return fmt.Errorf("failed to read relay flags")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumRelayCounters) {
-		return fmt.Errorf("failed to read relay update num relay counters")
+		return fmt.Errorf("failed to read num relay counters")
 	}
 
 	for i := 0; i < int(message.NumRelayCounters); i++ {
 		if !encoding.ReadUint64(buffer, &index, &message.RelayCounters[i]) {
-			return fmt.Errorf("failed to read relay update relay counter")
+			return fmt.Errorf("failed to read relay counter")
 		}
 	}
 
 	return nil
 }
 
-func (message *RelayUpdateMessage) Write(buffer []byte) []byte {
+func (message *AnalyticsRelayUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	if message.Version < RelayUpdateMessageVersion_Min || message.Version > RelayUpdateMessageVersion_Max {
-		panic(fmt.Sprintf("invalid relay update message version %d", message.Version))
+	if message.Version < AnalyticsRelayUpdateMessageVersion_Min || message.Version > AnalyticsRelayUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid analytics relay update message version %d", message.Version))
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
@@ -120,7 +120,7 @@ func (message *RelayUpdateMessage) Write(buffer []byte) []byte {
 	return buffer[:index]
 }
 
-func (message *RelayUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
+func (message *AnalyticsRelayUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
 
 	bigquery_message := make(map[string]bigquery.Value)
 
