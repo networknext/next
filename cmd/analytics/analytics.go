@@ -38,8 +38,6 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
-	// todo: google project id should probably be mandatory for this service
-
 	core.Log("cost matrix url: %s", costMatrixURL)
 	core.Log("route matrix url: %s", routeMatrixURL)
 	core.Log("cost matrix interval: %s", costMatrixInterval)
@@ -54,11 +52,19 @@ func main() {
 	ProcessRouteMatrix(service)
 
 	if enableGooglePubsub && enableGoogleBigquery {
-		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost_matrix_update", &messages.AnalyticsCostMatrixUpdateMessage{}, false)
-		Process[*messages.AnalyticsRouteMatrixUpdateMessage](service, "route_matrix_update", &messages.AnalyticsRouteMatrixUpdateMessage{}, false)
-		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay_to_relay_ping", &messages.AnalyticsRelayToRelayPingMessage{}, false)
-		Process[*messages.AnalyticsRelayUpdateMessage](service, "relay_update", &messages.AnalyticsRelayUpdateMessage{}, false)
-		Process[*messages.AnalyticsMatchDataMessage](service, "match_data", &messages.AnalyticsMatchDataMessage{}, false)
+
+		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
+
+		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost_matrix_update", &messages.AnalyticsCostMatrixUpdateMessage{}, important)
+		Process[*messages.AnalyticsRouteMatrixUpdateMessage](service, "route_matrix_update", &messages.AnalyticsRouteMatrixUpdateMessage{}, important)
+		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay_to_relay_ping", &messages.AnalyticsRelayToRelayPingMessage{}, important)
+		Process[*messages.AnalyticsRelayUpdateMessage](service, "relay_update", &messages.AnalyticsRelayUpdateMessage{}, important)
+		Process[*messages.AnalyticsServerInitMessage](service, "server_init", &messages.AnalyticsServerInitMessage{}, important)
+		Process[*messages.AnalyticsServerUpdateMessage](service, "server_update", &messages.AnalyticsServerUpdateMessage{}, important)
+		Process[*messages.AnalyticsSessionUpdateMessage](service, "session_update", &messages.AnalyticsSessionUpdateMessage{}, important)
+		Process[*messages.AnalyticsSessionSummaryMessage](service, "session_summary", &messages.AnalyticsSessionUpdateMessage{}, important)
+		Process[*messages.AnalyticsNearRelayPingsMessage](service, "near_relay_pings", &messages.AnalyticsNearRelayPingsMessage{}, important)
+		Process[*messages.AnalyticsMatchDataMessage](service, "match_data", &messages.AnalyticsMatchDataMessage{}, important)
 	}
 
 	service.StartWebServer()
@@ -78,9 +84,7 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 	pubsubSubscription := envvar.GetString(namePrefix+"PUBSUB_SUBSCRIPTION", name)
 	bigqueryTable := envvar.GetString(namePrefix+"BIGQUERY_TABLE", name)
 
-	core.Debug("%s pubsub topic: %s", name, pubsubTopic)
-	core.Debug("%s pubsub subscription: %s", name, pubsubSubscription)
-	core.Debug("%s bigquery table: %s", name, bigqueryTable)
+	core.Debug("processing %s messages: topic = '%s', subscription = '%s', bigquery table = '%s'", name, pubsubTopic, pubsubSubscription, bigqueryTable)
 
 	consumerConfig := common.GooglePubsubConfig{
 		ProjectId:     googleProjectId,
@@ -108,8 +112,6 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		core.Error("could not create google bigquery publisher for %s: %v", name, err)
 	}
 
-	core.Debug("processing %s messages", name)
-
 	go func() {
 		for {
 			select {
@@ -126,12 +128,12 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 				err := message.Read(messageData)
 				if err != nil {
 					if !important {
-						core.Error("could not read %s message - dropping", name)
+						core.Error("could not read %s message. not important, so dropping", name)
 						pubsubMessage.Ack()
 						break
 					}
 
-					core.Error("could not read %s message", name)
+					core.Error("could not read %s message, important, so not acking it.", name)
 					pubsubMessage.Nack()
 					break
 				}

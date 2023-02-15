@@ -1,40 +1,21 @@
 DONE
 
-	Add bigquery save for session update message
-
-	Add bigquery save for session summary message
-
-	Rename portal message to portal session update message
-
-	Rename all analytics messages to have analytics in front
-
-	Convert route matrix stats matrix -> analytics route matrix update message
-
-	Make sure all analytics messages have their bigquery save methods coded
-
-	Portal session update message is emitted
-
-	Analytics session update message is emitted
-
-	Analytics session summary message is emitted
-
-	Analytics near relay pings message is emitted
+	Make sure happy path and func tests pass
 
 TODO
 
-	Systematically go through all analytics message types and make sure they are getting emitted
 
 	Go through server backend and write code to serialize all analytics messages (and throw them away...)
 
 	Get pubsub emulator setup.
 
-	Now actually write the analytics messages to pubsub.
+	Now actually write the analytics messages to pubsub in happy path (local).
 
-	Verify that the analytics service receives the analytics messages.
+	Verify that the analytics service receives and processes the analytics messages.
 
 	Setup the bigquery emulator.
 
-	Actually write the analytics messages to bigquery.
+	Actually write the analytics messages to bigquery...
 
 
 
@@ -83,9 +64,17 @@ TODO
 
 
 
+	--------
 
+	Emit the analytics database update message from relay_backend leader.
 
+	--------
 
+	Add new messages to support the portal:
+
+		PortalRelayUpdateMessage
+		PortalMatchUpdateMessage
+		PortalServerUpdateMessage
 
 	--------
 

@@ -21,10 +21,9 @@ type AnalyticsRelayToRelayPingMessage struct {
 	Timestamp  uint64
 	RelayA     uint64
 	RelayB     uint64
-	RTT        float32
-	Jitter     float32
+	RTT        uint8
+	Jitter     uint8
 	PacketLoss float32
-	Routable   bool
 }
 
 func (message *AnalyticsRelayToRelayPingMessage) Read(buffer []byte) error {
@@ -51,20 +50,16 @@ func (message *AnalyticsRelayToRelayPingMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read relay b")
 	}
 
-	if !encoding.ReadFloat32(buffer, &index, &message.RTT) {
+	if !encoding.ReadUint8(buffer, &index, &message.RTT) {
 		return fmt.Errorf("failed to read rtt")
 	}
 
-	if !encoding.ReadFloat32(buffer, &index, &message.Jitter) {
+	if !encoding.ReadUint8(buffer, &index, &message.Jitter) {
 		return fmt.Errorf("failed to read jitter")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.PacketLoss) {
 		return fmt.Errorf("failed to read packet loss")
-	}
-
-	if !encoding.ReadBool(buffer, &index, &message.Routable) {
-		return fmt.Errorf("failed to read routable")
 	}
 
 	return nil
@@ -82,10 +77,9 @@ func (message *AnalyticsRelayToRelayPingMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.RelayA)
 	encoding.WriteUint64(buffer, &index, message.RelayB)
-	encoding.WriteFloat32(buffer, &index, message.RTT)
-	encoding.WriteFloat32(buffer, &index, message.Jitter)
+	encoding.WriteUint8(buffer, &index, message.RTT)
+	encoding.WriteUint8(buffer, &index, message.Jitter)
 	encoding.WriteFloat32(buffer, &index, message.PacketLoss)
-	encoding.WriteBool(buffer, &index, message.Routable)
 
 	return buffer[:index]
 }
@@ -97,10 +91,9 @@ func (message *AnalyticsRelayToRelayPingMessage) Save() (map[string]bigquery.Val
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["relay_a"] = int(message.RelayA)
 	bigquery_message["relay_b"] = int(message.RelayB)
-	bigquery_message["rtt"] = message.RTT
-	bigquery_message["jitter"] = message.Jitter
-	bigquery_message["packet_loss"] = message.PacketLoss
-	bigquery_message["routable"] = message.Routable
+	bigquery_message["rtt"] = int(message.RTT)
+	bigquery_message["jitter"] = int(message.Jitter)
+	bigquery_message["packet_loss"] = float64(message.PacketLoss)
 
 	return bigquery_message, "", nil
 }

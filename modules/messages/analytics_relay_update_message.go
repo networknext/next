@@ -28,6 +28,8 @@ type AnalyticsRelayUpdateMessage struct {
 	ActualBandwidthUpKbps     uint32
 	ActualBandwidthDownKbps   uint32
 	RelayFlags                uint64
+	NumRoutable               uint32
+	NumUnroutable             uint32
 	NumRelayCounters          uint32
 	RelayCounters             [constants.NumRelayCounters]uint64
 }
@@ -80,6 +82,14 @@ func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read relay flags")
 	}
 
+	if !encoding.ReadUint32(buffer, &index, &message.NumRoutable) {
+		return fmt.Errorf("failed to read num routable")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
+		return fmt.Errorf("failed to read num unroutable")
+	}
+
 	if !encoding.ReadUint32(buffer, &index, &message.NumRelayCounters) {
 		return fmt.Errorf("failed to read num relay counters")
 	}
@@ -111,8 +121,9 @@ func (message *AnalyticsRelayUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.ActualBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, message.ActualBandwidthDownKbps)
 	encoding.WriteUint64(buffer, &index, message.RelayFlags)
+	encoding.WriteUint32(buffer, &index, message.NumRoutable)
+	encoding.WriteUint32(buffer, &index, message.NumUnroutable)
 	encoding.WriteUint32(buffer, &index, message.NumRelayCounters)
-
 	for i := 0; i < int(message.NumRelayCounters); i++ {
 		encoding.WriteUint64(buffer, &index, message.RelayCounters[i])
 	}
@@ -133,6 +144,8 @@ func (message *AnalyticsRelayUpdateMessage) Save() (map[string]bigquery.Value, s
 	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
 	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
 	bigquery_message["relay_flags"] = int(message.RelayFlags)
+	bigquery_message["num_routable"] = int(message.NumRoutable)
+	bigquery_message["num_unroutable"] = int(message.NumUnroutable)
 
 	relay_counters := make([]bigquery.Value, message.NumRelayCounters)
 	for i := 0; i < int(message.NumRelayCounters); i++ {

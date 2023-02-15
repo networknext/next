@@ -131,9 +131,6 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		jitter := float32(sampleJitter[i])
 		packetLoss := float32(samplePacketLoss[i]) / 65535.0 * 100.0
 
-		// todo
-		fmt.Printf("rtt = %.1f, jitter = %.1f, packet loss = %.2f\n", rtt, jitter, packetLoss)
-
 		destEntry.HistoryRTT[destEntry.HistoryIndex] = rtt
 		destEntry.HistoryJitter[destEntry.HistoryIndex] = jitter
 		destEntry.HistoryPacketLoss[destEntry.HistoryIndex] = packetLoss

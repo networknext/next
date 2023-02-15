@@ -17,27 +17,32 @@ import (
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	// "github.com/networknext/backend/modules/messages"
+	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/packets"
 )
 
-var maxRTT float32
-var maxJitter float32
+var maxJitter int32
 var maxPacketLoss float32
 var costMatrixBufferSize int
 var routeMatrixBufferSize int
 var routeMatrixInterval time.Duration
+
 var redisHostName string
 var redisPassword string
-var redisPubsubChannelName string
-var relayUpdateChannelSize int
-var pingStatsPubsubTopic string
-var maxPingStatsChannelSize int
-var maxPingStatsMessageBytes int
-var relayStatsPubsubTopic string
-var maxRelayStatsChannelSize int
-var maxRelayStatsMessageBytes int
-var disableGooglePubsub bool
+
+var relayUpdateRedisPubsubChannelName string
+var relayUpdateRedisPubsubChannelSize int
+
+var relayToRelayPingGooglePubsubTopic string
+var relayToRelayPingGooglePubsubChannelSize int
+var relayToRelayPingGooglePubsubMaxMessageBytes int
+
+var relayUpdateGooglePubsubTopic string
+var relayUpdateGooglePubsubChannelSize int
+var relayUpdateGooglePubsubMaxMessageBytes int
+
+var enableGooglePubsub bool
+
 var readyDelay time.Duration
 
 var relaysMutex sync.RWMutex
@@ -66,28 +71,32 @@ func main() {
 
 	service := common.CreateService("relay_backend")
 
-	maxRTT = float32(envvar.GetFloat("MAX_RTT", 1000.0))
-	maxJitter = float32(envvar.GetFloat("MAX_JITTER", 1000.0))
+	maxJitter = int32(envvar.GetInt("MAX_JITTER", 1000))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
 	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 10*1024*1024)
 	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 100*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
-	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_updates")
-	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
-	pingStatsPubsubTopic = envvar.GetString("PING_STATS_PUBSUB_TOPIC", "ping_stats")
-	maxPingStatsChannelSize = envvar.GetInt("MAX_PING_STATS_CHANNEL_SIZE", 10*1024)
-	maxPingStatsMessageBytes = envvar.GetInt("MAX_PING_STATS_MESSAGE_BYTES", 1024)
-	relayStatsPubsubTopic = envvar.GetString("RELAY_STATS_PUBSUB_TOPIC", "relay_stats")
-	maxRelayStatsChannelSize = envvar.GetInt("MAX_RELAY_STATS_CHANNEL_SIZE", 10*1024)
-	maxRelayStatsMessageBytes = envvar.GetInt("MAX_RELAY_STATS_MESSAGE_BYTES", 1024)
+
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
-	disableGooglePubsub = envvar.GetBool("DISABLE_GOOGLE_PUBSUB", false)
+
+	relayUpdateRedisPubsubChannelName = envvar.GetString("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
+	relayUpdateRedisPubsubChannelSize = envvar.GetInt("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_SIZE", 10*1024)
+
+	relayToRelayPingGooglePubsubTopic = envvar.GetString("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
+	relayToRelayPingGooglePubsubChannelSize = envvar.GetInt("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+	relayToRelayPingGooglePubsubMaxMessageBytes = envvar.GetInt("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_MAX_MESSAGE_BYTES", 256)
+
+	relayUpdateGooglePubsubTopic = envvar.GetString("RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
+	relayUpdateGooglePubsubChannelSize = envvar.GetInt("RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+	relayUpdateGooglePubsubMaxMessageBytes = envvar.GetInt("RELAY_UPDATE_GOOGLE_PUBSUB_MAX_MESSAGE_BYTES", 10*1024)
+
+	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
+
 	readyDelay = envvar.GetDuration("READY_DELAY", 1*time.Second)
 
 	startTime = time.Now()
 
-	core.Log("max rtt: %.1f", maxRTT)
 	core.Log("max jitter: %.1f", maxJitter)
 	core.Log("max packet loss: %.1f", maxPacketLoss)
 	core.Log("cost matrix buffer size: %d bytes", costMatrixBufferSize)
@@ -95,16 +104,22 @@ func main() {
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("redis host name: %s", redisHostName)
 	core.Log("redis password: %s", redisPassword)
-	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
-	core.Log("relay update channel size: %d", relayUpdateChannelSize)
-	core.Log("ping stats pubsub channel: %s", pingStatsPubsubTopic)
-	core.Log("max ping stats channel size: %d", maxPingStatsChannelSize)
-	core.Log("max ping stats message size: %d", maxPingStatsMessageBytes)
-	core.Log("relay stats pubsub channel: %s", relayStatsPubsubTopic)
-	core.Log("max relay stats channel: %d", maxRelayStatsChannelSize)
-	core.Log("max relay stats message size: %d", maxRelayStatsMessageBytes)
-	core.Log("disable google pubsub: %v", disableGooglePubsub)
+
+	core.Log("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
+	core.Log("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
+
+	core.Log("relay to relay ping google pubsub channel: %s", relayToRelayPingGooglePubsubTopic)
+	core.Log("relay to relay ping google pubsub channel size: %d", relayToRelayPingGooglePubsubChannelSize)
+	core.Log("relay to relay ping google pubsub max message size: %d", relayToRelayPingGooglePubsubMaxMessageBytes)
+
+	core.Log("relay update google pubsub channel name: %s", relayUpdateGooglePubsubTopic)
+	core.Log("relay update google pubsub channel size: %d", relayUpdateGooglePubsubChannelSize)
+	core.Log("relay update google pubsub max message size: %d", relayUpdateGooglePubsubMaxMessageBytes)
+
+	core.Log("enable google pubsub: %v", enableGooglePubsub)
+
 	core.Log("ready delay: %s", readyDelay.String())
+
 	core.Log("start time: %s", startTime.String())
 
 	service.LoadDatabase()
@@ -596,8 +611,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 	config.RedisHostname = redisHostName
 	config.RedisPassword = redisPassword
-	config.PubsubChannelName = redisPubsubChannelName
-	config.MessageChannelSize = relayUpdateChannelSize
+	config.PubsubChannelName = relayUpdateRedisPubsubChannelName
+	config.MessageChannelSize = relayUpdateRedisPubsubChannelSize
 
 	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)
 
@@ -606,34 +621,32 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
-	// todo
-	/*
-		var pingStatsProducer *common.GooglePubsubProducer
-		var relayStatsProducer *common.GooglePubsubProducer
+	var relayToRelayPingProducer *common.GooglePubsubProducer
 
-		if !disableGooglePubsub {
+	var relayUpdateProducer *common.GooglePubsubProducer
 
-			pingStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-				ProjectId:          service.GoogleProjectId,
-				Topic:              pingStatsPubsubTopic,
-				MessageChannelSize: maxPingStatsChannelSize,
-			})
-			if err != nil {
-				core.Error("could not create ping stats producer")
-				os.Exit(1)
-			}
+	if enableGooglePubsub {
 
-			relayStatsProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-				ProjectId:          service.GoogleProjectId,
-				Topic:              relayStatsPubsubTopic,
-				MessageChannelSize: maxRelayStatsChannelSize,
-			})
-			if err != nil {
-				core.Error("could not create relay stats producer")
-				os.Exit(1)
-			}
+		relayToRelayPingProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              relayToRelayPingGooglePubsubTopic,
+			MessageChannelSize: relayToRelayPingGooglePubsubChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create relay to relay ping google pubsub producer")
+			os.Exit(1)
 		}
-	*/
+
+		relayUpdateProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              relayUpdateGooglePubsubTopic,
+			MessageChannelSize: relayUpdateGooglePubsubChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create relay update google pubsub producer")
+			os.Exit(1)
+		}
+	}
 
 	go func() {
 
@@ -669,7 +682,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				relayName := relayData.RelayNames[relayIndex]
 				relayAddress := relayData.RelayAddresses[relayIndex].String()
 
-				// debug
+				// debug print some stuff so we can see what's going on
 
 				core.Debug("[%s] received update for %s [%x]", relayAddress, relayName, relayId)
 
@@ -690,7 +703,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					}
 				}
 
-				// process samples in the relay update
+				// process samples in the relay update (this drives the cost matrix...)
 
 				currentTime := time.Now().Unix()
 
@@ -709,94 +722,82 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.RelayCounters[:],
 				)
 
-				if disableGooglePubsub {
-					break
+				// build relay to relay ping messages for analytics
+
+				numRoutable := 0
+
+				pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
+
+				for i := 0; i < numSamples; i++ {
+
+					rtt := relayUpdateRequest.SampleRTT[i]
+					jitter := relayUpdateRequest.SampleJitter[i]
+					pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
+
+					if rtt < 255 && int32(jitter) <= maxJitter && pl <= maxPacketLoss {
+						numRoutable++
+					}
+
+					sampleRelayId := relayUpdateRequest.SampleRelayId[i]
+
+					pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
+						Version:    messages.AnalyticsRelayToRelayPingMessageVersion_Write,
+						Timestamp:  uint64(time.Now().Unix()),
+						RelayA:     relayId,
+						RelayB:     sampleRelayId,
+						RTT:        rtt,
+						Jitter:     jitter,
+						PacketLoss: pl,
+					}
 				}
 
-				/*
-					// build ping stats message
+				// build relay update message for analytics
 
-					numRoutable := 0
+				numUnroutable := numSamples - numRoutable
+				
+				relayUpdateMessage := messages.AnalyticsRelayUpdateMessage{
+					Version:                   messages.AnalyticsRelayUpdateMessageVersion_Write,
+					Timestamp:                 uint64(time.Now().Unix()),
+					RelayId:                   relayId,
+					SessionCount:              relayUpdateRequest.SessionCount,
+					MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
+					EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
+					EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
+					ActualBandwidthUpKbps:     relayUpdateRequest.ActualBandwidthUpKbps,
+					ActualBandwidthDownKbps:   relayUpdateRequest.ActualBandwidthDownKbps,
+					RelayFlags:                relayUpdateRequest.RelayFlags,
+					NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
+					RelayCounters:             relayUpdateRequest.RelayCounters,
+					NumRoutable:               uint32(numRoutable),
+					NumUnroutable:             uint32(numUnroutable),
+				}
 
-					pingStatsMessages := make([]messages.PingStatsMessage, 0)
-					sampleRelayIds := make([]uint64, numSamples)
-					sampleRTT := make([]float32, numSamples)
-					sampleJitter := make([]float32, numSamples)
-					samplePacketLoss := make([]float32, numSamples)
-					sampleRoutable := make([]bool, numSamples)
+				// send relay update messages to analytics via google pubsub
 
-					for i := 0; i < numSamples; i++ {
+				if service.IsLeader() {
 
-						rtt := relayUpdateRequest.SampleRTT[i]
-						jitter := relayUpdateRequest.SampleJitter[i]
-						pl := relayUpdateRequest.SamplePacketLoss[i]
+					messageBuffer := make([]byte, relayUpdateGooglePubsubMaxMessageBytes)
 
-						sampleRelayId := relayUpdateRequest.SampleRelayId[i]
+					messageData := relayUpdateMessage.Write(messageBuffer[:])
 
-						sampleRelayIds[i] = sampleRelayId
-						sampleRTT[i] = rtt
-						sampleJitter[i] = jitter
-						samplePacketLoss[i] = pl
-
-						if rtt <= maxRTT && jitter <= maxJitter && pl <= maxPacketLoss {
-							numRoutable++
-							sampleRoutable[i] = true
-						}
-
-						pingStatsMessages = append(pingStatsMessages, messages.PingStatsMessage{
-							Version:    messages.PingStatsMessageVersion_Write,
-							Timestamp:  uint64(time.Now().Unix()),
-							RelayA:     relayId,
-							RelayB:     sampleRelayId,
-							RTT:        rtt,
-							Jitter:     jitter,
-							PacketLoss: pl,
-							Routable:   sampleRoutable[i],
-						})
+					if enableGooglePubsub {
+						relayUpdateProducer.MessageChannel <- messageData
 					}
+				}
 
-					// todo: disable for the moment
-					/*
-					// build relay stats message
+				// send relay to relay ping messages to analytics via google pubsub
 
-					numUnroutable := numSamples - numRoutable
-					maxSessions := relayData.RelayArray[relayIndex].MaxSessions
-					numSessions := relayUpdateRequest.SessionCount
-					full := maxSessions != 0 && numSessions >= uint64(maxSessions)
+				if service.IsLeader() {
 
-					relayStatsMessage := messages.RelayStatsMessage{
-						Version:       messages.RelayStatsMessageVersion_Write,
-						Timestamp:     uint64(time.Now().Unix()),
-						NumSessions:   uint32(numSessions),
-						MaxSessions:   uint32(maxSessions),
-						NumRoutable:   uint32(numRoutable),
-						NumUnroutable: uint32(numUnroutable),
-						Full:          full,
-					}
+					messageBuffer := make([]byte, relayToRelayPingGooglePubsubMaxMessageBytes)
 
-					// update relay stats
-
-					if service.IsLeader() {
-
-						messageBuffer := make([]byte, maxRelayStatsMessageBytes)
-
-						message := relayStatsMessage.Write(messageBuffer[:])
-
-						relayStatsProducer.MessageChannel <- message
-					}
-
-					// update ping stats
-
-					if service.IsLeader() {
-
-						messageBuffer := make([]byte, maxPingStatsMessageBytes)
-
-						for i := 0; i < len(pingStatsMessages); i++ {
-							message := pingStatsMessages[i].Write(messageBuffer[:])
-							pingStatsProducer.MessageChannel <- message
+					for i := 0; i < len(pingMessages); i++ {
+						messageData := pingMessages[i].Write(messageBuffer[:])
+						if enableGooglePubsub {
+							relayToRelayPingProducer.MessageChannel <- messageData
 						}
 					}
-				*/
+				}
 			}
 		}
 	}()
@@ -828,7 +829,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
-				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, maxJitter, maxPacketLoss)
+				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, float32(maxJitter), maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,

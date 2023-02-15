@@ -17,17 +17,17 @@ const (
 )
 
 type AnalyticsNearRelayPingsMessage struct {
-	Version byte
-	Timestamp uint64
-	BuyerId        uint64
-	SessionId      uint64
-	MatchId        uint64
-	UserHash       uint64
-	Latitude       float32
-	Longitude      float32
-	ClientAddress  net.UDPAddr
-	ConnectionType byte
-	PlatformType   byte
+	Version             byte
+	Timestamp           uint64
+	BuyerId             uint64
+	SessionId           uint64
+	MatchId             uint64
+	UserHash            uint64
+	Latitude            float32
+	Longitude           float32
+	ClientAddress       net.UDPAddr
+	ConnectionType      byte
+	PlatformType        byte
 	NumNearRelays       uint32
 	NearRelayId         [constants.MaxNearRelays]uint64
 	NearRelayRTT        [constants.MaxNearRelays]byte

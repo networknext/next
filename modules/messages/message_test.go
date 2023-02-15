@@ -80,10 +80,9 @@ func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToR
 		Timestamp:  uint64(time.Now().Unix()),
 		RelayA:     rand.Uint64(),
 		RelayB:     rand.Uint64(),
-		RTT:        rand.Float32(),
-		Jitter:     rand.Float32(),
+		RTT:        uint8(common.RandomInt(0, 255)),
+		Jitter:     uint8(common.RandomInt(0, 255)),
 		PacketLoss: rand.Float32(),
-		Routable:   common.RandomBool(),
 	}
 
 	return message
