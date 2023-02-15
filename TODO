@@ -314,3 +314,7 @@ Nice to have:
 	Server backend verify keypairs on startup
 
 	---------------
+
+	Should be func tests that spin up the bigquery emulator and verify that each analytics message type can be written to the appropriate table created from schema
+
+	---------------

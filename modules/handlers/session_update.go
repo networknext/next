@@ -80,9 +80,9 @@ type SessionUpdateState struct {
 	GetNearRelays                             bool
 	WroteResponsePacket                       bool
 
-	PortalMessageChannel         chan<- *messages.PortalMessage
-	SessionUpdateMessageChannel  chan<- *messages.SessionUpdateMessage
-	NearRelayPingsMessageChannel chan<- *messages.NearRelayPingsMessage
+	PortalSessionUpdateMessageChannel     chan<- *messages.PortalSessionUpdateMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -1012,16 +1012,18 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.WroteResponsePacket = true
 
 	/*
-		Send the portal message to drive the portal.
+		Send the portal session update message.
+
+		This drives the view of sessions in the portal.
 	*/
 
-	sendPortalMessage(state)
+	sendPortalSessionUpdateMessage(state)
 
 	/*
-		Send the the session update message to drive analytics and billing.
+		Send the the session update message to drive analytics.
 	*/
 
-	sendSessionUpdateMessage(state)
+	sendAnalyticsSessionUpdateMessage(state)
 
 	/*
 		Send the near relay pings message
@@ -1029,18 +1031,18 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This gives us access to near relay pings data for analytics.
 	*/
 
-	sendNearRelayPingsMessage(state)
+	sendAnalyticsNearRelayPingsMessage(state)
 }
 
 // -----------------------------------------
 
-func sendPortalMessage(state *SessionUpdateState) {
+func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	if state.Request.ClientPingTimedOut {
 		return
 	}
 
-	message := messages.PortalMessage{}
+	message := messages.PortalSessionUpdateMessage{}
 
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
@@ -1049,7 +1051,7 @@ func sendPortalMessage(state *SessionUpdateState) {
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
 
-	message.Version = messages.PortalMessageVersion_Write
+	message.Version = messages.PortalSessionUpdateMessageVersion_Write
 
 	message.SessionId = state.Input.SessionId
 	message.BuyerId = state.Request.BuyerId
@@ -1097,21 +1099,21 @@ func sendPortalMessage(state *SessionUpdateState) {
 		// message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
 	}
 
-	if state.PortalMessageChannel != nil {
-		state.PortalMessageChannel <- &message
+	if state.PortalSessionUpdateMessageChannel != nil {
+		state.PortalSessionUpdateMessageChannel <- &message
 		state.SentPortalMessage = true
 	}
 }
 
-func sendNearRelayPingsMessage(state *SessionUpdateState) {
+func sendAnalyticsNearRelayPingsMessage(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
 		return
 	}
 
-	message := messages.NearRelayPingsMessage{}
+	message := messages.AnalyticsNearRelayPingsMessage{}
 
-	message.Version = messages.NearRelayPingsMessageVersion_Write
+	message.Version = messages.AnalyticsNearRelayPingsMessageVersion_Write
 
 	message.Timestamp = uint64(time.Now().Unix())
 
@@ -1134,17 +1136,17 @@ func sendNearRelayPingsMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 	}
 
-	if state.NearRelayPingsMessageChannel != nil {
-		state.NearRelayPingsMessageChannel <- &message
+	if state.AnalyticsNearRelayPingsMessageChannel != nil {
+		state.AnalyticsNearRelayPingsMessageChannel <- &message
 		state.SentNearRelayPingsMessage = true
 	}
 }
 
-func sendSessionUpdateMessage(state *SessionUpdateState) {
+func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
-	message := messages.SessionUpdateMessage{}
+	message := messages.AnalyticsSessionUpdateMessage{}
 
-	message.Version = messages.SessionUpdateMessageVersion_Write
+	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 
 	// always
 
@@ -1180,8 +1182,8 @@ func sendSessionUpdateMessage(state *SessionUpdateState) {
 
 	// send message to channel
 
-	if state.SessionUpdateMessageChannel != nil {
-		state.SessionUpdateMessageChannel <- &message
+	if state.AnalyticsSessionUpdateMessageChannel != nil {
+		state.AnalyticsSessionUpdateMessageChannel <- &message
 		state.SentSessionUpdateMessage = true
 	}
 }

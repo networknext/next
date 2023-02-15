@@ -20,12 +20,13 @@ var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
 var relayBackendPrivateKey []byte
 
-var serverInitMessageChannel chan *messages.ServerInitMessage
-var serverUpdateMessageChannel chan *messages.ServerUpdateMessage
-var portalMessageChannel chan *messages.PortalMessage
-var nearRelayPingsMessageChannel chan *messages.NearRelayPingsMessage
-var sessionUpdateMessageChannel chan *messages.SessionUpdateMessage
-var matchDataMessageChannel chan *messages.MatchDataMessage
+var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
+
+var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
+var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
+var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
+var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
+var analyticsNearRelayPingsMessageChannel chan *messages.AnalyticsNearRelayPingsMessage
 
 func main() {
 
@@ -54,21 +55,27 @@ func main() {
 		panic("RELAY_BACKEND_PRIVATE_KEY must be specified")
 	}
 
-	// initialize message channels
+	// initialize portal message channels
 
-	serverInitMessageChannel = make(chan *messages.ServerInitMessage, channelSize)
-	serverUpdateMessageChannel = make(chan *messages.ServerUpdateMessage, channelSize)
-	portalMessageChannel = make(chan *messages.PortalMessage, channelSize)
-	nearRelayPingsMessageChannel = make(chan *messages.NearRelayPingsMessage, channelSize)
-	sessionUpdateMessageChannel = make(chan *messages.SessionUpdateMessage, channelSize)
-	matchDataMessageChannel = make(chan *messages.MatchDataMessage, channelSize)
+	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 
-	processServerInitMessages()
-	processServerUpdateMessages()
-	processPortalMessages()
-	processNearRelayPingsMessages()
-	processSessionUpdateMessages()
-	processMatchDataMessages()
+	// initialize analytics message channels
+
+	analyticsServerInitMessageChannel = make(chan *messages.AnalyticsServerInitMessage, channelSize)
+	analyticsServerUpdateMessageChannel = make(chan *messages.AnalyticsServerUpdateMessage, channelSize)
+	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
+	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
+	analyticsNearRelayPingsMessageChannel = make(chan *messages.AnalyticsNearRelayPingsMessage, channelSize)
+
+	processPortalSessionUpdateMessages()
+	// todo: portal match update
+	// todo: portal server update
+
+	processAnalyticsServerInitMessages()
+	processAnalyticsServerUpdateMessages()
+	processAnalyticsNearRelayPingsMessages()
+	processAnalyticsSessionUpdateMessages()
+	processAnalyticsMatchDataMessages()
 
 	// start service
 
@@ -115,12 +122,12 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		return service.GetMagicValues()
 	}
 
-	handler.ServerInitMessageChannel = serverInitMessageChannel
-	handler.ServerUpdateMessageChannel = serverUpdateMessageChannel
-	handler.PortalMessageChannel = portalMessageChannel
-	handler.NearRelayPingsMessageChannel = nearRelayPingsMessageChannel
-	handler.SessionUpdateMessageChannel = sessionUpdateMessageChannel
-	handler.MatchDataMessageChannel = matchDataMessageChannel
+	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
+
+	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
+	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
+	handler.AnalyticsSessionUpdateMessageChannel = analyticsSessionUpdateMessageChannel
+	handler.AnalyticsNearRelayPingsMessageChannel = analyticsNearRelayPingsMessageChannel
 
 	// todo: not ready yet
 	handler.LocateIP = locateIP_Local
@@ -143,62 +150,62 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.LocateIP(ip)
 }
 
-func processServerInitMessages() {
+func processPortalSessionUpdateMessages() {
 	go func() {
 		for {
-			message := <-serverInitMessageChannel
+			message := <-portalSessionUpdateMessageChannel
 			_ = message
-			core.Debug("processed server init message")
+			core.Debug("processed portal session update message")
 		}
 	}()
 }
 
-func processServerUpdateMessages() {
+func processAnalyticsServerInitMessages() {
 	go func() {
 		for {
-			message := <-serverUpdateMessageChannel
+			message := <-analyticsServerInitMessageChannel
 			_ = message
-			core.Debug("processed server update message")
+			core.Debug("processed analytics server init message")
 		}
 	}()
 }
 
-func processPortalMessages() {
+func processAnalyticsServerUpdateMessages() {
 	go func() {
 		for {
-			message := <-portalMessageChannel
+			message := <-analyticsServerUpdateMessageChannel
 			_ = message
-			core.Debug("processed portal message")
+			core.Debug("processed analytics server update message")
 		}
 	}()
 }
 
-func processNearRelayPingsMessages() {
+func processAnalyticsNearRelayPingsMessages() {
 	go func() {
 		for {
-			message := <-nearRelayPingsMessageChannel
+			message := <-analyticsNearRelayPingsMessageChannel
 			_ = message
-			core.Debug("processed near relay pings message")
+			core.Debug("processed analytics near relay pings message")
 		}
 	}()
 }
 
-func processSessionUpdateMessages() {
+func processAnalyticsSessionUpdateMessages() {
 	go func() {
 		for {
-			message := <-sessionUpdateMessageChannel
+			message := <-analyticsSessionUpdateMessageChannel
 			_ = message
-			core.Debug("processed session update message")
+			core.Debug("processed analytics session update message")
 		}
 	}()
 }
 
-func processMatchDataMessages() {
+func processAnalyticsMatchDataMessages() {
 	go func() {
 		for {
-			message := <-matchDataMessageChannel
+			message := <-analyticsMatchDataMessageChannel
 			_ = message
-			core.Debug("processed match data message")
+			core.Debug("processed analytics match data message")
 		}
 	}()
 }

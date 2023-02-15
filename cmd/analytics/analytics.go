@@ -54,11 +54,11 @@ func main() {
 	ProcessRouteMatrix(service)
 
 	if enableGooglePubsub && enableGoogleBigquery {
-		Process[*messages.CostMatrixStatsMessage](service, "cost_matrix_stats", &messages.CostMatrixStatsMessage{}, false)
+		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost_matrix_update", &messages.AnalyticsCostMatrixUpdateMessage{}, false)
 		Process[*messages.RouteMatrixStatsMessage](service, "route_matrix_stats", &messages.RouteMatrixStatsMessage{}, false)
-		Process[*messages.PingStatsMessage](service, "ping_stats", &messages.PingStatsMessage{}, false)
+		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay_to_relay_ping", &messages.AnalyticsRelayToRelayPingMessage{}, false)
 		Process[*messages.RelayUpdateMessage](service, "relay_update", &messages.RelayUpdateMessage{}, false)
-		Process[*messages.MatchDataMessage](service, "match_data", &messages.MatchDataMessage{}, false)
+		Process[*messages.AnalyticsMatchDataMessage](service, "match_data", &messages.AnalyticsMatchDataMessage{}, false)
 	}
 
 	service.StartWebServer()
@@ -164,9 +164,9 @@ func ProcessCostMatrix(service *common.Service) {
 		MessageChannelSize: 10 * 1024,
 	}
 
-	statsPubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
+	costMatrixUpdatePubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
 	if err != nil {
-		core.Error("could not create google pubsub producer for processing cost matrix: %v", err)
+		core.Error("could not create google pubsub producer for processing cost matrix update: %v", err)
 		os.Exit(1)
 	}
 
@@ -207,7 +207,7 @@ func ProcessCostMatrix(service *common.Service) {
 					continue
 				}
 
-				costMatrixBytes := len(buffer)
+				costMatrixSize := len(buffer)
 				costMatrixNumRelays := len(costMatrix.RelayIds)
 
 				costMatrixNumDestRelays := 0
@@ -226,7 +226,7 @@ func ProcessCostMatrix(service *common.Service) {
 				logMutex.Lock()
 
 				core.Debug("---------------------------------------------")
-				core.Debug("cost matrix bytes: %d", costMatrixBytes)
+				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
 				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
 				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
@@ -234,21 +234,22 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Unlock()
 
-				// send cost matrix message via google pubsub
+				// send cost matrix update message via google pubsub
 
 				if enableGooglePubsub {
 
-					costMatrixStatsMessage := messages.CostMatrixStatsMessage{}
+					costMatrixStatsMessage := messages.AnalyticsCostMatrixUpdateMessage{}
 
-					costMatrixStatsMessage.Version = messages.CostMatrixStatsMessageVersion_Write
-					costMatrixStatsMessage.Bytes = costMatrixBytes
+					costMatrixStatsMessage.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
+					costMatrixStatsMessage.Timestamp = uint64(time.Now().Unix())
+					costMatrixStatsMessage.CostMatrixSize = costMatrixSize
 					costMatrixStatsMessage.NumRelays = costMatrixNumRelays
 					costMatrixStatsMessage.NumDestRelays = costMatrixNumDestRelays
 					costMatrixStatsMessage.NumDatacenters = costMatrixNumDatacenters
 
 					message := costMatrixStatsMessage.Write(make([]byte, maxBytes))
 
-					statsPubsubProducer.MessageChannel <- message
+					costMatrixUpdatePubsubProducer.MessageChannel <- message
 				}
 			}
 		}

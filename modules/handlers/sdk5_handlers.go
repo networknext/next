@@ -61,12 +61,13 @@ type SDK5_Handler struct {
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 
-	ServerInitMessageChannel     chan<- *messages.ServerInitMessage
-	ServerUpdateMessageChannel   chan<- *messages.ServerUpdateMessage
-	PortalMessageChannel         chan<- *messages.PortalMessage
-	NearRelayPingsMessageChannel chan<- *messages.NearRelayPingsMessage
-	SessionUpdateMessageChannel  chan<- *messages.SessionUpdateMessage
-	MatchDataMessageChannel      chan<- *messages.MatchDataMessage
+	PortalSessionUpdateMessageChannel chan<- *messages.PortalSessionUpdateMessage
+
+	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
 }
 
 func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -286,10 +287,11 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 
-	if handler.ServerInitMessageChannel != nil {
+	if handler.AnalyticsServerInitMessageChannel != nil {
 
-		message := messages.ServerInitMessage{}
+		message := messages.AnalyticsServerInitMessage{}
 
+		message.Timestamp = uint64(time.Now().Unix())
 		message.SDKVersion_Major = byte(requestPacket.Version.Major)
 		message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 		message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
@@ -297,7 +299,7 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 		message.DatacenterId = requestPacket.DatacenterId
 		message.DatacenterName = requestPacket.DatacenterName
 
-		handler.ServerInitMessageChannel <- &message
+		handler.AnalyticsServerInitMessageChannel <- &message
 
 		handler.Events[SDK5_HandlerEvent_SentServerInitMessage] = true
 	}
@@ -317,17 +319,18 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 
 	defer func() {
 
-		if handler.ServerUpdateMessageChannel != nil {
+		if handler.AnalyticsServerUpdateMessageChannel != nil {
 
-			message := messages.ServerUpdateMessage{}
+			message := messages.AnalyticsServerUpdateMessage{}
 
+			message.Timestamp = uint64(time.Now().Unix())
 			message.SDKVersion_Major = byte(requestPacket.Version.Major)
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
 			message.DatacenterId = requestPacket.DatacenterId
 
-			handler.ServerUpdateMessageChannel <- &message
+			handler.AnalyticsServerUpdateMessageChannel <- &message
 
 			handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage] = true
 		}
@@ -402,15 +405,14 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 
 	SDK5_SendResponsePacket(handler, conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
 
-	if handler.MatchDataMessageChannel != nil {
+	if handler.AnalyticsMatchDataMessageChannel != nil {
 
-		message := messages.MatchDataMessage{}
+		message := messages.AnalyticsMatchDataMessage{}
 
 		message.Timestamp = uint64(time.Now().Unix())
 		message.BuyerId = requestPacket.BuyerId
 		message.ServerAddress = requestPacket.ServerAddress
 		message.DatacenterId = requestPacket.DatacenterId
-		message.UserHash = requestPacket.UserHash
 		message.SessionId = requestPacket.SessionId
 		message.MatchId = requestPacket.MatchId
 		message.NumMatchValues = uint32(requestPacket.NumMatchValues)
@@ -419,7 +421,7 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 			message.MatchValues[i] = requestPacket.MatchValues[i]
 		}
 
-		handler.MatchDataMessageChannel <- &message
+		handler.AnalyticsMatchDataMessageChannel <- &message
 
 		handler.Events[SDK5_HandlerEvent_SentMatchDataMessage] = true
 	}
@@ -457,9 +459,9 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 		RouteType:   packets.SDK5_RouteTypeDirect,
 	}
 
-	state.PortalMessageChannel = handler.PortalMessageChannel
-	state.NearRelayPingsMessageChannel = handler.NearRelayPingsMessageChannel
-	state.SessionUpdateMessageChannel = handler.SessionUpdateMessageChannel
+	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
+	state.AnalyticsNearRelayPingsMessageChannel = handler.AnalyticsNearRelayPingsMessageChannel
+	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 
 	// track the length of session update handlers
 

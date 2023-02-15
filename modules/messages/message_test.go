@@ -259,10 +259,10 @@ func GenerateRandomSessionSummaryMessage() messages.SessionSummaryMessage {
 	return message
 }
 
-func GenerateRandomPortalMessage() messages.PortalMessage {
+func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMessage {
 
-	message := messages.PortalMessage{
-		Version: byte(common.RandomInt(messages.PortalMessageVersion_Min, messages.PortalMessageVersion_Max)),
+	message := messages.PortalSessionUpdateMessage{
+		Version: byte(common.RandomInt(messages.PortalSessionUpdateMessageVersion_Min, messages.PortalSessionUpdateMessageVersion_Max)),
 
 		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
@@ -433,12 +433,12 @@ func TestSessionUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestPortalMessage(t *testing.T) {
+func TestPortalSessionUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomPortalMessage()
-		readMessage := messages.PortalMessage{}
-		MessageReadWriteTest[*messages.PortalMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomPortalSessionUpdateMessage()
+		readMessage := messages.PortalSessionUpdateMessage{}
+		MessageReadWriteTest[*messages.PortalSessionUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 

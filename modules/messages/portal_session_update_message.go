@@ -9,29 +9,29 @@ import (
 )
 
 const (
-	PortalMessageVersion_Min   = 1
-	PortalMessageVersion_Max   = 1
-	PortalMessageVersion_Write = 1
+	PortalSessionUpdateMessageVersion_Min   = 1
+	PortalSessionUpdateMessageVersion_Max   = 1
+	PortalSessionUpdateMessageVersion_Write = 1
 )
 
-type PortalMessage struct {
+type PortalSessionUpdateMessage struct {
 	Version byte
 
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
 
-	SessionId     uint64
-	MatchId       uint64
-	BuyerId       uint64
-	DatacenterId  uint64
-	Latitude      float32
-	Longitude     float32
-	ClientAddress net.UDPAddr
-	ServerAddress net.UDPAddr
-	SliceNumber   uint32
-	SessionFlags  uint64
-	SessionEvents uint64
+	SessionId      uint64
+	MatchId        uint64
+	BuyerId        uint64
+	DatacenterId   uint64
+	Latitude       float32
+	Longitude      float32
+	ClientAddress  net.UDPAddr
+	ServerAddress  net.UDPAddr
+	SliceNumber    uint32
+	SessionFlags   uint64
+	SessionEvents  uint64
 	InternalEvents uint64
 
 	DirectRTT        float32
@@ -61,12 +61,12 @@ type PortalMessage struct {
 	NearRelayRoutable   [constants.MaxNearRelays]bool
 }
 
-func (message *PortalMessage) Write(buffer []byte) []byte {
+func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	if message.Version < PortalMessageVersion_Min || message.Version > PortalMessageVersion_Max {
-		panic(fmt.Sprintf("invalid portal message version %d", message.Version))
+	if message.Version < PortalSessionUpdateMessageVersion_Min || message.Version > PortalSessionUpdateMessageVersion_Max {
+		panic(fmt.Sprintf("invalid portal session update message version %d", message.Version))
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
@@ -123,7 +123,7 @@ func (message *PortalMessage) Write(buffer []byte) []byte {
 	return buffer[:index]
 }
 
-func (message *PortalMessage) Read(buffer []byte) error {
+func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	index := 0
 
@@ -131,7 +131,7 @@ func (message *PortalMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read portal message version")
 	}
 
-	if message.Version < PortalMessageVersion_Min || message.Version > PortalMessageVersion_Max {
+	if message.Version < PortalSessionUpdateMessageVersion_Min || message.Version > PortalSessionUpdateMessageVersion_Max {
 		return fmt.Errorf("invalid portal message version %d", message.Version)
 	}
 
