@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -16,9 +18,7 @@ const (
 
 type AnalyticsNearRelayPingsMessage struct {
 	Version byte
-
 	Timestamp uint64
-
 	BuyerId        uint64
 	SessionId      uint64
 	MatchId        uint64
@@ -28,7 +28,6 @@ type AnalyticsNearRelayPingsMessage struct {
 	ClientAddress  net.UDPAddr
 	ConnectionType byte
 	PlatformType   byte
-
 	NumNearRelays       uint32
 	NearRelayId         [constants.MaxNearRelays]uint64
 	NearRelayRTT        [constants.MaxNearRelays]byte
@@ -147,4 +146,43 @@ func (message *AnalyticsNearRelayPingsMessage) Read(buffer []byte) error {
 	return nil
 }
 
-// todo: bigquery save function
+func (message *AnalyticsNearRelayPingsMessage) Save() (map[string]bigquery.Value, string, error) {
+
+	bigquery_entry := make(map[string]bigquery.Value)
+
+	bigquery_entry["timestamp"] = int(message.Timestamp)
+	bigquery_entry["buyer_id"] = int(message.BuyerId)
+	bigquery_entry["session_id"] = int(message.SessionId)
+	bigquery_entry["match_id"] = int(message.MatchId)
+	bigquery_entry["user_hash"] = int(message.UserHash)
+	bigquery_entry["latitude"] = float64(message.Latitude)
+	bigquery_entry["longitude"] = float64(message.Longitude)
+	bigquery_entry["client_address"] = message.ClientAddress.String()
+	bigquery_entry["connection_type"] = int(message.ConnectionType)
+
+	near_relay_id := make([]bigquery.Value, message.NumNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		near_relay_id[i] = int(message.NearRelayId[i])
+	}
+	bigquery_entry["near_relay_id"] = near_relay_id
+
+	near_relay_rtt := make([]bigquery.Value, message.NumNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		near_relay_rtt[i] = int(message.NearRelayRTT[i])
+	}
+	bigquery_entry["near_relay_rtt"] = near_relay_rtt
+
+	near_relay_jitter := make([]bigquery.Value, message.NumNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		near_relay_jitter[i] = int(message.NearRelayJitter[i])
+	}
+	bigquery_entry["near_relay_jitter"] = near_relay_jitter
+
+	near_relay_packet_loss := make([]bigquery.Value, message.NumNearRelays)
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		near_relay_packet_loss[i] = float64(message.NearRelayPacketLoss[i])
+	}
+	bigquery_entry["near_relay_packet_loss"] = near_relay_packet_loss
+
+	return bigquery_entry, "", nil
+}

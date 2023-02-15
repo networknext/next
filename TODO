@@ -8,9 +8,9 @@ DONE
 
 	Rename all analytics messages to have analytics in front
 
-TODO
-
 	Convert route matrix stats matrix -> analytics route matrix update message
+
+TODO
 
 	Make sure all analytics messages have their bigquery save methods coded
 
