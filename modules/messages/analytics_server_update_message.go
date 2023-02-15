@@ -91,7 +91,6 @@ func (message *AnalyticsServerUpdateMessage) Write(buffer []byte) []byte {
 }
 
 func (message *AnalyticsServerUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
-
 	bigquery_entry := make(map[string]bigquery.Value)
 	bigquery_entry["timestamp"] = int(message.Timestamp)
 	bigquery_entry["sdk_version_major"] = int(message.SDKVersion_Major)

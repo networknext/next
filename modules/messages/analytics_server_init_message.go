@@ -24,6 +24,7 @@ type AnalyticsServerInitMessage struct {
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
 	BuyerId          uint64
+	MatchId          uint64
 	DatacenterId     uint64
 	DatacenterName   string
 }
@@ -60,6 +61,10 @@ func (message *AnalyticsServerInitMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read buyer id")
 	}
 
+	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
+		return fmt.Errorf("failed to read match id")
+	}
+
 	if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
 		return fmt.Errorf("failed to read datacenter id")
 	}
@@ -85,6 +90,7 @@ func (message *AnalyticsServerInitMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
+	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteString(buffer, &index, message.DatacenterName, constants.MaxDatacenterNameLength)
 
@@ -92,10 +98,14 @@ func (message *AnalyticsServerInitMessage) Write(buffer []byte) []byte {
 }
 
 func (message *AnalyticsServerInitMessage) Save() (map[string]bigquery.Value, string, error) {
-
-	bigquery_message := make(map[string]bigquery.Value)
-
-	// todo: code save method
-
-	return bigquery_message, "", nil
+	bigquery_entry := make(map[string]bigquery.Value)
+	bigquery_entry["timestamp"] = int(message.Timestamp)
+	bigquery_entry["sdk_version_major"] = int(message.SDKVersion_Major)
+	bigquery_entry["sdk_version_minor"] = int(message.SDKVersion_Minor)
+	bigquery_entry["sdk_version_patch"] = int(message.SDKVersion_Patch)
+	bigquery_entry["buyer_id"] = int(message.BuyerId)
+	bigquery_entry["match_id"] = int(message.BuyerId)
+	bigquery_entry["datacenter_id"] = int(message.DatacenterId)
+	bigquery_entry["datacenter_name"] = message.DatacenterName
+	return bigquery_entry, "", nil
 }
