@@ -41,12 +41,14 @@ const (
 	SDK5_HandlerEvent_SentSessionUpdateResponsePacket = 21
 	SDK5_HandlerEvent_SentMatchDataResponsePacket     = 22
 
-	SDK5_HandlerEvent_SentServerInitMessage    = 23
-	SDK5_HandlerEvent_SentServerUpdateMessage  = 24
-	SDK5_HandlerEvent_SentSessionUpdateMessage = 25
-	SDK5_HandlerEvent_SentMatchDataMessage     = 26
+	SDK5_HandlerEvent_SentAnalyticsServerInitMessage    = 23
+	SDK5_HandlerEvent_SentAnalyticsServerUpdateMessage  = 24
+	SDK5_HandlerEvent_SentAnalyticsSessionUpdateMessage = 25
+	SDK5_HandlerEvent_SentAnalyticsMatchDataMessage     = 26
 
-	SDK5_HandlerEvent_NumEvents = 27
+	SDK5_HandlerEvent_SentPortalServerUpdateMessage = 27
+
+	SDK5_HandlerEvent_NumEvents = 28
 )
 
 type SDK5_Handler struct {
@@ -61,6 +63,7 @@ type SDK5_Handler struct {
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 
+	PortalServerUpdateMessageChannel  chan<- *messages.PortalServerUpdateMessage
 	PortalSessionUpdateMessageChannel chan<- *messages.PortalSessionUpdateMessage
 
 	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
@@ -305,7 +308,7 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 
 		handler.AnalyticsServerInitMessageChannel <- &message
 
-		handler.Events[SDK5_HandlerEvent_SentServerInitMessage] = true
+		handler.Events[SDK5_HandlerEvent_SentAnalyticsServerInitMessage] = true
 	}
 }
 
@@ -336,10 +339,36 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 			// todo
 			// message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
+			// todo
+			// message.NumSessions = requestPacket.NumSessions
 
 			handler.AnalyticsServerUpdateMessageChannel <- &message
 
-			handler.Events[SDK5_HandlerEvent_SentServerUpdateMessage] = true
+			handler.Events[SDK5_HandlerEvent_SentAnalyticsServerUpdateMessage] = true
+		}
+	}()
+
+	defer func() {
+
+		if handler.PortalServerUpdateMessageChannel != nil {
+
+			message := messages.PortalServerUpdateMessage{}
+
+			message.Version = messages.PortalServerUpdateMessageVersion_Write
+			message.Timestamp = uint64(time.Now().Unix())
+			message.SDKVersion_Major = byte(requestPacket.Version.Major)
+			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+			message.BuyerId = requestPacket.BuyerId
+			// todo
+			// message.MatchId = requestPacket.MatchId
+			message.DatacenterId = requestPacket.DatacenterId
+			// todo
+			// message.NumSessions = requestPacket.NumSessions
+
+			handler.PortalServerUpdateMessageChannel <- &message
+
+			handler.Events[SDK5_HandlerEvent_SentPortalServerUpdateMessage] = true
 		}
 	}()
 
@@ -430,7 +459,7 @@ func SDK5_ProcessMatchDataRequestPacket(handler *SDK5_Handler, conn *net.UDPConn
 
 		handler.AnalyticsMatchDataMessageChannel <- &message
 
-		handler.Events[SDK5_HandlerEvent_SentMatchDataMessage] = true
+		handler.Events[SDK5_HandlerEvent_SentAnalyticsMatchDataMessage] = true
 	}
 }
 

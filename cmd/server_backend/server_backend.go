@@ -23,6 +23,7 @@ var serverBackendPrivateKey []byte
 var relayBackendPrivateKey []byte
 
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
+var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
 
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
@@ -75,8 +76,10 @@ func main() {
 	// initialize portal message channels
 
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
+	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
 
 	processPortalMessages[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
+	processPortalMessages[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -140,6 +143,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	}
 
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
+	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
 
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
@@ -173,9 +177,9 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 	streamName := strings.ReplaceAll(name, " ", "_")
 
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
-		RedisHostname:      redisHostname,
-		RedisPassword:      redisPassword,
-		StreamName:         streamName,
+		RedisHostname: redisHostname,
+		RedisPassword: redisPassword,
+		StreamName:    streamName,
 	})
 
 	if err != nil {

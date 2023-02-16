@@ -5,8 +5,8 @@ import (
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/messages"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/messages"
 )
 
 var redisHostname string

@@ -26,7 +26,7 @@ TODO
 
 	Emit the portal server update message
 
-	Emit the portal realy update message
+	Emit the portal relay update message
 
 	--------------------------------
 
@@ -34,7 +34,7 @@ TODO
 
 	--------------------------------
 
-	Extend the portal cruncher so it scales, eg. we can configure how many consumers per-message stream.
+	Extend the portal cruncher so it scales, eg. we can configure how many consumers for each type of message.
 
 	--------------------------------
 

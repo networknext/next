@@ -14,17 +14,16 @@ const (
 )
 
 type PortalServerUpdateMessage struct {
-	Version byte
-
+	Version          byte
+	Timestamp        uint64
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
-
-	MatchId        uint64
-	BuyerId        uint64
-	DatacenterId   uint64
-	NumSessions    uint32
-	ServerAddress  net.UDPAddr
+	MatchId          uint64
+	BuyerId          uint64
+	DatacenterId     uint64
+	NumSessions      uint32
+	ServerAddress    net.UDPAddr
 }
 
 func (message *PortalServerUpdateMessage) GetMaxSize() int {
@@ -40,11 +39,10 @@ func (message *PortalServerUpdateMessage) Write(buffer []byte) []byte {
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
-
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
-
 	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
@@ -64,6 +62,10 @@ func (message *PortalServerUpdateMessage) Read(buffer []byte) error {
 
 	if message.Version < PortalServerUpdateMessageVersion_Min || message.Version > PortalServerUpdateMessageVersion_Max {
 		return fmt.Errorf("invalid portal server update message version %d", message.Version)
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read timestamp")
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
