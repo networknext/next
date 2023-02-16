@@ -547,6 +547,8 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// ---------------------------------------------------------------------------------------------------
+
 	fmt.Printf("verifying leader election in analytics ...")
 
 	analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
@@ -591,6 +593,10 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+
+	// ----------------------------------------------------------------------------------------------
+
+	// todo: verify one of the portal crunchers saw the portal session update message
 
 	// ==================================================================================
 

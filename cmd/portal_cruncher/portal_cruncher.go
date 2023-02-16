@@ -24,8 +24,6 @@ func main() {
 
 	service.StartWebServer()
 
-	service.LeaderElection(true)
-
 	ProcessSessionUpdateMessages(service)
 
 	service.WaitForShutdown()
