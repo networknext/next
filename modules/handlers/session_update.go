@@ -1034,14 +1034,14 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message := messages.PortalSessionUpdateMessage{}
 
+	message.Version = messages.PortalSessionUpdateMessageVersion_Write
+
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
 
 	message.SDKVersion_Major = byte(state.Request.Version.Major)
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
-
-	message.Version = messages.PortalSessionUpdateMessageVersion_Write
 
 	message.SessionId = state.Input.SessionId
 	message.BuyerId = state.Request.BuyerId
@@ -1104,9 +1104,7 @@ func sendAnalyticsNearRelayPingsMessage(state *SessionUpdateState) {
 	message := messages.AnalyticsNearRelayPingsMessage{}
 
 	message.Version = messages.AnalyticsNearRelayPingsMessageVersion_Write
-
 	message.Timestamp = uint64(time.Now().Unix())
-
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
 	// todo
@@ -1117,7 +1115,6 @@ func sendAnalyticsNearRelayPingsMessage(state *SessionUpdateState) {
 	message.ClientAddress = state.Request.ClientAddress
 	message.ConnectionType = byte(state.Request.ConnectionType)
 	message.PlatformType = byte(state.Request.PlatformType)
-
 	message.NumNearRelays = uint32(state.Request.NumNearRelays)
 	for i := 0; i < int(state.Request.NumNearRelays); i++ {
 		message.NearRelayId[i] = state.Request.NearRelayIds[i]
@@ -1136,10 +1133,9 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	message := messages.AnalyticsSessionUpdateMessage{}
 
-	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
-
 	// always
 
+	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
 	message.SessionId = state.Input.SessionId
 	message.SliceNumber = state.Input.SliceNumber
@@ -1185,7 +1181,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message := messages.AnalyticsSessionSummaryMessage{}
 
 	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
-
 	message.Timestamp = uint64(time.Now().Unix())
 	message.SessionId = state.Input.SessionId
 	message.DatacenterId = state.Request.DatacenterId

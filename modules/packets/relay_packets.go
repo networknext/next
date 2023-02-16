@@ -11,11 +11,13 @@ import (
 )
 
 const (
+	RelayUpdateRequestPacket_VersionMin   = 1
+	RelayUpdateRequestPacket_VersionMax   = 1
+	RelayUpdateRequestPacket_VersionWrite = 1
 
-	// todo: update to min/max/write
-
-	VersionNumberRelayUpdateRequest  = 1
-	VersionNumberRelayUpdateResponse = 1
+	RelayUpdateResponsePacket_VersionMin   = 1
+	RelayUpdateResponsePacket_VersionMax   = 1
+	RelayUpdateResponsePacket_VersionWrite = 1
 )
 
 // --------------------------------------------------------------------------
@@ -50,6 +52,10 @@ type RelayUpdateRequestPacket struct {
 func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	index := 0
+
+	if packet.Version < RelayUpdateRequestPacket_VersionMin || packet.Version > RelayUpdateRequestPacket_VersionMax {
+		panic(fmt.Sprintf("invalid relay update request packet version %d", packet.Version))
+	}
 
 	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteAddress(buffer, &index, &packet.Address)
@@ -86,7 +92,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 
 	encoding.ReadUint8(buffer, &index, &packet.Version)
 
-	if packet.Version != VersionNumberRelayUpdateRequest {
+	if packet.Version < RelayUpdateRequestPacket_VersionMin && packet.Version > RelayUpdateRequestPacket_VersionMax {
 		return errors.New("invalid relay update request packet version")
 	}
 
@@ -195,6 +201,10 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 
 	index := 0
 
+	if packet.Version < RelayUpdateResponsePacket_VersionMin || packet.Version > RelayUpdateResponsePacket_VersionMax {
+		panic(fmt.Sprintf("invalid relay update request packet version %d", packet.Version))
+	}
+
 	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteUint64(buffer, &index, uint64(packet.Timestamp))
 	encoding.WriteUint32(buffer, &index, uint32(packet.NumRelays))
@@ -232,8 +242,8 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read version")
 	}
 
-	if packet.Version > VersionNumberRelayUpdateResponse {
-		return errors.New("invalid relay update response version")
+	if packet.Version < RelayUpdateResponsePacket_VersionMin || packet.Version > RelayUpdateResponsePacket_VersionMax {
+		return errors.New("invalid relay update response packet version")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {

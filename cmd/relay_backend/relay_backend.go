@@ -748,7 +748,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				// build relay update message for analytics
 
 				numUnroutable := numSamples - numRoutable
-				
+
 				relayUpdateMessage := messages.AnalyticsRelayUpdateMessage{
 					Version:                   messages.AnalyticsRelayUpdateMessageVersion_Write,
 					Timestamp:                 uint64(time.Now().Unix()),

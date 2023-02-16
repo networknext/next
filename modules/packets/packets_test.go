@@ -453,7 +453,7 @@ func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P
 func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 
 	packet := packets.RelayUpdateRequestPacket{
-		Version:    packets.VersionNumberRelayUpdateRequest,
+		Version:    uint8(common.RandomInt(packets.RelayUpdateRequestPacket_VersionMin, packets.RelayUpdateRequestPacket_VersionMax)),
 		Timestamp:  rand.Uint64(),
 		Address:    common.RandomAddress(),
 		NumSamples: uint32(common.RandomInt(0, constants.MaxRelays-1)),
@@ -485,7 +485,7 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket {
 
 	packet := packets.RelayUpdateResponsePacket{
-		Version:   packets.VersionNumberRelayUpdateResponse,
+		Version:   uint8(common.RandomInt(packets.RelayUpdateResponsePacket_VersionMin, packets.RelayUpdateResponsePacket_VersionMax)),
 		Timestamp: rand.Uint64(),
 		NumRelays: uint32(common.RandomInt(0, constants.MaxRelays)),
 	}

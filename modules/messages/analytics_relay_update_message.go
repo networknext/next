@@ -33,7 +33,7 @@ type AnalyticsRelayUpdateMessage struct {
 }
 
 func (message *AnalyticsRelayUpdateMessage) GetMaxSize() int {
-	return 256 + 8 * constants.NumRelayCounters
+	return 256 + 8*constants.NumRelayCounters
 }
 
 func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {

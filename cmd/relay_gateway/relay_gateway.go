@@ -114,8 +114,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		var packetVersion uint8
 		encoding.ReadUint8(packetData, &index, &packetVersion)
 
-		// todo: min/max versions here
-		if packetVersion != packets.VersionNumberRelayUpdateRequest {
+		if packetVersion < packets.RelayUpdateRequestPacket_VersionMin || packetVersion > packets.RelayUpdateRequestPacket_VersionMax {
 			core.Debug("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
@@ -193,7 +192,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
-		responsePacket.Version = packets.VersionNumberRelayUpdateResponse
+		responsePacket.Version = packets.RelayUpdateResponsePacket_VersionWrite
 		responsePacket.Timestamp = uint64(time.Now().Unix())
 		responsePacket.TargetVersion = relay.Version
 

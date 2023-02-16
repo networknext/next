@@ -16,9 +16,13 @@ DONE
 
 	Make sure that all messages are setup with min/max/write versions.
 
-TODO
-
 	Go through server backend and write code to serialize all analytics messages (and throw them away...)
+
+	Serialize all portal messages.
+
+	Tidy up server backend and use generics to avoid writing copy pasta functions per-message type.
+
+TODO
 
 	--------------
 

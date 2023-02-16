@@ -32,7 +32,7 @@ type AnalyticsMatchDataMessage struct {
 }
 
 func (message *AnalyticsMatchDataMessage) GetMaxSize() int {
-	return 64 + 8 * constants.MaxMatchValues
+	return 64 + 8*constants.MaxMatchValues
 }
 
 func (message *AnalyticsMatchDataMessage) Read(buffer []byte) error {
