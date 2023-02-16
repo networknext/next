@@ -24,6 +24,8 @@ DONE
 
 TODO
 
+	Implement database method "GetDatacenterRelays" and precalc it on database load from sql
+
 	--------------
 
 	Get pubsub emulator setup.

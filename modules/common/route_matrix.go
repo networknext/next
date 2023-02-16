@@ -320,17 +320,6 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	return analysis
 }
 
-func (routeMatrix *RouteMatrix) GetDatacenterRelays(datacenterId uint64) []uint64 {
-	// todo: would be good if this wasn't O(n) where n is the number of relays
-	relayIds := make([]uint64, 0, 8)
-	for i := range routeMatrix.RelayDatacenterIds {
-		if routeMatrix.RelayDatacenterIds[i] == datacenterId {
-			relayIds = append(relayIds, routeMatrix.RelayIds[i])
-		}
-	}
-	return relayIds
-}
-
 func GenerateRandomRouteMatrix() RouteMatrix {
 
 	routeMatrix := RouteMatrix{

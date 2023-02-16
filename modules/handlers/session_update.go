@@ -215,8 +215,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		If anything goes wrong, this is an empty set.
 	*/
 
-	// todo: we can move "GetDatacenterRelays" into the database and precalc this on load from SQL
-	destRelayIds := state.RouteMatrix.GetDatacenterRelays(state.Request.DatacenterId)
+	destRelayIds := state.Database.GetDatacenterRelays(state.Request.DatacenterId)
 	if len(destRelayIds) == 0 {
 		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
 		state.SessionFlags |= constants.SessionFlags_NoRelaysInDatacenter

@@ -287,16 +287,7 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	state.Buyer.Id = 0x11111
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
-
-	const NumRelays = 10
-
-	state.RouteMatrix.RelayIds = make([]uint64, NumRelays)
-	state.RouteMatrix.RelayDatacenterIds = make([]uint64, NumRelays)
-
-	for i := 0; i < NumRelays; i++ {
-		state.RouteMatrix.RelayIds[i] = uint64(i)
-		state.RouteMatrix.RelayDatacenterIds[i] = 0x12345
-	}
+	state.Database.DatacenterRelays[0x12345] = []uint64{1,2}
 
 	result := handlers.SessionUpdate_Pre(state)
 

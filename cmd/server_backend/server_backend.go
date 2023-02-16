@@ -159,7 +159,7 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.LocateIP(ip)
 }
 
-func processPortalMessages[T messages.Message] (name string, inputChannel chan T) {
+func processPortalMessages[T messages.Message](name string, inputChannel chan T) {
 	go func() {
 		for {
 			message := <-inputChannel
@@ -173,7 +173,7 @@ func processPortalMessages[T messages.Message] (name string, inputChannel chan T
 	}()
 }
 
-func processAnalyticsMessages[T messages.Message] (name string, inputChannel chan T) {
+func processAnalyticsMessages[T messages.Message](name string, inputChannel chan T) {
 	go func() {
 		for {
 			message := <-inputChannel

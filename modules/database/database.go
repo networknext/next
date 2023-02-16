@@ -75,28 +75,29 @@ type DatacenterMap struct {
 }
 
 type Database struct {
-	CreationTime   string
-	Creator        string
-	Relays         []Relay
-	RelayMap       map[uint64]*Relay
-	BuyerMap       map[uint64]*Buyer
-	SellerMap      map[uint64]*Seller
-	DatacenterMap  map[uint64]*Datacenter
-	DatacenterMaps map[uint64]map[uint64]*DatacenterMap
-	//                   ^ BuyerId  ^ DatacenterId
+	CreationTime     string
+	Creator          string
+	Relays           []Relay
+	RelayMap         map[uint64]*Relay
+	BuyerMap         map[uint64]*Buyer
+	SellerMap        map[uint64]*Seller
+	DatacenterMap    map[uint64]*Datacenter
+	DatacenterMaps   map[uint64]map[uint64]*DatacenterMap // DatacenterMaps[buyerId][datacenterId] -> entry for this buyer, and that datacenter
+	DatacenterRelays map[uint64][]uint64
 }
 
 func CreateDatabase() *Database {
 
 	database := &Database{
-		CreationTime:   "",
-		Creator:        "",
-		Relays:         []Relay{},
-		RelayMap:       make(map[uint64]*Relay),
-		BuyerMap:       make(map[uint64]*Buyer),
-		SellerMap:      make(map[uint64]*Seller),
-		DatacenterMap:  make(map[uint64]*Datacenter),
-		DatacenterMaps: make(map[uint64]map[uint64]*DatacenterMap),
+		CreationTime:     "",
+		Creator:          "",
+		Relays:           []Relay{},
+		RelayMap:         make(map[uint64]*Relay),
+		BuyerMap:         make(map[uint64]*Buyer),
+		SellerMap:        make(map[uint64]*Seller),
+		DatacenterMap:    make(map[uint64]*Datacenter),
+		DatacenterMaps:   make(map[uint64]map[uint64]*DatacenterMap),
+		DatacenterRelays: make(map[uint64][]uint64),
 	}
 
 	return database
@@ -192,6 +193,22 @@ func (database *Database) Validate() error {
 		}
 	}
 
+	for i := range database.Relays {
+		relayId := database.Relays[i].Id
+		datacenterId := database.Relays[i].Datacenter.Id
+		datacenterRelays := database.GetDatacenterRelays(datacenterId)
+		found := false
+		for j := range datacenterRelays {
+			if datacenterRelays[j] == relayId {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("datacenter relays map is invalid")
+		}
+	}
+
 	relayNames := make(map[string]int)
 	relayAddresses := make(map[string]int)
 
@@ -272,6 +289,10 @@ func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64)
 
 func (database *Database) GetDatacenter(datacenterId uint64) *Datacenter {
 	return database.DatacenterMap[datacenterId]
+}
+
+func (database *Database) GetDatacenterRelays(datacenterId uint64) []uint64 {
+	return database.DatacenterRelays[datacenterId]
 }
 
 func (database *Database) String() string {
@@ -760,59 +781,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 	const htmlFooter = `</body></html>`
 
 	fmt.Fprintf(w, "%s\n", htmlFooter)
-}
-
-// ---------------------------------------------------------------------
-
-type Overlay struct {
-	CreationTime string
-	BuyerMap     map[uint64]Buyer
-}
-
-func CreateOverlay() *Overlay {
-
-	overlay := &Overlay{
-		CreationTime: "",
-		BuyerMap:     make(map[uint64]Buyer),
-	}
-
-	return overlay
-}
-
-func LoadOverlay(filename string) (*Overlay, error) {
-
-	overlayFile, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	defer overlayFile.Close()
-
-	overlay := &Overlay{}
-
-	err = gob.NewDecoder(overlayFile).Decode(overlay)
-
-	return overlay, err
-}
-
-func (overlay *Overlay) Save(filename string) error {
-
-	var buffer bytes.Buffer
-
-	err := gob.NewEncoder(&buffer).Encode(overlay)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (overlay Overlay) IsEmpty() bool {
-	return len(overlay.BuyerMap) == 0
 }
 
 // ---------------------------------------------------------------------
@@ -1352,9 +1320,15 @@ func ExtractDatabase(config string) (*Database, error) {
 		database.DatacenterMaps[buyerId][datacenterId] = &datacenterMap
 	}
 
+	for i := range database.Relays {
+		relayId := database.Relays[i].Id
+		datacenterId := database.Relays[i].Datacenter.Id
+		datacenterRelays := database.DatacenterRelays[datacenterId]
+		datacenterRelays = append(datacenterRelays, relayId)
+		database.DatacenterRelays[datacenterId] = datacenterRelays
+	}
+
 	return database, nil
 }
-
-// -----------------------------------------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------------------------------------
