@@ -25,6 +25,8 @@ func main() {
 	service.StartWebServer()
 
 	ProcessSessionUpdateMessages(service)
+	ProcessServerUpdateMessages(service)
+	ProcessRelayUpdateMessages(service)
 
 	service.WaitForShutdown()
 }
@@ -60,6 +62,94 @@ func ProcessSessionUpdateMessages(service *common.Service) {
 				core.Debug("received %s message", name)
 
 				message := messages.PortalSessionUpdateMessage{}
+				err := message.Read(messageData)
+				if err != nil {
+					core.Error("could not read %s message: %v", name)
+					break
+				}
+
+				// todo: process the message
+				_ = message
+			}
+		}
+	}()
+}
+
+func ProcessServerUpdateMessages(service *common.Service) {
+
+	name := "server update"
+	streamName := "server_update"
+	consumerGroup := streamName
+
+	config := common.RedisStreamsConfig{
+		RedisHostname: redisHostname,
+		RedisPassword: redisPassword,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
+	}
+
+	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case messageData := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				message := messages.PortalServerUpdateMessage{}
+				err := message.Read(messageData)
+				if err != nil {
+					core.Error("could not read %s message: %v", name)
+					break
+				}
+
+				// todo: process the message
+				_ = message
+			}
+		}
+	}()
+}
+
+func ProcessRelayUpdateMessages(service *common.Service) {
+
+	name := "relay update"
+	streamName := "relay_update"
+	consumerGroup := streamName
+
+	config := common.RedisStreamsConfig{
+		RedisHostname: redisHostname,
+		RedisPassword: redisPassword,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
+	}
+
+	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case messageData := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				message := messages.PortalRelayUpdateMessage{}
 				err := message.Read(messageData)
 				if err != nil {
 					core.Error("could not read %s message: %v", name)

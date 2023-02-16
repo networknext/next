@@ -18,19 +18,15 @@ DONE
 
 	Add portal server update message
 
-TODO
-
 	Add portal relay update message
 
-	--------------------------------
+	Extend the portal cruncher to process both these new messages
+
+TODO
 
 	Emit the portal server update message
 
 	Emit the portal realy update message
-
-	--------------------------------
-
-	Extend the portal cruncher to process both these messages
 
 	--------------------------------
 
