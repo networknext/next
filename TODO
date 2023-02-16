@@ -12,9 +12,11 @@ DONE
 
 	Turn analytics back on in happy path.
 
+	Include the portal cruncher in the happy path
+
 TODO
 
-	Include the portal cruncher in the happy path, and check that it gets the portal server update messages...
+	Check that the portal cruncher gets the session update messages
 
 	-------------------------------
 

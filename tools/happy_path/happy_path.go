@@ -596,7 +596,19 @@ func happy_path(wait bool) int {
 
 	// ----------------------------------------------------------------------------------------------
 
-	// todo: verify one of the portal crunchers saw the portal session update message
+	fmt.Printf("verifying portal cruncher received session update messages ...")
+
+	if !strings.Contains(portal_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received session update message") {
+		fmt.Printf("\n\nerror: portal cruncher did not receive session update messages\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
 
 	// ==================================================================================
 
