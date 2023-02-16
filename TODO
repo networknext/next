@@ -22,19 +22,19 @@ DONE
 
 	Extend the portal cruncher to process both these new messages
 
-TODO
-
 	Emit the portal server update message
+
+	Extend happy path to check portal cruncher gets server update message
 
 	Emit the portal relay update message
 
-	--------------------------------
+	Extend happy path to make sure the portal cruncher receives the relay update message
 
-	Extend the happy path to make sure the portal cruncher receives all portal cruncher message types
-
-	--------------------------------
+	Clean up the portal cruncher with generic process messages functions, so it is easy to add new portal message types in the future without cut and paste code.
 
 	Extend the portal cruncher so it scales, eg. we can configure how many consumers for each type of message.
+
+TODO
 
 	--------------------------------
 

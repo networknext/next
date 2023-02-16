@@ -206,6 +206,7 @@ func processAnalyticsMessages[T messages.Message](name string, inputChannel chan
 			core.Debug("processing analytics %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableGooglePubsub {
+				// todo
 				// googlePubsubProducer.MessageChannel <- messageData
 				_ = messageData
 			}

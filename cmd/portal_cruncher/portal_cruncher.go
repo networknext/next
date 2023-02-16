@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"fmt"
+	"strings"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -14,27 +16,43 @@ var redisPassword string
 
 func main() {
 
+	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1)
+	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1)
+	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
+
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
+	core.Log("num session update threads: %d", numSessionUpdateThreads)
+	core.Log("num server update threads: %d", numServerUpdateThreads)
+	core.Log("num relay update threads: %d", numRelayUpdateThreads)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis password: %s", redisPassword)
 
 	service := common.CreateService("portal_cruncher")
 
-	service.StartWebServer()
+	for i := 0; i < numSessionUpdateThreads; i++ {
+		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
+	}
 
-	ProcessSessionUpdateMessages(service)
-	ProcessServerUpdateMessages(service)
-	ProcessRelayUpdateMessages(service)
+	for i := 0; i < numServerUpdateThreads; i++ {
+		ProcessMessages[*messages.PortalServerUpdateMessage](service, "server update", i, ProcessServerUpdate)
+	}
+
+	for i := 0; i < numRelayUpdateThreads; i++ {
+		ProcessMessages[*messages.PortalRelayUpdateMessage](service, "relay update", i, ProcessRelayUpdate)
+	}
+
+	service.StartWebServer()
 
 	service.WaitForShutdown()
 }
 
-func ProcessSessionUpdateMessages(service *common.Service) {
+// -------------------------------------------------------------------------------
 
-	name := "session update"
-	streamName := "session_update"
+func ProcessMessages[T messages.Message](service *common.Service, name string, threadNumber int, process func([]byte, int)) {
+
+	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
@@ -53,112 +71,76 @@ func ProcessSessionUpdateMessages(service *common.Service) {
 	go func() {
 		for {
 			select {
-
 			case <-service.Context.Done():
 				return
-
 			case messageData := <-consumer.MessageChannel:
-
-				core.Debug("received %s message", name)
-
-				message := messages.PortalSessionUpdateMessage{}
-				err := message.Read(messageData)
-				if err != nil {
-					core.Error("could not read %s message: %v", name)
-					break
-				}
-
-				// todo: process the message
-				_ = message
+				process(messageData, threadNumber)
 			}
 		}
 	}()
 }
 
-func ProcessServerUpdateMessages(service *common.Service) {
+// -------------------------------------------------------------------------------
 
-	name := "server update"
-	streamName := "server_update"
-	consumerGroup := streamName
+func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
-	config := common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
-		StreamName:    streamName,
-		ConsumerGroup: consumerGroup,
-	}
+	// todo
+	fmt.Printf("process session update\n")
 
-	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	message := messages.PortalSessionUpdateMessage{}
+	err := message.Read(messageData)
 	if err != nil {
-		core.Error("could not create redis streams consumer for %s: %v", name, err)
-		os.Exit(1)
+		core.Error("could not read session update message: %v", err)
+		return
 	}
 
-	go func() {
-		for {
-			select {
+	core.Debug("received session update message on thread %d", threadNumber)
 
-			case <-service.Context.Done():
-				return
+	// ...
 
-			case messageData := <-consumer.MessageChannel:
-
-				core.Debug("received %s message", name)
-
-				message := messages.PortalServerUpdateMessage{}
-				err := message.Read(messageData)
-				if err != nil {
-					core.Error("could not read %s message: %v", name)
-					break
-				}
-
-				// todo: process the message
-				_ = message
-			}
-		}
-	}()
+	_ = message
 }
 
-func ProcessRelayUpdateMessages(service *common.Service) {
+// -------------------------------------------------------------------------------
 
-	name := "relay update"
-	streamName := "relay_update"
-	consumerGroup := streamName
+func ProcessServerUpdate(messageData []byte, threadNumber int) {
 
-	config := common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
-		StreamName:    streamName,
-		ConsumerGroup: consumerGroup,
-	}
+	// todo
+	fmt.Printf("process server update\n")
 
-	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	message := messages.PortalServerUpdateMessage{}
+	err := message.Read(messageData)
 	if err != nil {
-		core.Error("could not create redis streams consumer for %s: %v", name, err)
-		os.Exit(1)
+		core.Error("could not read server update message: %v", err)
+		return
 	}
 
-	go func() {
-		for {
-			select {
+	core.Debug("received server update message on thread %d", threadNumber)
 
-			case <-service.Context.Done():
-				return
+	// ...
 
-			case messageData := <-consumer.MessageChannel:
-
-				core.Debug("received %s message", name)
-
-				message := messages.PortalRelayUpdateMessage{}
-				err := message.Read(messageData)
-				if err != nil {
-					core.Error("could not read %s message: %v", name)
-					break
-				}
-
-				// todo: process the message
-				_ = message
-			}
-		}
-	}()
+	_ = message
 }
+
+// -------------------------------------------------------------------------------
+
+func ProcessRelayUpdate(messageData []byte, threadNumber int) {
+
+	// todo
+	fmt.Printf("process relay update\n")
+
+	message := messages.PortalRelayUpdateMessage{}
+	err := message.Read(messageData)
+	if err != nil {
+		core.Error("could not read relay update message: %v", err)
+		return
+	}
+
+	core.Debug("received relay update message on thread %d", threadNumber)
+
+	// ...
+
+	_ = message
+}
+
+// -------------------------------------------------------------------------------
