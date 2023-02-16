@@ -14,19 +14,43 @@ DONE
 
 	Include the portal cruncher in the happy path
 
-TODO
-
 	Check that the portal cruncher gets the session update messages
 
-	-------------------------------
+TODO
 
-	Extend the portal messages so we include other updates, especially, relay updates, server updates.
+	Add more portal update messages, especially:
 
-	Extend the happy path to make sure the portal cruncher gets all these updates.
+		server update
+		relay update
+		match update
+
+	This "real-time" view of the whole system is important, and the portal is the best way to display it.
+
+	--------------------------------
+
+	Emit the portal server update message
+
+	Emit the portal realy update message
+
+	--------------------------------
+
+	Extend the portal cruncher to process both these messages
+
+	--------------------------------
+
+	Extend the happy path to make sure the portal cruncher receives all portal cruncher message types
+
+	--------------------------------
+
+	Extend the portal cruncher so it scales, eg. we can configure how many consumers per-message stream.
+
+	--------------------------------
 
 	Now get the redis implementation going in the portal cruncher...
 
+	We actually need to look over the old portal cruncher code and work out how we were inserting into redis.
 
+	--------------------------------
 
 
 
