@@ -9946,6 +9946,7 @@ struct NextBackendServerUpdateRequestPacket
     uint64_t customer_id;
     uint64_t request_id;
     uint64_t datacenter_id;
+    uint64_t match_id;
     uint32_t num_sessions;
     next_address_t server_address;
 
@@ -9957,6 +9958,7 @@ struct NextBackendServerUpdateRequestPacket
         customer_id = 0;
         request_id = 0;
         datacenter_id = 0;
+        match_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
     }
@@ -9969,6 +9971,7 @@ struct NextBackendServerUpdateRequestPacket
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, match_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
         return true;
@@ -11328,6 +11331,7 @@ struct next_server_internal_t
     int state;
     uint64_t customer_id;
     uint64_t datacenter_id;
+    uint64_t match_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -15018,6 +15022,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.request_id = server->server_update_request_id;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
+        packet.match_id = server->match_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
 

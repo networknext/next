@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"fmt"
 	"strings"
 
 	"github.com/networknext/backend/modules/common"
@@ -84,9 +83,6 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
-	// todo
-	fmt.Printf("process session update\n")
-
 	message := messages.PortalSessionUpdateMessage{}
 	err := message.Read(messageData)
 	if err != nil {
@@ -105,9 +101,6 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 func ProcessServerUpdate(messageData []byte, threadNumber int) {
 
-	// todo
-	fmt.Printf("process server update\n")
-
 	message := messages.PortalServerUpdateMessage{}
 	err := message.Read(messageData)
 	if err != nil {
@@ -125,9 +118,6 @@ func ProcessServerUpdate(messageData []byte, threadNumber int) {
 // -------------------------------------------------------------------------------
 
 func ProcessRelayUpdate(messageData []byte, threadNumber int) {
-
-	// todo
-	fmt.Printf("process relay update\n")
 
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)

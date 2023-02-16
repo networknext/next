@@ -301,8 +301,6 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 		message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 		message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 		message.BuyerId = requestPacket.BuyerId
-		// todo
-		// message.MatchId = requestPacket.MatchId
 		message.DatacenterId = requestPacket.DatacenterId
 		message.DatacenterName = requestPacket.DatacenterName
 
@@ -336,11 +334,9 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
-			// todo
-			// message.MatchId = requestPacket.MatchId
+			message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
-			// todo
-			// message.NumSessions = requestPacket.NumSessions
+			message.NumSessions = requestPacket.NumSessions
 			message.ServerAddress = *from
 
 			handler.AnalyticsServerUpdateMessageChannel <- &message
@@ -361,11 +357,9 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
-			// todo
-			// message.MatchId = requestPacket.MatchId
+			message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
-			// todo
-			// message.NumSessions = requestPacket.NumSessions
+			message.NumSessions = requestPacket.NumSessions
 			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message

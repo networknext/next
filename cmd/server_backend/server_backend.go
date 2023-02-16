@@ -200,6 +200,9 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 }
 
 func processAnalyticsMessages[T messages.Message](name string, inputChannel chan T) {
+
+	// todo: create google pubsub producer here
+
 	go func() {
 		for {
 			message := <-inputChannel

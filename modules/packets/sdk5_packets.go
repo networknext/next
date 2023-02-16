@@ -138,6 +138,7 @@ type SDK5_ServerUpdateRequestPacket struct {
 	BuyerId       uint64
 	RequestId     uint64
 	DatacenterId  uint64
+	MatchId       uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
 }
@@ -147,6 +148,7 @@ func (packet *SDK5_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint64(&packet.MatchId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
 	return stream.Error()
