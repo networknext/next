@@ -16,15 +16,11 @@ DONE
 
 	Check that the portal cruncher gets the session update messages
 
+	Add portal server update message
+
 TODO
 
-	Add more portal update messages, especially:
-
-		server update
-		relay update
-		match update
-
-	This "real-time" view of the whole system is important, and the portal is the best way to display it.
+	Add portal relay update message
 
 	--------------------------------
 

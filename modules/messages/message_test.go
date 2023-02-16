@@ -333,6 +333,24 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 	return message
 }
 
+func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage {
+
+	message := messages.PortalRelayUpdateMessage{
+		Version:                   byte(common.RandomInt(messages.PortalRelayUpdateMessageVersion_Min, messages.PortalRelayUpdateMessageVersion_Max)),
+		Timestamp:                 uint64(time.Now().Unix()),
+		RelayId:                   rand.Uint64(),
+		SessionCount:              rand.Uint32(),
+		MaxSessions:               rand.Uint32(),
+		EnvelopeBandwidthUpKbps:   rand.Uint32(),
+		EnvelopeBandwidthDownKbps: rand.Uint32(),
+		ActualBandwidthUpKbps:     rand.Uint32(),
+		ActualBandwidthDownKbps:   rand.Uint32(),
+		RelayFlags:                rand.Uint64(),
+	}
+
+	return message
+}
+
 func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayPingsMessage {
 
 	message := messages.AnalyticsNearRelayPingsMessage{
@@ -382,6 +400,15 @@ func TestPortalSessionUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomPortalSessionUpdateMessage()
 		readMessage := messages.PortalSessionUpdateMessage{}
 		MessageReadWriteTest[*messages.PortalSessionUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+func TestPortalRelayUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalRelayUpdateMessage()
+		readMessage := messages.PortalRelayUpdateMessage{}
+		MessageReadWriteTest[*messages.PortalRelayUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 
