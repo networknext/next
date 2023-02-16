@@ -33,13 +33,15 @@ func main() {
 
 func ProcessSessionUpdateMessages(service *common.Service) {
 
-	name := "session_update"
+	name := "session update"
+	streamName := "session_update"
+	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
 		RedisPassword: redisPassword,
-		StreamName:    name,
-		ConsumerGroup: name,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
 	}
 
 	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)

@@ -4,13 +4,11 @@ DONE
 
 	Reconstruct a basic portal cruncher with redis streams to receive messages.
 
-TODO
-
 	Update the server backend so it actually sends the portal messages to redis streams.
 
 	Verify that the portal cruncher processes messages from the server backend.
 
-	-------------------------------
+TODO
 
 	Include the portal cruncher in the happy path, and check that it gets the portal server update messages.
 

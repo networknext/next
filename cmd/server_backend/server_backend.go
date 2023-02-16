@@ -2,6 +2,8 @@ package main
 
 import (
 	"net"
+	"os"
+	"strings"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
@@ -32,6 +34,9 @@ var analyticsNearRelayPingsMessageChannel chan *messages.AnalyticsNearRelayPings
 var enableGooglePubsub bool
 var enableRedisStreams bool
 
+var redisHostname string
+var redisPassword string
+
 func main() {
 
 	service = common.CreateService("server_backend")
@@ -44,12 +49,16 @@ func main() {
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", false)
+	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	core.Log("channel size: %d", channelSize)
 	core.Log("max packet size: %d bytes", maxPacketSize)
 	core.Log("server backend address: %s", serverBackendAddress.String())
 	core.Log("enable google pubsub: %v", enableGooglePubsub)
 	core.Log("enable redis streams: %v", enableRedisStreams)
+	core.Log("redis hostname: %s", redisHostname)
+	core.Log("redis password: %s", redisPassword)
 
 	if len(serverBackendPublicKey) == 0 {
 		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")
@@ -67,7 +76,7 @@ func main() {
 
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 
-	processPortalMessages[*messages.PortalSessionUpdateMessage]("session update", portalSessionUpdateMessageChannel)
+	processPortalMessages[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -159,15 +168,28 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.LocateIP(ip)
 }
 
-func processPortalMessages[T messages.Message](name string, inputChannel chan T) {
+func processPortalMessages[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+
+	streamName := strings.ReplaceAll(name, " ", "_")
+
+	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
+		RedisHostname:      redisHostname,
+		RedisPassword:      redisPassword,
+		StreamName:         streamName,
+	})
+
+	if err != nil {
+		core.Error("could not create redis streams producer for %s", name)
+		os.Exit(1)
+	}
+
 	go func() {
 		for {
 			message := <-inputChannel
 			core.Debug("processing portal %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableRedisStreams {
-				// redisStreamsProducer.MessageChannel <- messageData
-				_ = messageData
+				redisStreamsProducer.MessageChannel <- messageData
 			}
 		}
 	}()
@@ -177,7 +199,7 @@ func processAnalyticsMessages[T messages.Message](name string, inputChannel chan
 	go func() {
 		for {
 			message := <-inputChannel
-			core.Debug("processing analytics %s message")
+			core.Debug("processing analytics %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableGooglePubsub {
 				// googlePubsubProducer.MessageChannel <- messageData

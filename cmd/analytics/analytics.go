@@ -150,24 +150,25 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 
 func ProcessCostMatrix(service *common.Service) {
 
-	pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
-
-	core.Log("cost matrix stats message pubsub topic: %s", pubsubTopic)
-
 	httpClient := &http.Client{
 		Timeout: costMatrixInterval,
 	}
 
-	config := common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              pubsubTopic,
-		MessageChannelSize: 10 * 1024,
-	}
-
-	costMatrixUpdatePubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub producer for processing cost matrix update: %v", err)
-		os.Exit(1)
+	var googlePubsubProducer *common.GooglePubsubProducer
+	if enableGooglePubsub {
+		pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
+		core.Log("cost matrix stats google pubsub topic: %s", pubsubTopic)
+		config := common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              pubsubTopic,
+			MessageChannelSize: 10 * 1024,
+		}
+		var err error
+		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
+		if err != nil {
+			core.Error("could not create google pubsub producer for cost matrix update: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	ticker := time.NewTicker(costMatrixInterval)
@@ -236,20 +237,19 @@ func ProcessCostMatrix(service *common.Service) {
 
 				// send cost matrix update message via google pubsub
 
+				message := messages.AnalyticsCostMatrixUpdateMessage{}
+
+				message.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
+				message.Timestamp = uint64(time.Now().Unix())
+				message.CostMatrixSize = costMatrixSize
+				message.NumRelays = costMatrixNumRelays
+				message.NumDestRelays = costMatrixNumDestRelays
+				message.NumDatacenters = costMatrixNumDatacenters
+
+				messageData := message.Write(make([]byte, message.GetMaxSize()))
+
 				if enableGooglePubsub {
-
-					message := messages.AnalyticsCostMatrixUpdateMessage{}
-
-					message.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
-					message.Timestamp = uint64(time.Now().Unix())
-					message.CostMatrixSize = costMatrixSize
-					message.NumRelays = costMatrixNumRelays
-					message.NumDestRelays = costMatrixNumDestRelays
-					message.NumDatacenters = costMatrixNumDatacenters
-
-					messageData := message.Write(make([]byte, message.GetMaxSize()))
-
-					costMatrixUpdatePubsubProducer.MessageChannel <- messageData
+					googlePubsubProducer.MessageChannel <- messageData
 				}
 			}
 		}
@@ -258,20 +258,21 @@ func ProcessCostMatrix(service *common.Service) {
 
 func ProcessRouteMatrix(service *common.Service) {
 
-	pubsubTopic := envvar.GetString("ROUTE_MATRIX_UPDATE_PUBSUB_TOPIC", "route_matrix_update")
-
-	core.Log("route matrix stats entry pubsub topic: %s", pubsubTopic)
-
-	config := common.GooglePubsubConfig{
-		ProjectId:          googleProjectId,
-		Topic:              pubsubTopic,
-		MessageChannelSize: 10 * 1024,
-	}
-
-	pubsubProducer, err := common.CreateGooglePubsubProducer(service.Context, config)
-	if err != nil {
-		core.Error("could not create google pubsub producer for processing route matrix: %v", err)
-		os.Exit(1)
+	var googlePubsubProducer *common.GooglePubsubProducer
+	if enableGooglePubsub {
+		pubsubTopic := envvar.GetString("ROUTE_MATRIX_UPDATE_PUBSUB_TOPIC", "route_matrix_update")
+		core.Log("route matrix stats google pubsub topic: %s", pubsubTopic)
+		config := common.GooglePubsubConfig{
+			ProjectId:          googleProjectId,
+			Topic:              pubsubTopic,
+			MessageChannelSize: 10 * 1024,
+		}
+		var err error
+		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
+		if err != nil {
+			core.Error("could not create google pubsub producer for route matrix update: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	httpClient := &http.Client{
@@ -387,38 +388,37 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				// send route matrix stats via google pubsub pubsub
 
+				message := messages.AnalyticsRouteMatrixUpdateMessage{}
+
+				message.Version = messages.AnalyticsRouteMatrixUpdateMessageVersion_Write
+				message.Timestamp = uint64(time.Now().Unix())
+				message.RouteMatrixSize = routeMatrixSize
+				message.NumRelays = routeMatrixNumRelays
+				message.NumDestRelays = routeMatrixNumDestRelays
+				message.NumDatacenters = routeMatrixNumDatacenters
+				message.TotalRoutes = analysis.TotalRoutes
+				message.AverageNumRoutes = analysis.AverageNumRoutes
+				message.AverageRouteLength = analysis.AverageRouteLength
+				message.NoRoutePercent = analysis.NoRoutePercent
+				message.OneRoutePercent = analysis.OneRoutePercent
+				message.NoDirectRoutePercent = analysis.NoDirectRoutePercent
+				message.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
+				message.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
+				message.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
+				message.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
+				message.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
+				message.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
+				message.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
+				message.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
+				message.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
+				message.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
+				message.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
+				message.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
+
+				messageData := message.Write(make([]byte, message.GetMaxSize()))
+
 				if enableGooglePubsub {
-
-					message := messages.AnalyticsRouteMatrixUpdateMessage{}
-
-					message.Version = messages.AnalyticsRouteMatrixUpdateMessageVersion_Write
-					message.Timestamp = uint64(time.Now().Unix())
-					message.RouteMatrixSize = routeMatrixSize
-					message.NumRelays = routeMatrixNumRelays
-					message.NumDestRelays = routeMatrixNumDestRelays
-					message.NumDatacenters = routeMatrixNumDatacenters
-					message.TotalRoutes = analysis.TotalRoutes
-					message.AverageNumRoutes = analysis.AverageNumRoutes
-					message.AverageRouteLength = analysis.AverageRouteLength
-					message.NoRoutePercent = analysis.NoRoutePercent
-					message.OneRoutePercent = analysis.OneRoutePercent
-					message.NoDirectRoutePercent = analysis.NoDirectRoutePercent
-					message.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
-					message.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
-					message.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
-					message.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
-					message.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
-					message.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
-					message.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
-					message.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
-					message.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
-					message.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
-					message.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
-					message.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
-
-					messageData := message.Write(make([]byte, message.GetMaxSize()))
-
-					pubsubProducer.MessageChannel <- messageData
+					googlePubsubProducer.MessageChannel <- messageData
 				}
 			}
 		}

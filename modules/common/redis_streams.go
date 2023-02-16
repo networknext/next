@@ -204,7 +204,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 		}
 
 		if err != nil {
-			// Not sure why this is necessary. redis.Nil == err but fails the comparison unless a string - issue with types?
+			// todo: Not sure why this is necessary. redis.Nil == err but fails the comparison unless a string - issue with types?
 			if err.Error() != redis.Nil.Error() {
 				core.Error("error reading redis stream: %s", err)
 			}
@@ -231,7 +231,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 				continue
 			}
 
-			core.Debug("acked message")
+			core.Debug("acked message batch")
 
 			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1
