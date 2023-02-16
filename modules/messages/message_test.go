@@ -256,6 +256,24 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 	return message
 }
 
+func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessage {
+
+	message := messages.PortalServerUpdateMessage{
+		Version: byte(common.RandomInt(messages.PortalServerUpdateMessageVersion_Min, messages.PortalServerUpdateMessageVersion_Max)),
+
+		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
+		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
+		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),
+		MatchId:          rand.Uint64(),
+		BuyerId:          rand.Uint64(),
+		DatacenterId:     rand.Uint64(),
+		NumSessions:      rand.Uint32(),
+		ServerAddress:    common.RandomAddress(),
+	}
+
+	return message
+}
+
 func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMessage {
 
 	message := messages.PortalSessionUpdateMessage{
@@ -348,6 +366,15 @@ func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayP
 // -----------------------------------------------------------
 
 const NumIterations = 1000
+
+func TestPortalServerUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalServerUpdateMessage()
+		readMessage := messages.PortalServerUpdateMessage{}
+		MessageReadWriteTest[*messages.PortalServerUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
 
 func TestPortalSessionUpdateMessage(t *testing.T) {
 	t.Parallel()

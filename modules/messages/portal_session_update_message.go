@@ -132,11 +132,11 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 	index := 0
 
 	if !encoding.ReadUint8(buffer, &index, &message.Version) {
-		return fmt.Errorf("failed to read portal message version")
+		return fmt.Errorf("failed to read portal session update message version")
 	}
 
 	if message.Version < PortalSessionUpdateMessageVersion_Min || message.Version > PortalSessionUpdateMessageVersion_Max {
-		return fmt.Errorf("invalid portal message version %d", message.Version)
+		return fmt.Errorf("invalid portal session update message version %d", message.Version)
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
