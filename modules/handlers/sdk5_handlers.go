@@ -341,6 +341,7 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 			message.DatacenterId = requestPacket.DatacenterId
 			// todo
 			// message.NumSessions = requestPacket.NumSessions
+			message.ServerAddress = *from
 
 			handler.AnalyticsServerUpdateMessageChannel <- &message
 
@@ -365,6 +366,7 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 			message.DatacenterId = requestPacket.DatacenterId
 			// todo
 			// message.NumSessions = requestPacket.NumSessions
+			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message
 

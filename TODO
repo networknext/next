@@ -1,38 +1,6 @@
 DONE
 
-	Implement database method "GetDatacenterRelays" and precalc it on database load from sql
-
-	Reconstruct a basic portal cruncher with redis streams to receive messages.
-
-	Update the server backend so it actually sends the portal messages to redis streams.
-
-	Verify that the portal cruncher processes messages from the server backend.
-
-	Fix analytics so it runs without google pubsub.
-
-	Turn analytics back on in happy path.
-
-	Include the portal cruncher in the happy path
-
-	Check that the portal cruncher gets the session update messages
-
-	Add portal server update message
-
-	Add portal relay update message
-
-	Extend the portal cruncher to process both these new messages
-
-	Emit the portal server update message
-
-	Extend happy path to check portal cruncher gets server update message
-
-	Emit the portal relay update message
-
-	Extend happy path to make sure the portal cruncher receives the relay update message
-
-	Clean up the portal cruncher with generic process messages functions, so it is easy to add new portal message types in the future without cut and paste code.
-
-	Extend the portal cruncher so it scales, eg. we can configure how many consumers for each type of message.
+	Fixed a really nasty bug in encoding.WriteAddress. It was clobbering buffer[0]
 
 TODO
 

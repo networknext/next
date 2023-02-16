@@ -96,7 +96,7 @@ func WriteAddress(data []byte, index *int, address *net.UDPAddr) {
 		data[*index+6] = (byte)(port >> 8)
 		*index += 7
 	} else {
-		data[0] = IPAddressIPv6
+		data[*index] = IPAddressIPv6
 		copy(data[*index+1:], address.IP)
 		data[*index+17] = (byte)(port & 0xFF)
 		data[*index+18] = (byte)(port >> 8)

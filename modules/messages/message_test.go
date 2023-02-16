@@ -173,6 +173,7 @@ func GenerateRandomAnalyticsServerUpdateMessage() messages.AnalyticsServerUpdate
 		SDKVersion_Patch: 0,
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
+		ServerAddress:    common.RandomAddress(),
 	}
 
 	return message
@@ -260,7 +261,6 @@ func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessag
 
 	message := messages.PortalServerUpdateMessage{
 		Version: byte(common.RandomInt(messages.PortalServerUpdateMessageVersion_Min, messages.PortalServerUpdateMessageVersion_Max)),
-
 		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),

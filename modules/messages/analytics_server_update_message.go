@@ -2,6 +2,7 @@ package messages
 
 import (
 	"fmt"
+	"net"
 
 	"cloud.google.com/go/bigquery"
 
@@ -25,6 +26,7 @@ type AnalyticsServerUpdateMessage struct {
 	BuyerId          uint64
 	DatacenterId     uint64
 	MatchId          uint64
+	ServerAddress    net.UDPAddr
 }
 
 func (message *AnalyticsServerUpdateMessage) GetMaxSize() int {
@@ -71,6 +73,10 @@ func (message *AnalyticsServerUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read match id")
 	}
 
+	if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+		return fmt.Errorf("failed to read server address")
+	}
+
 	return nil
 }
 
@@ -90,6 +96,7 @@ func (message *AnalyticsServerUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteUint64(buffer, &index, message.MatchId)
+	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 
 	return buffer[:index]
 }
@@ -103,5 +110,6 @@ func (message *AnalyticsServerUpdateMessage) Save() (map[string]bigquery.Value, 
 	bigquery_entry["buyer_id"] = int(message.BuyerId)
 	bigquery_entry["datacenter_id"] = int(message.DatacenterId)
 	bigquery_entry["match_id"] = int(message.MatchId)
+	bigquery_entry["server_address"] = message.ServerAddress.String()
 	return bigquery_entry, "", nil
 }
