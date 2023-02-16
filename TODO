@@ -1,30 +1,90 @@
 DONE
 
-	Make sure happy path and func tests pass
+	Implement database method "GetDatacenterRelays" and precalc it on database load from sql
 
-	The configuration of the max bytes per-message when serializing it is a bad practice.
-
-	This should not be something the user has to configure, *especially* for dynamically sized structures.
-
-	It should be something that is either a known, conservative constant value, OR, is a function that returns the size, given the variable inputs (eg. num relays, num counters etc...)
-
-	Happy path and all func tests pass.
-
-	Go through and REMOVE all env vars that configure max message size
-
-	Make message tests use max size from message instance.
-
-	Make sure that all messages are setup with min/max/write versions.
-
-	Go through server backend and write code to serialize all analytics messages (and throw them away...)
-
-	Serialize all portal messages.
-
-	Tidy up server backend and use generics to avoid writing copy pasta functions per-message type.
+	Reconstruct a basic portal cruncher with redis streams to receive messages.
 
 TODO
 
-	Implement database method "GetDatacenterRelays" and precalc it on database load from sql
+	Update the server backend so it actually sends the portal messages to redis streams.
+
+	Verify that the portal cruncher processes messages from the server backend.
+
+	-------------------------------
+
+	Include the portal cruncher in the happy path, and check that it gets the portal server update messages.
+
+	-------------------------------
+
+	Extend the portal messages so we include other updates, especially, relay updates, server updates.
+
+	Extend the happy path to make sure the portal cruncher gets all these updates.
+
+	Now get the redis implementation going in the portal cruncher...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 

@@ -287,7 +287,7 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	state.Buyer.Id = 0x11111
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
-	state.Database.DatacenterRelays[0x12345] = []uint64{1,2}
+	state.Database.DatacenterRelays[0x12345] = []uint64{1, 2}
 
 	result := handlers.SessionUpdate_Pre(state)
 

@@ -34,7 +34,7 @@ var enableRedisStreams bool
 
 func main() {
 
-	service = common.CreateService("new_server_backend5")
+	service = common.CreateService("server_backend")
 
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024)
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
@@ -85,7 +85,7 @@ func main() {
 	processAnalyticsMessages[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
 	processAnalyticsMessages[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
 
-	// start service
+	// start the service
 
 	service.UpdateRouteMatrix()
 

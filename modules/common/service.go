@@ -431,6 +431,7 @@ func (service *Service) LeaderElection(autoRefresh bool) {
 
 	core.Log("started leader election")
 
+	// todo: maybe LEADER_REDIS_HOSTNAME?
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
 
