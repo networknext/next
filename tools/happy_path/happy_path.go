@@ -363,6 +363,57 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// initialize portal cruncher
+
+	fmt.Printf("\nstarting portal cruncher:\n\n")
+
+	portal_cruncher_1_stdout := run("portal-cruncher", "logs/portal_cruncher_1")
+	portal_cruncher_2_stdout := run("portal-cruncher", "logs/portal_cruncher_2", "HTTP_PORT=40013")
+
+	fmt.Printf("\nverifying portal cruncher 1 ...")
+
+	portal_cruncher_1_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(portal_cruncher_1_stdout.String(), "starting http server on port 40012") {
+			portal_cruncher_1_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !portal_cruncher_1_initialized {
+		fmt.Printf("\n\nerror: portal cruncher 1 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying portal cruncher 2 ...")
+
+	portal_cruncher_2_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(portal_cruncher_2_stdout.String(), "starting http server on port 40013") {
+			portal_cruncher_2_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !portal_cruncher_2_initialized {
+		fmt.Printf("\n\nerror: portal cruncher 2 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// initialize analytics
 
 	fmt.Printf("\nstarting analytics:\n\n")

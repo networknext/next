@@ -8,9 +8,13 @@ DONE
 
 	Verify that the portal cruncher processes messages from the server backend.
 
+	Fix analytics so it runs without google pubsub.
+
+	Turn analytics back on in happy path.
+
 TODO
 
-	Include the portal cruncher in the happy path, and check that it gets the portal server update messages.
+	Include the portal cruncher in the happy path, and check that it gets the portal server update messages...
 
 	-------------------------------
 

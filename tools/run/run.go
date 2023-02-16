@@ -225,7 +225,11 @@ func website_cruncher() {
 }
 
 func portal_cruncher() {
-	bash("HTTP_PORT=40012 ./dist/portal_cruncher")
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40012"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
 func portal() {
