@@ -292,6 +292,7 @@ func SDK5_ProcessServerInitRequestPacket(handler *SDK5_Handler, conn *net.UDPCon
 
 		message := messages.AnalyticsServerInitMessage{}
 
+		message.Version = messages.AnalyticsServerInitMessageVersion_Write
 		message.Timestamp = uint64(time.Now().Unix())
 		message.SDKVersion_Major = byte(requestPacket.Version.Major)
 		message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
@@ -326,6 +327,7 @@ func SDK5_ProcessServerUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDPC
 
 			message := messages.AnalyticsServerUpdateMessage{}
 
+			message.Version = messages.AnalyticsServerUpdateMessageVersion_Write
 			message.Timestamp = uint64(time.Now().Unix())
 			message.SDKVersion_Major = byte(requestPacket.Version.Major)
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)

@@ -29,6 +29,8 @@ var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummary
 var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
 var analyticsNearRelayPingsMessageChannel chan *messages.AnalyticsNearRelayPingsMessage
 
+var enableGooglePubsub bool
+
 func main() {
 
 	service = common.CreateService("new_server_backend5")
@@ -39,10 +41,12 @@ func main() {
 	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
+	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
 	core.Log("channel size: %d", channelSize)
 	core.Log("max packet size: %d bytes", maxPacketSize)
 	core.Log("server backend address: %s", serverBackendAddress.String())
+	core.Log("enable google pubsub: %v", enableGooglePubsub)
 
 	if len(serverBackendPublicKey) == 0 {
 		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")
@@ -168,8 +172,12 @@ func processAnalyticsServerInitMessages() {
 	go func() {
 		for {
 			message := <-analyticsServerInitMessageChannel
-			_ = message
-			core.Debug("processed analytics server init message")
+			core.Debug("processing analytics server init message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }
@@ -178,8 +186,12 @@ func processAnalyticsServerUpdateMessages() {
 	go func() {
 		for {
 			message := <-analyticsServerUpdateMessageChannel
-			_ = message
-			core.Debug("processed analytics server update message")
+			core.Debug("processing analytics server update message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }
@@ -188,8 +200,12 @@ func processAnalyticsNearRelayPingsMessages() {
 	go func() {
 		for {
 			message := <-analyticsNearRelayPingsMessageChannel
-			_ = message
-			core.Debug("processed analytics near relay pings message")
+			core.Debug("processing analytics near relay pings message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }
@@ -198,8 +214,12 @@ func processAnalyticsSessionUpdateMessages() {
 	go func() {
 		for {
 			message := <-analyticsSessionUpdateMessageChannel
-			_ = message
-			core.Debug("processed analytics session update message")
+			core.Debug("processing analytics session update message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }
@@ -208,8 +228,12 @@ func processAnalyticsSessionSummaryMessages() {
 	go func() {
 		for {
 			message := <-analyticsSessionSummaryMessageChannel
-			_ = message
-			core.Debug("processed analytics session summary message")
+			core.Debug("processing analytics session summary message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }
@@ -218,8 +242,12 @@ func processAnalyticsMatchDataMessages() {
 	go func() {
 		for {
 			message := <-analyticsMatchDataMessageChannel
-			_ = message
-			core.Debug("processed analytics match data message")
+			core.Debug("processing analytics match data message")
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableGooglePubsub {
+				// googlePubsubProducer.MessageChannel <- messageData
+				_ = messageData
+			}
 		}
 	}()
 }

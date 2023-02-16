@@ -35,11 +35,9 @@ var relayUpdateRedisPubsubChannelSize int
 
 var relayToRelayPingGooglePubsubTopic string
 var relayToRelayPingGooglePubsubChannelSize int
-var relayToRelayPingGooglePubsubMaxMessageBytes int
 
 var relayUpdateGooglePubsubTopic string
 var relayUpdateGooglePubsubChannelSize int
-var relayUpdateGooglePubsubMaxMessageBytes int
 
 var enableGooglePubsub bool
 
@@ -85,11 +83,9 @@ func main() {
 
 	relayToRelayPingGooglePubsubTopic = envvar.GetString("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
 	relayToRelayPingGooglePubsubChannelSize = envvar.GetInt("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
-	relayToRelayPingGooglePubsubMaxMessageBytes = envvar.GetInt("RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_MAX_MESSAGE_BYTES", 256)
 
 	relayUpdateGooglePubsubTopic = envvar.GetString("RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
 	relayUpdateGooglePubsubChannelSize = envvar.GetInt("RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
-	relayUpdateGooglePubsubMaxMessageBytes = envvar.GetInt("RELAY_UPDATE_GOOGLE_PUBSUB_MAX_MESSAGE_BYTES", 10*1024)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
@@ -108,13 +104,11 @@ func main() {
 	core.Log("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
 	core.Log("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
 
-	core.Log("relay to relay ping google pubsub channel: %s", relayToRelayPingGooglePubsubTopic)
+	core.Log("relay to relay ping google pubsub topic: %s", relayToRelayPingGooglePubsubTopic)
 	core.Log("relay to relay ping google pubsub channel size: %d", relayToRelayPingGooglePubsubChannelSize)
-	core.Log("relay to relay ping google pubsub max message size: %d", relayToRelayPingGooglePubsubMaxMessageBytes)
 
-	core.Log("relay update google pubsub channel name: %s", relayUpdateGooglePubsubTopic)
+	core.Log("relay update google pubsub topic: %s", relayUpdateGooglePubsubTopic)
 	core.Log("relay update google pubsub channel size: %d", relayUpdateGooglePubsubChannelSize)
-	core.Log("relay update google pubsub max message size: %d", relayUpdateGooglePubsubMaxMessageBytes)
 
 	core.Log("enable google pubsub: %v", enableGooglePubsub)
 
@@ -775,11 +769,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				// send relay update messages to analytics via google pubsub
 
 				if service.IsLeader() {
-
-					messageBuffer := make([]byte, relayUpdateGooglePubsubMaxMessageBytes)
-
+					messageBuffer := make([]byte, relayUpdateMessage.GetMaxSize())
 					messageData := relayUpdateMessage.Write(messageBuffer[:])
-
 					if enableGooglePubsub {
 						relayUpdateProducer.MessageChannel <- messageData
 					}
@@ -788,10 +779,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				// send relay to relay ping messages to analytics via google pubsub
 
 				if service.IsLeader() {
-
-					messageBuffer := make([]byte, relayToRelayPingGooglePubsubMaxMessageBytes)
-
 					for i := 0; i < len(pingMessages); i++ {
+						messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
 						messageData := pingMessages[i].Write(messageBuffer[:])
 						if enableGooglePubsub {
 							relayToRelayPingProducer.MessageChannel <- messageData
