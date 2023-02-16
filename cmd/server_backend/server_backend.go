@@ -201,7 +201,31 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 
 func processAnalyticsMessages[T messages.Message](name string, inputChannel chan T) {
 
-	// todo: create google pubsub producer here
+	var googlePubsubProducer *common.GooglePubsubProducer
+
+	if enableGooglePubsub {
+		
+		defaultPubsubTopic := strings.ReplaceAll(name, " ", "_")
+		
+		envVarName := strings.ToUpper(defaultPubsubTopic) + "_PUBSUB_TOPIC"
+		
+		pubsubTopic := envvar.GetString(envVarName, defaultPubsubTopic)
+		
+		core.Log("analytics %s google pubsub topic: %s", name, pubsubTopic)
+		
+		config := common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              pubsubTopic,
+			MessageChannelSize: 10 * 1024,    // todo: env var
+		}
+		
+		var err error
+		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
+		if err != nil {
+			core.Error("could not create google pubsub producer for analytics %s: %v", name, err)
+			os.Exit(1)
+		}
+	}
 
 	go func() {
 		for {
@@ -209,9 +233,7 @@ func processAnalyticsMessages[T messages.Message](name string, inputChannel chan
 			core.Debug("processing analytics %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableGooglePubsub {
-				// todo
-				// googlePubsubProducer.MessageChannel <- messageData
-				_ = messageData
+				googlePubsubProducer.MessageChannel <- messageData
 			}
 		}
 	}()

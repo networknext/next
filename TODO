@@ -10,15 +10,15 @@ DONE
 
 	Removed match id from server init, since it's too early to be meaningful (and won't always be set yet).
 
-TODO
+	Write code to actually emit the analytics google pubsub messages from server backend.
 
-	--------------------------------
+TODO
 
 	Make the relay update response packet buffer a reasonably tight fit (see todo)
 
-	--------------------------------
+	Make the cost matrix write a reasonably tight fit
 
-	Write code to actually emit the analytics google pubsub messages from server backend.
+	Make the route matrix write a reasonably tight fit
 
 	--------------------------------
 
