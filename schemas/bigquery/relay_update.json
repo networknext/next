@@ -63,6 +63,6 @@
     "name": "relay_counters",
     "type": "INT64",
     "mode": "REPEATED",
-    "description": "Array of counters used to diagnose what is happening on a relay",
+    "description": "Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names",
   },
 ]
