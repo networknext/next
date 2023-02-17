@@ -3,7 +3,7 @@
     "name": "timestamp",
  	"type": "TIMESTAMP",
     "mode": "REQUIRED",
-    "description": "The timestamp when the server update occurred",
+    "description": "The timestamp when the session update occurred",
   },
   {
     "name": "session_id",
@@ -15,7 +15,7 @@
     "name": "slice_number",
  	"type": "INT64",
     "mode": "REQUIRED",
-    "description": "Slices are 10 second periods starting from silce number 0 at the start of the session",
+    "description": "Slices are 10 second periods starting from slice number 0 at the start of the session",
   },
   {
     "name": "real_packet_loss",
