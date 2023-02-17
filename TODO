@@ -1,41 +1,64 @@
 DONE
 
-	Fixed a really nasty bug in encoding.WriteAddress. It was clobbering buffer[0]
-
-	Look over session and server update messages and pass in extra data to the backend from the SDK as needed
-
-	In particular, we need match id.
-
-	Made sure that all server update messages have session count.
-
-	Removed match id from server init, since it's too early to be meaningful (and won't always be set yet).
-
-	Write code to actually emit the analytics google pubsub messages from server backend.
-
-	Make the cost matrix write a reasonably tight fit
-
-	Make the route matrix write a reasonably tight fit
-
-	Make the relay update response packet buffer a reasonably tight fit (see todo)
-
-	Is there a schema file format I could implement for bigquery?
-
-	Yes. JSON files.
-
-	Added bigquery schemas under schemas/bigquery for each analytics table
-
 TODO
 
-	Take a break dude.
+	Experiment with redis tool and implement parts of portal cruncher system:
 
+		1. List of 1000 top session ids (all buyers)
 
+		2. Count all sessions (all buyers)
 
+			"s-"
 
+		3. Count next sessions (all buyers)
 
+			"n-"
 
+		4. Update the session updates so each session is updated only once per-10 seconds.
 
+		5. Write data per-session summary every 10 seconds, including (eg. ISP, connection type, buyer id, datacenter id, direct rtt, next rtt)
 
+			"ss-""
 
+		6. Write Map (lat/long/session/next) per-session (all buyers)
+
+			"m-"
+
+		7. Pull per-session data for all top 1000 sessions once per-second
+
+			done.
+
+		8. Pull map data once per-second (all points)
+
+			^--- This is too slow at 1m points. Most likely, a specific implementation for the map points is needed to get to 1m points refreshing at 1 update per-second.
+
+		9. Session slice data
+
+			"sl" - key to an array of data... appended to every 10 seconds
+
+			^--- This is also extremely slow at 1m points.
+
+---------------------------------------------------------
+	
+	   10. Session near relay data (does not change frequently... ping first slice only, perhaps in the future, updates)
+
+	   		"nr" - key to an array of data... appended to, but changes infrequently (initially, never)
+
+---------------------------------------------------------
+
+	   11. Write relay updates on a separate thread.
+
+	   		"r-"
+
+	   12. Write server updates on a separate thread.
+
+	   	    "sv-"
+
+---------------------------------------------------------
+
+	   XX. Generalize everything above to multiple buyers. by this, there is a string for all "n-top-sessions" etc.
+
+			and then we use the buyer short code for a customer as the per-customer key, eg. "velan-n-top-sessions" or whatever.
 
 
 

@@ -155,6 +155,8 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
+	} else if command == "redis" {
+		redis()
 	}
 
 	cleanup()
@@ -336,4 +338,8 @@ func func_client() {
 
 func func_backend() {
 	bash("cd dist && ./func_backend")
+}
+
+func redis() {
+	bash("go run tools/redis/redis.go")
 }

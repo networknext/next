@@ -1,23 +1,37 @@
-HIGH LEVEL
+DONE
 
-	1. Get all analytics stuff pushed to analytics service via pubsub
+	SDK5 rework
 
-	2. Insert all analytics stuff into bigquery (emulator)
+	Rebuild and test server backend
 
-	3. Get the portal cruncher rebuilt (local)
+	Rebuild and test relay backend
 
-	4. Get the portal back online in a basic format running locally
+	Define set of messages for analytics and portal
 
-	5. Setup terraform scripts to get the dev environment up
+	Rebuild analytics service	
 
-	6. Get dev back up with internal addresses working across google and AWS relays (internal groups), plus some bare metal.
+TODO
 
-	7. Fix IP2Location
+	Rebuild portal cruncher
 
-	8. Multithreaded relay
+	Setup new dev environment with terraform
 
-	9. Load test, optimize and profile: SDK, relay and backend components.
+	Multithreaded relay
 
-	10. Document *everything*.
+	Load test, profile and optimize each component:
 
-	11. Bring back portal, admin tool, analytics etc... (stretch)
+		1. Client
+		2. Server
+		3. Relay
+		4. Server Backend
+		5. Relay Backend
+		6. Analytics
+		7. Portal Cruncher
+
+	Rebuild portal.
+
+	Rebuild admin tool.
+
+	Document *everything*.
+
+	Rebuild analytics without looker.
