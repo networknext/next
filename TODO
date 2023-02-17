@@ -16,9 +16,11 @@ DONE
 
 	Make the route matrix write a reasonably tight fit
 
+	Make the relay update response packet buffer a reasonably tight fit (see todo)
+
 TODO
 
-	Make the relay update response packet buffer a reasonably tight fit (see todo)
+	Is there a schema file format I could implement for bigquery?
 
 	--------------------------------
 
