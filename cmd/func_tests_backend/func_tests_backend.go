@@ -1417,7 +1417,7 @@ func test_cost_matrix_read_write() {
 
 		const BufferSize = 100 * 1024
 
-		buffer, err := writeMessage.Write(BufferSize)
+		buffer, err := writeMessage.Write()
 		if err != nil {
 			panic(err)
 		}
@@ -1446,9 +1446,7 @@ func test_route_matrix_read_write() {
 
 		readMessage := common.RouteMatrix{}
 
-		const BufferSize = 1024 * 1024
-
-		buffer, err := writeMessage.Write(BufferSize)
+		buffer, err := writeMessage.Write()
 		if err != nil {
 			panic(err)
 		}
@@ -1653,7 +1651,7 @@ func test_optimize() {
 					Costs:              costs,
 				}
 
-				costMatrixData, err := costMatrix.Write(10 * 1024 * 1024)
+				costMatrixData, err := costMatrix.Write()
 				if err != nil {
 					panic("could not write cost matrix")
 				}
@@ -1685,7 +1683,7 @@ func test_optimize() {
 					BinFileData:        binFileData,
 				}
 
-				routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
+				routeMatrixData, err := routeMatrix.Write()
 				if err != nil {
 					panic("could not write route matrix")
 					continue

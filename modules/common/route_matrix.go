@@ -37,6 +37,27 @@ type RouteMatrix struct {
 	FullRelayIndexSet  map[int32]bool
 }
 
+func (m *RouteMatrix) GetMaxSize() int {
+	// IMPORTANT: This must be an upper bound *and* a multiple of 4
+	numRelays := len(m.RelayIds)
+	size := 1024
+	size += numRelays * ( 8 + 4 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 + 8 + 8 ) 
+	size += core.TriMatrixLength(numRelays) * ( 4 + 4 + ( ( 12 + 4 * constants.MaxRouteRelays ) * constants.MaxRoutesPerEntry ) )
+	size += int(m.BinFileBytes) 
+	size += 4
+	size -= size % 4
+	return size
+}
+
+/*
+	DirectCost     int32
+	NumRoutes      int32
+	RouteCost      [constants.MaxRoutesPerEntry]int32
+	RouteHash      [constants.MaxRoutesPerEntry]uint32
+	RouteNumRelays [constants.MaxRoutesPerEntry]int32
+	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
+*/
+
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if stream.IsWriting() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
@@ -142,8 +163,8 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *RouteMatrix) Write(bufferSize int) ([]byte, error) {
-	buffer := make([]byte, bufferSize)
+func (m *RouteMatrix) Write() ([]byte, error) {
+	buffer := make([]byte, m.GetMaxSize())
 	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
 		return nil, fmt.Errorf("failed to serialize route matrix: %v", err)

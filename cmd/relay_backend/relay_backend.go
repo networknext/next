@@ -23,8 +23,6 @@ import (
 
 var maxJitter int32
 var maxPacketLoss float32
-var costMatrixBufferSize int
-var routeMatrixBufferSize int
 var routeMatrixInterval time.Duration
 
 var redisHostName string
@@ -73,8 +71,6 @@ func main() {
 
 	maxJitter = int32(envvar.GetInt("MAX_JITTER", 1000))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
-	costMatrixBufferSize = envvar.GetInt("COST_MATRIX_BUFFER_SIZE", 10*1024*1024)
-	routeMatrixBufferSize = envvar.GetInt("ROUTE_MATRIX_BUFFER_SIZE", 100*1024*1024)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
@@ -99,8 +95,6 @@ func main() {
 
 	core.Log("max jitter: %.1f", maxJitter)
 	core.Log("max packet loss: %.1f", maxPacketLoss)
-	core.Log("cost matrix buffer size: %d bytes", costMatrixBufferSize)
-	core.Log("route matrix buffer size: %d bytes", routeMatrixBufferSize)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("redis host name: %s", redisHostName)
 	core.Log("redis password: %s", redisPassword)
@@ -879,7 +873,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// serve up as internal cost matrix
 
-				costMatrixDataNew, err := costMatrixNew.Write(costMatrixBufferSize)
+				costMatrixDataNew, err := costMatrixNew.Write()
 				if err != nil {
 					core.Error("could not write cost matrix: %v", err)
 					continue
@@ -918,7 +912,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// serve up as internal route matrix
 
-				routeMatrixDataNew, err := routeMatrixNew.Write(routeMatrixBufferSize)
+				routeMatrixDataNew, err := routeMatrixNew.Write()
 				if err != nil {
 					core.Error("could not write route matrix: %v", err)
 					continue

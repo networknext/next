@@ -10,9 +10,7 @@ import (
 
 func CostMatrixReadWriteTest(writeMessage *common.CostMatrix, readMessage *common.CostMatrix, t *testing.T) {
 
-	const BufferSize = 100 * 1024
-
-	buffer, err := writeMessage.Write(BufferSize)
+	buffer, err := writeMessage.Write()
 	assert.Nil(t, err)
 
 	err = readMessage.Read(buffer)

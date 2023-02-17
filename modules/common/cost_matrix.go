@@ -28,6 +28,15 @@ type CostMatrix struct {
 	Costs              []uint8
 }
 
+func (m *CostMatrix) GetMaxSize() int {
+	// IMPORTANT: This must be an upper bound *and* a multiple of 4
+	numRelays := len(m.RelayIds)
+	size := 256 + numRelays * ( 8 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 ) + core.TriMatrixLength(numRelays)
+	size += 4
+	size -= size % 4
+	return size
+}
+
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 	if stream.IsWriting() && (m.Version < CostMatrixVersion_Min || m.Version > CostMatrixVersion_Max) {
@@ -80,8 +89,8 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *CostMatrix) Write(bufferSize int) ([]byte, error) {
-	buffer := make([]byte, bufferSize)
+func (m *CostMatrix) Write() ([]byte, error) {
+	buffer := make([]byte, m.GetMaxSize())
 	ws := encoding.CreateWriteStream(buffer)
 	if err := m.Serialize(ws); err != nil {
 		return nil, fmt.Errorf("failed to serialize cost matrix: %v", err)

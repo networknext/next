@@ -10,9 +10,7 @@ import (
 
 func RouteMatrixReadWriteTest(writeMessage *common.RouteMatrix, readMessage *common.RouteMatrix, t *testing.T) {
 
-	const BufferSize = 1024 * 1024
-
-	buffer, err := writeMessage.Write(BufferSize)
+	buffer, err := writeMessage.Write()
 	assert.Nil(t, err)
 
 	err = readMessage.Read(buffer)
