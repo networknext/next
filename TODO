@@ -18,13 +18,15 @@ DONE
 
 	Make the relay update response packet buffer a reasonably tight fit (see todo)
 
-TODO
-
 	Is there a schema file format I could implement for bigquery?
 
-	--------------------------------
+	Yes. JSON files.
 
+	Added bigquery schemas under schemas/bigquery for each analytics table
 
+TODO
+
+	Take a break dude.
 
 
 
@@ -194,14 +196,6 @@ TODO
 	--------
 
 	Emit the analytics database update message from relay_backend leader.
-
-	--------
-
-	Add new messages to support the portal:
-
-		PortalRelayUpdateMessage
-		PortalMatchUpdateMessage
-		PortalServerUpdateMessage
 
 	--------
 
