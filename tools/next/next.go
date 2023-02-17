@@ -1535,7 +1535,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 	}
 
-	routeMatrixData, err := routeMatrix.Write(100 * 1024 * 1024)
+	routeMatrixData, err := routeMatrix.Write()
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not write route matrix: %v", err), 1)
 	}
