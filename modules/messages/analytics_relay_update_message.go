@@ -140,12 +140,16 @@ func (message *AnalyticsRelayUpdateMessage) Save() (map[string]bigquery.Value, s
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["relay_id"] = int(message.RelayId)
 	bigquery_message["session_count"] = int(message.SessionCount)
-	bigquery_message["max_sessions"] = int(message.MaxSessions)
+	if message.MaxSessions != 0 {
+		bigquery_message["max_sessions"] = int(message.MaxSessions)
+	}
 	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
 	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
 	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
 	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
-	bigquery_message["relay_flags"] = int(message.RelayFlags)
+	if message.RelayFlags != 0 {
+		bigquery_message["relay_flags"] = int(message.RelayFlags)
+	}
 	bigquery_message["num_routable"] = int(message.NumRoutable)
 	bigquery_message["num_unroutable"] = int(message.NumUnroutable)
 

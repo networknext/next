@@ -115,7 +115,9 @@ func (message *AnalyticsServerUpdateMessage) Save() (map[string]bigquery.Value, 
 	bigquery_entry["sdk_version_patch"] = int(message.SDKVersion_Patch)
 	bigquery_entry["buyer_id"] = int(message.BuyerId)
 	bigquery_entry["datacenter_id"] = int(message.DatacenterId)
-	bigquery_entry["match_id"] = int(message.MatchId)
+	if message.MatchId != 0 {
+		bigquery_entry["match_id"] = int(message.MatchId)
+	}
 	bigquery_entry["num_sessions"] = int(message.NumSessions)
 	bigquery_entry["server_address"] = message.ServerAddress.String()
 	return bigquery_entry, "", nil
