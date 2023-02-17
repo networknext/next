@@ -163,6 +163,7 @@ func (message *AnalyticsNearRelayPingsMessage) Save() (map[string]bigquery.Value
 	bigquery_entry["longitude"] = float64(message.Longitude)
 	bigquery_entry["client_address"] = message.ClientAddress.String()
 	bigquery_entry["connection_type"] = int(message.ConnectionType)
+	bigquery_entry["platform_type"] = int(message.PlatformType)
 
 	near_relay_id := make([]bigquery.Value, message.NumNearRelays)
 	for i := 0; i < int(message.NumNearRelays); i++ {
