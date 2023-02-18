@@ -1403,19 +1403,11 @@ func test_cost_matrix_read_write() {
 
 	fmt.Printf("test_cost_matrix_read_write\n")
 
-	startTime := time.Now()
+	for maxRelays := 0; maxRelays < constants.MaxRelays; maxRelays++ {
 
-	for {
-
-		if time.Since(startTime) > 60*time.Second {
-			break
-		}
-
-		writeMessage := common.GenerateRandomCostMatrix()
+		writeMessage := common.GenerateRandomCostMatrix(maxRelays)
 
 		readMessage := common.CostMatrix{}
-
-		const BufferSize = 100 * 1024
 
 		buffer, err := writeMessage.Write()
 		if err != nil {
@@ -1434,15 +1426,9 @@ func test_route_matrix_read_write() {
 
 	fmt.Printf("test_route_matrix_read_write\n")
 
-	startTime := time.Now()
+	for maxRelays := 0; maxRelays < constants.MaxRelays; maxRelays++ {
 
-	for {
-
-		if time.Since(startTime) > 60*time.Second {
-			break
-		}
-
-		writeMessage := common.GenerateRandomRouteMatrix(32)
+		writeMessage := common.GenerateRandomRouteMatrix(maxRelays)
 
 		readMessage := common.RouteMatrix{}
 

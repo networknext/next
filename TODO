@@ -14,14 +14,54 @@ DONE
 	
 	Unit test all portal data types, eg. generate random data, write to string, parse string and verify its the same.
 
-TODO
+	Speed up cost matrix and route matrix func tests
 
-	Add tests for serializing route matrix and cost matrix at maximum possible sizes
+TODO
+ 
+	Add *func tests* tests for serializing route matrix and cost matrix at maximum possible sizes
 
 	-----------------
 
 	Fix func tests
 	
+	-----------------
+
+	STOP WORKING ON THE FUCKING WEEKEND YOU MADMAN
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	-----------------
 
 	Actually pull top session data, slice data and near relay data and return as structs

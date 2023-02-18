@@ -19,13 +19,9 @@ func CostMatrixReadWriteTest(writeMessage *common.CostMatrix, readMessage *commo
 	assert.Equal(t, writeMessage, readMessage)
 }
 
-const NumCostMatrixIterations = 10000
-
 func TestCostMatrixReadWrite(t *testing.T) {
 	t.Parallel()
-	for i := 0; i < NumCostMatrixIterations; i++ {
-		writeMessage := common.GenerateRandomCostMatrix()
-		readMessage := common.CostMatrix{}
-		CostMatrixReadWriteTest(&writeMessage, &readMessage, t)
-	}
+	writeMessage := common.GenerateRandomCostMatrix(32)
+	readMessage := common.CostMatrix{}
+	CostMatrixReadWriteTest(&writeMessage, &readMessage, t)
 }

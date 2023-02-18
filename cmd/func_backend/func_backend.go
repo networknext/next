@@ -616,7 +616,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
 		for i := 0; i <= int(requestPacket.NumNearRelays); i++ {
-			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %d\n", requestPacket.NearRelayIds[i], requestPacket.NearRelayRTT[i], requestPacket.NearRelayJitter[i], requestPacket.NearRelayPacketLoss[i])
+			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %.2f\n", requestPacket.NearRelayIds[i], requestPacket.NearRelayRTT[i], requestPacket.NearRelayJitter[i], requestPacket.NearRelayPacketLoss[i])
 		}
 	}
 

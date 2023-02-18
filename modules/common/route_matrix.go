@@ -319,17 +319,15 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	return analysis
 }
 
-func GenerateRandomRouteMatrix(maxRelays int) RouteMatrix {
+func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 
 	routeMatrix := RouteMatrix{
 		Version: uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max)),
 	}
 
-	if maxRelays > constants.MaxRelays {
-		maxRelays = constants.MaxRelays
+	if numRelays > constants.MaxRelays {
+		numRelays = constants.MaxRelays
 	}
-
-	numRelays := RandomInt(0, maxRelays)
 
 	routeMatrix.RelayIds = make([]uint64, numRelays)
 	routeMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)

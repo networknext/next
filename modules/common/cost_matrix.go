@@ -104,13 +104,15 @@ func (m *CostMatrix) Read(buffer []byte) error {
 	return m.Serialize(readStream)
 }
 
-func GenerateRandomCostMatrix() CostMatrix {
+func GenerateRandomCostMatrix(numRelays int) CostMatrix {
+
+	if numRelays > constants.MaxRelays {
+		numRelays = constants.MaxRelays
+	}
 
 	costMatrix := CostMatrix{
 		Version: uint32(RandomInt(CostMatrixVersion_Min, CostMatrixVersion_Max)),
 	}
-
-	numRelays := RandomInt(0, 64)
 
 	costMatrix.RelayIds = make([]uint64, numRelays)
 	costMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
