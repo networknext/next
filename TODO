@@ -16,8 +16,6 @@ DONE
 
 TODO
 
-	-----------------
-
 	Actually pull top session data, slice data and near relay data and return as structs
 
 	-----------------
