@@ -31,7 +31,7 @@ type CostMatrix struct {
 func (m *CostMatrix) GetMaxSize() int {
 	// IMPORTANT: This must be an upper bound *and* a multiple of 4
 	numRelays := len(m.RelayIds)
-	size := 256 + numRelays * ( 8 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 ) + core.TriMatrixLength(numRelays)
+	size := 256 + numRelays*(8+19+constants.MaxRelayNameLength+4+4+8+1) + core.TriMatrixLength(numRelays)
 	size += 4
 	size -= size % 4
 	return size

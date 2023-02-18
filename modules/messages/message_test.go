@@ -260,7 +260,7 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessage {
 
 	message := messages.PortalServerUpdateMessage{
-		Version: byte(common.RandomInt(messages.PortalServerUpdateMessageVersion_Min, messages.PortalServerUpdateMessageVersion_Max)),
+		Version:          byte(common.RandomInt(messages.PortalServerUpdateMessageVersion_Min, messages.PortalServerUpdateMessageVersion_Max)),
 		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),

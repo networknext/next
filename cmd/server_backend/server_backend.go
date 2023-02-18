@@ -204,21 +204,21 @@ func processAnalyticsMessages[T messages.Message](name string, inputChannel chan
 	var googlePubsubProducer *common.GooglePubsubProducer
 
 	if enableGooglePubsub {
-		
+
 		defaultPubsubTopic := strings.ReplaceAll(name, " ", "_")
-		
+
 		envVarName := strings.ToUpper(defaultPubsubTopic) + "_PUBSUB_TOPIC"
-		
+
 		pubsubTopic := envvar.GetString(envVarName, defaultPubsubTopic)
-		
+
 		core.Log("analytics %s google pubsub topic: %s", name, pubsubTopic)
-		
+
 		config := common.GooglePubsubConfig{
 			ProjectId:          service.GoogleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024,    // todo: env var
+			MessageChannelSize: 10 * 1024, // todo: env var
 		}
-		
+
 		var err error
 		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
 		if err != nil {

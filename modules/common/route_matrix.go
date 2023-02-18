@@ -41,9 +41,9 @@ func (m *RouteMatrix) GetMaxSize() int {
 	// IMPORTANT: This must be an upper bound *and* a multiple of 4
 	numRelays := len(m.RelayIds)
 	size := 1024
-	size += numRelays * ( 8 + 4 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 + 8 + 8 ) 
-	size += core.TriMatrixLength(numRelays) * ( 4 + 4 + ( ( 12 + 4 * constants.MaxRouteRelays ) * constants.MaxRoutesPerEntry ) )
-	size += int(m.BinFileBytes) 
+	size += numRelays * (8 + 4 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 + 8 + 8)
+	size += core.TriMatrixLength(numRelays) * (4 + 4 + ((12 + 4*constants.MaxRouteRelays) * constants.MaxRoutesPerEntry))
+	size += int(m.BinFileBytes)
 	size += 4
 	size -= size % 4
 	return size

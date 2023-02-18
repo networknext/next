@@ -7,9 +7,12 @@ import (
 	"net"
 	"os"
 	"sort"
-	// "strings"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/common"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -72,7 +75,7 @@ func createRedisClient(hostNameEnv string) net.Conn {
 }
 
 type TopSessionEntry struct {
-	sessionId string
+	sessionId uint64
 	score     uint32
 }
 
@@ -86,7 +89,6 @@ func getTopSessions(pool *redis.Pool, minutes int64) ([]TopSessionEntry, int, in
 	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes))
 	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes-1))
 	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes))
-	redisClient.Send("KEYS", "m-*")
 
 	redisClient.Flush()
 
@@ -120,52 +122,24 @@ func getTopSessions(pool *redis.Pool, minutes int64) ([]TopSessionEntry, int, in
 		panic(err)
 	}
 
-	mapKeys, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		panic(err)
-	}
-
-	var mapValues []string
-
-	if len(mapKeys) > 0 {
-
-		var keys []interface{}
-		for i := range mapKeys {
-			keys = append(keys, mapKeys[i])
-		}
-
-		redisClient.Send("MGET", keys...)
-
-		redisClient.Flush()
-
-		mapValues, err = redis.Strings(redisClient.Receive())
-		if err != nil {
-			panic(err)
-		}
-
-		if len(mapValues) != len(mapKeys) {
-			panic("could not get map values")
-		}
-	}
-
 	redisClient.Close()
 
-	topSessionsMap := make(map[string]TopSessionEntry)
+	topSessionsMap := make(map[uint64]TopSessionEntry)
 
 	for i := 0; i < len(topSessions_a); i += 2 {
-		sessionId := topSessions_a[i]
+		sessionId, _ := strconv.ParseUint(topSessions_a[i], 16, 64)
 		score, _ := strconv.ParseUint(topSessions_a[i+1], 10, 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
-			sessionId: sessionId,
+			sessionId: uint64(sessionId),
 			score:     uint32(score),
 		}
 	}
 
 	for i := 0; i < len(topSessions_b); i += 2 {
-		sessionId := topSessions_b[i]
+		sessionId, _ := strconv.ParseUint(topSessions_b[i], 16, 64)
 		score, _ := strconv.ParseUint(topSessions_b[i+1], 10, 32)
 		topSessionsMap[sessionId] = TopSessionEntry{
-			sessionId: sessionId,
+			sessionId: uint64(sessionId),
 			score:     uint32(score),
 		}
 	}
@@ -192,15 +166,6 @@ func getTopSessions(pool *redis.Pool, minutes int64) ([]TopSessionEntry, int, in
 		nextSessionCount = nextSessionCount_b
 	}
 
-	// todo: actually convert the map values to binary data
-	/*
-		fmt.Printf("---------------------------------------\n")
-		for i := 0; i < len(mapValues); i++ {
-			fmt.Printf("%s -> %s\n", mapKeys[i], mapValues[i])
-		}
-		fmt.Printf("---------------------------------------\n")
-	*/
-
 	return topSessions, totalSessionCount, nextSessionCount
 }
 
@@ -211,7 +176,39 @@ type MapData struct {
 	next      bool
 }
 
-func getMapData(pool *redis.Pool, minutes int64) []MapData {
+func (mapData *MapData) Value() string {
+	nextInt := 0
+	if mapData.next {
+		nextInt = 1
+	}
+	return fmt.Sprintf("%d|%d|%d", mapData.latitude, mapData.longitude, nextInt)
+}
+
+func (mapData *MapData) Parse(key string, value string) {
+	sessionId, err := strconv.ParseUint(key[2:], 16, 64)
+	if err != nil {
+		return
+	}
+	values := strings.Split(value, "|")
+	if len(values) != 3 {
+		return
+	}
+	latitude, err := strconv.ParseInt(values[0], 10, 16)
+	if err != nil {
+		return
+	}
+	longitude, err := strconv.ParseInt(values[1], 10, 16)
+	if err != nil {
+		return
+	}
+	mapData.sessionId = sessionId
+	mapData.longitude = int16(longitude)
+	mapData.latitude = int16(latitude)
+	mapData.next = values[2] == "1"
+	return
+}
+
+func getMapData(pool *redis.Pool, minutes int64) ([]MapData, error) {
 
 	redisClient := pool.Get()
 
@@ -221,7 +218,7 @@ func getMapData(pool *redis.Pool, minutes int64) []MapData {
 
 	mapKeys, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	var mapValues []string
@@ -239,32 +236,138 @@ func getMapData(pool *redis.Pool, minutes int64) []MapData {
 
 		mapValues, err = redis.Strings(redisClient.Receive())
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		if len(mapValues) != len(mapKeys) {
-			panic("could not get map values")
+			return nil, fmt.Errorf("number of map values and map keys don't match")
 		}
 	}
 
 	redisClient.Close()
 
 	mapData := make([]MapData, len(mapKeys))
-
-	// todo
-	/*
 	for i := range mapKeys {
-		mapData[i].sessionId, _ = strconv.ParseUint(mapKeys[i][2:], 16, 64)
-		values := strings.Split(mapValues[i], "|")
-		latitude, _ := strconv.ParseInt(values[0], 10, 16)
-		longitude, _ := strconv.ParseInt(values[1], 10, 16)
-		mapData[i].latitude = int16(latitude)
-		mapData[i].longitude = int16(longitude)
-		mapData[i].next = values[2] == "1"
+		mapData[i].Parse(mapKeys[i], mapValues[i])
 	}
+
+	return mapData, nil
+}
+
+type SliceData struct {
+	// todo
+}
+
+type NearRelayData struct {
+	timestamp           uint64
+	numNearRelays       int
+	nearRelayId         [constants.MaxNearRelays]uint64
+	nearRelayRTT        [constants.MaxNearRelays]uint8
+	nearRelayJitter     [constants.MaxNearRelays]uint8
+	nearRelayPacketLoss [constants.MaxNearRelays]float32
+}
+
+func (data *NearRelayData) Value() string {
+	output := fmt.Sprintf("%x|%d", data.timestamp, data.numNearRelays)
+	for i := 0; i < data.numNearRelays; i++ {
+		output += fmt.Sprintf("|%d|%d|%.2f", data.nearRelayId[i], data.nearRelayJitter[i], data.nearRelayPacketLoss[i])
+	}
+	return output
+}
+
+func (data *NearRelayData) Parse(key string, value string) {
+	values := strings.Split(value, "|")
+	if len(values) < 2 {
+		return
+	}
+	timestamp, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	numNearRelays, err := strconv.ParseInt(values[1], 10, 8)
+	if err != nil || numNearRelays < 0 || numNearRelays > constants.MaxNearRelays {
+		return
+	}
+	if len(values) != 2 + int(numNearRelays) * 4 {
+		return
+	}
+	nearRelayId := make([]uint64, numNearRelays)
+	nearRelayRTT := make([]uint64, numNearRelays)
+	nearRelayJitter := make([]uint64, numNearRelays)
+	nearRelayPacketLoss := make([]float64, numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		nearRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
+		if err != nil {
+			return
+		}
+		nearRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
+		if err != nil {
+			return
+		}
+		nearRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
+		if err != nil {
+			return
+		}
+		nearRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 10)
+		if err != nil {
+			return
+		}
+	}
+	data.timestamp = timestamp
+	data.numNearRelays = int(numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		data.nearRelayId[i] = nearRelayId[i]
+		data.nearRelayRTT[i] = uint8(nearRelayRTT[i])
+		data.nearRelayJitter[i] = uint8(nearRelayJitter[i])
+		data.nearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
+	}
+	return
+}
+
+func GenerateRandomNearRelayData() *NearRelayData {
+	data := NearRelayData{}
+	data.timestamp = uint64(time.Now().Unix())
+	data.numNearRelays = constants.MaxNearRelays
+	for i := 0; i < data.numNearRelays; i++ {
+		data.nearRelayId[i] = rand.Uint64()
+		data.nearRelayRTT[i] = uint8(common.RandomInt(5,20))
+		data.nearRelayJitter[i] = uint8(common.RandomInt(5,20))
+		data.nearRelayPacketLoss[i] = float32(common.RandomInt(0,1000000)) / 10000.0
+	}
+	return &data
+}
+
+type SessionData struct {
+	sessionId uint64
+	// todo
+	sliceData     []SliceData
+	nearRelayData []NearRelayData
+}
+
+func getSessionData(pool *redis.Pool, sessionId uint64) *SessionData {
+
+	redisClient := pool.Get()
+
+	// redisClient.Send("KEYS", "m-*")
+
+	redisClient.Flush()
+
+	/*
+		mapKeys, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			panic(err)
+		}
 	*/
 
-	return mapData
+	redisClient.Close()
+
+	// todo: handle if we can't find the session
+
+	sessionData := SessionData{}
+
+	// todo
+
+	return &sessionData
 }
 
 func main() {
@@ -277,11 +380,13 @@ func main() {
 
 		go func(thread int) {
 
-			time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
 			redisClient := createRedisClient("REDIS_HOST")
 
 			iteration := uint64(0)
+
+			near_relay_max := uint64(0)
 
 			for {
 
@@ -294,31 +399,43 @@ func main() {
 				session_data := ""
 				map_data := ""
 				slice_data := []string{}
+				near_relay_data := []string{}
 
-				for j := 0; j < 100; j++ {
+				for j := 0; j < 1000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
 
-					score := sessionId % 1000
+					score := rand.Intn(10000)
 
 					zadd_data := fmt.Sprintf(" %d %016x", score, sessionId)
 
 					all_sessions += zadd_data
 
-					next := (sessionId % 10) == 0
+					next := ((uint64(j) + iteration) % 10) == 0
 					if next {
 						next_sessions += zadd_data
 					}
 
 					session_data += fmt.Sprintf("SET ss-%016x \"Comcast ISP Name, LLC|1|2|latitude|longitude|a45c351912345781|a45c351912345781|12345781a45c3519|127.0.0.1:50000|MatchId\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sessionId)
 
-					map_data += fmt.Sprintf("SET m-%016x \"-150,200,1\"\r\nEXPIRE m-%016x 30\r\n", sessionId, sessionId)
+					mapData := MapData{}
+					mapData.latitude = int16(common.RandomInt(-90, +90))
+					mapData.longitude = int16(common.RandomInt(-180, +180))
+					mapData.next = next
+
+					map_data += fmt.Sprintf("SET m-%016x \"%s\"\r\nEXPIRE m-%016x 30\r\n", sessionId, mapData.Value(), sessionId)
 
 					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"SliceNumber|Timestamp|DirectRTT|NextRTT|PredictedRTT|DirectJitter|NextJitter|RealJitter|DirectPacketLoss|NextPacketLoss|RealPacketLoss|RealOutOfOrder|INTERNALEVENTS|SESSIONEVENTS\"\r\nEXPIRE sl-%016x\r\n", sessionId, sessionId))
+
+					if sessionId > near_relay_max {
+						nearRelayData := GenerateRandomNearRelayData()
+						near_relay_data = append(slice_data, fmt.Sprintf("RPUSH nr-%016x \"%s\"\r\nEXPIRE sl-%016x\r\n", sessionId, nearRelayData.Value(), sessionId))
+						near_relay_max = sessionId
+					}
 				}
 
 				commands := ""
-	
+
 				if len(all_sessions) > 0 {
 					commands += fmt.Sprintf("ZADD s-%d %s\r\n", minutes, all_sessions)
 					commands += fmt.Sprintf("EXPIRE s-%d 30\r\n", minutes)
@@ -352,7 +469,20 @@ func main() {
 					redisClient.Write([]byte(commands))
 				}
 
-				time.Sleep(time.Second)
+				commands = ""
+				for i := range near_relay_data {
+					commands += near_relay_data[i]
+					if len(commands) >= 512*1024 {
+						redisClient.Write([]byte(commands))
+						commands = ""
+					}
+				}
+
+				if len(commands) > 0 {
+					redisClient.Write([]byte(commands))
+				}
+
+				time.Sleep(10 * time.Second)
 
 				iteration++
 			}
@@ -378,9 +508,18 @@ func main() {
 
 			start = time.Now()
 
-			mapData := getMapData(pool, minutes)
+			mapData, err := getMapData(pool, minutes)
+			if err != nil {
+				panic(fmt.Sprintf("failed to get map data: %v", err))
+			}
 
 			fmt.Printf("map data: %d points (%.1fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
+
+			if len(topSessions) > 0 {
+				start = time.Now()
+				sessionData := getSessionData(pool, topSessions[0].sessionId)
+				fmt.Printf("session data: %d slices, %d near relay data (%.1fms)\n", len(sessionData.sliceData), len(sessionData.nearRelayData), float64(time.Since(start).Milliseconds()))
+			}
 
 			fmt.Printf("-------------------------------------------------\n")
 

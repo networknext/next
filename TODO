@@ -1,50 +1,76 @@
 DONE
 
-TODO
-
 	Experiment with redis tool and implement parts of portal cruncher system:
 
-		1. List of 1000 top session ids (all buyers)
+	List of 1000 top session ids (all buyers)
 
-		2. Count all sessions (all buyers)
+	Count all sessions (all buyers)
 
-			"s-"
+		"s-"
 
-		3. Count next sessions (all buyers)
+	Count next sessions (all buyers)
 
-			"n-"
+		"n-"
 
-		4. Update the session updates so each session is updated only once per-10 seconds.
+	Update the session updates so each session is updated only once per-10 seconds.
 
-		5. Write data per-session summary every 10 seconds, including (eg. ISP, connection type, buyer id, datacenter id, direct rtt, next rtt)
+	Write data per-session summary every 10 seconds, including (eg. ISP, connection type, buyer id, datacenter id, direct rtt, next rtt)
 
-			"ss-""
+		"ss-""
 
-		6. Write Map (lat/long/session/next) per-session (all buyers)
+	Write Map (lat/long/session/next) per-session (all buyers)
 
-			"m-"
+		"m-"
 
-		7. Pull per-session data for all top 1000 sessions once per-second
+	Pull per-session data for all top 1000 sessions once per-second
 
-			done.
+	Pull mapt m data once per-second (all points)
 
-		8. Pull map data once per-second (all points)
+	This is too slow at 1m points. Most likely, a specific implementation for the map points is needed to get to 1m points refreshing at 1 update per-second.
 
-			^--- This is too slow at 1m points. Most likely, a specific implementation for the map points is needed to get to 1m points refreshing at 1 update per-second.
+	Session slice data
 
-		9. Session slice data
+		"sl" - key to an array of data... appended to every 10 seconds
 
-			"sl" - key to an array of data... appended to every 10 seconds
+	Session near relay data (does not change frequently... ping first slice only, perhaps in the future, updates)
 
-			^--- This is also extremely slow at 1m points.
+	   	"nr" - key to an array of data... appended to, but changes infrequently (initially, never)
+
+	Generate random map data and save to string when writing map data for session
+
+	Parse map data coming back from redis and make sure it's valid
+
+	Define near relay data as a struct
+
+	Generate random near relay data using the struct and write its string value
+
+TODO
+
+	Implement parse for near relay data
+
+	-----------------
+
+	Fully define session data as a struct
+
+	Fully define slice data as a struct
+
+	Fully define near relay data as a struct
+
+	-----------------
+
+	Read and write map data to a string
+
+	Read and write session data to a string
+
+	Read and write near relay data to a string
+
+	Pull down top session data, then load the most recent 
 
 ---------------------------------------------------------
-	
-	   10. Session near relay data (does not change frequently... ping first slice only, perhaps in the future, updates)
 
-	   		"nr" - key to an array of data... appended to, but changes infrequently (initially, never)
+	   11. Actually pull top session data and slice data and near relays and store in struct
 
----------------------------------------------------------
+ ---------------------------------------------------------
 
 	   11. Write relay updates on a separate thread.
 
@@ -298,25 +324,6 @@ TODO
 
 
 
-	--------
-
-	Plumb internal events all the way up from client SDK to backend.
-
-	Client SDK must be able to trigger certain events (eg. client hitches, no packets received etc...)
-
-	Server can trigger others, then they get OR'd before sending up to backend.
-
-	--------
-
-	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
-
-	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
-
-	--------
-
-	Redo pro, but do it via internal session events.
-
-	--------
 
 
 
@@ -516,3 +523,21 @@ Nice to have:
 	Should be func tests that spin up the bigquery emulator and verify that each analytics message type can be written to the appropriate table created from schema
 
 	---------------
+
+	Plumb internal events all the way up from client SDK to backend.
+
+	Client SDK must be able to trigger certain events (eg. client hitches, no packets received etc...)
+
+	Server can trigger others, then they get OR'd before sending up to backend.
+
+	--------
+
+	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
+
+	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
+
+	--------
+
+	Redo pro, but do it via internal session events.
+
+	--------
