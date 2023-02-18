@@ -1,66 +1,12 @@
 DONE
 
-	Experiment with redis tool and implement parts of portal cruncher system:
-
-	List of 1000 top session ids (all buyers)
-
-	Count all sessions (all buyers)
-
-		"s-"
-
-	Count next sessions (all buyers)
-
-		"n-"
-
-	Update the session updates so each session is updated only once per-10 seconds.
-
-	Write data per-session summary every 10 seconds, including (eg. ISP, connection type, buyer id, datacenter id, direct rtt, next rtt)
-
-		"ss-""
-
-	Write Map (lat/long/session/next) per-session (all buyers)
-
-		"m-"
-
-	Pull per-session data for all top 1000 sessions once per-second
-
-	Pull mapt m data once per-second (all points)
-
-	This is too slow at 1m points. Most likely, a specific implementation for the map points is needed to get to 1m points refreshing at 1 update per-second.
-
-	Session slice data
-
-		"sl" - key to an array of data... appended to every 10 seconds
-
-	Session near relay data (does not change frequently... ping first slice only, perhaps in the future, updates)
-
-	   	"nr" - key to an array of data... appended to, but changes infrequently (initially, never)
-
-	Generate random map data and save to string when writing map data for session
-
-	Parse map data coming back from redis and make sure it's valid
-
-	Define near relay data as a struct
-
-	Generate random near relay data using the struct and write its string value
-
-	Implement parse for near relay data
-
-	Fully define session data as a struct
-
-	Fully define slice data as a struct
-
-	Fully define near relay data as a struct
-
-	Read and write map data to a string
-
-	Write slice data as string
-
 TODO
 
 	Generate random slice data
 
 	Generate random session data
+
+
 
 	-----------------
 
@@ -71,6 +17,8 @@ TODO
 	-----------------
 
 	Actually pull top session data and slice data and near relays and store in struct
+
+	Return as separate values. Don't all mush into the session data
 
  	-----------------
 

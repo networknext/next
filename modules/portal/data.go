@@ -54,12 +54,12 @@ func (data *MapData) Parse(key string, value string) {
 type SliceData struct {
 	Timestamp uint64
 	SliceNumber uint32
-	DirectRTT int32
-	NextRTT int32
-	PredictedRTT int32
-	DirectJitter int32
-	NextJitter int32
-	RealJitter int32
+	DirectRTT uint32
+	NextRTT uint32
+	PredictedRTT uint32
+	DirectJitter uint32
+	NextJitter uint32
+	RealJitter uint32
 	DirectPacketLoss float32
 	NextPacketLoss float32
 	RealPacketLoss float32
@@ -87,7 +87,82 @@ func (data * SliceData) Value() string {
 	)
 }
 
-// todo: parse
+func (data *SliceData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) != 14 {
+		return
+	}
+	timestamp, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	sliceNumber, err := strconv.ParseUint(values[1], 10, 32)
+	if err != nil {
+		return
+	}
+	directRTT, err := strconv.ParseUint(values[2], 10, 32)
+	if err != nil {
+		return
+	}
+	nextRTT, err := strconv.ParseUint(values[3], 10, 32)
+	if err != nil {
+		return
+	}
+	predictedRTT, err := strconv.ParseUint(values[4], 10, 32)
+	if err != nil {
+		return
+	}
+	directJitter, err := strconv.ParseUint(values[5], 10, 32)
+	if err != nil {
+		return
+	}
+	nextJitter, err := strconv.ParseUint(values[6], 10, 32)
+	if err != nil {
+		return
+	}
+	realJitter, err := strconv.ParseUint(values[7], 10, 32)
+	if err != nil {
+		return
+	}
+	directPacketLoss, err := strconv.ParseFloat(values[8], 32)
+	if err != nil {
+		return
+	}
+	nextPacketLoss, err := strconv.ParseFloat(values[9], 32)
+	if err != nil {
+		return
+	}
+	realPacketLoss, err := strconv.ParseFloat(values[10], 32)
+	if err != nil {
+		return
+	}
+	realOutOfOrder, err := strconv.ParseFloat(values[11], 32)
+	if err != nil {
+		return
+	}
+	internalEvents, err := strconv.ParseUint(values[12], 16, 64)
+	if err != nil {
+		return
+	}
+	sessionEvents, err := strconv.ParseUint(values[13], 16, 64)
+	if err != nil {
+		return
+	}
+	data.Timestamp = timestamp
+	data.SliceNumber = uint32(sliceNumber)
+	data.DirectRTT = uint32(directRTT)
+	data.NextRTT = uint32(nextRTT)
+	data.PredictedRTT = uint32(predictedRTT)
+	data.DirectJitter = uint32(directJitter)
+	data.NextJitter = uint32(nextJitter)
+	data.RealJitter = uint32(realJitter)
+	data.DirectPacketLoss = float32(directPacketLoss)
+	data.NextPacketLoss = float32(nextPacketLoss)
+	data.RealPacketLoss = float32(realPacketLoss)
+	data.RealOutOfOrder = float32(realOutOfOrder)
+	data.InternalEvents = internalEvents
+	data.SessionEvents = sessionEvents
+}
 
 func GenerateRandomSliceData() *SliceData {
 	data := SliceData{}
@@ -206,6 +281,12 @@ func (data *SessionData) Value() string {
 	)
 }
 
-// todo: parse
+func (data *SessionData) Parse(key string, value string) {
+	// todo
+}
 
-// todo: generate random
+func GenerateRandomSessionData() *SessionData {
+	data := SessionData{}
+	// todo
+	return &data
+}
