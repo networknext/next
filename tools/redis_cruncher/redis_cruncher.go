@@ -263,9 +263,8 @@ func RunCrunchThreads(redisHostname string, threadCount int ) {
 						next_sessions += zadd_data
 					}
 
-					// todo: generate random session data here
-
-					session_data += fmt.Sprintf("SET ss-%016x \"Comcast ISP Name, LLC|1|2|latitude|longitude|a45c351912345781|a45c351912345781|12345781a45c3519|127.0.0.1:50000|MatchId\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sessionId)
+					sliceData := portal.GenerateRandomSliceData()
+					session_data += fmt.Sprintf("SET ss-%016x \"%s\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sliceData.Value(), sessionId)
 
 					mapData := portal.MapData{}
 					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0

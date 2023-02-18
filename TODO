@@ -1,8 +1,12 @@
 DONE
 
-TODO
+	Write code to parse slice data
 
 	Generate random slice data
+
+	Integrate slice data into redis cruncher
+
+TODO
 
 	Generate random session data
 
