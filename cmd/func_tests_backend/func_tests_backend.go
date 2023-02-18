@@ -1403,9 +1403,11 @@ func test_cost_matrix_read_write() {
 
 	fmt.Printf("test_cost_matrix_read_write\n")
 
-	for maxRelays := 0; maxRelays < constants.MaxRelays; maxRelays++ {
+	for numRelays := 0; numRelays <= constants.MaxRelays; numRelays++ {
 
-		writeMessage := common.GenerateRandomCostMatrix(maxRelays)
+		fmt.Printf("read/write cost matrix with %d relays\n", numRelays)
+
+		writeMessage := common.GenerateRandomCostMatrix(numRelays)
 
 		readMessage := common.CostMatrix{}
 
@@ -1426,9 +1428,19 @@ func test_route_matrix_read_write() {
 
 	fmt.Printf("test_route_matrix_read_write\n")
 
-	for maxRelays := 0; maxRelays < constants.MaxRelays; maxRelays++ {
+	// todo: it's currently too slow to do all num relays in 60 seconds. optimize
+	
+	const step = 21
 
-		writeMessage := common.GenerateRandomRouteMatrix(maxRelays)
+	for numRelays := 0; numRelays <= constants.MaxRelays + step - 1; numRelays += step {
+
+		if numRelays > constants.MaxRelays {
+			numRelays = constants.MaxRelays
+		}
+
+		fmt.Printf("read/write route matrix with %d relays\n", numRelays)
+
+		writeMessage := common.GenerateRandomRouteMatrix(numRelays)
 
 		readMessage := common.RouteMatrix{}
 

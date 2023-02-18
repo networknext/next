@@ -16,10 +16,10 @@ DONE
 
 	Speed up cost matrix and route matrix func tests
 
-TODO
- 
 	Add *func tests* tests for serializing route matrix and cost matrix at maximum possible sizes
 
+TODO
+ 
 	-----------------
 
 	Fix func tests
