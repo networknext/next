@@ -12,9 +12,9 @@ DONE
 
 	Parse session data
 	
-TODO
-
 	Unit test all portal data types, eg. generate random data, write to string, parse string and verify its the same.
+
+TODO
 
 	-----------------
 

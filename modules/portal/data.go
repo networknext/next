@@ -195,12 +195,12 @@ type NearRelayData struct {
 func (data *NearRelayData) Value() string {
 	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumNearRelays)
 	for i := 0; i < data.NumNearRelays; i++ {
-		output += fmt.Sprintf("|%d|%d|%.2f", data.NearRelayId[i], data.NearRelayJitter[i], data.NearRelayPacketLoss[i])
+		output += fmt.Sprintf("|%x|%d|%d|%.2f", data.NearRelayId[i], data.NearRelayRTT[i], data.NearRelayJitter[i], data.NearRelayPacketLoss[i])
 	}
 	return output
 }
 
-func (data *NearRelayData) Parse(key string, value string) {
+func (data *NearRelayData) Parse(value string) {
 	values := strings.Split(value, "|")
 	if len(values) < 2 {
 		return
@@ -257,7 +257,7 @@ func GenerateRandomNearRelayData() *NearRelayData {
 		data.NearRelayId[i] = rand.Uint64()
 		data.NearRelayRTT[i] = uint8(common.RandomInt(5,20))
 		data.NearRelayJitter[i] = uint8(common.RandomInt(5,20))
-		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0,1000000)) / 10000.0
+		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0,10000)) / 100.0
 	}
 	return &data
 }
@@ -294,7 +294,7 @@ func (data *SessionData) Value() string {
 	)
 }
 
-func (data *SessionData) Parse(key string, value string) {
+func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
 	if len(values) != 12 {
 		return
