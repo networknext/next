@@ -44,11 +44,7 @@ DONE
 
 	Generate random near relay data using the struct and write its string value
 
-TODO
-
 	Implement parse for near relay data
-
-	-----------------
 
 	Fully define session data as a struct
 
@@ -56,43 +52,39 @@ TODO
 
 	Fully define near relay data as a struct
 
-	-----------------
-
 	Read and write map data to a string
 
-	Read and write session data to a string
+	Write slice data as string
 
-	Read and write near relay data to a string
+TODO
 
-	Pull down top session data, then load the most recent 
+	Generate random slice data
 
----------------------------------------------------------
+	Generate random session data
 
-	   11. Actually pull top session data and slice data and near relays and store in struct
+	-----------------
 
- ---------------------------------------------------------
+	Parse slice data
 
-	   11. Write relay updates on a separate thread.
+	Parse session data
 
-	   		"r-"
+	-----------------
 
-	   12. Write server updates on a separate thread.
+	Actually pull top session data and slice data and near relays and store in struct
 
-	   	    "sv-"
+ 	-----------------
 
----------------------------------------------------------
+	Write relay updates on a separate thread. "r-"
 
-	   XX. Generalize everything above to multiple buyers. by this, there is a string for all "n-top-sessions" etc.
+	-----------------
 
-			and then we use the buyer short code for a customer as the per-customer key, eg. "velan-n-top-sessions" or whatever.
+	Write server updates on a separate thread. "sv-"
 
+	---------------------------------------------------------
 
+	Generalize to multiple buyers
 
-
-
-
-
-
+	---------------------------------------------------------
 
 
 
@@ -113,13 +105,61 @@ TODO
 
 
 
-	--------------------------------
 
-	Now get the redis implementation going in the portal cruncher...
 
-	We actually need to look over the old portal cruncher code and work out how we were inserting into redis.
 
-	--------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -195,53 +235,6 @@ TODO
 
 	Actually write the analytics messages to bigquery...
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	--------
 
 	Emit the analytics database update message from relay_backend leader.
@@ -301,18 +294,6 @@ TODO
 	--------
 
 	Extend analytics service to insert messages into bigquery.
-
-	--------------
-
-    Send portal messages to redis streams
-
-	--------------
-
-	Get portal cruncher back up and verify it sees messages
-
-	--------------
-
-	Recover portal cruncher code and update it to use the standard redis library we use elsewhere
 
 	--------------
 

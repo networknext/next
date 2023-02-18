@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,27 +12,13 @@ import (
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/gomodule/redigo/redis"
 )
 
-func getEnvInt(name string, defaultValue int) int {
-	string, ok := os.LookupEnv(name)
-	if !ok {
-		return defaultValue
-	}
-	value, err := strconv.ParseInt(string, 10, 64)
-	if err != nil {
-		panic(fmt.Sprintf("env string is not an integer: %s\n", name))
-	}
-	return int(value)
-}
-
-func createRedisPool(hostNameEnv string) *redis.Pool {
-	hostname := os.Getenv(hostNameEnv)
-	if hostname == "" {
-		hostname = "127.0.0.1:6379"
-	}
+func createRedisPool(hostname string) *redis.Pool {
 	pool := redis.Pool{
 		MaxIdle:     1000,
 		MaxActive:   64,
@@ -54,17 +39,14 @@ func createRedisPool(hostNameEnv string) *redis.Pool {
 	return &pool
 }
 
-func createRedisClient(hostNameEnv string) net.Conn {
-	// todo: this is crazy. needs better error handling, and reconnect support...
-	hostname := os.Getenv(hostNameEnv)
-	if hostname == "" {
-		hostname = "127.0.0.1:6379"
-	}
+func createRedisClient(hostname string) net.Conn {
 	client, err := net.Dial("tcp", hostname)
 	if err != nil {
 		panic(err)
 	}
 	go func() {
+		// todo: this is for insert only clients but we need to detect a closed connection and recreate it
+		// todo: we should also ping here to make sure we're OK
 		reader := bufio.NewReader(client)
 		for {
 			message, _ := reader.ReadString('\n')
@@ -169,46 +151,7 @@ func getTopSessions(pool *redis.Pool, minutes int64) ([]TopSessionEntry, int, in
 	return topSessions, totalSessionCount, nextSessionCount
 }
 
-type MapData struct {
-	sessionId uint64
-	latitude  int16
-	longitude int16
-	next      bool
-}
-
-func (mapData *MapData) Value() string {
-	nextInt := 0
-	if mapData.next {
-		nextInt = 1
-	}
-	return fmt.Sprintf("%d|%d|%d", mapData.latitude, mapData.longitude, nextInt)
-}
-
-func (mapData *MapData) Parse(key string, value string) {
-	sessionId, err := strconv.ParseUint(key[2:], 16, 64)
-	if err != nil {
-		return
-	}
-	values := strings.Split(value, "|")
-	if len(values) != 3 {
-		return
-	}
-	latitude, err := strconv.ParseInt(values[0], 10, 16)
-	if err != nil {
-		return
-	}
-	longitude, err := strconv.ParseInt(values[1], 10, 16)
-	if err != nil {
-		return
-	}
-	mapData.sessionId = sessionId
-	mapData.longitude = int16(longitude)
-	mapData.latitude = int16(latitude)
-	mapData.next = values[2] == "1"
-	return
-}
-
-func getMapData(pool *redis.Pool, minutes int64) ([]MapData, error) {
+func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
 
 	redisClient := pool.Get()
 
@@ -254,97 +197,7 @@ func getMapData(pool *redis.Pool, minutes int64) ([]MapData, error) {
 	return mapData, nil
 }
 
-type SliceData struct {
-	// todo
-}
-
-type NearRelayData struct {
-	timestamp           uint64
-	numNearRelays       int
-	nearRelayId         [constants.MaxNearRelays]uint64
-	nearRelayRTT        [constants.MaxNearRelays]uint8
-	nearRelayJitter     [constants.MaxNearRelays]uint8
-	nearRelayPacketLoss [constants.MaxNearRelays]float32
-}
-
-func (data *NearRelayData) Value() string {
-	output := fmt.Sprintf("%x|%d", data.timestamp, data.numNearRelays)
-	for i := 0; i < data.numNearRelays; i++ {
-		output += fmt.Sprintf("|%d|%d|%.2f", data.nearRelayId[i], data.nearRelayJitter[i], data.nearRelayPacketLoss[i])
-	}
-	return output
-}
-
-func (data *NearRelayData) Parse(key string, value string) {
-	values := strings.Split(value, "|")
-	if len(values) < 2 {
-		return
-	}
-	timestamp, err := strconv.ParseUint(values[0], 16, 64)
-	if err != nil {
-		return
-	}
-	numNearRelays, err := strconv.ParseInt(values[1], 10, 8)
-	if err != nil || numNearRelays < 0 || numNearRelays > constants.MaxNearRelays {
-		return
-	}
-	if len(values) != 2 + int(numNearRelays) * 4 {
-		return
-	}
-	nearRelayId := make([]uint64, numNearRelays)
-	nearRelayRTT := make([]uint64, numNearRelays)
-	nearRelayJitter := make([]uint64, numNearRelays)
-	nearRelayPacketLoss := make([]float64, numNearRelays)
-	for i := 0; i < int(numNearRelays); i++ {
-		nearRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
-		if err != nil {
-			return
-		}
-		nearRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
-		if err != nil {
-			return
-		}
-		nearRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
-		if err != nil {
-			return
-		}
-		nearRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 10)
-		if err != nil {
-			return
-		}
-	}
-	data.timestamp = timestamp
-	data.numNearRelays = int(numNearRelays)
-	for i := 0; i < int(numNearRelays); i++ {
-		data.nearRelayId[i] = nearRelayId[i]
-		data.nearRelayRTT[i] = uint8(nearRelayRTT[i])
-		data.nearRelayJitter[i] = uint8(nearRelayJitter[i])
-		data.nearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
-	}
-	return
-}
-
-func GenerateRandomNearRelayData() *NearRelayData {
-	data := NearRelayData{}
-	data.timestamp = uint64(time.Now().Unix())
-	data.numNearRelays = constants.MaxNearRelays
-	for i := 0; i < data.numNearRelays; i++ {
-		data.nearRelayId[i] = rand.Uint64()
-		data.nearRelayRTT[i] = uint8(common.RandomInt(5,20))
-		data.nearRelayJitter[i] = uint8(common.RandomInt(5,20))
-		data.nearRelayPacketLoss[i] = float32(common.RandomInt(0,1000000)) / 10000.0
-	}
-	return &data
-}
-
-type SessionData struct {
-	sessionId uint64
-	// todo
-	sliceData     []SliceData
-	nearRelayData []NearRelayData
-}
-
-func getSessionData(pool *redis.Pool, sessionId uint64) *SessionData {
+func getSessionData(pool *redis.Pool, sessionId uint64) *portal.SessionData {
 
 	redisClient := pool.Get()
 
@@ -370,11 +223,7 @@ func getSessionData(pool *redis.Pool, sessionId uint64) *SessionData {
 	return &sessionData
 }
 
-func main() {
-
-	pool := createRedisPool("REDIS_HOST")
-
-	threadCount := getEnvInt("REDIS_THREAD_COUNT", 100)
+func RunCrunchThreads(redisHostname string, threadCount int ) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -382,7 +231,7 @@ func main() {
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
-			redisClient := createRedisClient("REDIS_HOST")
+			redisClient := createRedisClient(redisHostname)
 
 			iteration := uint64(0)
 
@@ -416,14 +265,18 @@ func main() {
 						next_sessions += zadd_data
 					}
 
+					// todo: generate random session data here
+
 					session_data += fmt.Sprintf("SET ss-%016x \"Comcast ISP Name, LLC|1|2|latitude|longitude|a45c351912345781|a45c351912345781|12345781a45c3519|127.0.0.1:50000|MatchId\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sessionId)
 
 					mapData := MapData{}
-					mapData.latitude = int16(common.RandomInt(-90, +90))
-					mapData.longitude = int16(common.RandomInt(-180, +180))
+					mapData.latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
+					mapData.longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
 					mapData.next = next
 
 					map_data += fmt.Sprintf("SET m-%016x \"%s\"\r\nEXPIRE m-%016x 30\r\n", sessionId, mapData.Value(), sessionId)
+
+					// todo: generate random slice data here
 
 					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"SliceNumber|Timestamp|DirectRTT|NextRTT|PredictedRTT|DirectJitter|NextJitter|RealJitter|DirectPacketLoss|NextPacketLoss|RealPacketLoss|RealOutOfOrder|INTERNALEVENTS|SESSIONEVENTS\"\r\nEXPIRE sl-%016x\r\n", sessionId, sessionId))
 
@@ -489,6 +342,11 @@ func main() {
 		}(k)
 
 	}
+}
+
+func RunPollThread(redisHostname string) {
+
+	pool := createRedisPool(redisHostname)
 
 	go func() {
 
@@ -526,14 +384,17 @@ func main() {
 			time.Sleep(time.Second)
 		}
 	}()
+}
 
-	duration := getEnvInt("DURATION", 60)
+func main() {
 
-	if duration < 0 {
-		for {
-			time.Sleep(time.Minute)
-		}
-	}
+	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	time.Sleep(time.Second * time.Duration(duration))
+	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
+
+	RunCrunchThreads(redisHostname, threadCount)
+
+	RunPollThread(redisHostname)
+
+	time.Sleep(time.Minute)
 }
