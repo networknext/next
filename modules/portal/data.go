@@ -10,6 +10,7 @@ import (
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 )
 
 type MapData struct {
@@ -48,7 +49,6 @@ func (data *MapData) Parse(key string, value string) {
 	data.Longitude = float32(longitude)
 	data.Latitude = float32(latitude)
 	data.Next = values[2] == "1"
-	return
 }
 
 type SliceData struct {
@@ -265,12 +265,12 @@ func GenerateRandomNearRelayData() *NearRelayData {
 type SessionData struct {
 	SessionId uint64
 	ISP string
-	ConnectionType int
-	PlatformType int
+	ConnectionType uint32
+	PlatformType uint32
 	Latitude float32
 	Longitude float32
-	DirectRTT int32
-	NextRTT int32
+	DirectRTT uint32
+	NextRTT uint32
 	MatchId uint64
 	BuyerId uint64
 	DatacenterId uint64
@@ -295,11 +295,80 @@ func (data *SessionData) Value() string {
 }
 
 func (data *SessionData) Parse(key string, value string) {
-	// todo
+	values := strings.Split(value, "|")
+	if len(values) != 12 {
+		return
+	}
+	sessionId, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	isp := values[1]
+	connectionType, err := strconv.ParseUint(values[2], 10, 32)
+	if err != nil {
+		return
+	}
+	platformType, err := strconv.ParseUint(values[3], 10, 32)
+	if err != nil {
+		return
+	}
+	latitude, err := strconv.ParseFloat(values[4], 32)
+	if err != nil {
+		return
+	}
+	longitude, err := strconv.ParseFloat(values[5], 32)
+	if err != nil {
+		return
+	}
+	directRTT, err := strconv.ParseUint(values[6], 10, 32)
+	if err != nil {
+		return
+	}
+	nextRTT, err := strconv.ParseUint(values[7], 10, 32)
+	if err != nil {
+		return
+	}
+	matchId, err := strconv.ParseUint(values[8], 16, 64)
+	if err != nil {
+		return
+	}
+	buyerId, err := strconv.ParseUint(values[9], 16, 64)
+	if err != nil {
+		return
+	}
+	datacenterId, err := strconv.ParseUint(values[10], 16, 64)
+	if err != nil {
+		return
+	}
+	serverAddress := core.ParseAddress(values[11])
+
+	data.SessionId = sessionId
+	data.ISP = isp
+	data.ConnectionType = uint32(connectionType)
+	data.PlatformType = uint32(platformType)
+	data.Latitude = float32(latitude)
+	data.Longitude = float32(longitude)
+	data.DirectRTT = uint32(directRTT)
+	data.NextRTT = uint32(nextRTT)
+	data.MatchId = matchId
+	data.BuyerId = buyerId
+	data.DatacenterId = datacenterId
+	data.ServerAddress = serverAddress
 }
 
 func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
-	// todo
+	data.SessionId = rand.Uint64()
+	data.ISP = "Comcast Internet Company, LLC"
+	data.ConnectionType = uint32(common.RandomInt(0, constants.MaxConnectionType))
+	data.PlatformType = uint32(common.RandomInt(0, constants.MaxPlatformType))
+	data.Latitude = float32(common.RandomInt(-9000, +9000)) / 100.0
+	data.Longitude = float32(common.RandomInt(-18000, +18000)) / 100.0
+	data.DirectRTT = rand.Uint32()
+	data.NextRTT = rand.Uint32()
+	data.MatchId = rand.Uint64()
+	data.BuyerId = rand.Uint64()
+	data.DatacenterId = rand.Uint64()
+	data.ServerAddress = common.RandomAddress()
 	return &data
 }

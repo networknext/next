@@ -263,8 +263,8 @@ func RunCrunchThreads(redisHostname string, threadCount int ) {
 						next_sessions += zadd_data
 					}
 
-					sliceData := portal.GenerateRandomSliceData()
-					session_data += fmt.Sprintf("SET ss-%016x \"%s\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sliceData.Value(), sessionId)
+					sessionData := portal.GenerateRandomSessionData()
+					session_data += fmt.Sprintf("SET ss-%016x \"%s\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
 
 					mapData := portal.MapData{}
 					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
@@ -273,9 +273,8 @@ func RunCrunchThreads(redisHostname string, threadCount int ) {
 
 					map_data += fmt.Sprintf("SET m-%016x \"%s\"\r\nEXPIRE m-%016x 30\r\n", sessionId, mapData.Value(), sessionId)
 
-					// todo: generate random slice data here
-
-					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"SliceNumber|Timestamp|DirectRTT|NextRTT|PredictedRTT|DirectJitter|NextJitter|RealJitter|DirectPacketLoss|NextPacketLoss|RealPacketLoss|RealOutOfOrder|INTERNALEVENTS|SESSIONEVENTS\"\r\nEXPIRE sl-%016x\r\n", sessionId, sessionId))
+					sliceData := portal.GenerateRandomSessionData()
+					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"%s\"\r\nEXPIRE sl-%016x\r\n", sessionId, sliceData.Value(), sessionId))
 
 					if sessionId > near_relay_max {
 						nearRelayData := portal.GenerateRandomNearRelayData()

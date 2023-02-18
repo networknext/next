@@ -19,6 +19,10 @@ const (
 
 	MagicBytes = 8
 
+	MaxConnectionType = 3
+
+	MaxPlatformType = 10
+
 	CostBias          = 3
 	MaxIndirects      = 8
 	MaxRoutesPerEntry = 64
