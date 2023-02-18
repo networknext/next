@@ -166,7 +166,20 @@ func (data *SliceData) Parse(value string) {
 
 func GenerateRandomSliceData() *SliceData {
 	data := SliceData{}
-	// todo...	
+	data.Timestamp = rand.Uint64()
+	data.SliceNumber = rand.Uint32()
+	data.DirectRTT = rand.Uint32()
+	data.NextRTT = rand.Uint32()
+	data.PredictedRTT = rand.Uint32()
+	data.DirectJitter = rand.Uint32()
+	data.NextJitter = rand.Uint32()
+	data.RealJitter = rand.Uint32()
+	data.DirectPacketLoss = float32(common.RandomInt(0,100000))/100.0
+	data.NextPacketLoss = float32(common.RandomInt(0,100000))/100.0
+	data.RealPacketLoss = float32(common.RandomInt(0,100000))/100.0
+	data.RealOutOfOrder = float32(common.RandomInt(0,100000))/100.0
+	data.InternalEvents = rand.Uint64()
+	data.SessionEvents = rand.Uint64()
 	return &data
 }
 
