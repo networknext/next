@@ -1428,8 +1428,6 @@ func test_route_matrix_read_write() {
 
 	fmt.Printf("test_route_matrix_read_write\n")
 
-	// todo: it's currently too slow to do all num relays in 60 seconds. optimize
-	
 	const step = 21
 
 	for numRelays := 0; numRelays <= constants.MaxRelays + step - 1; numRelays += step {
@@ -1814,6 +1812,8 @@ func test_relay_backend() {
 		database.Relays = append(database.Relays, relay)
 
 		database.RelayMap[relay.Id] = &relay
+
+		database.DatacenterRelays[datacenter.Id] = append(database.DatacenterRelays[datacenter.Id], relay.Id)
 	}
 
 	// write the database out to a temporary file
