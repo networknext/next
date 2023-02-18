@@ -25,6 +25,7 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	BinFileBytes       int32
 	BinFileData        []byte
+
 	RelayIds           []uint64
 	RelayIdToIndex     map[uint64]int32
 	RelayAddresses     []net.UDPAddr
@@ -32,6 +33,7 @@ type RouteMatrix struct {
 	RelayLatitudes     []float32
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
+
 	DestRelays         []bool
 	RouteEntries       []core.RouteEntry
 }
@@ -40,13 +42,21 @@ func (m *RouteMatrix) GetMaxSize() int {
 	// IMPORTANT: This must be an upper bound *and* a multiple of 4
 	numRelays := len(m.RelayIds)
 	size := 1024
-	size += numRelays * (8 + 4 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 + 8 + 8)
-	size += core.TriMatrixLength(numRelays) * (16 + (30 * constants.MaxRoutesPerEntry))
+	size += numRelays * (8 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8)
+	size += core.TriMatrixLength(numRelays) * (4 + 4 + 12*constants.MaxRoutesPerEntry + 4*constants.MaxRoutesPerEntry*constants.MaxRouteRelays)
 	size += int(m.BinFileBytes)
-	size += 4
 	size -= size % 4
 	return size
 }
+
+/*
+	DirectCost     int32
+	NumRoutes      int32
+	RouteCost      [constants.MaxRoutesPerEntry]int32
+	RouteHash      [constants.MaxRoutesPerEntry]uint32
+	RouteNumRelays [constants.MaxRoutesPerEntry]int32
+	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
+*/
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
@@ -309,13 +319,17 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	return analysis
 }
 
-func GenerateRandomRouteMatrix() RouteMatrix {
+func GenerateRandomRouteMatrix(maxRelays int) RouteMatrix {
 
 	routeMatrix := RouteMatrix{
 		Version: uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max)),
 	}
 
-	numRelays := RandomInt(0, 64)
+	if maxRelays > constants.MaxRelays {
+		maxRelays = constants.MaxRelays
+	}
+
+	numRelays := RandomInt(0, maxRelays)
 
 	routeMatrix.RelayIds = make([]uint64, numRelays)
 	routeMatrix.RelayAddresses = make([]net.UDPAddr, numRelays)
@@ -347,7 +361,7 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 	routeMatrix.CreatedAt = rand.Uint64()
 	routeMatrix.Version = uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max))
 
-	numEntries := RandomInt(0, 1000)
+	numEntries := core.TriMatrixLength(numRelays)
 
 	routeMatrix.RouteEntries = make([]core.RouteEntry, numEntries)
 

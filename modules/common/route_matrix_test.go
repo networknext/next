@@ -23,8 +23,7 @@ func RouteMatrixReadWriteTest(writeMessage *common.RouteMatrix, readMessage *com
 	assert.Equal(t, writeMessage, readMessage)
 }
 
-// todo
-const NumRouteMatrixIterations = 1 // 0000
+const NumRouteMatrixIterations = 10
 
 func TestRouteMatrixReadWrite(t *testing.T) {
 	t.Parallel()
@@ -34,6 +33,8 @@ func TestRouteMatrixReadWrite(t *testing.T) {
 		RouteMatrixReadWriteTest(&writeMessage, &readMessage, t)
 	}
 }
+
+// todo: func test all relay numbers [0,constants.MaxRelays] too slow for here
 
 func TestRouteMatrixNoRelays(t *testing.T) {
 
