@@ -1442,7 +1442,7 @@ func test_route_matrix_read_write() {
 			break
 		}
 
-		writeMessage := common.GenerateRandomRouteMatrix()
+		writeMessage := common.GenerateRandomRouteMatrix(32)
 
 		readMessage := common.RouteMatrix{}
 
