@@ -69,14 +69,12 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 
 	routeMatrix.CreatedAt = uint64(time.Now().Unix())
 	routeMatrix.Version = common.RouteMatrixVersion_Write
-	routeMatrix.RouteEntries = routeEntries
 	routeMatrix.RelayDatacenterIds = relayDatacenters
-	routeMatrix.FullRelayIds = make([]uint64, 0)
-	routeMatrix.FullRelayIndexSet = make(map[int32]bool)
 	routeMatrix.DestRelays = destRelays
 	routeMatrix.RelayIds = relayIds
 	routeMatrix.RelayIdToIndex = relayIdToIndex
 	routeMatrix.RelayNames = relayNames
+	routeMatrix.RouteEntries = routeEntries
 
 	return routeMatrix
 }

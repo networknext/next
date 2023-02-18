@@ -12,14 +12,19 @@ import (
 )
 
 const (
-	RouteMatrixVersion_Min   = 7
-	RouteMatrixVersion_Max   = 7
-	RouteMatrixVersion_Write = 7
+	RouteMatrixVersion_Min   = 1
+	RouteMatrixVersion_Max   = 1
+	RouteMatrixVersion_Write = 1
 
-	MaxDatabaseBinWrapperSize = 100000000 // todo: too large
+	// todo: constants -- or remove
+	MaxDatabaseBinWrapperSize = 100 * 1024
 )
 
 type RouteMatrix struct {
+	Version            uint32
+	CreatedAt          uint64
+	BinFileBytes       int32
+	BinFileData        []byte
 	RelayIds           []uint64
 	RelayIdToIndex     map[uint64]int32
 	RelayAddresses     []net.UDPAddr
@@ -29,12 +34,6 @@ type RouteMatrix struct {
 	RelayDatacenterIds []uint64
 	DestRelays         []bool
 	RouteEntries       []core.RouteEntry
-	BinFileBytes       int32
-	BinFileData        []byte
-	CreatedAt          uint64
-	Version            uint32
-	FullRelayIds       []uint64
-	FullRelayIndexSet  map[int32]bool
 }
 
 func (m *RouteMatrix) GetMaxSize() int {
@@ -42,21 +41,12 @@ func (m *RouteMatrix) GetMaxSize() int {
 	numRelays := len(m.RelayIds)
 	size := 1024
 	size += numRelays * (8 + 4 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8 + 1 + 8 + 8)
-	size += core.TriMatrixLength(numRelays) * (4 + 4 + ((12 + 4*constants.MaxRouteRelays) * constants.MaxRoutesPerEntry))
+	size += core.TriMatrixLength(numRelays) * (16 + (30 * constants.MaxRoutesPerEntry))
 	size += int(m.BinFileBytes)
 	size += 4
 	size -= size % 4
 	return size
 }
-
-/*
-	DirectCost     int32
-	NumRoutes      int32
-	RouteCost      [constants.MaxRoutesPerEntry]int32
-	RouteHash      [constants.MaxRoutesPerEntry]uint32
-	RouteNumRelays [constants.MaxRoutesPerEntry]int32
-	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
-*/
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
@@ -64,10 +54,21 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		panic(fmt.Errorf("invalid route matrix version: %d", m.Version))
 	}
 
-	stream.SerializeUint32(&m.Version)
+	stream.SerializeBits(&m.Version, 8)
 
 	if stream.IsReading() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {
 		return fmt.Errorf("invalid route matrix version: %d", m.Version)
+	}
+
+	stream.SerializeUint64(&m.CreatedAt)
+
+	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	if m.BinFileBytes > 0 {
+		if stream.IsReading() {
+			m.BinFileData = make([]byte, m.BinFileBytes)
+		}
+		binFileData := m.BinFileData[:m.BinFileBytes]
+		stream.SerializeBytes(binFileData)
 	}
 
 	numRelays := uint32(len(m.RelayIds))
@@ -97,6 +98,13 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	if stream.IsReading() {
+		m.DestRelays = make([]bool, numRelays)
+	}
+	for i := range m.DestRelays {
+		stream.SerializeBool(&m.DestRelays[i])
+	}
+
 	numEntries := uint32(len(m.RouteEntries))
 	stream.SerializeUint32(&numEntries)
 
@@ -116,46 +124,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint32(&entry.RouteHash[i])
 			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
-			}
-		}
-	}
-
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
-	if m.BinFileBytes > 0 {
-		if stream.IsReading() {
-			m.BinFileData = make([]byte, m.BinFileBytes)
-		}
-		binFileData := m.BinFileData[:m.BinFileBytes]
-		stream.SerializeBytes(binFileData)
-	}
-
-	stream.SerializeUint64(&m.CreatedAt)
-
-	if m.Version >= 2 {
-		if stream.IsReading() {
-			m.DestRelays = make([]bool, numRelays)
-		}
-		for i := range m.DestRelays {
-			stream.SerializeBool(&m.DestRelays[i])
-		}
-	}
-
-	if m.Version >= 4 {
-
-		numFullRelayIds := uint32(len(m.FullRelayIds))
-
-		stream.SerializeUint32(&numFullRelayIds)
-
-		if stream.IsReading() {
-			m.FullRelayIds = make([]uint64, numFullRelayIds)
-			m.FullRelayIndexSet = make(map[int32]bool)
-		}
-
-		for i := uint32(0); i < numFullRelayIds; i++ {
-			stream.SerializeUint64(&m.FullRelayIds[i])
-			if stream.IsReading() {
-				relayIndex, _ := m.RelayIdToIndex[m.FullRelayIds[i]]
-				m.FullRelayIndexSet[relayIndex] = true
 			}
 		}
 	}
@@ -378,15 +346,6 @@ func GenerateRandomRouteMatrix() RouteMatrix {
 
 	routeMatrix.CreatedAt = rand.Uint64()
 	routeMatrix.Version = uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max))
-
-	numFullRelays := RandomInt(0, numRelays)
-
-	routeMatrix.FullRelayIds = make([]uint64, numFullRelays)
-	routeMatrix.FullRelayIndexSet = make(map[int32]bool)
-	for i := range routeMatrix.FullRelayIds {
-		routeMatrix.FullRelayIds[i] = routeMatrix.RelayIds[i]
-		routeMatrix.FullRelayIndexSet[int32(i)] = true
-	}
 
 	numEntries := RandomInt(0, 1000)
 

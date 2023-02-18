@@ -334,7 +334,8 @@ func ProcessRouteMatrix(service *common.Service) {
 				}
 				routeMatrixNumDatacenters := len(datacenterMap)
 
-				routeMatrixNumFullRelays := len(routeMatrix.FullRelayIds)
+				// todo: bring back updated data structures for full relays in route matrix
+				routeMatrixNumFullRelays := 0
 
 				analysis := routeMatrix.Analyze()
 

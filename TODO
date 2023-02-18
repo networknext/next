@@ -16,6 +16,14 @@ DONE
 
 TODO
 
+	Add tests for serializing route matrix and cost matrix at maximum possible sizes
+
+	-----------------
+
+	Fix func tests
+	
+	-----------------
+
 	Actually pull top session data, slice data and near relay data and return as structs
 
 	-----------------
