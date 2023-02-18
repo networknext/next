@@ -13,18 +13,18 @@ import (
 )
 
 type MapData struct {
-	sessionId uint64
-	latitude  float32
-	longitude float32
-	next      bool
+	SessionId uint64
+	Latitude  float32
+	Longitude float32
+	Next      bool
 }
 
 func (data *MapData) Value() string {
 	nextInt := 0
-	if data.next {
+	if data.Next {
 		nextInt = 1
 	}
-	return fmt.Sprintf("%.2f|%.2f|%d", data.latitude, data.longitude, nextInt)
+	return fmt.Sprintf("%.2f|%.2f|%d", data.Latitude, data.Longitude, nextInt)
 }
 
 func (data *MapData) Parse(key string, value string) {
@@ -44,46 +44,46 @@ func (data *MapData) Parse(key string, value string) {
 	if err != nil {
 		return
 	}
-	data.sessionId = sessionId
-	data.longitude = float32(longitude)
-	data.latitude = float32(latitude)
-	data.next = values[2] == "1"
+	data.SessionId = sessionId
+	data.Longitude = float32(longitude)
+	data.Latitude = float32(latitude)
+	data.Next = values[2] == "1"
 	return
 }
 
 type SliceData struct {
-	timestamp uint64
-	sliceNumber uint32
-	directRTT int32
-	nextRTT int32
-	predictedRTT int32
-	directJitter int32
-	nextJitter int32
-	realJitter int32
-	directPacketLoss float32
-	nextPacketLoss float32
-	realPacketLoss float32
-	realOutOfOrder float32
-	internalEvents uint64
-	sessionEvents uint64
+	Timestamp uint64
+	SliceNumber uint32
+	DirectRTT int32
+	NextRTT int32
+	PredictedRTT int32
+	DirectJitter int32
+	NextJitter int32
+	RealJitter int32
+	DirectPacketLoss float32
+	NextPacketLoss float32
+	RealPacketLoss float32
+	RealOutOfOrder float32
+	InternalEvents uint64
+	SessionEvents uint64
 }
 
 func (data * SliceData) Value() string {
 	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x",
-		data.timestamp,
-		data.sliceNumber,
-		data.directRTT,
-		data.nextRTT,
-		data.predictedRTT,
-		data.directJitter,
-		data.nextJitter,
-		data.realJitter,
-		data.directPacketLoss,
-		data.nextPacketLoss,
-		data.realPacketLoss,
-		data.realOutOfOrder,
-		data.internalEvents,
-		data.sessionEvents,
+		data.Timestamp,
+		data.SliceNumber,
+		data.DirectRTT,
+		data.NextRTT,
+		data.PredictedRTT,
+		data.DirectJitter,
+		data.NextJitter,
+		data.RealJitter,
+		data.DirectPacketLoss,
+		data.NextPacketLoss,
+		data.RealPacketLoss,
+		data.RealOutOfOrder,
+		data.InternalEvents,
+		data.SessionEvents,
 	)
 }
 
@@ -96,18 +96,18 @@ func GenerateRandomSliceData() *SliceData {
 }
 
 type NearRelayData struct {
-	timestamp           uint64
-	numNearRelays       int
-	nearRelayId         [constants.MaxNearRelays]uint64
-	nearRelayRTT        [constants.MaxNearRelays]uint8
-	nearRelayJitter     [constants.MaxNearRelays]uint8
-	nearRelayPacketLoss [constants.MaxNearRelays]float32
+	Timestamp           uint64
+	NumNearRelays       int
+	NearRelayId         [constants.MaxNearRelays]uint64
+	NearRelayRTT        [constants.MaxNearRelays]uint8
+	NearRelayJitter     [constants.MaxNearRelays]uint8
+	NearRelayPacketLoss [constants.MaxNearRelays]float32
 }
 
 func (data *NearRelayData) Value() string {
-	output := fmt.Sprintf("%x|%d", data.timestamp, data.numNearRelays)
-	for i := 0; i < data.numNearRelays; i++ {
-		output += fmt.Sprintf("|%d|%d|%.2f", data.nearRelayId[i], data.nearRelayJitter[i], data.nearRelayPacketLoss[i])
+	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumNearRelays)
+	for i := 0; i < data.NumNearRelays; i++ {
+		output += fmt.Sprintf("|%d|%d|%.2f", data.NearRelayId[i], data.NearRelayJitter[i], data.NearRelayPacketLoss[i])
 	}
 	return output
 }
@@ -150,59 +150,59 @@ func (data *NearRelayData) Parse(key string, value string) {
 			return
 		}
 	}
-	data.timestamp = timestamp
-	data.numNearRelays = int(numNearRelays)
+	data.Timestamp = timestamp
+	data.NumNearRelays = int(numNearRelays)
 	for i := 0; i < int(numNearRelays); i++ {
-		data.nearRelayId[i] = nearRelayId[i]
-		data.nearRelayRTT[i] = uint8(nearRelayRTT[i])
-		data.nearRelayJitter[i] = uint8(nearRelayJitter[i])
-		data.nearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
+		data.NearRelayId[i] = nearRelayId[i]
+		data.NearRelayRTT[i] = uint8(nearRelayRTT[i])
+		data.NearRelayJitter[i] = uint8(nearRelayJitter[i])
+		data.NearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
 	}
 	return
 }
 
 func GenerateRandomNearRelayData() *NearRelayData {
 	data := NearRelayData{}
-	data.timestamp = uint64(time.Now().Unix())
-	data.numNearRelays = constants.MaxNearRelays
-	for i := 0; i < data.numNearRelays; i++ {
-		data.nearRelayId[i] = rand.Uint64()
-		data.nearRelayRTT[i] = uint8(common.RandomInt(5,20))
-		data.nearRelayJitter[i] = uint8(common.RandomInt(5,20))
-		data.nearRelayPacketLoss[i] = float32(common.RandomInt(0,1000000)) / 10000.0
+	data.Timestamp = uint64(time.Now().Unix())
+	data.NumNearRelays = constants.MaxNearRelays
+	for i := 0; i < data.NumNearRelays; i++ {
+		data.NearRelayId[i] = rand.Uint64()
+		data.NearRelayRTT[i] = uint8(common.RandomInt(5,20))
+		data.NearRelayJitter[i] = uint8(common.RandomInt(5,20))
+		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0,1000000)) / 10000.0
 	}
 	return &data
 }
 
 type SessionData struct {
-	sessionId uint64
-	isp string
-	connectionType int
-	platformType int
-	latitude float32
-	longitude float32
-	directRTT int32
-	nextRTT int32
-	matchId uint64
-	buyerId uint64
-	datacenterId uint64
-	serverAddress net.UDPAddr
+	SessionId uint64
+	ISP string
+	ConnectionType int
+	PlatformType int
+	Latitude float32
+	Longitude float32
+	DirectRTT int32
+	NextRTT int32
+	MatchId uint64
+	BuyerId uint64
+	DatacenterId uint64
+	ServerAddress net.UDPAddr
 }
 
 func (data *SessionData) Value() string {
 	return fmt.Sprintf("%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
-		data.sessionId,
-		data.isp,
-		data.connectionType,
-		data.platformType,
-		data.latitude,
-		data.longitude,
-		data.directRTT,
-		data.nextRTT,
-		data.matchId,
-		data.buyerId,
-		data.datacenterId,
-		data.serverAddress.String(),
+		data.SessionId,
+		data.ISP,
+		data.ConnectionType,
+		data.PlatformType,
+		data.Latitude,
+		data.Longitude,
+		data.DirectRTT,
+		data.NextRTT,
+		data.MatchId,
+		data.BuyerId,
+		data.DatacenterId,
+		data.ServerAddress.String(),
 	)
 }
 

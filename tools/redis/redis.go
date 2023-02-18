@@ -7,10 +7,8 @@ import (
 	"net"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/portal"
 	"github.com/networknext/backend/modules/envvar"
@@ -189,7 +187,7 @@ func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
 
 	redisClient.Close()
 
-	mapData := make([]MapData, len(mapKeys))
+	mapData := make([]portal.MapData, len(mapKeys))
 	for i := range mapKeys {
 		mapData[i].Parse(mapKeys[i], mapValues[i])
 	}
@@ -216,7 +214,7 @@ func getSessionData(pool *redis.Pool, sessionId uint64) *portal.SessionData {
 
 	// todo: handle if we can't find the session
 
-	sessionData := SessionData{}
+	sessionData := portal.SessionData{}
 
 	// todo
 
@@ -269,10 +267,10 @@ func RunCrunchThreads(redisHostname string, threadCount int ) {
 
 					session_data += fmt.Sprintf("SET ss-%016x \"Comcast ISP Name, LLC|1|2|latitude|longitude|a45c351912345781|a45c351912345781|12345781a45c3519|127.0.0.1:50000|MatchId\"\r\nEXPIRE ss-%016x 30\r\n", sessionId, sessionId)
 
-					mapData := MapData{}
-					mapData.latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
-					mapData.longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
-					mapData.next = next
+					mapData := portal.MapData{}
+					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
+					mapData.Longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
+					mapData.Next = next
 
 					map_data += fmt.Sprintf("SET m-%016x \"%s\"\r\nEXPIRE m-%016x 30\r\n", sessionId, mapData.Value(), sessionId)
 
@@ -281,7 +279,7 @@ func RunCrunchThreads(redisHostname string, threadCount int ) {
 					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"SliceNumber|Timestamp|DirectRTT|NextRTT|PredictedRTT|DirectJitter|NextJitter|RealJitter|DirectPacketLoss|NextPacketLoss|RealPacketLoss|RealOutOfOrder|INTERNALEVENTS|SESSIONEVENTS\"\r\nEXPIRE sl-%016x\r\n", sessionId, sessionId))
 
 					if sessionId > near_relay_max {
-						nearRelayData := GenerateRandomNearRelayData()
+						nearRelayData := portal.GenerateRandomNearRelayData()
 						near_relay_data = append(slice_data, fmt.Sprintf("RPUSH nr-%016x \"%s\"\r\nEXPIRE sl-%016x\r\n", sessionId, nearRelayData.Value(), sessionId))
 						near_relay_max = sessionId
 					}
@@ -373,11 +371,14 @@ func RunPollThread(redisHostname string) {
 
 			fmt.Printf("map data: %d points (%.1fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
 
+			// todo: bring back, but return each thing separately
+			/*
 			if len(topSessions) > 0 {
 				start = time.Now()
 				sessionData := getSessionData(pool, topSessions[0].sessionId)
-				fmt.Printf("session data: %d slices, %d near relay data (%.1fms)\n", len(sessionData.sliceData), len(sessionData.nearRelayData), float64(time.Since(start).Milliseconds()))
+				fmt.Printf("session data: %d slices, %d near relay data (%.1fms)\n", len(sessionData.sliceData), len(sessionData.NearRelayData), float64(time.Since(start).Milliseconds()))
 			}
+			*/
 
 			fmt.Printf("-------------------------------------------------\n")
 
