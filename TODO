@@ -20,20 +20,18 @@ DONE
 
 	Fix func tests
 
-TODO
- 
 	Pull top session data
 
 	Pull slice data and parse into an array
 
 	Pull near relay data and return an array
 
-	-----------------
-
 	Parameterize "get top sessions" to take start index and finish index
 
 	This way we can paginate the session display, if we want to.
 
+TODO
+ 
  	-----------------
 
 	Write relay updates on a separate thread. "r-"
@@ -44,7 +42,15 @@ TODO
 
 	---------------------------------------------------------
 
-	Generalize to multiple buyers
+	Add equivalent code to pull all relay data once per-second (paginate)
+
+	How to sort? By start time? Num sessions?
+
+	---------------------------------------------------------
+
+	Add equivalent code to pull all server data once per-second (paginate)
+
+	Sort by uptime? Oldest start date?
 
 	---------------------------------------------------------
 
