@@ -1,30 +1,72 @@
 DONE
 
-TODO
- 
- 	-----------------
+	Write server updates on a separate thread. "sv-"
 
 	Write relay updates on a separate thread. "r-"
 
-	-----------------
+	Hack up get servers
 
-	Write server updates on a separate thread. "sv-"
+	Hack up get relays
+
+TODO
+ 
+	Sketch out actual server data method
+
+	Make sure it includes start time (for uptime)
+
+	Server data value
+
+	Parse server data
+
+	Random server data
+
+	Hook up insert of server data to use random values (except server address)
+
+	Finish implementing "getServers" so it actually gets all server data
+
+	Do we need an array of server updates, eg. every 10 seconds, "server update" with the set of session ids connected?
+
+	Probably a good idea. Otherwise, difficult to do the inverse, to walk from a server to the sessions that are on it.
+
+	Yes. Do this. "svu-"
+
+	What's different between svd- (server data), and svu-?
+
+	svd- is the data shown in the initial list of servers.
+
+	svu- is the array of timestamped data shown inside the server inspector.
+
+	Finish implementing getServers to return servers (server data), totalServerCount
+
+	Implement getServerUpdates, and call it, displaying the number of server updates for the first server address.
 
 	---------------------------------------------------------
 
-	Add equivalent code to pull all relay data once per-second (paginate)
+	Sketch out actual relay data method
 
-	How to sort? By start time? Num sessions?
+	Make sure it includes start time (for uptime)
+
+	Relay data value
+
+	Parse relay data
+
+	Random relay data
+
+	Implement rd- and ru-
+
+	Finish implementing getRelays to return relays (relay data), totalRelayCount
+
+	Implement getRelayUpdates, and call it, displaying the number of relay updates for the first relay address.
 
 	---------------------------------------------------------
 
-	Add equivalent code to pull all server data once per-second (paginate)
+	Portal cruncher core is basically finished.
 
-	Sort by uptime? Oldest start date?
+	What needs to happen next is that the code needs to be moved into a module file (eg. common/portal.go)
+
+	And it needs to be cleaned up with proper error handling, and with the insert threads (crunch threads) actually detecting errors and reconnecting as needed.
 
 	---------------------------------------------------------
-
-
 
 
 
