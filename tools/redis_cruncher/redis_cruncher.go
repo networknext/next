@@ -54,25 +54,29 @@ func createRedisClient(hostname string) net.Conn {
 	return client
 }
 
-type TopSessionEntry struct {
+type SessionEntry struct {
 	sessionId uint64
 	score     uint32
 }
 
-func getTopSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]TopSessionEntry, int, int) {
+func getSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]SessionEntry, int, int) {
 
 	if begin < 0 {
-		panic(fmt.Sprintf("invalid begin passed to get top sessions: %d", begin))
+		panic(fmt.Sprintf("invalid begin passed to get sessions: %d", begin))
 	}
 
 	if end < 0 {
-		panic(fmt.Sprintf("invalid end passed to get top sessions: %d", end))
+		panic(fmt.Sprintf("invalid end passed to get sessions: %d", end))
+	}
+
+	if end <= begin {
+		panic("end must be greater than begin")
 	}
 
 	redisClient := pool.Get()
 
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), begin, end, "WITHSCORES")
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), begin, end, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), begin, end-1, "WITHSCORES")
 	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes-1))
 	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes))
 	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes-1))
@@ -80,12 +84,12 @@ func getTopSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]TopS
 
 	redisClient.Flush()
 
-	topSessions_a, err := redis.Strings(redisClient.Receive())
+	sessions_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		panic(err)
 	}
 
-	topSessions_b, err := redis.Strings(redisClient.Receive())
+	sessions_b, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		panic(err)
 	}
@@ -112,36 +116,37 @@ func getTopSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]TopS
 
 	redisClient.Close()
 
-	topSessionsMap := make(map[uint64]TopSessionEntry)
+	sessionsMap := make(map[uint64]SessionEntry)
 
-	for i := 0; i < len(topSessions_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(topSessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(topSessions_a[i+1], 10, 32)
-		topSessionsMap[sessionId] = TopSessionEntry{
+	for i := 0; i < len(sessions_a); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
 			sessionId: uint64(sessionId),
 			score:     uint32(score),
 		}
 	}
 
-	for i := 0; i < len(topSessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(topSessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(topSessions_b[i+1], 10, 32)
-		topSessionsMap[sessionId] = TopSessionEntry{
+	for i := 0; i < len(sessions_b); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
 			sessionId: uint64(sessionId),
 			score:     uint32(score),
 		}
 	}
 
-	topSessions := make([]TopSessionEntry, len(topSessionsMap))
-	topSessions = topSessions[:0]
-	for _, v := range topSessionsMap {
-		topSessions = append(topSessions, v)
+	sessions := make([]SessionEntry, len(sessionsMap))
+	sessions = sessions[:0]
+	for _, v := range sessionsMap {
+		sessions = append(sessions, v)
 	}
 
-	sort.SliceStable(topSessions, func(i, j int) bool { return topSessions[i].score > topSessions[j].score })
+	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score > sessions[j].score })
 
-	if len(topSessions) > 1000 {
-		topSessions = topSessions[:1000]
+	maxSize := end - begin
+	if len(sessions) > maxSize {
+		sessions = sessions[:maxSize]
 	}
 
 	totalSessionCount := totalSessionCount_a
@@ -154,7 +159,7 @@ func getTopSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]TopS
 		nextSessionCount = nextSessionCount_b
 	}
 
-	return topSessions, totalSessionCount, nextSessionCount
+	return sessions, totalSessionCount, nextSessionCount
 }
 
 func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
@@ -246,7 +251,7 @@ func getSessionData(pool *redis.Pool, sessionId uint64) (*portal.SessionData, []
 	return &sessionData, sliceData, nearRelayData
 }
 
-func RunCrunchThreads(redisHostname string, threadCount int ) {
+func RunSessionCrunchThreads(redisHostname string, threadCount int ) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -382,11 +387,11 @@ func RunPollThread(redisHostname string) {
 			minutes := secs / 60
 
 			begin := 0
-			end := 999
+			end := 1000
 
-			topSessions, totalSessionCount, nextSessionCount := getTopSessions(pool, minutes, begin, end)
+			sessions, totalSessionCount, nextSessionCount := getSessions(pool, minutes, begin, end)
 
-			fmt.Printf("top sessions: %d of %d/%d (%.1fms)\n", len(topSessions), nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
+			fmt.Printf("sessions: %d of %d/%d (%.1fms)\n", len(sessions), nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
 
 			start = time.Now()
 
@@ -397,9 +402,9 @@ func RunPollThread(redisHostname string) {
 
 			fmt.Printf("map data: %d points (%.1fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
 
-			if len(topSessions) > 0 {
+			if len(sessions) > 0 {
 				start = time.Now()
-				sessionData, sliceData, nearRelayData := getSessionData(pool, topSessions[0].sessionId)
+				sessionData, sliceData, nearRelayData := getSessionData(pool, sessions[0].sessionId)
 				fmt.Printf("session data: %x session id, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 			}
 
@@ -416,7 +421,7 @@ func main() {
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 
-	RunCrunchThreads(redisHostname, threadCount)
+	RunSessionCrunchThreads(redisHostname, threadCount)
 
 	RunPollThread(redisHostname)
 

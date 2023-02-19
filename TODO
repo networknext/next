@@ -1,35 +1,5 @@
 DONE
 
-	Write code to parse slice data
-
-	Generate random slice data
-
-	Integrate slice data into redis cruncher
-
-	Generate random session data
-
-	Integrate random session data into the redis cruncher
-
-	Parse session data
-	
-	Unit test all portal data types, eg. generate random data, write to string, parse string and verify its the same.
-
-	Speed up cost matrix and route matrix func tests
-
-	Add *func tests* tests for serializing route matrix and cost matrix at maximum possible sizes
-
-	Fix func tests
-
-	Pull top session data
-
-	Pull slice data and parse into an array
-
-	Pull near relay data and return an array
-
-	Parameterize "get top sessions" to take start index and finish index
-
-	This way we can paginate the session display, if we want to.
-
 TODO
  
  	-----------------
