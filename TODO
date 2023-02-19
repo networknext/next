@@ -18,51 +18,15 @@ DONE
 
 	Add *func tests* tests for serializing route matrix and cost matrix at maximum possible sizes
 
+	Fix func tests
+
 TODO
  
-	Fix func tests
-	
-	-----------------
+	Pull top session data
 
-	STOP WORKING ON THE FUCKING WEEKEND YOU MADMAN
+	Pull slice data and parse into an array
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------
-
-	Actually pull top session data, slice data and near relay data and return as structs
+	Pull near relay data and return an array
 
 	-----------------
 
@@ -518,5 +482,25 @@ Nice to have:
 	--------
 
 	Redo pro, but do it via internal session events.
+
+	--------
+
+	"Score" for session sorting on portal should use largest RTT reduction seen in the last n slices
+
+	Make it smoother and more stable, also highight spike fixes.
+
+	This can be calculated in-place in the cruncher, maybe? Do messages from the same source end up getting processed on the same dest, over time? I think they do.
+
+	--------
+
+	We probably need multiple "inserters" for pubsub and redis streams, switched on by session id, so we can effectively distribute processing. Otherwise, with only one inserter, it will not distribute processing, unless there are multiple server backends generating messages.
+
+	Distribute according to modulo session id.
+
+	--------
+
+	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
+
+	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
 
 	--------
