@@ -48,19 +48,25 @@ DONE
 
 	Move the get map data function into redis.go
 
-TODO
-
 	Move the get session data function into redis.go
 
 	Move the get server data function into redis.go
 
 	Move the get relay data function into redis.go
 
+	Update the server and relay crunch threads to insert server data / relay data.
+
+TODO
+
+	Update session crunch thread to use redigo
+
 	------------------------------------------
 
-	Implement a session data inserter that manages a redis client and gets does the insert
+	Implement a session data inserter that manages a redis client and does the insert
 
 	This way it can be instantiated from redis_crucher.go but also inside the real portal_cruncher.go
+
+	It must use redigo, not the half-assed manual connect I implemented
 
 	------------------------------------------
 
