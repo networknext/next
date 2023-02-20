@@ -1,96 +1,38 @@
 DONE
 
-	Write server updates on a separate thread. "sv-"
-
-	Write relay updates on a separate thread. "r-"
-
-	Hack up get servers
-
-	Hack up get relays
-
-	Sketch out actual server data struct
-
-	Make sure it includes start time (for uptime)
-
-	Server data value
-
-	Parse server data
-
-	Random server data
-
-	Test portal server data 
-
-	Sketch out actual relay data struct
-	
-	Make sure it includes start time (for uptime)
-
-	Relay data value
-
-	Parse relay data
-
-	Random relay data
-
-	Test relay data
-
-	Before moving futher with relay data etc. Move the session crunch method into a module and tidy it up.
-
-	It needs to properly use redigo instead of my hack connection.
-
-	It needs to have proper error handling instead of panics.
-
-	Move the get sessions function into redis.go
-
-	Move the get servers function into redis.go
-
-	Move the get relays function into redis.go
-
-	Fix the silly array appends...
-
-	Move the get map data function into redis.go
-
-	Move the get session data function into redis.go
-
-	Move the get server data function into redis.go
-
-	Move the get relay data function into redis.go
-
-	Update the server and relay crunch threads to insert server data / relay data.
-
-	Update session crunch thread to use redigo
-
 TODO
 
-	Implement a session data inserter in portal/redis.go that manages a redis client and does the insert
+	What data should go in server update if any?
 
-	It should have state and perform the insert once every second, or every n entries, as configured so it batches
+	Probably the number of connected players... possibly server events, if this concept exists?
 
-	It must not own the main loop, it will just be called with each entry coming in from redis streams to process, and should emit to redis as needed.
+	Maybe the total amount of bandwidth going in/out of the server?
 
-	Rewrite the session crunch loop in redis_cruncher.go to use the session data inserter
+	---------------------------------------------------------------
 
-	Might need to split up into multiple inserters... example, the near relay data won't come in the same message that is session update
+	If it's just the set of currently connected session ids then... it should be done differently.
 
-	So there's really multiple inserters, that correspond to each message type (must, to avoid contention...)
+	Work out how to implement a table to map from server address to the set of sessions currently on the server
 
-		1. Session update inserter
+	Is this easily possible? Ideally, without extending the server update message to be large -- eg. drive the link from the session updates and the server address in them
 
-		2. Near relay update inserter
+	Maybe a per-minute update table, with a ZADD ?
 
-		3. Server update inserter
+	---------------------------------------------------------------
 
-		4. Relay update inserter
+	Insert relay update data (equivalent to slice data)
 
-	------------------------------------------
+	What data should be in it? The only data that I can think of is a history of the num sessions, going back as long as possible really.
 
-	Implement server data inserter
+	Maybe also history of bandwidth etc... ?
 
-	------------------------------------------
+	Should keep data per-relay for a maximum of 1 hour. 60*60 = 3600... that's OK.
 
-	Implement relay data inserter
+	Work out how to insert RPUSH, while removing any old entries past n=3600
 
-	------------------------------------------
+	Fully implement "GetRelays" so it gets both the relay data and the history of relay updates
 
-
+	---------------------------------------------------------------
 
 
 

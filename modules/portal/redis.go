@@ -12,10 +12,10 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func CreateRedisPool(hostname string) *redis.Pool {
+func CreateRedisPool(hostname string, size int) *redis.Pool {
 	pool := redis.Pool{
-		MaxIdle:     1000,
-		MaxActive:   64,
+		MaxIdle:     size,
+		MaxActive:   size / 10,
 		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", hostname)
@@ -436,4 +436,205 @@ func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceDa
 	}
 
 	return &sessionData, sliceData, nearRelayData
+}
+
+type SessionInserter struct {
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	allSessions   redis.Args
+	nextSessions  redis.Args
+}
+
+func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {
+	inserter := SessionInserter{}
+	inserter.redisPool = pool
+	inserter.redisClient = pool.Get()
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	return &inserter
+}
+
+func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
+
+	currentTime := time.Now()
+
+	minutes := currentTime.Unix() / 60
+
+	if len(inserter.allSessions) == 0 {
+		inserter.allSessions = redis.Args{}.Add(fmt.Sprintf("s-%d", minutes))
+		inserter.nextSessions = redis.Args{}.Add(fmt.Sprintf("n-%d", minutes))
+	}
+
+	inserter.allSessions = inserter.allSessions.Add(score)
+	inserter.allSessions = inserter.allSessions.Add(fmt.Sprintf("%016x", sessionId))
+
+	if next {
+		inserter.nextSessions = inserter.nextSessions.Add(score)
+		inserter.nextSessions = inserter.nextSessions.Add(fmt.Sprintf("%016x", sessionId))
+	}
+
+	inserter.redisClient.Send("SET", fmt.Sprintf("sd-%016x", sessionId), sessionData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x 30", sessionId))
+
+	inserter.redisClient.Send("RPUSH", fmt.Sprintf("sl-%016x", sessionId), sliceData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x 30", sessionId))
+
+	mapData := MapData{}
+	mapData.Latitude = sessionData.Latitude
+	mapData.Longitude = sessionData.Longitude
+	mapData.Next = next
+	inserter.redisClient.Send("SET", fmt.Sprintf("m-%016x", sessionId), mapData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("m-%016x 30", sessionId))
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		if len(inserter.allSessions) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.allSessions...)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
+		}
+		if len(inserter.nextSessions) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.nextSessions...)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 30)
+		}
+		inserter.redisClient.Flush()
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+		inserter.allSessions = redis.Args{}
+		inserter.nextSessions = redis.Args{}
+	}
+}
+
+type NearRelayInserter struct {
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+}
+
+func CreateNearRelayInserter(pool *redis.Pool, batchSize int) *NearRelayInserter {
+	inserter := NearRelayInserter{}
+	inserter.redisPool = pool
+	inserter.redisClient = pool.Get()
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	return &inserter
+}
+
+func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearRelayData) {
+
+	currentTime := time.Now()
+
+	inserter.redisClient.Send("RPUSH", fmt.Sprintf("nr-%016x", sessionId), nearRelayData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x 30", sessionId))
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		inserter.redisClient.Flush()
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+	}
+}
+
+type ServerInserter struct {
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	servers       redis.Args
+}
+
+func CreateServerInserter(pool *redis.Pool, batchSize int) *ServerInserter {
+	inserter := ServerInserter{}
+	inserter.redisPool = pool
+	inserter.redisClient = pool.Get()
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	return &inserter
+}
+
+func (inserter *ServerInserter) Insert(score uint32, serverData *ServerData) {
+
+	currentTime := time.Now()
+
+	minutes := currentTime.Unix() / 60
+
+	if len(inserter.servers) == 0 {
+		inserter.servers = redis.Args{}.Add(fmt.Sprintf("sv-%d", minutes))
+	}
+
+	inserter.servers = inserter.servers.Add(score)
+	inserter.servers = inserter.servers.Add(serverData.ServerAddress.String())
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		if len(inserter.servers) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.servers...)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sv-%d", minutes), 30)
+		}
+		inserter.redisClient.Flush()
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+		inserter.servers = redis.Args{}
+	}
+}
+
+type RelayInserter struct {
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	relays        redis.Args
+}
+
+func CreateRelayInserter(pool *redis.Pool, batchSize int) *RelayInserter {
+	inserter := RelayInserter{}
+	inserter.redisPool = pool
+	inserter.redisClient = pool.Get()
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	return &inserter
+}
+
+func (inserter *RelayInserter) Insert(score uint32, relayData *RelayData) {
+
+	currentTime := time.Now()
+
+	minutes := currentTime.Unix() / 60
+
+	if len(inserter.relays) == 0 {
+		inserter.relays = redis.Args{}.Add(fmt.Sprintf("r-%d", minutes))
+	}
+
+	inserter.relays = inserter.relays.Add(score)
+	inserter.relays = inserter.relays.Add(relayData.RelayAddress.String())
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		if len(inserter.relays) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.relays...)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("r-%d", minutes), 30)
+		}
+		inserter.redisClient.Flush()
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+		inserter.relays = redis.Args{}
+	}
 }

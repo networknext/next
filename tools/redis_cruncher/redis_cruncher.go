@@ -5,89 +5,119 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
-	"github.com/networknext/backend/modules/common"
 
 	"github.com/gomodule/redigo/redis"
 )
 
-func RunSessionCrunchThreads(pool *redis.Pool, threadCount int) {
-
-	fmt.Printf("RunSessionCrunchThreads\n")
+func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
+			sessionInserter := portal.CreateSessionInserter(pool, 1000)
+
+			nearRelayInserter := portal.CreateNearRelayInserter(pool, 1000)
 
 			iteration := uint64(0)
+
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
 			near_relay_max := uint64(0)
 
 			for {
 
-				redisClient := pool.Get()
-
-				start := time.Now()
-				secs := start.Unix()
-				minutes := secs / 60
-
-				all_sessions := redis.Args{}.Add(fmt.Sprintf("s-%d", minutes))
-				next_sessions := redis.Args{}.Add(fmt.Sprintf("n-%d", minutes))
-
 				for j := 0; j < 1000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
-
-					score := rand.Intn(10000)
-
-					all_sessions = all_sessions.Add(score)
-					all_sessions = all_sessions.Add(fmt.Sprintf("%016x", sessionId))
-
+					score := uint32(rand.Intn(10000))
 					next := ((uint64(j) + iteration) % 10) == 0
-					if next {
-						next_sessions = next_sessions.Add(score)
-						next_sessions = next_sessions.Add(fmt.Sprintf("%016x", sessionId))
-					}
 
 					sessionData := portal.GenerateRandomSessionData()
-					redisClient.Send("SET", fmt.Sprintf("sd-%016x", sessionId), sessionData.Value())
-					redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x 30", sessionId))
-
-					mapData := portal.MapData{}
-					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
-					mapData.Longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
-					mapData.Next = next
-					redisClient.Send("SET", fmt.Sprintf("m-%016x", sessionId), mapData.Value())
-					redisClient.Send("EXPIRE", fmt.Sprintf("m-%016x 30", sessionId))
 
 					sliceData := portal.GenerateRandomSliceData()
-					redisClient.Send("RPUSH", fmt.Sprintf("sl-%016x", sessionId), sliceData.Value())
-					redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x 30", sessionId))
+
+					sessionInserter.Insert(sessionId, score, next, sessionData, sliceData)
 
 					if sessionId > near_relay_max {
 						nearRelayData := portal.GenerateRandomNearRelayData()
-						redisClient.Send("RPUSH", fmt.Sprintf("nr-%016x"), nearRelayData.Value())
-						redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x 30", sessionId))
+						nearRelayInserter.Insert(sessionId, nearRelayData)
 						near_relay_max = sessionId
 					}
 				}
 
-				if len(all_sessions) > 1 {
-					redisClient.Send("ZADD", all_sessions...)
-					redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
+				time.Sleep(10 * time.Second)
+
+				iteration++
+			}
+		}(k)
+	}
+}
+
+func RunServerInsertThreads(pool *redis.Pool, threadCount int) {
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			serverInserter := portal.CreateServerInserter(pool, 1000)
+
+			iteration := uint64(0)
+
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
+
+			for {
+
+				for j := 0; j < 1000; j++ {
+
+					serverData := portal.GenerateRandomServerData()
+
+					id := uint32(iteration + uint64(j))
+
+					serverData.ServerAddress = core.ParseAddress(fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread)))
+
+					score := uint32(rand.Intn(10000))
+
+					serverInserter.Insert(score, serverData)
 				}
 
-				if len(next_sessions) > 1 {
-					redisClient.Send("ZADD", next_sessions...)
-					redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 30)
+				time.Sleep(10 * time.Second)
+
+				iteration++
+			}
+		}(k)
+	}
+}
+
+func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			relayInserter := portal.CreateRelayInserter(pool, 1000)
+
+			iteration := uint64(0)
+
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
+
+			for {
+
+				for j := 0; j < 1000; j++ {
+
+					relayData := portal.GenerateRandomRelayData()
+
+					id := uint32(iteration + uint64(j))
+
+					relayData.RelayAddress = core.ParseAddress(fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread)))
+
+					score := uint32(rand.Intn(10000))
+
+					relayInserter.Insert(score, relayData)
 				}
-
-				redisClient.Flush()
-
-				redisClient.Close()
 
 				time.Sleep(10 * time.Second)
 
@@ -125,9 +155,6 @@ func RunPollThread(pool *redis.Pool) {
 				sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessions[0].SessionId)
 				if sessionData != nil {
 					fmt.Printf("session data: %x, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
-				} else {
-					// todo
-					fmt.Printf("nil session data?!\n")
 				}
 			}
 
@@ -163,13 +190,15 @@ func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	redisPool := portal.CreateRedisPool(redisHostname)
+	redisPool := portal.CreateRedisPool(redisHostname, 10 * 1024)
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 
-	RunSessionCrunchThreads(redisPool, threadCount)
+	RunSessionInsertThreads(redisPool, threadCount)
+	RunServerInsertThreads(redisPool, threadCount)
+	RunRelayInsertThreads(redisPool, threadCount)
 
 	RunPollThread(redisPool)
 
-	time.Sleep(time.Minute)
+	time.Sleep(time.Hour)
 }
