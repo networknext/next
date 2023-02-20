@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 )
 
@@ -52,23 +52,23 @@ func (data *MapData) Parse(key string, value string) {
 }
 
 type SliceData struct {
-	Timestamp uint64
-	SliceNumber uint32
-	DirectRTT uint32
-	NextRTT uint32
-	PredictedRTT uint32
-	DirectJitter uint32
-	NextJitter uint32
-	RealJitter uint32
+	Timestamp        uint64
+	SliceNumber      uint32
+	DirectRTT        uint32
+	NextRTT          uint32
+	PredictedRTT     uint32
+	DirectJitter     uint32
+	NextJitter       uint32
+	RealJitter       uint32
 	DirectPacketLoss float32
-	NextPacketLoss float32
-	RealPacketLoss float32
-	RealOutOfOrder float32
-	InternalEvents uint64
-	SessionEvents uint64
+	NextPacketLoss   float32
+	RealPacketLoss   float32
+	RealOutOfOrder   float32
+	InternalEvents   uint64
+	SessionEvents    uint64
 }
 
-func (data * SliceData) Value() string {
+func (data *SliceData) Value() string {
 	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x",
 		data.Timestamp,
 		data.SliceNumber,
@@ -174,10 +174,10 @@ func GenerateRandomSliceData() *SliceData {
 	data.DirectJitter = rand.Uint32()
 	data.NextJitter = rand.Uint32()
 	data.RealJitter = rand.Uint32()
-	data.DirectPacketLoss = float32(common.RandomInt(0,100000))/100.0
-	data.NextPacketLoss = float32(common.RandomInt(0,100000))/100.0
-	data.RealPacketLoss = float32(common.RandomInt(0,100000))/100.0
-	data.RealOutOfOrder = float32(common.RandomInt(0,100000))/100.0
+	data.DirectPacketLoss = float32(common.RandomInt(0, 100000)) / 100.0
+	data.NextPacketLoss = float32(common.RandomInt(0, 100000)) / 100.0
+	data.RealPacketLoss = float32(common.RandomInt(0, 100000)) / 100.0
+	data.RealOutOfOrder = float32(common.RandomInt(0, 100000)) / 100.0
 	data.InternalEvents = rand.Uint64()
 	data.SessionEvents = rand.Uint64()
 	return &data
@@ -213,7 +213,7 @@ func (data *NearRelayData) Parse(value string) {
 	if err != nil || numNearRelays < 0 || numNearRelays > constants.MaxNearRelays {
 		return
 	}
-	if len(values) != 2 + int(numNearRelays) * 4 {
+	if len(values) != 2+int(numNearRelays)*4 {
 		return
 	}
 	nearRelayId := make([]uint64, numNearRelays)
@@ -255,26 +255,26 @@ func GenerateRandomNearRelayData() *NearRelayData {
 	data.NumNearRelays = constants.MaxNearRelays
 	for i := 0; i < data.NumNearRelays; i++ {
 		data.NearRelayId[i] = rand.Uint64()
-		data.NearRelayRTT[i] = uint8(common.RandomInt(5,20))
-		data.NearRelayJitter[i] = uint8(common.RandomInt(5,20))
-		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0,10000)) / 100.0
+		data.NearRelayRTT[i] = uint8(common.RandomInt(5, 20))
+		data.NearRelayJitter[i] = uint8(common.RandomInt(5, 20))
+		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 10000)) / 100.0
 	}
 	return &data
 }
 
 type SessionData struct {
-	SessionId uint64
-	ISP string
+	SessionId      uint64
+	ISP            string
 	ConnectionType uint32
-	PlatformType uint32
-	Latitude float32
-	Longitude float32
-	DirectRTT uint32
-	NextRTT uint32
-	MatchId uint64
-	BuyerId uint64
-	DatacenterId uint64
-	ServerAddress net.UDPAddr
+	PlatformType   uint32
+	Latitude       float32
+	Longitude      float32
+	DirectRTT      uint32
+	NextRTT        uint32
+	MatchId        uint64
+	BuyerId        uint64
+	DatacenterId   uint64
+	ServerAddress  net.UDPAddr
 }
 
 func (data *SessionData) Value() string {

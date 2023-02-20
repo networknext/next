@@ -1430,7 +1430,7 @@ func test_route_matrix_read_write() {
 
 	const step = 21
 
-	for numRelays := 0; numRelays <= constants.MaxRelays + step - 1; numRelays += step {
+	for numRelays := 0; numRelays <= constants.MaxRelays+step-1; numRelays += step {
 
 		if numRelays > constants.MaxRelays {
 			numRelays = constants.MaxRelays

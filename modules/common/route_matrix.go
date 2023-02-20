@@ -21,10 +21,10 @@ const (
 )
 
 type RouteMatrix struct {
-	Version            uint32
-	CreatedAt          uint64
-	BinFileBytes       int32
-	BinFileData        []byte
+	Version      uint32
+	CreatedAt    uint64
+	BinFileBytes int32
+	BinFileData  []byte
 
 	RelayIds           []uint64
 	RelayIdToIndex     map[uint64]int32
@@ -34,8 +34,8 @@ type RouteMatrix struct {
 	RelayLongitudes    []float32
 	RelayDatacenterIds []uint64
 
-	DestRelays         []bool
-	RouteEntries       []core.RouteEntry
+	DestRelays   []bool
+	RouteEntries []core.RouteEntry
 }
 
 func (m *RouteMatrix) GetMaxSize() int {

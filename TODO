@@ -10,7 +10,7 @@ DONE
 
 TODO
  
-	Sketch out actual server data method
+	Sketch out actual server data struct
 
 	Make sure it includes start time (for uptime)
 
@@ -19,6 +19,8 @@ TODO
 	Parse server data
 
 	Random server data
+
+	-----------------------
 
 	Hook up insert of server data to use random values (except server address)
 
