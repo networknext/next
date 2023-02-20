@@ -7,6 +7,7 @@ import (
 
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/common"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -50,14 +51,27 @@ func RunSessionCrunchThreads(pool *redis.Pool, threadCount int) {
 						next_sessions = next_sessions.Add(score)
 						next_sessions = next_sessions.Add(fmt.Sprintf("%016x", sessionId))
 					}
+
+					sessionData := portal.GenerateRandomSessionData()
+					redisClient.Send("SET", fmt.Sprintf("SET sd-%016x", sessionId), sessionData.Value())
+					redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x 30", sessionId))
+
+					mapData := portal.MapData{}
+					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
+					mapData.Longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
+					mapData.Next = next
+					redisClient.Send("SET", fmt.Sprintf("m-%016x", sessionId), mapData.Value())
+					redisClient.Send("EXPIRE", fmt.Sprintf("m-%016x 30", sessionId))
 				}
 
 				if len(all_sessions) > 1 {
 					redisClient.Send("ZADD", all_sessions...)
+					redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
 				}
 
 				if len(next_sessions) > 1 {
 					redisClient.Send("ZADD", next_sessions...)
+					redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 30)
 				}
 
 				redisClient.Flush()
@@ -105,17 +119,6 @@ func RunSessionCrunchThreads(pool *redis.Pool, threadCount int) {
 
 
 					/*
-
-					sessionData := portal.GenerateRandomSessionData()
-					session_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
-
-					mapData := portal.MapData{}
-					mapData.Latitude = float32(common.RandomInt(-90000, +90000)) / 1000.0
-					mapData.Longitude = float32(common.RandomInt(-18000, +18000)) / 1000.0
-					mapData.Next = next
-
-					map_data += fmt.Sprintf("SET m-%016x \"%s\"\r\nEXPIRE m-%016x 30\r\n", sessionId, mapData.Value(), sessionId)
-
 					sliceData := portal.GenerateRandomSessionData()
 					slice_data = append(slice_data, fmt.Sprintf("RPUSH sl-%016x \"%s\"\r\nEXPIRE sl-%016x 30\r\n", sessionId, sliceData.Value(), sessionId))
 
