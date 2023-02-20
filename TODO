@@ -56,17 +56,29 @@ DONE
 
 	Update the server and relay crunch threads to insert server data / relay data.
 
-TODO
-
 	Update session crunch thread to use redigo
 
-	------------------------------------------
+TODO
 
-	Implement a session data inserter that manages a redis client and does the insert
+	Implement a session data inserter in portal/redis.go that manages a redis client and does the insert
 
-	This way it can be instantiated from redis_crucher.go but also inside the real portal_cruncher.go
+	It should have state and perform the insert once every second, or every n entries, as configured so it batches
 
-	It must use redigo, not the half-assed manual connect I implemented
+	It must not own the main loop, it will just be called with each entry coming in from redis streams to process, and should emit to redis as needed.
+
+	Rewrite the session crunch loop in redis_cruncher.go to use the session data inserter
+
+	Might need to split up into multiple inserters... example, the near relay data won't come in the same message that is session update
+
+	So there's really multiple inserters, that correspond to each message type (must, to avoid contention...)
+
+		1. Session update inserter
+
+		2. Near relay update inserter
+
+		3. Server update inserter
+
+		4. Relay update inserter
 
 	------------------------------------------
 

@@ -97,113 +97,6 @@ func RunSessionCrunchThreads(pool *redis.Pool, threadCount int) {
 	}
 }
 
-/*
-func RunServerCrunchThreads(redisHostname string, threadCount int) {
-
-	for k := 0; k < threadCount; k++ {
-
-		go func(thread int) {
-
-			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
-
-			redisClient := createRedisClient(redisHostname)
-
-			iteration := uint64(0)
-
-			for {
-
-				start := time.Now()
-				secs := start.Unix()
-				minutes := secs / 60
-
-				servers := ""
-				server_data := ""
-
-				for j := 0; j < 1000; j++ {
-
-					serverAddress := fmt.Sprintf("127.0.0.1:%d", uint16(iteration+uint64(j)))
-
-					score := rand.Intn(10000)
-
-					servers += fmt.Sprintf(" %d %s", score, serverAddress)
-
-					serverData := portal.GenerateRandomServerData()
-					server_data += fmt.Sprintf("SET svd-%s \"%s\"\r\nEXPIRE svd-%s 30\r\n", serverAddress, serverData.Value(), serverAddress)
-				}
-
-				commands := ""
-
-				if len(servers) > 0 {
-					commands += fmt.Sprintf("ZADD sv-%d %s\r\n", minutes, servers)
-					commands += fmt.Sprintf("EXPIRE sv-%d 30\r\n", minutes)
-				}
-
-				if len(server_data) > 0 {
-					commands += server_data
-				}
-
-				redisClient.Write([]byte(commands))
-
-				time.Sleep(10 * time.Second)
-
-				iteration++
-			}
-		}(k)
-
-	}
-}
-
-func RunRelayCrunchThreads(redisHostname string, threadCount int) {
-
-	for k := 0; k < threadCount; k++ {
-
-		go func(thread int) {
-
-			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
-
-			redisClient := createRedisClient(redisHostname)
-
-			iteration := uint64(0)
-
-			for {
-
-				start := time.Now()
-				secs := start.Unix()
-				minutes := secs / 60
-
-				relays := ""
-
-				for j := 0; j < 1000; j++ {
-
-					relayAddress := fmt.Sprintf("127.0.0.1:%d", uint16(iteration+uint64(j)))
-
-					score := rand.Intn(10000)
-
-					relays += fmt.Sprintf(" %d %s", score, relayAddress)
-
-//					serverData := portal.GenerateRandomSessionData()
-//					server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
-				}
-
-				commands := ""
-
-				if len(relays) > 0 {
-					commands += fmt.Sprintf("ZADD r-%d %s\r\n", minutes, relays)
-					commands += fmt.Sprintf("EXPIRE r-%d 30\r\n", minutes)
-				}
-
-				redisClient.Write([]byte(commands))
-
-				time.Sleep(10 * time.Second)
-
-				iteration++
-			}
-		}(k)
-
-	}
-}
-*/
-
 func RunPollThread(pool *redis.Pool) {
 
 	go func() {
@@ -275,11 +168,6 @@ func main() {
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 
 	RunSessionCrunchThreads(redisPool, threadCount)
-
-	/*
-	RunServerCrunchThreads(redisHostname, threadCount)
-	RunRelayCrunchThreads(redisHostname, threadCount)
-	*/
 
 	RunPollThread(redisPool)
 
