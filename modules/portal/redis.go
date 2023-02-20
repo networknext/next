@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"net"
 
 	"github.com/networknext/backend/modules/core"
 
@@ -67,32 +68,38 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]Session
 
 	sessions_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get sessions a failed: %v", err)
+		return nil, 0, 0
 	}
 
 	sessions_b, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get sessions b failed: %v", err)
+		return nil, 0, 0
 	}
 
 	totalSessionCount_a, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get total sessions count a failed: %v", err)
+		return nil, 0, 0
 	}
 
 	totalSessionCount_b, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get total sessions count b failed: %v", err)
+		return nil, 0, 0
 	}
 
 	nextSessionCount_a, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get next sessions count a failed: %v", err)
+		return nil, 0, 0
 	}
 
 	nextSessionCount_b, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get next sessions count b failed: %v", err)
+		return nil, 0, 0
 	}
 
 	redisClient.Close()
@@ -118,9 +125,10 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]Session
 	}
 
 	sessions := make([]SessionEntry, len(sessionsMap))
-	sessions = sessions[:0]
+	index := 0
 	for _, v := range sessionsMap {
-		sessions = append(sessions, v)
+		sessions[index] = v
+		index++
 	}
 
 	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].Score > sessions[j].Score })
@@ -143,7 +151,6 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]Session
 	return sessions, totalSessionCount, nextSessionCount
 }
 
-/*
 type ServerEntry struct {
 	Address net.UDPAddr
 	Score   uint32
@@ -152,15 +159,18 @@ type ServerEntry struct {
 func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEntry, int) {
 
 	if begin < 0 {
-		panic(fmt.Sprintf("invalid begin passed to get servers: %d", begin))
+		core.Error("invalid begin passed to get servers: %d", begin)
+		return nil, 0
 	}
 
 	if end < 0 {
-		panic(fmt.Sprintf("invalid end passed to get servers: %d", end))
+		core.Error("invalid end passed to get servers: %d", end)
+		return nil, 0
 	}
 
 	if end <= begin {
-		panic("end must be greater than begin")
+		core.Error("end must be greater than begin")
+		return nil, 0
 	}
 
 	redisClient := pool.Get()
@@ -174,22 +184,26 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 
 	servers_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get servers a failed: %v", err)
+		return nil, 0
 	}
 
 	servers_b, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get servers b failed: %v", err)
+		return nil, 0
 	}
 
 	totalServerCount_a, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get server count a failed: %v", err)
+		return nil, 0
 	}
 
 	totalServerCount_b, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get server count b failed: %v", err)
+		return nil, 0
 	}
 
 	redisClient.Close()
@@ -200,8 +214,8 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 		address := core.ParseAddress(servers_a[i])
 		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
 		serverMap[servers_a[i]] = ServerEntry{
-			address: address,
-			score:   uint32(score),
+			Address: address,
+			Score:   uint32(score),
 		}
 	}
 
@@ -209,18 +223,19 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 		address := core.ParseAddress(servers_b[i])
 		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
 		serverMap[servers_b[i]] = ServerEntry{
-			address: address,
-			score:   uint32(score),
+			Address: address,
+			Score:   uint32(score),
 		}
 	}
 
 	servers := make([]ServerEntry, len(serverMap))
-	servers = servers[:0]
+	index := 0
 	for _, v := range serverMap {
-		servers = append(servers, v)
+		servers[index] = v
+		index++
 	}
 
-	sort.SliceStable(servers, func(i, j int) bool { return servers[i].score > servers[j].score })
+	sort.SliceStable(servers, func(i, j int) bool { return servers[i].Score > servers[j].Score })
 
 	maxSize := end - begin
 	if len(servers) > maxSize {
@@ -236,22 +251,25 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 }
 
 type RelayEntry struct {
-	relayAddress net.UDPAddr
-	score        uint32
+	Address net.UDPAddr
+	Score        uint32
 }
 
-func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntry, int) {
+func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntry, int) {
 
 	if begin < 0 {
-		panic(fmt.Sprintf("invalid begin passed to get relays: %d", begin))
+		core.Error("invalid begin passed to get relays: %d", begin)
+		return nil, 0
 	}
 
 	if end < 0 {
-		panic(fmt.Sprintf("invalid end passed to get relays: %d", end))
+		core.Error("invalid end passed to get servers: %d", end)
+		return nil, 0
 	}
 
 	if end <= begin {
-		panic("end must be greater than begin")
+		core.Error("end must be greater than begin")
+		return nil, 0
 	}
 
 	redisClient := pool.Get()
@@ -265,58 +283,58 @@ func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 
 	relays_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get relays a failed: %v", err)
+		return nil, 0
 	}
 
 	relays_b, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get relays b failed: %v", err)
+		return nil, 0
 	}
 
 	totalRelayCount_a, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get relays count a failed: %v", err)
+		return nil, 0
 	}
 
 	totalRelayCount_b, err := redis.Int(redisClient.Receive())
 	if err != nil {
-		panic(err)
+		core.Error("redis get relays count b failed: %v", err)
+		return nil, 0
 	}
 
 	redisClient.Close()
 
-	serverMap := make(map[uint64]RelayEntry)
+	relayMap := make(map[string]RelayEntry)
 
-	// todo
-	_ = relays_a
-	_ = relays_b
-
-		// for i := 0; i < len(relays_a); i += 2 {
-		// 	sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		// 	score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-		// 	sessionsMap[sessionId] = SessionEntry{
-		// 		sessionId: uint64(sessionId),
-		// 		score:     uint32(score),
-		// 	}
-		// }
-
-		// for i := 0; i < len(sessions_b); i += 2 {
-		// 	sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		// 	score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-		// 	sessionsMap[sessionId] = SessionEntry{
-		// 		sessionId: uint64(sessionId),
-		// 		score:     uint32(score),
-		// 	}
-		// }
-	
-
-	relays := make([]RelayEntry, len(serverMap))
-	relays = relays[:0] // todo: wut
-	for _, v := range serverMap {
-		relays = append(relays, v)
+	for i := 0; i < len(relays_a); i += 2 {
+		address := core.ParseAddress(relays_a[i])
+		score, _ := strconv.ParseUint(relays_a[i+1], 10, 32)
+		relayMap[address.String()] = RelayEntry{
+			Address: address,
+			Score:   uint32(score),
+		}
 	}
 
-	sort.SliceStable(relays, func(i, j int) bool { return relays[i].score > relays[j].score })
+	for i := 0; i < len(relays_b); i += 2 {
+		address := core.ParseAddress(relays_b[i])
+		score, _ := strconv.ParseUint(relays_b[i+1], 10, 32)
+		relayMap[address.String()] = RelayEntry{
+			Address: address,
+			Score:   uint32(score),
+		}
+	}
+	
+	relays := make([]RelayEntry, len(relayMap))
+	index := 0
+	for _, v := range relayMap {
+		relays[index] = v
+		index++
+	}
+
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].Score > relays[j].Score })
 
 	maxSize := end - begin
 	if len(relays) > maxSize {
@@ -331,6 +349,7 @@ func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	return relays, totalRelayCount
 }
 
+/*
 func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
 
 	redisClient := pool.Get()

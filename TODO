@@ -32,15 +32,63 @@ DONE
 
 	Test relay data
 
-TODO
-
 	Before moving futher with relay data etc. Move the session crunch method into a module and tidy it up.
 
 	It needs to properly use redigo instead of my hack connection.
 
 	It needs to have proper error handling instead of panics.
 
-	Move the crunch function into modules/portal/redis.go	
+	Move the get sessions function into redis.go
+
+	Move the get servers function into redis.go
+
+	Move the get relays function into redis.go
+
+	Fix the silly array appends...
+
+TODO
+
+	Move the get map data function into redis.go
+
+	------------------------------------------
+
+	Move the get session data function into redis.go
+
+	Move the get server data function into redis.go
+
+	Move the get relay data function into redis.go
+
+	------------------------------------------
+
+	Implement a session data inserter that manages a redis client and gets does the insert
+
+	This way it can be instantiated from redis_crucher.go but also inside the real portal_cruncher.go
+
+	------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------
 

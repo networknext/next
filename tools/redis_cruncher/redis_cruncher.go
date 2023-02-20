@@ -6,11 +6,9 @@ import (
 	"math/rand"
 	"net"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
 
@@ -53,97 +51,6 @@ func createRedisClient(hostname string) net.Conn {
 		}
 	}()
 	return client
-}
-
-type ServerEntry struct {
-	address net.UDPAddr
-	score   uint32
-}
-
-func getServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEntry, int) {
-
-	if begin < 0 {
-		panic(fmt.Sprintf("invalid begin passed to get servers: %d", begin))
-	}
-
-	if end < 0 {
-		panic(fmt.Sprintf("invalid end passed to get servers: %d", end))
-	}
-
-	if end <= begin {
-		panic("end must be greater than begin")
-	}
-
-	redisClient := pool.Get()
-
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("sv-%d", minutes-1), begin, end-1, "WITHSCORES")
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("sv-%d", minutes), begin, end-1, "WITHSCORES")
-	redisClient.Send("ZCARD", fmt.Sprintf("sv-%d", minutes-1))
-	redisClient.Send("ZCARD", fmt.Sprintf("sv-%d", minutes))
-
-	redisClient.Flush()
-
-	servers_a, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		panic(err)
-	}
-
-	servers_b, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		panic(err)
-	}
-
-	totalServerCount_a, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		panic(err)
-	}
-
-	totalServerCount_b, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		panic(err)
-	}
-
-	redisClient.Close()
-
-	serverMap := make(map[string]ServerEntry)
-
-	for i := 0; i < len(servers_a); i += 2 {
-		address := core.ParseAddress(servers_a[i])
-		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
-		serverMap[servers_a[i]] = ServerEntry{
-			address: address,
-			score:   uint32(score),
-		}
-	}
-
-	for i := 0; i < len(servers_b); i += 2 {
-		address := core.ParseAddress(servers_b[i])
-		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
-		serverMap[servers_b[i]] = ServerEntry{
-			address: address,
-			score:   uint32(score),
-		}
-	}
-
-	servers := make([]ServerEntry, len(serverMap))
-	servers = servers[:0]
-	for _, v := range serverMap {
-		servers = append(servers, v)
-	}
-
-	sort.SliceStable(servers, func(i, j int) bool { return servers[i].score > servers[j].score })
-
-	maxSize := end - begin
-	if len(servers) > maxSize {
-		servers = servers[:maxSize]
-	}
-
-	totalServerCount := totalServerCount_a
-	if totalServerCount_b > totalServerCount {
-		totalServerCount = totalServerCount_b
-	}
-
-	return servers, totalServerCount
 }
 
 type RelayEntry struct {
@@ -597,13 +504,13 @@ func RunPollThread(redisHostname string) {
 
 			start = time.Now()
 
-			servers, totalServerCount := getServers(pool, minutes, begin, end)
+			servers, totalServerCount := portal.GetServers(pool, minutes, begin, end)
 
 			fmt.Printf("servers: %d of %d (%.1fms)\n", len(servers), totalServerCount, float64(time.Since(start).Milliseconds()))
 
 			start = time.Now()
 
-			relays, totalRelayCount := getServers(pool, minutes, begin, end)
+			relays, totalRelayCount := portal.GetRelays(pool, minutes, begin, end)
 
 			fmt.Printf("relays: %d of %d (%.1fms)\n", len(relays), totalRelayCount, float64(time.Since(start).Milliseconds()))
 
