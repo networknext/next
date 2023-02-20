@@ -43,6 +43,28 @@ func TestPortalNearRelayData(t *testing.T) {
 	}
 }
 
+func TestPortalServerData(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeData := portal.GenerateRandomServerData()
+		value := writeData.Value()
+		readData := portal.ServerData{}
+		readData.Parse(value)
+		assert.Equal(t, *writeData, readData)
+	}
+}
+
+func TestPortalRelayData(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeData := portal.GenerateRandomRelayData()
+		value := writeData.Value()
+		readData := portal.RelayData{}
+		readData.Parse(value)
+		assert.Equal(t, *writeData, readData)
+	}
+}
+
 // todo: test that we can handle parsing empty string and fail gracefully
 
 // todo: test that we can handle parsing garbage data and fail gracefully

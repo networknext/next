@@ -1,23 +1,17 @@
-package main
+package portal
 
 import (
-	"bufio"
 	"fmt"
-	"math/rand"
-	"net"
 	"sort"
 	"strconv"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/portal"
 
 	"github.com/gomodule/redigo/redis"
 )
 
-func createRedisPool(hostname string) *redis.Pool {
+func CreateRedisPool(hostname string) *redis.Pool {
 	pool := redis.Pool{
 		MaxIdle:     1000,
 		MaxActive:   64,
@@ -38,29 +32,124 @@ func createRedisPool(hostname string) *redis.Pool {
 	return &pool
 }
 
-func createRedisClient(hostname string) net.Conn {
-	client, err := net.Dial("tcp", hostname)
+type SessionEntry struct {
+	SessionId uint64
+	Score     uint32
+}
+
+func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]SessionEntry, int, int) {
+
+	if begin < 0 {
+		core.Error("invalid begin passed to get sessions: %d", begin)
+		return nil, 0, 0
+	}
+
+	if end < 0 {
+		core.Error("invalid end passed to get sessions: %d", end)
+		return nil, 0, 0
+	}
+
+	if end <= begin {
+		core.Error("invalid begin passed to get sessions: %d", begin)
+		return nil, 0, 0
+	}
+
+	redisClient := pool.Get()
+
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("s-%d", minutes), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes-1))
+	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes))
+	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes-1))
+	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes))
+
+	redisClient.Flush()
+
+	sessions_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		panic(err)
 	}
-	go func() {
-		// todo: this is for insert only clients but we need to detect a closed connection and recreate it
-		// todo: we should also ping here to make sure we're OK
-		reader := bufio.NewReader(client)
-		for {
-			message, _ := reader.ReadString('\n')
-			_ = message
+
+	sessions_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	totalSessionCount_a, err := redis.Int(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	totalSessionCount_b, err := redis.Int(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	nextSessionCount_a, err := redis.Int(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	nextSessionCount_b, err := redis.Int(redisClient.Receive())
+	if err != nil {
+		panic(err)
+	}
+
+	redisClient.Close()
+
+	sessionsMap := make(map[uint64]SessionEntry)
+
+	for i := 0; i < len(sessions_a); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
 		}
-	}()
-	return client
+	}
+
+	for i := 0; i < len(sessions_b); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
+		}
+	}
+
+	sessions := make([]SessionEntry, len(sessionsMap))
+	sessions = sessions[:0]
+	for _, v := range sessionsMap {
+		sessions = append(sessions, v)
+	}
+
+	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].Score > sessions[j].Score })
+
+	maxSize := end - begin
+	if len(sessions) > maxSize {
+		sessions = sessions[:maxSize]
+	}
+
+	totalSessionCount := totalSessionCount_a
+	if totalSessionCount_b > totalSessionCount {
+		totalSessionCount = totalSessionCount_b
+	}
+
+	nextSessionCount := nextSessionCount_a
+	if nextSessionCount_b > nextSessionCount {
+		nextSessionCount = nextSessionCount_b
+	}
+
+	return sessions, totalSessionCount, nextSessionCount
 }
 
+/*
 type ServerEntry struct {
-	address net.UDPAddr
-	score   uint32
+	Address net.UDPAddr
+	Score   uint32
 }
 
-func getServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEntry, int) {
+func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEntry, int) {
 
 	if begin < 0 {
 		panic(fmt.Sprintf("invalid begin passed to get servers: %d", begin))
@@ -202,25 +291,24 @@ func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	_ = relays_a
 	_ = relays_b
 
-	/*
-		for i := 0; i < len(relays_a); i += 2 {
-			sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-			score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-			sessionsMap[sessionId] = SessionEntry{
-				sessionId: uint64(sessionId),
-				score:     uint32(score),
-			}
-		}
+		// for i := 0; i < len(relays_a); i += 2 {
+		// 	sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		// 	score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+		// 	sessionsMap[sessionId] = SessionEntry{
+		// 		sessionId: uint64(sessionId),
+		// 		score:     uint32(score),
+		// 	}
+		// }
 
-		for i := 0; i < len(sessions_b); i += 2 {
-			sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-			score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-			sessionsMap[sessionId] = SessionEntry{
-				sessionId: uint64(sessionId),
-				score:     uint32(score),
-			}
-		}
-	*/
+		// for i := 0; i < len(sessions_b); i += 2 {
+		// 	sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		// 	score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+		// 	sessionsMap[sessionId] = SessionEntry{
+		// 		sessionId: uint64(sessionId),
+		// 		score:     uint32(score),
+		// 	}
+		// }
+	
 
 	relays := make([]RelayEntry, len(serverMap))
 	relays = relays[:0] // todo: wut
@@ -479,10 +567,8 @@ func RunServerCrunchThreads(redisHostname string, threadCount int) {
 
 					servers += fmt.Sprintf(" %d %s", score, serverAddress)
 
-					/*
-						serverData := portal.GenerateRandomSessionData()
-						server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
-					*/
+//						serverData := portal.GenerateRandomSessionData()
+//						server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
 				}
 
 				commands := ""
@@ -531,10 +617,8 @@ func RunRelayCrunchThreads(redisHostname string, threadCount int) {
 
 					relays += fmt.Sprintf(" %d %s", score, relayAddress)
 
-					/*
-						serverData := portal.GenerateRandomSessionData()
-						server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
-					*/
+//					serverData := portal.GenerateRandomSessionData()
+//					server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
 				}
 
 				commands := ""
@@ -574,7 +658,7 @@ func RunPollThread(redisHostname string) {
 			begin := 0
 			end := 1000
 
-			sessions, totalSessionCount, nextSessionCount := portal.GetSessions(pool, minutes, begin, end)
+			sessions, totalSessionCount, nextSessionCount := getSessions(pool, minutes, begin, end)
 
 			fmt.Printf("sessions: %d of %d/%d (%.1fms)\n", len(sessions), nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
 
@@ -582,7 +666,7 @@ func RunPollThread(redisHostname string) {
 
 			if len(sessions) > 0 {
 				start = time.Now()
-				sessionData, sliceData, nearRelayData := getSessionData(pool, sessions[0].SessionId)
+				sessionData, sliceData, nearRelayData := getSessionData(pool, sessions[0].sessionId)
 				fmt.Printf("session data: %x, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 			}
 
@@ -613,18 +697,4 @@ func RunPollThread(redisHostname string) {
 		}
 	}()
 }
-
-func main() {
-
-	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-
-	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
-
-	RunServerCrunchThreads(redisHostname, threadCount)
-	RunSessionCrunchThreads(redisHostname, threadCount)
-	RunRelayCrunchThreads(redisHostname, threadCount)
-
-	RunPollThread(redisHostname)
-
-	time.Sleep(time.Minute)
-}
+*/

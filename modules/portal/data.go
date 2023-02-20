@@ -461,3 +461,73 @@ func GenerateRandomServerData() *ServerData {
 	data.StartTime = rand.Uint64()
 	return &data
 }
+
+type RelayData struct {
+	RelayId uint64
+	RelayAddress net.UDPAddr
+	DatacenterId uint64
+	NumSessions uint32
+	MaxSessions uint32
+	StartTime uint64
+	Version string
+}
+
+func (data *RelayData) Value() string {
+	return fmt.Sprintf("%x|%s|%x|%d|%d|%x|%s",
+		data.RelayId,
+		data.RelayAddress.String(),
+		data.DatacenterId,
+		data.NumSessions,
+		data.MaxSessions,
+		data.StartTime,
+		data.Version,
+	)
+}
+
+func (data *RelayData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) != 7 {
+		return
+	}
+	relayId, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	relayAddress := core.ParseAddress(values[1])
+	datacenterId, err := strconv.ParseUint(values[2], 16, 64)
+	if err != nil {
+		return
+	}
+	numSessions, err := strconv.ParseUint(values[3], 10, 32)
+	if err != nil {
+		return
+	}
+	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
+	if err != nil {
+		return
+	}
+	startTime, err := strconv.ParseUint(values[5], 16, 64)
+	if err != nil {
+		return
+	}
+	version := values[6]
+	data.RelayId = relayId
+	data.RelayAddress = relayAddress
+	data.DatacenterId = datacenterId
+	data.NumSessions = uint32(numSessions)
+	data.MaxSessions = uint32(maxSessions)
+	data.StartTime = startTime
+	data.Version = version
+}
+
+func GenerateRandomRelayData() *RelayData {
+	data := RelayData{}
+	data.RelayId = rand.Uint64()
+	data.RelayAddress = common.RandomAddress()
+	data.DatacenterId = rand.Uint64()
+	data.NumSessions = rand.Uint32()
+	data.MaxSessions = rand.Uint32()
+	data.StartTime = rand.Uint64()
+	data.Version = common.RandomString(constants.MaxRelayVersionLength)
+	return &data
+}

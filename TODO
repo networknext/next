@@ -8,8 +8,6 @@ DONE
 
 	Hack up get relays
 
-TODO
- 
 	Sketch out actual server data struct
 
 	Make sure it includes start time (for uptime)
@@ -19,6 +17,30 @@ TODO
 	Parse server data
 
 	Random server data
+
+	Test portal server data 
+
+	Sketch out actual relay data struct
+	
+	Make sure it includes start time (for uptime)
+
+	Relay data value
+
+	Parse relay data
+
+	Random relay data
+
+	Test relay data
+
+TODO
+
+	Before moving futher with relay data etc. Move the session crunch method into a module and tidy it up.
+
+	It needs to properly use redigo instead of my hack connection.
+
+	It needs to have proper error handling instead of panics.
+
+	Move the crunch function into modules/portal/redis.go	
 
 	-----------------------
 
@@ -43,16 +65,6 @@ TODO
 	Implement getServerUpdates, and call it, displaying the number of server updates for the first server address.
 
 	---------------------------------------------------------
-
-	Sketch out actual relay data method
-
-	Make sure it includes start time (for uptime)
-
-	Relay data value
-
-	Parse relay data
-
-	Random relay data
 
 	Implement rd- and ru-
 
