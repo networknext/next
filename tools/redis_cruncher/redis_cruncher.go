@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/portal"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -55,8 +56,8 @@ func createRedisClient(hostname string) net.Conn {
 }
 
 type ServerEntry struct {
-	serverAddress net.UDPAddr
-	score         uint32
+	address net.UDPAddr
+	score   uint32
 }
 
 func getServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEntry, int) {
@@ -104,34 +105,28 @@ func getServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 
 	redisClient.Close()
 
-	serverMap := make(map[uint64]ServerEntry)
+	serverMap := make(map[string]ServerEntry)
 
-	// todo
-	_ = servers_a
-	_ = servers_b
-
-	/*
 	for i := 0; i < len(servers_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			sessionId: uint64(sessionId),
-			score:     uint32(score),
+		address := core.ParseAddress(servers_a[i])
+		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
+		serverMap[servers_a[i]] = ServerEntry{
+			address: address,
+			score:   uint32(score),
 		}
 	}
 
-	for i := 0; i < len(sessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			sessionId: uint64(sessionId),
-			score:     uint32(score),
+	for i := 0; i < len(servers_b); i += 2 {
+		address := core.ParseAddress(servers_b[i])
+		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
+		serverMap[servers_b[i]] = ServerEntry{
+			address: address,
+			score:   uint32(score),
 		}
 	}
-	*/
 
 	servers := make([]ServerEntry, len(serverMap))
-	servers = servers[:0] // todo: wut
+	servers = servers[:0]
 	for _, v := range serverMap {
 		servers = append(servers, v)
 	}
@@ -261,7 +256,7 @@ func getSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]Session
 
 type RelayEntry struct {
 	relayAddress net.UDPAddr
-	score         uint32
+	score        uint32
 }
 
 func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntry, int) {
@@ -316,23 +311,23 @@ func getRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	_ = relays_b
 
 	/*
-	for i := 0; i < len(relays_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			sessionId: uint64(sessionId),
-			score:     uint32(score),
+		for i := 0; i < len(relays_a); i += 2 {
+			sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+			score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+			sessionsMap[sessionId] = SessionEntry{
+				sessionId: uint64(sessionId),
+				score:     uint32(score),
+			}
 		}
-	}
 
-	for i := 0; i < len(sessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			sessionId: uint64(sessionId),
-			score:     uint32(score),
+		for i := 0; i < len(sessions_b); i += 2 {
+			sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+			score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+			sessionsMap[sessionId] = SessionEntry{
+				sessionId: uint64(sessionId),
+				score:     uint32(score),
+			}
 		}
-	}
 	*/
 
 	relays := make([]RelayEntry, len(serverMap))
@@ -430,7 +425,7 @@ func getSessionData(pool *redis.Pool, sessionId uint64) (*portal.SessionData, []
 	redisClient.Close()
 
 	sessionData := portal.SessionData{}
-	sessionData.Parse(redis_session_data);
+	sessionData.Parse(redis_session_data)
 
 	sliceData := make([]portal.SliceData, len(redis_slice_data))
 	for i := 0; i < len(redis_slice_data); i++ {
@@ -445,7 +440,7 @@ func getSessionData(pool *redis.Pool, sessionId uint64) (*portal.SessionData, []
 	return &sessionData, sliceData, nearRelayData
 }
 
-func RunSessionCrunchThreads(redisHostname string, threadCount int ) {
+func RunSessionCrunchThreads(redisHostname string, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -564,7 +559,7 @@ func RunSessionCrunchThreads(redisHostname string, threadCount int ) {
 	}
 }
 
-func RunServerCrunchThreads(redisHostname string, threadCount int ) {
+func RunServerCrunchThreads(redisHostname string, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -593,8 +588,8 @@ func RunServerCrunchThreads(redisHostname string, threadCount int ) {
 					servers += fmt.Sprintf(" %d %s", score, serverAddress)
 
 					/*
-					serverData := portal.GenerateRandomSessionData()
-					server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
+						serverData := portal.GenerateRandomSessionData()
+						server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
 					*/
 				}
 
@@ -616,7 +611,7 @@ func RunServerCrunchThreads(redisHostname string, threadCount int ) {
 	}
 }
 
-func RunRelayCrunchThreads(redisHostname string, threadCount int ) {
+func RunRelayCrunchThreads(redisHostname string, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -645,8 +640,8 @@ func RunRelayCrunchThreads(redisHostname string, threadCount int ) {
 					relays += fmt.Sprintf(" %d %s", score, relayAddress)
 
 					/*
-					serverData := portal.GenerateRandomSessionData()
-					server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
+						serverData := portal.GenerateRandomSessionData()
+						server_data += fmt.Sprintf("SET sd-%016x \"%s\"\r\nEXPIRE sd-%016x 30\r\n", sessionId, sessionData.Value(), sessionId)
 					*/
 				}
 
@@ -691,12 +686,12 @@ func RunPollThread(redisHostname string) {
 
 			fmt.Printf("sessions: %d of %d/%d (%.1fms)\n", len(sessions), nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
 
-			start  = time.Now()
+			start = time.Now()
 
 			if len(sessions) > 0 {
 				start = time.Now()
 				sessionData, sliceData, nearRelayData := getSessionData(pool, sessions[0].sessionId)
-				fmt.Printf("session data: %x session id, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
+				fmt.Printf("session data: %x, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 			}
 
 			start = time.Now()
