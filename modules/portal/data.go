@@ -372,3 +372,92 @@ func GenerateRandomSessionData() *SessionData {
 	data.ServerAddress = common.RandomAddress()
 	return &data
 }
+
+type ServerData struct {
+	ServerAddress net.UDPAddr
+	SDKVersion_Major uint8
+	SDKVersion_Minor uint8
+	SDKVersion_Patch uint8
+	MatchId uint64
+	BuyerId uint64
+	DatacenterId uint64
+	NumPlayers uint32
+	StartTime uint64
+}
+
+func (data *ServerData) Value() string {
+	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%x|%d|%x",
+		data.ServerAddress.String(),
+		data.SDKVersion_Major,
+		data.SDKVersion_Minor,
+		data.SDKVersion_Patch,
+		data.MatchId,
+		data.BuyerId,
+		data.DatacenterId,
+		data.NumPlayers,
+		data.StartTime,
+	)
+}
+
+func (data *ServerData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) != 9 {
+		return
+	}
+	serverAddress := core.ParseAddress(values[0])
+	sdkVersionMajor, err := strconv.ParseUint(values[1], 10, 8)
+	if err != nil {
+		return
+	}
+	sdkVersionMinor, err := strconv.ParseUint(values[2], 10, 8)
+	if err != nil {
+		return
+	}
+	sdkVersionPatch, err := strconv.ParseUint(values[3], 10, 8)
+	if err != nil {
+		return
+	}
+	matchId, err := strconv.ParseUint(values[4], 16, 64)
+	if err != nil {
+		return
+	}
+	buyerId, err := strconv.ParseUint(values[5], 16, 64)
+	if err != nil {
+		return
+	}
+	datacenterId, err := strconv.ParseUint(values[6], 16, 64)
+	if err != nil {
+		return
+	}
+	numPlayers, err := strconv.ParseUint(values[7], 10, 32)
+	if err != nil {
+		return
+	}
+	startTime, err := strconv.ParseUint(values[8], 16, 64)
+	if err != nil {
+		return
+	}
+	data.ServerAddress = serverAddress
+	data.SDKVersion_Major = uint8(sdkVersionMajor)
+	data.SDKVersion_Minor = uint8(sdkVersionMinor)
+	data.SDKVersion_Patch = uint8(sdkVersionPatch)
+	data.MatchId = matchId
+	data.BuyerId = buyerId
+	data.DatacenterId = datacenterId
+	data.NumPlayers = uint32(numPlayers)
+	data.StartTime = startTime
+}
+
+func GenerateRandomServerData() *ServerData {
+	data := ServerData{}
+	data.ServerAddress = common.RandomAddress()
+	data.SDKVersion_Major = uint8(common.RandomInt(0,255))
+	data.SDKVersion_Minor = uint8(common.RandomInt(0,255))
+	data.SDKVersion_Patch = uint8(common.RandomInt(0,255))
+	data.MatchId = rand.Uint64()
+	data.BuyerId = rand.Uint64()
+	data.DatacenterId = rand.Uint64()
+	data.NumPlayers = rand.Uint32()
+	data.StartTime = rand.Uint64()
+	return &data
+}

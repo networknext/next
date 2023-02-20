@@ -10,7 +10,7 @@ DONE
 
 TODO
  
-	Sketch out actual server data method
+	Sketch out actual server data struct
 
 	Make sure it includes start time (for uptime)
 
