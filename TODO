@@ -46,11 +46,9 @@ DONE
 
 	Fix the silly array appends...
 
-TODO
-
 	Move the get map data function into redis.go
 
-	------------------------------------------
+TODO
 
 	Move the get session data function into redis.go
 
@@ -66,6 +64,13 @@ TODO
 
 	------------------------------------------
 
+	Implement server data inserter
+
+	------------------------------------------
+
+	Implement relay data inserter
+
+	------------------------------------------
 
 
 

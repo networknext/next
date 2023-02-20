@@ -495,7 +495,7 @@ func RunPollThread(redisHostname string) {
 
 			start = time.Now()
 
-			mapData, err := getMapData(pool, minutes)
+			mapData, err := portal.GetMapData(pool, minutes)
 			if err != nil {
 				panic(fmt.Sprintf("failed to get map data: %v", err))
 			}

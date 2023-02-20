@@ -349,8 +349,7 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	return relays, totalRelayCount
 }
 
-/*
-func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
+func GetMapData(pool *redis.Pool, minutes int64) ([]MapData, error) {
 
 	redisClient := pool.Get()
 
@@ -388,7 +387,7 @@ func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
 
 	redisClient.Close()
 
-	mapData := make([]portal.MapData, len(mapKeys))
+	mapData := make([]MapData, len(mapKeys))
 	for i := range mapKeys {
 		mapData[i].Parse(mapKeys[i], mapValues[i])
 	}
@@ -396,6 +395,7 @@ func getMapData(pool *redis.Pool, minutes int64) ([]portal.MapData, error) {
 	return mapData, nil
 }
 
+/*
 func getSessionData(pool *redis.Pool, sessionId uint64) (*portal.SessionData, []portal.SliceData, []portal.NearRelayData) {
 
 	redisClient := pool.Get()
