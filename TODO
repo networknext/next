@@ -1,10 +1,10 @@
 DONE
 
-TODO
-
 	Implement load_test_redis_pubsub
 
 	Implement load_test_redis_streams
+
+TODO
 
 	Implement load_test_session_update
 
