@@ -10,6 +10,8 @@ DONE
 
 	Run through optimize as a worst case with max relays
 
+	Load test route matrix. The write is actually OK, even when writing 70MB route matrix @ 1000 relays
+
 TODO
 
 	---------------------------------------------------------------

@@ -167,6 +167,8 @@ func main() {
 		load_test_map()
 	} else if command == "load-test-optimize" {
 		load_test_optimize()
+	} else if command == "load-test-route-matrix" {
+		load_test_route_matrix()
 	}
 
 	cleanup()
@@ -376,4 +378,8 @@ func load_test_map() {
 
 func load_test_optimize() {
 	bash("go run tools/load_test_optimize/load_test_optimize.go")
+}
+
+func load_test_route_matrix() {
+	bash("go run tools/load_test_route_matrix/load_test_route_matrix.go")
 }
