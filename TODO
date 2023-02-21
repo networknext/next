@@ -1,10 +1,30 @@
 DONE
 
+	Implement the map service.
+
+	It's just not that fucking hard, and it should be possible to easily get this going faster than redis.
+
+	Goal is to have it actually functional with 1m map points.
+
 TODO
 	
-	Implement table mapping from server address to sessions currently connected to it.
+	Start with a map tool. Don't even use redis. Just get the datastructure going.
 
-	Do this with a HSET on a minute table, and time out older than 30 seconds last update time entries.
+	Grids on lat/long. Mutex per-grid cell. Take lat/long and quickly look up the cell index via the whatever.
+
+	Then, there is a channel, per-cell.
+
+	The channel is blocking, so no work is done unless changes are made (to the data), or, entries in the cell timeout (should check once per-second, roughly...)
+
+	We could even have a message pased to the cell, via the channel, to tell it to run the timeout check.
+
+	This is probably a good idea!
+
+	---------------------------------------------------------------
+
+	What data should go in server update if any?
+
+	Implement it via hash with HSET and minute buckets. Manually expire entries with last update time to get connected sessions within 30 seconds.
 
 	Finish implementing "getServers" so it actually gets all server data, including the set of sessions that are currently connected to the server.
 
