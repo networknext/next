@@ -24,15 +24,17 @@ DONE
 
 	Move generalized stuff from map load test into modules/portal/map.go
 
-TODO
-
 	Setup a new semaphore promote "Load Test"
+
+TODO
 
 	---------------------------------------------------------------
 
 	Implement load_test_redis_pubsub
 
 	Implement load_test_redis_streams
+
+	Extend the load tests to actually have a succeed/fail condition...
 	
 	---------------------------------------------------------------
 
