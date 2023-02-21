@@ -6,8 +6,6 @@ DONE
 
 	Goal is to have it actually functional with 1m map points.
 
-TODO
-	
 	Start with a map tool. Don't even use redis. Just get the datastructure going.
 
 	Grids on lat/long. Mutex per-grid cell. Take lat/long and quickly look up the cell index via the whatever.
@@ -20,6 +18,12 @@ TODO
 
 	This is probably a good idea!
 
+	Map cruncher core is complete. Handles 1M sessions no problem.
+
+	Portal cruncher core is load tested to handle 1M sessions as well.
+
+TODO
+	
 	---------------------------------------------------------------
 
 	What data should go in server update if any?

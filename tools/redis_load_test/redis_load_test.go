@@ -30,7 +30,7 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 			for {
 
-				for j := 0; j < 1000; j++ {
+				for j := 0; j < 10000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
 					score := uint32(rand.Intn(10000))
@@ -106,7 +106,7 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 
 			for {
 
-				for j := 0; j < 1000; j++ {
+				for j := 0; j < 10; j++ {
 
 					relayData := portal.GenerateRandomRelayData()
 
@@ -157,15 +157,6 @@ func RunPollThread(pool *redis.Pool) {
 					fmt.Printf("session data: %x, %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 				}
 			}
-
-			start = time.Now()
-
-			mapData, err := portal.GetMapData(pool, start)
-			if err != nil {
-				panic(fmt.Sprintf("failed to get map data: %v", err))
-			}
-
-			fmt.Printf("map data: %d points (%.1fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
 
 			start = time.Now()
 

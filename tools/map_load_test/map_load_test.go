@@ -132,7 +132,7 @@ func RunInsertThreads(mapInstance *Map) {
 
 			for {
 
-				for j := 0; j < 1000; j++ {
+				for j := 0; j < 10000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
 
@@ -205,3 +205,13 @@ func main() {
 
 	time.Sleep(time.Minute)
 }
+
+/*
+	mapData := MapData{}
+	mapData.Latitude = sessionData.Latitude
+	mapData.Longitude = sessionData.Longitude
+	mapData.Next = next
+	mapData.LastUpdateTime = uint64(currentTime.Unix())
+	inserter.redisClient.Send("HSET", fmt.Sprintf("m-%d", minutes), fmt.Sprintf("%016x", sessionId), mapData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("m-%d", minutes), 30)
+*/

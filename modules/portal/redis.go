@@ -349,44 +349,6 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	return relays, totalRelayCount
 }
 
-func GetMapData(pool *redis.Pool, currentTime time.Time) ([]MapData, error) {
-
-	seconds := uint64(currentTime.Unix())
-	minutes := seconds / 60
-
-	redisClient := pool.Get()
-
-	redisClient.Send("HGETALL", fmt.Sprintf("m-%d", minutes))
-	redisClient.Send("HGETALL", fmt.Sprintf("m-%d", minutes-1))
-
-	redisClient.Flush()
-
-	keys_and_values_a, _ := redis.Strings(redisClient.Receive())
-	keys_and_values_b, _ := redis.Strings(redisClient.Receive())
-
-	mapHash := make(map[string]string)
-
-	for i := 0; i < len(keys_and_values_a); i += 2 {
-		mapHash[keys_and_values_a[i]] = keys_and_values_a[i+1]
-	}
-
-	for i := 0; i < len(keys_and_values_b); i += 2 {
-		mapHash[keys_and_values_b[i]] = keys_and_values_b[i+1]
-	}
-
-	mapData := make([]MapData, len(mapHash))
-	index := 0
-	for k, v := range mapHash {
-		mapData[index].Parse(k, v)
-		if seconds-mapData[index].LastUpdateTime > 30 {
-			continue
-		}
-		index++
-	}
-
-	return mapData, nil
-}
-
 func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	redisClient := pool.Get()
@@ -473,14 +435,6 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 
 	inserter.redisClient.Send("RPUSH", fmt.Sprintf("sl-%016x", sessionId), sliceData.Value())
 	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x", sessionId), 30)
-
-	mapData := MapData{}
-	mapData.Latitude = sessionData.Latitude
-	mapData.Longitude = sessionData.Longitude
-	mapData.Next = next
-	mapData.LastUpdateTime = uint64(currentTime.Unix())
-	inserter.redisClient.Send("HSET", fmt.Sprintf("m-%d", minutes), fmt.Sprintf("%016x", sessionId), mapData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("m-%d", minutes), 30)
 
 	inserter.numPending++
 
