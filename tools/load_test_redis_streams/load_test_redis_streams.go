@@ -2,58 +2,157 @@ package main
 
 import (
 	"math/rand"
+	"context"
 	"time"
+	"os"
+	"sync/atomic"
+	"fmt"
 
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 )
 
-func RunProducerThreads(hostname string, threadCount int) {
+func RunProducerThreads(ctx context.Context, hostname string, threadCount int, numMessagesSent *uint64) {
+
+	producers := make([]*common.RedisStreamsProducer, threadCount)
+
+	for i := 0; i < threadCount; i++ {
+
+		var err error
+
+		producers[i], err = common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
+			RedisHostname:      hostname,
+			RedisPassword:      "",
+			StreamName:         "test-stream",
+			BatchSize:          100,
+			BatchDuration:      time.Millisecond * 100,
+			MessageChannelSize: 10 * 1024,
+		})
+
+		if err != nil {
+			core.Error("failed to create redis pubsub producer: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			iteration := uint64(0)
+			producer := producers[thread]
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
+			ticker := time.NewTicker(time.Second)
+
 			for {
 
-				for j := 0; j < 1000; j++ {
+				select {
 
-					// todo
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					const NumMessages = 1000
+					for i := 0; i < NumMessages; i++ {
+						messageData := [1024]byte{}
+						producer.MessageChannel <- messageData[:]
+					}
+					atomic.AddUint64(numMessagesSent, NumMessages)
 				}
-
-				time.Sleep(10 * time.Second)
-
-				iteration++
 			}
 		}(k)
 	}
 }
 
-func RunConsumerThreads(hostname string, threadCount int) {
+func RunConsumerThreads(ctx context.Context, hostname string, threadCount int, numMessagesReceived *uint64) {
+
+	consumers := make([]*common.RedisStreamsConsumer, threadCount)
+
+	for i := 0; i < threadCount; i++ {
+
+		var err error
+
+		consumers[i], err = common.CreateRedisStreamsConsumer(ctx, common.RedisStreamsConfig{
+			RedisHostname:      hostname,
+			RedisPassword:      "",
+			StreamName:         "test-stream",
+			ConsumerGroup:      "test-group",
+			BatchDuration:      time.Millisecond * 100,
+			BatchSize:          10,
+			MessageChannelSize: 10 * 1024,
+		})
+
+		if err != nil {
+			core.Error("failed to create redis pubsub consumer: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			// todo
+			consumer := consumers[thread]
+
+			for {
+
+				select {
+
+				case <-ctx.Done():
+					fmt.Printf("consumer %d finished\n", thread)
+					return
+
+				case <-consumer.MessageChannel:
+					atomic.AddUint64(numMessagesReceived, 1)
+				}
+			}
 
 		}(k)
 	}
+}
+
+func RunMonitorThread(ctx context.Context, numMessagesSent *uint64, numMessagesReceived *uint64) {
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+
+		iteration := uint64(0)
+
+		for {
+
+			select {
+
+			case <-ctx.Done():
+				return
+
+			case <-ticker.C:
+				numSent := atomic.LoadUint64(numMessagesSent)
+				numReceived := atomic.LoadUint64(numMessagesReceived)
+				fmt.Printf("%d: %d messages sent, %d messages received\n", iteration, numSent, numReceived)
+				iteration++
+			}
+		}
+	}()
 }
 
 func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 1000)
-	consumerThreadCount := envvar.GetInt("CONSUMER_THREAD_COUNT", 1000)
+	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 100)
+	consumerThreadCount := envvar.GetInt("CONSUMER_THREAD_COUNT", 100)
 
-	RunProducerThreads(redisHostname, producerThreadCount)
+	var numMessagesSent uint64
+	var numMessagesReceived uint64
 
-	RunConsumerThreads(redisHostname, consumerThreadCount)
+	RunProducerThreads(context.Background(), redisHostname, producerThreadCount, &numMessagesSent)
+
+	RunConsumerThreads(context.Background(), redisHostname, consumerThreadCount, &numMessagesReceived)
+
+	RunMonitorThread(context.Background(), &numMessagesSent, &numMessagesReceived)
 
 	time.Sleep(time.Minute)
 }

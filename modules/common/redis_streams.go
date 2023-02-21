@@ -106,7 +106,8 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 		return
 	}
 
-	batchId := producer.numBatchesSent
+	// batchId := producer.numBatchesSent
+	
 	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()
@@ -116,7 +117,7 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 
 	producer.messageBatch = [][]byte{}
 
-	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
+	// core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }
 
 func (producer *RedisStreamsProducer) NumMessagesSent() int {
@@ -158,13 +159,13 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	consumerId := uuid.New().String()
 
-	core.Debug("redis streams consumer id: %s", consumerId)
+	// core.Debug("redis streams consumer id: %s", consumerId)
 
 	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "0").Result()
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
 			//do not need to handle this error
-			core.Debug("Consumer Group: %v already existed", config.ConsumerGroup)
+			// core.Debug("Consumer Group: %v already existed", config.ConsumerGroup)
 		} else {
 			core.Error("error creating redis streams group: %v", err)
 		}
@@ -217,13 +218,13 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 
 			batchMessages := parseMessages(batchData)
 
-			core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
+			// core.Debug("received %d messages (%d bytes) from redis streams", len(batchMessages), len(batchData))
 
 			for _, message := range batchMessages {
 				consumer.MessageChannel <- message
 			}
 
-			core.Debug("batch sent to channel")
+			// core.Debug("batch sent to channel")
 
 			ackResponse := consumer.redisClient.XAck(ctx, consumer.config.StreamName, consumer.config.ConsumerGroup, stream.ID)
 			if ackResponse.Err() != nil {
@@ -231,7 +232,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 				continue
 			}
 
-			core.Debug("acked message batch")
+			// core.Debug("acked message batch")
 
 			consumer.mutex.Lock()
 			consumer.numBatchesReceived += 1

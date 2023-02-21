@@ -11,6 +11,9 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.
+// this is different to streams and google pubsub where messages are load balanced across consumers
+
 type RedisPubsubConfig struct {
 	RedisHostname      string
 	RedisPassword      string
@@ -95,7 +98,8 @@ func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
 		return
 	}
 
-	batchId := producer.numBatchesSent
+	// batchId := producer.numBatchesSent
+	
 	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()
@@ -105,7 +109,7 @@ func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
 
 	producer.messageBatch = [][]byte{}
 
-	core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
+	// core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }
 
 func batchMessages(batchId int, messages [][]byte) []byte {
@@ -194,7 +198,7 @@ func (consumer *RedisPubsubConsumer) processRedisMessages(ctx context.Context) {
 
 			batchMessages := parseMessages([]byte(messageBatch.Payload))
 
-			core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
+			// core.Debug("received %d messages (%v bytes) from redis pubsub", len(batchMessages), len([]byte(messageBatch.Payload)))
 
 			for _, message := range batchMessages {
 				consumer.MessageChannel <- message
