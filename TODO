@@ -4,15 +4,23 @@ DONE
 
 	Implement load_test_redis_streams
 
+	Implement load_test_optimize
+
+	This should be 1000 relays, with randomly cost
+
+	Run through optimize as a worst case with max relays
+
 TODO
+
+	---------------------------------------------------------------
+
+	Implement load_test_relay_manager
 
 	Implement load_test_session_update
 
 	Implement load_test_server_update
 
-	Implement load_test_relay_update
-
-	Extend the load tests to actually have a succeed/fail condition...
+	Implement load_test_match_update
 	
 	---------------------------------------------------------------
 

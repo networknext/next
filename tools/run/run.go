@@ -165,6 +165,8 @@ func main() {
 		load_test_redis_streams()
 	} else if command == "load-test-map" {
 		load_test_map()
+	} else if command == "load-test-optimize" {
+		load_test_optimize()
 	}
 
 	cleanup()
@@ -357,7 +359,7 @@ func func_backend() {
 }
 
 func load_test_redis_portal() {
-	bash("go run tools/load_test_redis/load_test_redis_portal.go")
+	bash("go run tools/load_test_redis_portal/load_test_redis_portal.go")
 }
 
 func load_test_redis_pubsub() {
@@ -370,4 +372,8 @@ func load_test_redis_streams() {
 
 func load_test_map() {
 	bash("go run tools/load_test_map/load_test_map.go")
+}
+
+func load_test_optimize() {
+	bash("go run tools/load_test_optimize/load_test_optimize.go")
 }
