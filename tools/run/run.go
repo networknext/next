@@ -157,6 +157,8 @@ func main() {
 		func_backend()
 	} else if command == "redis-cruncher" {
 		redis_cruncher()
+	} else if command == "map-cruncher" {
+		map_cruncher()
 	}
 
 	cleanup()
@@ -342,4 +344,8 @@ func func_backend() {
 
 func redis_cruncher() {
 	bash("go run tools/redis_cruncher/redis_cruncher.go")
+}
+
+func map_cruncher() {
+	bash("go run tools/map_cruncher/map_cruncher.go")
 }

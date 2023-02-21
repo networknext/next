@@ -378,7 +378,7 @@ func GetMapData(pool *redis.Pool, currentTime time.Time) ([]MapData, error) {
 	index := 0
 	for k, v := range mapHash {
 		mapData[index].Parse(k, v)
-		if seconds - mapData[index].LastUpdateTime > 30 {
+		if seconds-mapData[index].LastUpdateTime > 30 {
 			continue
 		}
 		index++
