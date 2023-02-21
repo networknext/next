@@ -164,6 +164,9 @@ promotions:
   - name: "Functional Tests (SDK5)"
     pipeline_file: functional-tests-sdk5.yml
 
+  - name: "Load Tests"
+    pipeline_file: load-tests.yml
+
   - name: "Happy Path"
     pipeline_file: happy-path.yml
 

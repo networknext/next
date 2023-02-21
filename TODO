@@ -22,7 +22,13 @@ DONE
 
 	Portal cruncher core is load tested to handle 1M sessions as well.
 
+	Move generalized stuff from map load test into modules/portal/map.go
+
 TODO
+
+	Setup a new semaphore promote "Load Test"
+
+	---------------------------------------------------------------
 
 	Implement load_test_redis_pubsub
 
