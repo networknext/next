@@ -155,10 +155,10 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
-	} else if command == "redis-load-test" {
-		redis_cruncher()
-	} else if command == "map-load-test" {
-		map_cruncher()
+	} else if command == "load-test-redis" {
+		load_test_redis()
+	} else if command == "load-test-map" {
+		load_test_map()
 	}
 
 	cleanup()
@@ -342,10 +342,10 @@ func func_backend() {
 	bash("cd dist && ./func_backend")
 }
 
-func redis_load_test() {
-	bash("go run tools/redis_load_test/redis_load_test.go")
+func load_test_redis() {
+	bash("go run tools/load_test_redis/load_test_redis.go")
 }
 
 func map_load_test() {
-	bash("go run tools/map_load_test/map_load_test.go")
+	bash("go run tools/load_test_map/load_test_map.go")
 }
