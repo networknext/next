@@ -2,10 +2,10 @@ package portal
 
 import (
 	"fmt"
+	"net"
 	"sort"
 	"strconv"
 	"time"
-	"net"
 
 	"github.com/networknext/backend/modules/core"
 
@@ -14,8 +14,8 @@ import (
 
 func CreateRedisPool(hostname string, size int) *redis.Pool {
 	pool := redis.Pool{
-		MaxIdle:     size,
-		MaxActive:   size / 10,
+		MaxIdle:     size * 10,
+		MaxActive:   size,
 		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial("tcp", hostname)
@@ -106,18 +106,18 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) ([]Session
 
 	sessionsMap := make(map[uint64]SessionEntry)
 
-	for i := 0; i < len(sessions_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+	for i := 0; i < len(sessions_b); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
 		sessionsMap[sessionId] = SessionEntry{
 			SessionId: uint64(sessionId),
 			Score:     uint32(score),
 		}
 	}
 
-	for i := 0; i < len(sessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+	for i := 0; i < len(sessions_a); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
 		sessionsMap[sessionId] = SessionEntry{
 			SessionId: uint64(sessionId),
 			Score:     uint32(score),
@@ -210,19 +210,19 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 
 	serverMap := make(map[string]ServerEntry)
 
-	for i := 0; i < len(servers_a); i += 2 {
-		address := core.ParseAddress(servers_a[i])
-		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
-		serverMap[servers_a[i]] = ServerEntry{
+	for i := 0; i < len(servers_b); i += 2 {
+		address := core.ParseAddress(servers_b[i])
+		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
+		serverMap[servers_b[i]] = ServerEntry{
 			Address: address,
 			Score:   uint32(score),
 		}
 	}
 
-	for i := 0; i < len(servers_b); i += 2 {
-		address := core.ParseAddress(servers_b[i])
-		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
-		serverMap[servers_b[i]] = ServerEntry{
+	for i := 0; i < len(servers_a); i += 2 {
+		address := core.ParseAddress(servers_a[i])
+		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
+		serverMap[servers_a[i]] = ServerEntry{
 			Address: address,
 			Score:   uint32(score),
 		}
@@ -252,7 +252,7 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) ([]ServerEn
 
 type RelayEntry struct {
 	Address net.UDPAddr
-	Score        uint32
+	Score   uint32
 }
 
 func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntry, int) {
@@ -309,6 +309,15 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 
 	relayMap := make(map[string]RelayEntry)
 
+	for i := 0; i < len(relays_b); i += 2 {
+		address := core.ParseAddress(relays_b[i])
+		score, _ := strconv.ParseUint(relays_b[i+1], 10, 32)
+		relayMap[address.String()] = RelayEntry{
+			Address: address,
+			Score:   uint32(score),
+		}
+	}
+
 	for i := 0; i < len(relays_a); i += 2 {
 		address := core.ParseAddress(relays_a[i])
 		score, _ := strconv.ParseUint(relays_a[i+1], 10, 32)
@@ -318,15 +327,6 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 		}
 	}
 
-	for i := 0; i < len(relays_b); i += 2 {
-		address := core.ParseAddress(relays_b[i])
-		score, _ := strconv.ParseUint(relays_b[i+1], 10, 32)
-		relayMap[address.String()] = RelayEntry{
-			Address: address,
-			Score:   uint32(score),
-		}
-	}
-	
 	relays := make([]RelayEntry, len(relayMap))
 	index := 0
 	for _, v := range relayMap {
@@ -349,47 +349,39 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	return relays, totalRelayCount
 }
 
-func GetMapData(pool *redis.Pool, minutes int64) ([]MapData, error) {
+func GetMapData(pool *redis.Pool, currentTime time.Time) ([]MapData, error) {
+
+	seconds := uint64(currentTime.Unix())
+	minutes := seconds / 60
 
 	redisClient := pool.Get()
 
-	redisClient.Send("KEYS", "m-*")
+	redisClient.Send("HGETALL", fmt.Sprintf("m-%d", minutes))
+	redisClient.Send("HGETALL", fmt.Sprintf("m-%d", minutes-1))
 
 	redisClient.Flush()
 
-	mapKeys, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		return nil, err
+	keys_and_values_a, _ := redis.Strings(redisClient.Receive())
+	keys_and_values_b, _ := redis.Strings(redisClient.Receive())
+
+	mapHash := make(map[string]string)
+
+	for i := 0; i < len(keys_and_values_a); i += 2 {
+		mapHash[keys_and_values_a[i]] = keys_and_values_a[i+1]
 	}
 
-	var mapValues []string
-
-	if len(mapKeys) > 0 {
-
-		var keys []interface{}
-		for i := range mapKeys {
-			keys = append(keys, mapKeys[i])
-		}
-
-		redisClient.Send("MGET", keys...)
-
-		redisClient.Flush()
-
-		mapValues, err = redis.Strings(redisClient.Receive())
-		if err != nil {
-			return nil, err
-		}
-
-		if len(mapValues) != len(mapKeys) {
-			return nil, fmt.Errorf("number of map values and map keys don't match")
-		}
+	for i := 0; i < len(keys_and_values_b); i += 2 {
+		mapHash[keys_and_values_b[i]] = keys_and_values_b[i+1]
 	}
 
-	redisClient.Close()
-
-	mapData := make([]MapData, len(mapKeys))
-	for i := range mapKeys {
-		mapData[i].Parse(mapKeys[i], mapValues[i])
+	mapData := make([]MapData, len(mapHash))
+	index := 0
+	for k, v := range mapHash {
+		mapData[index].Parse(k, v)
+		if seconds - mapData[index].LastUpdateTime > 30 {
+			continue
+		}
+		index++
 	}
 
 	return mapData, nil
@@ -477,21 +469,27 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 	}
 
 	inserter.redisClient.Send("SET", fmt.Sprintf("sd-%016x", sessionId), sessionData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x 30", sessionId))
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x", sessionId), 30)
 
 	inserter.redisClient.Send("RPUSH", fmt.Sprintf("sl-%016x", sessionId), sliceData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x 30", sessionId))
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x", sessionId), 30)
 
 	mapData := MapData{}
 	mapData.Latitude = sessionData.Latitude
 	mapData.Longitude = sessionData.Longitude
 	mapData.Next = next
-	inserter.redisClient.Send("SET", fmt.Sprintf("m-%016x", sessionId), mapData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("m-%016x 30", sessionId))
+	mapData.LastUpdateTime = uint64(currentTime.Unix())
+	inserter.redisClient.Send("HSET", fmt.Sprintf("m-%d", minutes), fmt.Sprintf("%016x", sessionId), mapData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("m-%d", minutes), 30)
 
 	inserter.numPending++
 
+	inserter.CheckForFlush(currentTime)
+}
+
+func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		minutes := currentTime.Unix() / 60
 		if len(inserter.allSessions) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.allSessions...)
 			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
@@ -532,7 +530,7 @@ func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearR
 	currentTime := time.Now()
 
 	inserter.redisClient.Send("RPUSH", fmt.Sprintf("nr-%016x", sessionId), nearRelayData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x 30", sessionId))
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x", sessionId), 30)
 
 	inserter.numPending++
 

@@ -14,10 +14,11 @@ import (
 )
 
 type MapData struct {
-	SessionId uint64
-	Latitude  float32
-	Longitude float32
-	Next      bool
+	SessionId      uint64
+	Latitude       float32
+	Longitude      float32
+	Next           bool
+	LastUpdateTime uint64
 }
 
 func (data *MapData) Value() string {
@@ -25,7 +26,7 @@ func (data *MapData) Value() string {
 	if data.Next {
 		nextInt = 1
 	}
-	return fmt.Sprintf("%.2f|%.2f|%d", data.Latitude, data.Longitude, nextInt)
+	return fmt.Sprintf("%.2f|%.2f|%d|%x", data.Latitude, data.Longitude, nextInt, data.LastUpdateTime)
 }
 
 func (data *MapData) Parse(key string, value string) {
@@ -45,10 +46,16 @@ func (data *MapData) Parse(key string, value string) {
 	if err != nil {
 		return
 	}
+	next := values[2] == "1"
+	lastUpdateTime, err := strconv.ParseUint(values[3], 16, 64)
+	if err != nil {
+		return
+	}
 	data.SessionId = sessionId
 	data.Longitude = float32(longitude)
 	data.Latitude = float32(latitude)
-	data.Next = values[2] == "1"
+	data.Next = next
+	data.LastUpdateTime = lastUpdateTime
 }
 
 type SliceData struct {
@@ -374,15 +381,15 @@ func GenerateRandomSessionData() *SessionData {
 }
 
 type ServerData struct {
-	ServerAddress net.UDPAddr
+	ServerAddress    net.UDPAddr
 	SDKVersion_Major uint8
 	SDKVersion_Minor uint8
 	SDKVersion_Patch uint8
-	MatchId uint64
-	BuyerId uint64
-	DatacenterId uint64
-	NumPlayers uint32
-	StartTime uint64
+	MatchId          uint64
+	BuyerId          uint64
+	DatacenterId     uint64
+	NumPlayers       uint32
+	StartTime        uint64
 }
 
 func (data *ServerData) Value() string {
@@ -451,9 +458,9 @@ func (data *ServerData) Parse(value string) {
 func GenerateRandomServerData() *ServerData {
 	data := ServerData{}
 	data.ServerAddress = common.RandomAddress()
-	data.SDKVersion_Major = uint8(common.RandomInt(0,255))
-	data.SDKVersion_Minor = uint8(common.RandomInt(0,255))
-	data.SDKVersion_Patch = uint8(common.RandomInt(0,255))
+	data.SDKVersion_Major = uint8(common.RandomInt(0, 255))
+	data.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
+	data.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
 	data.MatchId = rand.Uint64()
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
@@ -463,13 +470,13 @@ func GenerateRandomServerData() *ServerData {
 }
 
 type RelayData struct {
-	RelayId uint64
+	RelayId      uint64
 	RelayAddress net.UDPAddr
 	DatacenterId uint64
-	NumSessions uint32
-	MaxSessions uint32
-	StartTime uint64
-	Version string
+	NumSessions  uint32
+	MaxSessions  uint32
+	StartTime    uint64
+	Version      string
 }
 
 func (data *RelayData) Value() string {

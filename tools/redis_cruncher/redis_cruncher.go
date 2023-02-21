@@ -160,7 +160,7 @@ func RunPollThread(pool *redis.Pool) {
 
 			start = time.Now()
 
-			mapData, err := portal.GetMapData(pool, minutes)
+			mapData, err := portal.GetMapData(pool, start)
 			if err != nil {
 				panic(fmt.Sprintf("failed to get map data: %v", err))
 			}
@@ -190,7 +190,7 @@ func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	redisPool := portal.CreateRedisPool(redisHostname, 10 * 1024)
+	redisPool := portal.CreateRedisPool(redisHostname, 1000)
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 

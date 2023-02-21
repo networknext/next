@@ -1,22 +1,12 @@
 DONE
 
 TODO
+	
+	Implement table mapping from server address to sessions currently connected to it.
 
-	What data should go in server update if any?
+	Do this with a HSET on a minute table, and time out older than 30 seconds last update time entries.
 
-	Probably the number of connected players... possibly server events, if this concept exists?
-
-	Maybe the total amount of bandwidth going in/out of the server?
-
-	---------------------------------------------------------------
-
-	If it's just the set of currently connected session ids then... it should be done differently.
-
-	Work out how to implement a table to map from server address to the set of sessions currently on the server
-
-	Is this easily possible? Ideally, without extending the server update message to be large -- eg. drive the link from the session updates and the server address in them
-
-	Maybe a per-minute update table, with a ZADD ?
+	Finish implementing "getServers" so it actually gets all server data, including the set of sessions that are currently connected to the server.
 
 	---------------------------------------------------------------
 
@@ -24,76 +14,49 @@ TODO
 
 	What data should be in it? The only data that I can think of is a history of the num sessions, going back as long as possible really.
 
-	Maybe also history of bandwidth etc... ?
+	Maybe also history of bandwidth etc... ? Yes.
 
 	Should keep data per-relay for a maximum of 1 hour. 60*60 = 3600... that's OK.
 
-	Work out how to insert RPUSH, while removing any old entries past n=3600
+	In reality, I'll probably only display data in the last 10 minutes, eg. 10*60 = 600 samples.
+
+	Work out how to insert RPUSH, while removing any old entries past n=3600...
 
 	Fully implement "GetRelays" so it gets both the relay data and the history of relay updates
 
-	---------------------------------------------------------------
+	---------------------------------------------------------
 
+	Bring across the new code (inserter) into the portal cruncher
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------------
-
-	Hook up insert of server data to use random values (except server address)
-
-	Finish implementing "getServers" so it actually gets all server data
-
-	Do we need an array of server updates, eg. every 10 seconds, "server update" with the set of session ids connected?
-
-	Probably a good idea. Otherwise, difficult to do the inverse, to walk from a server to the sessions that are on it.
-
-	Yes. Do this. "svu-"
-
-	What's different between svd- (server data), and svu-?
-
-	svd- is the data shown in the initial list of servers.
-
-	svu- is the array of timestamped data shown inside the server inspector.
-
-	Finish implementing getServers to return servers (server data), totalServerCount
-
-	Implement getServerUpdates, and call it, displaying the number of server updates for the first server address.
+	Make sure the portal cruncher doesn't block on any redis streams messages, it must flush periodically.
 
 	---------------------------------------------------------
 
-	Implement rd- and ru-
+	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
 
-	Finish implementing getRelays to return relays (relay data), totalRelayCount
-
-	Implement getRelayUpdates, and call it, displaying the number of relay updates for the first relay address.
+	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
 
 	---------------------------------------------------------
 
-	Portal cruncher core is basically finished.
+	"Score" for session sorting on portal should use largest RTT reduction seen in the last n slices
 
-	What needs to happen next is that the code needs to be moved into a module file (eg. common/portal.go)
+	Make it smoother and more stable, also highight spike fixes.
 
-	And it needs to be cleaned up with proper error handling, and with the insert threads (crunch threads) actually detecting errors and reconnecting as needed.
+	This can be calculated in-place in the cruncher, maybe? Do messages from the same source end up getting processed on the same dest, over time? I think they do.
 
 	---------------------------------------------------------
+
+	We probably need multiple "inserters" for pubsub and redis streams, switched on by session id, so we can effectively distribute processing. 
+
+	Otherwise, with only one inserter and one server backend (typical) it will not distribute processing across multiple portal crunchers evenly.
+
+	Distribute according to modulo session id, or hash of server address + port, or relay id
+
+	---------------------------------------------------------
+
+
+
+
 
 
 
@@ -450,10 +413,6 @@ Nice to have:
 
 	---------------
 
-	Extend "next ssh" to ssh into google Vms by name, if no relay is found
-
-	---------------
-
 	I really can't answer the question "why are half the relays not carrying sessions in dev?"
 
 	Is it just a property of the optimizer, eg. it will go away if I disable mispredict and set all costs to zero?
@@ -461,18 +420,6 @@ Nice to have:
 	Or is there some sort of bias causing this. It seems important to explore this and work it out.
 
 	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
-
-	---------------
-
-	We need a way to track no packets on client for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
-
-	We need a way to track no packets on server from session for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
-
-	---------------
-
-	We absolutely need to track client and server frame hitches
-
-	This would have helped Velan and PFG.
 
 	---------------
 
@@ -512,40 +459,22 @@ Nice to have:
 
 	---------------
 
+	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
+
+	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
+
 	Plumb internal events all the way up from client SDK to backend.
 
 	Client SDK must be able to trigger certain events (eg. client hitches, no packets received etc...)
 
 	Server can trigger others, then they get OR'd before sending up to backend.
 
-	--------
+	We need a way to track no packets on client for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
 
-	Add internal session events. Track server hitches, client hitches, no packets received, over bandwidth etc.
-
-	These should be passed on to both the portal for immediate visualization, and to bigquery for analysis.
+	We need a way to track no packets on server from session for 0.1, 0.25, 0.5, 1.0 sec... from main thread.
 
 	--------
 
 	Redo pro, but do it via internal session events.
-
-	--------
-
-	"Score" for session sorting on portal should use largest RTT reduction seen in the last n slices
-
-	Make it smoother and more stable, also highight spike fixes.
-
-	This can be calculated in-place in the cruncher, maybe? Do messages from the same source end up getting processed on the same dest, over time? I think they do.
-
-	--------
-
-	We probably need multiple "inserters" for pubsub and redis streams, switched on by session id, so we can effectively distribute processing. Otherwise, with only one inserter, it will not distribute processing, unless there are multiple server backends generating messages.
-
-	Distribute according to modulo session id.
-
-	--------
-
-	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
-
-	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
 
 	--------

@@ -12,7 +12,9 @@ DONE
 
 TODO
 
-	Rebuild portal cruncher
+	Rebuild portal cruncher (90%)
+
+	Rebuild API service to drive the "next" tool, eg. "next relays"
 
 	Setup new dev environment with terraform
 
