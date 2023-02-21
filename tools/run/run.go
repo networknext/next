@@ -157,8 +157,12 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
-	} else if command == "load-test-redis" {
-		load_test_redis()
+	} else if command == "load-test-redis-portal" {
+		load_test_redis_portal()
+	} else if command == "load-test-redis-pubsub" {
+		load_test_redis_pubsub()
+	} else if command == "load-test-redis-streams" {
+		load_test_redis_streams()
 	} else if command == "load-test-map" {
 		load_test_map()
 	}
@@ -352,8 +356,16 @@ func func_backend() {
 	bash("cd dist && ./func_backend")
 }
 
-func load_test_redis() {
-	bash("go run tools/load_test_redis/load_test_redis.go")
+func load_test_redis_portal() {
+	bash("go run tools/load_test_redis/load_test_redis_portal.go")
+}
+
+func load_test_redis_pubsub() {
+	bash("go run tools/load_test_redis_pubsub/load_test_redis_pubsub.go")
+}
+
+func load_test_redis_streams() {
+	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
 }
 
 func load_test_map() {

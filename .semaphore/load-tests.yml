@@ -31,7 +31,17 @@ blocks:
           commands:
             - ./run load-test-map
 
-        - name: "Load Test Redis"
+        - name: "Load Test Redis Portal"
           commands:
             - sudo apt-get install -y redis-server
-            - ./run load-test-redis
+            - ./run load-test-redis-portal
+
+        - name: "Load Test Redis Pubsub"
+          commands:
+            - sudo apt-get install -y redis-server
+            - ./run load-test-redis-pubsub
+
+        - name: "Load Test Redis Streams"
+          commands:
+            - sudo apt-get install -y redis-server
+            - ./run load-test-redis-streams
