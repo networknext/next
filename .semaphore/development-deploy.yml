@@ -33,6 +33,11 @@ blocks:
             - artifact pull workflow analytics.dev.tar.gz
             - gsutil cp analytics.dev.tar.gz gs://development_artifacts/
 
+        - name: "Map Cruncher"
+          commands:
+            - artifact pull workflow map_cruncher.dev.tar.gz
+            - gsutil cp map_cruncher.dev.tar.gz gs://development_artifacts/
+
         - name: "Portal Cruncher"
           commands:
             - artifact pull workflow portal_cruncher.dev.tar.gz
