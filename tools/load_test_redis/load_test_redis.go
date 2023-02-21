@@ -131,8 +131,6 @@ func RunPollThread(pool *redis.Pool) {
 
 	go func() {
 
-		fmt.Printf("\n")
-
 		for {
 
 			fmt.Printf("-------------------------------------------------\n")
@@ -191,5 +189,5 @@ func main() {
 
 	RunPollThread(redisPool)
 
-	time.Sleep(time.Hour)
+	time.Sleep(time.Minute)
 }

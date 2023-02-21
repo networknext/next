@@ -163,34 +163,34 @@ func RunInsertThreads(mapInstance *Map) {
 }
 
 func RunPollThread(mapInstance *Map) {
-	iteration := uint64(0)
-	previousSize := 0
-	for {
-		time.Sleep(time.Second)
-		start := time.Now()
-		entries := make([]CellEntry, 0, previousSize)
-		for i := 0; i < NumCells; i++ {
-			for {
-				var output *CellOutput
-				select {
-                    case output = <- mapInstance.Cells[i].OutputChan:
-					default:
+	go func() {
+		iteration := uint64(0)
+		previousSize := 0
+		for {
+			time.Sleep(time.Second)
+			start := time.Now()
+			entries := make([]CellEntry, 0, previousSize)
+			for i := 0; i < NumCells; i++ {
+				for {
+					var output *CellOutput
+					select {
+	                    case output = <- mapInstance.Cells[i].OutputChan:
+						default:
+					}
+					if output == nil {
+						break
+					}
+					entries = append(entries, output.Entries...)
 				}
-				if output == nil {
-					break
-				}
-				entries = append(entries, output.Entries...)
 			}
+			fmt.Printf("iteration %d: %d entries (%dms)\n", iteration, len(entries), time.Since(start).Milliseconds())
+			previousSize = len(entries)
+			iteration++
 		}
-		fmt.Printf("iteration %d: %d entries (%dms)\n", iteration, len(entries), time.Since(start).Milliseconds())
-		previousSize = len(entries)
-		iteration++
-	}
+	}()
 }
 
 func main() {
-
-	fmt.Printf("\nmap cruncher\n")
 
 	mapInstance := CreateMap()
 

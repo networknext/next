@@ -23,10 +23,16 @@ DONE
 	Portal cruncher core is load tested to handle 1M sessions as well.
 
 TODO
+
+	Implement load_test_redis_pubsub
+
+	Implement load_test_redis_streams
 	
 	---------------------------------------------------------------
 
 	What data should go in server update if any?
+
+	I really can't think of any. I thnik we need to just implement the mapping from server to the sessions in it.
 
 	Implement it via hash with HSET and minute buckets. Manually expire entries with last update time to get connected sessions within 30 seconds.
 

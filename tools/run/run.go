@@ -109,6 +109,8 @@ func main() {
 		website_cruncher()
 	} else if command == "portal-cruncher" {
 		portal_cruncher()
+	} else if command == "map-cruncher" {
+		map_cruncher()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend" {
@@ -236,6 +238,14 @@ func portal_cruncher() {
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
+func map_cruncher() {
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40100"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/map_cruncher", httpPort))
+}
+
 func portal() {
 	bash("PORT=20000 ./dist/portal")
 }
@@ -346,6 +356,6 @@ func load_test_redis() {
 	bash("go run tools/load_test_redis/load_test_redis.go")
 }
 
-func map_load_test() {
+func load_test_map() {
 	bash("go run tools/load_test_map/load_test_map.go")
 }
