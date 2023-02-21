@@ -10,11 +10,12 @@ import (
 const MapWidth = 360
 const MapHeight = 180
 const CellSize = 10
-const NumCells = MapWidth/CellSize * MapHeight/CellSize
+const NumCells = (MapWidth/CellSize) * (MapHeight/CellSize)
 const UpdateChannelSize = 10 * 1024
 const OutputChannelSize = 1024
 
 type CellEntry struct {
+	SessionId      uint64
 	Latitude       float32
 	Longitude      float32
 	LastUpdateTime uint64
@@ -29,7 +30,7 @@ type CellUpdate struct {
 }
 
 type CellOutput struct {
-	Data []byte
+	Entries []CellEntry
 }
 
 type MapCell struct {
@@ -55,6 +56,7 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 			case update := <- cell.UpdateChan:
 				fmt.Printf("cell processing update: %v\n", update)
 				entry := CellEntry{}
+				entry.SessionId = update.SessionId
 				entry.Latitude = update.Latitude
 				entry.Longitude = update.Latitude
 				entry.LastUpdateTime = uint64(time.Now().Unix())
@@ -63,17 +65,17 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 				break
 
 			case <-ticker.C:
+				output := CellOutput{}
+				output.Entries = make([]CellEntry, 0, len(cell.Entries))
 				currentTime := uint64(time.Now().Unix())
 				for k,v := range cell.Entries {
 					if currentTime - v.LastUpdateTime >= 30 {
-						// todo
-						fmt.Printf("timeout\n")
 						delete(cell.Entries, k)
 						continue
 					}
-					// todo: write the entry to output
+					output.Entries = append(output.Entries, v)
 				}
-				// todo: send output to channel
+				cell.OutputChan <- &output
 			}
 		}
 	}()
@@ -94,6 +96,37 @@ func CreateMap() *Map {
 	return &mapInstance
 }
 
+func RunInsertThreads(mapInstance *Map) {
+	// todo
+	mapInstance.Cells[0].UpdateChan <- &CellUpdate{}
+}
+
+func RunPollThread(mapInstance *Map) {
+	iteration := uint64(0)
+	previousSize := 0
+	for {
+		time.Sleep(time.Second)
+		start := time.Now()
+		entries := make([]CellEntry, 0, previousSize)
+		for i := 0; i < NumCells; i++ {
+			for {
+				var output *CellOutput
+				select {
+                    case output = <- mapInstance.Cells[i].OutputChan:
+					default:
+				}
+				if output == nil {
+					break
+				}
+				entries = append(entries, output.Entries...)
+			}
+		}
+		fmt.Printf("iteration %d: %d entries (%dms)\n", iteration, len(entries), time.Since(start).Milliseconds())
+		previousSize = len(entries)
+		iteration++
+	}
+}
+
 func main() {
 
 	fmt.Printf("\nmap cruncher\n")
@@ -106,7 +139,8 @@ func main() {
 		mapInstance.Cells[i].RunCellThread(ctx)
 	}
 
-	mapInstance.Cells[0].UpdateChan <- &CellUpdate{}
+	RunInsertThreads(mapInstance)
+	RunPollThread(mapInstance)
 
 	time.Sleep(time.Minute)
 }
