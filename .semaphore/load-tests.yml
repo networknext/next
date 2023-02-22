@@ -66,3 +66,7 @@ blocks:
         - name: "Load Test Crypto Sign"
           commands:
             - ./run load-test-crypto-sign
+
+        - name: "Load Test Server Update"
+          commands:
+            - ./run load-test-server-update

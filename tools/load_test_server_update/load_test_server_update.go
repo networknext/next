@@ -10,6 +10,7 @@ import (
 
 	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
@@ -90,6 +91,7 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServer
 			updateChannel := updateChannels[thread]
 
 			handler := handlers.SDK5_Handler{}
+			// todo: need to set handler.Database here to one with the buyer id and keypair in it
 			handler.ServerBackendAddress = ServerBackendAddress
 			handler.ServerBackendPublicKey = ServerBackendPublicKey
 			handler.ServerBackendPrivateKey = ServerBackendPrivateKey
@@ -136,8 +138,13 @@ func RunWatcherThread(numServerUpdatesProcessed *uint64) {
 
 func main() {
 
+	ServerBackendPublicKey, ServerBackendPrivateKey = crypto.Sign_KeyPair()
+
 	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1000)
-	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU()*2)
+
+	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU())
+
+	// todo: we're going to need to generate a buyer keypair here
 
 	updateChannels := make([]chan *Update, numHandlerThreads)
 	for i := range updateChannels {
