@@ -46,9 +46,55 @@ DONE
 
 	Implement load_test_server_update
 
+	Implement load_test_session_update
+
 TODO
 
-	Implement load_test_session_update
+	Get session data filled out
+
+	Sign session data and put in packet
+
+	Make sure session data signature check passes
+
+	Now make sure that we get network next routes returned from session update handler
+
+	Once this is done, the load test is complete, turn off debug logs and scale it up
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	---------------------------------------------------------------
 
 	Load test various core bits that are doing work, eg. get route cost, get random route, get best route etc.
 

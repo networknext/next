@@ -4,29 +4,43 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"runtime"
+	// "runtime"
 	"sync/atomic"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/handlers"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/handlers"
+	"github.com/networknext/backend/modules/packets"
 )
+
+const NumRelays = constants.MaxRelays
+const NumSessions = 1000
 
 var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 var ServerBackendPublicKey []byte
 var ServerBackendPrivateKey []byte
+
+var RelayBackendPublicKey []byte
+var RelayBackendPrivateKey []byte
+
+var SessionId uint64
 
 var DatacenterId uint64
 
 var BuyerId uint64
 var BuyerPublicKey []byte
 var BuyerPrivateKey []byte
+
+var ClientPublicKey []byte
+var ClientPrivateKey []byte
+
+var ServerPublicKey []byte
+var ServerPrivateKey []byte
 
 type Update struct {
 	from       net.UDPAddr
@@ -41,25 +55,40 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
-			const NumServers = 1000
+			// todo: create session data and write to byte array
 
-			serverAddresses := make([]net.UDPAddr, NumServers)
-			for i := range serverAddresses {
-				serverAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.%d.%d:%d", i>>8, i&0xFF, 2000+thread))
-			}
+			clientAddress := core.ParseAddress("127.0.0.1:40000")
+			serverAddress := core.ParseAddress("127.0.0.1:50000")
 
 			for {
 
-				for j := 0; j < NumServers; j++ {
+				for j := 0; j < NumSessions; j++ {
 
-					packet := packets.SDK5_ServerUpdateRequestPacket{
+					packet := packets.SDK5_SessionUpdateRequestPacket{
 						Version:      packets.SDKVersion{5, 0, 0},
 						BuyerId:      BuyerId,
-						RequestId:    rand.Uint64(),
-						DatacenterId: DatacenterId,
+						DatacenterId: uint64(j),
+						SessionId:    SessionId,
+						SliceNumber:  10,
+						// todo: SessionDataBytes
+						// todo: SessionData
+						// todo: SessionDataSignature
+						ClientAddress: clientAddress,
+						ServerAddress: serverAddress,
+						HasNearRelayPings: true,
+						DirectRTT: 200,
 					}
 
-					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddresses[j], &ServerBackendAddress, BuyerPrivateKey[:])
+					copy(packet.ClientRoutePublicKey[:], ClientPublicKey)
+					copy(packet.ServerRoutePublicKey[:], ServerPublicKey)
+
+					packet.NumNearRelays = constants.MaxNearRelays
+					for i := 0; i < constants.MaxNearRelays; i++ {
+						packet.NearRelayIds[i] = uint64((j+i) % NumRelays)
+						packet.NearRelayRTT[i] = int32(common.RandomInt(0,10))
+					}
+
+					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SESSION_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddress, &ServerBackendAddress, BuyerPrivateKey[:])
 					if err != nil {
 						panic("failed to write server update packet")
 					}
@@ -67,7 +96,7 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 					updateChannel := updateChannels[j%len(updateChannels)]
 
 					update := Update{}
-					update.from = serverAddresses[j]
+					update.from = serverAddress
 					update.packetData = packetData
 
 					updateChannel <- &update
@@ -94,20 +123,34 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 			buyer.Debug = false
 			buyer.PublicKey = BuyerPublicKey[:]
 			buyer.RouteShader = core.NewRouteShader()
+			buyer.RouteShader.AnalysisOnly = false
 
-			datacenter := db.Datacenter{}
-			datacenter.Id = DatacenterId
-			datacenter.Name = "datacenter"
-			datacenter.Latitude = 100
-			datacenter.Longitude = 200
+			datacenters := make([]db.Datacenter, NumRelays)
+			for i := range datacenters {
+				datacenters[i].Id = uint64(i)
+				datacenters[i].Name = fmt.Sprintf("datacenter-%d", i)
+				datacenters[i].Latitude = 100
+				datacenters[i].Longitude = 200
+			}
 
 			database := db.CreateDatabase()
 			database.BuyerMap[BuyerId] = &buyer
-			database.DatacenterMap[DatacenterId] = &datacenter
+			database.DatacenterMaps[BuyerId] = make(map[uint64]*db.DatacenterMap)
+			for i := range datacenters {
+				database.DatacenterMap[datacenters[i].Id] = &datacenters[i]
+				database.DatacenterMaps[BuyerId][datacenters[i].Id] = &db.DatacenterMap{DatacenterId: uint64(i), BuyerId: BuyerId, EnableAcceleration: true}
+			}
+
+			err := database.Validate()
+			if err != nil {
+				panic(fmt.Sprintf("database did not validate: %v\n", err))
+			}
+
+			routeMatrix := common.RouteMatrix{}
 
 			handler := handlers.SDK5_Handler{}
 			handler.Database = database
-			handler.RouteMatrix = &common.RouteMatrix{}
+			handler.RouteMatrix = &routeMatrix
 			handler.ServerBackendAddress = ServerBackendAddress
 			handler.ServerBackendPublicKey = ServerBackendPublicKey
 			handler.ServerBackendPrivateKey = ServerBackendPrivateKey
@@ -119,9 +162,10 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 			for {
 				select {
 				case update := <-updateChannel:
+					routeMatrix.CreatedAt = uint64(time.Now().Unix())
 					handlers.SDK5_PacketHandler(&handler, nil, &update.from, update.packetData)
-					if !handler.Events[handlers.SDK5_HandlerEvent_SentServerUpdateResponsePacket] {
-						panic("failed to process server update")
+					if !handler.Events[handlers.SDK5_HandlerEvent_SentSessionUpdateResponsePacket] {
+						panic("failed to process session update")
 					}
 					atomic.AddUint64(numSessionUpdatesProcessed, 1)
 				}
@@ -154,9 +198,11 @@ func RunWatcherThread(numSessionUpdatesProcessed *uint64) {
 
 func main() {
 
-	core.DebugLogs = false
+	// core.DebugLogs = false
 
 	BuyerId = rand.Uint64()
+
+	SessionId = rand.Uint64()
 
 	DatacenterId = rand.Uint64()
 
@@ -164,9 +210,15 @@ func main() {
 
 	ServerBackendPublicKey, ServerBackendPrivateKey = crypto.Sign_KeyPair()
 
-	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1000)
+	RelayBackendPublicKey, RelayBackendPrivateKey = crypto.Box_KeyPair()
 
-	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU())
+	ClientPublicKey, ClientPrivateKey = crypto.Box_KeyPair()
+
+	ServerPublicKey, ServerPrivateKey = crypto.Box_KeyPair()
+
+	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1) //000)
+
+	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", 1)//runtime.NumCPU())
 
 	updateChannels := make([]chan *Update, numHandlerThreads)
 	for i := range updateChannels {

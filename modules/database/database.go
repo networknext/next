@@ -68,6 +68,7 @@ type Datacenter struct {
 	Longitude float32
 }
 
+// todo: terrible fucking name
 type DatacenterMap struct {
 	BuyerId            uint64
 	DatacenterId       uint64
@@ -82,7 +83,10 @@ type Database struct {
 	BuyerMap         map[uint64]*Buyer
 	SellerMap        map[uint64]*Seller
 	DatacenterMap    map[uint64]*Datacenter
+
+	// todo: terrible fucking name, especially right below "DatacenterMap" which is completely unrelated
 	DatacenterMaps   map[uint64]map[uint64]*DatacenterMap // DatacenterMaps[buyerId][datacenterId] -> entry for this buyer, and that datacenter
+
 	DatacenterRelays map[uint64][]uint64
 }
 

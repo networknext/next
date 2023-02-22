@@ -8,14 +8,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/handlers"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/handlers"
+	"github.com/networknext/backend/modules/packets"
 )
 
 var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
