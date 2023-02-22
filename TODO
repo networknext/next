@@ -12,11 +12,54 @@ DONE
 
 	Load test route matrix. The write is actually OK, even when writing 70MB route matrix @ 1000 relays
 
+	Implement load_test_redis_data (eg. leadership data, can we insert 100MB into redis, and then pull it back out -- eg. leadership data blocks)
+
 TODO
 
-	---------------------------------------------------------------
+	Added some tweaks and the redis leader election seems fine
 
-	Implement load_test_redis_data (eg. leadership data, can we insert 100MB into redis, and then pull it back out -- eg. leadership data blocks)
+	Now throw in some data blocks, I propose 1MB, 10MB and 100MB blocks.
+
+	------------------------------------------------------------
+
+	The way the data store is done is super bogus.
+
+	It shouldn't be tied to the cadence of updating the leader.
+
+	Instead, load/store should be able to be done at any time -- you store via your instance id and the name
+
+	And you load, from the leader instance id, and the name.	
+
+	------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	---------------------------------------------------------------
 
 	Implement load_test_relay_manager
 

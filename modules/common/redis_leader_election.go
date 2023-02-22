@@ -6,10 +6,10 @@ import (
 	"encoding/gob"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
+	// todo: switch to redigo!
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/networknext/backend/modules/core"
@@ -29,22 +29,15 @@ type RedisLeaderElection struct {
 	redisClient *redis.Client
 	startTime   time.Time
 	instanceId  string
+	leaderInstanceId string
 
 	leaderMutex sync.RWMutex
 	isLeader    bool
-
-	autoRefresh bool
 }
 
 type InstanceEntry struct {
 	InstanceId string
 	StartTime  uint64
-	Keys       []string
-}
-
-type DataStoreConfig struct {
-	Name string
-	Data []byte
 }
 
 func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
@@ -69,15 +62,13 @@ func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionCo
 	leaderElection.startTime = time.Now()
 	leaderElection.instanceId = uuid.New().String()
 
-	core.Debug("redis leader election start time: %s", leaderElection.startTime)
-	core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
+	// core.Debug("redis leader election start time: %s", leaderElection.startTime)
+	// core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
 
 	return leaderElection, nil
 }
 
 func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
-
-	leaderElection.autoRefresh = true
 
 	ticker := time.NewTicker(time.Second)
 	go func() {
@@ -93,22 +84,12 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 }
 
 func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
-	leaderElection.Store(ctx)
-	leaderElection.Load(ctx)
-}
 
-func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores ...DataStoreConfig) {
+	// write
 
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
 	instanceEntry.StartTime = uint64(leaderElection.startTime.UnixNano())
-
-	numStores := len(dataStores)
-	instanceEntry.Keys = make([]string, numStores)
-
-	for i := 0; i < numStores; i++ {
-		instanceEntry.Keys[i] = fmt.Sprintf("%s-%d/%s", dataStores[i].Name, RedisLeaderElectionVersion, leaderElection.instanceId)
-	}
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -116,6 +97,7 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 	if err != nil {
 		core.Error("failed to write instance entry\n")
 	}
+
 	instanceData := buffer.Bytes()
 
 	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(5*time.Second))
@@ -123,47 +105,33 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, dataStores
 
 	pipe := leaderElection.redisClient.TxPipeline()
 	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], leaderElection.config.Timeout)
+	cmds, err := pipe.Exec(timeoutContext)
 
-	for i := 0; i < numStores; i++ {
-		pipe.Set(timeoutContext, instanceEntry.Keys[i], dataStores[i].Data[:], leaderElection.config.Timeout)
-	}
-
-	_, err = pipe.Exec(timeoutContext)
-	if err != nil {
-		core.Error("failed to store instance data: %v", err)
-		return
-	}
-}
-
-func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStoreConfig {
-
-	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(5*time.Second))
-	defer cancel()
+	// todo: don't use "SCAN" it's slow
 
 	// get all "instance/*" keys
 
 	instanceKeys := []string{}
-	dataStores := []DataStoreConfig{}
 	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-instance-%d/*", leaderElection.config.ServiceName, RedisLeaderElectionVersion), 0).Iterator()
 	for itor.Next(timeoutContext) {
 		instanceKeys = append(instanceKeys, itor.Val())
 	}
 	if err := itor.Err(); err != nil {
 		core.Error("failed to get instance keys: %v", err)
-		return dataStores
+		return
 	}
 
 	// query all instance data
 
-	pipe := leaderElection.redisClient.Pipeline()
+	pipe = leaderElection.redisClient.Pipeline()
 	for i := range instanceKeys {
 		pipe.Get(timeoutContext, instanceKeys[i])
 	}
-	cmds, err := pipe.Exec(timeoutContext)
+	cmds, err = pipe.Exec(timeoutContext)
 
 	if err != nil {
 		core.Error("failed to get instance entries: %v", err)
-		return dataStores
+		return
 	}
 
 	// convert instance data to instance entries
@@ -185,38 +153,31 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 		instanceEntries = append(instanceEntries, instanceEntry)
 	}
 
-	// no instance entries? we have no instance data...
+	// if there are no instance entries, we cannot be leader and there is no leader (yet)
 
 	if len(instanceEntries) == 0 {
-		core.Error("no instance entries found")
-		return dataStores
+		return
 	}
 
-	// IMPORTANT: if there is only one entry, wait at least 10 seconds to ensure
-	// we don't flap leader when a bunch of services start close together
+	// wait at least timeout to ensure we don't flap leader when a bunch of services start close together
 
-	leaderElection.leaderMutex.RLock()
-	isLeader := leaderElection.isLeader
-	leaderElection.leaderMutex.RUnlock()
-
-	if !isLeader {
-		if len(instanceEntries) == 1 && time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
-			core.Debug("only one instance entry. waiting for other entries to join...")
-			return dataStores
-		}
+	if time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
+		return
 	}
+
+	// leader is the one with longest uptime, instance id used for tie-break
 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
 
-	masterInstance := instanceEntries[0]
+	leaderInstance := instanceEntries[0]
 
-	// are we the leader?
+	leaderElection.leaderInstanceId = leaderInstance.InstanceId
 
 	leaderElection.leaderMutex.Lock()
 	previousValue := leaderElection.isLeader
-	currentValue := masterInstance.InstanceId == leaderElection.instanceId
+	currentValue := leaderInstance.InstanceId == leaderElection.instanceId
 	leaderElection.isLeader = currentValue
 	leaderElection.leaderMutex.Unlock()
 
@@ -225,30 +186,30 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context) []DataStore
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
 	}
+}
 
-	// get data from master instance
-
-	pipe = leaderElection.redisClient.Pipeline()
-
-	dataStores = make([]DataStoreConfig, len(masterInstance.Keys))
-
-	for i := 0; i < len(dataStores); i++ {
-		key := masterInstance.Keys[i]
-		dataStores[i].Name = strings.Split(key, "-")[0]
-		pipe.Get(timeoutContext, key)
-	}
-
-	cmds, err = pipe.Exec(timeoutContext)
+func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name string, data []byte) {
+	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(10*time.Second))
+	defer cancel()
+	pipe := leaderElection.redisClient.TxPipeline()
+	pipe.Set(timeoutContext, fmt.Sprintf("%s-data-%d/%s/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name), data[:], leaderElection.config.Timeout)
+	_, err := pipe.Exec(timeoutContext)
 	if err != nil {
-		core.Error("failed to get data from redis: %v", err)
-		return dataStores
+		core.Error("failed to store data '%s': %v", name, err)
+		return
 	}
+}
 
-	for i := 0; i < len(dataStores); i++ {
-		dataStores[i].Data = []byte(cmds[i].(*redis.StringCmd).Val())
+func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
+	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(10*time.Second))
+	defer cancel()
+	pipe := leaderElection.redisClient.Pipeline()
+	pipe.Get(timeoutContext, fmt.Sprintf("%s-data-%d/%s/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name))
+	cmds, err := pipe.Exec(timeoutContext)
+	if err != nil {
+		return nil
 	}
-
-	return dataStores
+	return []byte(cmds[0].(*redis.StringCmd).Val())
 }
 
 func (leaderElection *RedisLeaderElection) IsLeader() bool {

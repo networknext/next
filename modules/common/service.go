@@ -447,27 +447,11 @@ func (service *Service) LeaderElection(autoRefresh bool) {
 		os.Exit(1)
 	}
 
+	// todo: strong dislike of this autorefresh option here. i want it to work one way all the time
+
 	if autoRefresh {
 		service.leaderElection.Start(service.Context)
 	}
-}
-
-func (service *Service) UpdateLeaderStore(dataStores []DataStoreConfig) {
-
-	if service.leaderElection.autoRefresh {
-		return
-	}
-
-	service.leaderElection.Store(service.Context, dataStores...)
-}
-
-func (service *Service) LoadLeaderStore() []DataStoreConfig {
-
-	if service.leaderElection == nil || service.leaderElection.autoRefresh {
-		return []DataStoreConfig{}
-	}
-
-	return service.leaderElection.Load(service.Context)
 }
 
 func (service *Service) UpdateRouteMatrix() {

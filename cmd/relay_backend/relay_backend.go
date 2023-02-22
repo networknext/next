@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
+	// "runtime"
 	"sync"
 	"time"
 
@@ -833,6 +833,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
+	// todo: disabled for now
+	/*
 	ticker := time.NewTicker(routeMatrixInterval)
 
 	go func() {
@@ -992,4 +994,5 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 			}
 		}
 	}()
+	*/
 }
