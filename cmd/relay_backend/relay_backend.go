@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	// "runtime"
+	"runtime"
 	"sync"
 	"time"
 
@@ -137,7 +137,7 @@ func main() {
 
 	service.StartWebServer()
 
-	service.LeaderElection(false)
+	service.LeaderElection()
 
 	ProcessRelayUpdates(service, relayManager)
 
@@ -833,8 +833,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
-	// todo: disabled for now
-	/*
 	ticker := time.NewTicker(routeMatrixInterval)
 
 	go func() {
@@ -924,50 +922,32 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				routeMatrixInternalData = routeMatrixDataNew
 				routeMatrixInternalMutex.Unlock()
 
-				// store our most recent cost and route matrix in redis
+				// if we are the leader, store our data in redis
 
-				dataStores := []common.DataStoreConfig{
-					{
-						Name: "relays",
-						Data: relaysCSVDataNew,
-					},
-					{
-						Name: "cost_matrix",
-						Data: costMatrixDataNew,
-					},
-					{
-						Name: "route_matrix",
-						Data: routeMatrixDataNew,
-					},
+				if service.IsLeader() {
+					service.Store("relays", relaysCSVDataNew)
+					service.Store("cost_matrix", costMatrixDataNew)
+					service.Store("route_matrix", routeMatrixDataNew)
 				}
 
-				service.UpdateLeaderStore(dataStores)
+				// if we are not the leader, load the data from redis
 
-				// load the master cost and route matrix from redis (leader election)
+				if !service.IsLeader() {
 
-				dataStores = service.LoadLeaderStore()
+					relaysCSVDataNew = service.Load("relays")
+					if relaysCSVDataNew == nil {
+						continue
+					}
 
-				if len(dataStores) == 0 {
-					core.Error("could not get data stores from redis")
-					continue
-				}
+					costMatrixDataNew = service.Load("cost_matrix")
+					if costMatrixDataNew == nil {
+						continue
+					}
 
-				relaysCSVDataNew = dataStores[0].Data
-				if relaysCSVDataNew == nil {
-					core.Error("failed to get relays from redis")
-					continue
-				}
-
-				costMatrixDataNew = dataStores[1].Data
-				if costMatrixDataNew == nil {
-					core.Error("failed to get cost matrix from redis")
-					continue
-				}
-
-				routeMatrixDataNew = dataStores[2].Data
-				if routeMatrixDataNew == nil {
-					core.Error("failed to get route matrix from redis")
-					continue
+					routeMatrixDataNew = service.Load("route_matrix")
+					if routeMatrixDataNew == nil {
+						continue
+					}
 				}
 
 				// serve up as official data
@@ -990,9 +970,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				optimizeDuration := timeFinish.Sub(timeStart)
 
-				core.Debug("route optimization: %d relays in %s", relayData.NumRelays, optimizeDuration)
+				core.Debug("update route matrix: %d relays (%dms)", relayData.NumRelays, optimizeDuration.Milliseconds())
 			}
 		}
 	}()
-	*/
 }

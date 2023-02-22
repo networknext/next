@@ -69,7 +69,7 @@ func main() {
 
 	service.StartWebServer()
 
-	service.LeaderElection(true)
+	service.LeaderElection()
 
 	service.WaitForShutdown()
 }

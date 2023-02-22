@@ -427,7 +427,7 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
-func (service *Service) LeaderElection(autoRefresh bool) {
+func (service *Service) LeaderElection() {
 
 	core.Log("started leader election")
 
@@ -447,11 +447,21 @@ func (service *Service) LeaderElection(autoRefresh bool) {
 		os.Exit(1)
 	}
 
-	// todo: strong dislike of this autorefresh option here. i want it to work one way all the time
+	service.leaderElection.Start(service.Context)
+}
 
-	if autoRefresh {
-		service.leaderElection.Start(service.Context)
+func (service *Service) Store(name string, data []byte) {
+	if service.leaderElection == nil {
+		panic("leader election must be enabled to call store")
 	}
+	service.leaderElection.Store(service.Context, name, data)
+}
+
+func (service *Service) Load(name string) []byte {
+	if service.leaderElection == nil {
+		panic("leader election must be enabled to call load")
+	}
+	return service.leaderElection.Load(service.Context, name)
 }
 
 func (service *Service) UpdateRouteMatrix() {
