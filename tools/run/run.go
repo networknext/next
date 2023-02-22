@@ -171,6 +171,8 @@ func main() {
 		load_test_optimize()
 	} else if command == "load-test-route-matrix" {
 		load_test_route_matrix()
+	} else if command == "load-test-relay-manager" {
+		load_test_relay_manager()
 	}
 
 	cleanup()
@@ -388,4 +390,8 @@ func load_test_optimize() {
 
 func load_test_route_matrix() {
 	bash("go run tools/load_test_route_matrix/load_test_route_matrix.go")
+}
+
+func load_test_relay_manager() {
+	bash("go run tools/load_test_relay_manager/load_test_relay_manager.go")
 }

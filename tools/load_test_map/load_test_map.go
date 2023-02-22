@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"math/rand"
 	"context"
-	"hash/fnv"
 	"encoding/binary"
+	"fmt"
+	"hash/fnv"
+	"math/rand"
+	"time"
 
 	"github.com/networknext/backend/modules/portal"
 )
@@ -17,8 +17,8 @@ func getSessionLatLong(sessionId uint64) (float32, float32) {
 	hash := fnv.New64a()
 	hash.Write(data)
 	value := hash.Sum64()
-	latitude := float64(value&0xFFFFFFFF) / float64(0xFFFFFFFF) * 180.0 - 90.0
-	longitude := float64(value>>32) / float64(0xFFFFFFFF) * 360.0 - 180.0
+	latitude := float64(value&0xFFFFFFFF)/float64(0xFFFFFFFF)*180.0 - 90.0
+	longitude := float64(value>>32)/float64(0xFFFFFFFF)*360.0 - 180.0
 	return float32(latitude), float32(longitude)
 }
 
@@ -78,8 +78,8 @@ func RunPollThread(mapInstance *portal.Map) {
 				for {
 					var output *portal.CellOutput
 					select {
-	                    case output = <- mapInstance.Cells[i].OutputChan:
-						default:
+					case output = <-mapInstance.Cells[i].OutputChan:
+					default:
 					}
 					if output == nil {
 						break

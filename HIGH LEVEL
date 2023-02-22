@@ -14,26 +14,24 @@ TODO
 
 	Rebuild portal cruncher (90%)
 
-	Rebuild API service to drive the "next" tool, eg. "next relays"
+	Rebuild API service to drive the "next" tool and portal (no auth)
 
 	Setup new dev environment with terraform
 
-	Multithreaded relay
+	Multithreaded relay with session database per-socket thread (no contention)
 
-	Load test, profile and optimize each component:
+	Profile and optimize each component:
 
 		1. Client
 		2. Server
 		3. Relay
 		4. Server Backend
 		5. Relay Backend
-		6. Analytics
+		6. Analytics (esp. is there a faster way to insert into bigquery?)
 		7. Portal Cruncher
 
-	Rebuild portal.
+	Rebuild portal (no auth).
 
-	Rebuild admin tool.
+	Rebuild admin tool (no auth).
 
 	Document *everything*.
-
-	Rebuild analytics without looker.

@@ -26,20 +26,91 @@ DONE
 
 	Implement a minute double buffered entry for the instance data, don't use scan, use HSET/HGETALL
 
-<<<<<<< HEAD
 	Verify that it works and passes load test still.
 
 	Optimize so only the leader stores data in redis.
 
-=======
->>>>>>> 64f166e1f07941cda640dc957d1b9c427fde0e63
-TODO
-
 	Fix up code that was using the leader election to use the new load/store.
 
-	Verify happy path works.
+	Happy path works up to client and server connecting.
+
+	Verify load tests pass.
 
 	Verify func tests pass.
+
+TODO
+
+	Implement load_test_relay_manager
+
+	Implement load_test_session_update
+
+	Implement load_test_server_update
+	
+	---------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------------------------------------------------------
+
+	Portal cruncher is not getting redis messages from the server backend. Why not?
 
 	------------------------------------------------------------
 
@@ -70,14 +141,6 @@ TODO
 
 
 
-	---------------------------------------------------------------
-
-	Implement load_test_relay_manager
-
-	Implement load_test_session_update
-
-	Implement load_test_server_update
-	
 	---------------------------------------------------------------
 
 	What data should go in server update if any?

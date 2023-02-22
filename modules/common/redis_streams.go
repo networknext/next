@@ -107,7 +107,7 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 	}
 
 	// batchId := producer.numBatchesSent
-	
+
 	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()
@@ -205,10 +205,6 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 		}
 
 		if err != nil {
-			// todo: Not sure why this is necessary. redis.Nil == err but fails the comparison unless a string - issue with types?
-			if err.Error() != redis.Nil.Error() {
-				core.Error("error reading redis stream: %s", err)
-			}
 			continue
 		}
 

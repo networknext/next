@@ -24,10 +24,10 @@ type RedisLeaderElectionConfig struct {
 }
 
 type RedisLeaderElection struct {
-	config      RedisLeaderElectionConfig
-	pool        *redis.Pool
-	startTime   time.Time
-	instanceId  string
+	config           RedisLeaderElectionConfig
+	pool             *redis.Pool
+	startTime        time.Time
+	instanceId       string
 	leaderInstanceId string
 
 	leaderMutex sync.RWMutex
@@ -136,11 +136,11 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	instanceMap := make(map[string]string)
 
-	for i := 0; i < len(instances_b); i+=2 {
+	for i := 0; i < len(instances_b); i += 2 {
 		instanceMap[instances_b[i]] = instances_b[i+1]
 	}
 
-	for i := 0; i < len(instances_a); i+=2 {
+	for i := 0; i < len(instances_a); i += 2 {
 		instanceMap[instances_a[i]] = instances_a[i+1]
 	}
 
@@ -148,7 +148,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	instanceEntries := []InstanceEntry{}
 
-	for _,v := range instanceMap {
+	for _, v := range instanceMap {
 		instanceEntry := InstanceEntry{}
 		buffer := bytes.NewBuffer([]byte(v))
 		decoder := gob.NewDecoder(buffer)

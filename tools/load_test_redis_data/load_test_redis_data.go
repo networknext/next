@@ -1,14 +1,14 @@
 package main
 
 import (
-	"time"
-	"fmt"
-	"os"
-	"math/rand"
 	"context"
+	"fmt"
+	"math/rand"
+	"os"
+	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
 
@@ -52,7 +52,7 @@ func RunRedisLeaderThreads(hostname string, threadCount int) {
 				a := leaderElection.Load(ctx, "a")
 				b := leaderElection.Load(ctx, "b")
 				c := leaderElection.Load(ctx, "c")
-	
+
 				if a != nil && len(a) != 1024*1024 {
 					panic("a should be 1mb")
 				}

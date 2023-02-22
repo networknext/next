@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"time"
 	"fmt"
+	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/core"
 )
 
 func RunOptimizeThread(ctx context.Context) {
@@ -35,8 +35,8 @@ func RunOptimizeThread(ctx context.Context) {
 
 				for i := 0; i < numRelays; i++ {
 					for j := 0; j < i; j++ {
-						index := core.TriMatrixIndex(i,j)
-						costs[index] = uint8(common.RandomInt(0,255))
+						index := core.TriMatrixIndex(i, j)
+						costs[index] = uint8(common.RandomInt(0, 255))
 					}
 				}
 

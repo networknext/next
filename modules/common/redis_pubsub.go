@@ -99,7 +99,7 @@ func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
 	}
 
 	// batchId := producer.numBatchesSent
-	
+
 	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()

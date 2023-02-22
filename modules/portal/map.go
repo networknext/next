@@ -1,15 +1,15 @@
 package portal
 
 import (
-	"time"
-	"math/rand"
 	"context"
+	"math/rand"
+	"time"
 )
 
 const MapWidth = 360
 const MapHeight = 180
 const CellSize = 10
-const NumCells = (MapWidth/CellSize) * (MapHeight/CellSize)
+const NumCells = (MapWidth / CellSize) * (MapHeight / CellSize)
 const UpdateChannelSize = 10 * 1024
 const OutputChannelSize = 1024
 
@@ -22,10 +22,10 @@ type CellEntry struct {
 }
 
 type CellUpdate struct {
-	SessionId      uint64
-	Latitude       float32
-	Longitude      float32
-	Next           bool
+	SessionId uint64
+	Latitude  float32
+	Longitude float32
+	Next      bool
 }
 
 type CellOutput struct {
@@ -35,7 +35,7 @@ type CellOutput struct {
 type MapCell struct {
 	UpdateChan chan *CellUpdate
 	OutputChan chan *CellOutput
-	Entries map[uint64]CellEntry
+	Entries    map[uint64]CellEntry
 }
 
 func (cell *MapCell) RunCellThread(ctx context.Context) {
@@ -52,7 +52,7 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 			case <-ctx.Done():
 				return
 
-			case update := <- cell.UpdateChan:
+			case update := <-cell.UpdateChan:
 				entry := CellEntry{}
 				entry.SessionId = update.SessionId
 				entry.Latitude = update.Latitude
@@ -66,8 +66,8 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 				output := CellOutput{}
 				output.Entries = make([]CellEntry, 0, len(cell.Entries))
 				currentTime := uint64(time.Now().Unix())
-				for k,v := range cell.Entries {
-					if currentTime - v.LastUpdateTime >= 30 {
+				for k, v := range cell.Entries {
+					if currentTime-v.LastUpdateTime >= 30 {
 						delete(cell.Entries, k)
 						continue
 					}
@@ -98,8 +98,8 @@ func GetCellIndex(latitude float32, longitude float32) int {
 	if latitude < -90.0 || latitude > +90.0 || longitude < -180.0 || longitude > +180.0 {
 		return -1
 	}
-	x := int( ( longitude + 180.0 ) / CellSize )
-	y := int( ( latitude + 90.0 ) / CellSize )
-	index := x + (MapWidth/CellSize) * y
+	x := int((longitude + 180.0) / CellSize)
+	y := int((latitude + 90.0) / CellSize)
+	index := x + (MapWidth/CellSize)*y
 	return index
 }

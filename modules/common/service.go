@@ -24,9 +24,9 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/envvar"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/geoip2-golang"
-	"github.com/gomodule/redigo/redis"
 )
 
 var (
@@ -455,7 +455,7 @@ func (service *Service) LeaderElection() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	pool := CreateRedisPool(redisHostname, 10)
+	pool := CreateRedisPool(redisHostname, 100)
 
 	config := RedisLeaderElectionConfig{}
 	config.Timeout = time.Second * 10
@@ -508,6 +508,8 @@ func (service *Service) UpdateRouteMatrix() {
 
 			case <-ticker.C:
 
+				start := time.Now()
+
 				service.routeMatrixMutex.RLock()
 				currentRouteMatrix := service.routeMatrix
 				service.routeMatrixMutex.RUnlock()
@@ -556,7 +558,7 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixDatabase = &newDatabase
 				service.routeMatrixMutex.Unlock()
 
-				core.Debug("updated route matrix: %d relays", len(newRouteMatrix.RelayIds))
+				core.Debug("updated route matrix: %d relays (%dms)", len(newRouteMatrix.RelayIds), time.Since(start).Milliseconds())
 			}
 		}
 	}()

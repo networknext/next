@@ -1,16 +1,16 @@
 package main
 
 import (
-	"math/rand"
 	"context"
-	"time"
+	"fmt"
+	"math/rand"
 	"os"
 	"sync/atomic"
-	"fmt"
+	"time"
 
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
 )
 
 func RunProducerThreads(ctx context.Context, hostname string, threadCount int, numMessagesSent *uint64) {
