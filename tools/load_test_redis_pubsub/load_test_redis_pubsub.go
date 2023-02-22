@@ -110,7 +110,7 @@ func RunConsumerThreads(ctx context.Context, hostname string, threadCount int, n
 	}
 }
 
-func RunMonitorThread(ctx context.Context, numMessagesSent *uint64, numMessagesReceived *uint64) {
+func RunWatcherThread(ctx context.Context, numMessagesSent *uint64, numMessagesReceived *uint64) {
 
 	go func() {
 
@@ -128,7 +128,7 @@ func RunMonitorThread(ctx context.Context, numMessagesSent *uint64, numMessagesR
 			case <-ticker.C:
 				numSent := atomic.LoadUint64(numMessagesSent)
 				numReceived := atomic.LoadUint64(numMessagesReceived)
-				fmt.Printf("%d: %d messages sent, %d messages received\n", iteration, numSent, numReceived)
+				fmt.Printf("iteration %d: %d messages sent, %d messages received\n", iteration, numSent, numReceived)
 				iteration++
 			}
 		}
@@ -149,7 +149,7 @@ func main() {
 
 	RunConsumerThreads(context.Background(), redisHostname, consumerThreadCount, &numMessagesReceived)
 
-	RunMonitorThread(context.Background(), &numMessagesSent, &numMessagesReceived)
+	RunWatcherThread(context.Background(), &numMessagesSent, &numMessagesReceived)
 
 	time.Sleep(time.Minute)
 }

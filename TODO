@@ -42,12 +42,12 @@ DONE
 
 	Implement load_test_crypto_box
 
-TODO
-
 	Implement load_test_crypto_sign
 
+TODO
+
 	Implement load_test_server_update
-	
+
 	Implement load_test_session_update
 
 	---------------------------------------------------------------
