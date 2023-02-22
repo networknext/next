@@ -23,12 +23,12 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 )
 
-var debugLogs bool
+var DebugLogs bool
 
 func init() {
 	value, ok := os.LookupEnv("DEBUG_LOGS")
 	if ok && value == "1" {
-		debugLogs = true
+		DebugLogs = true
 	}
 }
 
@@ -45,7 +45,7 @@ func Log(s string, params ...interface{}) {
 }
 
 func Debug(s string, params ...interface{}) {
-	if debugLogs {
+	if DebugLogs {
 		fmt.Printf(s+"\n", params...)
 	}
 }

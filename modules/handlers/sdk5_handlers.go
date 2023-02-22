@@ -214,13 +214,11 @@ func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.
 		return
 	}
 
-	if conn == nil {
-		return
-	}
-
-	if _, err := conn.WriteToUDP(packetData, to); err != nil {
-		core.Error("failed to send response packet: %v", err)
-		return
+	if conn != nil {
+		if _, err := conn.WriteToUDP(packetData, to); err != nil {
+			core.Error("failed to send response packet: %v", err)
+			return
+		}
 	}
 
 	switch packetType {

@@ -9,17 +9,24 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/handlers"
+	db "github.com/networknext/backend/modules/database"
 )
 
 var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 var ServerBackendPublicKey []byte
 var ServerBackendPrivateKey []byte
+
+var DatacenterId uint64
+
+var BuyerId uint64
+var BuyerPublicKey []byte
+var BuyerPrivateKey []byte
 
 type Update struct {
 	from       net.UDPAddr
@@ -34,7 +41,7 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
-			const NumServers = 10000
+			const NumServers = 1000
 
 			serverAddresses := make([]net.UDPAddr, NumServers)
 			for i := range serverAddresses {
@@ -47,25 +54,15 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 					packet := packets.SDK5_ServerUpdateRequestPacket{
 						Version:      packets.SDKVersion{5, 0, 0},
-						BuyerId:      rand.Uint64(),
+						BuyerId:      BuyerId,
 						RequestId:    rand.Uint64(),
-						DatacenterId: rand.Uint64(),
+						DatacenterId: DatacenterId,
 					}
 
-					buffer := [packets.SDK5_MaxPacketBytes]byte{}
-
-					stream := encoding.CreateWriteStream(buffer[:])
-
-					err := packet.Serialize(stream)
+					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddresses[j], &ServerBackendAddress, BuyerPrivateKey[:])
 					if err != nil {
-						panic("packet failed to serialize write")
+						panic("failed to write server update packet")
 					}
-					stream.Flush()
-					packetBytes := stream.GetBytesProcessed()
-
-					packetData := buffer[:packetBytes]
-
-					// todo: need to sign the packet and apply the pittle and chonkle
 
 					updateChannel := updateChannels[j%len(updateChannels)]
 
@@ -90,8 +87,27 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServer
 
 			updateChannel := updateChannels[thread]
 
+			buyer := db.Buyer{}
+			buyer.Id = BuyerId
+			buyer.Name = "buyer"
+			buyer.Live = true
+			buyer.Debug = false
+			buyer.PublicKey = BuyerPublicKey[:]
+			buyer.RouteShader = core.NewRouteShader()
+
+			datacenter := db.Datacenter{}
+			datacenter.Id = DatacenterId
+			datacenter.Name = "datacenter"
+			datacenter.Latitude = 100
+			datacenter.Longitude = 200
+
+			database := db.CreateDatabase()
+			database.BuyerMap[BuyerId] = &buyer
+			database.DatacenterMap[DatacenterId] = &datacenter
+
 			handler := handlers.SDK5_Handler{}
-			// todo: need to set handler.Database here to one with the buyer id and keypair in it
+			handler.Database = database
+			handler.RouteMatrix = &common.RouteMatrix{}
 			handler.ServerBackendAddress = ServerBackendAddress
 			handler.ServerBackendPublicKey = ServerBackendPublicKey
 			handler.ServerBackendPrivateKey = ServerBackendPrivateKey
@@ -129,7 +145,7 @@ func RunWatcherThread(numServerUpdatesProcessed *uint64) {
 			select {
 			case <-ticker.C:
 				numUpdates := atomic.LoadUint64(numServerUpdatesProcessed)
-				fmt.Printf("iteration %d: %7d server updates per-second\n", iteration, uint64(float64(numUpdates)/time.Since(start).Seconds()))
+				fmt.Printf("iteration %d: %8d server updates | %7d server updates per-second\n", iteration, numUpdates, uint64(float64(numUpdates)/time.Since(start).Seconds()))
 				iteration++
 			}
 		}
@@ -138,13 +154,19 @@ func RunWatcherThread(numServerUpdatesProcessed *uint64) {
 
 func main() {
 
+	core.DebugLogs = false
+
+	BuyerId = rand.Uint64()
+
+	DatacenterId = rand.Uint64()
+
+	BuyerPublicKey, BuyerPrivateKey = crypto.Sign_KeyPair()
+
 	ServerBackendPublicKey, ServerBackendPrivateKey = crypto.Sign_KeyPair()
 
 	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1000)
 
 	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU())
-
-	// todo: we're going to need to generate a buyer keypair here
 
 	updateChannels := make([]chan *Update, numHandlerThreads)
 	for i := range updateChannels {
