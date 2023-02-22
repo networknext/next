@@ -20,15 +20,13 @@ DONE
 
 	Cleaned up how load/store works in redis leader. Much, much nicer.
 
-TODO
-
 	Switch leader election to redigo
+
+	Verify redis data load test still works
 
 	Implement a minute double buffered entry for the instance data, don't use scan, use HSET/HGETALL
 
-	Verify that it works and passes load test still.
-
-	If necessary, reduce down from 32 instances to 10.
+TODO
 
 	Fix up code that was using the leader election to use the new load/store.
 
