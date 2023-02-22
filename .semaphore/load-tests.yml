@@ -62,3 +62,7 @@ blocks:
         - name: "Load Test Crypto Box"
           commands:
             - ./run load-test-crypto-box
+
+        - name: "Load Test Crypto Sign"
+          commands:
+            - ./run load-test-crypto-sign

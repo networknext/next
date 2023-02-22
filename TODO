@@ -40,9 +40,9 @@ DONE
 
 	Implement load_test_relay_manager
 
-TODO
-
 	Implement load_test_crypto_box
+
+TODO
 
 	Implement load_test_crypto_sign
 

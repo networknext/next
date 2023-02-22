@@ -175,6 +175,8 @@ func main() {
 		load_test_relay_manager()
 	} else if command == "load-test-crypto-box" {
 		load_test_crypto_box()
+	} else if command == "load-test-crypto-sign" {
+		load_test_crypto_sign()
 	}
 
 	cleanup()
@@ -400,4 +402,8 @@ func load_test_relay_manager() {
 
 func load_test_crypto_box() {
 	bash("go run tools/load_test_crypto_box/load_test_crypto_box.go")
+}
+
+func load_test_crypto_sign() {
+	bash("go run tools/load_test_crypto_sign/load_test_crypto_sign.go")
 }
