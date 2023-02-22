@@ -9,13 +9,12 @@ import (
 	"sync"
 	"time"
 
-	// todo: switch to redigo!
-	"github.com/go-redis/redis/v8"
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/networknext/backend/modules/core"
 )
 
-const RedisLeaderElectionVersion = 2 // IMPORTANT: bump this anytime you change the redis data structures!
+const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change the redis data structures!
 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
@@ -26,7 +25,7 @@ type RedisLeaderElectionConfig struct {
 
 type RedisLeaderElection struct {
 	config      RedisLeaderElectionConfig
-	redisClient *redis.Client
+	pool        *redis.Pool
 	startTime   time.Time
 	instanceId  string
 	leaderInstanceId string
@@ -38,18 +37,10 @@ type RedisLeaderElection struct {
 type InstanceEntry struct {
 	InstanceId string
 	StartTime  uint64
+	UpdateTime uint64
 }
 
-func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
-	}
+func CreateRedisLeaderElection(pool *redis.Pool, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
 
 	leaderElection := &RedisLeaderElection{}
 
@@ -58,7 +49,7 @@ func CreateRedisLeaderElection(ctx context.Context, config RedisLeaderElectionCo
 	}
 
 	leaderElection.config = config
-	leaderElection.redisClient = redisClient
+	leaderElection.pool = pool
 	leaderElection.startTime = time.Now()
 	leaderElection.instanceId = uuid.New().String()
 
@@ -87,9 +78,13 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	// write
 
+	seconds := time.Now().Unix()
+	minutes := seconds / 60
+
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
 	instanceEntry.StartTime = uint64(leaderElection.startTime.UnixNano())
+	instanceEntry.UpdateTime = uint64(seconds)
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -100,50 +95,62 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	instanceData := buffer.Bytes()
 
-	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(5*time.Second))
-	defer cancel()
+	redisClient := leaderElection.pool.Get()
 
-	pipe := leaderElection.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("%s-instance-%d/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId), instanceData[:], leaderElection.config.Timeout)
-	cmds, err := pipe.Exec(timeoutContext)
+	key_a := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes)
+	key_b := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes-1)
 
-	// todo: don't use "SCAN" it's slow
+	field := instanceEntry.InstanceId
+	value := instanceData
 
-	// get all "instance/*" keys
+	redisClient.Send("HSET", key_a, field, value)
 
-	instanceKeys := []string{}
-	itor := leaderElection.redisClient.Scan(timeoutContext, 0, fmt.Sprintf("%s-instance-%d/*", leaderElection.config.ServiceName, RedisLeaderElectionVersion), 0).Iterator()
-	for itor.Next(timeoutContext) {
-		instanceKeys = append(instanceKeys, itor.Val())
-	}
-	if err := itor.Err(); err != nil {
-		core.Error("failed to get instance keys: %v", err)
-		return
-	}
+	redisClient.Flush()
 
-	// query all instance data
+	redisClient.Close()
 
-	pipe = leaderElection.redisClient.Pipeline()
-	for i := range instanceKeys {
-		pipe.Get(timeoutContext, instanceKeys[i])
-	}
-	cmds, err = pipe.Exec(timeoutContext)
+	// get all instance keys and values
 
+	redisClient = leaderElection.pool.Get()
+
+	redisClient.Send("HGETALL", key_a)
+	redisClient.Send("HGETALL", key_b)
+
+	redisClient.Flush()
+
+	instances_a, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		core.Error("failed to get instance entries: %v", err)
+		core.Error("redis get instances a failed: %v", err)
 		return
+	}
+
+	instances_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis get instances b failed: %v", err)
+		return
+	}
+
+	redisClient.Close()
+
+	// merge instance entries
+
+	instanceMap := make(map[string]string)
+
+	for i := 0; i < len(instances_b); i+=2 {
+		instanceMap[instances_b[i]] = instances_b[i+1]
+	}
+
+	for i := 0; i < len(instances_a); i+=2 {
+		instanceMap[instances_a[i]] = instances_a[i+1]
 	}
 
 	// convert instance data to instance entries
 
 	instanceEntries := []InstanceEntry{}
 
-	for _, cmd := range cmds {
-
-		instanceData := cmd.(*redis.StringCmd).Val()
-
+	for _,v := range instanceMap {
 		instanceEntry := InstanceEntry{}
-		buffer := bytes.NewBuffer([]byte(instanceData))
+		buffer := bytes.NewBuffer([]byte(v))
 		decoder := gob.NewDecoder(buffer)
 		err := decoder.Decode(&instanceEntry)
 		if err != nil {
@@ -189,27 +196,36 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 }
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name string, data []byte) {
-	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(10*time.Second))
-	defer cancel()
-	pipe := leaderElection.redisClient.TxPipeline()
-	pipe.Set(timeoutContext, fmt.Sprintf("%s-data-%d/%s/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name), data[:], leaderElection.config.Timeout)
-	_, err := pipe.Exec(timeoutContext)
-	if err != nil {
-		core.Error("failed to store data '%s': %v", name, err)
-		return
-	}
+
+	redisClient := leaderElection.pool.Get()
+
+	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name)
+
+	redisClient.Send("SET", key, data)
+
+	redisClient.Flush()
+
+	redisClient.Close()
 }
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
-	timeoutContext, cancel := context.WithTimeout(ctx, time.Duration(10*time.Second))
-	defer cancel()
-	pipe := leaderElection.redisClient.Pipeline()
-	pipe.Get(timeoutContext, fmt.Sprintf("%s-data-%d/%s/%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name))
-	cmds, err := pipe.Exec(timeoutContext)
+
+	redisClient := leaderElection.pool.Get()
+
+	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name)
+
+	redisClient.Send("GET", key)
+
+	redisClient.Flush()
+
+	value, err := redis.String(redisClient.Receive())
 	if err != nil {
 		return nil
 	}
-	return []byte(cmds[0].(*redis.StringCmd).Val())
+
+	redisClient.Close()
+
+	return []byte(value)
 }
 
 func (leaderElection *RedisLeaderElection) IsLeader() bool {

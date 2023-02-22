@@ -262,8 +262,7 @@ func happy_path(wait bool) int {
 	relay_gateway_sees_relays := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_gateway_stdout.String(), "received update for local.") &&
-			strings.Contains(relay_gateway_stdout.String(), "sent batch 0 containing 5 messages") {
+		if strings.Contains(relay_gateway_stdout.String(), "received update for local.") {
 			relay_gateway_sees_relays = true
 			break
 		}

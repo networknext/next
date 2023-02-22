@@ -22,12 +22,17 @@ DONE
 
 	Switch leader election to redigo
 
+	Verify redis data load test still works
+
 	Implement a minute double buffered entry for the instance data, don't use scan, use HSET/HGETALL
 
+<<<<<<< HEAD
 	Verify that it works and passes load test still.
 
 	Optimize so only the leader stores data in redis.
 
+=======
+>>>>>>> 64f166e1f07941cda640dc957d1b9c427fde0e63
 TODO
 
 	Fix up code that was using the leader election to use the new load/store.

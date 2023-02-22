@@ -26,6 +26,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/oschwald/geoip2-golang"
+	"github.com/gomodule/redigo/redis"
 )
 
 var (
@@ -427,21 +428,41 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
+func CreateRedisPool(hostname string, size int) *redis.Pool {
+	pool := redis.Pool{
+		MaxIdle:     size * 10,
+		MaxActive:   size,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", hostname)
+		},
+	}
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Send("FLUSHDB")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	redisClient.Close()
+	return &pool
+}
+
 func (service *Service) LeaderElection() {
 
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword := envvar.GetString("REDIS_PASSWORD", "")
+
+	pool := CreateRedisPool(redisHostname, 10)
 
 	config := RedisLeaderElectionConfig{}
-	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
 	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
 
 	var err error
-	service.leaderElection, err = CreateRedisLeaderElection(service.Context, config)
+	service.leaderElection, err = CreateRedisLeaderElection(pool, config)
 	if err != nil {
 		core.Error("could not create redis leader election: %v")
 		os.Exit(1)
