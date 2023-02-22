@@ -39,9 +39,11 @@ func RunRedisLeaderThreads(hostname string, threadCount int) {
 
 				leaderElection.Update(ctx)
 
-				leaderElection.Store(ctx, "a", make([]byte, 1024*1024))
-				leaderElection.Store(ctx, "b", make([]byte, 10*1024*1024))
-				leaderElection.Store(ctx, "c", make([]byte, 100*1024*1024))
+				if leaderElection.IsLeader() {
+					leaderElection.Store(ctx, "a", make([]byte, 1024*1024))
+					leaderElection.Store(ctx, "b", make([]byte, 10*1024*1024))
+					leaderElection.Store(ctx, "c", make([]byte, 100*1024*1024))
+				}
 
 				a := leaderElection.Load(ctx, "a")
 				b := leaderElection.Load(ctx, "b")
