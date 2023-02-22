@@ -179,6 +179,8 @@ func main() {
 		load_test_crypto_sign()
 	} else if command == "load-test-server-update" {
 		load_test_server_update()
+	} else if command == "load-test-session-update" {
+		load_test_session_update()
 	}
 
 	cleanup()
@@ -412,4 +414,8 @@ func load_test_crypto_sign() {
 
 func load_test_server_update() {
 	bash("go run tools/load_test_server_update/load_test_server_update.go")
+}
+
+func load_test_session_update() {
+	bash("go run tools/load_test_session_update/load_test_session_update.go")
 }

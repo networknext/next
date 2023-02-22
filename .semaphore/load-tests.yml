@@ -70,3 +70,7 @@ blocks:
         - name: "Load Test Server Update"
           commands:
             - ./run load-test-server-update
+
+        - name: "Load Test Session Update"
+          commands:
+            - ./run load-test-session-update
