@@ -173,6 +173,8 @@ func main() {
 		load_test_route_matrix()
 	} else if command == "load-test-relay-manager" {
 		load_test_relay_manager()
+	} else if command == "load-test-crypto-box" {
+		load_test_crypto_box()
 	}
 
 	cleanup()
@@ -394,4 +396,8 @@ func load_test_route_matrix() {
 
 func load_test_relay_manager() {
 	bash("go run tools/load_test_relay_manager/load_test_relay_manager.go")
+}
+
+func load_test_crypto_box() {
+	bash("go run tools/load_test_crypto_box/load_test_crypto_box.go")
 }

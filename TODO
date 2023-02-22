@@ -38,14 +38,18 @@ DONE
 
 	Verify func tests pass.
 
-TODO
-
 	Implement load_test_relay_manager
 
-	Implement load_test_session_update
+TODO
+
+	Implement load_test_crypto_box
+
+	Implement load_test_crypto_sign
 
 	Implement load_test_server_update
 	
+	Implement load_test_session_update
+
 	---------------------------------------------------------------
 
 
@@ -458,19 +462,11 @@ Essentials:
 
 	--------------
 
-	Setup google cloud environment with terraform scripts
-
-	--------------
-
 	The relay should talk to the relay backend over SSH in dev and production.
 
 	--------------
 
 	Implement func test for server backend to make sure when it is in connection drain state, it indicates to the LB health test that traffic should not be sent to it.
-
-	--------------
-
-	Multithreaded relay
 
 	--------------
 
@@ -498,7 +494,7 @@ Essentials:
 
 	--------------
 
-	Multipath across two network next routes.
+	Multipath across two network next routes (Psyonix).
 
 	--------------
 
@@ -530,17 +526,23 @@ Nice to have:
 
 	It's wasteful to pass this data back to the client with each session update response.
 
+	---------------
+
+	Implement the near relay ping token.
+
+	We need to do this now, so we don't have problems with it in the future.
+
+	It can be as simple as an expire time for pings
+
+	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
+
 	--------------
 
-	Extend the SDK5 so we have the option of sending down new near relay stats on multiple slices, later on.
+	Extend the SDK5 so we have the option of doing near relay pings at multiple times throughout the session.
 
 	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
 
 	Add a func test to make sure we capture this functionality. We want the option to redo near relay pings on later slice, in the future without changing the SDK.
-
-	--------------
-
-	We are very close to removing libsodium from golang. It should be possible. If we do this, it becomes much easier to build and run golang services, as they are fully native.
 
 	--------------
 
@@ -566,25 +568,7 @@ Nice to have:
 
 	---------------
 
-	Leader election needs to wait at least 11 seconds to make sure it gets the correct result when > 2 vms start at the same time without flap
-
-	---------------
-
 	Leader election func tests for relay backends + ready delay
-
-	---------------
-
-	Implement the near relay ping token.
-
-	We need to do this now, so we don't have problems with it in the future.
-
-	It can be as simple as an expire time for pings
-
-	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
-
-	---------------
-
-	Create a new minimal "api" service that provides the JSONRPC calls necessary for the next tool to work.
 
 	---------------
 

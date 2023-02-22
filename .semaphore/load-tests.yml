@@ -58,3 +58,7 @@ blocks:
         - name: "Load Test Relay Manager"
           commands:
             - ./run load-test-relay-manager
+
+        - name: "Load Test Crypto Box"
+          commands:
+            - ./run load-test-crypto-box
