@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
-	"sync"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/envvar"
@@ -27,7 +27,7 @@ func RunCryptoSignThread(ctx context.Context, numMessages int, messageSize int) 
 				return
 
 			case <-ticker.C:
-				
+
 				start := time.Now()
 
 				numThreads := runtime.NumCPU()
@@ -45,7 +45,7 @@ func RunCryptoSignThread(ctx context.Context, numMessages int, messageSize int) 
 				for segment := 0; segment < numSegments; segment++ {
 
 					go func() {
-	
+
 						publicKey, privateKey := crypto.Sign_KeyPair()
 
 						for i := 0; i < messagesPerSegment; i++ {
@@ -68,9 +68,9 @@ func RunCryptoSignThread(ctx context.Context, numMessages int, messageSize int) 
 				}
 
 				waitGroup.Wait()
-				
+
 				fmt.Printf("iteration %d: signed and verified %d messages of size %d (%dms)\n", iteration, numMessages, messageSize, time.Since(start).Milliseconds())
-				
+
 				iteration++
 			}
 		}

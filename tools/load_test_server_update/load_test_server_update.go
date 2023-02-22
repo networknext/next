@@ -3,17 +3,29 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"time"
 	"net"
 	"runtime"
+	"sync/atomic"
+	"time"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/packets"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/backend/modules/handlers"
 )
 
-func RunServerUpdateThreads(threadCount int, updateChannels []chan []byte) {
+var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
+var ServerBackendPublicKey []byte
+var ServerBackendPrivateKey []byte
+
+type Update struct {
+	from       net.UDPAddr
+	packetData []byte
+}
+
+func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 	for k := 0; k < threadCount; k++ {
 
@@ -39,26 +51,28 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan []byte) {
 						DatacenterId: rand.Uint64(),
 					}
 
-					const BufferSize = 1024
-
-					buffer := [BufferSize]byte{}
+					buffer := [packets.SDK5_MaxPacketBytes]byte{}
 
 					stream := encoding.CreateWriteStream(buffer[:])
 
 					err := packet.Serialize(stream)
 					if err != nil {
-						panic("packet failed to serialize")
+						panic("packet failed to serialize write")
 					}
 					stream.Flush()
 					packetBytes := stream.GetBytesProcessed()
 
 					packetData := buffer[:packetBytes]
 
-					// todo: need to encrypt, sign, pittle/chonkle the packet...
+					// todo: need to sign the packet and apply the pittle and chonkle
 
 					updateChannel := updateChannels[j%len(updateChannels)]
 
-					updateChannel <- packetData
+					update := Update{}
+					update.from = serverAddresses[j]
+					update.packetData = packetData
+
+					updateChannel <- &update
 				}
 
 				time.Sleep(10 * time.Second)
@@ -67,30 +81,39 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan []byte) {
 	}
 }
 
-func RunHandlerThreads(threadCount int, updateChannels []chan []byte) {
+func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServerUpdatesProcessed *uint64) {
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
-	
+
 			updateChannel := updateChannels[thread]
 
+			handler := handlers.SDK5_Handler{}
+			handler.ServerBackendAddress = ServerBackendAddress
+			handler.ServerBackendPublicKey = ServerBackendPublicKey
+			handler.ServerBackendPrivateKey = ServerBackendPrivateKey
+			handler.MaxPacketSize = packets.SDK5_MaxPacketBytes
+			handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
+				return [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}
+			}
+
 			for {
-				// todo
-				_ = updateChannel
+				select {
+				case update := <-updateChannel:
+					handlers.SDK5_PacketHandler(&handler, nil, &update.from, update.packetData)
+					if !handler.Events[handlers.SDK5_HandlerEvent_SentServerUpdateResponsePacket] {
+						panic("failed to process server update")
+					}
+					atomic.AddUint64(numServerUpdatesProcessed, 1)
+				}
 			}
 
 		}(k)
 	}
 }
 
-/*
-	readStream := encoding.CreateReadStream(buffer[:packetBytes])
-	err = readPacket.Serialize(readStream)
-	assert.Nil(t, err)
-*/
-
-func RunWatcherThread() {
+func RunWatcherThread(numServerUpdatesProcessed *uint64) {
 
 	go func() {
 
@@ -98,14 +121,13 @@ func RunWatcherThread() {
 
 		iteration := uint64(0)
 
+		start := time.Now()
+
 		for {
-
 			select {
-
 			case <-ticker.C:
-				// numSent := atomic.LoadUint64(numMessagesSent)
-				// numReceived := atomic.LoadUint64(numMessagesReceived)
-				fmt.Printf("iteration %d\n", iteration)
+				numUpdates := atomic.LoadUint64(numServerUpdatesProcessed)
+				fmt.Printf("iteration %d: %7d server updates per-second\n", iteration, uint64(float64(numUpdates)/time.Since(start).Seconds()))
 				iteration++
 			}
 		}
@@ -114,19 +136,21 @@ func RunWatcherThread() {
 
 func main() {
 
-	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1) // todo: 1000 or so
-	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU())
+	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1000)
+	numHandlerThreads := envvar.GetInt("NUM_HANDLER_THREADS", runtime.NumCPU()*2)
 
-	updateChannels := make([]chan []byte, numHandlerThreads)
+	updateChannels := make([]chan *Update, numHandlerThreads)
 	for i := range updateChannels {
-		updateChannels[i] = make(chan []byte, 1024*1024)
+		updateChannels[i] = make(chan *Update, 1024*1024)
 	}
+
+	var numServerUpdatesProcessed uint64
 
 	RunServerUpdateThreads(numServerUpdateThreads, updateChannels)
 
-	RunHandlerThreads(numHandlerThreads, updateChannels)
+	RunHandlerThreads(numHandlerThreads, updateChannels, &numServerUpdatesProcessed)
 
-	RunWatcherThread()
+	RunWatcherThread(&numServerUpdatesProcessed)
 
 	time.Sleep(time.Minute)
 }

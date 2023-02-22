@@ -50,6 +50,8 @@ TODO
 
 	Implement load_test_session_update
 
+	Load test various core bits that are doing work, eg. get route cost, get random route, get best route etc.
+
 	---------------------------------------------------------------
 
 

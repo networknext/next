@@ -214,6 +214,10 @@ func SDK5_SendResponsePacket[P packets.Packet](handler *SDK5_Handler, conn *net.
 		return
 	}
 
+	if conn == nil {
+		return
+	}
+
 	if _, err := conn.WriteToUDP(packetData, to); err != nil {
 		core.Error("failed to send response packet: %v", err)
 		return
@@ -521,7 +525,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	defer func() {
 		SessionUpdate_Post(&state)
-		if len(state.ResponsePacket) > 0 {
+		if conn != nil && len(state.ResponsePacket) > 0 {
 			if _, err := conn.WriteToUDP(state.ResponsePacket, state.From); err != nil {
 				core.Error("failed to send session update response packet: %v", err)
 				return

@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
-	"sync"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/crypto"
@@ -28,7 +28,7 @@ func RunCryptoBoxThread(ctx context.Context, numMessages int, messageSize int) {
 				return
 
 			case <-ticker.C:
-				
+
 				start := time.Now()
 
 				numThreads := runtime.NumCPU()
@@ -46,7 +46,7 @@ func RunCryptoBoxThread(ctx context.Context, numMessages int, messageSize int) {
 				for segment := 0; segment < numSegments; segment++ {
 
 					go func() {
-	
+
 						senderPublicKey, senderPrivateKey := crypto.Box_KeyPair()
 
 						receiverPublicKey, receiverPrivateKey := crypto.Box_KeyPair()
@@ -65,7 +65,7 @@ func RunCryptoBoxThread(ctx context.Context, numMessages int, messageSize int) {
 
 							encryptedBytes := crypto.Box_Encrypt(senderPrivateKey[:], receiverPublicKey[:], nonce, encryptedData, len(data))
 
-							if encryptedBytes != messageSize + crypto.Box_MacSize {
+							if encryptedBytes != messageSize+crypto.Box_MacSize {
 								panic("bad encrypted bytes")
 							}
 
@@ -81,9 +81,9 @@ func RunCryptoBoxThread(ctx context.Context, numMessages int, messageSize int) {
 				}
 
 				waitGroup.Wait()
-				
+
 				fmt.Printf("iteration %d: encrypted and decrypted %d messages of size %d (%dms)\n", iteration, numMessages, messageSize, time.Since(start).Milliseconds())
-				
+
 				iteration++
 			}
 		}
