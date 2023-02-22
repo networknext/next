@@ -14,21 +14,27 @@ DONE
 
 	Implement load_test_redis_data (eg. leadership data, can we insert 100MB into redis, and then pull it back out -- eg. leadership data blocks)
 
-TODO
-
 	Added some tweaks and the redis leader election seems fine
 
 	Now throw in some data blocks, I propose 1MB, 10MB and 100MB blocks.
 
-	------------------------------------------------------------
+	Cleaned up how load/store works in redis leader. Much, much nicer.
 
-	The way the data store is done is super bogus.
+TODO
 
-	It shouldn't be tied to the cadence of updating the leader.
+	Switch leader election to redigo
 
-	Instead, load/store should be able to be done at any time -- you store via your instance id and the name
+	Implement a minute double buffered entry for the instance data, don't use scan, use HSET/HGETALL
 
-	And you load, from the leader instance id, and the name.	
+	Verify that it works and passes load test still.
+
+	If necessary, reduce down from 32 instances to 10.
+
+	Fix up code that was using the leader election to use the new load/store.
+
+	Verify happy path works.
+
+	Verify func tests pass.
 
 	------------------------------------------------------------
 
