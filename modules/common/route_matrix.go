@@ -49,15 +49,6 @@ func (m *RouteMatrix) GetMaxSize() int {
 	return size
 }
 
-/*
-	DirectCost     int32
-	NumRoutes      int32
-	RouteCost      [constants.MaxRoutesPerEntry]int32
-	RouteHash      [constants.MaxRoutesPerEntry]uint32
-	RouteNumRelays [constants.MaxRoutesPerEntry]int32
-	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
-*/
-
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if stream.IsWriting() && (m.Version < RouteMatrixVersion_Min || m.Version > RouteMatrixVersion_Max) {

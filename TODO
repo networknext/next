@@ -1,164 +1,22 @@
 DONE
 
-	Implement load_test_redis_pubsub
-
-	Implement load_test_redis_streams
-
-	Implement load_test_optimize
-
-	This should be 1000 relays, with randomly cost
-
-	Run through optimize as a worst case with max relays
-
-	Load test route matrix. The write is actually OK, even when writing 70MB route matrix @ 1000 relays
-
-	Implement load_test_redis_data (eg. leadership data, can we insert 100MB into redis, and then pull it back out -- eg. leadership data blocks)
-
-	Added some tweaks and the redis leader election seems fine
-
-	Now throw in some data blocks, I propose 1MB, 10MB and 100MB blocks.
-
-	Cleaned up how load/store works in redis leader. Much, much nicer.
-
-	Switch leader election to redigo
-
-	Verify redis data load test still works
-
-	Implement a minute double buffered entry for the instance data, don't use scan, use HSET/HGETALL
-
-	Verify that it works and passes load test still.
-
-	Optimize so only the leader stores data in redis.
-
-	Fix up code that was using the leader election to use the new load/store.
-
-	Happy path works up to client and server connecting.
-
-	Verify load tests pass.
-
-	Verify func tests pass.
-
-	Implement load_test_relay_manager
-
-	Implement load_test_crypto_box
-
-	Implement load_test_crypto_sign
-
-	Implement load_test_server_update
-
-	Implement load_test_session_update
-
-TODO
-
 	Get session data filled out
 
 	Sign session data and put in packet
 
 	Make sure session data signature check passes
 
+	Get direct routes returned from session update handler
+
+	Scale up test
+
+	Fill out route matrix with random stuff
+
 	Now make sure that we get network next routes returned from session update handler
 
-	Once this is done, the load test is complete, turn off debug logs and scale it up
+	Fucking done.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------------------------------------------------------------
-
-	Load test various core bits that are doing work, eg. get route cost, get random route, get best route etc.
-
-	---------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+TODO
 
 	------------------------------------------------------------
 
@@ -166,34 +24,11 @@ TODO
 
 	------------------------------------------------------------
 
+	Fix happy path.
 
+	Make sure all func tests and load tests pass.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------------------------------------------------------------
+	------------------------------------------------------------
 
 	What data should go in server update if any?
 
@@ -422,25 +257,25 @@ TODO
 
 	Extend match data packets to server backend to include type
 
-	--------
+	--------------
 
 	Match events ()
 
 	next_server_match_event
 
-	--------
+	--------------
 
 	Session events (address)
 
 	next_server_session_event
 
-	--------
+	--------------
 
 	Session data (address, type, array of doubles)
 
 	next_server_session_data
 
-	--------
+	--------------
 
 	Get the pubsub emulator back up locally
 
@@ -448,7 +283,7 @@ TODO
 
 	eg. "run pubsub-create", "run pubsub-destroy" or whatever works
 
-	--------
+	--------------
 
 	Get the bigquery emulator up locally
 
@@ -456,13 +291,13 @@ TODO
 
 	eg. "run bigquery-create", "run bigquery-destroy" or whatever.
 
-	--------
+	--------------
 
 	Extend analytics service to insert messages into bigquery.
 
 	--------------
 
-	Implement simple "api" service and get OAuth and 
+	Implement simple "api" service
 
 	--------------
 
