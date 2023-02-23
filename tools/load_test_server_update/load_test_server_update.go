@@ -18,6 +18,8 @@ import (
 	"github.com/networknext/backend/modules/packets"
 )
 
+const NumServers = 450
+
 var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 var ServerBackendPublicKey []byte
 var ServerBackendPrivateKey []byte
@@ -40,8 +42,6 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 		go func(thread int) {
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
-
-			const NumServers = 1000
 
 			serverAddresses := make([]net.UDPAddr, NumServers)
 			for i := range serverAddresses {
