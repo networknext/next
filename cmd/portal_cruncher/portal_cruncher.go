@@ -2,10 +2,11 @@ package main
 
 import (
 	"os"
+	"time"
 	"strings"
 
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
@@ -113,8 +114,8 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	sessionId := message.SessionId
 
-	next := (message.SessionFlags & constants.SessionFlags_Next) != 0	
-	
+	next := (message.SessionFlags & constants.SessionFlags_Next) != 0
+
 	score := uint32(0)
 	if next {
 		score = uint32(message.NextRTT)
@@ -122,12 +123,39 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		score = 10000 - uint32(message.DirectRTT)
 	}
 
+	// todo: look up ISP name from message.ClientAddress
+	isp := "Comcast Internet Company, LLC"
+
 	sessionData := portal.SessionData{
-		// todo
+		SessionId:      message.SessionId,
+		ISP:            isp,
+		ConnectionType: message.ConnectionType,
+		PlatformType:   message.PlatformType,
+		Latitude:       message.Latitude,
+		Longitude:      message.Longitude,
+		DirectRTT:      uint32(message.DirectRTT),
+		NextRTT:        uint32(message.NextRTT),
+		MatchId:        message.MatchId,
+		BuyerId:        message.BuyerId,
+		DatacenterId:   message.DatacenterId,
+		ServerAddress:  message.ServerAddress,
 	}
 
 	sliceData := portal.SliceData{
-		// todo
+		Timestamp:        uint64(time.Now().Unix()),
+		SliceNumber:      message.SliceNumber,
+		DirectRTT:        uint32(message.DirectRTT),
+		NextRTT:          uint32(message.NextRTT),
+		PredictedRTT:     uint32(message.NextPredictedRTT),
+		DirectJitter:     uint32(message.DirectJitter),
+		NextJitter:       uint32(message.NextJitter),
+		RealJitter:       uint32(message.RealJitter),
+		DirectPacketLoss: float32(message.DirectPacketLoss),
+		NextPacketLoss:   float32(message.NextPacketLoss),
+		RealPacketLoss:   float32(message.RealPacketLoss),
+		RealOutOfOrder:   float32(message.RealOutOfOrder),
+		InternalEvents:   message.InternalEvents,
+		SessionEvents:    message.SessionEvents,
 	}
 
 	sessionInserter.Insert(sessionId, score, next, &sessionData, &sliceData)

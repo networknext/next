@@ -14,14 +14,14 @@ import (
 )
 
 type SliceData struct {
-	Timestamp        uint64 `json:"timestamp"`
-	SliceNumber      uint32 `json:"slice_number"`
-	DirectRTT        uint32 `json:"direct_rtt"`
-	NextRTT          uint32 `json:"next_rtt"`
-	PredictedRTT     uint32 `json:"predicted_rtt"`
-	DirectJitter     uint32 `json:"direct_jitter"`
-	NextJitter       uint32 `json:"next_jitter"`
-	RealJitter       uint32 `json:"real_jitter"`
+	Timestamp        uint64  `json:"timestamp"`
+	SliceNumber      uint32  `json:"slice_number"`
+	DirectRTT        uint32  `json:"direct_rtt"`
+	NextRTT          uint32  `json:"next_rtt"`
+	PredictedRTT     uint32  `json:"predicted_rtt"`
+	DirectJitter     uint32  `json:"direct_jitter"`
+	NextJitter       uint32  `json:"next_jitter"`
+	RealJitter       uint32  `json:"real_jitter"`
 	DirectPacketLoss float32 `json:"direct_packet_loss"`
 	NextPacketLoss   float32 `json:"next_packet_loss"`
 	RealPacketLoss   float32 `json:"real_packet_loss"`
@@ -146,11 +146,11 @@ func GenerateRandomSliceData() *SliceData {
 }
 
 type NearRelayData struct {
-	Timestamp           uint64 `json:"timestamp"`
-	NumNearRelays       int `json:"num_near_relays"`
-	NearRelayId         [constants.MaxNearRelays]uint64 `json:"near_relay_id"`
-	NearRelayRTT        [constants.MaxNearRelays]uint8 `json:"near_relay_rtt"`
-	NearRelayJitter     [constants.MaxNearRelays]uint8 `json:"near_relay_jitter"`
+	Timestamp           uint64                           `json:"timestamp"`
+	NumNearRelays       int                              `json:"num_near_relays"`
+	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
+	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
+	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
 	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
 }
 
@@ -225,17 +225,17 @@ func GenerateRandomNearRelayData() *NearRelayData {
 }
 
 type SessionData struct {
-	SessionId      uint64 `json:"session_id"`
-	ISP            string `json:"isp"`
-	ConnectionType uint32 `json:"connection_type"`
-	PlatformType   uint32 `json:"platform_type"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
-	DirectRTT      uint32 `json:"direct_rtt"`
-	NextRTT        uint32 `json:"next_rtt"`
-	MatchId        uint64 `json:"match_id"`
-	BuyerId        uint64 `json:"buyer_id"`
-	DatacenterId   uint64 `json:"datacenter_id"`
+	SessionId      uint64      `json:"session_id"`
+	ISP            string      `json:"isp"`
+	ConnectionType uint8       `json:"connection_type"`
+	PlatformType   uint8       `json:"platform_type"`
+	Latitude       float32     `json:"latitude"`
+	Longitude      float32     `json:"longitude"`
+	DirectRTT      uint32      `json:"direct_rtt"`
+	NextRTT        uint32      `json:"next_rtt"`
+	MatchId        uint64      `json:"match_id"`
+	BuyerId        uint64      `json:"buyer_id"`
+	DatacenterId   uint64      `json:"datacenter_id"`
 	ServerAddress  net.UDPAddr `json:"server_address"`
 }
 
@@ -306,8 +306,8 @@ func (data *SessionData) Parse(value string) {
 
 	data.SessionId = sessionId
 	data.ISP = isp
-	data.ConnectionType = uint32(connectionType)
-	data.PlatformType = uint32(platformType)
+	data.ConnectionType = uint8(connectionType)
+	data.PlatformType = uint8(platformType)
 	data.Latitude = float32(latitude)
 	data.Longitude = float32(longitude)
 	data.DirectRTT = uint32(directRTT)
@@ -322,8 +322,8 @@ func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
 	data.SessionId = rand.Uint64()
 	data.ISP = "Comcast Internet Company, LLC"
-	data.ConnectionType = uint32(common.RandomInt(0, constants.MaxConnectionType))
-	data.PlatformType = uint32(common.RandomInt(0, constants.MaxPlatformType))
+	data.ConnectionType = uint8(common.RandomInt(0, constants.MaxConnectionType))
+	data.PlatformType = uint8(common.RandomInt(0, constants.MaxPlatformType))
 	data.Latitude = float32(common.RandomInt(-9000, +9000)) / 100.0
 	data.Longitude = float32(common.RandomInt(-18000, +18000)) / 100.0
 	data.DirectRTT = rand.Uint32()

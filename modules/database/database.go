@@ -76,16 +76,16 @@ type DatacenterMap struct {
 }
 
 type Database struct {
-	CreationTime     string
-	Creator          string
-	Relays           []Relay
-	RelayMap         map[uint64]*Relay
-	BuyerMap         map[uint64]*Buyer
-	SellerMap        map[uint64]*Seller
-	DatacenterMap    map[uint64]*Datacenter
+	CreationTime  string
+	Creator       string
+	Relays        []Relay
+	RelayMap      map[uint64]*Relay
+	BuyerMap      map[uint64]*Buyer
+	SellerMap     map[uint64]*Seller
+	DatacenterMap map[uint64]*Datacenter
 
 	// todo: terrible fucking name, especially right below "DatacenterMap" which is completely unrelated
-	DatacenterMaps   map[uint64]map[uint64]*DatacenterMap // DatacenterMaps[buyerId][datacenterId] -> entry for this buyer, and that datacenter
+	DatacenterMaps map[uint64]map[uint64]*DatacenterMap // DatacenterMaps[buyerId][datacenterId] -> entry for this buyer, and that datacenter
 
 	DatacenterRelays map[uint64][]uint64
 }

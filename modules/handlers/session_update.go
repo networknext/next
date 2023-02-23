@@ -1055,6 +1055,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.SessionFlags = state.SessionFlags
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
+	message.ConnectionType = uint8(state.Request.ConnectionType)
+	message.PlatformType = uint8(state.Request.PlatformType)
 
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter

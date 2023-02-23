@@ -277,68 +277,68 @@ func refreshAuth(env Environment) error {
 
 	// todo: bring back if wanted
 	/*
-	audience := ""
-	clientID := ""
-	clientSecret := ""
-	domain := ""
+			audience := ""
+			clientID := ""
+			clientSecret := ""
+			domain := ""
 
-	// todo: seems like we can do better than this
-	switch env.Name {
-	case "prod":
-		audience = PROD_AUTH0_AUDIENCE
-		clientID = PROD_AUTH0_CLIENT_ID
-		clientSecret = PROD_AUTH0_CLIENT_SECRET
-		domain = PROD_AUTH0_DOMAIN
-	case "dev":
-		audience = DEV_AUTH0_AUDIENCE
-		clientID = DEV_AUTH0_CLIENT_ID
-		clientSecret = DEV_AUTH0_CLIENT_SECRET
-		domain = DEV_AUTH0_DOMAIN
-	default:
-		audience = LOCAL_AUTH0_AUDIENCE
-		clientID = LOCAL_AUTH0_CLIENT_ID
-		clientSecret = LOCAL_AUTH0_CLIENT_SECRET
-		domain = LOCAL_AUTH0_DOMAIN
-	}
+			// todo: seems like we can do better than this
+			switch env.Name {
+			case "prod":
+				audience = PROD_AUTH0_AUDIENCE
+				clientID = PROD_AUTH0_CLIENT_ID
+				clientSecret = PROD_AUTH0_CLIENT_SECRET
+				domain = PROD_AUTH0_DOMAIN
+			case "dev":
+				audience = DEV_AUTH0_AUDIENCE
+				clientID = DEV_AUTH0_CLIENT_ID
+				clientSecret = DEV_AUTH0_CLIENT_SECRET
+				domain = DEV_AUTH0_DOMAIN
+			default:
+				audience = LOCAL_AUTH0_AUDIENCE
+				clientID = LOCAL_AUTH0_CLIENT_ID
+				clientSecret = LOCAL_AUTH0_CLIENT_SECRET
+				domain = LOCAL_AUTH0_DOMAIN
+			}
 
-	req, err := http.NewRequest(
-		http.MethodPost,
-		fmt.Sprintf("https://%s/oauth/token", domain),
-		strings.NewReader(fmt.Sprintf(`{
-                "client_id":"%s",
-                "client_secret":"%s",
-                "audience":"%s",
-                "grant_type":"client_credentials"
-            }`, clientID, clientSecret, audience)),
-	)
-	if err != nil {
-		return err
-	}
+			req, err := http.NewRequest(
+				http.MethodPost,
+				fmt.Sprintf("https://%s/oauth/token", domain),
+				strings.NewReader(fmt.Sprintf(`{
+		                "client_id":"%s",
+		                "client_secret":"%s",
+		                "audience":"%s",
+		                "grant_type":"client_credentials"
+		            }`, clientID, clientSecret, audience)),
+			)
+			if err != nil {
+				return err
+			}
 
-	req.Header.Add("Content-Type", "application/json")
+			req.Header.Add("Content-Type", "application/json")
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		return err
-	}
+			if res.StatusCode != http.StatusOK {
+				return err
+			}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
 
-	env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
-	env.Write()
+			env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
+			env.Write()
 
-	fmt.Print("Successfully authorized\n")
+			fmt.Print("Successfully authorized\n")
 	*/
-	
+
 	return nil
 }
 
@@ -868,44 +868,44 @@ func makeRPCCall(env Environment, reply interface{}, method string, params inter
 
 	// todo: bring back
 	/*
-	protocol := "https"
-	if env.PortalHostname() == PortalHostnameLocal {
-		protocol = "http"
-	}
+		protocol := "https"
+		if env.PortalHostname() == PortalHostnameLocal {
+			protocol = "http"
+		}
 
-	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-		CustomHeaders: map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-		},
-	})
+		rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+			CustomHeaders: map[string]string{
+				"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+			},
+		})
 
-	if err := rpcClient.CallFor(&reply, method, params); err != nil {
-		switch e := err.(type) {
-		case *jsonrpc.HTTPError:
-			switch e.Code {
-			case http.StatusUnauthorized:
-				// Refresh token and try again
-				if err := refreshAuth(env); err != nil {
-					handleRunTimeError(err.Error(), 1)
-				}
-				env.Read()
+		if err := rpcClient.CallFor(&reply, method, params); err != nil {
+			switch e := err.(type) {
+			case *jsonrpc.HTTPError:
+				switch e.Code {
+				case http.StatusUnauthorized:
+					// Refresh token and try again
+					if err := refreshAuth(env); err != nil {
+						handleRunTimeError(err.Error(), 1)
+					}
+					env.Read()
 
-				rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-					CustomHeaders: map[string]string{
-						"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-					},
-				})
+					rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+						CustomHeaders: map[string]string{
+							"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+						},
+					})
 
-				if err := rpcClient.CallFor(&reply, method, params); err != nil {
+					if err := rpcClient.CallFor(&reply, method, params); err != nil {
+						return err
+					}
+				default:
 					return err
 				}
 			default:
 				return err
 			}
-		default:
-			return err
 		}
-	}
 	*/
 
 	return nil
@@ -930,77 +930,77 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 
 	// todo: bring back
 	/*
-	var reply RelayFleetReply = RelayFleetReply{}
-	var args = RelayFleetArgs{}
-	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
-		fmt.Printf("error: could not get relays\n")
-		return
-	}
-
-	type RelayRow struct {
-		Name     string
-		Address  string
-		Id       string
-		Status   string
-		Sessions int
-		Version  string
-	}
-
-	relays := []RelayRow{}
-
-	filtered := []RelayRow{}
-
-	for _, relay := range reply.RelayFleet {
-
-		sessions, err := strconv.Atoi(relay.Sessions)
-		if err != nil {
-			sessions = -1
+		var reply RelayFleetReply = RelayFleetReply{}
+		var args = RelayFleetArgs{}
+		if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
+			fmt.Printf("error: could not get relays\n")
+			return
 		}
 
-		if relay.Status == "offline" {
-			sessions = -1
+		type RelayRow struct {
+			Name     string
+			Address  string
+			Id       string
+			Status   string
+			Sessions int
+			Version  string
 		}
 
-		relays = append(relays, RelayRow{
-			relay.Name,
-			strings.Split(relay.Address, ":")[0],
-			strings.ToUpper(relay.Id),
-			relay.Status,
-			sessions,
-			relay.Version,
-		})
-	}
+		relays := []RelayRow{}
 
-	for _, relay := range relays {
-		if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
-			filtered = append(filtered, relay)
-			continue
+		filtered := []RelayRow{}
+
+		for _, relay := range reply.RelayFleet {
+
+			sessions, err := strconv.Atoi(relay.Sessions)
+			if err != nil {
+				sessions = -1
+			}
+
+			if relay.Status == "offline" {
+				sessions = -1
+			}
+
+			relays = append(relays, RelayRow{
+				relay.Name,
+				strings.Split(relay.Address, ":")[0],
+				strings.ToUpper(relay.Id),
+				relay.Status,
+				sessions,
+				relay.Version,
+			})
 		}
-	}
 
-	if alphaSort {
-		sort.SliceStable(filtered, func(i, j int) bool {
-			return filtered[i].Name < filtered[j].Name
-		})
-	} else {
-		sort.SliceStable(filtered, func(i, j int) bool {
-			return filtered[i].Sessions > filtered[j].Sessions
-		})
-	}
-
-	outputRelays := filtered
-
-	for i := range outputRelays {
-		if outputRelays[i].Sessions < 0 {
-			outputRelays[i].Sessions = 0
+		for _, relay := range relays {
+			if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
+				filtered = append(filtered, relay)
+				continue
+			}
 		}
-	}
 
-	if relayCount != 0 {
-		table.Output(outputRelays[0:relayCount])
-	} else {
-		table.Output(outputRelays)
-	}
+		if alphaSort {
+			sort.SliceStable(filtered, func(i, j int) bool {
+				return filtered[i].Name < filtered[j].Name
+			})
+		} else {
+			sort.SliceStable(filtered, func(i, j int) bool {
+				return filtered[i].Sessions > filtered[j].Sessions
+			})
+		}
+
+		outputRelays := filtered
+
+		for i := range outputRelays {
+			if outputRelays[i].Sessions < 0 {
+				outputRelays[i].Sessions = 0
+			}
+		}
+
+		if relayCount != 0 {
+			table.Output(outputRelays[0:relayCount])
+		} else {
+			table.Output(outputRelays)
+		}
 	*/
 }
 

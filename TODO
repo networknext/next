@@ -30,11 +30,11 @@ DONE
 
 	Make sure the redis data load test still works
 
+	Hook up the portal cruncher to the session insert
+
+	Extend portal session update message to include connection type and platform type
+
 TODO
-
-	------------------------------------------------------------
-
-	Hook up the portal cruncher to the session insert.
 
 	Hook up the portal cruncher to the server insert.
 

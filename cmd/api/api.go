@@ -1,20 +1,19 @@
 package main
 
 import (
-	"time"
-	"strconv"
-	"net/http"
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 )
-
 
 var pool *redis.Pool
 
@@ -37,13 +36,13 @@ func main() {
 	service.Router.HandleFunc("/portal/session_data/{session_id}", portalSessionDataHandler)
 
 	/*
-	service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
-	service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
-	service.Router.HandleFunc("/portal/server_data/{server_address}", portalServerDataHandler)
+		service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
+		service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
+		service.Router.HandleFunc("/portal/server_data/{server_address}", portalServerDataHandler)
 
-	service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
-	service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
-	service.Router.HandleFunc("/portal/relay_data/{relay_address}", portalRelayDataHandler)
+		service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
+		service.Router.HandleFunc("/portal/relay_data/{relay_address}", portalRelayDataHandler)
 	*/
 
 	service.Router.HandleFunc("/admin/relays", adminRelaysHandler)
@@ -92,8 +91,8 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionDataResponse struct {
-	SessionData *portal.SessionData `json:"session_data"`
-	SliceData   []portal.SliceData `json:"slice_data"`
+	SessionData   *portal.SessionData    `json:"session_data"`
+	SliceData     []portal.SliceData     `json:"slice_data"`
 	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
 }
 

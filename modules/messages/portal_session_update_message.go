@@ -33,6 +33,8 @@ type PortalSessionUpdateMessage struct {
 	SessionFlags   uint64
 	SessionEvents  uint64
 	InternalEvents uint64
+	ConnectionType uint8
+	PlatformType   uint8
 
 	DirectRTT        float32
 	DirectJitter     float32
@@ -91,6 +93,8 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.SessionFlags)
 	encoding.WriteUint64(buffer, &index, message.SessionEvents)
 	encoding.WriteUint64(buffer, &index, message.InternalEvents)
+	encoding.WriteUint8(buffer, &index, message.ConnectionType)
+	encoding.WriteUint8(buffer, &index, message.PlatformType)
 
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
 	encoding.WriteFloat32(buffer, &index, message.DirectJitter)
@@ -197,6 +201,14 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.InternalEvents) {
 		return fmt.Errorf("failed to read internal events")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.ConnectionType) {
+		return fmt.Errorf("failed to read connection type")
+	}
+
+	if !encoding.ReadUint8(buffer, &index, &message.PlatformType) {
+		return fmt.Errorf("failed to read platform type")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.DirectRTT) {

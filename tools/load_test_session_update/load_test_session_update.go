@@ -13,10 +13,10 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/handlers"
 	"github.com/networknext/backend/modules/packets"
-	"github.com/networknext/backend/modules/encoding"
 )
 
 const NumRelays = constants.MaxRelays
@@ -81,7 +81,7 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 				}
 				stream.Flush()
 				sessionDataBytes := stream.GetBytesProcessed()
-				sessionData_Output =  sessionData_Output[:sessionDataBytes]
+				sessionData_Output = sessionData_Output[:sessionDataBytes]
 				copy(sessionData_Signature, crypto.Sign(sessionData_Output, ServerBackendPrivateKey))
 			}
 
@@ -90,18 +90,18 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 				for j := 0; j < NumSessions; j++ {
 
 					packet := packets.SDK5_SessionUpdateRequestPacket{
-						Version:      packets.SDKVersion{5, 0, 0},
-						BuyerId:      BuyerId,
-						DatacenterId: uint64(j),
-						SessionId:    SessionId,
-						SliceNumber:  10,
-						SessionDataBytes: int32(len(sessionData_Output)),
-						ClientAddress: clientAddress,
-						ServerAddress: serverAddress,
+						Version:           packets.SDKVersion{5, 0, 0},
+						BuyerId:           BuyerId,
+						DatacenterId:      uint64(j),
+						SessionId:         SessionId,
+						SliceNumber:       10,
+						SessionDataBytes:  int32(len(sessionData_Output)),
+						ClientAddress:     clientAddress,
+						ServerAddress:     serverAddress,
 						HasNearRelayPings: true,
 					}
 
-					if (j%10) == 0 {
+					if (j % 10) == 0 {
 						packet.DirectRTT = 200
 					}
 
@@ -113,8 +113,8 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 					packet.NumNearRelays = constants.MaxNearRelays
 					for i := 0; i < constants.MaxNearRelays; i++ {
-						packet.NearRelayIds[i] = uint64((j+i) % NumRelays)
-						packet.NearRelayRTT[i] = int32(common.RandomInt(0,10))
+						packet.NearRelayIds[i] = uint64((j + i) % NumRelays)
+						packet.NearRelayRTT[i] = int32(common.RandomInt(0, 10))
 					}
 
 					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SESSION_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddress, &ServerBackendAddress, BuyerPrivateKey[:])

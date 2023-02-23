@@ -448,17 +448,17 @@ func CreateRedisPool(hostname string, active int, idle int) *redis.Pool {
 		MaxIdle:     idle,
 		IdleTimeout: 60 * time.Second,
 		Dial: func() (redis.Conn, error) {
-	        return redis.Dial("tcp", hostname)
-	    },
+			return redis.Dial("tcp", hostname)
+		},
 	}
-    redisClient := pool.Get()
-    redisClient.Send("PING")
-    redisClient.Flush()
-    pong, err := redisClient.Receive()
-    if err != nil || pong != "PONG" {
-        panic(err)
-    }
-    return &pool
+	redisClient := pool.Get()
+	redisClient.Send("PING")
+	redisClient.Flush()
+	pong, err := redisClient.Receive()
+	if err != nil || pong != "PONG" {
+		panic(err)
+	}
+	return &pool
 }
 
 func (service *Service) LeaderElection() {

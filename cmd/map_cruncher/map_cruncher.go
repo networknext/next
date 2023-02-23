@@ -29,9 +29,9 @@ func main() {
 	// todo: process map messages
 	_ = numMapUpdateThreads
 	/*
-	for i := 0; i < numSessionUpdateThreads; i++ {
-		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
-	}
+		for i := 0; i < numSessionUpdateThreads; i++ {
+			ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
+		}
 	*/
 
 	// todo: serve up map data from leader
@@ -83,18 +83,18 @@ func ProcessMapUpdate(messageData []byte, threadNumber int) {
 
 	// todo
 	/*
-	message := messages.PortalRelayUpdateMessage{}
-	err := message.Read(messageData)
-	if err != nil {
-		core.Error("could not read relay update message: %v", err)
-		return
-	}
+		message := messages.PortalRelayUpdateMessage{}
+		err := message.Read(messageData)
+		if err != nil {
+			core.Error("could not read relay update message: %v", err)
+			return
+		}
 
-	core.Debug("received relay update message on thread %d", threadNumber)
+		core.Debug("received relay update message on thread %d", threadNumber)
 
-	// ...
+		// ...
 
-	_ = message
+		_ = message
 	*/
 }
 
