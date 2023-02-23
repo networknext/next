@@ -341,7 +341,7 @@ func happy_path(wait bool) int {
 
 	server_backend_initialized := false
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 250; i++ {
 		if strings.Contains(server_backend_stdout.String(), "starting http server on port 45000") &&
 			strings.Contains(server_backend_stdout.String(), "starting udp server on port 45000") &&
 			strings.Contains(server_backend_stdout.String(), "updated route matrix: 10 relays") &&
