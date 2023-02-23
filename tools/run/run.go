@@ -107,8 +107,8 @@ func main() {
 		analytics()
 	} else if command == "api" {
 		api()
-	} else if command == "redis-cruncher" {
-		redis_cruncher()
+	} else if command == "portal-cruncher" {
+		portal_cruncher()
 	} else if command == "map-cruncher" {
 		map_cruncher()
 	} else if command == "relay" {
@@ -157,14 +157,14 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
-	} else if command == "load-test-redis-cruncher" {
-		load_test_redis_cruncher()
+	} else if command == "load-test-redis-data" {
+		load_test_redis_data()
 	} else if command == "load-test-redis-pubsub" {
 		load_test_redis_pubsub()
 	} else if command == "load-test-redis-streams" {
 		load_test_redis_streams()
-	} else if command == "load-test-redis-cruncher" {
-		load_test_redis_cruncher()
+	} else if command == "load-test-redis-portal" {
+		load_test_redis_portal()
 	} else if command == "load-test-map" {
 		load_test_map()
 	} else if command == "load-test-optimize" {
@@ -258,12 +258,12 @@ func website_cruncher() {
 	bash("HTTP_PORT=40010 ./dist/website_cruncher")
 }
 
-func redis_cruncher() {
+func portal_cruncher() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = "40012"
 	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/redis_cruncher", httpPort))
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
 func map_cruncher() {
@@ -376,20 +376,20 @@ func func_backend() {
 	bash("cd dist && ./func_backend")
 }
 
-func load_test_redis_cruncher() {
-	bash("go run tools/load_test_redis_cruncher/load_test_redis_cruncher.go")
+func load_test_redis_data() {
+	bash("go run tools/load_test_redis_data/load_test_redis_data.go")
 }
 
 func load_test_redis_pubsub() {
 	bash("go run tools/load_test_redis_pubsub/load_test_redis_pubsub.go")
 }
 
-func load_test_redis_data() {
-	bash("go run tools/load_test_redis_data/load_test_redis_data.go")
-}
-
 func load_test_redis_streams() {
 	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
+}
+
+func load_test_redis_portal() {
+	bash("go run tools/load_test_redis_portal/load_test_redis_portal.go")
 }
 
 func load_test_map() {
@@ -421,5 +421,5 @@ func load_test_server_update() {
 }
 
 func load_test_session_update() {
-	bash("go run tools/load_test_session_update/load_test_session_update.go -cpuprofile profile")
+	bash("go run tools/load_test_session_update/load_test_session_update.go")
 }

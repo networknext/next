@@ -99,10 +99,10 @@ blocks:
             - make dist/map_cruncher.dev.tar.gz
             - artifact push workflow dist/map_cruncher.dev.tar.gz
 
-        - name: "Redis Cruncher"
+        - name: "Portal Cruncher"
           commands:
-            - make dist/redis_cruncher.dev.tar.gz
-            - artifact push workflow dist/redis_cruncher.dev.tar.gz
+            - make dist/portal_cruncher.dev.tar.gz
+            - artifact push workflow dist/portal_cruncher.dev.tar.gz
 
         - name: "Relay Gateway"
           commands:
