@@ -25,13 +25,14 @@ var relayBackendPrivateKey []byte
 
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
+var portalNearRelayUpdateMessageChannel chan *messages.PortalNearRelayUpdateMessage
 
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
 var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
 var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummaryMessage
 var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
-var analyticsNearRelayPingsMessageChannel chan *messages.AnalyticsNearRelayPingsMessage
+var analyticsNearRelayUpdateMessageChannel chan *messages.AnalyticsNearRelayUpdateMessage
 
 var enableGooglePubsub bool
 var enableRedisStreams bool
@@ -78,9 +79,11 @@ func main() {
 
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
+	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
 
 	processPortalMessages[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
 	processPortalMessages[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
+	processPortalMessages[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -89,11 +92,11 @@ func main() {
 	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
 	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
 	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
-	analyticsNearRelayPingsMessageChannel = make(chan *messages.AnalyticsNearRelayPingsMessage, channelSize)
+	analyticsNearRelayUpdateMessageChannel = make(chan *messages.AnalyticsNearRelayUpdateMessage, channelSize)
 
 	processAnalyticsMessages[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
 	processAnalyticsMessages[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsNearRelayPingsMessage]("near relay pings", analyticsNearRelayPingsMessageChannel)
+	processAnalyticsMessages[*messages.AnalyticsNearRelayUpdateMessage]("near relay update", analyticsNearRelayUpdateMessageChannel)
 	processAnalyticsMessages[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
 	processAnalyticsMessages[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
 	processAnalyticsMessages[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
@@ -145,12 +148,13 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
 	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
+	handler.PortalNearRelayUpdateMessageChannel = portalNearRelayUpdateMessageChannel
 
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
 	handler.AnalyticsSessionUpdateMessageChannel = analyticsSessionUpdateMessageChannel
 	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
-	handler.AnalyticsNearRelayPingsMessageChannel = analyticsNearRelayPingsMessageChannel
+	handler.AnalyticsNearRelayUpdateMessageChannel = analyticsNearRelayUpdateMessageChannel
 
 	// todo: not ready yet
 	handler.LocateIP = locateIP_Local

@@ -73,17 +73,20 @@ type SessionUpdateState struct {
 	NotGettingNearRelaysDatacenterNotEnabled  bool
 	NotUpdatingNearRelaysAnalysisOnly         bool
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
-	SentPortalMessage                         bool
-	SentNearRelayPingsMessage                 bool
-	SentSessionUpdateMessage                  bool
+	SentPortalSessionUpdateMessage            bool
+	SentPortalNearRelayUpdateMessage          bool
+	SentAnalyticsNearRelayUpdateMessage       bool
+	SentAnalyticsSessionUpdateMessage         bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
 	WroteResponsePacket                       bool
 
-	PortalSessionUpdateMessageChannel     chan<- *messages.PortalSessionUpdateMessage
-	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
+	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
+	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
+
+	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsNearRelayUpdateMessageChannel chan<- *messages.AnalyticsNearRelayUpdateMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -1020,11 +1023,13 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	sendPortalSessionUpdateMessage(state)
 
+	sendPortalNearRelayUpdateMessage(state)
+
 	sendAnalyticsSessionUpdateMessage(state)
 
 	sendAnalyticsSessionSummaryMessage(state)
 
-	sendAnalyticsNearRelayPingsMessage(state)
+	sendAnalyticsNearRelayUpdateMessage(state)
 }
 
 // -----------------------------------------
@@ -1096,19 +1101,45 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message
-		state.SentPortalMessage = true
+		state.SentPortalSessionUpdateMessage = true
 	}
 }
 
-func sendAnalyticsNearRelayPingsMessage(state *SessionUpdateState) {
+func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
 		return
 	}
 
-	message := messages.AnalyticsNearRelayPingsMessage{}
+	message := messages.PortalNearRelayUpdateMessage{}
 
-	message.Version = messages.AnalyticsNearRelayPingsMessageVersion_Write
+	message.Version = messages.PortalNearRelayUpdateMessageVersion_Write
+	message.Timestamp = uint64(time.Now().Unix())
+	message.BuyerId = state.Request.BuyerId
+	message.SessionId = state.Output.SessionId
+	message.NumNearRelays = uint32(state.Request.NumNearRelays)
+	for i := 0; i < int(state.Request.NumNearRelays); i++ {
+		message.NearRelayId[i] = state.Request.NearRelayIds[i]
+		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
+	}
+
+	if state.PortalNearRelayUpdateMessageChannel != nil {
+		state.PortalNearRelayUpdateMessageChannel <- &message
+		state.SentPortalNearRelayUpdateMessage = true
+	}
+}
+
+func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
+
+	if state.Request.SliceNumber != 1 {
+		return
+	}
+
+	message := messages.AnalyticsNearRelayUpdateMessage{}
+
+	message.Version = messages.AnalyticsNearRelayUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
@@ -1128,9 +1159,9 @@ func sendAnalyticsNearRelayPingsMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 	}
 
-	if state.AnalyticsNearRelayPingsMessageChannel != nil {
-		state.AnalyticsNearRelayPingsMessageChannel <- &message
-		state.SentNearRelayPingsMessage = true
+	if state.AnalyticsNearRelayUpdateMessageChannel != nil {
+		state.AnalyticsNearRelayUpdateMessageChannel <- &message
+		state.SentAnalyticsNearRelayUpdateMessage = true
 	}
 }
 
@@ -1173,7 +1204,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	if state.AnalyticsSessionUpdateMessageChannel != nil {
 		state.AnalyticsSessionUpdateMessageChannel <- &message
-		state.SentSessionUpdateMessage = true
+		state.SentAnalyticsSessionUpdateMessage = true
 	}
 }
 
@@ -1216,7 +1247,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	if state.AnalyticsSessionSummaryMessageChannel != nil {
 		state.AnalyticsSessionSummaryMessageChannel <- &message
-		state.SentSessionUpdateMessage = true
+		state.SentAnalyticsSessionUpdateMessage = true
 	}
 }
 

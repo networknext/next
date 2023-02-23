@@ -747,6 +747,20 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	fmt.Printf("verifying portal cruncher received near relay update messages ...")
+
+	if !strings.Contains(portal_cruncher_1_stdout.String(), "received near relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received near relay update message") {
+		fmt.Printf("\n\nerror: portal cruncher did not receive near relay update messages\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// ==================================================================================
 
 	fmt.Printf("\n*** SUCCESS! ***\n\n")

@@ -688,7 +688,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				}
 
 				relayName := relayData.RelayNames[relayIndex]
-				relayAddress := relayData.RelayAddresses[relayIndex].String()
+				relayAddress := relayData.RelayAddresses[relayIndex]
 
 				// process samples in the relay update (this drives the cost matrix...)
 
@@ -759,6 +759,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						RelayFlags:                relayUpdateRequest.RelayFlags,
 						NumRoutable:               uint32(numRoutable),
 						NumUnroutable:             uint32(numUnroutable),
+						RelayAddress:              relayAddress,
+						// todo: StartTime
 					}
 
 					if service.IsLeader() {

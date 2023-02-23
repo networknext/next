@@ -41,11 +41,9 @@ func main() {
 	service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
 	service.Router.HandleFunc("/portal/server/{server_address}", portalServerDataHandler)
 
-	/*
-		service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
-		service.Router.HandleFunc("/portal/relay_data/{relay_address}", portalRelayDataHandler)
-	*/
+	service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
+	service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
+	service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
 
 	service.Router.HandleFunc("/admin/relays", adminRelaysHandler)
 
@@ -169,6 +167,57 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	serverAddress := vars["server_address"]
 	response := PortalServerDataResponse{}
 	response.ServerData = portal.GetServerData(pool, serverAddress)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+type PortalRelayCountResponse struct {
+	RelayCount int `json:"relay_count"`
+}
+
+func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
+	response := PortalRelayCountResponse{}
+	response.RelayCount = portal.GetRelayCount(pool, time.Now().Unix()/60)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalRelaysResponse struct {
+	Relays []portal.RelayEntry `json:"relays"`
+}
+
+func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	response := PortalRelaysResponse{}
+	response.Relays = portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalRelayDataResponse struct {
+	RelayData *portal.RelayData `json:"relay_data"`
+}
+
+func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	relayAddress := vars["relay_address"]
+	response := PortalRelayDataResponse{}
+	response.RelayData = portal.GetRelayData(pool, relayAddress)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

@@ -63,15 +63,16 @@ type SDK5_Handler struct {
 	Events                  [SDK5_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 
-	PortalServerUpdateMessageChannel  chan<- *messages.PortalServerUpdateMessage
-	PortalSessionUpdateMessageChannel chan<- *messages.PortalSessionUpdateMessage
+	PortalServerUpdateMessageChannel    chan<- *messages.PortalServerUpdateMessage
+	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
+	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 
-	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
-	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
-	AnalyticsNearRelayPingsMessageChannel chan<- *messages.AnalyticsNearRelayPingsMessage
-	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
+	AnalyticsServerInitMessageChannel      chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel    chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsNearRelayUpdateMessageChannel chan<- *messages.AnalyticsNearRelayUpdateMessage
+	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsMatchDataMessageChannel       chan<- *messages.AnalyticsMatchDataMessage
 }
 
 func SDK5_PacketHandler(handler *SDK5_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -495,7 +496,9 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 	}
 
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
-	state.AnalyticsNearRelayPingsMessageChannel = handler.AnalyticsNearRelayPingsMessageChannel
+	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel
+
+	state.AnalyticsNearRelayUpdateMessageChannel = handler.AnalyticsNearRelayUpdateMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
 

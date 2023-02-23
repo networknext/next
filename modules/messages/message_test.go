@@ -354,13 +354,11 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 	return message
 }
 
-func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayPingsMessage {
+func GenerateRandomAnalyticsNearRelayUpdateMessage() messages.AnalyticsNearRelayUpdateMessage {
 
-	message := messages.AnalyticsNearRelayPingsMessage{
-		Version: byte(common.RandomInt(messages.AnalyticsNearRelayPingsMessageVersion_Min, messages.AnalyticsNearRelayPingsMessageVersion_Max)),
-
-		Timestamp: rand.Uint64(),
-
+	message := messages.AnalyticsNearRelayUpdateMessage{
+		Version:        byte(common.RandomInt(messages.AnalyticsNearRelayUpdateMessageVersion_Min, messages.AnalyticsNearRelayUpdateMessageVersion_Max)),
+		Timestamp:      rand.Uint64(),
 		BuyerId:        rand.Uint64(),
 		SessionId:      rand.Uint64(),
 		MatchId:        rand.Uint64(),
@@ -370,7 +368,26 @@ func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayP
 		ClientAddress:  common.RandomAddress(),
 		ConnectionType: byte(common.RandomInt(0, 255)),
 		PlatformType:   byte(common.RandomInt(0, 255)),
+		NumNearRelays:  uint32(common.RandomInt(0, constants.MaxNearRelays)),
+	}
 
+	for i := 0; i < int(message.NumNearRelays); i++ {
+		message.NearRelayId[i] = rand.Uint64()
+		message.NearRelayRTT[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayJitter[i] = byte(common.RandomInt(0, 255))
+		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 100))
+	}
+
+	return message
+}
+
+func GenerateRandomPortalNearRelayUpdateMessage() messages.PortalNearRelayUpdateMessage {
+
+	message := messages.PortalNearRelayUpdateMessage{
+		Version:       byte(common.RandomInt(messages.PortalNearRelayUpdateMessageVersion_Min, messages.PortalNearRelayUpdateMessageVersion_Max)),
+		Timestamp:     rand.Uint64(),
+		BuyerId:       rand.Uint64(),
+		SessionId:     rand.Uint64(),
 		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
@@ -384,7 +401,7 @@ func GenerateRandomAnalyticsNearRelayPingsMessage() messages.AnalyticsNearRelayP
 	return message
 }
 
-// -----------------------------------------------------------
+// -------------------------------------------------------------------------------------------------------------------
 
 const NumIterations = 1000
 
@@ -414,6 +431,17 @@ func TestPortalRelayUpdateMessage(t *testing.T) {
 		MessageReadWriteTest[*messages.PortalRelayUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
+
+func TestPortalNearRelayUpdateMessage(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeMessage := GenerateRandomPortalNearRelayUpdateMessage()
+		readMessage := messages.PortalNearRelayUpdateMessage{}
+		MessageReadWriteTest[*messages.PortalNearRelayUpdateMessage](&writeMessage, &readMessage, t)
+	}
+}
+
+// ------------------------------------------------------------------------------------------------------------------
 
 func TestAnalyticsCostMatrixUpdateMessage(t *testing.T) {
 	t.Parallel()
@@ -496,11 +524,11 @@ func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestAnalyticsNearRelayPingsMessage(t *testing.T) {
+func TestAnalyticsNearRelayUpdateMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsNearRelayPingsMessage()
-		readMessage := messages.AnalyticsNearRelayPingsMessage{}
-		MessageReadWriteTest[*messages.AnalyticsNearRelayPingsMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsNearRelayUpdateMessage()
+		readMessage := messages.AnalyticsNearRelayUpdateMessage{}
+		MessageReadWriteTest[*messages.AnalyticsNearRelayUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }

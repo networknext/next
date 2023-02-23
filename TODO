@@ -1,68 +1,77 @@
 DONE
 
-	Fix happy path.
-
-	Make sure all func tests and load tests pass.
-
-	Rename "Portal Cruncher" to "Redis Cruncher"
-
-	Sketch out map cruncher and run it in happy path
-
-	Create new "api" service. 
-
-	Run the "api" service in the happy path.
-
-	Work out how to get the "api" service serving up "relays" content, so I can go "next relays" and get a list of currently running relays.
-
-	This would be an "admin" api endpoint that hits postgres directly.
-
-	Run the api service during happy path
-
-	Hook up session REST APIs
-
-	Hook up server REST APIs
-
-	Create a new "Map Cruncher" service.
-
-	Run the map cruncher during happy path. 
-
-	Make sure its leader election works.
-
-	Make sure the redis data load test still works
-
-	Hook up the portal cruncher to the session insert
-
-	Extend portal session update message to include connection type and platform type
-
-	Verify that the api service is serving up from redis, and stuff is getting inserted.
-
-	One session inserter per-thread.
-
-	Verify happy path passes.
-
-	Extend portal session data to include direct kbps up/down, next kbps up/down.
-
-	Hook up the portal cruncher to the server insert.
-
-	Extend portal server update message to include start time.
-
-	Run happy path and verify I can get server counts, and a list of servers.
-
-	Verify that I can look up a session by uint64 session id using the API, in hex or decimal.
-
-	Implement server data
-
-	Verify I can look up data for a server by server address
-
-	Hook up relay insert in portal cruncher
-
-TODO
+	Implement API endpoints for relays
 
 	Verify that I can see relay information via API during happy path
 
-	---------------------------------------------------------------------------------------------------------
+	Why are server and relay scores all set to zero? Fixed. Needed to ensure scores were uint32.
 
-	Hook up near relay ping insert in portal cruncher
+	Hook up near relay update insert in portal cruncher
+
+TODO
+	
+	Verify that I see near relay ping data when I look up session data with happy path
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
 
 	---------------------------------------------------------------------------------------------------------
 

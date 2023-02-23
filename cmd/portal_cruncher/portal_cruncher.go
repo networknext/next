@@ -23,12 +23,14 @@ var pool *redis.Pool
 var sessionInserter []*portal.SessionInserter
 var serverInserter []*portal.ServerInserter
 var relayInserter []*portal.RelayInserter
+var nearRelayInserter []*portal.NearRelayInserter
 
 func main() {
 
 	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1)
 	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1)
 	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
+	numNearRelayUpdateThreads := envvar.GetInt("NUM_NEAR_RELAY_UPDATE_THREADS", 1)
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
@@ -37,10 +39,12 @@ func main() {
 	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 1000)
 	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 1000)
 	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
+	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 1000)
 
 	core.Log("num session update threads: %d", numSessionUpdateThreads)
 	core.Log("num server update threads: %d", numServerUpdateThreads)
 	core.Log("num relay update threads: %d", numRelayUpdateThreads)
+	core.Log("num near relay update threads: %d", numNearRelayUpdateThreads)
 
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis pool active: %d", redisPoolActive)
@@ -49,6 +53,7 @@ func main() {
 	core.Log("session insert batch size: %d", sessionInsertBatchSize)
 	core.Log("server insert batch size: %d", serverInsertBatchSize)
 	core.Log("relay insert batch size: %d", relayInsertBatchSize)
+	core.Log("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
 	service := common.CreateService("portal_cruncher")
 
@@ -57,6 +62,7 @@ func main() {
 	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
 	serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
 	relayInserter = make([]*portal.RelayInserter, numRelayUpdateThreads)
+	nearRelayInserter = make([]*portal.NearRelayInserter, numNearRelayUpdateThreads)
 
 	for i := 0; i < numSessionUpdateThreads; i++ {
 		sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
@@ -71,6 +77,11 @@ func main() {
 	for i := 0; i < numRelayUpdateThreads; i++ {
 		relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
 		ProcessMessages[*messages.PortalRelayUpdateMessage](service, "relay update", i, ProcessRelayUpdate)
+	}
+
+	for i := 0; i < numNearRelayUpdateThreads; i++ {
+		nearRelayInserter[i] = portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
+		ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, "near relay update", i, ProcessNearRelayUpdate)
 	}
 
 	service.StartWebServer()
@@ -227,6 +238,33 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 	}
 
 	relayInserter[threadNumber].Insert(&relayData)
+}
+
+// -------------------------------------------------------------------------------
+
+func ProcessNearRelayUpdate(messageData []byte, threadNumber int) {
+
+	message := messages.PortalNearRelayUpdateMessage{}
+	err := message.Read(messageData)
+	if err != nil {
+		core.Error("could not read near relay update message: %v", err)
+		return
+	}
+
+	core.Debug("received near relay update message on thread %d", threadNumber)
+
+	sessionId := message.SessionId
+
+	nearRelayData := portal.NearRelayData{
+		Timestamp:           uint64(time.Now().Unix()),
+		NumNearRelays:       message.NumNearRelays,
+		NearRelayId:         message.NearRelayId,
+		NearRelayRTT:        message.NearRelayRTT,
+		NearRelayJitter:     message.NearRelayJitter,
+		NearRelayPacketLoss: message.NearRelayPacketLoss,
+	}
+
+	nearRelayInserter[threadNumber].Insert(sessionId, &nearRelayData)
 }
 
 // -------------------------------------------------------------------------------
