@@ -10,9 +10,11 @@ DONE
 
 TODO
 
-	------------------------------------------------------------
+	Create new "api" service. 
 
-	Create new "api" service. It hits redis and provides jsonrpc responses when asked.
+	Run the "api" service in the happy path.
+
+	Work out how to get the "api" service serving up "relays" content, so I can go "next relays" and get a list of currently running relays.
 
 	------------------------------------------------------------
 
