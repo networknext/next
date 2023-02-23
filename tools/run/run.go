@@ -105,6 +105,8 @@ func main() {
 		relay_backend()
 	} else if command == "analytics" {
 		analytics()
+	} else if command == "api" {
+		api()
 	} else if command == "redis-cruncher" {
 		redis_cruncher()
 	} else if command == "map-cruncher" {
@@ -222,6 +224,14 @@ func analytics() {
 		httpPort = "40001"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/analytics", httpPort))
+}
+
+func api() {
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40200"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/api", httpPort))
 }
 
 func sync() {

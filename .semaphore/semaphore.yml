@@ -89,6 +89,11 @@ blocks:
             - make dist/analytics.dev.tar.gz
             - artifact push workflow dist/analytics.dev.tar.gz
 
+        - name: "API"
+          commands:
+            - make dist/api.dev.tar.gz
+            - artifact push workflow dist/api.dev.tar.gz
+
         - name: "Map Cruncher"
           commands:
             - make dist/map_cruncher.dev.tar.gz
