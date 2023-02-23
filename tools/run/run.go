@@ -417,5 +417,5 @@ func load_test_server_update() {
 }
 
 func load_test_session_update() {
-	bash("go run tools/load_test_session_update/load_test_session_update.go")
+	bash("go run tools/load_test_session_update/load_test_session_update.go -cpuprofile profile")
 }

@@ -99,7 +99,10 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 						ClientAddress: clientAddress,
 						ServerAddress: serverAddress,
 						HasNearRelayPings: true,
-						DirectRTT: 200,
+					}
+
+					if (j%10) == 0 {
+						packet.DirectRTT = 200
 					}
 
 					copy(packet.SessionData[:], sessionData_Output)

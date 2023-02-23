@@ -81,40 +81,40 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServerUpdatesProcessed *uint64) {
 
+	buyer := db.Buyer{}
+	buyer.Id = BuyerId
+	buyer.Name = "buyer"
+	buyer.Live = true
+	buyer.Debug = false
+	buyer.PublicKey = BuyerPublicKey[:]
+	buyer.RouteShader = core.NewRouteShader()
+
+	datacenter := db.Datacenter{}
+	datacenter.Id = DatacenterId
+	datacenter.Name = "datacenter"
+	datacenter.Latitude = 100
+	datacenter.Longitude = 200
+
+	database := db.CreateDatabase()
+	database.BuyerMap[BuyerId] = &buyer
+	database.DatacenterMap[DatacenterId] = &datacenter
+
+	handler := handlers.SDK5_Handler{}
+	handler.Database = database
+	handler.RouteMatrix = &common.RouteMatrix{}
+	handler.ServerBackendAddress = ServerBackendAddress
+	handler.ServerBackendPublicKey = ServerBackendPublicKey
+	handler.ServerBackendPrivateKey = ServerBackendPrivateKey
+	handler.MaxPacketSize = packets.SDK5_MaxPacketBytes
+	handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
+		return [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}
+	}
+
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
 			updateChannel := updateChannels[thread]
-
-			buyer := db.Buyer{}
-			buyer.Id = BuyerId
-			buyer.Name = "buyer"
-			buyer.Live = true
-			buyer.Debug = false
-			buyer.PublicKey = BuyerPublicKey[:]
-			buyer.RouteShader = core.NewRouteShader()
-
-			datacenter := db.Datacenter{}
-			datacenter.Id = DatacenterId
-			datacenter.Name = "datacenter"
-			datacenter.Latitude = 100
-			datacenter.Longitude = 200
-
-			database := db.CreateDatabase()
-			database.BuyerMap[BuyerId] = &buyer
-			database.DatacenterMap[DatacenterId] = &datacenter
-
-			handler := handlers.SDK5_Handler{}
-			handler.Database = database
-			handler.RouteMatrix = &common.RouteMatrix{}
-			handler.ServerBackendAddress = ServerBackendAddress
-			handler.ServerBackendPublicKey = ServerBackendPublicKey
-			handler.ServerBackendPrivateKey = ServerBackendPrivateKey
-			handler.MaxPacketSize = packets.SDK5_MaxPacketBytes
-			handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
-				return [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}
-			}
 
 			for {
 				select {
