@@ -16,6 +16,8 @@ func RunRedisLeaderThreads(hostname string, threadCount int) {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
+	pool := common.CreateRedisPool(redisHostname, 10*threadCount, 100*threadCount)
+
 	ctx := context.Background()
 
 	for k := 0; k < threadCount; k++ {
@@ -26,9 +28,7 @@ func RunRedisLeaderThreads(hostname string, threadCount int) {
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
-			redisClient := common.CreateRedisClient(redisHostname)
-
-			leaderElection, err := common.CreateRedisLeaderElection(redisClient, common.RedisLeaderElectionConfig{
+			leaderElection, err := common.CreateRedisLeaderElection(pool, common.RedisLeaderElectionConfig{
 				RedisHostname: hostname,
 				ServiceName:   "load_test_redis_data",
 			})

@@ -161,12 +161,14 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// if there are no instance entries, we cannot be leader and there is no leader (yet)
 
 	if len(instanceEntries) == 0 {
+		// core.Debug("no instance entries\n")
 		return
 	}
 
 	// wait at least timeout to ensure we don't flap leader when a bunch of services start close together
 
 	if time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
+		// core.Debug("wait timeout\n")
 		return
 	}
 

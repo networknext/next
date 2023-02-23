@@ -466,13 +466,13 @@ func (service *Service) LeaderElection() {
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 10)
-	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 100)
+	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 100)
+	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 1000)
 
 	pool := CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
 	config := RedisLeaderElectionConfig{}
-	config.Timeout = time.Second * 60
+	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
 
 	var err error
