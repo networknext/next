@@ -54,11 +54,11 @@ DONE
 
 	Verify I can look up data for a server by server address
 
+	Hook up relay insert in portal cruncher
+
 TODO
 
-	---------------------------------------------------------------------------------------------------------
-
-	Hook up relay insert in portal cruncher
+	Verify that I can see relay information via API during happy path
 
 	---------------------------------------------------------------------------------------------------------
 
@@ -68,63 +68,17 @@ TODO
 
 	Need to explicitly wait up to 15 seconds for analytics, relay backend and api to elect a leader. 
 
-	Otherwise, race conditions in happy path.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Otherwise, race conditions in happy path... =p
 
 	------------------------------------------------------------
 
-	Hook up the portal cruncher to the relay insert.
-
-	Hook up the portal cruncher to the near relay data insert.
-	
-	------------------------------------------------------------
-
-	Implement GetServerData, return the datacenter id, datacenter name, server address, uptime of the server etc...
-
-	Get the session ids currently connected to the server (use the hset/hgetall with the minute double buffering and merge)
+	Implement GetServerSessions -- the session ids currently connected to the server (use the hset/hgetall with the minute double buffering and merge)
 
 	------------------------------------------------------------
 
-	Implement GetRelayData
+	Implement GetRelayData with historical time series data
 
 	Get the time series data for the relay, going back 10 minutes, eg. session counts, envelope bandwidth up, envelope bandwidth down, actual bandwidth up, actual bandwidth down.
-
-	------------------------------------------------------------
-
-	Run happy path and then verify I can hit various endpoints like sessions, session_data, relays, relay_data, servers, server_data and see what I expect to see.
 
 	------------------------------------------------------------
 
@@ -138,103 +92,9 @@ TODO
 
 	Implement a "map_data" endpoint in API. This will hit the map service and get the map data, then return it.
 
-	------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Verify that I can get "map_data" from the API during happy path.
 
 	------------------------------------------------------------
-
-	What data should go in server update if any?
-
-	I really can't think of any. I thnik we need to just implement the mapping from server to the sessions in it.
-
-	Implement it via hash with HSET and minute buckets. Manually expire entries with last update time to get connected sessions within 30 seconds.
-
-	Finish implementing "getServers" so it actually gets all server data, including the set of sessions that are currently connected to the server.
-
-	---------------------------------------------------------------
-
-	Insert relay update data (equivalent to slice data)
-
-	What data should be in it? The only data that I can think of is a history of the num sessions, going back as long as possible really.
-
-	Maybe also history of bandwidth etc... ? Yes.
-
-	Should keep data per-relay for a maximum of 1 hour. 60*60 = 3600... that's OK.
-
-	In reality, I'll probably only display data in the last 10 minutes, eg. 10*60 = 600 samples.
-
-	Work out how to insert RPUSH, while removing any old entries past n=3600...
-
-	Fully implement "GetRelays" so it gets both the relay data and the history of relay updates
-
-	---------------------------------------------------------
-
-	Bring across the new code (inserter) into the portal cruncher
-
-	Make sure the portal cruncher doesn't block on any redis streams messages, it must flush periodically.
-
-	---------------------------------------------------------
 
 	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
 
@@ -242,21 +102,68 @@ TODO
 
 	---------------------------------------------------------
 
-	"Score" for session sorting on portal should use largest RTT reduction seen in the last n slices
 
-	Make it smoother and more stable, also highight spike fixes.
 
-	This can be calculated in-place in the cruncher, maybe? Do messages from the same source end up getting processed on the same dest, over time? I think they do.
 
-	---------------------------------------------------------
 
-	We probably need multiple "inserters" for pubsub and redis streams, switched on by session id, so we can effectively distribute processing. 
 
-	Otherwise, with only one inserter and one server backend (typical) it will not distribute processing across multiple portal crunchers evenly.
 
-	Distribute according to modulo session id, or hash of server address + port, or relay id
 
-	---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -661,4 +568,12 @@ Nice to have:
 
 	Redo pro, but do it via internal session events.
 
-	--------
+	---------------------------------------------------------
+
+	We *may* need multiple "inserters" for pubsub and redis streams, switched on by session id, so we can effectively distribute processing. 
+
+	Otherwise, with only one inserter and one server backend (typical) it will not distribute processing across multiple portal crunchers evenly.
+
+	Distribute according to modulo session id, or hash of server address + port, or relay id
+
+	---------------------------------------------------------
