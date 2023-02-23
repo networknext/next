@@ -53,6 +53,10 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 		config.BatchDuration = time.Second
 	}
 
+	if config.BatchSize == 0 {
+		config.BatchSize = 1000
+	}
+
 	producer := &RedisPubsubProducer{}
 	producer.config = config
 	producer.redisClient = redisClient

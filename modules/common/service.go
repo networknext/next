@@ -428,25 +428,37 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
-func CreateRedisPool(hostname string, size int) *redis.Pool {
-	pool := redis.Pool{
-		MaxIdle:     size * 10,
-		MaxActive:   size,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", hostname)
-		},
+func CreateRedisClient(hostname string) redis.Conn {
+	redisClient, err := redis.Dial("tcp", hostname)
+	if err != nil {
+		panic(err)
 	}
-	redisClient := pool.Get()
 	redisClient.Send("PING")
-	redisClient.Send("FLUSHDB")
 	redisClient.Flush()
 	pong, err := redisClient.Receive()
 	if err != nil || pong != "PONG" {
 		panic(err)
 	}
-	redisClient.Close()
-	return &pool
+	return redisClient
+}
+
+func CreateRedisPool(hostname string, active int, idle int) *redis.Pool {
+	pool := redis.Pool{
+		MaxActive:   active,
+		MaxIdle:     idle,
+		IdleTimeout: 60 * time.Second,
+		Dial: func() (redis.Conn, error) {
+	        return redis.Dial("tcp", hostname)
+	    },
+	}
+    redisClient := pool.Get()
+    redisClient.Send("PING")
+    redisClient.Flush()
+    pong, err := redisClient.Receive()
+    if err != nil || pong != "PONG" {
+        panic(err)
+    }
+    return &pool
 }
 
 func (service *Service) LeaderElection() {
@@ -454,11 +466,13 @@ func (service *Service) LeaderElection() {
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 10)
+	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 100)
 
-	pool := CreateRedisPool(redisHostname, 100)
+	pool := CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
 	config := RedisLeaderElectionConfig{}
-	config.Timeout = time.Second * 10
+	config.Timeout = time.Second * 60
 	config.ServiceName = service.ServiceName
 
 	var err error
@@ -529,11 +543,16 @@ func (service *Service) UpdateRouteMatrix() {
 
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err != nil {
-					core.Error("failed to read route matrix: %v", err)
+					core.Error("failed to read response body: %v", err)
 					continue
 				}
 
 				response.Body.Close()
+
+				if len(buffer) == 0 {
+					core.Debug("route matrix is empty")
+					continue
+				}
 
 				newRouteMatrix := RouteMatrix{}
 

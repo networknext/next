@@ -93,7 +93,7 @@ func main() {
 
 	startTime = time.Now()
 
-	core.Log("max jitter: %.1f", maxJitter)
+	core.Log("max jitter: %d", maxJitter)
 	core.Log("max packet loss: %.1f", maxPacketLoss)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("redis host name: %s", redisHostName)
@@ -690,28 +690,11 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				relayName := relayData.RelayNames[relayIndex]
 				relayAddress := relayData.RelayAddresses[relayIndex].String()
 
-				// debug print some stuff so we can see what's going on
+				// process samples in the relay update (this drives the cost matrix...)
 
 				core.Debug("[%s] received update for %s [%x]", relayAddress, relayName, relayId)
 
 				numSamples := int(relayUpdateRequest.NumSamples)
-
-				for i := 0; i < numSamples; i++ {
-					rtt := float32(relayUpdateRequest.SampleRTT[i])
-					jitter := float32(relayUpdateRequest.SampleJitter[i])
-					pl := float32(relayUpdateRequest.SamplePacketLoss[i]) / 65535.0 * 100.0
-					id := relayUpdateRequest.SampleRelayId[i]
-					index, ok := relayData.RelayIdToIndex[id]
-					if !ok {
-						continue
-					}
-					name := relayData.RelayNames[index]
-					if rtt < 255.0 && pl < 100.0 {
-						core.Debug("[%s] %s -> %s: rtt = %.1f, jitter = %.1f, pl = %.2f%%", relayAddress, relayName, name, rtt, jitter, pl)
-					}
-				}
-
-				// process samples in the relay update (this drives the cost matrix...)
 
 				currentTime := time.Now().Unix()
 

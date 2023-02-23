@@ -20,15 +20,37 @@ DONE
 
 	Load test results are currently acceptable. They may be able to be optimized more shortly, but for now move on.
 
-TODO
+	Portal cruncher is not getting redis messages from the server backend. Why not? 
 
-	------------------------------------------------------------
+	The server backend is processing the server update messages
 
-	Portal cruncher is not getting redis messages from the server backend. Why not?
+	The server backend is sending them to the redis streams producer
 
-	------------------------------------------------------------
+	The redis streams producer is definitely sending the batch to redis
+
+	The portal cruncher is correctly creating the consumer group.
+
+	The portal cruncher is receiving relay backend messages...
+
+	Somehow, right after creation, the portal cruncher is told that the group no longer exists.
+
+	After this point, the messages are never delivered (on all streams: relay update, server update, session update).
+
+	When redis_streams.go is replaced with old code before any changes, the error still occurs.
+
+	What is the conclusion?
+
+	Something *new* related to redis is causing the breakage.
+
+	My guess is that it must be the new leader election with the connection pool. There is no other change related to redis since the last build worked.
+
+	Simplify the redis leader election to use the same instance. Done.
+
+	Found it. There was a flush db in the redis pool create. So dumb.
 
 	Fix happy path.
+
+TODO
 
 	Make sure all func tests and load tests pass.
 

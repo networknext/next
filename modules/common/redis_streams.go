@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/go-redis/redis/v9"
 	"github.com/google/uuid"
@@ -53,6 +54,10 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 		config.BatchDuration = time.Second
 	}
 
+	if config.BatchSize == 0 {
+		config.BatchSize = 1000
+	}
+
 	producer.config = config
 	producer.redisClient = redisClient
 	producer.MessageChannel = make(chan []byte, config.MessageChannelSize)
@@ -74,6 +79,7 @@ func (producer *RedisStreamsProducer) updateMessageChannel(ctx context.Context) 
 
 		case <-ticker.C:
 			if len(producer.messageBatch) > 0 {
+				// core.Debug("send %s batch (time)", producer.config.StreamName)
 				producer.sendBatch(ctx)
 			}
 			break
@@ -81,6 +87,7 @@ func (producer *RedisStreamsProducer) updateMessageChannel(ctx context.Context) 
 		case message := <-producer.MessageChannel:
 			producer.messageBatch = append(producer.messageBatch, message)
 			if len(producer.messageBatch) >= producer.config.BatchSize {
+				// core.Debug("send %s batch (count)", producer.config.StreamName)
 				producer.sendBatch(ctx)
 			}
 			break
@@ -106,8 +113,6 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 		return
 	}
 
-	// batchId := producer.numBatchesSent
-
 	batchNumMessages := len(producer.messageBatch)
 
 	producer.mutex.Lock()
@@ -117,7 +122,7 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 
 	producer.messageBatch = [][]byte{}
 
-	// core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
+	// core.Debug("sent batch %d containing %d messages (%d bytes)", producer.numBatchesSent - 1, batchNumMessages, len(messageToSend))
 }
 
 func (producer *RedisStreamsProducer) NumMessagesSent() int {
@@ -159,13 +164,12 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	consumerId := uuid.New().String()
 
-	// core.Debug("redis streams consumer id: %s", consumerId)
+	// core.Debug("redis streams: stream name = %s, consumer id = %s, consumer group = %s", config.StreamName, consumerId, config.ConsumerGroup)
 
-	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "0").Result()
+	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "$").Result()
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
-			//do not need to handle this error
-			// core.Debug("Consumer Group: %v already existed", config.ConsumerGroup)
+			// core.Debug("consumer group %v already exists", config.ConsumerGroup)
 		} else {
 			core.Error("error creating redis streams group: %v", err)
 		}
@@ -193,8 +197,8 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 			Streams:  []string{consumer.config.StreamName, start},
 			Group:    consumer.config.ConsumerGroup,
 			Consumer: consumer.consumerId,
-			Count:    int64(consumer.config.BatchSize),
-			Block:    time.Second,
+			Count:    10,
+			Block:    time.Second * 10,
 			NoAck:    false,
 		}
 
@@ -205,6 +209,7 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 		}
 
 		if err != nil {
+			fmt.Printf("error receiving messages: %v\n", err)
 			continue
 		}
 

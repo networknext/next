@@ -97,6 +97,8 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	redisClient := leaderElection.pool.Get()
 
+	defer redisClient.Close()
+
 	key_a := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes)
 	key_b := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes-1)
 
@@ -107,11 +109,9 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	redisClient.Flush()
 
-	redisClient.Close()
+	redisClient.Receive()
 
 	// get all instance keys and values
-
-	redisClient = leaderElection.pool.Get()
 
 	redisClient.Send("HGETALL", key_a)
 	redisClient.Send("HGETALL", key_b)
@@ -129,8 +129,6 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 		core.Error("redis get instances b failed: %v", err)
 		return
 	}
-
-	redisClient.Close()
 
 	// merge instance entries
 
@@ -199,18 +197,22 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name strin
 
 	redisClient := leaderElection.pool.Get()
 
+	defer redisClient.Close()
+
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name)
 
 	redisClient.Send("SET", key, data)
 
 	redisClient.Flush()
 
-	redisClient.Close()
+	redisClient.Receive()
 }
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
 
 	redisClient := leaderElection.pool.Get()
+
+	defer redisClient.Close()
 
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name)
 
@@ -222,8 +224,6 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string
 	if err != nil {
 		return nil
 	}
-
-	redisClient.Close()
 
 	return []byte(value)
 }

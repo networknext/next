@@ -43,7 +43,7 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 100
+		config.BatchSize = 1000
 	}
 
 	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId, config.ClientOptions...)

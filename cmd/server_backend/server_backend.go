@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
@@ -49,7 +50,7 @@ func main() {
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
-	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", false)
+	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
@@ -176,6 +177,11 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 
+	fmt.Printf("-----------------------------------------\n")
+	fmt.Printf("redis hostname: %s\n", redisHostname)
+	fmt.Printf("stream name: %s\n", streamName)
+	fmt.Printf("-----------------------------------------\n")
+
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
 		RedisPassword: redisPassword,
@@ -193,6 +199,7 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 			core.Debug("processing portal %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableRedisStreams {
+				core.Debug("sent portal %s message to redis streams", name)
 				redisStreamsProducer.MessageChannel <- messageData
 			}
 		}
