@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"time"
 	"strconv"
 	"net/http"
 	"encoding/json"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
@@ -26,9 +26,9 @@ func main() {
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
-	fmt.Printf("redis hostname: %s", redisHostname)
-	fmt.Printf("redis pool active: %s", redisPoolActive)
-	fmt.Printf("redis pool idle: %s", redisPoolIdle)
+	core.Log("redis hostname: %s", redisHostname)
+	core.Log("redis pool active: %s", redisPoolActive)
+	core.Log("redis pool idle: %s", redisPoolIdle)
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 

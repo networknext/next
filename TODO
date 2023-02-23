@@ -31,6 +31,18 @@ DONE
 	Make sure the redis data load test still works
 
 TODO
+
+	------------------------------------------------------------
+
+	Hook up the portal cruncher to the session insert.
+
+	Hook up the portal cruncher to the server insert.
+
+	Hook up the portal cruncher to the relay insert.
+
+	------------------------------------------------------------
+
+	Run the happy path and verify that I can hit the API endpoints "session_count", "sessions" and "session_data" and get actual data for sessions.
 		
 	------------------------------------------------------------
 
@@ -49,6 +61,12 @@ TODO
 	Create a new map message type in redis streams.
 
 	This service needs leader election. It will process the map messages in redis streams and update the map.
+
+	Actually hook up the map to run, and generate map data once per-second, store it in redis, and load the leader map.
+
+	Serve up the leader map on "map_data" endpoint (binary).
+
+	Implement a "map_data" endpoint in API. This will hit the map service and get the map data, then return it.
 
 	------------------------------------------------------------
 
