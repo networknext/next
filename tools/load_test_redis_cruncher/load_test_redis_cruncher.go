@@ -8,6 +8,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/common"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -142,7 +143,9 @@ func RunPollThread(pool *redis.Pool) {
 			begin := 0
 			end := 1000
 
-			sessions, totalSessionCount, nextSessionCount := portal.GetSessions(pool, minutes, begin, end)
+			totalSessionCount, nextSessionCount := portal.GetSessionCounts(pool, minutes)
+
+			sessions := portal.GetSessions(pool, minutes, begin, end)
 
 			fmt.Printf("sessions: %d of %d/%d (%.1fms)\n", len(sessions), nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
 
@@ -158,9 +161,11 @@ func RunPollThread(pool *redis.Pool) {
 
 			start = time.Now()
 
-			servers, totalServerCount := portal.GetServers(pool, minutes, begin, end)
+			serverCount := portal.GetServerCount(pool, minutes)
 
-			fmt.Printf("servers: %d of %d (%.1fms)\n", len(servers), totalServerCount, float64(time.Since(start).Milliseconds()))
+			servers := portal.GetServers(pool, minutes, begin, end)
+
+			fmt.Printf("servers: %d of %d (%.1fms)\n", len(servers), serverCount, float64(time.Since(start).Milliseconds()))
 
 			start = time.Now()
 
@@ -179,7 +184,7 @@ func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	redisPool := portal.CreateRedisPool(redisHostname, 1000)
+	redisPool := common.CreateRedisPool(redisHostname, 1000, 10000)
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 

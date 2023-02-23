@@ -13,66 +13,21 @@ import (
 	"github.com/networknext/backend/modules/core"
 )
 
-type MapData struct {
-	SessionId      uint64
-	Latitude       float32
-	Longitude      float32
-	Next           bool
-	LastUpdateTime uint64
-}
-
-func (data *MapData) Value() string {
-	nextInt := 0
-	if data.Next {
-		nextInt = 1
-	}
-	return fmt.Sprintf("%.2f|%.2f|%d|%x", data.Latitude, data.Longitude, nextInt, data.LastUpdateTime)
-}
-
-func (data *MapData) Parse(key string, value string) {
-	sessionId, err := strconv.ParseUint(key[2:], 16, 64)
-	if err != nil {
-		return
-	}
-	values := strings.Split(value, "|")
-	if len(values) != 3 {
-		return
-	}
-	latitude, err := strconv.ParseFloat(values[0], 32)
-	if err != nil {
-		return
-	}
-	longitude, err := strconv.ParseFloat(values[1], 32)
-	if err != nil {
-		return
-	}
-	next := values[2] == "1"
-	lastUpdateTime, err := strconv.ParseUint(values[3], 16, 64)
-	if err != nil {
-		return
-	}
-	data.SessionId = sessionId
-	data.Longitude = float32(longitude)
-	data.Latitude = float32(latitude)
-	data.Next = next
-	data.LastUpdateTime = lastUpdateTime
-}
-
 type SliceData struct {
-	Timestamp        uint64
-	SliceNumber      uint32
-	DirectRTT        uint32
-	NextRTT          uint32
-	PredictedRTT     uint32
-	DirectJitter     uint32
-	NextJitter       uint32
-	RealJitter       uint32
-	DirectPacketLoss float32
-	NextPacketLoss   float32
-	RealPacketLoss   float32
-	RealOutOfOrder   float32
-	InternalEvents   uint64
-	SessionEvents    uint64
+	Timestamp        uint64 `json:"timestamp"`
+	SliceNumber      uint32 `json:"slice_number"`
+	DirectRTT        uint32 `json:"direct_rtt"`
+	NextRTT          uint32 `json:"next_rtt"`
+	PredictedRTT     uint32 `json:"predicted_rtt"`
+	DirectJitter     uint32 `json:"direct_jitter"`
+	NextJitter       uint32 `json:"next_jitter"`
+	RealJitter       uint32 `json:"real_jitter"`
+	DirectPacketLoss float32 `json:"direct_packet_loss"`
+	NextPacketLoss   float32 `json:"next_packet_loss"`
+	RealPacketLoss   float32 `json:"real_packet_loss"`
+	RealOutOfOrder   float32 `json:"real_out_of_order"`
+	InternalEvents   uint64  `json:"internal_events"`
+	SessionEvents    uint64  `json:"session_events"`
 }
 
 func (data *SliceData) Value() string {
@@ -191,12 +146,12 @@ func GenerateRandomSliceData() *SliceData {
 }
 
 type NearRelayData struct {
-	Timestamp           uint64
-	NumNearRelays       int
-	NearRelayId         [constants.MaxNearRelays]uint64
-	NearRelayRTT        [constants.MaxNearRelays]uint8
-	NearRelayJitter     [constants.MaxNearRelays]uint8
-	NearRelayPacketLoss [constants.MaxNearRelays]float32
+	Timestamp           uint64 `json:"timestamp"`
+	NumNearRelays       int `json:"num_near_relays"`
+	NearRelayId         [constants.MaxNearRelays]uint64 `json:"near_relay_id"`
+	NearRelayRTT        [constants.MaxNearRelays]uint8 `json:"near_relay_rtt"`
+	NearRelayJitter     [constants.MaxNearRelays]uint8 `json:"near_relay_jitter"`
+	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
 }
 
 func (data *NearRelayData) Value() string {
@@ -270,18 +225,18 @@ func GenerateRandomNearRelayData() *NearRelayData {
 }
 
 type SessionData struct {
-	SessionId      uint64
-	ISP            string
-	ConnectionType uint32
-	PlatformType   uint32
-	Latitude       float32
-	Longitude      float32
-	DirectRTT      uint32
-	NextRTT        uint32
-	MatchId        uint64
-	BuyerId        uint64
-	DatacenterId   uint64
-	ServerAddress  net.UDPAddr
+	SessionId      uint64 `json:"session_id"`
+	ISP            string `json:"isp"`
+	ConnectionType uint32 `json:"connection_type"`
+	PlatformType   uint32 `json:"platform_type"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	DirectRTT      uint32 `json:"direct_rtt"`
+	NextRTT        uint32 `json:"next_rtt"`
+	MatchId        uint64 `json:"match_id"`
+	BuyerId        uint64 `json:"buyer_id"`
+	DatacenterId   uint64 `json:"datacenter_id"`
+	ServerAddress  net.UDPAddr `json:"server_address"`
 }
 
 func (data *SessionData) Value() string {

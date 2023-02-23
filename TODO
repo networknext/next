@@ -12,25 +12,39 @@ DONE
 
 	Run the "api" service in the happy path.
 
-TODO
-
 	Work out how to get the "api" service serving up "relays" content, so I can go "next relays" and get a list of currently running relays.
 
-	------------------------------------------------------------
+	This would be an "admin" api endpoint that hits postgres directly.
 
-	Work out what queries I want to do to the "api" service.
+	Run the api service during happy path
 
-	First, implement support for "next relays" via the "api" service.
+	Hook up session REST APIs
 
-	------------------------------------------------------------
-
-	Run the "api" service during the happy path. Maybe trigger it to ask about various things, and verify the responses.
-
-	eg. relays, servers, sessions, etc... simulate what the portal will ask for.
-
-	------------------------------------------------------------
+	Hook up server REST APIs
 
 	Create a new "Map Cruncher" service.
+
+	Run the map cruncher during happy path. 
+
+	Make sure its leader election works.
+
+	Make sure the redis data load test still works
+
+TODO
+		
+	------------------------------------------------------------
+
+	Implement GetServerData, return the datacenter id, datacenter name, server address, uptime of the server etc...
+
+	Get the session ids currently connected to the server (use the hset/hgetall with the minute double buffering and merge)
+
+	------------------------------------------------------------
+
+	Implement GetRelayData
+
+	Get the time series data for the relay, going back 10 minutes, eg. session counts, envelope bandwidth up, envelope bandwidth down, actual bandwidth up, actual bandwidth down.
+
+	------------------------------------------------------------
 
 	Create a new map message type in redis streams.
 
