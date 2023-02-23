@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -26,11 +27,12 @@ func main() {
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
 	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis pool active: %s", redisPoolActive)
-	core.Log("redis pool idle: %s", redisPoolIdle)
+	core.Log("redis pool active: %d", redisPoolActive)
+	core.Log("redis pool idle: %d", redisPoolIdle)
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
+	service.Router.HandleFunc("/test", testHandler)
 	service.Router.HandleFunc("/portal/session_counts", portalSessionCountsHandler)
 	service.Router.HandleFunc("/portal/sessions/{begin}/{end}", portalSessionsHandler)
 	service.Router.HandleFunc("/portal/session_data/{session_id}", portalSessionDataHandler)
@@ -50,6 +52,15 @@ func main() {
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func testHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Sprintf("test handler\n")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("anus"))
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

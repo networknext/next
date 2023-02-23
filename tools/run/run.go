@@ -229,7 +229,7 @@ func analytics() {
 func api() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
-		httpPort = "40200"
+		httpPort = "50000"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/api", httpPort))
 }

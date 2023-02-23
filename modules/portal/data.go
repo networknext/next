@@ -28,10 +28,14 @@ type SliceData struct {
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
 	InternalEvents   uint64  `json:"internal_events"`
 	SessionEvents    uint64  `json:"session_events"`
+	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
+	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
+	NextKbpsUp       uint32  `json:"next_kbps_up"`
+	NextKbpsDown     uint32  `json:"next_kbps_down"`
 }
 
 func (data *SliceData) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x",
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d",
 		data.Timestamp,
 		data.SliceNumber,
 		data.DirectRTT,
@@ -46,12 +50,16 @@ func (data *SliceData) Value() string {
 		data.RealOutOfOrder,
 		data.InternalEvents,
 		data.SessionEvents,
+		data.DirectKbpsUp,
+		data.DirectKbpsDown,
+		data.NextKbpsUp,
+		data.NextKbpsDown,
 	)
 }
 
 func (data *SliceData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 14 {
+	if len(values) != 18 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -110,6 +118,22 @@ func (data *SliceData) Parse(value string) {
 	if err != nil {
 		return
 	}
+	directKbpsUp, err := strconv.ParseUint(values[14], 10, 32)
+	if err != nil {
+		return
+	}
+	directKbpsDown, err := strconv.ParseUint(values[15], 10, 32)
+	if err != nil {
+		return
+	}
+	nextKbpsUp, err := strconv.ParseUint(values[16], 10, 32)
+	if err != nil {
+		return
+	}
+	nextKbpsDown, err := strconv.ParseUint(values[17], 10, 32)
+	if err != nil {
+		return
+	}
 	data.Timestamp = timestamp
 	data.SliceNumber = uint32(sliceNumber)
 	data.DirectRTT = uint32(directRTT)
@@ -124,6 +148,10 @@ func (data *SliceData) Parse(value string) {
 	data.RealOutOfOrder = float32(realOutOfOrder)
 	data.InternalEvents = internalEvents
 	data.SessionEvents = sessionEvents
+	data.DirectKbpsUp = uint32(directKbpsUp)
+	data.DirectKbpsDown = uint32(directKbpsDown)
+	data.NextKbpsUp = uint32(nextKbpsUp)
+	data.NextKbpsDown = uint32(nextKbpsDown)
 }
 
 func GenerateRandomSliceData() *SliceData {
@@ -142,6 +170,10 @@ func GenerateRandomSliceData() *SliceData {
 	data.RealOutOfOrder = float32(common.RandomInt(0, 100000)) / 100.0
 	data.InternalEvents = rand.Uint64()
 	data.SessionEvents = rand.Uint64()
+	data.DirectKbpsUp = rand.Uint32()
+	data.DirectKbpsDown = rand.Uint32()
+	data.NextKbpsUp = rand.Uint32()
+	data.NextKbpsDown = rand.Uint32()
 	return &data
 }
 

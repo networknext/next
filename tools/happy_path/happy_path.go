@@ -80,9 +80,37 @@ func happy_path(wait bool) int {
 
 	os.Mkdir("logs", os.ModePerm)
 
+	// initialize api
+
+	fmt.Printf("\nstarting api:\n\n")
+
+	api_stdout := run("api", "logs/api")
+
+	fmt.Printf("\nverifying api ...")
+
+	api_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(api_stdout.String(), "starting http server on port 50000") {
+			api_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !api_initialized {
+		fmt.Printf("\n\nerror: api failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", api_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// initialize relay backend services
 
-	fmt.Printf("starting relay backend services:\n\n")
+	fmt.Printf("\nstarting relay backend services:\n\n")
 
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
@@ -509,34 +537,6 @@ func happy_path(wait bool) int {
 		fmt.Printf("\n\nerror: analytics 2 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// initialize api
-
-	fmt.Printf("\nstarting api:\n\n")
-
-	api_stdout := run("api", "logs/api")
-
-	fmt.Printf("\nverifying api ...")
-
-	api_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(api_stdout.String(), "starting http server on port 40200") {
-			api_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !api_initialized {
-		fmt.Printf("\n\nerror: api failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", api_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}

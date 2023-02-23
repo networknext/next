@@ -34,7 +34,17 @@ DONE
 
 	Extend portal session update message to include connection type and platform type
 
+	Verify that the api service is serving up from redis, and stuff is getting inserted.
+
+	One session inserter per-thread.
+
+	Verify happy path passes.
+
 TODO
+
+	Fix up various redis quantities that are currently integer, but we have as float in the portal session update message.
+
+	------------------------------------------------------------
 
 	Hook up the portal cruncher to the server insert.
 

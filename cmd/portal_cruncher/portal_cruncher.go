@@ -20,7 +20,7 @@ var redisPassword string
 
 var pool *redis.Pool
 
-var sessionInserter *portal.SessionInserter
+var sessionInserter []*portal.SessionInserter
 
 func main() {
 
@@ -48,9 +48,10 @@ func main() {
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
-	sessionInserter = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
+	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
 
 	for i := 0; i < numSessionUpdateThreads; i++ {
+		sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
 		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
 	}
 
@@ -156,9 +157,13 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		RealOutOfOrder:   float32(message.RealOutOfOrder),
 		InternalEvents:   message.InternalEvents,
 		SessionEvents:    message.SessionEvents,
+		DirectKbpsUp:     message.DirectKbpsUp,
+		DirectKbpsDown:   message.DirectKbpsUp,
+		NextKbpsUp:       message.NextKbpsUp,
+		NextKbpsDown:     message.NextKbpsDown,
 	}
 
-	sessionInserter.Insert(sessionId, score, next, &sessionData, &sliceData)
+	sessionInserter[threadNumber].Insert(sessionId, score, next, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
