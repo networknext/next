@@ -346,6 +346,9 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		ActualBandwidthUpKbps:     rand.Uint32(),
 		ActualBandwidthDownKbps:   rand.Uint32(),
 		RelayFlags:                rand.Uint64(),
+		RelayAddress:              common.RandomAddress(),
+		RelayVersion:              common.RandomString(constants.MaxRelayVersionLength),
+		StartTime:                 rand.Uint64(),
 	}
 
 	return message

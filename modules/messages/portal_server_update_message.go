@@ -23,6 +23,7 @@ type PortalServerUpdateMessage struct {
 	BuyerId          uint64
 	DatacenterId     uint64
 	NumSessions      uint32
+	StartTime        uint64
 	ServerAddress    net.UDPAddr
 }
 
@@ -47,6 +48,7 @@ func (message *PortalServerUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteUint32(buffer, &index, message.NumSessions)
+	encoding.WriteUint64(buffer, &index, message.StartTime)
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 
 	return buffer[:index]
@@ -94,6 +96,10 @@ func (message *PortalServerUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
 		return fmt.Errorf("failed to read num sessions")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
+		return fmt.Errorf("failed to read start time")
 	}
 
 	if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {

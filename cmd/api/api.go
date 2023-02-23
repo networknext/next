@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"fmt"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -32,16 +31,17 @@ func main() {
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
-	service.Router.HandleFunc("/test", testHandler)
+	service.Router.HandleFunc("/ping", pingHandler)
+
 	service.Router.HandleFunc("/portal/session_counts", portalSessionCountsHandler)
 	service.Router.HandleFunc("/portal/sessions/{begin}/{end}", portalSessionsHandler)
-	service.Router.HandleFunc("/portal/session_data/{session_id}", portalSessionDataHandler)
+	service.Router.HandleFunc("/portal/session/{session_id}", portalSessionDataHandler)
+
+	service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
+	service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
+	service.Router.HandleFunc("/portal/server/{server_address}", portalServerDataHandler)
 
 	/*
-		service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
-		service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
-		service.Router.HandleFunc("/portal/server_data/{server_address}", portalServerDataHandler)
-
 		service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
 		service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
 		service.Router.HandleFunc("/portal/relay_data/{relay_address}", portalRelayDataHandler)
@@ -56,11 +56,10 @@ func main() {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-func testHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Sprintf("test handler\n")
+func pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("anus"))
+	w.Write([]byte("pong"))
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -111,8 +110,11 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		sessionId, err = strconv.ParseUint(vars["session_id"], 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 	response := PortalSessionDataResponse{}
 	response.SessionData, response.SliceData, response.NearRelayData = portal.GetSessionData(pool, sessionId)
@@ -153,6 +155,20 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalServersResponse{}
 	response.Servers = portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalServerDataResponse struct {
+	ServerData *portal.ServerData `json:"server_data"`
+}
+
+func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	serverAddress := vars["server_address"]
+	response := PortalServerDataResponse{}
+	response.ServerData = portal.GetServerData(pool, serverAddress)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

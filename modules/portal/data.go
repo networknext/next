@@ -3,14 +3,12 @@ package portal
 import (
 	"fmt"
 	"math/rand"
-	"net"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
 )
 
 type SliceData struct {
@@ -257,18 +255,18 @@ func GenerateRandomNearRelayData() *NearRelayData {
 }
 
 type SessionData struct {
-	SessionId      uint64      `json:"session_id"`
-	ISP            string      `json:"isp"`
-	ConnectionType uint8       `json:"connection_type"`
-	PlatformType   uint8       `json:"platform_type"`
-	Latitude       float32     `json:"latitude"`
-	Longitude      float32     `json:"longitude"`
-	DirectRTT      uint32      `json:"direct_rtt"`
-	NextRTT        uint32      `json:"next_rtt"`
-	MatchId        uint64      `json:"match_id"`
-	BuyerId        uint64      `json:"buyer_id"`
-	DatacenterId   uint64      `json:"datacenter_id"`
-	ServerAddress  net.UDPAddr `json:"server_address"`
+	SessionId      uint64  `json:"session_id"`
+	ISP            string  `json:"isp"`
+	ConnectionType uint8   `json:"connection_type"`
+	PlatformType   uint8   `json:"platform_type"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	DirectRTT      uint32  `json:"direct_rtt"`
+	NextRTT        uint32  `json:"next_rtt"`
+	MatchId        uint64  `json:"match_id"`
+	BuyerId        uint64  `json:"buyer_id"`
+	DatacenterId   uint64  `json:"datacenter_id"`
+	ServerAddress  string  `json:"server_address"`
 }
 
 func (data *SessionData) Value() string {
@@ -284,7 +282,7 @@ func (data *SessionData) Value() string {
 		data.MatchId,
 		data.BuyerId,
 		data.DatacenterId,
-		data.ServerAddress.String(),
+		data.ServerAddress,
 	)
 }
 
@@ -334,7 +332,7 @@ func (data *SessionData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	serverAddress := core.ParseAddress(values[11])
+	serverAddress := values[11]
 
 	data.SessionId = sessionId
 	data.ISP = isp
@@ -363,32 +361,32 @@ func GenerateRandomSessionData() *SessionData {
 	data.MatchId = rand.Uint64()
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
-	data.ServerAddress = common.RandomAddress()
+	data.ServerAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
 	return &data
 }
 
 type ServerData struct {
-	ServerAddress    net.UDPAddr
+	ServerAddress    string
 	SDKVersion_Major uint8
 	SDKVersion_Minor uint8
 	SDKVersion_Patch uint8
 	MatchId          uint64
 	BuyerId          uint64
 	DatacenterId     uint64
-	NumPlayers       uint32
+	NumSessions      uint32
 	StartTime        uint64
 }
 
 func (data *ServerData) Value() string {
 	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%x|%d|%x",
-		data.ServerAddress.String(),
+		data.ServerAddress,
 		data.SDKVersion_Major,
 		data.SDKVersion_Minor,
 		data.SDKVersion_Patch,
 		data.MatchId,
 		data.BuyerId,
 		data.DatacenterId,
-		data.NumPlayers,
+		data.NumSessions,
 		data.StartTime,
 	)
 }
@@ -398,7 +396,7 @@ func (data *ServerData) Parse(value string) {
 	if len(values) != 9 {
 		return
 	}
-	serverAddress := core.ParseAddress(values[0])
+	serverAddress := values[0]
 	sdkVersionMajor, err := strconv.ParseUint(values[1], 10, 8)
 	if err != nil {
 		return
@@ -423,7 +421,7 @@ func (data *ServerData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	numPlayers, err := strconv.ParseUint(values[7], 10, 32)
+	numSessions, err := strconv.ParseUint(values[7], 10, 32)
 	if err != nil {
 		return
 	}
@@ -438,28 +436,27 @@ func (data *ServerData) Parse(value string) {
 	data.MatchId = matchId
 	data.BuyerId = buyerId
 	data.DatacenterId = datacenterId
-	data.NumPlayers = uint32(numPlayers)
+	data.NumSessions = uint32(numSessions)
 	data.StartTime = startTime
 }
 
 func GenerateRandomServerData() *ServerData {
 	data := ServerData{}
-	data.ServerAddress = common.RandomAddress()
+	data.ServerAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
 	data.SDKVersion_Major = uint8(common.RandomInt(0, 255))
 	data.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
 	data.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
 	data.MatchId = rand.Uint64()
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
-	data.NumPlayers = rand.Uint32()
+	data.NumSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()
 	return &data
 }
 
 type RelayData struct {
 	RelayId      uint64
-	RelayAddress net.UDPAddr
-	DatacenterId uint64
+	RelayAddress string
 	NumSessions  uint32
 	MaxSessions  uint32
 	StartTime    uint64
@@ -467,10 +464,9 @@ type RelayData struct {
 }
 
 func (data *RelayData) Value() string {
-	return fmt.Sprintf("%x|%s|%x|%d|%d|%x|%s",
+	return fmt.Sprintf("%x|%s|%d|%d|%x|%s",
 		data.RelayId,
-		data.RelayAddress.String(),
-		data.DatacenterId,
+		data.RelayAddress,
 		data.NumSessions,
 		data.MaxSessions,
 		data.StartTime,
@@ -480,34 +476,29 @@ func (data *RelayData) Value() string {
 
 func (data *RelayData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 7 {
+	if len(values) != 6 {
 		return
 	}
 	relayId, err := strconv.ParseUint(values[0], 16, 64)
 	if err != nil {
 		return
 	}
-	relayAddress := core.ParseAddress(values[1])
-	datacenterId, err := strconv.ParseUint(values[2], 16, 64)
+	relayAddress := values[1]
+	numSessions, err := strconv.ParseUint(values[2], 10, 32)
 	if err != nil {
 		return
 	}
-	numSessions, err := strconv.ParseUint(values[3], 10, 32)
+	maxSessions, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
+	startTime, err := strconv.ParseUint(values[4], 16, 64)
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[5], 16, 64)
-	if err != nil {
-		return
-	}
-	version := values[6]
+	version := values[5]
 	data.RelayId = relayId
 	data.RelayAddress = relayAddress
-	data.DatacenterId = datacenterId
 	data.NumSessions = uint32(numSessions)
 	data.MaxSessions = uint32(maxSessions)
 	data.StartTime = startTime
@@ -517,8 +508,7 @@ func (data *RelayData) Parse(value string) {
 func GenerateRandomRelayData() *RelayData {
 	data := RelayData{}
 	data.RelayId = rand.Uint64()
-	data.RelayAddress = common.RandomAddress()
-	data.DatacenterId = rand.Uint64()
+	data.RelayAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000,65535))
 	data.NumSessions = rand.Uint32()
 	data.MaxSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()

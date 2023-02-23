@@ -82,7 +82,7 @@ func happy_path(wait bool) int {
 
 	// initialize api
 
-	fmt.Printf("\nstarting api:\n\n")
+	fmt.Printf("starting api:\n\n")
 
 	api_stdout := run("api", "logs/api")
 
@@ -770,7 +770,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "portal_cruncher", "map_cruncher"}
+	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "portal_cruncher", "map_cruncher"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}

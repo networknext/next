@@ -2,11 +2,11 @@ package portal
 
 import (
 	"fmt"
-	"net"
 	"sort"
 	"strconv"
 	"time"
 
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 
 	"github.com/gomodule/redigo/redis"
@@ -221,8 +221,8 @@ func GetServerCount(pool *redis.Pool, minutes int64) int {
 }
 
 type ServerEntry struct {
-	Address net.UDPAddr `json:"address"`
-	Score   uint32      `json:"score"`
+	Address string `json:"address"`
+	Score   uint64 `json:"score"`
 }
 
 func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEntry {
@@ -266,20 +266,20 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEnt
 	serverMap := make(map[string]ServerEntry)
 
 	for i := 0; i < len(servers_b); i += 2 {
-		address := core.ParseAddress(servers_b[i])
-		score, _ := strconv.ParseUint(servers_b[i+1], 10, 32)
+		address := servers_b[i]
+		score, _ := strconv.ParseUint(servers_b[i+1], 10, 64)
 		serverMap[servers_b[i]] = ServerEntry{
 			Address: address,
-			Score:   uint32(score),
+			Score:   uint64(score),
 		}
 	}
 
 	for i := 0; i < len(servers_a); i += 2 {
-		address := core.ParseAddress(servers_a[i])
-		score, _ := strconv.ParseUint(servers_a[i+1], 10, 32)
+		address := servers_a[i]
+		score, _ := strconv.ParseUint(servers_a[i+1], 10, 64)
 		serverMap[servers_a[i]] = ServerEntry{
 			Address: address,
-			Score:   uint32(score),
+			Score:   uint64(score),
 		}
 	}
 
@@ -300,15 +300,34 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEnt
 	return servers
 }
 
-// todo: GetServerData
+func GetServerData(pool *redis.Pool, serverAddress string) *ServerData {
+
+	redisClient := pool.Get()
+
+	redisClient.Send("GET", fmt.Sprintf("svd-%016x", serverAddress))
+
+	redisClient.Flush()
+
+	redis_server_data, err := redis.String(redisClient.Receive())
+	if err != nil {
+		return nil
+	}
+
+	redisClient.Close()
+
+	serverData := ServerData{}
+	serverData.Parse(redis_server_data)
+
+	return &serverData
+}
 
 // ------------------------------------------------------------------------------------------------------
 
 // todo: GetRelayCount
 
 type RelayEntry struct {
-	Address net.UDPAddr `json:"address"`
-	Score   uint32      `json:"score"`
+	Address string `json:"address"`
+	Score   uint32 `json:"score"`
 }
 
 func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntry, int) {
@@ -366,18 +385,18 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) ([]RelayEntr
 	relayMap := make(map[string]RelayEntry)
 
 	for i := 0; i < len(relays_b); i += 2 {
-		address := core.ParseAddress(relays_b[i])
+		address := relays_b[i]
 		score, _ := strconv.ParseUint(relays_b[i+1], 10, 32)
-		relayMap[address.String()] = RelayEntry{
+		relayMap[address] = RelayEntry{
 			Address: address,
 			Score:   uint32(score),
 		}
 	}
 
 	for i := 0; i < len(relays_a); i += 2 {
-		address := core.ParseAddress(relays_a[i])
+		address := relays_a[i]
 		score, _ := strconv.ParseUint(relays_a[i+1], 10, 32)
-		relayMap[address.String()] = RelayEntry{
+		relayMap[address] = RelayEntry{
 			Address: address,
 			Score:   uint32(score),
 		}
@@ -534,7 +553,7 @@ func CreateServerInserter(pool *redis.Pool, batchSize int) *ServerInserter {
 	return &inserter
 }
 
-func (inserter *ServerInserter) Insert(score uint32, serverData *ServerData) {
+func (inserter *ServerInserter) Insert(serverData *ServerData) {
 
 	currentTime := time.Now()
 
@@ -544,8 +563,13 @@ func (inserter *ServerInserter) Insert(score uint32, serverData *ServerData) {
 		inserter.servers = redis.Args{}.Add(fmt.Sprintf("sv-%d", minutes))
 	}
 
+	score := common.HashString(serverData.ServerAddress)
+
 	inserter.servers = inserter.servers.Add(score)
-	inserter.servers = inserter.servers.Add(serverData.ServerAddress.String())
+	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
+
+	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%016x", serverData.ServerAddress), serverData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%016x", serverData.ServerAddress), 30)
 
 	inserter.numPending++
 
@@ -583,7 +607,7 @@ func CreateRelayInserter(pool *redis.Pool, batchSize int) *RelayInserter {
 	return &inserter
 }
 
-func (inserter *RelayInserter) Insert(score uint32, relayData *RelayData) {
+func (inserter *RelayInserter) Insert(relayData *RelayData) {
 
 	currentTime := time.Now()
 
@@ -593,8 +617,10 @@ func (inserter *RelayInserter) Insert(score uint32, relayData *RelayData) {
 		inserter.relays = redis.Args{}.Add(fmt.Sprintf("r-%d", minutes))
 	}
 
+	score := relayData.RelayId
+
 	inserter.relays = inserter.relays.Add(score)
-	inserter.relays = inserter.relays.Add(relayData.RelayAddress.String())
+	inserter.relays = inserter.relays.Add(relayData.RelayAddress)
 
 	inserter.numPending++
 

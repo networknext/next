@@ -2,8 +2,8 @@ package main
 
 import (
 	"os"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/constants"
@@ -21,6 +21,8 @@ var redisPassword string
 var pool *redis.Pool
 
 var sessionInserter []*portal.SessionInserter
+var serverInserter []*portal.ServerInserter
+var relayInserter []*portal.RelayInserter
 
 func main() {
 
@@ -33,6 +35,8 @@ func main() {
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
 	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 1000)
+	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 1000)
+	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
 
 	core.Log("num session update threads: %d", numSessionUpdateThreads)
 	core.Log("num server update threads: %d", numServerUpdateThreads)
@@ -43,12 +47,16 @@ func main() {
 	core.Log("redis pool idle: %d", redisPoolIdle)
 
 	core.Log("session insert batch size: %d", sessionInsertBatchSize)
+	core.Log("server insert batch size: %d", serverInsertBatchSize)
+	core.Log("relay insert batch size: %d", relayInsertBatchSize)
 
 	service := common.CreateService("portal_cruncher")
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
 	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
+	serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
+	relayInserter = make([]*portal.RelayInserter, numRelayUpdateThreads)
 
 	for i := 0; i < numSessionUpdateThreads; i++ {
 		sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
@@ -56,10 +64,12 @@ func main() {
 	}
 
 	for i := 0; i < numServerUpdateThreads; i++ {
+		serverInserter[i] = portal.CreateServerInserter(pool, serverInsertBatchSize)
 		ProcessMessages[*messages.PortalServerUpdateMessage](service, "server update", i, ProcessServerUpdate)
 	}
 
 	for i := 0; i < numRelayUpdateThreads; i++ {
+		relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
 		ProcessMessages[*messages.PortalRelayUpdateMessage](service, "relay update", i, ProcessRelayUpdate)
 	}
 
@@ -139,7 +149,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		MatchId:        message.MatchId,
 		BuyerId:        message.BuyerId,
 		DatacenterId:   message.DatacenterId,
-		ServerAddress:  message.ServerAddress,
+		ServerAddress:  message.ServerAddress.String(),
 	}
 
 	sliceData := portal.SliceData{
@@ -179,9 +189,19 @@ func ProcessServerUpdate(messageData []byte, threadNumber int) {
 
 	core.Debug("received server update message on thread %d", threadNumber)
 
-	// ...
+	serverData := portal.ServerData{
+		ServerAddress:    message.ServerAddress.String(),
+		SDKVersion_Major: message.SDKVersion_Major,
+		SDKVersion_Minor: message.SDKVersion_Minor,
+		SDKVersion_Patch: message.SDKVersion_Patch,
+		MatchId:          message.MatchId,
+		BuyerId:          message.BuyerId,
+		DatacenterId:     message.DatacenterId,
+		NumSessions:      message.NumSessions,
+		StartTime:        message.StartTime,
+	}
 
-	_ = message
+	serverInserter[threadNumber].Insert(&serverData)
 }
 
 // -------------------------------------------------------------------------------
@@ -197,9 +217,16 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 
 	core.Debug("received relay update message on thread %d", threadNumber)
 
-	// ...
+	relayData := portal.RelayData{
+		RelayId:      message.RelayId,
+		RelayAddress: message.RelayAddress.String(),
+		NumSessions:  message.SessionCount,
+		MaxSessions:  message.MaxSessions,
+		StartTime:    message.StartTime,
+		Version:      message.RelayVersion,
+	}
 
-	_ = message
+	relayInserter[threadNumber].Insert(&relayData)
 }
 
 // -------------------------------------------------------------------------------

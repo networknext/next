@@ -40,20 +40,76 @@ DONE
 
 	Verify happy path passes.
 
-TODO
-
-	Fix up various redis quantities that are currently integer, but we have as float in the portal session update message.
-
-	------------------------------------------------------------
+	Extend portal session data to include direct kbps up/down, next kbps up/down.
 
 	Hook up the portal cruncher to the server insert.
 
-	Hook up the portal cruncher to the relay insert.
+	Extend portal server update message to include start time.
+
+	Run happy path and verify I can get server counts, and a list of servers.
+
+	Verify that I can look up a session by uint64 session id using the API, in hex or decimal.
+
+	Implement server data
+
+	Verify I can look up data for a server by server address
+
+TODO
+
+	---------------------------------------------------------------------------------------------------------
+
+	Hook up relay insert in portal cruncher
+
+	---------------------------------------------------------------------------------------------------------
+
+	Hook up near relay ping insert in portal cruncher
+
+	---------------------------------------------------------------------------------------------------------
+
+	Need to explicitly wait up to 15 seconds for analytics, relay backend and api to elect a leader. 
+
+	Otherwise, race conditions in happy path.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------------------------------------------------------
 
-	Run the happy path and verify that I can hit the API endpoints "session_count", "sessions" and "session_data" and get actual data for sessions.
-		
+	Hook up the portal cruncher to the relay insert.
+
+	Hook up the portal cruncher to the near relay data insert.
+	
 	------------------------------------------------------------
 
 	Implement GetServerData, return the datacenter id, datacenter name, server address, uptime of the server etc...
@@ -65,6 +121,10 @@ TODO
 	Implement GetRelayData
 
 	Get the time series data for the relay, going back 10 minutes, eg. session counts, envelope bandwidth up, envelope bandwidth down, actual bandwidth up, actual bandwidth down.
+
+	------------------------------------------------------------
+
+	Run happy path and then verify I can hit various endpoints like sessions, session_data, relays, relay_data, servers, server_data and see what I expect to see.
 
 	------------------------------------------------------------
 

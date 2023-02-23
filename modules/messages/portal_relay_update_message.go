@@ -2,7 +2,9 @@ package messages
 
 import (
 	"fmt"
+	"net"
 
+	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -25,6 +27,9 @@ type PortalRelayUpdateMessage struct {
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32
+	StartTime                 uint64
+	RelayAddress              net.UDPAddr
+	RelayVersion              string
 }
 
 func (message *PortalRelayUpdateMessage) GetMaxSize() int {
@@ -87,6 +92,18 @@ func (message *PortalRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read num unroutable")
 	}
 
+	if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
+		return fmt.Errorf("failed to read start time")
+	}
+
+	if !encoding.ReadAddress(buffer, &index, &message.RelayAddress) {
+		return fmt.Errorf("failed to read relay address")
+	}
+
+	if !encoding.ReadString(buffer, &index, &message.RelayVersion, constants.MaxRelayVersionLength) {
+		return fmt.Errorf("failed to read relay version")
+	}
+
 	return nil
 }
 
@@ -110,6 +127,9 @@ func (message *PortalRelayUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.RelayFlags)
 	encoding.WriteUint32(buffer, &index, message.NumRoutable)
 	encoding.WriteUint32(buffer, &index, message.NumUnroutable)
+	encoding.WriteUint64(buffer, &index, message.StartTime)
+	encoding.WriteAddress(buffer, &index, &message.RelayAddress)
+	encoding.WriteString(buffer, &index, message.RelayVersion, constants.MaxRelayVersionLength)
 
 	return buffer[:index]
 }
