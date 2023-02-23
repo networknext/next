@@ -31,11 +31,11 @@ blocks:
           commands:
             - ./run load-test-map
 
-        - name: "Load Test Redis Portal"
+        - name: "Load Test Redis Cruncher"
           commands:
             - sudo apt-get install -y redis-server
-            - ./run load-test-redis-portal
-
+            - ./run load-test-redis-cruncher
+            
         - name: "Load Test Redis Pubsub"
           commands:
             - sudo apt-get install -y redis-server

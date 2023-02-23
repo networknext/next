@@ -362,51 +362,102 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// initialize portal cruncher
+	// initialize redis cruncher
 
-	fmt.Printf("\nstarting portal cruncher:\n\n")
+	fmt.Printf("\nstarting redis cruncher:\n\n")
 
-	portal_cruncher_1_stdout := run("portal-cruncher", "logs/portal_cruncher_1")
-	portal_cruncher_2_stdout := run("portal-cruncher", "logs/portal_cruncher_2", "HTTP_PORT=40013")
+	redis_cruncher_1_stdout := run("redis-cruncher", "logs/redis_cruncher_1")
+	redis_cruncher_2_stdout := run("redis-cruncher", "logs/redis_cruncher_2", "HTTP_PORT=40013")
 
-	fmt.Printf("\nverifying portal cruncher 1 ...")
+	fmt.Printf("\nverifying redis cruncher 1 ...")
 
-	portal_cruncher_1_initialized := false
+	redis_cruncher_1_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_1_stdout.String(), "starting http server on port 40012") {
-			portal_cruncher_1_initialized = true
+		if strings.Contains(redis_cruncher_1_stdout.String(), "starting http server on port 40012") {
+			redis_cruncher_1_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !portal_cruncher_1_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 1 failed to initialize\n\n")
+	if !redis_cruncher_1_initialized {
+		fmt.Printf("\n\nerror: redis cruncher 1 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("%s", redis_cruncher_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
 	fmt.Printf(" OK\n")
 
-	fmt.Printf("verifying portal cruncher 2 ...")
+	fmt.Printf("verifying redis cruncher 2 ...")
 
-	portal_cruncher_2_initialized := false
+	redis_cruncher_2_initialized := false
 
 	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_2_stdout.String(), "starting http server on port 40013") {
-			portal_cruncher_2_initialized = true
+		if strings.Contains(redis_cruncher_2_stdout.String(), "starting http server on port 40013") {
+			redis_cruncher_2_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !portal_cruncher_2_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 2 failed to initialize\n\n")
+	if !redis_cruncher_2_initialized {
+		fmt.Printf("\n\nerror: redis cruncher 2 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("%s", redis_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	// initialize map cruncher
+
+	fmt.Printf("\nstarting map cruncher:\n\n")
+
+	map_cruncher_1_stdout := run("map-cruncher", "logs/map_cruncher_1")
+	map_cruncher_2_stdout := run("map-cruncher", "logs/map_cruncher_2", "HTTP_PORT=40101")
+
+	fmt.Printf("\nverifying map cruncher 1 ...")
+
+	map_cruncher_1_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(map_cruncher_1_stdout.String(), "starting http server on port 40100") {
+			map_cruncher_1_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !map_cruncher_1_initialized {
+		fmt.Printf("\n\nerror: map cruncher 1 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying map cruncher 2 ...")
+
+	map_cruncher_2_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(map_cruncher_2_stdout.String(), "starting http server on port 40101") {
+			map_cruncher_2_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !map_cruncher_2_initialized {
+		fmt.Printf("\n\nerror: map cruncher 2 failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -595,42 +646,71 @@ func happy_path(wait bool) int {
 
 	// ----------------------------------------------------------------------------------------------
 
-	fmt.Printf("verifying portal cruncher received session update messages ...")
+	fmt.Printf("verifying leader election in map cruncher ...")
 
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received session update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive session update messages\n\n")
+	map_cruncher_1_is_leader := strings.Contains(map_cruncher_1_stdout.String(), "we became the leader")
+	map_cruncher_2_is_leader := strings.Contains(map_cruncher_2_stdout.String(), "we became the leader")
+
+	if map_cruncher_1_is_leader && map_cruncher_2_is_leader {
+		fmt.Printf("\n\nerror: leader flap in map cruncher\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("%s", map_cruncher_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("%s", map_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	if map_cruncher_1_is_leader && map_cruncher_2_is_leader {
+		fmt.Printf("\n\nerror: no map cruncher leader?\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
 	fmt.Printf(" OK\n")
 
-	fmt.Printf("verifying portal cruncher received server update messages ...")
+	// ----------------------------------------------------------------------------------------------
 
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received server update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received server update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive server update messages\n\n")
+	fmt.Printf("verifying redis cruncher received session update messages ...")
+
+	if !strings.Contains(redis_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(redis_cruncher_2_stdout.String(), "received session update message") {
+		fmt.Printf("\n\nerror: redis cruncher did not receive session update messages\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("%s", redis_cruncher_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("%s", redis_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
 	fmt.Printf(" OK\n")
 
-	fmt.Printf("verifying portal cruncher received relay update messages ...")
+	fmt.Printf("verifying redis cruncher received server update messages ...")
 
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received relay update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive relay update messages\n\n")
+	if !strings.Contains(redis_cruncher_1_stdout.String(), "received server update message") && !strings.Contains(redis_cruncher_2_stdout.String(), "received server update message") {
+		fmt.Printf("\n\nerror: redis cruncher did not receive server update messages\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
+		fmt.Printf("%s", redis_cruncher_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
+		fmt.Printf("%s", redis_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("verifying redis cruncher received relay update messages ...")
+
+	if !strings.Contains(redis_cruncher_1_stdout.String(), "received relay update message") && !strings.Contains(redis_cruncher_2_stdout.String(), "received relay update message") {
+		fmt.Printf("\n\nerror: redis cruncher did not receive relay update messages\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", redis_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", redis_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -660,7 +740,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "portal_cruncher"}
+	killList := [...]string{"relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "redis_cruncher", "map_cruncher"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}

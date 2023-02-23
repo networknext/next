@@ -38,10 +38,10 @@ blocks:
             - artifact pull workflow map_cruncher.dev.tar.gz
             - gsutil cp map_cruncher.dev.tar.gz gs://development_artifacts/
 
-        - name: "Portal Cruncher"
+        - name: "Redis Cruncher"
           commands:
-            - artifact pull workflow portal_cruncher.dev.tar.gz
-            - gsutil cp portal_cruncher.dev.tar.gz gs://development_artifacts/
+            - artifact pull workflow redis_cruncher.dev.tar.gz
+            - gsutil cp redis_cruncher.dev.tar.gz gs://development_artifacts/
 
         - name: "Relay Gateway"
           commands:

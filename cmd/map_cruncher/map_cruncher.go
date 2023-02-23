@@ -1,15 +1,6 @@
 package main
 
 import (
-	"fmt"
-)
-
-func main() {
-	fmt.Printf("map_cruncher")
-}
-
-/*
-import (
 	"os"
 	"strings"
 
@@ -24,32 +15,28 @@ var redisPassword string
 
 func main() {
 
-	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1)
-	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1)
-	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
+	numMapUpdateThreads := envvar.GetInt("NUM_MAP_UPDATE_THREADS", 1)
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
-	core.Log("num session update threads: %d", numSessionUpdateThreads)
-	core.Log("num server update threads: %d", numServerUpdateThreads)
-	core.Log("num relay update threads: %d", numRelayUpdateThreads)
+	core.Log("num map update threads: %d", numMapUpdateThreads)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis password: %s", redisPassword)
 
-	service := common.CreateService("portal_cruncher")
+	service := common.CreateService("map_cruncher")
 
+	// todo: process map messages
+	_ = numMapUpdateThreads
+	/*
 	for i := 0; i < numSessionUpdateThreads; i++ {
 		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
 	}
+	*/
 
-	for i := 0; i < numServerUpdateThreads; i++ {
-		ProcessMessages[*messages.PortalServerUpdateMessage](service, "server update", i, ProcessServerUpdate)
-	}
+	// todo: serve up map data from leader
 
-	for i := 0; i < numRelayUpdateThreads; i++ {
-		ProcessMessages[*messages.PortalRelayUpdateMessage](service, "relay update", i, ProcessRelayUpdate)
-	}
+	service.LeaderElection()
 
 	service.StartWebServer()
 
@@ -62,6 +49,8 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
+
+	// todo: it must be redis pubsub actually. all map crunchers must receive the same stream of map update messages
 
 	config := common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
@@ -90,44 +79,10 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 // -------------------------------------------------------------------------------
 
-func ProcessSessionUpdate(messageData []byte, threadNumber int) {
+func ProcessMapUpdate(messageData []byte, threadNumber int) {
 
-	message := messages.PortalSessionUpdateMessage{}
-	err := message.Read(messageData)
-	if err != nil {
-		core.Error("could not read session update message: %v", err)
-		return
-	}
-
-	core.Debug("received session update message on thread %d", threadNumber)
-
-	// ...
-
-	_ = message
-}
-
-// -------------------------------------------------------------------------------
-
-func ProcessServerUpdate(messageData []byte, threadNumber int) {
-
-	message := messages.PortalServerUpdateMessage{}
-	err := message.Read(messageData)
-	if err != nil {
-		core.Error("could not read server update message: %v", err)
-		return
-	}
-
-	core.Debug("received server update message on thread %d", threadNumber)
-
-	// ...
-
-	_ = message
-}
-
-// -------------------------------------------------------------------------------
-
-func ProcessRelayUpdate(messageData []byte, threadNumber int) {
-
+	// todo
+	/*
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)
 	if err != nil {
@@ -140,7 +95,7 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 	// ...
 
 	_ = message
+	*/
 }
 
 // -------------------------------------------------------------------------------
-*/

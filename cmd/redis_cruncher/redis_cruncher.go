@@ -28,7 +28,7 @@ func main() {
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis password: %s", redisPassword)
 
-	service := common.CreateService("portal_cruncher")
+	service := common.CreateService("redis_cruncher")
 
 	for i := 0; i < numSessionUpdateThreads; i++ {
 		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)

@@ -2,9 +2,101 @@ DONE
 
 	Fix happy path.
 
+	Make sure all func tests and load tests pass.
+
+	Rename "Portal Cruncher" to "Redis Cruncher"
+
+	Sketch out map cruncher and run it in happy path
+
 TODO
 
-	Make sure all func tests and load tests pass.
+	------------------------------------------------------------
+
+	Create new "api" service. It hits redis and provides jsonrpc responses when asked.
+
+	------------------------------------------------------------
+
+	Work out what queries I want to do to the "api" service.
+
+	First, implement support for "next relays" via the "api" service.
+
+	------------------------------------------------------------
+
+	Run the "api" service during the happy path. Maybe trigger it to ask about various things, and verify the responses.
+
+	eg. relays, servers, sessions, etc... simulate what the portal will ask for.
+
+	------------------------------------------------------------
+
+	Create a new "Map Cruncher" service.
+
+	Create a new map message type in redis streams.
+
+	This service needs leader election. It will process the map messages in redis streams and update the map.
+
+	------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------------------------------------------------------
 

@@ -10,13 +10,15 @@ DONE
 
 	Rebuild analytics service	
 
+	Rebuild portal cruncher -> redis cruncher / map cruncher.
+
 TODO
 
-	Rebuild portal cruncher (90%)
-
-	Rebuild API service to drive the "next" tool and portal (no auth)
+	API service to drive the "next" tool and portal
 
 	Setup new dev environment with terraform
+
+	Rebuild portal (no auth).
 
 	Multithreaded relay with session database per-socket thread (no contention)
 
@@ -29,8 +31,6 @@ TODO
 		5. Relay Backend
 		6. Analytics (esp. is there a faster way to insert into bigquery?)
 		7. Portal Cruncher
-
-	Rebuild portal (no auth).
 
 	Document *everything*.
 
