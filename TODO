@@ -8,12 +8,13 @@ DONE
 
 	Hook up near relay update insert in portal cruncher
 
-TODO
-	
 	Verify that I see near relay ping data when I look up session data with happy path
 
+	Make sure I can see near relay ping data when I get session data in happy path	
 
-
+TODO
+	
+	Why are num near relays 0 in the nr-* entry?
 
 
 

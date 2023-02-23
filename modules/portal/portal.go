@@ -15,6 +15,8 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+// --------------------------------------------------------------------------------------------------
+
 type SliceData struct {
 	Timestamp        uint64  `json:"timestamp"`
 	SliceNumber      uint32  `json:"slice_number"`
@@ -179,6 +181,8 @@ func GenerateRandomSliceData() *SliceData {
 	return &data
 }
 
+// --------------------------------------------------------------------------------------------------
+
 type NearRelayData struct {
 	Timestamp           uint64                           `json:"timestamp"`
 	NumNearRelays       uint32                           `json:"num_near_relays"`
@@ -257,6 +261,8 @@ func GenerateRandomNearRelayData() *NearRelayData {
 	}
 	return &data
 }
+
+// --------------------------------------------------------------------------------------------------
 
 type SessionData struct {
 	SessionId      uint64  `json:"session_id"`
@@ -369,6 +375,8 @@ func GenerateRandomSessionData() *SessionData {
 	return &data
 }
 
+// --------------------------------------------------------------------------------------------------
+
 type ServerData struct {
 	ServerAddress    string
 	SDKVersion_Major uint8
@@ -458,6 +466,8 @@ func GenerateRandomServerData() *ServerData {
 	return &data
 }
 
+// --------------------------------------------------------------------------------------------------
+
 type RelayData struct {
 	RelayId      uint64
 	RelayAddress string
@@ -520,7 +530,7 @@ func GenerateRandomRelayData() *RelayData {
 	return &data
 }
 
-// ------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 
 func GetSessionCounts(pool *redis.Pool, minutes int64) (int, int) {
 
@@ -1078,7 +1088,7 @@ func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearR
 	currentTime := time.Now()
 
 	inserter.redisClient.Send("RPUSH", fmt.Sprintf("nr-%016x", sessionId), nearRelayData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x", sessionId), 30)
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x", sessionId), 3600)
 
 	inserter.numPending++
 
