@@ -17,14 +17,14 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
-	"net/http"
+	// "net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	"regexp"
+	// "regexp"
 	"runtime"
-	"sort"
+	// "sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,31 +34,10 @@ import (
 	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
 
-	"github.com/modood/table"
+	// "github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	"github.com/tidwall/gjson"
-	"github.com/ybbus/jsonrpc"
-)
-
-const (
-
-	// todo: we must not store client secrets in our source code
-
-	// Prod
-	PROD_AUTH0_AUDIENCE      = "https://next-prod.networknext.com"
-	PROD_AUTH0_CLIENT_ID     = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
-	PROD_AUTH0_CLIENT_SECRET = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
-	PROD_AUTH0_DOMAIN        = "auth.networknext.com"
-	// Dev
-	DEV_AUTH0_AUDIENCE      = "https://next-dev.networknext.com"
-	DEV_AUTH0_CLIENT_ID     = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
-	DEV_AUTH0_CLIENT_SECRET = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
-	DEV_AUTH0_DOMAIN        = "auth-dev.networknext.com"
-	// Local Development
-	LOCAL_AUTH0_AUDIENCE      = "https://next-local.networknext.com"
-	LOCAL_AUTH0_CLIENT_ID     = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
-	LOCAL_AUTH0_CLIENT_SECRET = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
-	LOCAL_AUTH0_DOMAIN        = "auth-dev.networknext.com"
+	// "github.com/tidwall/gjson"
+	_ "github.com/ybbus/jsonrpc/v3"
 )
 
 type arrayFlags []string
@@ -295,6 +274,9 @@ func handleRunTimeError(msg string, level int) {
 }
 
 func refreshAuth(env Environment) error {
+
+	// todo: bring back if wanted
+	/*
 	audience := ""
 	clientID := ""
 	clientSecret := ""
@@ -355,6 +337,8 @@ func refreshAuth(env Environment) error {
 	env.Write()
 
 	fmt.Print("Successfully authorized\n")
+	*/
+	
 	return nil
 }
 
@@ -881,6 +865,9 @@ func printDatabase() {
 }
 
 func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
+
+	// todo: bring back
+	/*
 	protocol := "https"
 	if env.PortalHostname() == PortalHostnameLocal {
 		protocol = "http"
@@ -919,6 +906,8 @@ func makeRPCCall(env Environment, reply interface{}, method string, params inter
 			return err
 		}
 	}
+	*/
+
 	return nil
 }
 
@@ -939,6 +928,8 @@ type RelayFleetReply struct {
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
 
+	// todo: bring back
+	/*
 	var reply RelayFleetReply = RelayFleetReply{}
 	var args = RelayFleetArgs{}
 	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
@@ -1010,6 +1001,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	} else {
 		table.Output(outputRelays)
 	}
+	*/
 }
 
 // ----------------------------------------------------------------

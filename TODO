@@ -8,11 +8,11 @@ DONE
 
 	Sketch out map cruncher and run it in happy path
 
-TODO
-
 	Create new "api" service. 
 
 	Run the "api" service in the happy path.
+
+TODO
 
 	Work out how to get the "api" service serving up "relays" content, so I can go "next relays" and get a list of currently running relays.
 

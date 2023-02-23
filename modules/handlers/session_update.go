@@ -435,6 +435,10 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 	clientLatitude := state.Output.Latitude
 	clientLongitude := state.Output.Longitude
 
+	if state.Datacenter == nil {
+		panic("nil datacenter in get near relays?")
+	}
+
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude
 

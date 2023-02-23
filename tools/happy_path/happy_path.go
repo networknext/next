@@ -515,6 +515,34 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// initialize api
+
+	fmt.Printf("\nstarting api:\n\n")
+
+	api_stdout := run("api", "logs/api")
+
+	fmt.Printf("\nverifying api ...")
+
+	api_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(api_stdout.String(), "starting http server on port 40200") {
+			api_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !api_initialized {
+		fmt.Printf("\n\nerror: api failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", api_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// ==================================================================================
 
 	fmt.Printf("\nstarting client and server:\n\n")
@@ -571,6 +599,8 @@ func happy_path(wait bool) int {
 	// ==================================================================================
 
 	fmt.Printf("verifying leader election in relay backend ...")
+
+	time.Sleep(5 * time.Second)
 
 	relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
 	relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
