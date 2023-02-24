@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
 )
 
@@ -79,6 +80,12 @@ func happy_path(wait bool) int {
 	}
 
 	os.Mkdir("logs", os.ModePerm)
+
+	// nuke redis
+
+	redisClient := common.CreateRedisClient("127.0.0.1:6379")
+
+	redisClient.Do("FLUSHALL")
 
 	// initialize api
 
@@ -545,6 +552,88 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
+	fmt.Printf("\nwaiting for leader election\n\n")
+	
+	fmt.Printf("    analytics ...")
+
+	analytics_leader_elected := false
+
+	for i := 0; i < 250; i++ {
+		analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
+		analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
+		if analytics_1_is_leader || analytics_2_is_leader {
+			analytics_leader_elected = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !analytics_leader_elected {
+		fmt.Printf("\n\nerror: no analytics leader?\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", analytics_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("    map cruncher ...")
+
+	map_cruncher_leader_elected := false
+
+	for i := 0; i < 250; i++ {
+		map_cruncher_1_is_leader := strings.Contains(map_cruncher_1_stdout.String(), "we became the leader")
+		map_cruncher_2_is_leader := strings.Contains(map_cruncher_2_stdout.String(), "we became the leader")
+		if map_cruncher_1_is_leader || map_cruncher_2_is_leader {
+			map_cruncher_leader_elected = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !map_cruncher_leader_elected {
+		fmt.Printf("\n\nerror: no map cruncher leader?\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", map_cruncher_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	fmt.Printf("    relay backend ...")
+
+	relay_backend_leader_elected := false
+
+	for i := 0; i < 250; i++ {
+		relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
+		relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
+		if relay_backend_1_is_leader || relay_backend_2_is_leader {
+			relay_backend_leader_elected = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !relay_backend_leader_elected {
+		fmt.Printf("\n\nerror: no relay backend leader?\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_backend_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	// ==================================================================================
+
 	fmt.Printf("\nstarting client and server:\n\n")
 
 	client_stdout := run("client", "logs/client")
@@ -598,9 +687,9 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	fmt.Printf("verifying leader election in relay backend ...")
+	fmt.Printf("\npost validation:\n\n")
 
-	time.Sleep(5 * time.Second)
+	fmt.Printf("verifying leader election in relay backend ...")
 
 	relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
 	relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
@@ -655,7 +744,7 @@ func happy_path(wait bool) int {
 	}
 	fmt.Printf(" OK\n")
 
-	fmt.Printf("verifying analytics leader ...")
+	fmt.Printf("verifying leader election in analytics ...")
 
 	analytics_leader_stdout := analytics_1_stdout
 	if analytics_2_is_leader {

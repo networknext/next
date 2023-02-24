@@ -3119,6 +3119,21 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 // --------------------------------------------------------------
 
+func Test_SessionUpdate_GetNearRelays_DatacenterIsNil(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Datacenter = nil
+
+	result := handlers.SessionUpdate_GetNearRelays(state)
+
+	assert.False(t, result)
+	assert.True(t, state.NotGettingNearRelaysDatacenterIsNil)
+	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+}
+
 func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()

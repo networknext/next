@@ -20,15 +20,11 @@ DONE
 
 	Confirm near relay data fix.
 
-TODO
-	
-	Stop and fix happy path so it is reliable.
-
-	Clearly, there are timing issues, especially around the route matrix not existing.
-
 	Fix the issue with the null database (no route matrix), make it harmless.
 
-	Then fix the happy path so it is working 100% reliably from one run to the next.
+TODO
+
+	Wait for leader election to complete before I run the client and server	
 
 	----------------
 

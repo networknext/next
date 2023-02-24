@@ -383,7 +383,6 @@ func versionHandlerFunc(buildTime string, commitMessage string, commitHash strin
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		CORSControlHandlerFunc(allowedOrigins, w, r)
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(version); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

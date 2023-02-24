@@ -69,6 +69,7 @@ type SessionUpdateState struct {
 
 	// codepath flags (for unit testing etc...)
 	ReadSessionData                           bool
+	NotGettingNearRelaysDatacenterIsNil       bool
 	NotGettingNearRelaysAnalysisOnly          bool
 	NotGettingNearRelaysDatacenterNotEnabled  bool
 	NotUpdatingNearRelaysAnalysisOnly         bool
@@ -423,6 +424,12 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	state.GetNearRelays = true
 
+	if state.Datacenter == nil {
+		core.Debug("datacenter is nil, not getting near relays")
+		state.NotGettingNearRelaysDatacenterIsNil = true
+		return false
+	}
+
 	if (state.SessionFlags & constants.SessionFlags_AnalysisOnly) != 0 {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
@@ -437,10 +444,6 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	clientLatitude := state.Output.Latitude
 	clientLongitude := state.Output.Longitude
-
-	if state.Datacenter == nil {
-		panic("nil datacenter in get near relays?")
-	}
 
 	serverLatitude := state.Datacenter.Latitude
 	serverLongitude := state.Datacenter.Longitude

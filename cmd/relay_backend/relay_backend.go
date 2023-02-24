@@ -692,7 +692,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				// process samples in the relay update (this drives the cost matrix...)
 
-				core.Debug("[%s] received update for %s [%x]", relayAddress, relayName, relayId)
+				core.Debug("[%s] received update for %s [%x]", relayAddress.String(), relayName, relayId)
 
 				numSamples := int(relayUpdateRequest.NumSamples)
 
