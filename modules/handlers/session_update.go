@@ -68,6 +68,7 @@ type SessionUpdateState struct {
 	SessionFlags uint64
 
 	// codepath flags (for unit testing etc...)
+	FirstUpdate                               bool
 	ReadSessionData                           bool
 	NotGettingNearRelaysDatacenterIsNil       bool
 	NotGettingNearRelaysAnalysisOnly          bool
@@ -163,6 +164,8 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		var err error
 
 		state.LocatedIP = true
+
+		state.FirstUpdate = true
 
 		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
@@ -1022,17 +1025,22 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
 		Send various messages to drive the portal and analytics systems.
+
+		(Skip this on the first update, we don't have any useful information yet.)
 	*/
 
-	sendPortalSessionUpdateMessage(state)
+	if !state.FirstUpdate {
 
-	sendPortalNearRelayUpdateMessage(state)
+		sendPortalSessionUpdateMessage(state)
 
-	sendAnalyticsSessionUpdateMessage(state)
+		sendPortalNearRelayUpdateMessage(state)
 
-	sendAnalyticsSessionSummaryMessage(state)
+		sendAnalyticsSessionUpdateMessage(state)
 
-	sendAnalyticsNearRelayUpdateMessage(state)
+		sendAnalyticsSessionSummaryMessage(state)
+
+		sendAnalyticsNearRelayUpdateMessage(state)
+	}
 }
 
 // -----------------------------------------

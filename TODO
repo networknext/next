@@ -1,52 +1,6 @@
 DONE
 
-	Implement API endpoints for relays
-
-	Verify that I can see relay information via API during happy path
-
-	Why are server and relay scores all set to zero? Fixed. Needed to ensure scores were uint32.
-
-	Hook up near relay update insert in portal cruncher
-
-	Verify that I see near relay ping data when I look up session data with happy path
-
-	Make sure I can see near relay ping data when I get session data in happy path	
-
-	Why are num near relays 0 in the nr-* entry?
-
-	The data is in redis, but it is empty in the NearRelayData entry.
-
-	Therefore, there is a parse error on near relay data
-
-	Confirm near relay data fix.
-
-	Fix the issue with the null database (no route matrix), make it harmless.
-
-	Wait for leader election to complete before I run the client and server	
-
-	Flush redis db before happy path
-
-	Added relay sample struct
-
-	Insert LPUSH relay sample with each relay insert
-
-	Implement GetRelayData with historical time series data.
-
-	Verify that I can see historical relay samples when I hit the API for relay data.
-
-	HSET with minute to track sessions currrently on a server.
-
-	Extend "GetServerData" to return list of sessions currently on the server.
-
-	Verify that I can see sessions on the server when happy path runs.
-
 TODO
-
-	------------------------------------------------------------
-
-	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
-
-	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
 
 	------------------------------------------------------------
 
@@ -61,12 +15,6 @@ TODO
 	Implement a "map_data" endpoint in API. This will hit the map service and get the map data, then return it.
 
 	Verify that I can get "map_data" from the API during happy path.
-
-	---------------------------------------------------------
-
-	If near relay RTT really is valid (eg. not 0.0), then it must be rounded up to 1.0, or the route becomes unavailable.
-
-	This really only applies when in the LAN with the relay, but for testing, especially local testing, this is annoying and inconsistent.
 
 	---------------------------------------------------------
 
@@ -538,5 +486,13 @@ Nice to have:
 	Otherwise, with only one inserter and one server backend (typical) it will not distribute processing across multiple portal crunchers evenly.
 
 	Distribute according to modulo session id, or hash of server address + port, or relay id
+
+	---------------------------------------------------------
+
+	SDK level.
+
+	If near relay RTT really is valid (eg. > 0.0), then it must be rounded up to 1.0, or the near relay becomes unavailable.
+
+	This really only applies when in the LAN with the relay, but for testing, especially local testing, this is annoying and inconsistent.
 
 	---------------------------------------------------------
