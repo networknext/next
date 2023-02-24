@@ -34,11 +34,19 @@ DONE
 
 	Verify that I can see historical relay samples when I hit the API for relay data.
 
+	HSET with minute to track sessions currrently on a server.
+
+	Extend "GetServerData" to return list of sessions currently on the server.
+
+	Verify that I can see sessions on the server when happy path runs.
+
 TODO
 
 	------------------------------------------------------------
 
-	Implement GetServerSessions -- the session ids currently connected to the server (use the hset/hgetall with the minute double buffering and merge)
+	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
+
+	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
 
 	------------------------------------------------------------
 
@@ -54,11 +62,11 @@ TODO
 
 	Verify that I can get "map_data" from the API during happy path.
 
-	------------------------------------------------------------
+	---------------------------------------------------------
 
-	We shoud shift slice number to the left one, and drop the first slice that doesn't know yet any RTTs
+	If near relay RTT really is valid (eg. not 0.0), then it must be rounded up to 1.0, or the route becomes unavailable.
 
-	This will make everything much more consistent, esp. portal and analytics that don't need to special case slice 0 RTT anymore.
+	This really only applies when in the LAN with the relay, but for testing, especially local testing, this is annoying and inconsistent.
 
 	---------------------------------------------------------
 

@@ -160,13 +160,14 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalServerDataResponse struct {
 	ServerData *portal.ServerData `json:"server_data"`
+	ServerSessionIds []uint64 `json:"server_session_ids"`
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serverAddress := vars["server_address"]
 	response := PortalServerDataResponse{}
-	response.ServerData = portal.GetServerData(pool, serverAddress)
+	response.ServerData, response.ServerSessionIds = portal.GetServerData(pool, serverAddress, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -210,7 +211,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData *portal.RelayData `json:"relay_data"`
+	RelayData    *portal.RelayData    `json:"relay_data"`
 	RelaySamples []portal.RelaySample `json:"relay_samples"`
 }
 

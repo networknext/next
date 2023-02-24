@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 )
 
@@ -553,7 +553,7 @@ func happy_path(wait bool) int {
 	// ==================================================================================
 
 	fmt.Printf("\nwaiting for leader election\n\n")
-	
+
 	fmt.Printf("    analytics ...")
 
 	analytics_leader_elected := false

@@ -912,25 +912,62 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEnt
 	return servers
 }
 
-func GetServerData(pool *redis.Pool, serverAddress string) *ServerData {
+func GetServerData(pool *redis.Pool, serverAddress string, minutes int64) (*ServerData, []uint64) {
 
 	redisClient := pool.Get()
 
-	redisClient.Send("GET", fmt.Sprintf("svd-%016x", serverAddress))
+	redisClient.Send("GET", fmt.Sprintf("svd-%s", serverAddress))
+	redisClient.Send("HGETALL", fmt.Sprintf("svs-%s-%d", serverAddress, minutes))
+	redisClient.Send("HGETALL", fmt.Sprintf("svs-%s-%d", serverAddress, minutes-1))
 
 	redisClient.Flush()
 
 	redis_server_data, err := redis.String(redisClient.Receive())
 	if err != nil {
-		return nil
+		return nil, nil
 	}
+
+	redis_sessions_a, err := redis.Strings(redisClient.Receive())
+
+	redis_sessions_b, err := redis.Strings(redisClient.Receive())
 
 	redisClient.Close()
 
 	serverData := ServerData{}
 	serverData.Parse(redis_server_data)
 
-	return &serverData
+	sessionMap := make(map[uint64]bool)
+
+	currentTime := uint64(time.Now().Unix())
+
+	for i := 0; i < len(redis_sessions_a); i += 2 {
+		session_id, _ := strconv.ParseUint(redis_sessions_a[i], 16, 64)
+		timestamp, _ := strconv.ParseUint(redis_sessions_a[i+1], 10, 64)
+		if currentTime-timestamp > 30 {
+			continue
+		}
+		sessionMap[session_id] = true
+	}
+
+	for i := 0; i < len(redis_sessions_b); i += 2 {
+		session_id, _ := strconv.ParseUint(redis_sessions_b[i], 16, 64)
+		timestamp, _ := strconv.ParseUint(redis_sessions_b[i+1], 10, 64)
+		if currentTime-timestamp > 30 {
+			continue
+		}
+		sessionMap[session_id] = true
+	}
+
+	serverSessions := make([]uint64, len(sessionMap))
+	index := 0
+	for k, _ := range sessionMap {
+		serverSessions[index] = k
+		index++
+	}
+
+	sort.SliceStable(serverSessions, func(i, j int) bool { return serverSessions[i] < serverSessions[j] })
+
+	return &serverData, serverSessions
 }
 
 // ------------------------------------------------------------------------------------------------------
@@ -1137,11 +1174,19 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 		inserter.nextSessions = inserter.nextSessions.Add(fmt.Sprintf("%016x", sessionId))
 	}
 
-	inserter.redisClient.Send("SET", fmt.Sprintf("sd-%016x", sessionId), sessionData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sd-%016x", sessionId), 30)
+	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-	inserter.redisClient.Send("RPUSH", fmt.Sprintf("sl-%016x", sessionId), sliceData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sl-%016x", sessionId), 30)
+	key := fmt.Sprintf("sd-%s", sessionIdString)
+	inserter.redisClient.Send("SET", key, sessionData.Value())
+	inserter.redisClient.Send("EXPIRE", key, 30)
+
+	key = fmt.Sprintf("sl-%s", sessionIdString)
+	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
+	inserter.redisClient.Send("EXPIRE", key, 30)
+
+	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
+	inserter.redisClient.Send("HSET", key, sessionIdString, currentTime.Unix())
+	inserter.redisClient.Send("EXPIRE", key, 30)
 
 	inserter.numPending++
 
@@ -1244,8 +1289,8 @@ func (inserter *ServerInserter) Insert(serverData *ServerData) {
 	inserter.servers = inserter.servers.Add(score)
 	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
 
-	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%016x", serverData.ServerAddress), serverData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%016x", serverData.ServerAddress), 30)
+	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value())
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%s", serverData.ServerAddress), 30)
 
 	inserter.numPending++
 
@@ -1298,11 +1343,11 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 	inserter.relays = inserter.relays.Add(score)
 	inserter.relays = inserter.relays.Add(relayData.RelayAddress)
 
-    key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
+	key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("SET", key, relayData.Value())
 	inserter.redisClient.Send("EXPIRE", key, "30")
 
-    key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
+	key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("RPUSH", key, relaySample.Value())
 	inserter.redisClient.Send("LTRIM", key, "-3600", "-1")
 	inserter.redisClient.Send("EXPIRE", key, "3600")
