@@ -97,11 +97,12 @@ func RunPollThread(mapInstance *portal.Map) {
 
 func main() {
 
-	mapInstance := portal.CreateMap()
-
 	ctx := context.Background()
 
+	mapInstance := portal.CreateMap(ctx)
+
 	RunInsertThreads(mapInstance)
+
 	RunPollThread(mapInstance)
 
 	time.Sleep(time.Minute)

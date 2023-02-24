@@ -2,7 +2,6 @@ package portal
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -71,8 +70,6 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 				currentTime := uint64(time.Now().Unix())
 				for k, v := range cell.Entries {
 					if currentTime-v.LastUpdateTime >= 30 {
-						// todo
-						fmt.Printf("timeout cell\n")
 						delete(cell.Entries, k)
 						continue
 					}
