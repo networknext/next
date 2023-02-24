@@ -12,12 +12,25 @@ DONE
 
 	Make sure I can see near relay ping data when I get session data in happy path	
 
-TODO
-	
 	Why are num near relays 0 in the nr-* entry?
 
+	The data is in redis, but it is empty in the NearRelayData entry.
 
+	Therefore, there is a parse error on near relay data
 
+	Confirm near relay data fix.
+
+TODO
+	
+	Stop and fix happy path so it is reliable.
+
+	Clearly, there are timing issues, especially around the route matrix not existing.
+
+	Fix the issue with the null database (no route matrix), make it harmless.
+
+	Then fix the happy path so it is working 100% reliably from one run to the next.
+
+	----------------
 
 
 

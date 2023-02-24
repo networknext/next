@@ -699,7 +699,7 @@ func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceDa
 
 	nearRelayData := make([]NearRelayData, len(redis_near_relay_data))
 	for i := 0; i < len(redis_near_relay_data); i++ {
-		sliceData[i].Parse(redis_near_relay_data[i])
+		nearRelayData[i].Parse(redis_near_relay_data[i])
 	}
 
 	return &sessionData, sliceData, nearRelayData

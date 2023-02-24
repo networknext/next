@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -180,11 +179,6 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 func processPortalMessages[T messages.Message](service *common.Service, name string, inputChannel chan T) {
 
 	streamName := strings.ReplaceAll(name, " ", "_")
-
-	fmt.Printf("-----------------------------------------\n")
-	fmt.Printf("redis hostname: %s\n", redisHostname)
-	fmt.Printf("stream name: %s\n", streamName)
-	fmt.Printf("-----------------------------------------\n")
 
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
