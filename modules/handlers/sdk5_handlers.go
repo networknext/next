@@ -66,6 +66,7 @@ type SDK5_Handler struct {
 	PortalServerUpdateMessageChannel    chan<- *messages.PortalServerUpdateMessage
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
+	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
 	AnalyticsServerInitMessageChannel      chan<- *messages.AnalyticsServerInitMessage
 	AnalyticsServerUpdateMessageChannel    chan<- *messages.AnalyticsServerUpdateMessage
@@ -497,6 +498,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
 	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel
+	state.PortalMapUpdateMessageChannel = handler.PortalMapUpdateMessageChannel
 
 	state.AnalyticsNearRelayUpdateMessageChannel = handler.AnalyticsNearRelayUpdateMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel

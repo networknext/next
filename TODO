@@ -1,22 +1,26 @@
 DONE
 
-TODO
-
-	------------------------------------------------------------
-
 	Create a new map message type in redis streams.
 
-	This service needs leader election. It will process the map messages in redis streams and update the map.
+	Hook up the map message to be emitted.
 
-	Actually hook up the map to run, and generate map data once per-second, store it in redis, and load the leader map.
+	Modify server backend to send the map message via redis pubsub, instead of redis streams.
 
-	Serve up the leader map on "map_data" endpoint (binary).
+TODO
+	
+	Implement map service so it subscribes to redis pubsub to get map updates.
 
-	Implement a "map_data" endpoint in API. This will hit the map service and get the map data, then return it.
+	Map service must have leader election. It should write the map data to redis via "Store". It does not need to pull the data or serve it up.
 
-	Verify that I can get "map_data" from the API during happy path.
+	Debug print when the map service gets map updates.
 
-	---------------------------------------------------------
+	Extend happy path so the map service runs, and we check at the end that it sees map updates.
+
+	Add API service to get map data (binary). Talk directly to redis, don't talk to the map service.
+
+	Verify that I can get map data at the end of happy path.
+
+	------------------------------------------------------------
 
 
 

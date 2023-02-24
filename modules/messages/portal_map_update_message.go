@@ -2,7 +2,7 @@ package messages
 
 import (
 	"fmt"
-	
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -13,11 +13,11 @@ const (
 )
 
 type PortalMapUpdateMessage struct {
-	Version byte
+	Version   byte
 	SessionId uint64
-	Latitude float32
+	Latitude  float32
 	Longitude float32
-	Next bool
+	Next      bool
 }
 
 func (message *PortalMapUpdateMessage) GetMaxSize() int {

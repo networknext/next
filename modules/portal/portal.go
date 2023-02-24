@@ -960,7 +960,7 @@ func GetServerData(pool *redis.Pool, serverAddress string, minutes int64) (*Serv
 
 	serverSessions := make([]uint64, len(sessionMap))
 	index := 0
-	for k, _ := range sessionMap {
+	for k := range sessionMap {
 		serverSessions[index] = k
 		index++
 	}

@@ -25,6 +25,7 @@ var relayBackendPrivateKey []byte
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
 var portalNearRelayUpdateMessageChannel chan *messages.PortalNearRelayUpdateMessage
+var portalMapUpdateMessageChannel chan *messages.PortalMapUpdateMessage
 
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
@@ -79,10 +80,12 @@ func main() {
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
 	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
+	portalMapUpdateMessageChannel = make(chan *messages.PortalMapUpdateMessage, channelSize)
 
-	processPortalMessages[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
-	processPortalMessages[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
-	processPortalMessages[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
+	processPortalMessages_RedisStreams[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
+	processPortalMessages_RedisStreams[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
+	processPortalMessages_RedisStreams[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
+	processPortalMessages_RedisPubsub[*messages.PortalMapUpdateMessage](service, "map update", portalMapUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -93,12 +96,12 @@ func main() {
 	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
 	analyticsNearRelayUpdateMessageChannel = make(chan *messages.AnalyticsNearRelayUpdateMessage, channelSize)
 
-	processAnalyticsMessages[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsNearRelayUpdateMessage]("near relay update", analyticsNearRelayUpdateMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
-	processAnalyticsMessages[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayUpdateMessage]("near relay update", analyticsNearRelayUpdateMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
 
 	// start the service
 
@@ -148,6 +151,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
 	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
 	handler.PortalNearRelayUpdateMessageChannel = portalNearRelayUpdateMessageChannel
+	handler.PortalMapUpdateMessageChannel = portalMapUpdateMessageChannel
 
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
@@ -176,7 +180,7 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.LocateIP(ip)
 }
 
-func processPortalMessages[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+func processPortalMessages_RedisStreams[T messages.Message](service *common.Service, name string, inputChannel chan T) {
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 
@@ -204,7 +208,35 @@ func processPortalMessages[T messages.Message](service *common.Service, name str
 	}()
 }
 
-func processAnalyticsMessages[T messages.Message](name string, inputChannel chan T) {
+func processPortalMessages_RedisPubsub[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+
+	channelName := strings.ReplaceAll(name, " ", "_")
+
+	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
+		RedisHostname:     redisHostname,
+		RedisPassword:     redisPassword,
+		PubsubChannelName: channelName,
+	})
+
+	if err != nil {
+		core.Error("could not create redis pubsub producer for %s", name)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			message := <-inputChannel
+			core.Debug("processing portal %s message", name)
+			messageData := message.Write(make([]byte, message.GetMaxSize()))
+			if enableRedisStreams {
+				core.Debug("sent portal %s message to redis pubsub", name)
+				redisPubsubProducer.MessageChannel <- messageData
+			}
+		}
+	}()
+}
+
+func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inputChannel chan T) {
 
 	var googlePubsubProducer *common.GooglePubsubProducer
 
@@ -238,6 +270,7 @@ func processAnalyticsMessages[T messages.Message](name string, inputChannel chan
 			core.Debug("processing analytics %s message", name)
 			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableGooglePubsub {
+				core.Debug("sent analytics %s message to google pubsub", name)
 				googlePubsubProducer.MessageChannel <- messageData
 			}
 		}

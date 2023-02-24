@@ -159,8 +159,8 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalServerDataResponse struct {
-	ServerData *portal.ServerData `json:"server_data"`
-	ServerSessionIds []uint64 `json:"server_session_ids"`
+	ServerData       *portal.ServerData `json:"server_data"`
+	ServerSessionIds []uint64           `json:"server_session_ids"`
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {

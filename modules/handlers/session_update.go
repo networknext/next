@@ -77,6 +77,7 @@ type SessionUpdateState struct {
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
 	SentPortalSessionUpdateMessage            bool
 	SentPortalNearRelayUpdateMessage          bool
+	SentPortalMapUpdateMessage                bool
 	SentAnalyticsNearRelayUpdateMessage       bool
 	SentAnalyticsSessionUpdateMessage         bool
 	LocatedIP                                 bool
@@ -85,6 +86,7 @@ type SessionUpdateState struct {
 
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
+	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
 	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
 	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
@@ -1035,6 +1037,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendPortalNearRelayUpdateMessage(state)
 
+		sendPortalMapUpdateMessage(state)
+
 		sendAnalyticsSessionUpdateMessage(state)
 
 		sendAnalyticsSessionSummaryMessage(state)
@@ -1120,6 +1124,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
+	// todo: would be nicer to have some data here instead like, "bool HasNearRelayUpdate"
 	if state.Request.SliceNumber != 1 {
 		return
 	}
@@ -1141,6 +1146,22 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 	if state.PortalNearRelayUpdateMessageChannel != nil {
 		state.PortalNearRelayUpdateMessageChannel <- &message
 		state.SentPortalNearRelayUpdateMessage = true
+	}
+}
+
+func sendPortalMapUpdateMessage(state *SessionUpdateState) {
+
+	message := messages.PortalMapUpdateMessage{}
+
+	message.Version = messages.PortalMapUpdateMessageVersion_Write
+	message.SessionId = state.Output.SessionId
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
+	message.Next = state.Output.RouteState.Next
+
+	if state.PortalMapUpdateMessageChannel != nil {
+		state.PortalMapUpdateMessageChannel <- &message
+		state.SentPortalMapUpdateMessage = true
 	}
 }
 

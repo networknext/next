@@ -377,11 +377,11 @@ func GenerateRandomPortalNearRelayUpdateMessage() messages.PortalNearRelayUpdate
 func GenerateRandomPortalMapUpdateMessage() messages.PortalMapUpdateMessage {
 
 	message := messages.PortalMapUpdateMessage{
-		Version:       byte(common.RandomInt(messages.PortalMapUpdateMessageVersion_Min, messages.PortalMapUpdateMessageVersion_Max)),
-		SessionId:     rand.Uint64(),
-		Latitude:      float32(common.RandomInt(-90, +90)),
-		Longitude:     float32(common.RandomInt(-180, +180)),
-		Next:          common.RandomBool(),
+		Version:   byte(common.RandomInt(messages.PortalMapUpdateMessageVersion_Min, messages.PortalMapUpdateMessageVersion_Max)),
+		SessionId: rand.Uint64(),
+		Latitude:  float32(common.RandomInt(-90, +90)),
+		Longitude: float32(common.RandomInt(-180, +180)),
+		Next:      common.RandomBool(),
 	}
 
 	return message
