@@ -12,17 +12,19 @@ DONE
 
 	Debug print when the map service gets map updates.
 
-	Extend happy path so the map service runs, and we check at the end that it sees map updates.
-
-TODO
-		
 	Actually hook up map stuff into map cruncher, so the map updates are processed.
 
 	Add a 1sec timer pump to write map data to redis via "Store" ("map_data"). Only write if master.
 
+	Verify that I can get map data at the end of happy path.
+
+TODO
+
+	Add a check at the end of happy path that the map cruncher sees map updates.	
+		
 	Add API service to get map data (binary). Talk directly to redis, don't talk to the map service...
 
-	Verify that I can get map data at the end of happy path.
+	Will need a helper method to load data from a service, eg. Load(service, name)
 
 	------------------------------------------------------------
 
