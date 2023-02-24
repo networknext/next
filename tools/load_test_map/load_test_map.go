@@ -87,7 +87,8 @@ func RunPollThread(mapInstance *portal.Map) {
 					entries = append(entries, output.Entries...)
 				}
 			}
-			fmt.Printf("iteration %d: %d entries (%dms)\n", iteration, len(entries), time.Since(start).Milliseconds())
+			data := portal.WriteMapData(entries)
+			fmt.Printf("iteration %d: %d entries, %d data bytes (%dms)\n", iteration, len(entries), len(data), time.Since(start).Milliseconds())
 			previousSize = len(entries)
 			iteration++
 		}

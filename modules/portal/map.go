@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/rand"
 	"time"
+
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const MapWidth = 360
@@ -102,4 +104,21 @@ func GetCellIndex(latitude float32, longitude float32) int {
 	y := int((latitude + 90.0) / CellSize)
 	index := x + (MapWidth/CellSize)*y
 	return index
+}
+
+const MapDataVersion = 1
+
+func WriteMapData(entries []CellEntry) []byte {
+	size := 1 + 4 + (8+4+4+1)*len(entries)
+	data := make([]byte, size)	
+	index := 0
+	encoding.WriteUint8(data, &index, MapDataVersion)
+	encoding.WriteUint32(data, &index, uint32(len(entries)))
+	for i := range entries {
+		encoding.WriteUint64(data, &index, entries[i].SessionId)
+		encoding.WriteFloat32(data, &index, entries[i].Latitude)
+		encoding.WriteFloat32(data, &index, entries[i].Longitude)
+		encoding.WriteBool(data, &index, entries[i].Next)
+	}
+	return data
 }

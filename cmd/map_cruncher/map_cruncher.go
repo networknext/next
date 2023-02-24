@@ -2,16 +2,20 @@ package main
 
 import (
 	"os"
+	"time"
 	"strings"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/messages"
+	"github.com/networknext/backend/modules/portal"
 )
 
 var redisHostname string
 var redisPassword string
+
+var mapInstance *portal.Map
 
 func main() {
 
@@ -26,15 +30,13 @@ func main() {
 
 	service := common.CreateService("map_cruncher")
 
-	// todo: process map messages
-	_ = numMapUpdateThreads
-	/*
-		for i := 0; i < numSessionUpdateThreads; i++ {
-			ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
-		}
-	*/
+	for i := 0; i < numMapUpdateThreads; i++ {
+		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", i, ProcessMapUpdate)
+	}
 
-	// todo: serve up map data from leader
+	mapInstance = portal.CreateMap()
+
+	WriteMapDataToRedis(service)
 
 	service.LeaderElection()
 
@@ -45,23 +47,59 @@ func main() {
 
 // -------------------------------------------------------------------------------
 
+func WriteMapDataToRedis(service *common.Service) {
+
+	go func() {
+
+		previousSize := 0
+
+		for {
+
+			time.Sleep(time.Second)
+
+			entries := make([]portal.CellEntry, 0, previousSize)
+			
+			for i := 0; i < portal.NumCells; i++ {
+				for {
+					var output *portal.CellOutput
+					select {
+					case output = <-mapInstance.Cells[i].OutputChan:
+					default:
+					}
+					if output == nil {
+						break
+					}
+					entries = append(entries, output.Entries...)
+				}
+			}
+
+			data := portal.WriteMapData(entries)
+
+			if service.IsLeader() {
+				service.Store("map_data", data)
+			}
+			
+			previousSize = len(entries)
+		}
+	}()
+}
+
+// -------------------------------------------------------------------------------
+
 func ProcessMessages[T messages.Message](service *common.Service, name string, threadNumber int, process func([]byte, int)) {
 
-	streamName := strings.ReplaceAll(name, " ", "_")
-	consumerGroup := streamName
+	channelName := strings.ReplaceAll(name, " ", "_")
 
-	// todo: it must be redis pubsub actually. all map crunchers must receive the same stream of map update messages
+	config := common.RedisPubsubConfig{}
 
-	config := common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
-		StreamName:    streamName,
-		ConsumerGroup: consumerGroup,
-	}
+	config.RedisHostname = redisHostname
+	config.RedisPassword = redisPassword
+	config.PubsubChannelName = channelName
 
-	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)
+
 	if err != nil {
-		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		core.Error("could not create redis pubsub consumer for map updates")
 		os.Exit(1)
 	}
 
@@ -81,21 +119,28 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 func ProcessMapUpdate(messageData []byte, threadNumber int) {
 
-	// todo
-	/*
-		message := messages.PortalRelayUpdateMessage{}
-		err := message.Read(messageData)
-		if err != nil {
-			core.Error("could not read relay update message: %v", err)
-			return
-		}
+	message := messages.PortalMapUpdateMessage{}
+	err := message.Read(messageData)
+	if err != nil {
+		core.Error("could not read map update message: %v", err)
+		return
+	}
 
-		core.Debug("received relay update message on thread %d", threadNumber)
+	core.Debug("received map update message on thread %d", threadNumber)
 
-		// ...
+	update := portal.CellUpdate{}
+	update.SessionId = message.SessionId
+	update.Latitude = message.Latitude
+	update.Longitude = message.Longitude
+	update.Next = message.Next
 
-		_ = message
-	*/
+	cellIndex := portal.GetCellIndex(update.Latitude, update.Longitude)
+	if cellIndex < 0 {
+		core.Error("bad map update lat/long")
+		return
+	}
+
+	mapInstance.Cells[cellIndex].UpdateChan <- &update
 }
 
 // -------------------------------------------------------------------------------
