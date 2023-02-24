@@ -22,72 +22,11 @@ DONE
 
 	Fix the issue with the null database (no route matrix), make it harmless.
 
-TODO
-
 	Wait for leader election to complete before I run the client and server	
 
-	----------------
+	Flush redis db before happy path
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-	---------------------------------------------------------------------------------------------------------
-
-	Need to explicitly wait up to 15 seconds for analytics, relay backend and api to elect a leader. 
-
-	Otherwise, race conditions in happy path... =p
+TODO
 
 	------------------------------------------------------------
 
