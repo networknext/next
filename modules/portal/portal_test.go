@@ -10,7 +10,7 @@ import (
 
 const NumIterations = 1
 
-func TestPortalSessionData(t *testing.T) {
+func TestSessionData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
 		writeData := portal.GenerateRandomSessionData()
@@ -21,7 +21,7 @@ func TestPortalSessionData(t *testing.T) {
 	}
 }
 
-func TestPortalSliceData(t *testing.T) {
+func TestSliceData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
 		writeData := portal.GenerateRandomSliceData()
@@ -32,7 +32,7 @@ func TestPortalSliceData(t *testing.T) {
 	}
 }
 
-func TestPortalNearRelayData(t *testing.T) {
+func TestNearRelayData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
 		writeData := portal.GenerateRandomNearRelayData()
@@ -43,7 +43,7 @@ func TestPortalNearRelayData(t *testing.T) {
 	}
 }
 
-func TestPortalServerData(t *testing.T) {
+func TestServerData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
 		writeData := portal.GenerateRandomServerData()
@@ -54,12 +54,23 @@ func TestPortalServerData(t *testing.T) {
 	}
 }
 
-func TestPortalRelayData(t *testing.T) {
+func TestRelayData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
 		writeData := portal.GenerateRandomRelayData()
 		value := writeData.Value()
 		readData := portal.RelayData{}
+		readData.Parse(value)
+		assert.Equal(t, *writeData, readData)
+	}
+}
+
+func TestRelaySample(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeData := portal.GenerateRandomRelaySample()
+		value := writeData.Value()
+		readData := portal.RelaySample{}
 		readData.Parse(value)
 		assert.Equal(t, *writeData, readData)
 	}

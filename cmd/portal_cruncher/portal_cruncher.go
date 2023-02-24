@@ -237,7 +237,19 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		Version:      message.RelayVersion,
 	}
 
-	relayInserter[threadNumber].Insert(&relayData)
+	relaySample := portal.RelaySample{
+		Timestamp:   message.Timestamp,
+		NumSessions: message.SessionCount,
+		EnvelopeBandwidthUpKbps: message.EnvelopeBandwidthUpKbps,
+		EnvelopeBandwidthDownKbps: message.EnvelopeBandwidthDownKbps,
+		ActualBandwidthUpKbps: message.ActualBandwidthUpKbps,
+		ActualBandwidthDownKbps: message.ActualBandwidthDownKbps,
+		RelayFlags: message.RelayFlags,
+		NumRoutable: message.NumRoutable,
+		NumUnroutable: message.NumUnroutable,
+	}
+
+	relayInserter[threadNumber].Insert(&relayData, &relaySample)
 }
 
 // -------------------------------------------------------------------------------

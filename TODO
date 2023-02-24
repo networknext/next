@@ -26,17 +26,19 @@ DONE
 
 	Flush redis db before happy path
 
+	Added relay sample struct
+
+	Insert LPUSH relay sample with each relay insert
+
+	Implement GetRelayData with historical time series data.
+
+	Verify that I can see historical relay samples when I hit the API for relay data.
+
 TODO
 
 	------------------------------------------------------------
 
 	Implement GetServerSessions -- the session ids currently connected to the server (use the hset/hgetall with the minute double buffering and merge)
-
-	------------------------------------------------------------
-
-	Implement GetRelayData with historical time series data
-
-	Get the time series data for the relay, going back 10 minutes, eg. session counts, envelope bandwidth up, envelope bandwidth down, actual bandwidth up, actual bandwidth down.
 
 	------------------------------------------------------------
 
@@ -262,6 +264,49 @@ TODO
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Essentials:
+
 	--------------
 
 	Get pubsub emulator setup.
@@ -333,54 +378,6 @@ TODO
 	--------------
 
 	Extend analytics service to insert messages into bigquery.
-
-	--------------
-
-	Implement simple "api" service
-
-	--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Essentials:
 
 	--------------
 

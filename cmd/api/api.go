@@ -211,13 +211,14 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalRelayDataResponse struct {
 	RelayData *portal.RelayData `json:"relay_data"`
+	RelaySamples []portal.RelaySample `json:"relay_samples"`
 }
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	relayAddress := vars["relay_address"]
 	response := PortalRelayDataResponse{}
-	response.RelayData = portal.GetRelayData(pool, relayAddress)
+	response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

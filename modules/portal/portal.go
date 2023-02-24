@@ -532,6 +532,100 @@ func GenerateRandomRelayData() *RelayData {
 
 // --------------------------------------------------------------------------------------------------
 
+type RelaySample struct {
+	Timestamp                 uint64
+	NumSessions               uint32
+	EnvelopeBandwidthUpKbps   uint32
+	EnvelopeBandwidthDownKbps uint32
+	ActualBandwidthUpKbps     uint32
+	ActualBandwidthDownKbps   uint32
+	RelayFlags                uint64
+	NumRoutable               uint32
+	NumUnroutable             uint32
+}
+
+func (data *RelaySample) Value() string {
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%x|%d|%d",
+		data.Timestamp,
+		data.NumSessions,
+		data.EnvelopeBandwidthUpKbps,
+		data.EnvelopeBandwidthDownKbps,
+		data.ActualBandwidthUpKbps,
+		data.ActualBandwidthDownKbps,
+		data.RelayFlags,
+		data.NumRoutable,
+		data.NumUnroutable,
+	)
+}
+
+func (data *RelaySample) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) != 9 {
+		return
+	}
+	timestamp, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	numSessions, err := strconv.ParseUint(values[1], 10, 32)
+	if err != nil {
+		return
+	}
+	envelopeBandwidthUpKbps, err := strconv.ParseUint(values[2], 10, 32)
+	if err != nil {
+		return
+	}
+	envelopeBandwidthDownKbps, err := strconv.ParseUint(values[3], 10, 32)
+	if err != nil {
+		return
+	}
+	actualBandwidthUpKbps, err := strconv.ParseUint(values[4], 10, 32)
+	if err != nil {
+		return
+	}
+	actualBandwidthDownKbps, err := strconv.ParseUint(values[5], 10, 32)
+	if err != nil {
+		return
+	}
+	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
+	if err != nil {
+		return
+	}
+	numRoutable, err := strconv.ParseUint(values[7], 10, 32)
+	if err != nil {
+		return
+	}
+	numUnroutable, err := strconv.ParseUint(values[8], 10, 32)
+	if err != nil {
+		return
+	}
+	data.Timestamp = timestamp
+	data.NumSessions = uint32(numSessions)
+	data.EnvelopeBandwidthUpKbps = uint32(envelopeBandwidthUpKbps)
+	data.EnvelopeBandwidthDownKbps = uint32(envelopeBandwidthDownKbps)
+	data.ActualBandwidthUpKbps = uint32(actualBandwidthUpKbps)
+	data.ActualBandwidthDownKbps = uint32(actualBandwidthDownKbps)
+	data.RelayFlags = relayFlags
+	data.NumRoutable = uint32(numRoutable)
+	data.NumUnroutable = uint32(numUnroutable)
+}
+
+func GenerateRandomRelaySample() *RelaySample {
+	data := RelaySample{}
+	data.Timestamp = rand.Uint64()
+	data.NumSessions = rand.Uint32()
+	data.EnvelopeBandwidthUpKbps = rand.Uint32()
+	data.EnvelopeBandwidthDownKbps = rand.Uint32()
+	data.ActualBandwidthUpKbps = rand.Uint32()
+	data.ActualBandwidthDownKbps = rand.Uint32()
+	data.RelayFlags = rand.Uint64()
+	data.NumRoutable = rand.Uint32()
+	data.NumUnroutable = rand.Uint32()
+	return &data
+}
+
+// --------------------------------------------------------------------------------------------------
+
 func GetSessionCounts(pool *redis.Pool, minutes int64) (int, int) {
 
 	redisClient := pool.Get()
@@ -971,17 +1065,23 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayEntry
 	return relays
 }
 
-func GetRelayData(pool *redis.Pool, relayAddress string) *RelayData {
+func GetRelayData(pool *redis.Pool, relayAddress string) (*RelayData, []RelaySample) {
 
 	redisClient := pool.Get()
 
 	redisClient.Send("GET", fmt.Sprintf("rd-%s", relayAddress))
+	redisClient.Send("LRANGE", fmt.Sprintf("rs-%s", relayAddress), 0, -1)
 
 	redisClient.Flush()
 
 	redis_relay_data, err := redis.String(redisClient.Receive())
 	if err != nil {
-		return nil
+		return nil, nil
+	}
+
+	redis_sample_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		return nil, nil
 	}
 
 	redisClient.Close()
@@ -989,7 +1089,12 @@ func GetRelayData(pool *redis.Pool, relayAddress string) *RelayData {
 	relayData := RelayData{}
 	relayData.Parse(redis_relay_data)
 
-	return &relayData
+	relaySamples := make([]RelaySample, len(redis_sample_data))
+	for i := 0; i < len(redis_sample_data); i++ {
+		relaySamples[i].Parse(redis_sample_data[i])
+	}
+
+	return &relayData, relaySamples
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -1087,8 +1192,9 @@ func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearR
 
 	currentTime := time.Now()
 
-	inserter.redisClient.Send("RPUSH", fmt.Sprintf("nr-%016x", sessionId), nearRelayData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("nr-%016x", sessionId), 3600)
+	key := fmt.Sprintf("nr-%016x", sessionId)
+	inserter.redisClient.Send("RPUSH", key, nearRelayData.Value())
+	inserter.redisClient.Send("EXPIRE", key, 3600)
 
 	inserter.numPending++
 
@@ -1177,7 +1283,7 @@ func CreateRelayInserter(pool *redis.Pool, batchSize int) *RelayInserter {
 	return &inserter
 }
 
-func (inserter *RelayInserter) Insert(relayData *RelayData) {
+func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySample) {
 
 	currentTime := time.Now()
 
@@ -1192,8 +1298,14 @@ func (inserter *RelayInserter) Insert(relayData *RelayData) {
 	inserter.relays = inserter.relays.Add(score)
 	inserter.relays = inserter.relays.Add(relayData.RelayAddress)
 
-	inserter.redisClient.Send("SET", fmt.Sprintf("rd-%016x", relayData.RelayAddress), relayData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("rd-%016x", relayData.RelayAddress), 30)
+    key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
+	inserter.redisClient.Send("SET", key, relayData.Value())
+	inserter.redisClient.Send("EXPIRE", key, "30")
+
+    key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
+	inserter.redisClient.Send("RPUSH", key, relaySample.Value())
+	inserter.redisClient.Send("LTRIM", key, "-3600", "-1")
+	inserter.redisClient.Send("EXPIRE", key, "3600")
 
 	inserter.numPending++
 
