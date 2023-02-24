@@ -45,6 +45,8 @@ func main() {
 	service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
 	service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
 
+	service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
+
 	service.Router.HandleFunc("/admin/relays", adminRelaysHandler)
 
 	service.StartWebServer()
@@ -223,6 +225,15 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	data := common.LoadMasterServiceData(pool, "map_cruncher", "map_data")
+	w.Write(data)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -2,8 +2,8 @@ package main
 
 import (
 	"os"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
@@ -34,7 +34,7 @@ func main() {
 		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", i, ProcessMapUpdate)
 	}
 
-	mapInstance = portal.CreateMap()
+	mapInstance = portal.CreateMap(service.Context)
 
 	WriteMapDataToRedis(service)
 
@@ -58,7 +58,7 @@ func WriteMapDataToRedis(service *common.Service) {
 			time.Sleep(time.Second)
 
 			entries := make([]portal.CellEntry, 0, previousSize)
-			
+
 			for i := 0; i < portal.NumCells; i++ {
 				for {
 					var output *portal.CellOutput
@@ -78,7 +78,7 @@ func WriteMapDataToRedis(service *common.Service) {
 			if service.IsLeader() {
 				service.Store("map_data", data)
 			}
-			
+
 			previousSize = len(entries)
 		}
 	}()

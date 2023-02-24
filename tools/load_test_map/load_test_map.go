@@ -101,10 +101,6 @@ func main() {
 
 	ctx := context.Background()
 
-	for i := 0; i < portal.NumCells; i++ {
-		mapInstance.Cells[i].RunCellThread(ctx)
-	}
-
 	RunInsertThreads(mapInstance)
 	RunPollThread(mapInstance)
 

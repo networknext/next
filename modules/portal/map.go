@@ -2,6 +2,7 @@ package portal
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -70,6 +71,8 @@ func (cell *MapCell) RunCellThread(ctx context.Context) {
 				currentTime := uint64(time.Now().Unix())
 				for k, v := range cell.Entries {
 					if currentTime-v.LastUpdateTime >= 30 {
+						// todo
+						fmt.Printf("timeout cell\n")
 						delete(cell.Entries, k)
 						continue
 					}
@@ -85,13 +88,16 @@ type Map struct {
 	Cells []MapCell
 }
 
-func CreateMap() *Map {
+func CreateMap(ctx context.Context) *Map {
 	mapInstance := Map{}
 	mapInstance.Cells = make([]MapCell, NumCells)
 	for i := range mapInstance.Cells {
 		mapInstance.Cells[i].UpdateChan = make(chan *CellUpdate, UpdateChannelSize)
 		mapInstance.Cells[i].OutputChan = make(chan *CellOutput, OutputChannelSize)
 		mapInstance.Cells[i].Entries = make(map[uint64]CellEntry)
+	}
+	for i := 0; i < NumCells; i++ {
+		mapInstance.Cells[i].RunCellThread(ctx)
 	}
 	return &mapInstance
 }
@@ -110,7 +116,7 @@ const MapDataVersion = 1
 
 func WriteMapData(entries []CellEntry) []byte {
 	size := 1 + 4 + (8+4+4+1)*len(entries)
-	data := make([]byte, size)	
+	data := make([]byte, size)
 	index := 0
 	encoding.WriteUint8(data, &index, MapDataVersion)
 	encoding.WriteUint32(data, &index, uint32(len(entries)))
