@@ -23,7 +23,6 @@ INSERT INTO buyers
 	public_key_base64, 
 	customer_id,
 	route_shader_id
-
 ) 
 VALUES(
 	'raspberry',

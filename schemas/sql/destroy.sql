@@ -1,6 +1,4 @@
 
-\c network_next
-
 DROP TABLE IF EXISTS customers CASCADE;
 DROP TABLE IF EXISTS buyers CASCADE;
 DROP TABLE IF EXISTS sellers CASCADE;
@@ -8,12 +6,3 @@ DROP TABLE IF EXISTS route_shaders CASCADE;
 DROP TABLE IF EXISTS datacenters CASCADE;
 DROP TABLE IF EXISTS datacenter_maps CASCADE;
 DROP TABLE IF EXISTS relays CASCADE;
-
-\c template1
-
-DROP DATABASE IF EXISTS network_next;
-
-DROP USER IF EXISTS admin;
-DROP USER IF EXISTS operations;
-DROP USER IF EXISTS engineering;
-DROP USER IF EXISTS customer;

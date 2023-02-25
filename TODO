@@ -1,32 +1,56 @@
 DONE
 
-	Create a new map message type in redis streams.
-
-	Hook up the map message to be emitted.
-
-	Modify server backend to send the map message via redis pubsub, instead of redis streams.
-
-	Implement map service so it subscribes to redis pubsub to get map updates.
-
-	Map service must have leader election. 
-
-	Debug print when the map service gets map updates.
-
-	Actually hook up map stuff into map cruncher, so the map updates are processed.
-
-	Add a 1sec timer pump to write map data to redis via "Store" ("map_data"). Only write if master.
-
-	Verify that I can get map data at the end of happy path.
-
-	Add a check at the end of happy path that the map cruncher sees map updates.	
-		
-	Implement a helper method in service.go (not requiring service) to load master data from a service, eg. LoadMasterData(service, name)
-
-	Add API service to get map data (binary). Talk directly to redis, don't talk to the map service...
-
-	Map API is done.
-
 TODO
+
+	--------------
+
+	CREATE, READ, UPDATE and DELETE
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
 

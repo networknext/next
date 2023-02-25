@@ -22,8 +22,8 @@ func RunProducerThreads(ctx context.Context, hostname string, threadCount int, n
 		var err error
 
 		producers[i], err = common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
-			RedisHostname:      hostname,
-			StreamName:         "test-stream",
+			RedisHostname: hostname,
+			StreamName:    "test-stream",
 		})
 
 		if err != nil {
@@ -71,9 +71,9 @@ func RunConsumerThreads(ctx context.Context, hostname string, threadCount int, n
 		var err error
 
 		consumers[i], err = common.CreateRedisStreamsConsumer(ctx, common.RedisStreamsConfig{
-			RedisHostname:      hostname,
-			StreamName:         "test-stream",
-			ConsumerGroup:      "test-group",
+			RedisHostname: hostname,
+			StreamName:    "test-stream",
+			ConsumerGroup: "test-group",
 		})
 
 		if err != nil {
