@@ -4,7 +4,7 @@
 
 This repo contains the Network Next backend.
 
-# Setup
+# Setup on MacOS
 
 1. Install brew from https://brew.sh
 
@@ -44,7 +44,8 @@ This repo contains the Network Next backend.
 
 	You should see output like:
 
-	`dist/func_tests_sdk5
+```console
+dist/func_tests_sdk5
 dist/relay
 dist/func_backend
 dist/libnext5.so
@@ -77,7 +78,8 @@ ok  	github.com/networknext/backend/modules/encoding	0.255s
 ok  	github.com/networknext/backend/modules/handlers	0.306s
 ok  	github.com/networknext/backend/modules/messages	0.223s
 ok  	github.com/networknext/backend/modules/packets	0.885s
-ok  	github.com/networknext/backend/modules/portal	0.281s`
+ok  	github.com/networknext/backend/modules/portal	0.281s
+```
 
 9. Run happy path
 
@@ -85,4 +87,97 @@ ok  	github.com/networknext/backend/modules/portal	0.281s`
 
 	You should see output like:
 
-	
+```console
+
+don't worry. be happy.
+
+starting api:
+
+   run api
+
+verifying api ... OK
+
+starting relay backend services:
+
+   run magic-backend
+   run relay-gateway
+   run relay-backend
+   run relay-backend HTTP_PORT=30002
+
+verifying magic backend ... OK
+verifying relay gateway ... OK
+verifying relay backend 1 ... OK
+verifying relay backend 2 ... OK
+
+starting relays:
+
+   run relay
+   run relay RELAY_PORT=2001
+   run relay RELAY_PORT=2002
+   run relay RELAY_PORT=2003
+   run relay RELAY_PORT=2004
+
+verifying relays ... OK
+verifying relay gateway sees relays ... OK
+verifying relay backend 1 sees relays ... OK
+verifying relay backend 2 sees relays ... OK
+
+starting server backend:
+
+   run server-backend
+
+verifying server backend ... OK
+
+starting portal cruncher:
+
+   run portal-cruncher
+   run portal-cruncher HTTP_PORT=40013
+
+verifying portal cruncher 1 ... OK
+verifying portal cruncher 2 ... OK
+
+starting map cruncher:
+
+   run map-cruncher
+   run map-cruncher HTTP_PORT=40101
+
+verifying map cruncher 1 ... OK
+verifying map cruncher 2 ... OK
+
+starting analytics:
+
+   run analytics
+   run analytics HTTP_PORT=40002
+
+verifying analytics 1 ... OK
+verifying analytics 2 ... OK
+
+waiting for leader election
+
+    analytics ... OK
+    map cruncher ... OK
+    relay backend ... OK
+
+starting client and server:
+
+   run client
+   run server
+
+verifying server ... OK
+verifying client ... OK
+
+post validation:
+
+verifying leader election in relay backend ... OK
+verifying leader election in analytics ... OK
+verifying leader election in analytics ... OK
+verifying leader election in map cruncher ... OK
+verifying portal cruncher received session update messages ... OK
+verifying portal cruncher received server update messages ... OK
+verifying portal cruncher received relay update messages ... OK
+verifying portal cruncher received near relay update messages ... OK
+verifying map cruncher received map update messages ... OK
+
+*** SUCCESS! ***
+
+```
