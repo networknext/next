@@ -22,7 +22,7 @@ This repo contains the Network Next backend.
 
 	`brew services start postgresql@14`
 
-5. Add '.' to your path
+5. Add . to your path
 
 	Modify .zshrc to include:
 
