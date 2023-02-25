@@ -273,75 +273,6 @@ func handleRunTimeError(msg string, level int) {
 	os.Exit(level)
 }
 
-func refreshAuth(env Environment) error {
-
-	// todo: bring back if wanted
-	/*
-			audience := ""
-			clientID := ""
-			clientSecret := ""
-			domain := ""
-
-			// todo: seems like we can do better than this
-			switch env.Name {
-			case "prod":
-				audience = PROD_AUTH0_AUDIENCE
-				clientID = PROD_AUTH0_CLIENT_ID
-				clientSecret = PROD_AUTH0_CLIENT_SECRET
-				domain = PROD_AUTH0_DOMAIN
-			case "dev":
-				audience = DEV_AUTH0_AUDIENCE
-				clientID = DEV_AUTH0_CLIENT_ID
-				clientSecret = DEV_AUTH0_CLIENT_SECRET
-				domain = DEV_AUTH0_DOMAIN
-			default:
-				audience = LOCAL_AUTH0_AUDIENCE
-				clientID = LOCAL_AUTH0_CLIENT_ID
-				clientSecret = LOCAL_AUTH0_CLIENT_SECRET
-				domain = LOCAL_AUTH0_DOMAIN
-			}
-
-			req, err := http.NewRequest(
-				http.MethodPost,
-				fmt.Sprintf("https://%s/oauth/token", domain),
-				strings.NewReader(fmt.Sprintf(`{
-		                "client_id":"%s",
-		                "client_secret":"%s",
-		                "audience":"%s",
-		                "grant_type":"client_credentials"
-		            }`, clientID, clientSecret, audience)),
-			)
-			if err != nil {
-				return err
-			}
-
-			req.Header.Add("Content-Type", "application/json")
-
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-			defer res.Body.Close()
-
-			if res.StatusCode != http.StatusOK {
-				return err
-			}
-
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				return err
-			}
-			defer res.Body.Close()
-
-			env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
-			env.Write()
-
-			fmt.Print("Successfully authorized\n")
-	*/
-
-	return nil
-}
-
 func main() {
 	var env Environment
 
@@ -350,29 +281,12 @@ func main() {
 	}
 	env.Read()
 
-	if env.AuthToken == "" {
-		if err := refreshAuth(env); err != nil {
-			handleRunTimeError(err.Error(), 1)
-		}
-		env.Read()
-	}
-
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "Number of relays to display (default: all)")
 
 	var relaysAlphaSort bool
 	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
-
-	var authCommand = &ffcli.Command{
-		Name:       "auth",
-		ShortUsage: "next auth",
-		ShortHelp:  "Authorize the operator tool",
-		Exec: func(_ context.Context, args []string) error {
-			refreshAuth(env)
-			return nil
-		},
-	}
 
 	var selectCommand = &ffcli.Command{
 		Name:       "select",
@@ -787,7 +701,6 @@ func main() {
 	}
 
 	var commands = []*ffcli.Command{
-		authCommand,
 		selectCommand,
 		envCommand,
 		databaseCommand,
@@ -1313,15 +1226,7 @@ const (
 )
 
 type Environment struct {
-	CLIRelease   string `json:"-"`
-	CLIBuildTime string `json:"-"`
-
-	RemoteRelease   string `json:"-"`
-	RemoteBuildTime string `json:"-"`
-
 	Name           string `json:"name"`
-	Hostname       string `json:"hostname"`
-	AuthToken      string `json:"auth_token"`
 	SSHKeyFilePath string `json:"ssh_key_filepath"`
 }
 
@@ -1330,9 +1235,6 @@ func (e *Environment) String() string {
 
 	sb.WriteString(fmt.Sprintf("Environment: %s\n", e.Name))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Hostname: %s\n", e.PortalHostname()))
-	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("AuthToken:\n\n    %s\n\n", e.AuthToken))
 	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
 
 	return sb.String()
@@ -1404,13 +1306,6 @@ func (e *Environment) Clean() {
 		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
 
 	}
-}
-
-func (e *Environment) PortalHostname() string {
-	if hostname, err := e.switchEnvLocal(PortalHostnameLocal, PortalHostnameDev, PortalHostnameStaging, PortalHostnameProd); err == nil {
-		return hostname
-	}
-	return e.Hostname
 }
 
 func (e *Environment) RouterPublicKey() (string, error) {

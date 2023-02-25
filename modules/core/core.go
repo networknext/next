@@ -1,9 +1,5 @@
 package core
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"bytes"
 	"encoding/binary"

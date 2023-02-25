@@ -23,7 +23,7 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 
 .PHONY: test
 test: build
-	run test
+	./run test
 
 # Clean, build and rebuild
 
