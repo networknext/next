@@ -333,3 +333,7 @@ Nice to have:
 	Multipath across two network next routes (Psyonix).
 
 	--------------
+
+	Atomics in SDK mean I can't just clear the whole structs. Godfucking damnit.
+
+	--------------
