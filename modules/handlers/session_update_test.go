@@ -239,8 +239,8 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	state.Request.BuyerId = 0x11111
 	state.Request.DatacenterId = 0x12345
 	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
-	state.Database.DatacenterMaps[state.Buyer.Id] = make(map[uint64]*db.DatacenterMap)
-	state.Database.DatacenterMaps[state.Buyer.Id][state.Request.DatacenterId] = &db.DatacenterMap{EnableAcceleration: true}
+	state.Database.BuyerDatacenterSettings[state.Buyer.Id] = make(map[uint64]*db.BuyerDatacenterSettings)
+	state.Database.BuyerDatacenterSettings[state.Buyer.Id][state.Request.DatacenterId] = &db.BuyerDatacenterSettings{EnableAcceleration: true, BuyerId: 0x11111, DatacenterId: 0x12345}
 
 	result := handlers.SessionUpdate_Pre(state)
 

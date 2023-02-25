@@ -10,6 +10,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/admin"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
@@ -17,19 +18,25 @@ import (
 
 var pool *redis.Pool
 
+var controller *admin.Controller
+
 func main() {
 
 	service := common.CreateService("api")
 
+	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 dbname=postgres sslmode=disable")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
+	core.Log("pgsql config: %s", pgsqlConfig)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis pool active: %d", redisPoolActive)
 	core.Log("redis pool idle: %d", redisPoolIdle)
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+
+	controller = admin.CreateController(pgsqlConfig)
 
 	service.Router.HandleFunc("/ping", pingHandler)
 
@@ -47,7 +54,7 @@ func main() {
 
 	service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
 
-	service.Router.HandleFunc("/admin/relays", adminRelaysHandler)
+	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler)
 
 	service.StartWebServer()
 
@@ -238,13 +245,17 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type AdminRelaysResponse struct {
-	// todo: array of *admin* relay data, including ssh address, user, etc.
+type AdminReadCustomersResponse struct {
+	Customers []admin.CustomerData `json:"customers"`
+	Error string `json:"error"`
 }
 
-func adminRelaysHandler(w http.ResponseWriter, r *http.Request) {
-	response := AdminRelaysResponse{}
-	// todo: get admin relays from somewhere (postgres?)
+func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
+	customers, err := controller.ReadCustomers()
+	response := AdminReadCustomersResponse{Customers: customers}
+	if err != nil {
+		response.Error = err.Error()
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

@@ -7,11 +7,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Admin struct {
+type Controller struct {
 	pgsql *sql.DB
 }
 
-func CreateAdmin(config string) *Admin {
+func CreateController(config string) *Controller {
 	pgsql, err := sql.Open("postgres", config)
 	if err != nil {
 		panic(fmt.Sprintf("could not connect to postgres: %v", err))
@@ -21,7 +21,7 @@ func CreateAdmin(config string) *Admin {
 		panic(fmt.Sprintf("could not ping postgres: %v", err))
 	}
 	fmt.Printf("successfully connected to postgres\n")
-	return &Admin{pgsql: pgsql}
+	return &Controller{pgsql: pgsql}
 }
 
 // -----------------------------------------------------------------------
@@ -31,202 +31,236 @@ type CustomerData struct {
 	CustomerName string `json:"customer_name"`
 	CustomerCode string `json:"customer_code"`
 	Live         bool   `json:"live"`
-	Debug        bool	`json:"debug"`
+	Debug        bool   `json:"debug"`
 }
 
-func (admin *Admin) CreateCustomer(customerData *CustomerData) {
+func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64, error) {
+	sql := `INSERT INTO customers (customer_id, customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id`
+    result, err := controller.pgsql.QueryRow(sql, customerData.CustomerId, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
+    if err != nil {
+    	return 0, fmt.Errorf("failed to insert customer: %v\n", err)
+    }
+    customerId := uint64(0)
+	if err := result.Scan(&customerId); err != nil {
+		return 0, fmt.Errorf("failed to scan insert customer result: %v\n", err)
+	}
+	return customerId, nil
+}
+
+func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
+	customers := make([]CustomerData, 0)
+	rows, err := controller.pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers")
+	if err != nil {
+		return nil, fmt.Errorf("could not extract customers: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := CustomerData{}
+		if err := rows.Scan(&row.CustomerId, &row.CustomerName, &row.CustomerCode, &row.Live, &row.Debug); err != nil {
+			return nil, fmt.Errorf("failed to scan customer row: %v\n", err)
+		}
+		customers = append(customers, row)
+	}
+	return customers, nil
+}
+
+func (controller *Controller) UpdateCustomer(customerData *CustomerData) {
 	// ...
 }
 
-func (admin *Admin) ReadCustomers() []CustomerData {
-	// ...
-	return nil
-}
-
-func (admin *Admin) UpdateCustomer(customerData *CustomerData) {
-	// ...
-}
-
-func (admin *Admin) DeleteCustomer(customerId uint64) {
+func (controller *Controller) DeleteCustomer(customerId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
 type RouteShaderData struct {
-	RouteShaderId             uint64 `json:"route_shader_id"`
-	Name                      string `json:"name"`
-	ABTest                    bool
-	AcceptableLatency         int
-	AcceptablePacketLoss      float32
-	PacketLossSustained       float32
-	AnalysisOnly              bool
-	BandwidthEnvelopeUpKbps   int
-	BandwidthEnvelopeDownKbps int
-	DisableNetworkNext        bool
-	LatencyThreshold          int
-	Multipath                 bool
-	ReduceLatency             bool
-	ReducePacketLoss          bool
-	SelectionnPercent         float32
-	MaxLatencyTradeOff        int
-	MaxNextRTT                int
-	RouteSwitchThreshold      int
-	RouteSelectThreshold      int
-	RTTVeto_Default           int
-	RTTVeto_MultiPath         int
-	RTTVeto_PacketLoss        int
-	ForceNext                 bool
-	RouteDiversity            int
+	RouteShaderId             uint64  `json:"route_shader_id"`
+	Name                      string  `json:"name"`
+	ABTest                    bool    `json:"ab_test"`
+	AcceptableLatency         int     `json:"acceptable_latency"`
+	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
+	PacketLossSustained       float32 `json:"packet_loss_sustained"`
+	AnalysisOnly              bool    `json:"analysis_only"`
+	BandwidthEnvelopeUpKbps   int     `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps int     `json:"bandwidth_envelope_down_kbps"`
+	DisableNetworkNext        bool    `json:"disable_network_next"`
+	LatencyThreshold          int     `json:"latency_threshold"`
+	Multipath                 bool    `json:"multipath"`
+	ReduceLatency             bool    `json:"reduce_latency"`
+	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
+	SelectionnPercent         float32 `json:"selection_percent"`
+	MaxLatencyTradeOff        int     `json:"max_latency_trade_off"`
+	MaxNextRTT                int     `json:"max_next_rtt"`
+	RouteSwitchThreshold      int     `json:"route_switch_threshold"`
+	RouteSelectThreshold      int     `json:"route_select_threshold"`
+	RTTVeto_Default           int     `json:"rtt_veto_default"`
+	RTTVeto_MultiPath         int     `json:"rtt_veto_multipath"`
+	RTTVeto_PacketLoss        int     `json:"rtt_veto_packet_loss"`
+	ForceNext                 bool    `json:"force_next"`
+	RouteDiversity            int     `json:"route_diversity"`
 }
 
-func (admin *Admin) CreateRouteShader(routeShaderData *RouteShaderData) {
+func (controller *Controller) CreateRouteShader(routeShaderData *RouteShaderData) {
 	// ...
 }
 
-func (admin *Admin) ReadRouteShaders() []RouteShaderData {
+func (controller *Controller) ReadRouteShaders() []RouteShaderData {
 	// ...
 	return nil
 }
 
-func (admin *Admin) UpdateRouteShader(routeShaderData *RouteShaderData) {
+func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData) {
 	// ...
 }
 
-func (admin *Admin) DeleteRouteShader(routeShaderId uint64) {
+func (controller *Controller) DeleteRouteShader(routeShaderId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
 type BuyerData struct {
-	/*
-	   id integer generated by default as identity,
-	   short_name varchar not null,
-	   public_key_base64 varchar not null,
-	   customer_id integer not null,
-	   route_shader_id integer not null,
-	*/
+	BuyerId         uint64 `json:"buyer_id"`
+	BuyerName       string `json:"buyer_name"`
+	PublicKeyBase64 string `json:"public_key_base64"`
+	CustomerId      uint64 `json:"customer_id"`
+	RouteShaderId   uint64 `json:"route_shader_id"`
 }
 
-func (admin *Admin) CreateBuyer(buyerData *BuyerData) {
+func (controller *Controller) CreateBuyer(buyerData *BuyerData) {
 	// ...
 }
 
-func (admin *Admin) ReadBuyers() []BuyerData {
+func (controller *Controller) ReadBuyers() []BuyerData {
 	// ...
 	return nil
 }
 
-func (admin *Admin) UpdateBuyer(buyerData *BuyerData) {
+func (controller *Controller) UpdateBuyer(buyerData *BuyerData) {
 	// ...
 }
 
-func (admin *Admin) DeleteBuyer(buyerId uint64) {
+func (controller *Controller) DeleteBuyer(buyerId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
 type SellerData struct {
-	/*
-	   id integer generated by default as identity,
-	   short_name varchar not null,
-	   customer_id integer,
-	*/
+	SellerId   uint64 `json:"seller_id"`
+	SellerName string `json:"seller_name"`
+	CustomerId uint64 `json:"customer_id"`
 }
 
-func (admin *Admin) CreateSeller(sellerData *SellerData) {
+func (controller *Controller) CreateSeller(sellerData *SellerData) {
 	// ...
 }
 
-func (admin *Admin) ReadSellers() []SellerData {
+func (controller *Controller) ReadSellers() []SellerData {
 	// ...
 	return nil
 }
 
-func (admin *Admin) UpdateSeller(sellerData *SellerData) {
+func (controller *Controller) UpdateSeller(sellerData *SellerData) {
 	// ...
 }
 
-func (admin *Admin) DeleteSeller(sellerId uint64) {
+func (controller *Controller) DeleteSeller(sellerId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
 type DatacenterData struct {
-	/*
-	   id integer generated by default as identity,
-	   display_name varchar not null unique,
-	   latitude numeric not null,
-	   longitude numeric not null,
-	   seller_id integer not null,
-	   notes varchar,
-	*/
+	DatacenterId   uint64  `json:"datacenter_id"`
+	DatacenterName string  `json:"datacenter_name"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	SellerId       uint64  `json:"seller_id"`
+	Notes          string  `json:"notes"`
 }
 
-func (admin *Admin) CreateDatacenter(datacenterData *SellerData) {
+func (controller *Controller) CreateDatacenter(datacenterData *SellerData) {
 	// ...
 }
 
-func (admin *Admin) ReadDatacenters() []DatacenterData {
+func (controller *Controller) ReadDatacenters() []DatacenterData {
 	// ...
 	return nil
 }
 
-func (admin *Admin) UpdateDatacenter(datacenterData *DatacenterData) {
+func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) {
 	// ...
 }
 
-func (admin *Admin) DeleteDatacenter(datacenterId uint64) {
+func (controller *Controller) DeleteDatacenter(datacenterId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
 type RelayData struct {
-	/*
-	   id integer generated by default as identity,
-	   display_name varchar not null,
-	   datacenter integer not null,
-	   public_ip inet not null,
-	   public_port integer not null default 40000,
-	   internal_ip inet not null default '0.0.0.0',
-	   internal_port integer not null default 0,
-	   internal_group varchar default ”,
-	   ssh_ip inet not null default '0.0.0.0',
-	   ssh_port integer not null default 22,
-	   ssh_user varchar not null default 'root',
-	   public_key_base64 varchar not null,
-	   private_key_base64 varchar,
-	   version varchar,
-	   mrc integer not null default 0,
-	   port_speed integer not null default 1000,
-	   max_sessions integer not null default 0,
-	   notes varchar,
-	*/
+	RelayId          uint64 `json:"relay_id"`
+	RelayName        string `json:"relay_name"`
+	DatacenterId     uint64 `json:"datacenter_id"`
+	PublicIP         string `json:"public_ip"`
+	PublicPort       int    `json:"public_port"`
+	InternalIP       string `json:"internal_ip"`
+	InternalPort     int    `json:"internal_port`
+	InternalGroup    string `json:"internal_group`
+	SSHIP            string `json:"ssh_ip"`
+	SSHPort          string `json:"ssh_port`
+	SSHUser          string `json:"ssh_user`
+	PublicKeyBase64  string `json:"public_key_base64"`
+	PrivateKeyBase64 string `json:"private_key_base64"`
+	Version          string `json:"version"`
+	MRC              int    `json:"mrc"`
+	PortSpeed        int    `json:"port_speed"`
+	MaxSessions      int    `json:"max_sessions"`
+	Notes            string `json:"notes"`
 }
 
-func (admin *Admin) CreateRelay(relayData *RelayData) {
+func (controller *Controller) CreateRelay(relayData *RelayData) {
 	// ...
 }
 
-func (admin *Admin) ReadRelays() []RelayData {
+func (controller *Controller) ReadRelays() []RelayData {
 	// ...
 	return nil
 }
 
-func (admin *Admin) UpdateRelay(relayData *RelayData) {
+func (controller *Controller) UpdateRelay(relayData *RelayData) {
 	// ...
 }
 
-func (admin *Admin) DeleteRelay(relayId uint64) {
+func (controller *Controller) DeleteRelay(relayId uint64) {
 	// ...
 }
 
 // -----------------------------------------------------------------------
 
-// todo: datacenter maps (rename to something else?)
+type BuyerDatacenterSettings struct {
+	BuyerId            uint64 `json:"buyer_id"`
+	DatacenterId       uint64 `json:"datacenter_id"`
+	EnableAcceleration bool   `json:"enable_acceleration"`
+}
+
+func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) {
+	// ...
+}
+
+func (controller *Controller) ReadBuyerDatacenterSettings() []BuyerDatacenterSettings {
+	// ...
+	return nil
+}
+
+func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) {
+	// ...
+}
+
+func (controller *Controller) DeleteBuyerDatacenterSettings(relayId uint64) {
+	// ...
+}
 
 // -----------------------------------------------------------------------

@@ -68,40 +68,36 @@ type Datacenter struct {
 	Longitude float32
 }
 
-// todo: terrible fucking name
-type DatacenterMap struct {
+type BuyerDatacenterSettings struct {
 	BuyerId            uint64
 	DatacenterId       uint64
 	EnableAcceleration bool
 }
 
 type Database struct {
-	CreationTime  string
-	Creator       string
-	Relays        []Relay
-	RelayMap      map[uint64]*Relay
-	BuyerMap      map[uint64]*Buyer
-	SellerMap     map[uint64]*Seller
-	DatacenterMap map[uint64]*Datacenter
-
-	// todo: terrible fucking name, especially right below "DatacenterMap" which is completely unrelated
-	DatacenterMaps map[uint64]map[uint64]*DatacenterMap // DatacenterMaps[buyerId][datacenterId] -> entry for this buyer, and that datacenter
-
-	DatacenterRelays map[uint64][]uint64
+	CreationTime            string
+	Creator                 string
+	Relays                  []Relay
+	RelayMap                map[uint64]*Relay
+	BuyerMap                map[uint64]*Buyer
+	SellerMap               map[uint64]*Seller
+	DatacenterMap           map[uint64]*Datacenter
+	DatacenterRelays        map[uint64][]uint64
+	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings // [buyerId][datacenterId]
 }
 
 func CreateDatabase() *Database {
 
 	database := &Database{
-		CreationTime:     "",
-		Creator:          "",
-		Relays:           []Relay{},
-		RelayMap:         make(map[uint64]*Relay),
-		BuyerMap:         make(map[uint64]*Buyer),
-		SellerMap:        make(map[uint64]*Seller),
-		DatacenterMap:    make(map[uint64]*Datacenter),
-		DatacenterMaps:   make(map[uint64]map[uint64]*DatacenterMap),
-		DatacenterRelays: make(map[uint64][]uint64),
+		CreationTime:            "",
+		Creator:                 "",
+		Relays:                  []Relay{},
+		RelayMap:                make(map[uint64]*Relay),
+		BuyerMap:                make(map[uint64]*Buyer),
+		SellerMap:               make(map[uint64]*Seller),
+		DatacenterMap:           make(map[uint64]*Datacenter),
+		DatacenterRelays:        make(map[uint64][]uint64),
+		BuyerDatacenterSettings: make(map[uint64]map[uint64]*BuyerDatacenterSettings),
 	}
 
 	return database
@@ -227,13 +223,13 @@ func (database *Database) Validate() error {
 		relayAddresses[relay.PublicAddress.String()] = 1
 	}
 
-	for buyerId, buyerMap := range database.DatacenterMaps {
-		for datacenterId, entry := range buyerMap {
-			if entry.DatacenterId != datacenterId {
-				return fmt.Errorf("bad datacenter id in datacenter maps: %d vs %d", datacenterId, entry.DatacenterId)
+	for buyerId, buyerMap := range database.BuyerDatacenterSettings {
+		for datacenterId, settings := range buyerMap {
+			if settings.DatacenterId != datacenterId {
+				return fmt.Errorf("bad datacenter id in buyer datacenter settings: %d vs %d", datacenterId, settings.DatacenterId)
 			}
-			if entry.BuyerId != buyerId {
-				return fmt.Errorf("bad buyer id in datacenter maps: %d vs %d", buyerId, entry.BuyerId)
+			if settings.BuyerId != buyerId {
+				return fmt.Errorf("bad buyer id in buyer datacenter settings: %d vs %d", buyerId, settings.BuyerId)
 			}
 		}
 	}
@@ -271,7 +267,7 @@ func (database *Database) IsEmpty() bool {
 		return false
 	}
 
-	if len(database.DatacenterMaps) != 0 {
+	if len(database.BuyerDatacenterSettings) != 0 {
 		return false
 	}
 
@@ -283,12 +279,12 @@ func (database *Database) DatacenterExists(datacenterId uint64) bool {
 }
 
 func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64) bool {
-	buyerEntry, ok := database.DatacenterMaps[buyerId]
+	buyerEntry, ok := database.BuyerDatacenterSettings[buyerId]
 	if !ok {
 		return false
 	}
-	datacenterEntry := buyerEntry[datacenterId]
-	return datacenterEntry.EnableAcceleration
+	settings := buyerEntry[datacenterId]
+	return settings.EnableAcceleration
 }
 
 func (database *Database) GetDatacenter(datacenterId uint64) *Datacenter {
@@ -495,7 +491,7 @@ func (database *Database) String() string {
 
 	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
 
-	for _, v1 := range database.DatacenterMaps {
+	for _, v1 := range database.BuyerDatacenterSettings {
 		for _, v2 := range v1 {
 			if !v2.EnableAcceleration {
 				continue
@@ -746,7 +742,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 
 	destinationDatacenterMap := make(map[uint64]*DestinationDatacenterRow)
 
-	for _, v1 := range database.DatacenterMaps {
+	for _, v1 := range database.BuyerDatacenterSettings {
 		for _, v2 := range v1 {
 			if !v2.EnableAcceleration {
 				continue
@@ -806,9 +802,9 @@ func ExtractDatabase(config string) (*Database, error) {
 	// relays
 
 	type RelayRow struct {
-		id                 uint64
-		name               string
-		datacenter         uint64
+		relay_id           uint64
+		relay_name         string
+		datacenter_id      uint64
 		public_ip          string
 		public_port        int
 		internal_ip        string
@@ -827,7 +823,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	relayRows := make([]RelayRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, display_name, datacenter, public_ip, public_port, internal_ip, internal_port, internal_group, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
+		rows, err := pgsql.Query("SELECT relay_id, relay_name, datacenter_id, public_ip, public_port, internal_ip, internal_port, internal_group, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract relays: %v\n", err)
 		}
@@ -836,7 +832,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RelayRow{}
-			if err := rows.Scan(&row.id, &row.name, &row.datacenter, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.internal_group, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
+			if err := rows.Scan(&row.relay_id, &row.relay_name, &row.datacenter_id, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.internal_group, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
 				return nil, fmt.Errorf("failed to scan relay row: %v\n", err)
 			}
 			relayRows = append(relayRows, row)
@@ -846,16 +842,16 @@ func ExtractDatabase(config string) (*Database, error) {
 	// datacenters
 
 	type DatacenterRow struct {
-		id        uint64
-		name      string
-		latitude  float32
-		longitude float32
-		seller_id uint64
+		datacenter_id        uint64
+		datacenter_name      string
+		latitude             float32
+		longitude            float32
+		seller_id            uint64
 	}
 
 	datacenterRows := make([]DatacenterRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, display_name, latitude, longitude, seller_id FROM datacenters")
+		rows, err := pgsql.Query("SELECT datacenter_id, datacenter_name, latitude, longitude, seller_id FROM datacenters")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract datacenters: %v\n", err)
 		}
@@ -864,7 +860,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := DatacenterRow{}
-			if err := rows.Scan(&row.id, &row.name, &row.latitude, &row.longitude, &row.seller_id); err != nil {
+			if err := rows.Scan(&row.datacenter_id, &row.datacenter_name, &row.latitude, &row.longitude, &row.seller_id); err != nil {
 				return nil, fmt.Errorf("failed to scan datacenter row: %v\n", err)
 			}
 			datacenterRows = append(datacenterRows, row)
@@ -874,8 +870,8 @@ func ExtractDatabase(config string) (*Database, error) {
 	// buyers
 
 	type BuyerRow struct {
-		id                uint64
-		name              string
+		buyer_id          uint64
+		buyer_name        string
 		public_key_base64 string
 		customer_id       uint64
 		route_shader_id   uint64
@@ -883,7 +879,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	buyerRows := make([]BuyerRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, short_name, public_key_base64, customer_id, route_shader_id FROM buyers")
+		rows, err := pgsql.Query("SELECT buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract buyers: %v\n", err)
 		}
@@ -892,7 +888,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := BuyerRow{}
-			if err := rows.Scan(&row.id, &row.name, &row.public_key_base64, &row.customer_id, &row.route_shader_id); err != nil {
+			if err := rows.Scan(&row.buyer_id, &row.buyer_name, &row.public_key_base64, &row.customer_id, &row.route_shader_id); err != nil {
 				return nil, fmt.Errorf("failed to scan buyer row: %v\n", err)
 			}
 			buyerRows = append(buyerRows, row)
@@ -902,14 +898,14 @@ func ExtractDatabase(config string) (*Database, error) {
 	// sellers
 
 	type SellerRow struct {
-		id          uint64
-		name        string
-		customer_id sql.NullInt64
+		seller_id          uint64
+		seller_name        string
+		customer_id        sql.NullInt64
 	}
 
 	sellerRows := make([]SellerRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, short_name, customer_id FROM sellers")
+		rows, err := pgsql.Query("SELECT seller_id, seller_name, customer_id FROM sellers")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract sellers: %v\n", err)
 		}
@@ -918,7 +914,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := SellerRow{}
-			if err := rows.Scan(&row.id, &row.name, &row.customer_id); err != nil {
+			if err := rows.Scan(&row.seller_id, &row.seller_name, &row.customer_id); err != nil {
 				return nil, fmt.Errorf("failed to scan seller row: %v\n", err)
 			}
 			sellerRows = append(sellerRows, row)
@@ -928,7 +924,7 @@ func ExtractDatabase(config string) (*Database, error) {
 	// customers
 
 	type CustomerRow struct {
-		id            uint64
+		customer_id   uint64
 		customer_name string
 		customer_code string
 		live          bool
@@ -937,7 +933,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	customerRows := make([]CustomerRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, customer_name, customer_code, live, debug FROM customers")
+		rows, err := pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract customers: %v\n", err)
 		}
@@ -946,7 +942,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := CustomerRow{}
-			if err := rows.Scan(&row.id, &row.customer_name, &row.customer_code, &row.live, &row.debug); err != nil {
+			if err := rows.Scan(&row.customer_id, &row.customer_name, &row.customer_code, &row.live, &row.debug); err != nil {
 				return nil, fmt.Errorf("failed to scan customer row: %v\n", err)
 			}
 			customerRows = append(customerRows, row)
@@ -956,7 +952,7 @@ func ExtractDatabase(config string) (*Database, error) {
 	// route shaders
 
 	type RouteShaderRow struct {
-		id                           uint64
+		route_shader_id              uint64
 		ab_test                      bool
 		acceptable_latency           int
 		acceptable_packet_loss       float32
@@ -983,7 +979,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next, route_diversity FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next, route_diversity FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -992,36 +988,36 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next, &row.route_diversity); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next, &row.route_diversity); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
 		}
 	}
 
-	// datacenter maps
+	// buyer datacenter settings
 
-	type DatacenterMapRow struct {
+	type BuyerDatacenterSettingsRow struct {
 		buyer_id            uint64
 		datacenter_id       uint64
 		enable_acceleration bool
 	}
 
-	datacenterMapRows := make([]DatacenterMapRow, 0)
+	buyerDatacenterSettingsRows := make([]BuyerDatacenterSettingsRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM datacenter_maps")
+		rows, err := pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings")
 		if err != nil {
-			return nil, fmt.Errorf("could not extract datacenter maps: %v\n", err)
+			return nil, fmt.Errorf("could not extract buyer datacenter settings: %v\n", err)
 		}
 
 		defer rows.Close()
 
 		for rows.Next() {
-			row := DatacenterMapRow{}
+			row := BuyerDatacenterSettingsRow{}
 			if err := rows.Scan(&row.buyer_id, &row.datacenter_id, &row.enable_acceleration); err != nil {
-				return nil, fmt.Errorf("failed to scan datacenter map row: %v\n", err)
+				return nil, fmt.Errorf("failed to scan buyer datacenter settings row: %v\n", err)
 			}
-			datacenterMapRows = append(datacenterMapRows, row)
+			buyerDatacenterSettingsRows = append(buyerDatacenterSettingsRows, row)
 		}
 	}
 
@@ -1029,36 +1025,36 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nrelays:\n")
 	for _, row := range relayRows {
-		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d\n", row.id, row.name, row.datacenter, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions)
+		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d\n", row.relay_id, row.relay_name, row.datacenter_id, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions)
 	}
 
 	fmt.Printf("\ndatacenters:\n")
 	for _, row := range datacenterRows {
-		fmt.Printf("%d: %s, %.1f, %.1f, %d\n", row.id, row.name, row.latitude, row.longitude, row.seller_id)
+		fmt.Printf("%d: %s, %.1f, %.1f, %d\n", row.datacenter_id, row.datacenter_name, row.latitude, row.longitude, row.seller_id)
 	}
 
 	fmt.Printf("\nbuyers:\n")
 	for _, row := range buyerRows {
-		fmt.Printf("%d: %s, %s, %d\n", row.id, row.name, row.public_key_base64, row.customer_id)
+		fmt.Printf("%d: %s, %s, %d\n", row.buyer_id, row.buyer_name, row.public_key_base64, row.customer_id)
 	}
 
 	fmt.Printf("\nsellers:\n")
 	for _, row := range sellerRows {
-		fmt.Printf("%d: %s, %d\n", row.id, row.name, row.customer_id.Int64)
+		fmt.Printf("%d: %s, %d\n", row.seller_id, row.seller_name, row.customer_id.Int64)
 	}
 
 	fmt.Printf("\ncustomers:\n")
 	for _, row := range customerRows {
-		fmt.Printf("%d: %s, %s, %v, %v\n", row.id, row.customer_name, row.customer_code, row.live, row.debug)
+		fmt.Printf("%d: %s, %s, %v, %v\n", row.customer_id, row.customer_name, row.customer_code, row.live, row.debug)
 	}
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
+		fmt.Printf("%d: %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.route_shader_id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
 	}
 
-	fmt.Printf("\ndatacenter maps:\n")
-	for _, row := range datacenterMapRows {
+	fmt.Printf("\nbuyer datacenter settings:\n")
+	for _, row := range buyerDatacenterSettingsRows {
 		fmt.Printf("(%d,%d): %v\n", row.buyer_id, row.datacenter_id, row.enable_acceleration)
 	}
 
@@ -1066,35 +1062,35 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	datacenterIndex := make(map[uint64]DatacenterRow)
 	for _, row := range datacenterRows {
-		datacenterIndex[row.id] = row
+		datacenterIndex[row.datacenter_id] = row
 	}
 
 	// index customers by postgres id
 
 	customerIndex := make(map[uint64]CustomerRow)
 	for _, row := range customerRows {
-		customerIndex[row.id] = row
+		customerIndex[row.customer_id] = row
 	}
 
 	// index buyers by postgres id
 
 	buyerIndex := make(map[uint64]BuyerRow)
 	for _, row := range buyerRows {
-		buyerIndex[row.id] = row
+		buyerIndex[row.buyer_id] = row
 	}
 
 	// index sellers by postgres id
 
 	sellerIndex := make(map[uint64]SellerRow)
 	for _, row := range sellerRows {
-		sellerIndex[row.id] = row
+		sellerIndex[row.seller_id] = row
 	}
 
 	// index route shaders by postgres id
 
 	routeShaderIndex := make(map[uint64]RouteShaderRow)
 	for _, row := range routeShaderRows {
-		routeShaderIndex[row.id] = row
+		routeShaderIndex[row.route_shader_id] = row
 	}
 
 	// build database
@@ -1112,8 +1108,8 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		seller := Seller{}
 
-		seller.Id = row.id
-		seller.Name = row.name
+		seller.Id = row.seller_id
+		seller.Name = row.seller_name
 
 		database.SellerMap[seller.Id] = &seller
 
@@ -1124,7 +1120,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		buyer := Buyer{}
 
-		buyer.Name = row.name
+		buyer.Name = row.buyer_name
 
 		data, err := base64.StdEncoding.DecodeString(row.public_key_base64)
 		if err != nil {
@@ -1183,8 +1179,8 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		datacenter := Datacenter{}
 
-		datacenter.Id = HashString(row.name)
-		datacenter.Name = row.name
+		datacenter.Id = HashString(row.datacenter_name)
+		datacenter.Name = row.datacenter_name
 		datacenter.Latitude = row.latitude
 		datacenter.Longitude = row.longitude
 
@@ -1193,8 +1189,8 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("datacenter %s doesn't have a seller?!\n", datacenter.Name)
 		}
 
-		if !strings.Contains(datacenter.Name, seller_row.name) {
-			return nil, fmt.Errorf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.name)
+		if !strings.Contains(datacenter.Name, seller_row.seller_name) {
+			return nil, fmt.Errorf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.seller_name)
 		}
 
 		database.DatacenterMap[datacenter.Id] = &datacenter
@@ -1206,7 +1202,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		relay := &database.Relays[i]
 
-		relay.Name = row.name
+		relay.Name = row.relay_name
 
 		relay.PublicAddress = core.ParseAddress(row.public_ip)
 		relay.PublicAddress.Port = row.public_port
@@ -1257,15 +1253,15 @@ func ExtractDatabase(config string) (*Database, error) {
 		relay.PortSpeed = row.port_speed
 		relay.Version = row.version.String
 
-		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter]
+		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {
 			return nil, fmt.Errorf("relay %s doesn't have a datacenter?!\n", relay.Name)
 		}
 
-		relay.DatacenterId = HashString(datacenter_row.name)
+		relay.DatacenterId = HashString(datacenter_row.datacenter_name)
 
-		if !strings.Contains(relay.Name, datacenter_row.name) {
-			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.name)
+		if !strings.Contains(relay.Name, datacenter_row.datacenter_name) {
+			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.datacenter_name)
 		}
 
 		relay.Datacenter = *database.DatacenterMap[relay.DatacenterId]
@@ -1278,28 +1274,28 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay %s doesn't have a seller?!\n", relay.Name)
 		}
 
-		relay.Seller = *database.SellerMap[seller_row.id]
+		relay.Seller = *database.SellerMap[seller_row.seller_id]
 
-		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.name, relay.DatacenterId)
+		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.datacenter_name, relay.DatacenterId)
 
 		database.RelayMap[relay.Id] = relay
 	}
 
-	for i, row := range datacenterMapRows {
+	for i, row := range buyerDatacenterSettingsRows {
 
 		buyer_row, buyer_exists := buyerIndex[row.buyer_id]
 		if !buyer_exists {
-			return nil, fmt.Errorf("datacenter map doesn't have a buyer?!\n")
+			return nil, fmt.Errorf("buyer datacenter settings don't have a buyer?!\n")
 		}
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {
-			return nil, fmt.Errorf("datacenter map doesn't have a datacenter?!\n")
+			return nil, fmt.Errorf("buyer datacenter settings don't have a datacenter?!\n")
 		}
 
-		buyerName := buyer_row.name
+		buyerName := buyer_row.buyer_name
 		buyerId := uint64(0)
-		datacenterName := datacenter_row.name
+		datacenterName := datacenter_row.datacenter_name
 		datacenterId := HashString(datacenterName)
 
 		for _, v := range database.BuyerMap {
@@ -1312,16 +1308,16 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("could not find runtime buyer id for buyer %s?!\n", buyerName)
 		}
 
-		fmt.Printf("datacenter map %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)
+		fmt.Printf("buyer datacenter settings %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)
 
-		datacenterMap := DatacenterMap{}
-		datacenterMap.BuyerId = buyerId
-		datacenterMap.DatacenterId = datacenterId
-		datacenterMap.EnableAcceleration = row.enable_acceleration
-		if database.DatacenterMaps[buyerId] == nil {
-			database.DatacenterMaps[buyerId] = make(map[uint64]*DatacenterMap)
+		settings := BuyerDatacenterSettings{}
+		settings.BuyerId = buyerId
+		settings.DatacenterId = datacenterId
+		settings.EnableAcceleration = row.enable_acceleration
+		if database.BuyerDatacenterSettings[buyerId] == nil {
+			database.BuyerDatacenterSettings[buyerId] = make(map[uint64]*BuyerDatacenterSettings)
 		}
-		database.DatacenterMaps[buyerId][datacenterId] = &datacenterMap
+		database.BuyerDatacenterSettings[buyerId][datacenterId] = &settings
 	}
 
 	for i := range database.Relays {

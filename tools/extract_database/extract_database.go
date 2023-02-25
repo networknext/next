@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	database, err := db.ExtractDatabase("host=127.0.0.1 port=5432 user=gaffer dbname=network_next sslmode=disable")
+	database, err := db.ExtractDatabase("host=127.0.0.1 port=5432 dbname=postgres sslmode=disable")
 
 	if err != nil {
 		fmt.Printf("error: failed to extract database: %v\n", err)

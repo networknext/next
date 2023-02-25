@@ -771,11 +771,11 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
-			for _, datacenter := range database.DatacenterMaps[buyer.Id] {
-				if !datacenter.EnableAcceleration {
+			for _, settings := range database.BuyerDatacenterSettings[buyer.Id] {
+				if !settings.EnableAcceleration {
 					continue
 				}
-				datacenterRelays := relayData.DatacenterRelays[datacenter.DatacenterId]
+				datacenterRelays := relayData.DatacenterRelays[settings.DatacenterId]
 				for j := 0; j < len(datacenterRelays); j++ {
 					relayData.DestRelays[datacenterRelays[j]] = true
 				}

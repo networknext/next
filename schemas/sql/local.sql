@@ -210,7 +210,7 @@ VALUES(
 
 -- enable datacenters for buyers
 
-INSERT INTO datacenter_maps VALUES(
+INSERT INTO buyer_datacenter_settings VALUES(
 	(select buyer_id from buyers where buyer_name = 'local'),
 	(select datacenter_id from datacenters where datacenter_name = 'local'),
 	true

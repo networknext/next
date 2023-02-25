@@ -1,6 +1,24 @@
 DONE
 
+	Sketch out admin.go CRUD methods
+
+	Clean up create.sql
+
+	Clean up local.sql
+
+	Finish updating all admin data types.
+
+	Rename "datacenter maps" to "buyer datacenter settings"
+
+	Update extract database so it works with new schema.
+
+	Verify that I can extract database.
+
+	Verify happy path works.
+
 TODO
+
+	Implement CRUD for one simple data type (eg. buyer)
 
 	--------------
 
