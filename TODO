@@ -18,15 +18,17 @@ DONE
 
 TODO
 
-	Implement CRUD for one simple data type (eg. buyer)
+	Implement CRUD for all data types.
 
-	--------------
+	-----------------
 
-	CREATE, READ, UPDATE and DELETE
+	We need a set of admin func tests.
 
-	--------------
+	-----------------
 
+	We need a set of portal func tests.
 
+	-----------------
 
 
 
@@ -75,12 +77,6 @@ TODO
 	Seems like multiple receives? Is it not configured correctly? Are all consumers receiving the same messages?
 
 	Dive in and work out what the fuck is going on...
-
-	--------------
-
-	Research best practice for creating a REST API for a crud.
-
-	Create an "admin" module containing necessary postgres SQL stuff to call from api.go for /admin/* endpoints.
 
 	--------------
 
