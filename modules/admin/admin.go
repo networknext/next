@@ -103,13 +103,164 @@ type RouteShaderData struct {
 	RouteDiversity            int     `json:"route_diversity"`
 }
 
-func (controller *Controller) CreateRouteShader(routeShaderData *RouteShaderData) {
-	// ...
+func (controller *Controller) CreateRouteShader(routeShaderData *RouteShaderData) (uint64, error) {
+	sql := `
+INSERT INTO route_shaders 
+(
+	route_shader_id,
+	route_shader_name,
+	ab_test,
+	acceptable_latency,
+	acceptable_packet_loss,
+	packet_loss_sustained,
+	analysis_only,
+	bandwidth_envelope_up_kbps,
+	bandwidth_envelope_down_kbps,
+	disable_network_next,
+	latency_threshold,
+	multipath,
+	reduce_latency,
+	reduce_packet_loss,
+	selection_percent,
+	max_latency_trade_off,
+	max_next_rtt,
+	route_switch_threshold,
+	route_select_threshold,
+	rtt_veto_default,
+	rtt_veto_multipath,
+	rtt_veto_packet_loss,
+	force_next,
+	route_diversity
+VALUES
+(
+	$1,
+	$2,
+	$3,
+	$4,
+	$5,
+	$6,
+	$7,
+	$8,
+	$9,
+	$10,
+	$11,
+	$12,
+	$13,
+	$14,
+	$15,
+	$16,
+	$17,
+	$18,
+	$19,
+	$20,
+	$21,
+	$22,
+	$23,
+	$24
+)
+RETURNING route_shader_id;`
+	result := controller.pgsql.QueryRow(sql, 
+		routeShaderData.RouteShaderId,
+		routeShaderData.Name,
+		routeShaderData.ABTest,
+		routeShaderData.AcceptableLatency,
+		routeShaderData.AcceptablePacketLoss,
+		routeShaderData.PacketLossSustained,
+		routeShaderData.AnalysisOnly,
+		routeShaderData.BandwidthEnvelopeUpKbps,
+		routeShaderData.BandwidthEnvelopeDownKbps,
+		routeShaderData.DisableNetworkNext,
+		routeShaderData.LatencyThreshold,
+		routeShaderData.Multipath,
+		routeShaderData.ReduceLatency,
+		routeShaderData.ReducePacketLoss,
+		routeShaderData.SelectionPercent,
+		routeShaderData.MaxLatencyTradeOff,
+		routeShaderData.MaxNextRTT,
+		routeShaderData.RouteSwitchThreshold,
+		routeShaderData.RouteSelectThreshold,
+		routeShaderData.RTTVeto_Default,
+		routeShaderData.RTTVeto_Multipath,
+		routeShaderData.RTTVeto_PacketLoss,
+		routeShaderData.ForceNext,
+		routeShaderData.RouteDiversity,
+	)
+    routeShaderId := uint64(0)
+	if err := result.Scan(&routeShaderId); err != nil {
+		return 0, fmt.Errorf("could not insert route shader: %v\n", err)
+	}
+	return routeShaderId, nil
 }
 
-func (controller *Controller) ReadRouteShaders() []RouteShaderData {
-	// ...
-	return nil
+func (controller *Controller) ReadRouteShaders() ([]RouteShaderData, error) {
+	routeShaders := make([]RouteShaderData, 0)
+	sql := `
+SELECT
+	route_shader_id,
+	route_shader_name,
+	ab_test,
+	acceptable_latency,
+	acceptable_packet_loss,
+	packet_loss_sustained,
+	analysis_only,
+	bandwidth_envelope_up_kbps,
+	bandwidth_envelope_down_kbps,
+	disable_network_next,
+	latency_threshold,
+	multipath,
+	reduce_latency,
+	reduce_packet_loss,
+	selection_percent,
+	max_latency_trade_off,
+	max_next_rtt,
+	route_switch_threshold,
+	route_select_threshold,
+	rtt_veto_default,
+	rtt_veto_multipath,
+	rtt_veto_packet_loss,
+	force_next,
+	route_diversity
+FROM
+	route_shaders;`
+	rows, err := controller.pgsql.Query(sql)
+	if err != nil {
+		return nil, fmt.Errorf("could not read route shaders: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := RouteShaderData{}
+		err := rows.Scan(
+			&row.RouteShaderId,
+			&row.Name,
+			&row.ABTest,
+			&row.AcceptableLatency,
+			&row.AcceptablePacketLoss,
+			&row.PacketLossSustained,
+			&row.AnalysisOnly,
+			&row.BandwidthEnvelopeUpKbps,
+			&row.BandwidthEnvelopeDownKbps,
+			&row.DisableNetworkNext,
+			&row.LatencyThreshold,
+			&row.Multipath,
+			&row.ReduceLatency,
+			&row.ReducePacketLoss,
+			&row.SelectionPercent,
+			&row.MaxLatencyTradeOff,
+			&row.MaxNextRTT,
+			&row.RouteSwitchThreshold,
+			&row.RouteSelectThreshold,
+			&row.RTTVeto_Default,
+			&row.RTTVeto_Multipath,
+			&row.RTTVeto_PacketLoss,
+			&row.ForceNext,
+			&row.RouteDiversity,
+		); 
+		if err != nil {
+			return nil, fmt.Errorf("could not scan route shader row: %v\n", err)
+		}
+		routeShaders = append(routeShaders, row)
+	}
+	return routeShaders, nil
 }
 
 func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData) error {
