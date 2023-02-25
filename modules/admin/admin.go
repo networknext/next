@@ -350,30 +350,49 @@ type RelayData struct {
 	Notes            string `json:"notes"`
 }
 
-func (controller *Controller) CreateRelay(relayData *RelayData) {
+func (controller *Controller) CreateRelay(relayData *RelayData) (uint64, error) {
 	sql := `
 INSERT INTO relays 
-SET 
-	relay_name = $1, 
-	datacenter_id = $2,
-	public_ip = $3,
-	public_port = $4,
-	internal_ip = $5,
-	internal_port = $6,
-	internal_group = $7,
-	ssh_ip = $8,
-	ssh_port = $9,
-	ssh_user = $10,
-	public_key_base64 = $11,
-	private_key_base64 = $12,
-	version = $13,
-	mrc = $14,
-	port_speed = $15,
-	max_sessions = $16,
-	notes = $17,
-WHERE
-	relay_id = $18;`
-	_, err := controller.pgsql.Exec(sql, 
+(
+	relay_name,
+	datacenter_id,
+	public_ip,
+	public_port,
+	internal_ip,
+	internal_port,
+	internal_group,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	version,
+	mrc,
+	port_speed,
+	max_sessions,
+	notes,
+VALUES
+(
+	$1,
+	$2,
+	$3,
+	$4,
+	$5,
+	$6,
+	$7,
+	$8,
+	$9,
+	$10,
+	$11,
+	$12,
+	$13,
+	$14,
+	$15,
+	$16,
+	$17
+)
+RETURNING relay_id;`
+	result := controller.pgsql.QueryRow(sql, 
 		relayData.RelayName,
 		relayData.DatacenterId,
 		relayData.PublicIP,
@@ -393,12 +412,68 @@ WHERE
 		relayData.Notes,
 		relayData.RelayId,
 	)
-	return err
+    relayId := uint64(0)
+	if err := result.Scan(&relayId); err != nil {
+		return 0, fmt.Errorf("could not insert relay: %v\n", err)
+	}
+	return relayId, nil
 }
 
-func (controller *Controller) ReadRelays() []RelayData {
-	// ...
-	return nil
+func (controller *Controller) ReadRelays() ([]RelayData, error) {
+	relays := make([]RelayData, 0)
+	sql := `
+SELECT
+	relay_name,
+	datacenter_id,
+	public_ip,
+	public_port,
+	internal_ip,
+	internal_port,
+	internal_group,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	version,
+	mrc,
+	port_speed,
+	max_sessions,
+	notes
+FROM
+	relays;`
+	rows, err := controller.pgsql.Query(sql)
+	if err != nil {
+		return nil, fmt.Errorf("could not read relays: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := RelayData{}
+		err := rows.Scan(
+			&row.RelayName,
+			&row.DatacenterId,
+			&row.PublicIP,
+			&row.PublicPort,
+			&row.InternalIP,
+			&row.InternalPort,
+			&row.InternalGroup,
+			&row.SSH_IP,
+			&row.SSH_Port,
+			&row.SSH_User,
+			&row.PublicKeyBase64,
+			&row.PrivateKeyBase64,
+			&row.Version,
+			&row.MRC,
+			&row.PortSpeed,
+			&row.MaxSessions,
+			&row.Notes,
+		); 
+		if err != nil {
+			return nil, fmt.Errorf("could not scan relay row: %v\n", err)
+		}
+		relays = append(relays, row)
+	}
+	return relays, nil
 }
 
 func (controller *Controller) UpdateRelay(relayData *RelayData) error {
