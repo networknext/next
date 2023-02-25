@@ -91,13 +91,13 @@ type RouteShaderData struct {
 	Multipath                 bool    `json:"multipath"`
 	ReduceLatency             bool    `json:"reduce_latency"`
 	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
-	SelectionnPercent         float32 `json:"selection_percent"`
+	SelectionPercent          float32 `json:"selection_percent"`
 	MaxLatencyTradeOff        int     `json:"max_latency_trade_off"`
 	MaxNextRTT                int     `json:"max_next_rtt"`
 	RouteSwitchThreshold      int     `json:"route_switch_threshold"`
 	RouteSelectThreshold      int     `json:"route_select_threshold"`
 	RTTVeto_Default           int     `json:"rtt_veto_default"`
-	RTTVeto_MultiPath         int     `json:"rtt_veto_multipath"`
+	RTTVeto_Multipath         int     `json:"rtt_veto_multipath"`
 	RTTVeto_PacketLoss        int     `json:"rtt_veto_packet_loss"`
 	ForceNext                 bool    `json:"force_next"`
 	RouteDiversity            int     `json:"route_diversity"`
@@ -112,8 +112,64 @@ func (controller *Controller) ReadRouteShaders() []RouteShaderData {
 	return nil
 }
 
-func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData) {
-	// ...
+func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData) error {
+	// IMPORTANT: Cannot change route shader id once created
+	sql := `
+UPDATE route_shaders 
+SET 
+	route_shader_name = $1, 
+	ab_test = $2,
+	acceptable_latency = $3,
+	acceptable_packet_loss = $4,
+	packet_loss_sustained = $5,
+	analysis_only = $6,
+	bandwidth_envelope_up_kbps = $7,
+	bandwidth_envelope_down_kbps = $8,
+	disable_network_next = $9,
+	latency_threshold = $10,
+	multipath = $11,
+	reduce_latency = $12,
+	reduce_packet_loss = $13,
+	selection_percent = $14,
+	max_latency_trade_off = $15,
+	max_next_rtt = $16,
+	route_switch_threshold = $17,
+	route_select_threshold = $18,
+	rtt_veto_default = $19,
+	rtt_veto_multipath = $20,
+	rtt_veto_packet_loss = $21,
+	force_next = $22,
+	route_diversity = $23,
+	route_shader_id = $24,
+WHERE
+	route_shader_id = $25;`
+	_, err := controller.pgsql.Exec(sql, 
+		routeShaderData.Name,
+		routeShaderData.ABTest,
+		routeShaderData.AcceptableLatency,
+		routeShaderData.AcceptablePacketLoss,
+		routeShaderData.PacketLossSustained,
+		routeShaderData.AnalysisOnly,
+		routeShaderData.BandwidthEnvelopeUpKbps,
+		routeShaderData.BandwidthEnvelopeDownKbps,
+		routeShaderData.DisableNetworkNext,
+		routeShaderData.LatencyThreshold,
+		routeShaderData.Multipath,
+		routeShaderData.ReduceLatency,
+		routeShaderData.ReducePacketLoss,
+		routeShaderData.SelectionPercent,
+		routeShaderData.MaxLatencyTradeOff,
+		routeShaderData.MaxNextRTT,
+		routeShaderData.RouteSwitchThreshold,
+		routeShaderData.RouteSelectThreshold,
+		routeShaderData.RTTVeto_Default,
+		routeShaderData.RTTVeto_Multipath,
+		routeShaderData.RTTVeto_PacketLoss,
+		routeShaderData.ForceNext,
+		routeShaderData.RouteDiversity,
+		routeShaderData.RouteShaderId,
+	)
+	return err
 }
 
 func (controller *Controller) DeleteRouteShader(routeShaderId uint64) error {
@@ -252,7 +308,7 @@ func (controller *Controller) ReadRelays() []RelayData {
 func (controller *Controller) UpdateRelay(relayData *RelayData) error {
 	// IMPORTANT: Cannot change relay id once created
 	sql := `
-UPDATE customers 
+UPDATE relays 
 SET 
 	relay_name = $1, 
 	datacenter_id = $2,
