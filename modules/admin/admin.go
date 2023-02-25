@@ -351,7 +351,49 @@ type RelayData struct {
 }
 
 func (controller *Controller) CreateRelay(relayData *RelayData) {
-	// ...
+	sql := `
+INSERT INTO relays 
+SET 
+	relay_name = $1, 
+	datacenter_id = $2,
+	public_ip = $3,
+	public_port = $4,
+	internal_ip = $5,
+	internal_port = $6,
+	internal_group = $7,
+	ssh_ip = $8,
+	ssh_port = $9,
+	ssh_user = $10,
+	public_key_base64 = $11,
+	private_key_base64 = $12,
+	version = $13,
+	mrc = $14,
+	port_speed = $15,
+	max_sessions = $16,
+	notes = $17,
+WHERE
+	relay_id = $18;`
+	_, err := controller.pgsql.Exec(sql, 
+		relayData.RelayName,
+		relayData.DatacenterId,
+		relayData.PublicIP,
+		relayData.PublicPort,
+		relayData.InternalIP,
+		relayData.InternalPort,
+		relayData.InternalGroup,
+		relayData.SSH_IP,
+		relayData.SSH_Port,
+		relayData.SSH_User,
+		relayData.PublicKeyBase64,
+		relayData.PrivateKeyBase64,
+		relayData.Version,
+		relayData.MRC,
+		relayData.PortSpeed,
+		relayData.MaxSessions,
+		relayData.Notes,
+		relayData.RelayId,
+	)
+	return err
 }
 
 func (controller *Controller) ReadRelays() []RelayData {
