@@ -24,14 +24,13 @@ This repo contains the Network Next backend.
 
 5. Add . to your path
 
-	Modify .zshrc to include:
+	Modify ~/.zshrc to include:
 
 	`export PATH=.:/opt/homebrew/bin:$PATH`
 
-6. Clone repo
+6. Clone repo and change dir into it
 
 	`git clone git@github.com:networknext/backend.git`
-
 	`cd backend`
 
 7. Select local environment
@@ -44,7 +43,7 @@ This repo contains the Network Next backend.
 
 	You should see output like:
 
-```console
+	```console
 gaffer@macbook backend % make build
 dist/func_tests_sdk5
 dist/relay
@@ -88,7 +87,7 @@ ok  	github.com/networknext/backend/modules/portal	0.281s
 
 	You should see output like:
 
-```console
+	```console
 gaffer@macbook backend % run happy-path
 
 don't worry. be happy.
@@ -183,3 +182,50 @@ verifying map cruncher received map update messages ... OK
 *** SUCCESS! ***
 
 ```
+
+# Setup on Linux (Ubuntu 22.04 LTS)
+
+1. Install dependencies
+
+	`apt install build-essential postgresql libcurl4-openssl-dev -y`
+
+2. Install libsodium
+
+    `wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz`
+    `tar -zxf libsodium-1.0.18-stable.tar.gz`
+    `cd libsodium-stable`
+    `./configure`
+    `make -j`
+    `make check`
+    `sudo make install`
+
+3. Install latest golang
+
+	Find the latest Linux golang download here: https://go.dev/doc/install
+
+	Then do this, with the latest download URL:
+
+	`wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz`
+	`rm -rf /usr/local/go && tar -C /usr/local -xzf go*.tar.gz`
+
+4. Add . and go to your path
+
+	Modify ~/.profile to include:
+
+	`export PATH=$PATH:/usr/local/go/bin:.`
+
+	Then source it:
+
+	`source ~/.profile`
+
+5. Clone repo and change dir into it
+
+	`git clone git@github.com:networknext/backend.git`
+	`cd backend`
+
+6. Make everything and run tests
+
+	`make`
+
+	You should see:
+
