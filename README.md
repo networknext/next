@@ -82,7 +82,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-9. Run happy path
+9. Setup postgres database
+
+   (something something something... default user is not good enough here)
+
+10. Run happy path
 
 	`run happy-path`
 
@@ -266,7 +270,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-7. Run happy path
+7. Setup postgres
+
+   (something something something... default user is not good enough here)
+
+8. Run happy path
 
     `run happy-path`
 
