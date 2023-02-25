@@ -39,7 +39,7 @@ func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64
     result := controller.pgsql.QueryRow(sql, customerData.CustomerId, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
     customerId := uint64(0)
 	if err := result.Scan(&customerId); err != nil {
-		return 0, fmt.Errorf("failed to scan insert customer result: %v\n", err)
+		return 0, fmt.Errorf("could not insert customer: %v\n", err)
 	}
 	return customerId, nil
 }
@@ -48,13 +48,13 @@ func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 	customers := make([]CustomerData, 0)
 	rows, err := controller.pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers;")
 	if err != nil {
-		return nil, fmt.Errorf("could not extract customers: %v\n", err)
+		return nil, fmt.Errorf("could not read customers: %v\n", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := CustomerData{}
 		if err := rows.Scan(&row.CustomerId, &row.CustomerName, &row.CustomerCode, &row.Live, &row.Debug); err != nil {
-			return nil, fmt.Errorf("failed to scan customer row: %v\n", err)
+			return nil, fmt.Errorf("could not scan customer row: %v\n", err)
 		}
 		customers = append(customers, row)
 	}
@@ -188,13 +188,31 @@ type BuyerData struct {
 	RouteShaderId   uint64 `json:"route_shader_id"`
 }
 
-func (controller *Controller) CreateBuyer(buyerData *BuyerData) {
-	// ...
+func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) {
+	sql := "INSERT INTO buyers (buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id) VALUES ($1, $2, $3, $4, $5) RETURNING buyer_id;"
+    result := controller.pgsql.QueryRow(sql, buyerData.BuyerId, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId)
+    buyerId := uint64(0)
+	if err := result.Scan(&buyerId); err != nil {
+		return 0, fmt.Errorf("could not insert buyer: %v\n", err)
+	}
+	return buyerId, nil
 }
 
-func (controller *Controller) ReadBuyers() []BuyerData {
-	// ...
-	return nil
+func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
+	buyers := make([]BuyerData, 0)
+	rows, err := controller.pgsql.Query("SELECT buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read buyers: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := BuyerData{}
+		if err := rows.Scan(&row.BuyerId, &row.BuyerName, &row.PublicKeyBase64, &row.CustomerId, &row.RouteShaderId); err != nil {
+			return nil, fmt.Errorf("could not scan buyer row: %v\n", err)
+		}
+		buyers = append(buyers, row)
+	}
+	return buyers, nil
 }
 
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
