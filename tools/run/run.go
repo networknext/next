@@ -345,19 +345,19 @@ func relay_keygen() {
 }
 
 func sql_create() {
-	bash("psql postgres -f ./schemas/sql/create.sql")
+	bash("psql postgres -u postgres -f ./schemas/sql/create.sql")
 }
 
 func sql_destroy() {
-	bash("psql postgres -f ./schemas/sql/destroy.sql")
+	bash("psql postgres -u postgres -f ./schemas/sql/destroy.sql")
 }
 
 func sql_dev() {
-	bash("psql postgres -f ./schemas/sql/dev.sql")
+	bash("psql postgres -u postgres -f ./schemas/sql/dev.sql")
 }
 
 func sql_local() {
-	bash("psql postgres -f ./schemas/sql/local.sql")
+	bash("psql postgres -u postgres -f ./schemas/sql/local.sql")
 }
 
 func extract_database() {
