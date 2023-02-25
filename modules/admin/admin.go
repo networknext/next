@@ -287,13 +287,31 @@ type DatacenterData struct {
 	Notes          string  `json:"notes"`
 }
 
-func (controller *Controller) CreateDatacenter(datacenterData *SellerData) {
-	// ...
+func (controller *Controller) CreateDatacenter(datacenterData *DatacenterData) (uint64, error) {
+	sql := "INSERT INTO datacenters (datacenter_id, datacenter_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING datacenter_id;"
+    result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterId, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
+    datacenterId := uint64(0)
+	if err := result.Scan(&datacenterId); err != nil {
+		return 0, fmt.Errorf("could not insert datacenter: %v\n", err)
+	}
+	return datacenterId, nil
 }
 
-func (controller *Controller) ReadDatacenters() []DatacenterData {
-	// ...
-	return nil
+func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
+	datacenters := make([]DatacenterData, 0)
+	rows, err := controller.pgsql.Query("SELECT datacenter_id, datacenter_name, latitude, longitude, seller_id, notes FROM datacenters;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read datacenters: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := DatacenterData{}
+		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &row.Notes); err != nil {
+			return nil, fmt.Errorf("could not scan datacenter row: %v\n", err)
+		}
+		datacenters = append(datacenters, row)
+	}
+	return datacenters, nil
 }
 
 func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) error {
