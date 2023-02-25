@@ -420,13 +420,27 @@ type BuyerDatacenterSettings struct {
 	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
-func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) {
-	// ...
+func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
+	sql := "INSERT INTO buyer_datacenter_settings (buyer_id, datacenter_id, enable_acceleration) VALUES ($1, $2, $3);"
+    _, err := controller.pgsql.Exec(sql, settings.DatacenterId, settings.BuyerId, settings.EnableAcceleration)
+	return err
 }
 
-func (controller *Controller) ReadBuyerDatacenterSettings() []BuyerDatacenterSettings {
-	// ...
-	return nil
+func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSettings, error) {
+	settings := make([]BuyerDatacenterSettings, 0)
+	rows, err := controller.pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read buyer datacenter settings: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := BuyerDatacenterSettings{}
+		if err := rows.Scan(&row.BuyerId, &row.DatacenterId, &row.EnableAcceleration); err != nil {
+			return nil, fmt.Errorf("could not scan buyer datacenter settings row: %v\n", err)
+		}
+		settings = append(settings, row)
+	}
+	return settings, nil
 }
 
 func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
