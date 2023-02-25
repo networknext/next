@@ -63,8 +63,8 @@ func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 
 func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
 	// IMPORTANT: Cannot change customer id once created
-	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4;"
-	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
+	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
+	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug, customerData.CustomerId)
 	return err
 }
 
@@ -141,8 +141,11 @@ func (controller *Controller) ReadBuyers() []BuyerData {
 	return nil
 }
 
-func (controller *Controller) UpdateBuyer(buyerData *BuyerData) {
-	// ...
+func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
+	// IMPORTANT: Cannot change buyer id once created
+	sql := "UPDATE customers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"
+	_, err := controller.pgsql.Exec(sql, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId, buyerData.BuyerId)
+	return err
 }
 
 func (controller *Controller) DeleteBuyer(buyerId uint64) error {
@@ -168,8 +171,11 @@ func (controller *Controller) ReadSellers() []SellerData {
 	return nil
 }
 
-func (controller *Controller) UpdateSeller(sellerData *SellerData) {
-	// ...
+func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
+	// IMPORTANT: Cannot change seller id once created
+	sql := "UPDATE customers SET seller_name = $1, customer_id = $2 WHERE seller_id = $3;"
+	_, err := controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.CustomerId, sellerData.SellerId)
+	return err
 }
 
 func (controller *Controller) DeleteSeller(sellerId uint64) error {
@@ -198,8 +204,11 @@ func (controller *Controller) ReadDatacenters() []DatacenterData {
 	return nil
 }
 
-func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) {
-	// ...
+func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) error {
+	// IMPORTANT: Cannot change datacenter id once created
+	sql := "UPDATE customers SET datacenter_name = $1, latitude = $2, longitude = $3, seller_id = $4, notes = $5 WHERE datacenter_id = $6;"
+	_, err := controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.DatacenterId)
+	return err
 }
 
 func (controller *Controller) DeleteDatacenter(datacenterId uint64) error {
@@ -219,9 +228,9 @@ type RelayData struct {
 	InternalIP       string `json:"internal_ip"`
 	InternalPort     int    `json:"internal_port`
 	InternalGroup    string `json:"internal_group`
-	SSHIP            string `json:"ssh_ip"`
-	SSHPort          string `json:"ssh_port`
-	SSHUser          string `json:"ssh_user`
+	SSH_IP           string `json:"ssh_ip"`
+	SSH_Port         string `json:"ssh_port`
+	SSH_User         string `json:"ssh_user`
 	PublicKeyBase64  string `json:"public_key_base64"`
 	PrivateKeyBase64 string `json:"private_key_base64"`
 	Version          string `json:"version"`
@@ -240,8 +249,51 @@ func (controller *Controller) ReadRelays() []RelayData {
 	return nil
 }
 
-func (controller *Controller) UpdateRelay(relayData *RelayData) {
-	// ...
+func (controller *Controller) UpdateRelay(relayData *RelayData) error {
+	// IMPORTANT: Cannot change relay id once created
+	sql := `
+UPDATE customers 
+SET 
+	relay_name = $1, 
+	datacenter_id = $2,
+	public_ip = $3,
+	public_port = $4,
+	internal_ip = $5,
+	internal_port = $6,
+	internal_group = $7,
+	ssh_ip = $8,
+	ssh_port = $9,
+	ssh_user = $10,
+	public_key_base64 = $11,
+	private_key_base64 = $12,
+	version = $13,
+	mrc = $14,
+	port_speed = $15,
+	max_sessions = $16,
+	notes = $17,
+WHERE
+	relay_id = $18;`
+	_, err := controller.pgsql.Exec(sql, 
+		relayData.RelayName,
+		relayData.DatacenterId,
+		relayData.PublicIP,
+		relayData.PublicPort,
+		relayData.InternalIP,
+		relayData.InternalPort,
+		relayData.InternalGroup,
+		relayData.SSH_IP,
+		relayData.SSH_Port,
+		relayData.SSH_User,
+		relayData.PublicKeyBase64,
+		relayData.PrivateKeyBase64,
+		relayData.Version,
+		relayData.MRC,
+		relayData.PortSpeed,
+		relayData.MaxSessions,
+		relayData.Notes,
+		relayData.RelayId,
+	)
+	return err
 }
 
 func (controller *Controller) DeleteRelay(relayId uint64) error {
@@ -267,8 +319,11 @@ func (controller *Controller) ReadBuyerDatacenterSettings() []BuyerDatacenterSet
 	return nil
 }
 
-func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) {
-	// ...
+func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
+	// IMPORTANT: Cannot change buyer id or datacenter id once created
+	sql := "UPDATE buyer_datacenter_settings SET enable_acceleration = $1 WHERE buyer_id = $2, datacenter_id = $3;"
+	_, err := controller.pgsql.Exec(sql, settings.EnableAcceleration, settings.BuyerId, settings.DatacenterId)
+	return err
 }
 
 func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) error {
