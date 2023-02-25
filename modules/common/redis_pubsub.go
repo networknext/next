@@ -46,7 +46,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024
 	}
 
 	if config.BatchDuration == 0 {

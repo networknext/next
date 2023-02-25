@@ -35,7 +35,7 @@ type GooglePubsubProducer struct {
 func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubProducer, error) {
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024
 	}
 
 	if config.BatchDuration == 0 {

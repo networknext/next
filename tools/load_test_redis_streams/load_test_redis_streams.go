@@ -23,11 +23,7 @@ func RunProducerThreads(ctx context.Context, hostname string, threadCount int, n
 
 		producers[i], err = common.CreateRedisStreamsProducer(ctx, common.RedisStreamsConfig{
 			RedisHostname:      hostname,
-			RedisPassword:      "",
 			StreamName:         "test-stream",
-			BatchSize:          100,
-			BatchDuration:      time.Millisecond * 100,
-			MessageChannelSize: 10 * 1024,
 		})
 
 		if err != nil {
@@ -76,12 +72,8 @@ func RunConsumerThreads(ctx context.Context, hostname string, threadCount int, n
 
 		consumers[i], err = common.CreateRedisStreamsConsumer(ctx, common.RedisStreamsConfig{
 			RedisHostname:      hostname,
-			RedisPassword:      "",
 			StreamName:         "test-stream",
 			ConsumerGroup:      "test-group",
-			BatchDuration:      time.Millisecond * 100,
-			BatchSize:          10,
-			MessageChannelSize: 10 * 1024,
 		})
 
 		if err != nil {
@@ -142,8 +134,8 @@ func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 100)
-	consumerThreadCount := envvar.GetInt("CONSUMER_THREAD_COUNT", 100)
+	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 1000)
+	consumerThreadCount := envvar.GetInt("CONSUMER_THREAD_COUNT", 1000)
 
 	var numMessagesSent uint64
 	var numMessagesReceived uint64

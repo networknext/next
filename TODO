@@ -28,132 +28,61 @@ DONE
 
 TODO
 
-	Take a break moron.
+	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
 
+	Seems like multiple receives? Is it not configured correctly? Are all consumers receiving the same messages?
 
-
-
-
-
-
-
-
-
-
-
-
-
-Essentials:
+	Dive in and work out what the fuck is going on...
 
 	--------------
 
-	Get pubsub emulator setup.
+	Research best practice for creating a REST API for a crud.
 
-	Now actually write the analytics messages to pubsub in happy path (local).
-
-	Verify that the analytics service receives and processes the analytics messages.
-
-	Setup the bigquery emulator.
-
-	Actually write the analytics messages to bigquery...
-
-	--------
-
-	Emit the analytics database update message from relay_backend leader.
-
-	--------
-
-	Add server sdk to link to match
-
-	next_server_match ( match_id )
-
-	Make sure the match id gets passed up in both the server init, server update and the session updates from SDK -> backend.
-
-	--------
-
-	Add uint64 type to match data function
-
-	Extend SDK to support multiple calls to match data
-
-	Extend SDK to store an array of match data, and flush that array
-
-	Extend match data packets to server backend to include type
+	Create an "admin" module containing necessary postgres SQL stuff to call from api.go for /admin/* endpoints.
 
 	--------------
 
-	Match events ()
+	Get google pubsub emulator setup.
 
-	next_server_match_event
+	Modify local env so the server backend actually sends messages to analytics via pubsub.
 
-	--------------
-
-	Session events (address)
-
-	next_server_session_event
+	Verify analytics actually gets each message sent to it.
 
 	--------------
 
-	Session data (address, type, array of doubles)
+	Setup the bigquery emulator including schema.
 
-	next_server_session_data
-
-	--------------
-
-	Get the pubsub emulator back up locally
-
-	Get the process for setting up pubsub queues etc going via "run"
-
-	eg. "run pubsub-create", "run pubsub-destroy" or whatever works
+	Write the analytics messages to bigquery emulator.
 
 	--------------
 
-	Get the bigquery emulator up locally
+	Get the portal back up with the happy path.
 
-	Decide on schemas for each of the table types, and put them under "bigquery"
+	Portal should talk exclusively to "api" to get what it needs.
 
-	eg. "run bigquery-create", "run bigquery-destroy" or whatever.
-
-	--------------
-
-	Extend analytics service to insert messages into bigquery.
+	No auth, just hack it up to show the stuff that we need.
 
 	--------------
 
-	The relay should talk to the relay backend over SSH in dev and production.
+	Research terraform and work out how to use it with google cloud.
+
+	Implement a terraform script that brings up a dev environment in google cloud.
 
 	--------------
 
-	Implement func test for server backend to make sure when it is in connection drain state, it indicates to the LB health test that traffic should not be sent to it.
 
-	--------------
 
-	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
 
-	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
 
-	And then this can be checked.
 
-	Needs to be designed...
 
-	--------------
 
-	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
 
-	--------------
 
-	Get "pro" tagging back in. This is a cool feature.
 
-	--------------
 
-	Code in service.go to only shut down service once various subsystems have reported that they're complete
 
-	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
 
-	--------------
-
-	Multipath across two network next routes (Psyonix).
-
-	--------------
 
 
 
@@ -278,3 +207,73 @@ Nice to have:
 	This really only applies when in the LAN with the relay, but for testing, especially local testing, this is annoying and inconsistent.
 
 	---------------------------------------------------------
+
+	--------------
+
+	Add server sdk to link to match
+
+	next_server_match ( match_id )
+
+	Make sure the match id gets passed up in both the server init, server update and the session updates from SDK -> backend.
+
+	--------
+
+	Add uint64 type to match data function
+
+	Extend SDK to support multiple calls to match data
+
+	Extend SDK to store an array of match data, and flush that array
+
+	Extend match data packets to server backend to include type
+
+	--------------
+
+	Match events ()
+
+	next_server_match_event
+
+	--------------
+
+	Session events (address)
+
+	next_server_session_event
+
+	--------------
+
+	Session data (address, type, array of doubles)
+
+	next_server_session_data
+
+	--------------
+
+	Implement func test for server backend to make sure when it is in connection drain state, it indicates to the LB health test that traffic should not be sent to it.
+
+	--------------
+
+	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
+
+	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
+
+	And then this can be checked.
+
+	Needs to be designed...
+
+	--------------
+
+	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
+
+	--------------
+
+	Get "pro" tagging back in. This is a cool feature.
+
+	--------------
+
+	Code in service.go to only shut down service once various subsystems have reported that they're complete
+
+	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
+
+	--------------
+
+	Multipath across two network next routes (Psyonix).
+
+	--------------

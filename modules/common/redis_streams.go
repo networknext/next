@@ -47,7 +47,7 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 	producer := &RedisStreamsProducer{}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024
 	}
 
 	if config.BatchDuration == 0 {

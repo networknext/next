@@ -18,7 +18,7 @@ import (
 	"github.com/networknext/backend/modules/packets"
 )
 
-const NumServers = 450
+const NumServers = 1000
 
 var ServerBackendAddress = core.ParseAddress("127.0.0.1:50000")
 var ServerBackendPublicKey []byte
@@ -170,7 +170,7 @@ func main() {
 
 	updateChannels := make([]chan *Update, numHandlerThreads)
 	for i := range updateChannels {
-		updateChannels[i] = make(chan *Update, 1024*1024)
+		updateChannels[i] = make(chan *Update, 1024)
 	}
 
 	var numServerUpdatesProcessed uint64
