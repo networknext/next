@@ -45,6 +45,7 @@ This repo contains the Network Next backend.
 	You should see output like:
 
 ```console
+gaffer@macbook backend % make build
 dist/func_tests_sdk5
 dist/relay
 dist/func_backend
@@ -88,6 +89,7 @@ ok  	github.com/networknext/backend/modules/portal	0.281s
 	You should see output like:
 
 ```console
+gaffer@macbook backend % run happy-path
 
 don't worry. be happy.
 
