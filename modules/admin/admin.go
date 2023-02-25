@@ -236,13 +236,31 @@ type SellerData struct {
 	CustomerId uint64 `json:"customer_id"`
 }
 
-func (controller *Controller) CreateSeller(sellerData *SellerData) {
-	// ...
+func (controller *Controller) CreateSeller(sellerData *SellerData) (uint64, error) {
+	sql := "INSERT INTO sellers (seller_id, seller_name, customer_id) VALUES ($1, $2, $3) RETURNING seller_id;"
+    result := controller.pgsql.QueryRow(sql, sellerData.SellerId, sellerData.SellerName, sellerData.CustomerId)
+    sellerId := uint64(0)
+	if err := result.Scan(&sellerId); err != nil {
+		return 0, fmt.Errorf("could not insert seller: %v\n", err)
+	}
+	return sellerId, nil
 }
 
-func (controller *Controller) ReadSellers() []SellerData {
-	// ...
-	return nil
+func (controller *Controller) ReadSellers() ([]SellerData, error) {
+	sellers := make([]SellerData, 0)
+	rows, err := controller.pgsql.Query("SELECT seller_id, seller_name, customer_id FROM sellers;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read sellers: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := SellerData{}
+		if err := rows.Scan(&row.SellerId, &row.SellerName, &row.CustomerId); err != nil {
+			return nil, fmt.Errorf("could not scan seller row: %v\n", err)
+		}
+		sellers = append(sellers, row)
+	}
+	return sellers, nil
 }
 
 func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
