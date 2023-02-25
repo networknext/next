@@ -30,8 +30,8 @@ This repo contains the Network Next backend.
 
 6. Clone repo and change dir into it
 
-	`git clone git@github.com:networknext/backend.git`
-	`cd backend`
+	`git clone git@github.com:networknext/backend.git
+cd backend`
 
 7. Select local environment
 
