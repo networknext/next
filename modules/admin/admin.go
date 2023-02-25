@@ -35,11 +35,8 @@ type CustomerData struct {
 }
 
 func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64, error) {
-	sql := `INSERT INTO customers (customer_id, customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id`
-    result, err := controller.pgsql.QueryRow(sql, customerData.CustomerId, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
-    if err != nil {
-    	return 0, fmt.Errorf("failed to insert customer: %v\n", err)
-    }
+	sql := "INSERT INTO customers (customer_id, customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id;"
+    result := controller.pgsql.QueryRow(sql, customerData.CustomerId, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
     customerId := uint64(0)
 	if err := result.Scan(&customerId); err != nil {
 		return 0, fmt.Errorf("failed to scan insert customer result: %v\n", err)
@@ -49,7 +46,7 @@ func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64
 
 func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 	customers := make([]CustomerData, 0)
-	rows, err := controller.pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers")
+	rows, err := controller.pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers;")
 	if err != nil {
 		return nil, fmt.Errorf("could not extract customers: %v\n", err)
 	}
@@ -64,12 +61,17 @@ func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 	return customers, nil
 }
 
-func (controller *Controller) UpdateCustomer(customerData *CustomerData) {
-	// ...
+func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
+	// IMPORTANT: Cannot change customer id once created
+	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4;"
+	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
+	return err
 }
 
-func (controller *Controller) DeleteCustomer(customerId uint64) {
-	// ...
+func (controller *Controller) DeleteCustomer(customerId uint64) error {
+	sql := "DELETE FROM customers WHERE customer_id = $1;"
+	_, err := controller.pgsql.Exec(sql, customerId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -114,8 +116,10 @@ func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData
 	// ...
 }
 
-func (controller *Controller) DeleteRouteShader(routeShaderId uint64) {
-	// ...
+func (controller *Controller) DeleteRouteShader(routeShaderId uint64) error {
+	sql := "DELETE FROM route_shaders WHERE route_shader_id = $1;"
+	_, err := controller.pgsql.Exec(sql, routeShaderId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -141,8 +145,10 @@ func (controller *Controller) UpdateBuyer(buyerData *BuyerData) {
 	// ...
 }
 
-func (controller *Controller) DeleteBuyer(buyerId uint64) {
-	// ...
+func (controller *Controller) DeleteBuyer(buyerId uint64) error {
+	sql := "DELETE FROM buyers WHERE buyers_id = $1;"
+	_, err := controller.pgsql.Exec(sql, buyerId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -166,8 +172,10 @@ func (controller *Controller) UpdateSeller(sellerData *SellerData) {
 	// ...
 }
 
-func (controller *Controller) DeleteSeller(sellerId uint64) {
-	// ...
+func (controller *Controller) DeleteSeller(sellerId uint64) error {
+	sql := "DELETE FROM sellers WHERE seller_id = $1;"
+	_, err := controller.pgsql.Exec(sql, sellerId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -194,8 +202,10 @@ func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) {
 	// ...
 }
 
-func (controller *Controller) DeleteDatacenter(datacenterId uint64) {
-	// ...
+func (controller *Controller) DeleteDatacenter(datacenterId uint64) error {
+	sql := "DELETE FROM datacenters WHERE datacenter_id = $1;"
+	_, err := controller.pgsql.Exec(sql, datacenterId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -234,8 +244,10 @@ func (controller *Controller) UpdateRelay(relayData *RelayData) {
 	// ...
 }
 
-func (controller *Controller) DeleteRelay(relayId uint64) {
-	// ...
+func (controller *Controller) DeleteRelay(relayId uint64) error {
+	sql := "DELETE FROM relays WHERE relay_id = $1;"
+	_, err := controller.pgsql.Exec(sql, relayId)
+	return err
 }
 
 // -----------------------------------------------------------------------
@@ -259,8 +271,10 @@ func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatac
 	// ...
 }
 
-func (controller *Controller) DeleteBuyerDatacenterSettings(relayId uint64) {
-	// ...
+func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) error {
+	sql := "DELETE FROM buyer_datacenter_settings WHERE relay_id = $1, datacenter_id = $2;"
+	_, err := controller.pgsql.Exec(sql, buyerId, datacenterId)
+	return err
 }
 
 // -----------------------------------------------------------------------
