@@ -541,7 +541,8 @@ INSERT INTO relays
 	mrc,
 	port_speed,
 	max_sessions,
-	notes,
+	notes
+)
 VALUES
 (
 	$1,
@@ -581,10 +582,10 @@ RETURNING relay_id;`
 		relayData.PortSpeed,
 		relayData.MaxSessions,
 		relayData.Notes,
-		relayData.RelayId,
 	)
 	relayId := uint64(0)
 	if err := result.Scan(&relayId); err != nil {
+		fmt.Printf("error: %v\n", err)
 		return 0, fmt.Errorf("could not insert relay: %v\n", err)
 	}
 	return relayId, nil

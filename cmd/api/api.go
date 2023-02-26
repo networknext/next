@@ -83,6 +83,7 @@ func main() {
 		service.Router.HandleFunc("/admin/update_datacenter", adminUpdateDatacenterHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_datacenter", adminDeleteDatacenterHandler).Methods("DELETE")
 
+		service.Router.HandleFunc("/admin/create_relay", adminCreateRelayHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
 
 		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
@@ -555,6 +556,23 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
+	var relay admin.RelayData
+	err := json.NewDecoder(r.Body).Decode(&relay)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	relayId, err := controller.CreateRelay(&relay)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", relayId)
+}
 
 type AdminReadRelaysResponse struct {
 	Relays []admin.RelayData `json:"relays"`
