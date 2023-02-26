@@ -98,7 +98,7 @@ type RouteShaderData struct {
 	RouteSelectThreshold      int     `json:"route_select_threshold"`
 	RTTVeto_Default           int     `json:"rtt_veto_default"`
 	RTTVeto_Multipath         int     `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss        int     `json:"rtt_veto_packet_loss"`
+	RTTVeto_PacketLoss        int     `json:"rtt_veto_packetloss"`
 	ForceNext                 bool    `json:"force_next"`
 	RouteDiversity            int     `json:"route_diversity"`
 }
@@ -128,7 +128,7 @@ INSERT INTO route_shaders
 	route_select_threshold,
 	rtt_veto_default,
 	rtt_veto_multipath,
-	rtt_veto_packet_loss,
+	rtt_veto_packetloss,
 	force_next,
 	route_diversity
 VALUES
@@ -217,7 +217,7 @@ SELECT
 	route_select_threshold,
 	rtt_veto_default,
 	rtt_veto_multipath,
-	rtt_veto_packet_loss,
+	rtt_veto_packetloss,
 	force_next,
 	route_diversity
 FROM
@@ -288,7 +288,7 @@ SET
 	route_select_threshold = $18,
 	rtt_veto_default = $19,
 	rtt_veto_multipath = $20,
-	rtt_veto_packet_loss = $21,
+	rtt_veto_packetloss = $21,
 	force_next = $22,
 	route_diversity = $23,
 	route_shader_id = $24,
@@ -406,9 +406,11 @@ func (controller *Controller) ReadSellers() ([]SellerData, error) {
 	defer rows.Close()
 	for rows.Next() {
 		row := SellerData{}
-		if err := rows.Scan(&row.SellerId, &row.SellerName, &row.CustomerId); err != nil {
+		customerId := sql.NullInt64{}
+		if err := rows.Scan(&row.SellerId, &row.SellerName, &customerId); err != nil {
 			return nil, fmt.Errorf("could not scan seller row: %v\n", err)
 		}
+		row.CustomerId = uint64(customerId.Int64)
 		sellers = append(sellers, row)
 	}
 	return sellers, nil
@@ -457,9 +459,11 @@ func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 	defer rows.Close()
 	for rows.Next() {
 		row := DatacenterData{}
-		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &row.Notes); err != nil {
+		notes := sql.NullString{}
+		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &notes); err != nil {
 			return nil, fmt.Errorf("could not scan datacenter row: %v\n", err)
 		}
+		row.Notes = notes.String
 		datacenters = append(datacenters, row)
 	}
 	return datacenters, nil
@@ -572,7 +576,7 @@ RETURNING relay_id;`
 
 func (controller *Controller) ReadRelays() ([]RelayData, error) {
 	relays := make([]RelayData, 0)
-	sql := `
+	query := `
 SELECT
 	relay_name,
 	datacenter_id,
@@ -593,13 +597,15 @@ SELECT
 	notes
 FROM
 	relays;`
-	rows, err := controller.pgsql.Query(sql)
+	rows, err := controller.pgsql.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("could not read relays: %v\n", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := RelayData{}
+		version := sql.NullString{}
+		notes := sql.NullString{}
 		err := rows.Scan(
 			&row.RelayName,
 			&row.DatacenterId,
@@ -613,15 +619,17 @@ FROM
 			&row.SSH_User,
 			&row.PublicKeyBase64,
 			&row.PrivateKeyBase64,
-			&row.Version,
+			&version,
 			&row.MRC,
 			&row.PortSpeed,
 			&row.MaxSessions,
-			&row.Notes,
+			&notes,
 		); 
 		if err != nil {
 			return nil, fmt.Errorf("could not scan relay row: %v\n", err)
 		}
+		row.Version = version.String
+		row.Notes = notes.String
 		relays = append(relays, row)
 	}
 	return relays, nil

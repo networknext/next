@@ -966,7 +966,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		reduce_latency               bool
 		reduce_packet_loss           bool
 		selection_percent            int
-		max_latency_tradeoff         int
+		max_latency_trade_off        int
 		max_next_rtt                 int
 		route_switch_threshold       int
 		route_select_threshold       int
@@ -979,7 +979,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_tradeoff, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next, route_diversity FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss, packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_threshold, multipath, reduce_latency, reduce_packet_loss, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto_default, rtt_veto_multipath, rtt_veto_packetloss, force_next, route_diversity FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -988,7 +988,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_tradeoff, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next, &row.route_diversity); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_threshold, &row.multipath, &row.reduce_latency, &row.reduce_packet_loss, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto_default, &row.rtt_veto_multipath, &row.rtt_veto_packetloss, &row.force_next, &row.route_diversity); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
@@ -1050,7 +1050,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.route_shader_id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_tradeoff, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
+		fmt.Printf("%d: %v, %d, %.1f, %v, %d, %d, %v, %d, %v, %v, %v, %d, %d, %d, %d, %d, %d, %d, %d, %v\n", row.route_shader_id, row.ab_test, row.acceptable_latency, row.acceptable_packet_loss, row.analysis_only, row.bandwidth_envelope_down_kbps, row.bandwidth_envelope_up_kbps, row.disable_network_next, row.latency_threshold, row.multipath, row.reduce_latency, row.reduce_packet_loss, row.selection_percent, row.max_latency_trade_off, row.max_next_rtt, row.route_switch_threshold, row.route_select_threshold, row.rtt_veto_default, row.rtt_veto_multipath, row.rtt_veto_packetloss, row.force_next)
 	}
 
 	fmt.Printf("\nbuyer datacenter settings:\n")
@@ -1162,7 +1162,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.BandwidthEnvelopeDownKbps = int32(route_shader_row.bandwidth_envelope_down_kbps)
 		buyer.RouteShader.RouteSelectThreshold = int32(route_shader_row.route_select_threshold)
 		buyer.RouteShader.RouteSwitchThreshold = int32(route_shader_row.route_switch_threshold)
-		buyer.RouteShader.MaxLatencyTradeOff = int32(route_shader_row.max_latency_tradeoff)
+		buyer.RouteShader.MaxLatencyTradeOff = int32(route_shader_row.max_latency_trade_off)
 		buyer.RouteShader.RTTVeto_Default = int32(route_shader_row.rtt_veto_default)
 		buyer.RouteShader.RTTVeto_Multipath = int32(route_shader_row.rtt_veto_multipath)
 		buyer.RouteShader.RTTVeto_PacketLoss = int32(route_shader_row.rtt_veto_packetloss)

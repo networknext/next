@@ -56,6 +56,18 @@ func main() {
 
 	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler)
 
+	service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
+
+	service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
+
+	service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
+
+	service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
+
+	service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
+
+	service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
+
 	service.StartWebServer()
 
 	service.WaitForShutdown()
@@ -253,6 +265,108 @@ type AdminReadCustomersResponse struct {
 func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
 	customers, err := controller.ReadCustomers()
 	response := AdminReadCustomersResponse{Customers: customers}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadBuyersResponse struct {
+	Buyers []admin.BuyerData `json:"buyers"`
+	Error string `json:"error"`
+}
+
+func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
+	buyers, err := controller.ReadBuyers()
+	response := AdminReadBuyersResponse{Buyers: buyers}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadSellersResponse struct {
+	Sellers []admin.SellerData `json:"sellers"`
+	Error string `json:"error"`
+}
+
+func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
+	sellers, err := controller.ReadSellers()
+	response := AdminReadSellersResponse{Sellers: sellers}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadDatacentersResponse struct {
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error string `json:"error"`
+}
+
+func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	datacenters, err := controller.ReadDatacenters()
+	response := AdminReadDatacentersResponse{Datacenters: datacenters}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadRelaysResponse struct {
+	Relays []admin.RelayData `json:"relays"`
+	Error string `json:"error"`
+}
+
+func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	relays, err := controller.ReadRelays()
+	response := AdminReadRelaysResponse{Relays: relays}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadRouteShadersResponse struct {
+	RouteShaders []admin.RouteShaderData `json:"route_shaders"`
+	Error string `json:"error"`
+}
+
+func adminReadRouteShadersHandler(w http.ResponseWriter, r *http.Request) {
+	routeShaders, err := controller.ReadRouteShaders()
+	response := AdminReadRouteShadersResponse{RouteShaders: routeShaders}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminReadBuyerDatacenterSettingsResponse struct {
+	BuyerDatacenterSettings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+	Error string `json:"error"`
+}
+
+func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	buyerDatacenterSettings, err := controller.ReadBuyerDatacenterSettings()
+	response := AdminReadBuyerDatacenterSettingsResponse{BuyerDatacenterSettings: buyerDatacenterSettings}
 	if err != nil {
 		response.Error = err.Error()
 	}

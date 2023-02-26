@@ -69,12 +69,216 @@ func test_customers() {
 	api_cmd.Wait()
 }
 
+func test_buyers() {
+
+	fmt.Printf("test_buyers\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/buyers")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get buyers: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
+func test_sellers() {
+
+	fmt.Printf("test_sellers\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/sellers")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get sellers: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
+func test_datacenters() {
+
+	fmt.Printf("test_datacenters\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/datacenters")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get datacenters: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
+func test_relays() {
+
+	fmt.Printf("test_relays\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/relays")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get relays: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
+func test_route_shaders() {
+
+	fmt.Printf("test_route_shaders\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/route_shaders")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get route shaders: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
+func test_buyer_datacenter_settings() {
+
+	fmt.Printf("test_buyer_datacenter_settings\n")
+
+	api_cmd, _ := api()
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/buyer_datacenter_settings")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get buyer datacenter settings: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+}
+
 type test_function func()
 
 func main() {
 
 	allTests := []test_function{
 		test_customers,
+		test_buyers,
+		test_sellers,
+		test_datacenters,
+		test_relays,
+		test_route_shaders,
+		test_buyer_datacenter_settings,
 	}
 
 	var tests []test_function
