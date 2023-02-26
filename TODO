@@ -26,6 +26,10 @@ DONE
 
 TODO
 
+	Simplify CRUD func tests so generalizing to all types is easy.
+
+	---------------
+
 	Implement CRUD func test for buyers
 
 	Implement CRUD func test for sellers
