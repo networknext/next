@@ -469,11 +469,9 @@ func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 	defer rows.Close()
 	for rows.Next() {
 		row := DatacenterData{}
-		notes := sql.NullString{}
-		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &notes); err != nil {
+		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &row.Notes); err != nil {
 			return nil, fmt.Errorf("could not scan datacenter row: %v\n", err)
 		}
-		row.Notes = notes.String
 		datacenters = append(datacenters, row)
 	}
 	return datacenters, nil
@@ -510,7 +508,7 @@ type RelayData struct {
 	InternalPort     int    `json:"internal_port`
 	InternalGroup    string `json:"internal_group`
 	SSH_IP           string `json:"ssh_ip"`
-	SSH_Port         string `json:"ssh_port`
+	SSH_Port         int    `json:"ssh_port`
 	SSH_User         string `json:"ssh_user`
 	PublicKeyBase64  string `json:"public_key_base64"`
 	PrivateKeyBase64 string `json:"private_key_base64"`
@@ -522,7 +520,7 @@ type RelayData struct {
 }
 
 func (controller *Controller) CreateRelay(relayData *RelayData) (uint64, error) {
-	sql := `
+	query := `
 INSERT INTO relays 
 (
 	relay_name,
@@ -564,7 +562,7 @@ VALUES
 	$17
 )
 RETURNING relay_id;`
-	result := controller.pgsql.QueryRow(sql,
+	result := controller.pgsql.QueryRow(query,
 		relayData.RelayName,
 		relayData.DatacenterId,
 		relayData.PublicIP,
@@ -621,8 +619,6 @@ FROM
 	defer rows.Close()
 	for rows.Next() {
 		row := RelayData{}
-		version := sql.NullString{}
-		notes := sql.NullString{}
 		err := rows.Scan(
 			&row.RelayName,
 			&row.DatacenterId,
@@ -636,17 +632,15 @@ FROM
 			&row.SSH_User,
 			&row.PublicKeyBase64,
 			&row.PrivateKeyBase64,
-			&version,
+			&row.Version,
 			&row.MRC,
 			&row.PortSpeed,
 			&row.MaxSessions,
-			&notes,
+			&row.Notes,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not scan relay row: %v\n", err)
 		}
-		row.Version = version.String
-		row.Notes = notes.String
 		relays = append(relays, row)
 	}
 	return relays, nil

@@ -130,11 +130,11 @@ func main() {
 	} else if command == "setup-emulators" {
 		setup_emulators()
 	} else if command == "func-test-sdk5" {
-		func_tests_sdk5(args[2:])
+		func_test_sdk5(args[2:])
 	} else if command == "func-test-backend" {
-		func_tests_backend(args[2:])
+		func_test_backend(args[2:])
 	} else if command == "func-test-api" {
-		func_tests_api(args[2:])
+		func_test_api(args[2:])
 	} else if command == "raspberry-backend" {
 		raspberry_backend()
 	} else if command == "raspberry-server" {
@@ -308,8 +308,8 @@ func setup_emulators() {
 	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
-func func_tests_sdk5(tests []string) {
-	command := "cd dist && ./func_tests_sdk5"
+func func_test_sdk5(tests []string) {
+	command := "cd dist && ./func_test_sdk5"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
@@ -319,8 +319,8 @@ func func_tests_sdk5(tests []string) {
 	}
 }
 
-func func_tests_backend(tests []string) {
-	command := "cd dist && ./func_tests_backend"
+func func_test_backend(tests []string) {
+	command := "cd dist && ./func_test_backend"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
@@ -330,8 +330,8 @@ func func_tests_backend(tests []string) {
 	}
 }
 
-func func_tests_api(tests []string) {
-	command := "cd dist && ./func_tests_api"
+func func_test_api(tests []string) {
+	command := "cd dist && ./func_test_api"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
