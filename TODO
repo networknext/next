@@ -32,11 +32,9 @@ DONE
 
 	Implement CRUD func test for datacenters
 
-TODO
-
 	Implement CRUD func test for relays
 
-	---------------
+TODO
 
 	Implement CRUD func test for route shaders
 
@@ -48,7 +46,7 @@ TODO
 
 	Get the api func tests working on semaphore.
 
-	Get the happy path working out of the box on linux.
+	Get the happy path working out of the box on linux and in semaphore again (API requires postgres now...)
 
 	Update README.md instructions on both Mac and Linux to include postgres setup.
 
