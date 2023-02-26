@@ -593,6 +593,7 @@ func (controller *Controller) ReadRelays() ([]RelayData, error) {
 	relays := make([]RelayData, 0)
 	query := `
 SELECT
+	relay_id,
 	relay_name,
 	datacenter_id,
 	public_ip,
@@ -620,6 +621,7 @@ FROM
 	for rows.Next() {
 		row := RelayData{}
 		err := rows.Scan(
+			&row.RelayId,
 			&row.RelayName,
 			&row.DatacenterId,
 			&row.PublicIP,

@@ -752,8 +752,44 @@ func test_relays() {
 		relayId = Create("http://127.0.0.1:50000/admin/create_relay", relay)
 	}
 
-	// todo
-	_ = relayId
+	// read relays
+	{
+		relaysResponse := RelaysResponse{}
+
+		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
+
+	 	if len(relaysResponse.Relays) != 1 {
+	 		panic("expect one relay in response")
+	 	}
+
+	 	if relaysResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if relaysResponse.Relays[0].RelayId != relayId {
+	 		panic("wrong relay id")
+	 	}
+
+	 	if relaysResponse.Relays[0].RelayName != "Relay" {
+	 		panic("wrong relay name")
+	 	}
+
+	 	if relaysResponse.Relays[0].PublicIP != "127.0.0.1" {
+	 		panic("wrong public ip")
+	 	}
+
+	 	if relaysResponse.Relays[0].InternalIP != "0.0.0.0" {
+	 		panic("wrong internal ip")
+	 	}
+
+	 	if relaysResponse.Relays[0].SSH_IP != "127.0.0.1" {
+	 		panic("wrong ssh ip")
+	 	}
+
+	 	if relaysResponse.Relays[0].Notes != "" {
+	 		panic("notes should be empty")
+	 	}
+	}
 
 /*
 	// read datacenters
