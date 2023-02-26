@@ -22,9 +22,23 @@ DONE
 
 	Clear postgres tables before running admin func tests.
 
+	Implement CRUD func test for customers
+
 TODO
 
-	Implement full CRUD test for customer type.
+	Implement CRUD func test for buyers
+
+	Implement CRUD func test for sellers
+
+	Implement CRUD func test for datacenters
+
+	Implement CRUD func test for relays
+
+	Implement CRUD func test for route shaders
+
+	Implement CRUD func test for buyer datacenter settings
+
+
 
 	
 
