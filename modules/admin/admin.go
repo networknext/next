@@ -35,8 +35,8 @@ type CustomerData struct {
 }
 
 func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64, error) {
-	sql := "INSERT INTO customers (customer_id, customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id;"
-	result := controller.pgsql.QueryRow(sql, customerData.CustomerId, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
+	sql := "INSERT INTO customers (customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4) RETURNING customer_id;"
+	result := controller.pgsql.QueryRow(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
 	customerId := uint64(0)
 	if err := result.Scan(&customerId); err != nil {
 		return 0, fmt.Errorf("could not insert customer: %v\n", err)
@@ -65,6 +65,7 @@ func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
 	// IMPORTANT: Cannot change customer id once created
 	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
 	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug, customerData.CustomerId)
+	fmt.Printf("error = %v\n", err)
 	return err
 }
 
@@ -107,7 +108,6 @@ func (controller *Controller) CreateRouteShader(routeShaderData *RouteShaderData
 	sql := `
 INSERT INTO route_shaders 
 (
-	route_shader_id,
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
@@ -156,12 +156,10 @@ VALUES
 	$20,
 	$21,
 	$22,
-	$23,
-	$24
+	$23
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
-		routeShaderData.RouteShaderId,
 		routeShaderData.Name,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
@@ -341,8 +339,8 @@ type BuyerData struct {
 }
 
 func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) {
-	sql := "INSERT INTO buyers (buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id) VALUES ($1, $2, $3, $4, $5) RETURNING buyer_id;"
-	result := controller.pgsql.QueryRow(sql, buyerData.BuyerId, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId)
+	sql := "INSERT INTO buyers (buyer_name, public_key_base64, customer_id, route_shader_id) VALUES ($1, $2, $3, $4) RETURNING buyer_id;"
+	result := controller.pgsql.QueryRow(sql, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId)
 	buyerId := uint64(0)
 	if err := result.Scan(&buyerId); err != nil {
 		return 0, fmt.Errorf("could not insert buyer: %v\n", err)
@@ -389,8 +387,14 @@ type SellerData struct {
 }
 
 func (controller *Controller) CreateSeller(sellerData *SellerData) (uint64, error) {
-	sql := "INSERT INTO sellers (seller_id, seller_name, customer_id) VALUES ($1, $2, $3) RETURNING seller_id;"
-	result := controller.pgsql.QueryRow(sql, sellerData.SellerId, sellerData.SellerName, sellerData.CustomerId)
+	var result *sql.Row
+	if sellerData.CustomerId != 0 {
+		sql := "INSERT INTO sellers (seller_name, customer_id) VALUES ($1, $2) RETURNING seller_id;"
+		result = controller.pgsql.QueryRow(sql, sellerData.SellerName, sellerData.CustomerId)
+	} else {
+		sql := "INSERT INTO sellers (seller_name) VALUES ($1) RETURNING seller_id;"
+		result = controller.pgsql.QueryRow(sql, sellerData.SellerName)
+	}
 	sellerId := uint64(0)
 	if err := result.Scan(&sellerId); err != nil {
 		return 0, fmt.Errorf("could not insert seller: %v\n", err)
@@ -442,8 +446,8 @@ type DatacenterData struct {
 }
 
 func (controller *Controller) CreateDatacenter(datacenterData *DatacenterData) (uint64, error) {
-	sql := "INSERT INTO datacenters (datacenter_id, datacenter_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING datacenter_id;"
-	result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterId, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
+	sql := "INSERT INTO datacenters (datacenter_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5) RETURNING datacenter_id;"
+	result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
 	datacenterId := uint64(0)
 	if err := result.Scan(&datacenterId); err != nil {
 		return 0, fmt.Errorf("could not insert datacenter: %v\n", err)

@@ -73,6 +73,7 @@ func main() {
 		service.Router.HandleFunc("/admin/update_buyer", adminUpdateBuyerHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer", adminDeleteBuyerHandler).Methods("DELETE")
 
+		service.Router.HandleFunc("/admin/create_seller", adminCreateSellerHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
 
 		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
@@ -412,6 +413,23 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
+	var seller admin.SellerData
+	err := json.NewDecoder(r.Body).Decode(&seller)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sellerId, err := controller.CreateSeller(&seller)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", sellerId)
+}
+
 type AdminReadSellersResponse struct {
 	Sellers []admin.SellerData `json:"sellers"`
 	Error   string             `json:"error"`
@@ -473,7 +491,6 @@ func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 	routeShaderId, err := controller.CreateRouteShader(&routeShader)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Printf("error: %v\n", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

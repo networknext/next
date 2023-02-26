@@ -107,6 +107,10 @@ func Create(url string, object interface{}) uint64 {
 		panic(fmt.Sprintf("could not id response for %s: %v\n", url, err))
 	}
 
+	if id == 0 {
+		panic(fmt.Sprintf("id returned from %s should be non-zero", url))
+	}
+
 	response.Body.Close()
 
 	return id
@@ -270,7 +274,7 @@ func test_customers() {
 
 	// update customer
 	{
-		customer := admin.CustomerData{CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
+		customer := admin.CustomerData{CustomerId: customerId, CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
 
 		Update("http://127.0.0.1:50000/admin/update_customer", customer)
 
@@ -411,7 +415,7 @@ func test_buyers() {
 
 	// update buyer
 	{
-		buyer := admin.BuyerData{BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+		buyer := admin.BuyerData{BuyerId: buyerId, BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
 
 		Update("http://127.0.0.1:50000/admin/update_buyer", buyer)
 
@@ -468,6 +472,131 @@ func test_buyers() {
 
 // ----------------------------------------------------------------------------------------
 
+type SellersResponse struct {
+	Sellers []admin.SellerData `json:"sellers"`
+	Error  string            `json:"error"`
+}
+
+func test_sellers() {
+
+	fmt.Printf("test_sellers\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Seller"}
+
+		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
+	}
+
+	_ = sellerId
+
+/*
+	// read buyers
+	{
+		buyersResponse := BuyersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+
+	 	if len(buyersResponse.Buyers) != 1 {
+	 		panic("expect one buyer in response")
+	 	}
+
+	 	if buyersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
+	 		panic("wrong buyer id")
+	 	}
+
+	 	if buyersResponse.Buyers[0].BuyerName != "Buyer" {
+	 		panic("wrong buyer name")
+	 	}
+
+	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+	 		panic("wrong public key base64")
+	 	}
+
+	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 		panic("wrong customer id")
+	 	}
+
+	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// update buyer
+	{
+		buyer := admin.BuyerData{BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+
+		Update("http://127.0.0.1:50000/admin/update_buyer", buyer)
+
+		buyersResponse := BuyersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+
+	 	if len(buyersResponse.Buyers) != 1 {
+	 		panic("expect one buyer in response")
+	 	}
+
+	 	if buyersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
+	 		panic("wrong buyer id")
+	 	}
+
+	 	if buyersResponse.Buyers[0].BuyerName != "Updated" {
+	 		panic("wrong buyer name")
+	 	}
+
+	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+	 		panic("wrong public key base64")
+	 	}
+
+	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 		panic("wrong customer id")
+	 	}
+
+	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// delete buyer
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_buyer", buyerId)
+
+		buyersResponse := BuyersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+
+    	if len(buyersResponse.Buyers) != 0 {
+    		panic("should be no buyers after delete")
+    	}
+
+    	if buyersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+	}
+*/
+}
+
+// ----------------------------------------------------------------------------------------
+
 type test_function func()
 
 func main() {
@@ -475,8 +604,8 @@ func main() {
 	allTests := []test_function{
 		test_customers,
 		test_buyers,
+		test_sellers,
 		/*
-			test_sellers,
 			test_datacenters,
 			test_relays,
 			test_route_shaders,
