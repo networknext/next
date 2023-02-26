@@ -133,6 +133,8 @@ func main() {
 		func_tests_sdk5(args[2:])
 	} else if command == "func-tests-backend" {
 		func_tests_backend(args[2:])
+	} else if command == "func-tests-api" {
+		func_tests_api(args[2:])
 	} else if command == "raspberry-backend" {
 		raspberry_backend()
 	} else if command == "raspberry-server" {
@@ -319,6 +321,17 @@ func func_tests_sdk5(tests []string) {
 
 func func_tests_backend(tests []string) {
 	command := "cd dist && ./func_tests_backend"
+	if len(tests) > 0 {
+		for _, test := range tests {
+			bash(fmt.Sprintf("%s %s", command, test))
+		}
+	} else {
+		bash(command)
+	}
+}
+
+func func_tests_api(tests []string) {
+	command := "cd dist && ./func_tests_api"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))
