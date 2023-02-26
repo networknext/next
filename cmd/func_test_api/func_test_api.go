@@ -822,24 +822,22 @@ func test_relays() {
 	 	}
 	}
 
-/*
-	// delete datacenter
+	// delete relay
 	{
-		Delete("http://127.0.0.1:50000/admin/delete_datacenter", datacenterId)
+		Delete("http://127.0.0.1:50000/admin/delete_relay", relayId)
 
-		datacentersResponse := DatacentersResponse{}
+		relaysResponse := RelaysResponse{}
 
-		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
+		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
 
-    	if len(datacentersResponse.Datacenters) != 0 {
-    		panic("should be no datacenters after delete")
+    	if len(relaysResponse.Relays) != 0 {
+    		panic("should be no relays after delete")
     	}
 
-    	if datacentersResponse.Error != "" {
+    	if relaysResponse.Error != "" {
     		panic("expect error string to be empty")
     	}
 	}
-*/
 }
 
 // ----------------------------------------------------------------------------------------

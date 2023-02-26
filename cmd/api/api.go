@@ -86,6 +86,7 @@ func main() {
 		service.Router.HandleFunc("/admin/create_relay", adminCreateRelayHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
 		service.Router.HandleFunc("/admin/update_relay", adminUpdateRelayHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_relay", adminDeleteRelayHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
@@ -600,6 +601,26 @@ func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
 	err = controller.UpdateRelay(&relay)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	relayId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteRelay(relayId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusOK)

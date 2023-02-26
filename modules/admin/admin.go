@@ -692,7 +692,6 @@ WHERE
 		relayData.Notes,
 		relayData.RelayId,
 	)
-	fmt.Printf("error: %v\n", err)
 	return err
 }
 
